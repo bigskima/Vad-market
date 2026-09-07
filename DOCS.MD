@@ -1,258 +1,769 @@
 # VAD — VALUE ASSET DEPOT
 
-## Complete Product, Financial, Oracle, Algorithm & Runtime Architecture Directive
+## MASTER PRODUCT + SYSTEM + TECHNICAL ARCHITECTURE DIRECTIVE
 
+**Product:** VAD — Value Asset Depot
 **Operating Company:** SKIMA Group LTD
-**Product/Business Name:** VAD — Value Asset Depot
+**Initial Market:** Nigeria
+**Launch Settlement Asset:** NGN
+**Future Asset Support:** USDC and other assets through generic asset/provider architecture
+**Primary Client Stack:** Expo + React Native + TypeScript
+**Backend:** Supabase + PostgreSQL + Edge Functions
+**Architecture Style:** API-first, backend-authoritative, modular monolith, policy-driven, provider-agnostic, event-driven
 
 ---
 
-# 1. PRIMARY DIRECTIVE TO THE CHIEF DEVELOPMENT AI
+# 1. PURPOSE OF THIS DOCUMENT
 
-This document is not a suggestion list.
+This document defines the foundation of VAD.
 
-Treat it as the architectural foundation for VAD.
+The development team must not treat VAD as a simple betting application.
 
-Do not immediately jump into building screens.
+VAD is intended to become a:
 
-VAD is fundamentally:
+**social conviction network + creator platform + prediction marketplace + financial market infrastructure + reputation network + market intelligence system.**
 
-**a social conviction network + creator platform + prediction marketplace + financial market infrastructure.**
+The closest conceptual combination is:
 
-It is NOT merely:
+**X/Twitter + TikTok/Reels + prediction markets + financial trading + creator reputation + oracle-governed settlement.**
 
-* a sportsbook,
-* a betting application,
-* a Polymarket clone,
-* a casino,
-* a social network with betting buttons.
+But VAD must develop its own identity.
 
-The concept is:
+The product philosophy is:
 
-# OPEN CONVICTION. CONTROLLED TRUTH. SEGREGATED MONEY. CONFIGURABLE POLICY.
+# OPEN CONVICTION
 
-Users may freely:
+# CONTROLLED TRUTH
 
-* express predictions,
-* create posts,
-* create video analysis,
-* debate,
-* challenge each other,
-* build theses,
-* follow predictors,
-* create social predictions,
-* propose financial markets.
+# SEGREGATED MONEY
 
-Users may NOT freely:
+# CONFIGURABLE POLICY
 
-* create settlement rules,
-* declare outcomes,
-* change oracle definitions,
-* change financial policies,
-* create arbitrary liquidity,
-* manipulate balances,
-* resolve their own financial markets.
+# AUDITABLE FINANCE
 
-The system must separate:
+# CREATOR-DRIVEN DISCOVERY
 
-**OPINION**
+Users generate opinions.
 
-from
+Users generate content.
 
-**FINANCIAL TRUTH.**
+Users generate market ideas.
+
+Users generate demand.
+
+But users do not determine financial truth.
+
+Financial truth comes from:
+
+**predetermined resolution rules + oracle policies + deterministic settlement + ledger accounting.**
 
 ---
 
-# 2. BUILD PHILOSOPHY
+# 2. THE MOST IMPORTANT ARCHITECTURAL PRINCIPLE
 
-We do not have thousands of dollars to burn during startup.
+The application must never be the system of truth.
+
+The complete system should behave conceptually as:
+
+```text
+DATABASE
+   ↓
+DOMAIN SERVICES
+   ↓
+POLICY ENGINE
+   ↓
+ALGORITHMS
+   ↓
+PROVIDER / ORACLE ADAPTERS
+   ↓
+EDGE / API
+   ↓
+CLIENT APPLICATIONS
+```
+
+NOT:
+
+```text
+CLIENT
+   ↓
+contains rules
+   ↓
+writes directly into tables
+```
+
+The client should never determine:
+
+* wallet balances
+* trading eligibility
+* fee amount
+* settlement amount
+* market outcome
+* oracle selection
+* provider selection
+* withdrawal limits
+* market activation
+* risk decisions
+* KYC requirements
+* market closing
+* refund rules
+* supported financial assets
+* business policy
+
+The client asks the backend:
+
+> What can this user do right now?
+
+The backend decides.
+
+---
+
+# 3. PRODUCT POSITIONING
+
+Do not build:
+
+> Pick event → place bet → wait → win/lose.
+
+VAD's primary product loop should be:
+
+```text
+DISCOVER
+   ↓
+WATCH / READ
+   ↓
+UNDERSTAND
+   ↓
+FORM CONVICTION
+   ↓
+PREDICT
+   ↓
+TAKE POSITION
+   ↓
+DISCUSS
+   ↓
+CHALLENGE
+   ↓
+FOLLOW
+   ↓
+TRADE
+   ↓
+EVENT EVOLVES
+   ↓
+ORACLE RESOLUTION
+   ↓
+SETTLEMENT
+   ↓
+REPUTATION UPDATE
+   ↓
+RETURN
+```
+
+This is much more engaging than a normal betting product.
+
+---
+
+# 4. INITIAL FINANCIAL SCOPE
+
+VAD launches:
+
+## Nigeria
+
+Production asset:
+
+**NGN**
+
+Do not build USD.
+
+Do not build smart-contract settlement initially.
+
+Do not build on-chain market contracts.
+
+Do not allow crypto implementation to delay launch.
 
 However:
 
-**low budget must NOT mean throwaway architecture.**
+The financial architecture must remain asset-neutral.
 
-Build production-grade foundations from day one while intelligently using:
+Example:
 
-* open-source technologies,
-* Supabase,
-* free tiers,
-* usage-based providers,
-* provider abstraction,
-* open standards,
-* self-hostable libraries where practical,
-* inexpensive infrastructure,
-* incremental scaling.
+```text
+assets
 
-Do not prematurely purchase enterprise infrastructure.
+NGN
+type = FIAT
+status = ACTIVE
 
-Also do not create technical debt by writing fake implementations that must later be completely removed.
+USDC
+type = STABLECOIN
+status = DISABLED
 
-The rule is:
+USD
+type = FIAT
+status = DISABLED
+```
 
-# START SMALL. ARCHITECT LARGE.
+Future activation should not require rewriting:
 
-A free-tier provider may be active today.
+* ledger
+* positions
+* markets
+* fees
+* settlements
+* wallets
+* portfolios
 
-A paid enterprise provider may replace it tomorrow.
-
-The rest of VAD should not care.
+Only new payment/asset rails should need integration.
 
 ---
 
-# 3. CORE TECHNOLOGY STACK
+# 5. LOW-COST BUT PRODUCTION-GRADE PRINCIPLE
 
-## Frontend
+VAD does not have enterprise startup capital.
+
+Therefore do not over-engineer infrastructure.
+
+But do not build throwaway systems.
+
+The engineering principle is:
+
+# START CHEAP.
+
+# START CORRECT.
+
+# SCALE WHEN NECESSARY.
+
+Use:
+
+* Supabase
+* PostgreSQL
+* Edge Functions
+* Expo
+* React Native
+* open-source packages
+* free-tier providers
+* free/cheap observability
+* provider adapters
+
+Avoid initially:
+
+* Kubernetes
+* dozens of microservices
+* expensive data warehouses
+* custom blockchain
+* custom queue clusters
+* enterprise streaming platforms
+* dedicated infrastructure that can be replaced by Postgres/Supabase initially
+
+---
+
+# 6. OVERALL PLATFORM DOMAINS
+
+VAD should be a modular monolith initially.
+
+Major bounded contexts:
+
+```text
+Identity
+Authentication
+Profiles
+KYC
+Devices
+Sessions
+
+Social
+Creators
+Posts
+Media
+Comments
+Reactions
+Follows
+
+Market Proposals
+Canonical Events
+Market Governance
+Market Templates
+Market Instruments
+
+Trading
+Orders
+Order Book
+Trades
+Positions
+Liquidity
+Collateral
+
+Oracle
+Resolution
+Disputes
+
+Wallet
+Ledger
+Payments
+Withdrawals
+Refunds
+Reconciliation
+Fees
+Revenue
+
+Policies
+Configuration
+Feature Flags
+Capabilities
+
+AI Runtime
+Algorithms
+
+Risk
+Fraud
+Compliance
+
+Notifications
+
+Admin
+Audit
+Observability
+Analytics
+```
+
+These are logical modules.
+
+They do not need separate servers at launch.
+
+---
+
+# 7. REPOSITORY / WORKSPACE ARCHITECTURE
+
+Recommended monorepo:
+
+```text
+/apps
+
+  /mobile
+      VAD Android/iOS
+
+  /web
+      VAD consumer/creator web
+
+  /admin
+      VAD operational control plane
+
+/packages
+
+  /ui
+  /design-system
+  /api-client
+  /types
+  /schemas
+  /auth-client
+  /analytics
+  /feature-runtime
+  /localization
+
+/backend
+
+  /domains
+      identity
+      kyc
+      social
+      canonical-events
+      markets
+      trading
+      oracle
+      settlement
+      ledger
+      payments
+      fees
+      policies
+      risk
+      ai
+      notifications
+
+  /edge-functions
+
+  /migrations
+
+  /seed
+
+  /tests
+
+/docs
+
+  architecture
+  domain-specs
+  api
+  security
+  runbooks
+  market-rules
+```
+
+Shared packages must not become a place to hide business rules.
+
+---
+
+# 8. FRONTEND STACK
 
 Use:
 
 **Expo + React Native + TypeScript**
 
-for:
-
-* Android
-* iOS
-* customer web
-* creator web
-* admin web dashboard
-
 Use:
 
 **Expo Router**
 
-for routing.
+Targets:
 
-Use React Native Web for universal interfaces while allowing web-specific components where an admin dashboard genuinely needs desktop-oriented interactions.
+* Android
+* iOS
+* Web
+* Admin Web where practical
 
-Do NOT force every desktop admin component to behave like a phone screen merely for code reuse.
+For admin:
 
-Expo officially supports universal web applications through React Native/Web and React DOM capabilities.
+React Native Web may be reused where sensible.
 
-Recommended monorepo concept:
+But desktop admin interfaces may use web-specialized components.
 
-```text
-/apps
+Do not force complex:
 
-    /vad
-        customer/creator/trader application
+* data grids
+* audit tables
+* dashboards
+* charts
+* multi-column workflows
 
-    /admin
-        VAD administration/control plane
-
-/packages
-
-    /ui
-    /design-system
-    /api-client
-    /types
-    /schemas
-    /auth
-    /config
-    /analytics
-```
-
-Shared business truth must NOT live inside these packages.
-
-They contain presentation, API clients and reusable UI.
+into mobile UI patterns.
 
 ---
 
-# 4. BACKEND
-
-Use Supabase heavily during the startup stage.
+# 9. BACKEND STACK
 
 Use:
 
-* PostgreSQL
+**Supabase PostgreSQL**
+
+Use:
+
 * Supabase Auth
+* PostgreSQL
 * Row Level Security
 * Storage
 * Realtime
 * Edge Functions
-* database functions where appropriate
-* Postgres transactions
-* scheduled workers/jobs
-* queues/event processing patterns
+* database transactions
+* Postgres functions
+* scheduled jobs
 * pgvector where useful
-* audit tables
-* immutable ledger patterns
+* database constraints
+* immutable audit records
 
-Current Supabase Free includes 500 MB database storage, 50,000 MAU, 5 GB egress and two active free projects; it is suitable for getting VAD's early production system running, while the architecture must allow migration to paid capacity when real usage requires it.
-
-Do not treat Supabase limits as VAD business limitations.
+Sensitive financial writes must not rely on direct client table writes.
 
 ---
 
-# 5. KYC
+# 10. AUTHENTICATION
+
+Support:
+
+* email
+* phone
+* OTP
+* social login later where desired
+* MFA for admins
+* stronger authentication for high-risk actions
+
+Authentication is not authorization.
+
+Authorization must be server enforced.
+
+---
+
+# 11. USER DOMAIN
+
+Conceptual records:
+
+```text
+users
+profiles
+user_settings
+user_preferences
+user_status
+devices
+sessions
+login_events
+user_roles
+user_permissions
+```
+
+User status may include:
+
+```text
+ACTIVE
+RESTRICTED
+SUSPENDED
+BANNED
+DEACTIVATED
+UNDER_REVIEW
+```
+
+---
+
+# 12. KYC
 
 Initial preferred provider:
 
-**Didit**
+Didit or another low-cost provider.
 
-through a provider adapter.
+But provider must be abstracted.
 
-Current Didit documentation describes 500 free monthly checks for each of several core identity-verification functions, making it attractive for an early-stage startup.
-
-However NEVER build:
-
-```text
-diditVerificationId
-diditStatus
-```
-
-throughout the domain.
-
-Build:
+Create:
 
 ```text
 IdentityVerificationProvider
 ```
 
-Then implementations:
+Capabilities:
 
 ```text
-DiditAdapter
-
-FutureProviderAdapter
-
-ManualReviewAdapter
+startVerification()
+getVerification()
+verifyWebhook()
+getSupportedChecks()
+healthCheck()
 ```
 
-Core records should look conceptually like:
+Database:
 
 ```text
 identity_verification_sessions
-
-provider_id
-external_reference
-user_id
-verification_type
-status
-result
-risk_signals
-created_at
-completed_at
-metadata
+identity_verification_checks
+identity_verification_results
+identity_provider_events
+manual_reviews
 ```
 
-This means replacing Didit does not require rebuilding VAD.
+Never make core logic dependent on Didit-specific names.
 
 ---
 
-# 6. PAYMENTS
+# 13. KYC POLICY
 
-Initial VAD settlement focus:
+KYC requirements must be configurable.
 
-## Nigeria
+Example:
 
-NGN
+```text
+Basic account
+→ social only
 
-USD where a compliant/approved provider permits it.
+Verified user
+→ NGN deposit
+
+Higher verification
+→ withdrawal
+
+Enhanced review
+→ larger financial limits
+```
+
+These thresholds must come from policies.
+
+---
+
+# 14. ASSET REGISTRY
+
+Create a generic asset system.
+
+```text
+assets
+
+id
+code
+name
+symbol
+asset_type
+minor_units
+network
+contract_address
+status
+display_precision
+metadata
+created_at
+```
+
+Asset types:
+
+```text
+FIAT
+STABLECOIN
+CRYPTO
+```
+
+Initial:
+
+```text
+NGN = ACTIVE
+
+USDC = DISABLED
+```
+
+Never create:
+
+```text
+ngn_balance
+usdc_balance
+```
+
+columns.
+
+---
+
+# 15. WALLET ARCHITECTURE
+
+A wallet is not one mutable balance field.
+
+Conceptually:
+
+```text
+wallets
+wallet_accounts
+ledger_accounts
+ledger_journals
+ledger_entries
+```
+
+A user may have accounts such as:
+
+```text
+NGN_AVAILABLE
+NGN_RESERVED
+NGN_WITHDRAWAL_PENDING
+```
 
 Future:
 
-USDC / additional crypto rails.
+```text
+USDC_AVAILABLE
+USDC_RESERVED
+```
 
-Do NOT architect payments around one company.
+generated from generic asset logic.
+
+---
+
+# 16. DOUBLE-ENTRY LEDGER
+
+The ledger is the financial source of truth.
+
+Every value movement must produce debit/credit entries.
+
+Never:
+
+```text
+balance = balance + amount
+```
+
+without corresponding journal entries.
+
+Example deposit:
+
+```text
+Debit:
+PROVIDER_CLEARING
+
+Credit:
+USER_AVAILABLE
+```
+
+depending on accounting orientation.
+
+Every journal must balance:
+
+```text
+SUM(DEBITS) = SUM(CREDITS)
+```
+
+at transaction level.
+
+---
+
+# 17. LEDGER ACCOUNT CLASSES
+
+Examples:
+
+```text
+USER_AVAILABLE
+
+USER_RESERVED
+
+MARKET_COLLATERAL
+
+WITHDRAWAL_PENDING
+
+PROVIDER_CLEARING
+
+PLATFORM_TRADING_FEE_REVENUE
+
+PLATFORM_SETTLEMENT_FEE_REVENUE
+
+PLATFORM_WITHDRAWAL_REVENUE
+
+REFUND_PAYABLE
+
+CREATOR_REWARD_PAYABLE
+
+TREASURY
+
+SUSPENSE
+
+CHARGEBACK_RECEIVABLE
+```
+
+Every account:
+
+```text
+asset_id
+account_type
+owner_type
+owner_id
+status
+```
+
+---
+
+# 18. MONEY PRECISION
+
+Never use floating point for money.
+
+Use:
+
+* integer minor units
+  or
+* PostgreSQL NUMERIC with strict precision rules
+
+NGN may display ₦1.
+
+But internal financial precision should support market share pricing.
+
+Example:
+
+```text
+₦0.473821
+```
+
+may require higher precision internally.
+
+Define separate:
+
+```text
+accounting_precision
+display_precision
+pricing_precision
+```
+
+---
+
+# 19. PAYMENT ARCHITECTURE
+
+Do not hardcode Paystack, Monnify, or Interswitch.
 
 Create:
 
@@ -260,7 +771,7 @@ Create:
 PaymentProviderAdapter
 ```
 
-with capabilities such as:
+Methods:
 
 ```text
 getCapabilities()
@@ -273,198 +784,160 @@ createWithdrawal()
 
 verifyWithdrawal()
 
-refundPayment()
-
 getTransaction()
 
-getAccountDetails()
+refund()
 
-resolveBankAccount()
+resolveAccount()
 
 createVirtualAccount()
+
+verifyWebhook()
 
 healthCheck()
 ```
 
-Provider selection must happen dynamically.
+---
 
-A provider must declare:
+# 20. PAYMENT ORCHESTRATOR
 
-```text
-countries
-currencies
-deposit_methods
-withdrawal_methods
-limits
-business_capabilities
-health
-priority
-```
-
-Never assume:
+Create:
 
 ```text
-Nigeria = Provider X
+PaymentOrchestrator
 ```
 
-Instead runtime asks:
+Inputs:
 
-> Which approved provider currently supports this capability?
+```text
+country
+asset
+operation
+amount
+user
+provider health
+provider policy
+```
+
+Returns:
+
+```text
+selected provider
+fallback provider
+payment instructions
+```
+
+Admin controls provider priority.
 
 ---
 
-# 7. CURRENT BUSINESS GEOGRAPHY
-
-VAD launches for Nigerians first.
-
-Do not overcomplicate initial development with dozens of jurisdiction workflows.
-
-Initial business configuration:
+# 21. DEPOSIT FLOW
 
 ```text
-Nigeria:
-    NGN = enabled
-    USD = enabled where payment capability permits
-    crypto = foundation prepared
+User requests deposit
+↓
+Backend validates user
+↓
+KYC policy
+↓
+Deposit policy
+↓
+PaymentOrchestrator
+↓
+Provider
+↓
+Payment initiated
+↓
+Provider webhook
+↓
+Signature verification
+↓
+Transaction verification
+↓
+Idempotency
+↓
+Ledger journal
+↓
+USER_AVAILABLE credited
+↓
+Notification
 ```
 
-Other countries are not the initial operational focus.
-
-Architecturally, future users outside Nigeria may eventually operate using crypto first.
-
-Fiat currencies can later be activated country-by-country.
-
-IMPORTANT:
-
-This must remain CONFIGURATION.
-
-Never write the Nigerian rule permanently into client or domain code.
-
-A future administrator must eventually be able to configure:
-
-```text
-Ghana
-GHS = enabled
-
-Kenya
-KES = enabled
-
-United Kingdom
-GBP = enabled
-```
-
-without rebuilding VAD's financial architecture.
+Never trust client success callback.
 
 ---
 
-# 8. CRYPTO IS FUTURE IMPLEMENTATION
-
-Do NOT spend early startup resources building:
-
-* smart contracts,
-* blockchain AMMs,
-* bridges,
-* custom tokens,
-* decentralized oracle contracts,
-* on-chain settlement.
-
-But the architecture MUST already understand:
+# 22. WITHDRAWAL FLOW
 
 ```text
-asset.type =
-FIAT
-STABLECOIN
-CRYPTO
+Withdrawal request
+↓
+Authentication
+↓
+KYC
+↓
+Balance
+↓
+Risk
+↓
+Limits
+↓
+Fee quote
+↓
+USER_AVAILABLE → WITHDRAWAL_PENDING
+↓
+Provider payout
+↓
+Provider result
+↓
+Ledger finalize
+↓
+Notification
 ```
 
-and provider abstraction must support future:
+If provider fails:
 
-```text
-CryptoSettlementProvider
-WalletProvider
-BlockchainOracleProvider
-```
-
-The VAD ledger should be asset-agnostic from day one.
-
-Therefore adding USDC later should mean:
-
-**adding a rail/provider/capability**
-
-rather than rewriting:
-
-* balances,
-* markets,
-* fees,
-* settlement,
-* portfolios.
+release reservation safely.
 
 ---
 
-# 9. THE MOST IMPORTANT FINANCIAL RULE
+# 23. RECONCILIATION
 
-## NEVER MIX LIQUIDITY BETWEEN CURRENCIES.
-
-Suppose this event exists:
-
-> Will Chelsea win the Premier League?
-
-This is ONE canonical event.
-
-But financially:
+VAD must periodically compare:
 
 ```text
-CANONICAL EVENT
-        |
-        |
-        +---- NGN MARKET
-        |       |
-        |       +---- NGN order book
-        |       +---- NGN collateral
-        |       +---- NGN fees
-        |       +---- NGN settlement
-        |
-        +---- USD MARKET
-        |       |
-        |       +---- USD order book
-        |       +---- USD collateral
-        |       +---- USD fees
-        |       +---- USD settlement
-        |
-        +---- USDC MARKET [future]
-                |
-                +---- USDC liquidity
-                +---- USDC collateral
+internal ledger
+VS
+payment provider records
 ```
 
-They share:
+Detect:
 
-* question,
-* event,
-* outcome,
-* resolution,
-* oracle.
+* missing deposits
+* duplicate callbacks
+* withdrawal mismatch
+* chargeback
+* provider settlement mismatch
 
-They NEVER share:
+Never silently edit ledger.
 
-* liquidity,
-* collateral,
-* fees,
-* order books,
-* balances,
-* settlement money.
+Create:
 
-This is mandatory.
+```text
+reconciliation_runs
+reconciliation_items
+reconciliation_exceptions
+```
 
 ---
 
-# 10. CANONICAL EVENT VS FINANCIAL MARKET
+# 24. CANONICAL EVENT SYSTEM
 
-Chief dev must understand this distinction precisely.
+This is one of VAD's most important systems.
 
-## CANONICAL EVENT
+A canonical event represents:
 
-Represents the REAL-WORLD proposition.
+**one unique real-world proposition.**
 
 Example:
 
@@ -472,156 +945,60 @@ Example:
 Will Chelsea win the 2026/27 Premier League?
 ```
 
-It contains truth-related information.
-
-## MARKET INSTRUMENT
-
-Represents a financially tradeable implementation of that event.
-
-Example:
+This is not the same as:
 
 ```text
-Chelsea EPL 2026/27 Champion
-Asset = NGN
+Will Chelsea finish Top 4?
 ```
 
-Another instrument:
+nor:
 
 ```text
-Chelsea EPL 2026/27 Champion
-Asset = USD
-```
-
-Same truth.
-
-Different financial system.
-
----
-
-# 11. WHY CANONICALIZATION EXISTS
-
-Without canonicalization:
-
-Creator A creates:
-
-> Chelsea wins EPL.
-
-Creator B creates:
-
-> Chelsea Premier League champions?
-
-Creator C creates:
-
-> Will Chelsea win the league?
-
-Creator D creates:
-
-> Chelsea EPL winner 26/27.
-
-The system could accidentally create:
-
-4 financial markets,
-
-4 order books,
-
-4 liquidity pools,
-
-4 prices,
-
-possibly 4 different settlement configurations.
-
-That is unacceptable.
-
-It creates:
-
-* spam,
-* fragmented liquidity,
-* confusing prices,
-* oracle duplication,
-* scam opportunities,
-* manipulation surfaces.
-
-Instead:
-
-```text
-Creator posts A
-Creator posts B
-Creator posts C
-Creator posts D
-
-        ↓
-
-Canonical Event #1028
-
-"Will Chelsea win the 2026/27 Premier League?"
-```
-
-All creator content references this canonical event.
-
-There remains one NGN market and one USD market for that event.
-
----
-
-# 12. CANONICAL MARKET ALGORITHM
-
-Canonicalization must NOT rely solely on an LLM.
-
-Use multiple stages.
-
-## STEP 1 — STRUCTURAL NORMALIZATION
-
-Convert proposal into structured components.
-
-Example:
-
-```text
-subject:
-Chelsea FC
-
-event_type:
-LEAGUE_CHAMPION
-
-competition:
-Premier League
-
-season:
-2026/27
-
-outcome:
-YES_NO
-
-deadline/resolution scope:
-official final league table
-```
-
-Use IDs rather than raw names wherever possible.
-
-Example:
-
-```text
-team_id = CHELSEA_FC_ID
-competition_id = EPL_ID
-season_id = EPL_2026_27_ID
+Will Chelsea finish above Arsenal?
 ```
 
 ---
 
-# 13. CANONICAL FINGERPRINT
+# 25. CANONICAL EVENT STRUCTURE
 
-Build a deterministic fingerprint.
+Conceptual:
 
-Conceptually:
+```text
+canonical_events
+
+id
+template_id
+title
+description
+subject_entities
+competition_id
+season_id
+time_scope
+resolution_scope
+outcome_schema
+canonical_fingerprint
+status
+oracle_policy_version_id
+created_at
+```
+
+---
+
+# 26. CANONICAL FINGERPRINT
+
+For structured templates:
 
 ```text
 fingerprint =
-hash(
-    template_type
-    + normalized_entity_ids
-    + competition_id
-    + season_id
-    + threshold
-    + comparison_operator
-    + resolution_scope
+HASH(
+ template_type
+ entity_ids
+ competition
+ season
+ threshold
+ operator
+ timeframe
+ resolution_scope
 )
 ```
 
@@ -634,1004 +1011,592 @@ EPL_ID
 2026_27
 ```
 
-produces one canonical identity.
+Same fingerprint:
 
-If another proposal generates the same fingerprint:
-
-DO NOT CREATE ANOTHER EVENT.
-
-Attach it to the existing canonical event.
+same canonical event.
 
 ---
 
-# 14. SEMANTIC DUPLICATE DETECTION
+# 27. CANONICALIZATION ALGORITHM
 
-Not every duplicate will produce an immediately identical fingerprint.
-
-Therefore use:
-
-1. deterministic candidate search,
-2. full-text search,
-3. vector similarity,
-4. entity matching,
-5. AI semantic classification.
-
-AI may return:
+Process:
 
 ```text
-SAME_EVENT
+Market proposal
+↓
+Normalize text
+↓
+Extract entities
+↓
+Identify event template
+↓
+Resolve known entity IDs
+↓
+Generate fingerprint
+↓
+Exact fingerprint search
+↓
+Semantic candidate search
+↓
+Structural comparison
+↓
+AI-assisted duplicate analysis
+↓
+Decision
+```
+
+Possible decisions:
+
+```text
+EXACT_DUPLICATE
+
+SEMANTIC_DUPLICATE
+
 RELATED_EVENT
+
 DISTINCT_EVENT
+
 UNCERTAIN
 ```
 
-But AI must NOT make the final financial decision by itself.
+---
+
+# 28. AI MUST NOT CONTROL CANONICALIZATION ALONE
+
+AI assists.
+
+Deterministic checks validate.
+
+For example:
+
+AI might incorrectly see:
+
+```text
+Chelsea wins league
+```
+
+and:
+
+```text
+Chelsea finishes top four
+```
+
+as very similar.
+
+But event templates make them different.
+
+Final canonicalization must compare:
+
+* template
+* subject
+* season
+* competition
+* threshold
+* operator
+* deadline
+* resolution scope
+
+---
+
+# 29. CANONICAL EVENT GRAPH
+
+Related markets should form an event graph.
 
 Example:
 
 ```text
-Proposal:
-Chelsea finishes above Arsenal.
+CHELSEA 2026/27
 
-Existing:
-Chelsea wins Premier League.
+├── EPL Champion
+├── Top 4
+├── Above Arsenal
+├── 80+ goals
+└── Player X 15+ goals
 ```
 
-They are related.
+Create:
 
-They are NOT the same market.
+```text
+event_relationships
+```
 
-The deterministic validator must stop AI from incorrectly merging them.
+relationship types:
+
+```text
+RELATED
+PARENT
+CHILD
+CORRELATED
+SAME_ENTITY
+SAME_COMPETITION
+```
+
+This powers:
+
+* discovery
+* thesis
+* recommendations
+* analytics
+* market shocks
 
 ---
 
-# 15. CANONICALIZATION DECISION ALGORITHM
+# 30. MARKET PROPOSALS
 
-Conceptually:
-
-```text
-normalize proposal
-
-extract entities
-
-identify template
-
-generate fingerprint
-
-search exact fingerprint
-
-IF exact:
-    link existing event
-
-ELSE:
-    retrieve semantic candidates
-
-    compare:
-        event type
-        entities
-        season
-        deadline
-        thresholds
-        operators
-        resolution conditions
-
-    AI assists semantic classification
-
-    IF sufficiently identical:
-        link canonical event
-
-    ELSE IF uncertain:
-        send governance review
-
-    ELSE:
-        create new canonical-event candidate
-```
-
-Every merge decision must be auditable.
-
-Admins must be able to:
-
-* inspect proposals,
-* inspect candidate matches,
-* approve merge,
-* reject merge,
-* split mistakenly merged events.
-
-Never silently destroy historical references.
-
----
-
-# 16. MARKET PROPOSAL PIPELINE
-
-Users do NOT directly publish real-money markets.
-
-Users propose them.
-
-Pipeline:
-
-```text
-USER IDEA
-   ↓
-PROPOSAL
-   ↓
-CONTENT SAFETY
-   ↓
-ENTITY EXTRACTION
-   ↓
-MARKET TEMPLATE CLASSIFICATION
-   ↓
-CANONICALIZATION
-   ↓
-DUPLICATE CHECK
-   ↓
-AMBIGUITY CHECK
-   ↓
-ORACLE RESOLVABILITY CHECK
-   ↓
-MANIPULATION/RISK CHECK
-   ↓
-FINANCIAL ELIGIBILITY
-   ↓
-APPROVAL
-   ↓
-CANONICAL EVENT
-   ↓
-ASSET MARKET CREATION
-```
-
-This is how we control spam without killing creativity.
-
----
-
-# 17. MARKET QUALITY SCORE ALGORITHM
-
-A proposal can receive internal scores.
-
-Example:
-
-```text
-objective_resolvability       0–100
-oracle_availability           0–100
-ambiguity                     0–100
-duplicate_probability         0–100
-manipulation_risk             0–100
-creator_trust                 0–100
-expected_interest             0–100
-```
-
-Do NOT treat one weighted AI score as absolute truth.
-
-The score routes workflows.
-
-Example:
-
-```text
-high resolution confidence
-+
-low ambiguity
-+
-trusted template
-+
-available oracle
-=
-auto-eligible for activation policy
-
-uncertain
-=
-human review
-```
-
-Admins control thresholds.
-
----
-
-# 18. ALGORITHM SYSTEM
-
-VAD needs an explicit algorithm layer.
-
-It is broader than AI.
-
-Algorithms include:
-
-## Market Algorithms
-
-* canonicalization
-* order matching
-* pricing
-* liquidity
-* position accounting
-* collateral calculation
-* settlement
-
-## Discovery Algorithms
-
-* feed ranking
-* trending markets
-* creator recommendations
-* personalized markets
-
-## Trust Algorithms
-
-* reputation
-* calibration
-* spam detection
-* anomaly detection
-* manipulation detection
-
-## Oracle Algorithms
-
-* source consensus
-* source priority
-* conflict detection
-* finality
-
-## Risk Algorithms
-
-* position concentration
-* suspicious account correlations
-* wash trading patterns
-* unusual trading before events
-* velocity limits
-
-Each algorithm must have:
-
-```text
-algorithm definition
-version
-parameters
-activation status
-effective date
-audit history
-```
-
-Where appropriate, parameters should be runtime-configurable.
-
----
-
-# 19. DO NOT CONFUSE ALGORITHM WITH AI
-
-This distinction is critical.
-
-An algorithm may be:
-
-```text
-if two trusted sources agree:
-    provisional_result = result
-```
-
-No AI required.
-
-An order-matching engine is an algorithm.
-
-A settlement engine is an algorithm.
-
-A fee calculator is an algorithm.
-
-A canonical fingerprint generator is an algorithm.
-
-AI is only one class of runtime intelligence.
-
----
-
-# 20. AI ARCHITECTURE
-
-AI should become a major VAD capability.
+Anyone permitted may propose.
 
 But:
 
-# AI IS NOT AN ORACLE.
+# PROPOSAL ≠ FINANCIAL MARKET
 
-AI can reason about evidence.
-
-Oracle infrastructure establishes authoritative facts.
-
-AI may say:
-
-> These two market proposals probably mean the same thing.
-
-AI must NOT say:
-
-> Chelsea won, therefore release $18,000.
-
-Those are completely different powers.
-
----
-
-# 21. AI RUNTIME
-
-Create:
+A proposal may become:
 
 ```text
-AIProviderAdapter
-```
+REJECTED
 
-Providers may eventually include:
+SOCIAL_ONLY
 
-```text
-OpenAI
-Gemini
-Claude
-local/open-source models
-future providers
-```
+NEEDS_CLARIFICATION
 
-Do not hardcode prompts against one vendor.
+UNDER_REVIEW
 
-Create:
-
-```text
-ai_providers
-ai_models
-ai_capabilities
-ai_policy
-ai_prompt_versions
-ai_runs
-ai_outputs
-ai_costs
-ai_failures
-```
-
-Capabilities could include:
-
-```text
-MARKET_STRUCTURING
-DUPLICATE_DETECTION
-AMBIGUITY_ANALYSIS
-CONTENT_MODERATION
-MARKET_SUMMARY
-NEWS_SUMMARY
-CREATOR_ASSISTANCE
-RISK_TRIAGE
-ENTITY_EXTRACTION
-SEARCH_QUERY_GENERATION
-FEED_ENRICHMENT
+APPROVED
 ```
 
 ---
 
-# 22. AI EXECUTION FLOW
-
-Conceptually:
+# 31. PROPOSAL PIPELINE
 
 ```text
-request
+SUBMITTED
 ↓
-AI capability router
+MODERATION
 ↓
-active AI policy
+NORMALIZATION
 ↓
-choose provider/model
+ENTITY EXTRACTION
 ↓
-execute
+TEMPLATE CLASSIFICATION
 ↓
-validate structured output
+CANONICALIZATION
 ↓
-store result
+DUPLICATE ANALYSIS
 ↓
-deterministic domain validator
+AMBIGUITY ANALYSIS
 ↓
-domain action
+ORACLE AVAILABILITY
+↓
+MANIPULATION RISK
+↓
+MARKET QUALITY
+↓
+GOVERNANCE
+↓
+APPROVED
 ```
 
-AI output is NEVER trusted merely because the model produced JSON.
-
-Schema validation and domain validation follow it.
-
 ---
 
-# 23. AI FAILURE MUST NOT BREAK FINANCE
+# 32. MARKET QUALITY ALGORITHM
 
-If every AI provider goes offline:
-
-Users should still be able to:
-
-* access balances,
-* withdraw where permitted,
-* view markets,
-* settle deterministic markets,
-* receive oracle resolution,
-* use core financial infrastructure.
-
-AI-dependent conveniences may degrade.
-
-Financial truth must NOT.
-
----
-
-# 24. AI VS ORACLE
-
-Think of it this way:
-
-## AI
-
-Answers:
-
-> What might this mean?
-
-> Is this proposal ambiguous?
-
-> Are these two sentences semantically equivalent?
-
-> Can this creator post be summarized?
-
-> Does this activity look suspicious?
-
-## ORACLE
-
-Answers:
-
-> What officially happened?
-
-For financial settlement:
-
-**Oracle > AI.**
-
-Always.
-
----
-
-# 25. ORACLE NETWORK
-
-Build an Oracle Registry rather than a single source.
-
-Oracle capabilities could include:
+Internal signals:
 
 ```text
-SPORT_MATCH_RESULT
-SPORT_LEAGUE_TABLE
-PLAYER_STAT
-CRYPTO_PRICE
-FX_RATE
-ECONOMIC_DATA
-ELECTION_RESULT
-COMPANY_EVENT
-ENTERTAINMENT_CHART
+objectivity_score
+
+oracle_availability_score
+
+ambiguity_score
+
+duplicate_probability
+
+market_integrity_score
+
+creator_reputation_score
+
+expected_interest
+
+manipulation_risk
 ```
 
-Sources can be:
+These are workflow signals.
 
-* authoritative sources,
-* structured API providers,
-* secondary corroborating sources,
-* controlled manual adjudication.
+They do not independently determine financial truth.
 
 ---
 
-# 26. ORACLE POLICY
+# 33. MARKET TEMPLATES
 
-Before a market opens, define:
+Build reusable templates.
+
+Sports examples:
 
 ```text
-oracle capability
-primary source
-secondary source(s)
-source priority
-consensus requirement
-resolution deadline
-postponement rule
-cancellation rule
-dispute period
-void rule
-finality rule
+MATCH_WINNER
+
+LEAGUE_CHAMPION
+
+TOP_X_FINISH
+
+HEAD_TO_HEAD_FINAL_POSITION
+
+PLAYER_GOALS_OVER_X
+
+TEAM_GOALS_OVER_X
+
+QUALIFIES
+
+RELEGATED
 ```
 
-Lock the applicable policy version once trading starts.
+Finance/economics later:
 
-Do not let administrators secretly rewrite what decides a market after money enters.
+```text
+ASSET_ABOVE_PRICE_AT_TIME
+
+FX_RATE_ABOVE_X
+
+POLICY_RATE_CHANGE
+
+INFLATION_ABOVE_X
+```
+
+Creators provide parameters.
+
+They do not write settlement code.
 
 ---
 
-# 27. MARKET PRICING MODEL — INITIAL RECOMMENDATION
+# 34. FINANCIAL MARKET INSTRUMENT
 
-VAD should NOT initially behave like a sportsbook where the house sets odds.
+Canonical event = truth object.
 
-VAD should NOT require the company to bankroll every market.
+Market instrument = financially tradable object.
 
-VAD should initially implement:
+Example:
 
-# FULLY COLLATERALIZED BINARY OUTCOME SHARES
+```text
+canonical_event:
+Chelsea EPL Champion
 
-# + CENTRAL LIMIT ORDER BOOK
+instrument:
+asset = NGN
+market_type = BINARY
+liquidity_model = ORDER_BOOK
+```
 
-# + PRICE-TIME PRIORITY
+Future:
 
-This provides a financially conservative starting point.
+same event can have:
+
+```text
+USDC instrument
+```
+
+without changing the canonical truth.
 
 ---
 
-# 28. HOW A BINARY MARKET WORKS
+# 35. MARKET STATES
 
-Suppose:
-
-> Will Event X happen?
-
-There are:
+Use explicit state machine:
 
 ```text
-YES shares
-NO shares
+DRAFT
+
+PROPOSED
+
+UNDER_REVIEW
+
+APPROVED
+
+SCHEDULED
+
+OPEN
+
+SUSPENDED
+
+CLOSED
+
+AWAITING_ORACLE
+
+PROVISIONALLY_RESOLVED
+
+DISPUTED
+
+FINALIZED
+
+SETTLEMENT_PENDING
+
+SETTLED
+
+VOIDED
+
+CANCELLED
 ```
 
-For a USD market, assume one complete outcome pair represents:
+State transitions must be controlled.
+
+---
+
+# 36. ORDER BOOK MODEL
+
+Initial recommended liquidity engine:
+
+# CENTRAL LIMIT ORDER BOOK
+
+Use:
+
+# PRICE-TIME PRIORITY
+
+This is preferable at startup because VAD does not need to bankroll every market.
+
+---
+
+# 37. BINARY MARKET ECONOMICS
+
+For binary markets:
 
 ```text
-$1 settlement collateral
+YES
+NO
 ```
 
-Conceptually:
+One complete outcome set:
 
 ```text
-1 YES share
+1 YES
 +
-1 NO share
+1 NO
 =
-$1 fully collateralized outcome set
-```
-
-Only one side ultimately receives the $1.
-
-Therefore VAD does not have to gamble against users.
-
-Money is collateralized.
-
----
-
-# 29. WHY ENTRY TIME MATTERS
-
-Users do NOT simply put money into a pot and divide it later.
-
-They buy shares at a MARKET PRICE.
-
-Suppose:
-
-Monday:
-
-YES price = $0.25.
-
-A user spends:
-
-```text
-$250
-```
-
-They acquire approximately:
-
-```text
-1,000 YES shares
-```
-
-ignoring fees.
-
-Friday:
-
-new information appears.
-
-YES now trades at:
-
-```text
-$0.80
-```
-
-Another person spending:
-
-```text
-$250
-```
-
-only acquires:
-
-```text
-312.5 YES shares
-```
-
-approximately.
-
-Both spent $250.
-
-But the earlier trader took greater uncertainty and acquired more shares.
-
-If YES wins:
-
-each YES share settles at:
-
-```text
-$1
-```
-
-Therefore earlier timing naturally matters through entry price.
-
-No arbitrary bonus formula is required.
-
----
-
-# 30. THE $18,000 EXAMPLE
-
-Suppose the USD market has:
-
-```text
-$18,000
-```
-
-of fully collateralized complete outcome sets.
-
-This means the market can settle exactly:
-
-```text
-$18,000
-```
-
-to whichever outcome ultimately wins.
-
-Imagine current winning YES holders include:
-
-Alice:
-
-```text
-4,000 YES shares
-average acquisition = $0.35
-cost basis ≈ $1,400
-```
-
-Bob:
-
-```text
-3,000 YES shares
-average acquisition = $0.55
-cost basis ≈ $1,650
-```
-
-Carol:
-
-```text
-2,000 YES shares
-average acquisition = $0.80
-cost basis ≈ $1,600
+₦1 settlement value
 ```
 
 If YES resolves:
 
-Alice receives:
-
 ```text
-4,000 × $1 = $4,000
+YES = ₦1
+NO = ₦0
 ```
 
-Bob:
+If NO:
 
 ```text
-3,000 × $1 = $3,000
+YES = ₦0
+NO = ₦1
 ```
-
-Carol:
-
-```text
-2,000 × $1 = $2,000
-```
-
-before any configured settlement fee.
-
-Their original stakes were not equal.
-
-Their timing was not equal.
-
-Their acquisition prices were not equal.
-
-Their share quantities represent those differences.
-
-That is the brain behind settlement.
 
 ---
 
-# 31. MOST IMPORTANT SETTLEMENT PRINCIPLE
+# 38. COMPLEMENTARY ORDER CREATION
 
-Settlement pays:
+Example:
 
-# FINAL SHARE OWNERSHIP
-
-NOT:
-
-* whoever originally deposited,
-* whoever originally created the position,
-* raw lifetime stake,
-* social reputation,
-* how long the position existed.
-
-If Alice later sells 1,000 YES shares to David:
-
-Alice no longer owns those shares.
-
-David becomes settlement owner.
-
-This is what makes positions tradable.
-
----
-
-# 32. PRICE-TIME PRIORITY
-
-The matching engine should use deterministic:
-
-# PRICE FIRST.
-
-# TIME SECOND.
-
-Better prices receive priority.
-
-For orders at identical prices:
-
-older orders execute first.
-
-Every order receives server-generated:
+Trader A wants YES at:
 
 ```text
-order_id
-sequence_number
-received_at
+₦0.40
 ```
 
-Never trust client timestamps for priority.
-
----
-
-# 33. COMPLEMENTARY ORDER MATCHING
-
-Suppose:
-
-Trader A is willing to buy YES for:
+Trader B wants NO at:
 
 ```text
-$0.60
-```
-
-Trader B is willing to buy NO for:
-
-```text
-$0.40
+₦0.60
 ```
 
 Together:
 
 ```text
-$0.60 + $0.40 = $1
+₦1.00
 ```
 
-The matching engine can create:
+System may create:
 
 ```text
-1 YES share for A
-1 NO share for B
+1 YES
+1 NO
 ```
 
 and lock:
 
 ```text
-$1
+₦1
 ```
 
-collateral.
-
-That $1 cannot become platform operating money.
-
-It is settlement collateral.
+as market collateral.
 
 ---
 
-# 34. ORDERS THAT CROSS
+# 39. WHY VAD DOES NOT NEED A GIANT HOUSE BANKROLL
 
-Suppose older resting YES order:
+VAD should initially match market participants.
 
-```text
-YES = $0.60
-```
+VAD is not automatically counterparty.
 
-Incoming NO buyer is willing to pay:
+When compatible interest forms a complete collateralized pair:
 
-```text
-up to $0.42
-```
-
-The two users are compatible because the incoming trader can accept the complementary:
-
-```text
-NO = $0.40
-```
-
-Under maker/resting price priority:
-
-```text
-YES = $0.60
-NO = $0.40
-```
-
-The excess willingness does NOT become hidden platform profit.
-
-Matching rules must be deterministic and transparent.
-
----
-
-# 35. TRADING EXISTING SHARES
-
-Once outcome shares exist, holders may place sell orders.
-
-Example:
-
-Alice owns YES purchased at:
-
-```text
-$0.30
-```
-
-Market now values YES at:
-
-```text
-$0.70
-```
-
-Alice can sell before event resolution.
-
-The buyer pays Alice.
-
-Ownership transfers.
-
-Underlying settlement collateral remains protected.
-
-This gives VAD genuine trading rather than simple betting.
-
----
-
-# 36. EMPTY MARKET PROBLEM
-
-A new order book may contain no counterparties.
-
-Do not fake liquidity.
-
-If no compatible order exists:
-
-```text
-ORDER REMAINS OPEN
-```
-
-The UI communicates:
-
-> Waiting for a matching order.
-
-Possible later solutions include:
-
-* approved liquidity providers,
-* creator/community liquidity incentives,
-* market-making algorithms,
-* treasury-funded liquidity under strict risk limits,
-* AMM modules.
-
-Do NOT require these for the first financial architecture.
-
----
-
-# 37. WHY NOT START WITH A HOUSE-FUNDED AMM?
-
-An AMM can provide constant liquidity.
-
-But it introduces:
-
-* treasury capital requirements,
-* market-maker loss,
-* parameter tuning,
-* manipulation risks,
-* low-liquidity pricing problems,
-* additional risk accounting.
-
-VAD currently has limited startup capital.
+positions are created.
 
 Therefore:
 
-## CLOB FIRST.
+```text
+maximum settlement liability
+<=
+market collateral
+```
 
-Architect an interface allowing AMMs later.
+must always hold.
 
-Example:
+---
+
+# 40. EMPTY MARKET
+
+When no counterparty exists:
+
+do not fake liquidity.
+
+Order remains:
+
+```text
+OPEN
+```
+
+Possible user-facing message:
+
+> Waiting for matching liquidity.
+
+Future liquidity engines may include:
+
+```text
+AMM
+HYBRID
+APPROVED MARKET MAKERS
+```
+
+but do not start with unnecessary treasury exposure.
+
+---
+
+# 41. LIQUIDITY ENGINE INTERFACE
+
+Build generic interface:
 
 ```text
 LiquidityEngine
 
+quote()
+
+placeOrder()
+
+cancelOrder()
+
+match()
+
+getDepth()
+
+getBestBidAsk()
+```
+
+Implementation:
+
+```text
 OrderBookLiquidityEngine
-AutomatedMarketMakerEngine [future]
-HybridLiquidityEngine [future]
+```
+
+Future:
+
+```text
+AMMLiquidityEngine
+
+HybridLiquidityEngine
 ```
 
 ---
 
-# 38. FUTURE AMM OPTION
-
-Do not hardcode CLOB permanently either.
-
-Market policy could eventually specify:
+# 42. ORDER MODEL
 
 ```text
-liquidity_model =
-ORDER_BOOK
-AMM
-HYBRID
-```
+orders
 
-But implement only the production-grade model actually needed now.
-
----
-
-# 39. SOLVENCY INVARIANT
-
-At all times:
-
-```text
-settlement collateral
->=
-maximum possible settlement liability
-```
-
-For a fully collateralized binary market, this must be mathematically enforced.
-
-Never allow:
-
-```text
-platform promises payout
-without collateral
-```
-
-No administrator override should casually bypass this invariant.
-
----
-
-# 40. LEDGER
-
-Use a real double-entry ledger.
-
-Never maintain financial truth through:
-
-```text
-users.balance = users.balance + 1000
-```
-
-Accounts should include concepts such as:
-
-```text
-USER_AVAILABLE
-USER_RESERVED
-MARKET_COLLATERAL
-WITHDRAWAL_PENDING
-PROVIDER_CLEARING
-PLATFORM_FEE_REVENUE
-REFUND_PAYABLE
-TREASURY
-CREATOR_REWARD_PAYABLE
-```
-
-Every money movement has:
-
-```text
-transaction_id
-journal_id
-asset_id
-debit_account
-credit_account
-amount
-reason
-reference_type
-reference_id
-idempotency_key
+id
+user_id
+market_id
+outcome_id
+side
+order_type
+price
+quantity
+filled_quantity
+remaining_quantity
+status
+sequence_number
 created_at
+expires_at
 ```
 
-Ledger entries become immutable.
+Statuses:
 
-Corrections use reversing entries.
+```text
+OPEN
+
+PARTIALLY_FILLED
+
+FILLED
+
+CANCELLED
+
+EXPIRED
+
+REJECTED
+```
 
 ---
 
-# 41. ORDER RESERVATION
+# 43. ORDER MATCHING ALGORITHM
 
-When a user places an order:
+Priority:
 
-Do NOT immediately treat it as spent.
+# PRICE FIRST
 
-Move required funds:
+# TIME SECOND
+
+Use server-generated sequence number.
+
+Never trust client timestamp.
+
+Conceptually:
+
+```text
+incoming order
+↓
+find compatible resting order
+↓
+best price
+↓
+earliest sequence
+↓
+validate funds
+↓
+reserve/collateralize
+↓
+create trade
+↓
+update orders
+↓
+update positions
+↓
+ledger
+↓
+publish event
+```
+
+All financial changes must happen transactionally.
+
+---
+
+# 44. ORDER RESERVATION
+
+When placing an order:
 
 ```text
 USER_AVAILABLE
@@ -1639,334 +1604,669 @@ USER_AVAILABLE
 USER_RESERVED
 ```
 
-When filled:
+Only matched amount becomes collateral.
 
-appropriate amount becomes:
+Unfilled remainder remains reserved.
 
-```text
-MARKET_COLLATERAL
-```
-
-and fees move separately.
-
-Unused reservation returns to:
+On cancel:
 
 ```text
+USER_RESERVED
+→
 USER_AVAILABLE
 ```
 
-when:
+---
 
-* order cancels,
-* order expires,
-* partial fill leaves remainder,
-* market closes.
+# 45. TRADES
+
+Create:
+
+```text
+trades
+
+id
+market_id
+maker_order_id
+taker_order_id
+price
+quantity
+asset_id
+executed_at
+sequence_number
+```
+
+Trades are immutable.
+
+Corrections happen through explicit reversals/administrative workflows.
 
 ---
 
-# 42. PLATFORM FEES
-
-Fees must be controlled by a dedicated:
-
-# FEE POLICY ENGINE.
-
-No controller should contain business assumptions such as:
+# 46. POSITIONS
 
 ```text
-fee = trade * 0.01
+positions
+
+user_id
+market_id
+outcome_id
+quantity
+average_price
+realized_pnl
+unrealized_pnl
+fees_paid
+status
 ```
 
-The runtime asks:
+Also preserve individual fills.
 
-```text
-FeePolicyEngine.quote(context)
-```
+Average price is derived analytics.
+
+Do not throw away fill history.
 
 ---
 
-# 43. INITIAL RECOMMENDED REVENUE MODEL
+# 47. ENTRY TIMING
 
-Do NOT maximize fee complexity at launch.
-
-A transparent initial strategy could center on:
-
-## EXECUTED TRADE FEE
-
-Only executed volume attracts the fee.
-
-An unfilled order should not pay a trading fee.
-
-Potential policy:
-
-```text
-maker fee
-taker fee
-```
-
-These may be:
-
-```text
-0%
-X%
-```
-
-or another admin-selected configuration.
-
-Do not hardcode actual percentages yet.
-
----
-
-# 44. OPTIONAL FUTURE FEE TYPES
-
-Architecture should support:
-
-```text
-TRADE_MAKER_FEE
-TRADE_TAKER_FEE
-SETTLEMENT_FEE
-PROFIT_FEE
-WITHDRAWAL_PLATFORM_FEE
-PAYMENT_PROCESSING_PASS_THROUGH
-CREATOR_SUBSCRIPTION
-PREMIUM_ANALYTICS
-CREATOR_REVENUE_SHARE
-```
-
-Do not activate all of them.
-
-Architecture support does not equal launch activation.
-
----
-
-# 45. COLLATERAL MUST NOT BE CONSUMED BY FEES
-
-If a complete outcome set requires:
-
-```text
-$1
-```
-
-the full $1 remains settlement collateral.
+Timing matters through market price.
 
 Example:
 
-Trade contribution:
+Early:
 
 ```text
-$100
+YES = ₦0.20
 ```
 
-Fee:
+Later:
 
 ```text
-$1
+YES = ₦0.80
 ```
 
-User debit may therefore be:
+Two users spending same amount receive different share quantities.
+
+Earlier correct conviction earns more because it purchased more shares.
+
+Do not create arbitrary:
 
 ```text
-$101
+early_bettor_multiplier
 ```
-
-rather than placing only $99 into collateral and pretending $100 exists.
-
-Never make fee revenue reduce solvency.
 
 ---
 
-# 46. HUMAN-READABLE FEE ADMINISTRATION
+# 48. SETTLEMENT EXAMPLE
 
-Super Admin/Finance Admin should see:
+Suppose final YES holders:
 
-## Standard NGN Trading Fee
+Alice:
 
-Asset:
+```text
+20,000 YES shares
+```
 
-NGN
+Bob:
 
-Market type:
+```text
+8,000 YES shares
+```
 
-All
+Carol:
 
-Maker fee:
+```text
+3,500 YES shares
+```
 
-0.00%
+YES wins.
 
-Taker fee:
+Settlement:
 
-1.00%
+```text
+Alice → 20,000 × ₦1
 
-Minimum fee:
+Bob → 8,000 × ₦1
 
-₦0
+Carol → 3,500 × ₦1
+```
 
-Maximum fee:
+subject to configured fee policy.
 
-None
+Settlement depends on:
 
-Effective from:
-
-Date/time
-
-Status:
-
-Active
-
-Actions:
-
-Save Draft
-
-Publish New Version
-
-Deactivate
-
-The underlying database may be sophisticated.
-
-The human interface must not require JSON editing.
+**final share ownership.**
 
 ---
 
-# 47. POLICY ENGINE
+# 49. IMPORTANT: TOTAL POOL IS NOT DIVIDED BY STAKE RATIO
 
-This principle extends far beyond fees.
-
-Policies control:
-
-* asset availability,
-* providers,
-* fees,
-* KYC,
-* oracle consensus,
-* market templates,
-* proposal limits,
-* liquidity model,
-* order limits,
-* withdrawal limits,
-* dispute duration,
-* market suspension,
-* creator privileges,
-* AI provider routing,
-* risk thresholds,
-* feature flags.
-
-All should have:
+Do not implement:
 
 ```text
-policy
-policy version
+winner payout =
+stake / winning stakes × pool
+```
+
+That is sportsbook/parimutuel logic.
+
+VAD uses tradable shares.
+
+The number of winning shares determines payout.
+
+This allows:
+
+* early entry
+* later entry
+* partial selling
+* market exits
+* transfers through trades
+* dynamic probabilities
+
+---
+
+# 50. ORACLE ARCHITECTURE
+
+The oracle is one of the most sensitive components.
+
+AI is not oracle.
+
+Creators are not oracle.
+
+Public voting is not oracle.
+
+Market price is not oracle.
+
+Oracle sources must be predetermined.
+
+---
+
+# 51. ORACLE REGISTRY
+
+```text
+oracle_providers
+oracle_capabilities
+oracle_sources
+oracle_policies
+oracle_policy_versions
+oracle_observations
+oracle_consensus_runs
+oracle_resolutions
+oracle_evidence
+oracle_disputes
+```
+
+---
+
+# 52. ORACLE CAPABILITIES
+
+Examples:
+
+```text
+SPORT_MATCH_RESULT
+
+SPORT_TABLE
+
+SPORT_PLAYER_STAT
+
+CRYPTO_PRICE
+
+FX_RATE
+
+ECONOMIC_INDICATOR
+
+ELECTION_RESULT
+
+COMPANY_EVENT
+```
+
+---
+
+# 53. SOURCE HIERARCHY
+
+Possible hierarchy:
+
+```text
+AUTHORITATIVE SOURCE
+
+LICENSED/STRUCTURED PROVIDER
+
+SECONDARY CORROBORATING SOURCE
+
+CONTROLLED HUMAN REVIEW
+```
+
+Market policy decides priority.
+
+---
+
+# 54. ORACLE POLICY MUST EXIST BEFORE TRADING
+
+Before a market opens, define:
+
+```text
+primary source
+
+secondary source
+
+consensus requirement
+
+resolution condition
+
+market close condition
+
+postponement handling
+
+cancellation handling
+
+void rule
+
+dispute window
+
+finality condition
+```
+
+Once financial trading begins:
+
+applicable policy version becomes immutable.
+
+---
+
+# 55. ORACLE OBSERVATIONS
+
+Never overwrite.
+
+Store:
+
+```text
+provider
+source
+observed outcome
+raw payload reference
+timestamp
+confidence
+verification status
+```
+
+Oracle history must remain auditable.
+
+---
+
+# 56. ORACLE CONSENSUS ALGORITHM
+
+Example:
+
+```text
+Source A = YES
+
+Source B = YES
+
+Source C = UNKNOWN
+```
+
+Policy:
+
+```text
+2 matching trusted sources required
+```
+
+Result:
+
+```text
+PROVISIONAL YES
+```
+
+If sources conflict:
+
+```text
+ORACLE_CONFLICT
+```
+
+Do not guess.
+
+---
+
+# 57. RESOLUTION FLOW
+
+```text
+Market closes
+↓
+Oracle observations collected
+↓
+Resolution policy evaluated
+↓
+Provisional result
+↓
+Dispute window
+↓
+No valid dispute / dispute resolved
+↓
+Final result
+```
+
+Only then does settlement execute.
+
+---
+
+# 58. DISPUTE ENGINE
+
+```text
+market_disputes
+
+id
+market_id
+opened_by
+reason
+evidence
 status
+assigned_reviewer
+resolution
+created_at
+resolved_at
+```
+
+Dispute workflow:
+
+```text
+OPEN
+
+UNDER_REVIEW
+
+UPHELD
+
+REJECTED
+
+ESCALATED
+
+RESOLVED
+```
+
+---
+
+# 59. SETTLEMENT ENGINE
+
+Resolution:
+
+> what happened?
+
+Settlement:
+
+> what financial entries follow?
+
+They are different services.
+
+---
+
+# 60. SETTLEMENT FLOW
+
+```text
+FINAL RESULT
+↓
+Settlement Engine
+↓
+Load outstanding positions
+↓
+Calculate gross entitlement
+↓
+Load applicable fee policy
+↓
+Calculate fees
+↓
+Check solvency
+↓
+Create settlement journal
+↓
+Credit winning users
+↓
+Book platform fees
+↓
+Close positions
+↓
+Mark market settled
+```
+
+Must be idempotent.
+
+---
+
+# 61. SOLVENCY INVARIANT
+
+Mandatory:
+
+```text
+MARKET COLLATERAL
+>=
+MAXIMUM POSSIBLE SETTLEMENT LIABILITY
+```
+
+If this invariant fails:
+
+halt settlement and create critical incident.
+
+Never allow administrator to casually bypass.
+
+---
+
+# 62. FEES
+
+Build:
+
+# FeePolicyEngine
+
+Do not calculate fees inside UI.
+
+Do not scatter percentages across code.
+
+---
+
+# 63. POSSIBLE FEE TYPES
+
+Architecture may support:
+
+```text
+MAKER_FEE
+
+TAKER_FEE
+
+SETTLEMENT_FEE
+
+PROFIT_FEE
+
+WITHDRAWAL_FEE
+
+DEPOSIT_PROCESSING_FEE
+
+CREATOR_REVENUE_SHARE
+
+PREMIUM_CREATOR_SUBSCRIPTION
+
+PREMIUM_ANALYTICS
+```
+
+Launch does not need all of them active.
+
+---
+
+# 64. INITIAL REVENUE MODEL
+
+Keep initial monetization simple.
+
+A reasonable starting system is:
+
+**executed trading fees**
+
+Potentially:
+
+```text
+maker = configurable
+
+taker = configurable
+```
+
+Do not hardcode rate.
+
+---
+
+# 65. FEE POLICY STRUCTURE
+
+```text
+fee_policies
+
+id
+name
+fee_type
+scope
+asset_id
+market_category
+maker_rate
+taker_rate
+minimum_fee
+maximum_fee
 effective_at
 expires_at
-created_by
-approved_by
-reason
-audit record
+status
+version
 ```
 
 ---
 
-# 48. HARD-CODING RULE
+# 66. HUMAN-READABLE ADMIN FEE POLICY
 
-We want VAD to behave like a living platform.
+Admin interface:
 
-A business administrator should be able to change common business operations without deploying a new application.
+```text
+Policy Name
+Standard NGN Trading Fee
 
-Examples that should NOT require app redeployment:
+Applies To
+All NGN Markets
 
-* enable/disable NGN
-* enable USD
-* activate a supported country
-* change fee rate
-* change withdrawal limit
-* enable a market category
-* suspend a provider
-* switch between already-integrated providers
-* change oracle source priority
-* adjust dispute window
-* change proposal threshold
-* enable a feature
-* suspend a market
-* change AI model/provider
-* configure KYC threshold
-* add another supported currency to an already-generic asset system
-* enable/disable creator features
+Maker Fee
+0.00%
 
----
+Taker Fee
+1.00%
 
-# 49. IMPORTANT REALITY ABOUT NO-REDEPLOYMENT
+Minimum Fee
+₦0
 
-Do NOT interpret "no hardcoding" as:
+Maximum Fee
+None
 
-> software never gets deployed again.
+Effective From
+01/09/2026
 
-Actual:
+Status
+Active
+```
 
-* new algorithms,
-* schema changes,
-* security fixes,
-* completely new provider protocols,
-* new application capabilities
-
-may require code deployment.
-
-The goal is:
-
-# BUSINESS CHANGE ≠ CODE CHANGE.
-
-Structural software upgrades can still be safely deployed.
-
-This distinction prevents building an unsafe "everything is arbitrary JSON" architecture.
+Admins do not edit JSON.
 
 ---
 
-# 50. REFUNDS — DO NOT USE ONE WORD FOR DIFFERENT MONEY EVENTS
+# 67. POLICY VERSIONING
 
-Refunds require explicit categories.
-
-## PAYMENT REFUND
+Never overwrite historical policy.
 
 Example:
 
-A deposit/payment is reversed through a payment provider.
+```text
+Trading Fee V1
+1%
+
+Trading Fee V2
+0.75%
+```
+
+Trades store:
+
+```text
+fee_policy_version_id
+```
+
+Therefore historical calculations remain explainable.
+
+---
+
+# 68. FEE QUOTES
+
+Before transaction:
+
+```text
+trade amount
+fee
+total debit
+```
+
+returned by server.
+
+Client displays.
+
+Client never calculates authoritative fee.
+
+---
+
+# 69. REFUNDS
+
+Refund is not one concept.
+
+Separate:
+
+```text
+PAYMENT_REFUND
+
+ORDER_RESERVATION_RELEASE
+
+MARKET_VOID_SETTLEMENT
+
+PLATFORM_COMPENSATION
+
+CHARGEBACK
+```
+
+---
+
+# 70. PAYMENT REFUND
+
+Linked to original provider transaction.
 
 Track:
 
 ```text
-provider transaction
-original payment
-refund amount
-refund reason
-provider status
-ledger effect
+original_payment_id
+provider_refund_id
+amount
+reason
+status
+ledger_journal_id
 ```
 
 ---
 
-# 51. ORDER RELEASE
+# 71. ORDER RELEASE
 
-This is NOT really a refund.
+Example:
 
-If a user placed:
+User reserves:
 
 ```text
-₦50,000 order
+₦50,000
 ```
 
-and only:
+Only:
 
 ```text
 ₦30,000
 ```
 
-was filled,
+fills.
 
-remaining reservation:
+Remaining:
 
 ```text
 ₦20,000
 ```
 
-returns from:
+returns:
 
 ```text
 USER_RESERVED
@@ -1974,352 +2274,216 @@ USER_RESERVED
 USER_AVAILABLE
 ```
 
-Call it reservation release.
+This is not provider refund.
 
 ---
 
-# 52. MARKET CANCELLED BEFORE TRADING
+# 72. MARKET VOID
 
-If a market has no executions:
+After trading has happened, never try to return money to "original bettors."
 
-all open orders cancel.
+Shares may have changed owners.
 
-All reserved money returns.
-
-Any fee that was incorrectly reserved returns.
-
-No financial position exists.
-
----
-
-# 53. MARKET VOID AFTER TRADING HAS OCCURRED
-
-This is substantially different.
-
-You cannot naively "return everyone's original stake" because positions may have been sold many times.
+Use predetermined void settlement.
 
 Example:
 
-Alice buys YES.
-
-Alice sells YES to Bob.
-
-Bob sells to Carol.
-
-Whose "stake" gets refunded?
-
-Therefore market void rules must exist BEFORE trading.
-
-For binary markets, one solvency-preserving configurable rule is:
-
 ```text
-YES share = 0.50 settlement unit
-NO share = 0.50 settlement unit
+YES = ₦0.50
+
+NO = ₦0.50
 ```
 
-when a market is formally void.
+for binary complete sets.
 
-Then:
-
-```text
-0.50 + 0.50 = 1
-```
-
-and collateral remains conserved.
-
-However the exact void policy must be visible before trading and stored as part of the contract.
+Exact void policy must be predefined and visible.
 
 ---
 
-# 54. PLATFORM-FAULT COMPENSATION
+# 73. PLATFORM COMPENSATION
 
-Do not manipulate normal settlement to compensate users for platform mistakes.
-
-Create a separate compensation system.
-
-Example:
+Platform error should create:
 
 ```text
 compensation_case
-compensation_policy
-ledger adjustment
-reason
-administrator
-audit
 ```
 
-This preserves financial history.
+Separate from market settlement.
+
+Financial correction uses explicit audited ledger entries.
 
 ---
 
-# 55. PAYMENT CHARGEBACK
+# 74. CHARGEBACK
 
-A chargeback is NOT a refund.
+Chargeback is financial risk.
 
-Track separately.
+May trigger:
 
-Chargebacks create financial risk.
+```text
+withdrawal hold
 
-The risk engine must be able to:
+account review
 
-* flag account,
-* restrict withdrawal,
-* establish receivable/debt,
-* freeze risk amount,
-* escalate review.
+receivable
 
-Never silently subtract historical market collateral.
+risk score
 
----
+account restriction
+```
 
-# 56. SETTLEMENT ENGINE
-
-Resolution and settlement must be separate.
-
-## RESOLUTION ENGINE
-
-Answers:
-
-> Which outcome won?
-
-## SETTLEMENT ENGINE
-
-Answers:
-
-> Given that outcome, what financial entries must happen?
-
-That separation is mandatory.
+Never silently alter unrelated market collateral.
 
 ---
 
-# 57. SETTLEMENT FLOW
+# 75. SOCIAL PLATFORM
+
+VAD should not look like admin software.
+
+Its consumer interface is central to the product.
+
+Core social entities:
+
+```text
+posts
+media
+comments
+reactions
+bookmarks
+shares
+follows
+hashtags
+topics
+creator_profiles
+```
+
+---
+
+# 76. CONTENT TYPES
+
+Support:
+
+```text
+TEXT
+
+IMAGE
+
+SHORT_VIDEO
+
+LONG_VIDEO
+
+MARKET_ANALYSIS
+
+PREDICTION_POST
+
+THESIS
+
+LIVE_EVENT_POST
+```
+
+---
+
+# 77. MARKET-ATTACHED CONTENT
+
+Creators should be able to attach a canonical market.
 
 Example:
 
 ```text
-MARKET CLOSED
-↓
-AWAIT ORACLE
-↓
-ORACLE OBSERVATIONS
-↓
-CONSENSUS
-↓
-PROVISIONAL RESULT
-↓
-DISPUTE WINDOW
-↓
-FINAL RESULT
-↓
-SETTLEMENT PLAN
-↓
-SOLVENCY CHECK
-↓
-LEDGER TRANSACTION
-↓
-POSITION FINALIZATION
-↓
-SETTLED
+[VIDEO]
+
+"Why Chelsea is still underpriced"
+
+Market:
+Chelsea EPL Champion
+
+YES
+NO
+
+Current Price
+
+Take Position
+Challenge
+Add to Thesis
+Open Market
 ```
-
-Settlement must be idempotent.
-
-Calling settlement twice must NOT pay users twice.
 
 ---
 
-# 58. SETTLEMENT ALGORITHM
+# 78. CREATOR SYSTEM
 
-Conceptually:
+Creator profile:
 
 ```text
-load market
+followers
 
-verify status = FINALIZED
+markets originated
 
-load winning outcome
+approved proposals
 
-load all outstanding positions
+prediction accuracy
 
-calculate settlement value per position
+calibration
 
-load applicable fee policy version
+category performance
 
-calculate fees
+volume influenced
 
-verify:
-    total gross payout
-    <=
-    collateral available
+current streak
 
-create settlement journal
+resolved predictions
 
-for each winning holder:
-    collateral → user available
-
-for applicable fees:
-    user/platform settlement flow
-    → platform fee revenue
-
-close all positions
-
-mark market settled
+public theses
 ```
-
-Execute transactionally where possible.
 
 ---
 
-# 59. POSITION COST BASIS
+# 79. MARKET ORIGINATOR
 
-Store enough information for analytics.
+When a creator proposes a unique valid market:
 
-A position needs:
+record:
 
 ```text
-quantity
-average acquisition price
-realized pnl
-unrealized pnl
-fees paid
-asset
-market
-outcome
+originator_user_id
 ```
 
-Individual fills must remain separately stored.
+But originator must never control:
 
-Do not throw away execution history merely because an average price can be calculated.
+* oracle
+* resolution
+* settlement
 
 ---
 
-# 60. FEED / CREATOR EXPERIENCE
+# 80. SOCIAL PREDICTIONS
 
-The creator system is not a decoration.
+Not every prediction must become financial.
 
-It is a core distribution mechanism.
-
-Example creator post:
-
-> Chelsea is underpriced at 42%. Here is why.
-
-Attached:
+Create:
 
 ```text
-Chelsea League Champion
-
-YES 42%
-NO 58%
-
-NGN MARKET
-USD MARKET
+SOCIAL_ONLY
 ```
 
-User can:
+Social prediction may have:
 
-* watch
-* read
-* comment
-* follow
-* inspect creator record
-* open canonical event
-* trade
-* challenge
-* add to thesis
-* bookmark
-* share
+* confidence
+* explanation
+* deadline
+* reputation effect
+
+but no money.
+
+This allows creativity while protecting financial integrity.
 
 ---
 
-# 61. CREATOR MARKET ORIGINATION
+# 81. PREDICTION BATTLES
 
-If a creator proposes a genuinely new valid event:
+Users can challenge each other.
 
-store attribution.
-
-Example:
-
-```text
-canonical_event.originator_user_id
-```
-
-Creator profile can display:
-
-```text
-Markets originated
-Accepted proposals
-Rejected proposals
-Volume influenced
-Prediction accuracy
-Calibration
-```
-
-Creator must NEVER control resolution.
-
----
-
-# 62. CREATOR REPUTATION ALGORITHM
-
-Do not simply calculate:
-
-```text
-wins / predictions
-```
-
-Eventually include probability calibration.
-
-If someone repeatedly says:
-
-```text
-90% confidence
-```
-
-those predictions should occur approximately 90% of the time for them to be well calibrated.
-
-Possible scoring models later:
-
-* Brier score
-* log score
-* accuracy
-* calibration error
-* category-specific performance
-
-Keep versions.
-
----
-
-# 63. MARKET THESIS
-
-Users can create a portfolio-like collection of convictions.
-
-Example:
-
-```text
-MY FOOTBALL THESIS
-
-Chelsea Top 4
-Arsenal no trophy
-Player X 15+ goals
-Liverpool outside Top 2
-```
-
-It can contain:
-
-* social predictions,
-* financial positions,
-* explanation/content.
-
-Do not immediately turn multi-market theses into leveraged composite financial products.
-
-That is a later financial engine.
-
----
-
-# 64. BATTLES
-
-Users may challenge predictions.
-
-Example:
+Battle:
 
 ```text
 Creator A:
@@ -2329,278 +2493,858 @@ Creator B:
 No
 ```
 
-They may create social battle or use positions in the canonical underlying market.
-
-Avoid creating a separate uncollateralized peer-to-peer payout engine for every battle during v1.
-
-Use the canonical market as financial truth wherever possible.
+Prefer linking financial side to canonical market rather than building a separate uncontrolled escrow system initially.
 
 ---
 
-# 65. MARKET DISCOVERY ALGORITHM
+# 82. THESIS SYSTEM
 
-Feed ranking may consider:
-
-* followed creators,
-* market relevance,
-* recent volume,
-* price movement,
-* creator quality,
-* novelty,
-* engagement,
-* user interests,
-* event urgency,
-* liquidity.
-
-AI can help classify content.
-
-But do not create a purely engagement-maximizing algorithm that intentionally pushes users toward financial harm.
-
-Market discovery and financial risk controls must remain distinct.
-
----
-
-# 66. TRENDING ALGORITHM
-
-A basic configurable trending score could use:
+Users can create:
 
 ```text
+MY 2026/27 FOOTBALL THESIS
+
+Chelsea Top 4
+
+Arsenal Trophyless
+
+Player X 15+ Goals
+```
+
+Thesis contains:
+
+* predictions
+* positions
+* creator commentary
+* performance
+
+Do not create leveraged composite financial instruments initially.
+
+---
+
+# 83. AI SYSTEM
+
+AI is a first-class system.
+
+But:
+
+# AI IS NOT ORACLE.
+
+---
+
+# 84. AI CAPABILITIES
+
+Use AI for:
+
+```text
+MARKET_PROPOSAL_STRUCTURING
+
+ENTITY_EXTRACTION
+
+DUPLICATE_ASSISTANCE
+
+AMBIGUITY_ANALYSIS
+
+CONTENT_MODERATION
+
+MARKET_SUMMARY
+
+CREATOR_WRITING_ASSISTANCE
+
+RELATED_MARKET_DISCOVERY
+
+SEARCH
+
+NEWS_SUMMARIZATION
+
+FEED_ENRICHMENT
+
+RISK_TRIAGE
+
+SUPPORT_ASSISTANCE
+```
+
+---
+
+# 85. AI PROVIDER ABSTRACTION
+
+Create:
+
+```text
+AIProviderAdapter
+```
+
+Provider implementations may include:
+
+```text
+OpenAI
+
+Gemini
+
+Claude
+
+Open-source/local
+
+Future provider
+```
+
+---
+
+# 86. AI RUNTIME TABLES
+
+```text
+ai_providers
+ai_models
+ai_capabilities
+ai_routes
+ai_prompt_versions
+ai_runs
+ai_outputs
+ai_cost_usage
+ai_failures
+```
+
+---
+
+# 87. AI ROUTING
+
+Request:
+
+```text
+capability = MARKET_STRUCTURING
+```
+
+Runtime:
+
+```text
+policy
+↓
+provider health
+↓
+cost
+↓
+configured priority
+↓
+model
+↓
+execute
+↓
+schema validation
+↓
+domain validation
+```
+
+---
+
+# 88. AI FAILURE MODE
+
+If AI fails completely:
+
+financial core must continue.
+
+Users must still:
+
+* access wallets
+* withdraw
+* trade existing structured markets
+* receive oracle resolution
+* settle
+
+AI convenience can degrade.
+
+Finance cannot.
+
+---
+
+# 89. ALGORITHM FRAMEWORK
+
+Algorithms are broader than AI.
+
+Create versioned algorithm definitions:
+
+```text
+algorithms
+algorithm_versions
+algorithm_parameters
+algorithm_deployments
+algorithm_runs
+```
+
+---
+
+# 90. ALGORITHM TYPES
+
+Financial:
+
+```text
+order matching
+
+pricing
+
+collateral
+
+settlement
+
+fees
+```
+
+Market:
+
+```text
+canonicalization
+
+quality scoring
+
+related-event detection
+```
+
+Social:
+
+```text
+feed ranking
+
+trending
+
+recommendations
+```
+
+Trust:
+
+```text
+spam
+
+reputation
+
+calibration
+
+manipulation
+```
+
+Oracle:
+
+```text
+consensus
+
+conflict
+```
+
+Risk:
+
+```text
+fraud
+
+withdrawal risk
+
+concentration
+```
+
+---
+
+# 91. FEED ALGORITHM
+
+Possible signals:
+
+```text
+follow relationship
+
+creator quality
+
+topic relevance
+
+market relevance
+
+recent engagement
+
+market movement
+
 volume velocity
+
+content freshness
+
+user interest
+
+diversity
+```
+
+Weights should be configurable.
+
+Do not hardcode into frontend.
+
+---
+
+# 92. TRENDING ALGORITHM
+
+Possible inputs:
+
+```text
+trade volume velocity
+
 unique traders
-creator posts
-price movement
+
+unique creators
+
+post velocity
+
 comment velocity
-share velocity
+
+price movement
+
 time decay
 ```
 
-Weights are policy/configuration.
+---
 
-Do not hardcode them into screens.
+# 93. REPUTATION ALGORITHM
+
+Do not use only win rate.
+
+Eventually use:
+
+```text
+accuracy
+
+Brier score
+
+calibration
+
+category performance
+
+prediction difficulty
+
+confidence quality
+```
+
+Version scoring algorithm.
 
 ---
 
-# 67. RISK ENGINE
+# 94. RISK ENGINE
 
-Risk signals can include:
-
-* self-trading,
-* linked-account trading,
-* coordinated opposing positions,
-* rapid deposit/trade/withdraw patterns,
-* abnormal concentration,
-* suspicious device relationships,
-* creator collusion,
-* unusual activity before event announcements,
-* payment fraud,
-* chargebacks,
-* repeated disputed market proposals.
-
-Risk engine outputs:
+Inputs:
 
 ```text
-ALLOW
-REVIEW
-LIMIT
-HOLD
-SUSPEND
-FREEZE_SETTLEMENT
-ESCALATE
+account signals
+
+device signals
+
+payments
+
+trades
+
+withdrawals
+
+positions
+
+market activity
+
+creator relationships
+
+chargebacks
 ```
 
 ---
 
-# 68. AUDIT
-
-Everything sensitive should create audit records.
+# 95. RISK SIGNALS
 
 Examples:
 
-* market approval
-* market rejection
-* oracle policy change
-* fee policy change
-* provider switch
-* market halt
-* refund
-* compensation
-* KYC override
-* settlement
-* dispute decision
-* administrator permission change
-
-Include:
-
 ```text
-who
-what
-before
-after
-why
-when
-request/reference
+wash trading
+
+self trading
+
+linked-account trading
+
+suspicious device overlap
+
+rapid deposit-trade-withdraw
+
+position concentration
+
+coordinated creator activity
+
+suspicious pre-announcement activity
+
+chargeback pattern
+
+account farming
 ```
 
 ---
 
-# 69. EVENT BUS
+# 96. RISK ACTIONS
 
-Do not couple every subsystem directly.
+```text
+ALLOW
+
+REVIEW
+
+LIMIT
+
+HOLD
+
+SUSPEND
+
+FREEZE_WITHDRAWAL
+
+HALT_MARKET
+
+FREEZE_SETTLEMENT
+
+ESCALATE
+```
+
+Policies determine thresholds.
+
+---
+
+# 97. POLICY ENGINE
+
+VAD must operate like a live system.
+
+Build a general policy framework.
+
+Policies include:
+
+```text
+fees
+
+assets
+
+providers
+
+KYC
+
+market templates
+
+market approval
+
+oracle
+
+risk
+
+withdrawal limits
+
+deposit limits
+
+order limits
+
+disputes
+
+AI routing
+
+algorithm parameters
+
+creator capabilities
+
+feature flags
+```
+
+---
+
+# 98. POLICY RECORD
+
+Concept:
+
+```text
+policies
+
+id
+domain
+name
+status
+version
+effective_at
+expires_at
+created_by
+approved_by
+reason
+```
+
+---
+
+# 99. HUMAN-READABLE ADMIN POLICY
+
+Do not expose:
+
+```json
+{
+  "threshold": 0.73
+}
+```
+
+Expose:
+
+```text
+Market Proposal Auto-Review Threshold
+
+Minimum Quality Score
+73%
+
+Action Below Threshold
+Send to manual review
+```
+
+---
+
+# 100. NO-HARDCODING RULE
+
+Business policy must not be scattered through code.
+
+Examples that should not require app redeployment:
+
+* trading fee
+* withdrawal fee
+* deposit limits
+* withdrawal limits
+* market categories
+* provider priority
+* active payment provider
+* active KYC provider
+* oracle priority
+* dispute window
+* creator eligibility
+* proposal limits
+* feed weights where safe
+* risk thresholds
+* feature flags
+* asset activation
+
+---
+
+# 101. IMPORTANT LIMIT
+
+"No redeployment" does not mean VAD can magically implement completely new software from admin.
+
+A new provider protocol may require code.
+
+A new algorithm may require code.
+
+A new market type may require code.
+
+But after integration:
+
+configuration should control activation.
+
+---
+
+# 102. FEATURE FLAGS
+
+Create:
+
+```text
+feature_flags
+feature_flag_rules
+feature_flag_versions
+```
+
+Examples:
+
+```text
+USDC
+
+CRYPTO_WALLET
+
+POLITICAL_MARKETS
+
+PREDICTION_BATTLES
+
+THESIS
+
+AMM
+
+CREATOR_REVENUE_SHARE
+
+AI_CREATOR_ASSISTANT
+```
+
+---
+
+# 103. CAPABILITY ENGINE
+
+Client should call:
+
+```text
+GET /runtime/capabilities
+```
+
+Result based on:
+
+```text
+user
+KYC
+country
+role
+risk
+feature flags
+asset policy
+provider availability
+market policy
+```
+
+Client renders returned capabilities.
+
+---
+
+# 104. EVENT BUS
 
 Use domain events.
 
 Examples:
 
 ```text
-MARKET_PROPOSED
-MARKET_APPROVED
-MARKET_OPENED
-ORDER_PLACED
-ORDER_MATCHED
-POSITION_CHANGED
-MARKET_CLOSED
-ORACLE_OBSERVATION_RECEIVED
-MARKET_PROVISIONALLY_RESOLVED
-MARKET_FINALIZED
-SETTLEMENT_COMPLETED
-PAYMENT_RECEIVED
-WITHDRAWAL_COMPLETED
+USER_REGISTERED
+
 KYC_COMPLETED
-RISK_FLAG_CREATED
+
+DEPOSIT_CONFIRMED
+
+WITHDRAWAL_REQUESTED
+
+MARKET_PROPOSED
+
+MARKET_APPROVED
+
+MARKET_OPENED
+
+ORDER_PLACED
+
+ORDER_MATCHED
+
+TRADE_EXECUTED
+
+POSITION_CHANGED
+
+MARKET_CLOSED
+
+ORACLE_OBSERVATION_RECEIVED
+
+MARKET_PROVISIONALLY_RESOLVED
+
+MARKET_FINALIZED
+
+SETTLEMENT_COMPLETED
+
+DISPUTE_OPENED
+
+REFUND_CREATED
+
+RISK_ALERT_CREATED
 ```
-
-Consumers can include:
-
-* notification engine,
-* analytics,
-* creator statistics,
-* risk engine,
-* audit,
-* settlement,
-* realtime updates.
 
 ---
 
-# 70. API-FIRST ARCHITECTURE
+# 105. EVENT STORAGE
 
-The client never directly makes authoritative financial decisions.
-
-Concept:
+Create:
 
 ```text
-EXPO APPLICATION
-      |
-      ↓
-API / EDGE
-      |
-      ↓
-AUTHORIZATION
-      |
-      ↓
-DOMAIN SERVICE
-      |
-      ↓
-POLICY ENGINE
-      |
-      ↓
-DATABASE / LEDGER / PROVIDERS
+domain_events
+
+id
+event_type
+aggregate_type
+aggregate_id
+payload
+created_at
+processed_at
 ```
 
-Even if Supabase client libraries are used directly for safe reads/realtime, sensitive financial writes must go through trusted server-side operations.
+Use outbox pattern where appropriate.
 
 ---
 
-# 71. EDGE FUNCTIONS
+# 106. EDGE FUNCTIONS
 
-Use Edge Functions for privileged orchestration such as:
+Potential Edge Functions:
 
-* payment callbacks
-* order commands
-* withdrawals
-* market proposal processing
-* AI calls
-* KYC callbacks
-* provider webhooks
-* oracle ingestion
-* settlement coordination
-* admin policy operations
+```text
+auth-runtime
 
-Never put service-role credentials in clients.
+runtime-capabilities
+
+start-kyc
+
+kyc-webhook
+
+create-deposit
+
+payment-webhook
+
+request-withdrawal
+
+provider-webhook
+
+submit-market-proposal
+
+process-market-proposal
+
+place-order
+
+cancel-order
+
+oracle-ingest
+
+oracle-resolve
+
+open-dispute
+
+finalize-market
+
+settle-market
+
+fee-quote
+
+admin-update-policy
+
+admin-market-action
+
+ai-run
+
+notification-dispatch
+```
 
 ---
 
-# 72. DATABASE TRANSACTIONS
+# 107. DIRECT DATABASE ACCESS
 
-Financial operations must use atomic database transactions where needed.
+Safe:
 
-Example:
+* public content reads
+* approved market reads
+* user-owned simple profile reads
+* realtime subscriptions
 
-Order execution cannot do:
+Sensitive writes:
 
-1. subtract money,
-2. crash,
-3. fail to issue shares.
+* order execution
+* withdrawal
+* settlement
+* ledger
+* oracle
+* fee changes
+* admin actions
 
-Execution must either complete all required ledger/position operations or complete none.
+must go through server-authoritative paths.
 
 ---
 
-# 73. IDEMPOTENCY
+# 108. ROW LEVEL SECURITY
 
-Every important financial command requires idempotency.
+Use RLS.
+
+Users should only access:
+
+* their private wallet data
+* their orders
+* their positions
+* permitted market information
+* public social content
+
+Admins access based on RBAC.
+
+Service-role access only inside trusted server runtime.
+
+---
+
+# 109. ADMIN RBAC
+
+Roles:
+
+```text
+SUPER_ADMIN
+
+FINANCE_ADMIN
+
+MARKET_ADMIN
+
+ORACLE_REVIEWER
+
+RISK_ADMIN
+
+COMPLIANCE_ADMIN
+
+CONTENT_MODERATOR
+
+SUPPORT_AGENT
+
+READ_ONLY_AUDITOR
+```
+
+Permissions should be granular.
+
+---
+
+# 110. SEPARATION OF DUTIES
+
+High-risk actions should support dual control.
 
 Examples:
 
 ```text
-deposit webhook
-order execution
-withdrawal request
-refund
-oracle resolution
-settlement
+large compensation
+
+manual ledger correction
+
+oracle override
+
+major policy change
+
+provider switch
+
+treasury movement
 ```
 
-Provider retries must not create duplicate money.
+Maker-checker model:
+
+```text
+REQUEST
+↓
+SECOND APPROVAL
+↓
+EXECUTE
+```
 
 ---
 
-# 74. REALTIME
+# 111. ADMIN CONTROL PLANE
 
-Use realtime for:
+Admin dashboard is not CMS.
 
-* prices,
-* best bid/ask,
-* recent trades,
-* order status,
-* market status,
-* creator comments where appropriate,
-* notifications.
+It is the operational brain.
 
-Realtime presentation is NOT financial authority.
+Major sections:
 
-The database/domain service remains authoritative.
-
----
-
-# 75. ADMIN CONTROL PLANE
-
-Admin dashboard must control VAD.
-
-Sections should eventually include:
-
-## Operations
+```text
+Overview
 
 Users
 
 KYC
 
+Creators
+
+Content
+
+Market Proposals
+
+Canonical Events
+
 Markets
 
-Market proposals
+Orders
+
+Trades
+
+Positions
 
 Oracle
 
 Disputes
+
+Risk
+
+Wallets
 
 Payments
 
@@ -2608,704 +3352,2433 @@ Withdrawals
 
 Refunds
 
-Risk
-
-## Financial
-
 Ledger
+
+Reconciliation
 
 Revenue
 
 Fees
 
-Market collateral
-
-Provider clearing
-
-Reconciliation
-
-## Configuration
-
 Assets
-
-Countries
 
 Providers
 
-Oracle policies
-
-Fee policies
-
-Risk policies
-
-Market templates
-
-Feature flags
-
-AI providers
-
-AI models
+Policies
 
 Algorithms
 
-## Creator
+AI
 
-Creators
+Feature Flags
 
-Market originators
+Notifications
 
-Content moderation
+Audit
 
-Reputation
+System Health
+```
 
 ---
 
-# 76. HUMAN-READABLE CONFIGURATION
+# 112. ADMIN OVERVIEW
 
-Never make management edit:
-
-```text
-{"maker_fee":0.00125}
-```
-
-Present:
-
-> Maker Fee
-> 0.125%
-
-with explanation.
-
-Likewise:
-
-> Oracle Consensus
-> Require 2 agreeing sources out of 3.
-
-not:
+Dashboard should show:
 
 ```text
-{"quorum":2,"source_count":3}
-```
+active users
 
-Database complexity belongs underneath.
+verified users
+
+active markets
+
+open orders
+
+24h trading volume
+
+market collateral
+
+pending withdrawals
+
+failed payments
+
+oracle conflicts
+
+unresolved disputes
+
+risk alerts
+
+reconciliation exceptions
+
+platform revenue
+
+provider health
+```
 
 ---
 
-# 77. LIVE CONFIGURATION
+# 113. ORACLE ADMIN
 
-Cache configuration for performance.
-
-But configuration changes need:
-
-* version number,
-* invalidation,
-* reload,
-* audit.
-
-Clients may receive:
+Oracle reviewers need:
 
 ```text
-runtime configuration version
+market
+
+resolution rule
+
+primary source
+
+secondary source
+
+observations
+
+conflict state
+
+evidence
+
+provisional result
+
+dispute status
+
+final result
 ```
 
-and refresh when necessary.
+No hidden resolution.
 
 ---
 
-# 78. FEATURE FLAGS
+# 114. FINANCE ADMIN
 
-Every major unfinished/future subsystem should have feature/capability gating.
+Finance sees:
+
+```text
+ledger
+
+account balances
+
+provider clearing
+
+user liabilities
+
+market collateral
+
+fees
+
+revenue
+
+withdrawals
+
+refunds
+
+chargebacks
+
+reconciliation
+```
+
+---
+
+# 115. SYSTEM HEALTH ADMIN
+
+Monitor:
+
+```text
+Supabase
+
+Edge Functions
+
+payment providers
+
+KYC
+
+AI providers
+
+oracle providers
+
+queue backlog
+
+webhook backlog
+
+settlement backlog
+
+reconciliation failures
+```
+
+---
+
+# 116. NOTIFICATION SYSTEM
+
+Channels:
+
+```text
+in-app
+
+push
+
+email
+
+SMS where required
+```
+
+Events:
+
+```text
+deposit confirmed
+
+withdrawal completed
+
+order filled
+
+market closed
+
+market resolved
+
+settlement completed
+
+dispute update
+
+KYC update
+
+risk/account alert
+```
+
+Provider abstraction required.
+
+---
+
+# 117. REALTIME
+
+Use Supabase Realtime for:
+
+```text
+market prices
+
+order status
+
+recent trades
+
+comments
+
+notifications
+
+market status
+
+position updates
+```
+
+Realtime is presentation.
+
+Database remains authority.
+
+---
+
+# 118. SEARCH
+
+Search across:
+
+```text
+markets
+
+canonical events
+
+creators
+
+posts
+
+topics
+
+teams
+
+competitions
+```
+
+Use Postgres full text initially.
+
+Use pgvector for semantic discovery where helpful.
+
+---
+
+# 119. MEDIA
+
+Storage:
+
+Supabase Storage initially.
+
+Media pipeline:
+
+```text
+upload
+
+validate
+
+scan
+
+transcode/compress where required
+
+thumbnail
+
+publish
+```
+
+Video optimization is important.
+
+Do not store giant uncompressed creator media.
+
+---
+
+# 120. ANALYTICS
+
+Initial analytics can be lightweight.
+
+Track:
+
+```text
+signup
+
+KYC completion
+
+deposit initiation
+
+deposit success
+
+market view
+
+order placement
+
+trade completion
+
+creator follow
+
+post engagement
+
+withdrawal
+
+settlement
+
+retention
+```
+
+Do not expose personally sensitive financial data unnecessarily to external analytics providers.
+
+---
+
+# 121. OBSERVABILITY
+
+Must have structured logs.
+
+Monitor:
+
+```text
+failed webhooks
+
+payment mismatch
+
+withdrawal failure
+
+ledger imbalance
+
+market solvency
+
+oracle conflict
+
+settlement failure
+
+AI errors
+
+provider errors
+
+risk spikes
+
+database errors
+```
+
+---
+
+# 122. CRITICAL ALERTS
+
+Immediate alerts for:
+
+```text
+ledger imbalance
+
+collateral deficit
+
+duplicate settlement attempt
+
+payment signature failure surge
+
+oracle conflict on high-volume market
+
+admin privilege escalation
+
+provider outage
+
+reconciliation discrepancy
+
+suspicious withdrawal spike
+```
+
+---
+
+# 123. AUDIT SYSTEM
+
+Immutable audit records for:
+
+```text
+admin action
+
+market approval
+
+market rejection
+
+policy change
+
+provider switch
+
+oracle decision
+
+dispute decision
+
+refund
+
+compensation
+
+KYC override
+
+risk override
+
+role change
+
+financial correction
+```
+
+Record:
+
+```text
+actor
+action
+resource
+before
+after
+reason
+timestamp
+request id
+```
+
+---
+
+# 124. SECURITY
+
+Use:
+
+* RLS
+* least privilege
+* service-role isolation
+* secure secret storage
+* webhook signatures
+* idempotency
+* rate limits
+* MFA for admin
+* session monitoring
+* device/risk signals
+* permission checks
+* audit
+* CSRF protection on web where relevant
+* secure headers
+* input validation
+* schema validation
+
+---
+
+# 125. RATE LIMITS
+
+Different limits for:
+
+```text
+login
+
+OTP
+
+market proposal
+
+comments
+
+orders
+
+withdrawals
+
+AI actions
+
+search
+
+admin actions
+```
+
+Limits should be policy-driven where possible.
+
+---
+
+# 126. IDEMPOTENCY
+
+Required for:
+
+```text
+deposit webhook
+
+withdrawal request
+
+withdrawal provider callback
+
+order placement
+
+trade execution
+
+refund
+
+oracle ingestion
+
+settlement
+
+compensation
+```
+
+---
+
+# 127. DATABASE TRANSACTIONS
+
+Critical financial flow must be atomic.
+
+Example order match:
+
+```text
+reserve
++
+trade
++
+position
++
+collateral
++
+fee
++
+order update
+```
+
+either all succeed or all rollback.
+
+---
+
+# 128. BACKGROUND JOBS
+
+Use workers/jobs for:
+
+```text
+oracle polling
+
+settlement
+
+notifications
+
+market expiry
+
+order expiry
+
+reconciliation
+
+AI processing
+
+media processing
+
+risk scans
+
+analytics aggregation
+```
+
+---
+
+# 129. MARKET CLOSING
+
+Market close rules are predetermined.
 
 Examples:
 
 ```text
-CRYPTO_WALLET
-USDC_MARKETS
-THESIS_TRADING
-AMM
-CREATOR_REVENUE_SHARE
-PREDICTION_BATTLES
-AI_MARKET_CREATION
-POLITICAL_MARKETS
+match kickoff
+
+specific timestamp
+
+official announcement
+
+event completion
 ```
 
-The code may exist.
+Do not allow trading after cutoff.
 
-Admin determines whether users see/use it.
+Server time is authoritative.
 
 ---
 
-# 79. SERVICE REGISTRY
+# 130. MARKET SUSPENSION
 
-Providers should be dynamically registered.
-
-Concept:
+Support emergency:
 
 ```text
-providers
-provider_capabilities
-provider_credentials
-provider_routes
-provider_health
-provider_priority
+SUSPENDED
 ```
 
-Credentials remain secret.
-
-Admin sees status, not raw secrets unless specifically permitted.
-
----
-
-# 80. OBSERVABILITY
-
-Use inexpensive/free tooling initially.
-
-At minimum capture:
-
-* structured logs,
-* application errors,
-* failed webhooks,
-* failed orders,
-* settlement failures,
-* oracle disagreement,
-* provider latency,
-* provider downtime,
-* ledger invariant failures.
-
-Production financial errors must never disappear into console.log.
-
----
-
-# 81. RECONCILIATION
-
-Periodically compare:
+Reasons:
 
 ```text
-VAD ledger
-vs
-payment provider balance/transactions
+oracle issue
+
+provider issue
+
+market integrity concern
+
+event uncertainty
+
+admin safety intervention
 ```
 
-If discrepancy exists:
-
-create reconciliation issue.
-
-Do not modify ledger silently to make totals match.
+Suspension should not silently cancel existing positions.
 
 ---
 
-# 82. SECURITY
+# 131. MARKET CANCELLATION
 
-Implement:
+Different from suspension.
 
-* RLS,
-* rate limiting,
-* server authorization,
-* admin RBAC,
-* strong session handling,
-* webhook signature verification,
-* secret management,
-* device/risk information,
-* protected financial endpoints,
-* withdrawal safeguards,
-* audit trails.
+Cancellation policy determines:
 
-Admin is not one universal role.
+* open orders
+* reserved funds
+* existing positions
+* void settlement
 
-Use roles such as:
+Everything must be predefined.
+
+---
+
+# 132. MARKET MANIPULATION PROTECTION
+
+Monitor:
 
 ```text
-SUPER_ADMIN
-FINANCE_ADMIN
-MARKET_ADMIN
-ORACLE_REVIEWER
-RISK_ADMIN
-SUPPORT
-CONTENT_MODERATOR
+wash trades
+
+self matching
+
+cross-account coordination
+
+spoofing-like behavior
+
+position concentration
+
+creator coordination
+
+rapid price manipulation
+
+abnormal order cancellation patterns
 ```
 
----
-
-# 83. SEPARATION OF DUTIES
-
-High-risk actions should eventually support maker-checker flow.
-
-Example:
-
-Finance Admin requests major refund.
-
-Authorized second administrator approves.
-
-Similarly for:
-
-* large manual financial adjustment,
-* oracle override,
-* critical policy change,
-* treasury movement.
+Do not expose sensitive risk detection logic publicly.
 
 ---
 
-# 84. STARTUP COST STRATEGY
+# 133. SELF-TRADING
 
-Prioritize:
+User should not be allowed to intentionally match against own order.
 
-## Use now
-
-Expo / React Native
-
-Supabase
-
-PostgreSQL
-
-Supabase Edge Functions
-
-Expo Push Notifications
-
-open-source libraries
-
-Didit free KYC allowance
-
-provider free tiers
-
-free error/analytics allowances where appropriate
-
-## Avoid prematurely
-
-custom blockchain
-
-expensive streaming infrastructure
-
-enterprise data warehouses
-
-multiple paid microservices
-
-Kubernetes
-
-dozens of microservices
-
-custom database infrastructure
-
-expensive dedicated market-data systems
+Matching engine should detect same beneficial account/user where possible.
 
 ---
 
-# 85. MODULAR MONOLITH FIRST
+# 134. CREATOR INCENTIVES
 
-Do not build 50 microservices because VAD may eventually become huge.
-
-Start with a properly separated modular backend.
-
-Bounded contexts:
+Creators may eventually earn through:
 
 ```text
-Identity
-Users
-KYC
-Social
-Creators
-Canonical Events
-Markets
-Orders
-Positions
-Liquidity
-Oracle
-Settlement
-Ledger
-Payments
-Fees
-Policies
-Risk
-Notifications
-AI
-Admin
-Audit
+subscriptions
+
+premium content
+
+platform revenue share
+
+market origination rewards
+
+engagement programs
 ```
 
-Separate domain boundaries.
-
-One infrastructure platform initially.
-
-Extract services later when scale actually justifies it.
+But creator rewards must never depend on manipulating the outcome.
 
 ---
 
-# 86. DATABASE IS NOT THE ARCHITECTURE
+# 135. CREATOR REVENUE SHARE
 
-Do not dump everything into random tables and call it backend-first.
+If later enabled:
 
-Each bounded context needs:
-
-* ownership,
-* invariants,
-* services,
-* events,
-* policies,
-* permissions.
-
-For example:
-
-Only Settlement Service may finalize financial settlement.
-
-Only Ledger Service writes valid financial journal entries.
-
-Only Oracle Resolution Service changes resolution state.
-
----
-
-# 87. CORE INVARIANTS
-
-These must eventually have automated tests.
-
-### Financial
-
-Ledger always balances.
-
-No negative available balance unless explicitly supported.
-
-Market settlement liability is fully collateralized.
-
-Currency pools never mix.
-
-Executed orders cannot exceed reserved funds.
-
-Same settlement cannot execute twice.
-
-### Market
-
-Trading cannot occur before market activation.
-
-Trading cannot occur after close.
-
-Financial market cannot open without oracle policy.
-
-Resolution policy cannot silently mutate after activation.
-
-### Oracle
-
-AI cannot finalize financial truth.
-
-Creator cannot resolve own market.
-
-Final settlement requires final resolution.
-
-### Currency
-
-NGN liability cannot be paid with USD collateral.
-
-USD market cannot consume NGN pool.
-
----
-
-# 88. TESTING
-
-Build:
-
-* unit tests,
-* domain invariant tests,
-* order matching tests,
-* ledger balancing tests,
-* canonicalization tests,
-* settlement tests,
-* fee tests,
-* oracle conflict tests,
-* refund/void tests,
-* API integration tests,
-* end-to-end critical flows.
-
-Property-based tests are especially valuable for financial algorithms.
-
-Example invariant:
-
-Generate thousands of random trades.
-
-At the end:
+calculate from:
 
 ```text
-total collateral
-=
-maximum settlement liability
+eligible platform revenue
 ```
 
-must always hold.
+not settlement collateral.
+
+Never take winner collateral to pay creator rewards.
 
 ---
 
-# 89. FIRST MAJOR IMPLEMENTATION PHASES
+# 136. PLATFORM REVENUE
 
-## FOUNDATION
+Platform revenue belongs in separate ledger accounts.
 
-Repository architecture
+Never confuse:
 
-Expo universal apps
+```text
+user funds
 
-Supabase
+market collateral
 
-auth
+provider clearing
 
-profiles
+platform revenue
+```
 
-admin RBAC
+---
 
-asset registry
+# 137. FINANCIAL REPORTING
 
-configuration/policy engine
+Finance should view revenue by:
+
+```text
+day
+
+market
+
+market category
+
+fee type
+
+provider
+
+user cohort
+
+asset
+```
+
+Initial asset:
+
+NGN.
+
+---
+
+# 138. FUTURE USDC
+
+Foundation only.
+
+Do not build smart contracts now.
+
+Future integration should plug into:
+
+```text
+Asset Registry
+
+WalletProvider
+
+CryptoDepositProvider
+
+CryptoWithdrawalProvider
+
+BlockchainOracleProvider
+```
+
+Then create:
+
+```text
+USDC market instrument
+```
+
+with independent liquidity.
+
+---
+
+# 139. NO CROSS-ASSET LIQUIDITY
+
+Future rule:
+
+```text
+NGN market
+≠
+USDC market
+```
+
+Same canonical event.
+
+Different order books.
+
+Different collateral.
+
+Different settlement.
+
+Never automatically use NGN collateral to satisfy USDC liability.
+
+---
+
+# 140. CONFIGURATION CACHING
+
+Policies may be cached.
+
+But implement:
+
+```text
+versioning
+
+cache invalidation
+
+effective timestamps
+
+rollback
 
 audit
+```
 
-provider framework
+---
 
-event system
+# 141. CONFIGURATION SAFETY
 
-## FINANCIAL CORE
+Not all configuration should be editable by everyone.
 
-ledger
+Financial policies:
 
-accounts
+Finance/Super Admin.
 
-deposits
+Oracle policies:
 
-withdrawals
+Oracle Admin/Super Admin.
+
+Risk policies:
+
+Risk Admin.
+
+Feature flags:
+
+authorized product/admin roles.
+
+---
+
+# 142. FRONTEND INFORMATION ARCHITECTURE
+
+Consumer application major areas:
+
+```text
+Home
+
+Discover
+
+Markets
+
+Creator Feed
+
+Watch/Reels
+
+Search
+
+Notifications
+
+Portfolio
+
+Wallet
+
+Profile
+```
+
+---
+
+# 143. HOME
+
+Home should combine:
+
+```text
+personalized content
+
+trending markets
+
+followed creators
+
+live market movement
+
+major event stories
+
+open positions
+
+recommended debates
+```
+
+It should not look like a table of betting odds.
+
+---
+
+# 144. DISCOVER
+
+Discover:
+
+```text
+Sports
+
+Economy
+
+Crypto later
+
+Entertainment
+
+Politics later if enabled
+
+Technology
+
+Culture
+
+Trending
+
+New
+```
+
+Categories are policy/configuration.
+
+---
+
+# 145. MARKET DETAIL SCREEN
+
+Must show:
+
+```text
+question
+
+current price
+
+YES/NO
+
+order book
+
+recent trades
+
+volume
+
+liquidity
+
+close time
+
+oracle rules
+
+resolution rules
+
+creator discussions
+
+related markets
+
+market history
+
+user position
+
+Take Position
+```
+
+---
+
+# 146. ORACLE TRANSPARENCY
+
+Every financial market must expose:
+
+```text
+How this market resolves
+
+Primary source
+
+Fallback source
+
+Resolution condition
+
+What happens if postponed
+
+What happens if cancelled
+
+Dispute window
+```
+
+Human-readable.
+
+---
+
+# 147. TRADE TICKET
+
+User chooses:
+
+```text
+YES/NO
+
+amount or shares
+
+limit price
+
+estimated shares
+
+fee
+
+total debit
+
+potential settlement value
+```
+
+Server returns quote.
+
+---
+
+# 148. PORTFOLIO
+
+Show:
+
+```text
+open positions
+
+closed positions
+
+realized P/L
+
+unrealized P/L
 
 fees
 
-reconciliation
+settled markets
 
-## MARKET CORE
+creator theses
+```
 
-canonical events
+---
 
-market proposals
+# 149. WALLET
 
-templates
+Show:
 
-canonicalization
+```text
+available balance
 
-market instruments
+reserved balance
 
-## TRADING
+pending withdrawal
 
-orders
+deposit
 
-matching engine
+withdraw
 
-positions
+transaction history
+```
 
-collateral
+Do not expose accounting complexity to normal user.
 
-price history
+---
 
-## ORACLE
+# 150. NOTIFICATIONS
 
-oracle registry
+Examples:
 
-policies
+```text
+order filled
 
-observations
+market moving
 
-consensus
+creator replied
 
-resolution
+creator posted
 
-disputes
+market closed
 
-## SETTLEMENT
+market resolved
 
-settlement planner
+settlement received
 
-financial settlement
+withdrawal completed
+```
 
-voiding
+---
 
-refund/compensation architecture
+# 151. ADMIN UI PRINCIPLE
 
-## SOCIAL
+Admin must be professional operational software.
 
-creator profiles
+Not another long form.
 
+Use:
+
+* tables
+* filters
+* charts
+* panels
+* timelines
+* drawers
+* diff views
+* approval workflows
+* live status
+* bulk operations where safe
+
+---
+
+# 152. DATABASE NAMING
+
+Use consistent domain prefixes/schemas where useful.
+
+Potential Postgres schemas:
+
+```text
+identity
+
+social
+
+markets
+
+trading
+
+oracle
+
+finance
+
+policy
+
+risk
+
+ai
+
+admin
+
+audit
+```
+
+---
+
+# 153. DATABASE CONSTRAINTS
+
+Do not rely solely on application code.
+
+Examples:
+
+```text
+quantity > 0
+
+price > 0
+
+price < 1 settlement unit
+
+ledger journal balances
+
+unique canonical fingerprint
+
+unique active market per canonical event + asset
+
+unique idempotency key
+
+valid status transition enforcement where practical
+```
+
+---
+
+# 154. MIGRATION PRINCIPLE
+
+Every schema change:
+
+* version controlled
+* reversible where reasonable
+* tested
+* never manually edited in production without migration record
+
+---
+
+# 155. TESTING STRATEGY
+
+Build:
+
+```text
+unit tests
+
+integration tests
+
+property-based tests
+
+database tests
+
+RLS tests
+
+API tests
+
+provider contract tests
+
+end-to-end tests
+```
+
+---
+
+# 156. FINANCIAL PROPERTY TESTS
+
+Generate random trades and verify:
+
+```text
+ledger balances
+
+collateral invariant
+
+no overspend
+
+no duplicate settlement
+
+position quantity consistency
+
+order fill consistency
+```
+
+---
+
+# 157. CANONICALIZATION TESTS
+
+Test:
+
+```text
+same wording
+
+synonyms
+
+different wording same event
+
+related but different events
+
+different seasons
+
+different thresholds
+
+different teams
+
+different deadlines
+```
+
+---
+
+# 158. ORACLE TESTS
+
+Test:
+
+```text
+primary success
+
+secondary fallback
+
+2-of-3 agreement
+
+full disagreement
+
+provider unavailable
+
+event postponed
+
+event cancelled
+
+dispute
+
+late correction
+```
+
+---
+
+# 159. SETTLEMENT TESTS
+
+Test:
+
+```text
+YES win
+
+NO win
+
+void
+
+zero fees
+
+fees
+
+sold position
+
+partial position
+
+multiple fills
+
+large market
+
+duplicate settlement attempt
+```
+
+---
+
+# 160. REFUND TESTS
+
+Test:
+
+```text
+provider refund
+
+partial refund
+
+cancelled order
+
+partially filled order
+
+market void
+
+platform compensation
+
+chargeback
+```
+
+---
+
+# 161. FAILURE DESIGN
+
+Every external provider may fail.
+
+Design for:
+
+```text
+payment provider down
+
+KYC provider down
+
+AI provider down
+
+oracle source unavailable
+
+notification provider down
+```
+
+Financial core should degrade safely.
+
+---
+
+# 162. PROVIDER HEALTH
+
+Track:
+
+```text
+status
+
+latency
+
+success rate
+
+error rate
+
+last success
+
+last failure
+
+supported capabilities
+```
+
+Provider orchestration uses health where appropriate.
+
+---
+
+# 163. PROVIDER ABSTRACTION PRINCIPLE
+
+Provider must never leak across entire codebase.
+
+Domain code should say:
+
+```text
+paymentProvider.createDeposit()
+```
+
+not:
+
+```text
+monnify.createInvoice()
+```
+
+everywhere.
+
+---
+
+# 164. SECRETS
+
+Store provider credentials securely.
+
+Never:
+
+* commit keys
+* expose keys in Expo bundle
+* expose service-role key
+* store secrets in public configuration tables
+
+---
+
+# 165. PRIVACY
+
+Keep:
+
+```text
+public profile data
+
+private identity data
+
+KYC documents
+
+financial data
+
+risk data
+
+admin notes
+```
+
+strictly separated.
+
+---
+
+# 166. DATA RETENTION
+
+Create policies for:
+
+```text
+KYC records
+
+provider payloads
+
+financial audit
+
+logs
+
+AI prompts
+
+media
+
+deleted accounts
+```
+
+Do not indefinitely retain unnecessary sensitive data.
+
+---
+
+# 167. AI PRIVACY
+
+Do not blindly send:
+
+```text
+full KYC data
+
+bank details
+
+private wallet history
+```
+
+to AI providers.
+
+AI requests should use minimum required context.
+
+---
+
+# 168. MODERATION
+
+Content moderation applies to:
+
+```text
 posts
-
-video/content
 
 comments
 
-follows
+market proposals
 
-market attachments
+creator videos
 
-feeds
+usernames
 
-## INTELLIGENCE
+media
+```
 
+Use combination of:
+
+* automated moderation
+* AI assistance
+* reports
+* human moderators
+
+---
+
+# 169. MARKET GOVERNANCE
+
+Market Admin sees:
+
+```text
+proposal
+
+normalized structure
+
+canonical candidate
+
+AI analysis
+
+oracle availability
+
+risk score
+
+duplicate score
+
+market quality
+
+recommended action
+```
+
+Human remains able to review uncertain cases.
+
+---
+
+# 170. AUDITABLE AI
+
+For important AI-assisted market decisions, store:
+
+```text
+provider
+
+model
+
+prompt version
+
+structured output
+
+validation result
+
+final human/system action
+```
+
+AI output must not silently become financial decision.
+
+---
+
+# 171. SEARCHABLE MARKET KNOWLEDGE GRAPH
+
+Canonical events + entities + relationships should eventually form a knowledge graph.
+
+Entities:
+
+```text
+people
+
+teams
+
+companies
+
+countries
+
+competitions
+
+assets
+
+organizations
+```
+
+Relationships improve:
+
+* discovery
+* canonicalization
+* feeds
+* analytics
+* thesis
+
+---
+
+# 172. MARKET SHOCK SYSTEM — FUTURE
+
+Related markets may respond to major events.
+
+Example:
+
+Chelsea star player injured.
+
+This may influence:
+
+```text
+Chelsea title
+
+Chelsea top 4
+
+player goals
+
+opponent position
+```
+
+Initially this affects discovery/analytics.
+
+Do not automatically alter prices algorithmically unless liquidity engine explicitly supports it.
+
+Market participants determine price.
+
+---
+
+# 173. LIVE EVENT SYSTEM
+
+For live sports/events:
+
+```text
+event status
+
+live score
+
+clock
+
+important events
+```
+
+may come from data provider.
+
+Market suspension/close rules must be predetermined.
+
+---
+
+# 174. NO SINGLE SOURCE DEPENDENCY
+
+Where feasible:
+
+Oracle uses multiple sources.
+
+Payment uses provider abstraction.
+
+AI uses provider abstraction.
+
+KYC uses provider abstraction.
+
+Notification uses provider abstraction.
+
+---
+
+# 175. STARTUP IMPLEMENTATION PRIORITY
+
+Phase 1:
+
+```text
+Supabase project
+
+monorepo
+
+Expo
+
+Auth
+
+Profiles
+
+Admin RBAC
+
+Policy Engine
+
+Audit
+
+Asset Registry
+
+Ledger skeleton
+
+Provider Registry
+```
+
+Phase 2:
+
+```text
+KYC
+
+Payments
+
+Wallet
+
+Deposit
+
+Withdrawal
+
+Reconciliation
+
+Fee Engine
+```
+
+Phase 3:
+
+```text
+Canonical Events
+
+Market Proposals
+
+Templates
+
+Canonicalization
+
+Governance
+```
+
+Phase 4:
+
+```text
+Orders
+
+Matching
+
+Trades
+
+Positions
+
+Collateral
+
+Market prices
+```
+
+Phase 5:
+
+```text
+Oracle
+
+Resolution
+
+Disputes
+
+Settlement
+
+Void/refund
+```
+
+Phase 6:
+
+```text
+Creator/social
+
+Feed
+
+Reels
+
+Comments
+
+Follows
+
+Market-attached content
+```
+
+Phase 7:
+
+```text
 AI runtime
 
-recommendation algorithms
+Algorithms
 
-proposal assistance
+Recommendations
 
-spam detection
+Risk
 
-risk triage
-
----
-
-# 90. LAUNCH SCOPE
-
-Do not let future capability delay Nigeria.
-
-V1 financial priorities:
-
-```text
-NGN
-USD where operationally/provider-supported
+Creator reputation
 ```
 
-Architecture:
+Phase 8:
 
 ```text
-USDC-ready
-crypto-ready
-multi-country-ready
-multi-provider-ready
-```
+hardening
 
-Implementation:
+security
 
-```text
-NO smart contract yet
-NO unnecessary blockchain complexity
+observability
+
+load testing
+
+production launch
 ```
 
 ---
 
-# 91. FINAL SYSTEM PHILOSOPHY
+# 176. IMPORTANT IMPLEMENTATION RULE
 
-VAD consists of several different kinds of truth.
+Do not build all UI first and then invent backend behavior.
 
-## SOCIAL TRUTH
+Backend contracts first.
 
-What people believe.
-
-## MARKET TRUTH
-
-What price participants currently assign to that belief.
-
-## ORACLE TRUTH
-
-What officially happened.
-
-## FINANCIAL TRUTH
-
-What the ledger says is owned, owed, collateralized and settled.
-
-## POLICY TRUTH
-
-What the business currently permits.
-
-Never collapse these layers.
-
-The creator feed does not determine financial truth.
-
-AI does not determine financial truth.
-
-Market price does not determine factual truth.
-
-An administrator should not arbitrarily determine financial truth.
-
-The Oracle Resolution system establishes the event result.
-
-The Settlement system applies that result.
-
-The Ledger records the money.
+Then frontend consumes contracts.
 
 ---
 
-# 92. THE VAD LOOP
+# 177. API VERSIONING
 
-The experience ultimately becomes:
+Use versioned APIs where appropriate.
+
+Example:
 
 ```text
-DISCOVER
-↓
-WATCH
-↓
-ANALYSE
-↓
-PREDICT
-↓
-TAKE POSITION
-↓
-DISCUSS
-↓
-CHALLENGE
-↓
-FOLLOW
-↓
-TRADE
-↓
-EVENT OCCURS
-↓
-ORACLE RESOLVES
-↓
-SETTLEMENT
-↓
-REPUTATION UPDATES
-↓
-RETURN
+/api/v1/markets
+
+/api/v1/orders
+
+/api/v1/wallet
 ```
 
-That is the product.
+Breaking changes should not silently break released apps.
 
-Not:
+---
+
+# 178. CLIENT API SDK
+
+Generate/shared TypeScript API client.
+
+Do not handwrite random fetch calls throughout apps.
+
+Centralize:
 
 ```text
-choose football match
-↓
-place bet
-↓
-wait
+auth
+
+errors
+
+retries
+
+idempotency
+
+types
+
+validation
 ```
 
 ---
 
-# 93. FINAL DIRECTIVE TO CHIEF DEV
+# 179. ERROR MODEL
 
-Do not implement VAD as a collection of screens connected directly to Supabase tables.
+Standard errors:
 
-Build it as a financial domain platform.
+```text
+code
 
-The frontend is replaceable.
+message
 
-Providers are replaceable.
+user_message
 
-AI providers are replaceable.
+retryable
 
-Payment providers are replaceable.
+context
 
-KYC providers are replaceable.
+request_id
+```
 
-Currencies are configurable.
+User-facing text must not expose backend internals.
 
-Markets are data-driven.
+---
 
-Policies are versioned.
+# 180. REQUEST IDs
 
-Algorithms are explicit.
+Every important request should have:
 
-Oracle policies are predetermined.
+```text
+request_id
+```
 
-Liquidity is segregated by asset.
+Useful for:
 
-Money is protected by ledger invariants.
+* debugging
+* audit
+* support
+* provider tracing
 
-Settlement is deterministic.
+---
 
-Creators drive attention.
+# 181. SUPPORT SYSTEM
 
-Markets price conviction.
+Support admin should see:
 
-Oracles establish outcome truth.
+```text
+user
 
-The ledger establishes financial truth.
+KYC status
 
-And management operates the business through a human-readable live control plane rather than asking engineers to redeploy applications every time a fee, provider, currency, threshold or operational policy changes.
+payments
 
-That is the architecture VAD must be built upon.
+withdrawals
+
+orders
+
+markets
+
+notifications
+
+cases
+```
+
+but not gain unnecessary financial override permissions.
+
+---
+
+# 182. CASE MANAGEMENT
+
+Create internal cases:
+
+```text
+support_case
+
+risk_case
+
+oracle_case
+
+payment_case
+
+compliance_case
+```
+
+Each with:
+
+```text
+status
+
+priority
+
+assignee
+
+notes
+
+events
+
+attachments
+```
+
+---
+
+# 183. EMERGENCY CONTROLS
+
+Super Admin should be able to:
+
+```text
+halt new deposits
+
+halt withdrawals
+
+halt trading
+
+halt one market
+
+halt one provider
+
+disable one feature
+
+disable one asset
+```
+
+without deploying code.
+
+Use emergency actions with audit + strong permissions.
+
+---
+
+# 184. DISASTER RECOVERY
+
+Have:
+
+* database backups
+* restoration procedure
+* incident runbooks
+* provider fallback plan
+* secret rotation
+* admin recovery
+
+Production grade includes recovery planning.
+
+---
+
+# 185. DEPLOYMENT
+
+Use inexpensive initial deployment:
+
+* Expo/EAS for apps
+* Supabase backend
+* Vercel or suitable web hosting for web/admin if required
+
+Use:
+
+```text
+development
+
+staging
+
+production
+```
+
+Separate environment secrets.
+
+---
+
+# 186. STAGING
+
+Staging should support:
+
+* fake payment provider
+* fake oracle provider
+* fake KYC provider
+* test markets
+* settlement simulation
+
+Never test financial code directly on production users.
+
+---
+
+# 187. PROVIDER SANDBOXES
+
+All providers should have:
+
+```text
+sandbox
+
+production
+```
+
+configuration.
+
+Provider mode must never be inferred by client.
+
+---
+
+# 188. MARKET SIMULATOR
+
+Build developer/admin simulation capability.
+
+Test:
+
+```text
+market creation
+
+orders
+
+price movement
+
+oracle result
+
+settlement
+
+void
+
+fees
+```
+
+without real money.
+
+---
+
+# 189. PERFORMANCE
+
+Use:
+
+* indexes
+* pagination
+* query plans
+* caching
+* materialized aggregates where needed
+
+Do not prematurely cache financial truth.
+
+Ledger remains primary.
+
+---
+
+# 190. PRICE DATA
+
+Maintain:
+
+```text
+last trade
+
+best bid
+
+best ask
+
+24h high/low
+
+volume
+
+open interest
+
+price history
+```
+
+Derived from trades/order book.
+
+---
+
+# 191. MARKET STATISTICS
+
+Store/derive:
+
+```text
+unique traders
+
+volume
+
+open interest
+
+creator mentions
+
+price movement
+
+liquidity depth
+
+time to close
+```
+
+---
+
+# 192. SOCIAL METRICS
+
+Track:
+
+```text
+views
+
+watch time
+
+likes
+
+comments
+
+shares
+
+saves
+
+follows
+
+market opens from post
+
+trades influenced
+```
+
+Do not confuse social metrics with financial truth.
+
+---
+
+# 193. CREATOR ATTRIBUTION
+
+When a user reaches a market through creator content:
+
+store attribution.
+
+This helps:
+
+```text
+creator analytics
+
+market origination analytics
+
+future revenue sharing
+```
+
+---
+
+# 194. EXPLAINABILITY
+
+Financial user actions should be explainable.
+
+Example settlement receipt:
+
+```text
+Market
+Chelsea EPL Champion
+
+Outcome
+YES
+
+Shares owned
+8,000
+
+Settlement value
+₦8,000
+
+Settlement fee
+₦X
+
+Net credit
+₦Y
+
+Oracle source
+Official result
+
+Settled
+Date/time
+```
+
+---
+
+# 195. USER TRUST
+
+VAD must show:
+
+```text
+why market resolves
+
+when it closes
+
+where truth comes from
+
+what fees apply
+
+what happens if cancelled
+
+how money is protected
+```
+
+Trust cannot depend on users reading legal fine print.
+
+---
+
+# 196. LEGAL/REGULATORY CONFIGURATION
+
+Do not encode every possible jurisdiction today.
+
+Nigeria-first.
+
+But create generic structures:
+
+```text
+jurisdictions
+
+jurisdiction_policies
+
+jurisdiction_assets
+
+jurisdiction_market_categories
+```
+
+Initially:
+
+```text
+Nigeria = ACTIVE
+```
+
+Others:
+
+```text
+DISABLED
+```
+
+Future activation does not require redesign.
+
+---
+
+# 197. CRYPTO FUTURE
+
+When activated later:
+
+do not assume decentralization eliminates compliance, KYC, custody, or operational obligations.
+
+Crypto is a payment/settlement rail.
+
+It is not a shortcut around VAD's governance architecture.
+
+---
+
+# 198. CORE INVARIANTS
+
+These are sacred:
+
+```text
+Ledger always balances.
+
+Users cannot spend unavailable money.
+
+Settlement cannot run twice.
+
+Market cannot open without oracle policy.
+
+Oracle result must be final before financial settlement.
+
+AI cannot finalize financial truth.
+
+Creators cannot resolve their own financial markets.
+
+Market collateral cannot be platform revenue.
+
+Fees cannot create a collateral deficit.
+
+NGN collateral cannot satisfy future USDC obligations.
+
+Orders cannot fill beyond reserved amount.
+
+Policy history cannot be silently overwritten.
+
+Audit history cannot be silently deleted.
+```
+
+---
+
+# 199. WHAT VAD SHOULD FEEL LIKE
+
+The backend should feel like:
+
+**financial infrastructure.**
+
+The frontend should feel like:
+
+**a living social network.**
+
+The admin should feel like:
+
+**a professional market operations center.**
+
+The creator tools should feel like:
+
+**a modern media platform.**
+
+The trading experience should feel like:
+
+**simple financial conviction rather than gambling complexity.**
+
+---
+
+# 200. FINAL PRODUCT ARCHITECTURE
+
+```text
+                         VAD USERS
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+          MOBILE/WEB                  ADMIN WEB
+              │                           │
+              └─────────────┬─────────────┘
+                            │
+                         API / EDGE
+                            │
+          ┌─────────────────┼──────────────────┐
+          │                 │                  │
+       SOCIAL            MARKET             FINANCE
+          │                 │                  │
+      Creators        Proposals            Wallet
+      Content         Canonical Events     Payments
+      Follow          Governance           Ledger
+      Feed            Instruments          Fees
+      Reels           Trading              Revenue
+          │                 │                  │
+          └─────────┬───────┴──────────┬───────┘
+                    │                  │
+               ALGORITHMS          POLICIES
+                    │                  │
+            ┌───────┼───────┐          │
+            │       │       │          │
+           AI     RISK    ORACLE       │
+            │       │       │          │
+            └───────┼───────┘          │
+                    │                  │
+               RESOLUTION             │
+                    │                  │
+               SETTLEMENT             │
+                    │                  │
+                  LEDGER ──────────────┘
+                    │
+             PAYMENT ORCHESTRATOR
+                    │
+              NGN PROVIDERS
+```
+
+---
+
+# 201. CHIEF DEV FINAL DIRECTIVE
+
+Do not reduce VAD into:
+
+```text
+users
+matches
+bets
+wallet
+```
+
+That would destroy the product vision.
+
+VAD requires first-class systems for:
+
+```text
+canonical truth
+
+creator content
+
+market proposals
+
+structured markets
+
+algorithms
+
+oracle resolution
+
+financial trading
+
+settlement
+
+ledger
+
+fees
+
+policy
+
+risk
+
+provider abstraction
+
+admin control
+
+AI
+
+social reputation
+```
+
+The system should be capable of evolving without repeatedly rebuilding its core.
+
+NGN is the launch asset.
+
+Nigeria is the launch country.
+
+Supabase is the initial backend platform.
+
+Expo is the universal frontend stack.
+
+Didit or another provider handles KYC through abstraction.
+
+Payment providers move NGN through generic adapters.
+
+AI assists intelligence and automation.
+
+Oracle infrastructure determines real-world outcome truth.
+
+Settlement applies the outcome.
+
+The ledger records the money.
+
+Policy determines how the business operates.
+
+Admin controls policy.
+
+The client presents the system.
+
+This separation must remain intact throughout implementation.
+
+---
+
+# 202. FINAL DEVELOPMENT PRINCIPLE
+
+Build:
+
+**production-grade foundations with startup-level infrastructure costs.**
+
+Do not overbuild infrastructure.
+
+Do not underbuild financial correctness.
+
+Spend complexity where mistakes are dangerous:
+
+* money
+* settlement
+* oracle
+* permissions
+* market identity
+* audit
+* policy
+
+Keep infrastructure inexpensive where scale has not arrived.
+
+That is the correct VAD architecture.
+
+# VAD
+
+**Value Asset Depot**
+
+**A SKIMA Group LTD Company/Product**
+
+**OPEN CONVICTION. CONTROLLED TRUTH.**
