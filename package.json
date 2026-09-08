@@ -1,0 +1,32 @@
+{
+  "name": "vad-market",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VAD — Value Asset Depot",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "npm run start --workspace @vad/mobile",
+    "web": "npm run web --workspace @vad/mobile",
+    "android": "npm run android --workspace @vad/mobile",
+    "ios": "npm run ios --workspace @vad/mobile",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "supabase": "supabase",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:push": "supabase db push",
+    "db:types": "supabase gen types typescript --linked --schema public > packages/types/src/database.types.ts"
+  },
+  "devDependencies": {
+    "supabase": "2.117.0"
+  }
+}
