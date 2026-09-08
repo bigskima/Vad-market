@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
-    "version": "1.0.0",
+    "name": "VAD",
+    "slug": "vad-market",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "vad",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0A1512",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -28,7 +28,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0A1512",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
