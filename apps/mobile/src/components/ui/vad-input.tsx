@@ -5,19 +5,34 @@ import { VadText } from './vad-text';
 
 type Props = TextInputProps & { label?: string; error?: string };
 
-export function VadInput({ label, error, multiline, style, ...props }: Props) {
+export function VadInput({
+  label,
+  error,
+  multiline,
+  style,
+  onChange,
+  onChangeText,
+  editable = true,
+  ...props
+}: Props) {
   const theme = useVadTheme();
+
   return (
     <View style={{ gap: theme.spacing.xs }}>
       {label ? <VadText variant="label" tone="secondary">{label}</VadText> : null}
       <TextInput
         {...props}
+        editable={editable}
         multiline={multiline}
+        onChange={(event) => {
+          onChange?.(event);
+          onChangeText?.(event.nativeEvent.text);
+        }}
         placeholderTextColor={theme.colors.textTertiary}
         selectionColor={theme.colors.brandPrimary}
         style={[
           {
-            minHeight: multiline ? 110 : 48,
+            minHeight: multiline ? 110 : 50,
             borderWidth: 1,
             borderColor: error ? theme.colors.danger : theme.colors.border,
             borderRadius: theme.radius.md,
@@ -26,7 +41,8 @@ export function VadInput({ label, error, multiline, style, ...props }: Props) {
             paddingHorizontal: theme.spacing.md,
             paddingVertical: multiline ? theme.spacing.sm : theme.spacing.xs,
             textAlignVertical: multiline ? 'top' : 'center',
-            fontSize: 15,
+            fontSize: 16,
+            opacity: editable ? 1 : 0.55,
           },
           style,
         ]}
