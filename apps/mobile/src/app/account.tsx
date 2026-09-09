@@ -54,6 +54,15 @@ export default function AccountScreen() {
             subtitle="Payment provider readiness, limits and fees"
             onPress={() => router.push('/account/funding')}
           />
+          <AccountRow
+            title="Appearance"
+            subtitle={
+              theme.preference === 'system'
+                ? 'System · currently ' + theme.mode
+                : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1)
+            }
+            onPress={() => router.push('/account/appearance')}
+          />
         </View>
 
         <View style={{ gap: theme.spacing.sm }}>
