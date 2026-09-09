@@ -1,6 +1,5 @@
-import { Pressable, View } from 'react-native';
+import { ScrollView, Pressable, View } from 'react-native';
 
-import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
@@ -10,53 +9,104 @@ import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem, WalletRow } from '@/services/market-api';
 
-export function HomeScreen({ email, markets, ngn, canCreatePost, onOpenMarket, onExploreMarkets }: {
-  email: string;
+export function HomeScreen({
+  markets,
+  ngn,
+  canCreatePost,
+  onOpenMarket,
+  onExploreMarkets,
+  onOpenWallet,
+}: {
   markets: MarketCatalogItem[];
   ngn?: WalletRow;
   canCreatePost: boolean;
   onOpenMarket: (market: MarketCatalogItem) => void;
   onExploreMarkets: () => void;
+  onOpenWallet: () => void;
 }) {
   const theme = useVadTheme();
   const active = markets.filter((market) => market.status === 'OPEN' || market.status === 'ACTIVE');
-  const categories = [...new Set(markets.map((market) => market.category).filter(Boolean))].slice(0, 6) as string[];
-  const featured = [...markets].sort((a, b) => Number(Boolean(b.last_trade_at)) - Number(Boolean(a.last_trade_at)) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 3);
+  const categories = [...new Set(markets.map((market) => market.category).filter(Boolean))].slice(0, 8) as string[];
+  const featured = [...markets]
+    .sort((a, b) => Number(Boolean(b.last_trade_at)) - Number(Boolean(a.last_trade_at)) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .slice(0, 5);
 
-  return <View style={{ gap: theme.spacing.xxl }}>
-    <View style={{ gap: theme.spacing.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
-        <View style={{ flex: 1, gap: theme.spacing.xxs }}>
-          <VadText variant="label" tone="brand">VAD MARKET INTELLIGENCE</VadText>
-          <VadText variant="display">What does the crowd believe?</VadText>
-        </View>
-        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: active.length ? theme.colors.yes : theme.colors.warning }} />
+  return (
+    <View style={{ gap: theme.spacing.xxl }}>
+      <View style={{ gap: theme.spacing.xs }}>
+        <VadText variant="label" tone="brand">MARKET PULSE</VadText>
+        <VadText variant="title">Find the questions moving now.</VadText>
+        <VadText tone="secondary">
+          Follow live probability, inspect the market, and take a position when your conviction is stronger than the crowd.
+        </VadText>
       </View>
-      <VadText tone="secondary">Live probabilities, transparent rules and public conviction in one place. Follow the signal, inspect the evidence, then decide your position.</VadText>
-      <VadText variant="caption" tone="tertiary">{email}</VadText>
-    </View>
 
-    <VadCard style={{ backgroundColor: theme.colors.brandPrimary, borderColor: theme.colors.brandPrimary, borderRadius: theme.radius.xl, gap: theme.spacing.lg }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: theme.spacing.md }}>
-        <View style={{ flex: 1, gap: theme.spacing.xxs }}><VadText variant="caption" tone="inverse">Available to trade</VadText><VadText variant="display" tone="inverse">{money(ngn?.available)}</VadText></View>
-        <View style={{ alignItems: 'flex-end', gap: theme.spacing.xxs }}><VadText variant="caption" tone="inverse">Reserved</VadText><VadText variant="bodyStrong" tone="inverse">{money(ngn?.reserved)}</VadText></View>
+      <Pressable onPress={onOpenWallet}>
+        {({ pressed }) => (
+          <View
+            style={{
+              borderRadius: theme.radius.xl,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.surfaceRaised,
+              padding: theme.spacing.lg,
+              gap: theme.spacing.md,
+              opacity: pressed ? 0.82 : 1,
+            }}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md, alignItems: 'flex-end' }}>
+              <View style={{ flex: 1, gap: theme.spacing.xxs }}>
+                <VadText variant="caption" tone="secondary">Available balance</VadText>
+                <VadText variant="title">{money(ngn?.available)}</VadText>
+              </View>
+              <VadText variant="label" tone="brand">Open wallet →</VadText>
+            </View>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.xl }}>
+              <View style={{ gap: 2 }}>
+                <VadText variant="caption" tone="tertiary">Reserved</VadText>
+                <VadText variant="bodyStrong">{money(ngn?.reserved)}</VadText>
+              </View>
+              <View style={{ gap: 2 }}>
+                <VadText variant="caption" tone="tertiary">Live markets</VadText>
+                <VadText variant="bodyStrong">{active.length}</VadText>
+              </View>
+            </View>
+          </View>
+        )}
+      </Pressable>
+
+      {categories.length ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs }}>
+          <Pressable onPress={onExploreMarkets} style={{ borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandSoft, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs }}>
+            <VadText variant="caption" tone="brand">All markets</VadText>
+          </Pressable>
+          {categories.map((category) => (
+            <Pressable key={category} onPress={onExploreMarkets} style={{ borderRadius: theme.radius.pill, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs }}>
+              <VadText variant="caption" tone="secondary">{category}</VadText>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
+
+      <View style={{ gap: theme.spacing.md }}>
+        <VadSectionHeader title="Trending now" subtitle="Recently active markets" actionLabel="See all" onAction={onExploreMarkets} />
+        {featured.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.md }}>
+            {featured.map((market) => (
+              <View key={market.instrument_public_id} style={{ width: 318 }}>
+                <MarketCard market={market} onPress={() => onOpenMarket(market)} />
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <VadEmptyState title="No live markets yet" body="Approved markets will appear here once governance activates them." />
+        )}
       </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
-        <VadText variant="caption" tone="inverse">{active.length} live markets now</VadText>
-        <Pressable onPress={onExploreMarkets} style={{ backgroundColor: theme.colors.onBrand, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm }}><VadText variant="label" tone="brand">Explore markets</VadText></Pressable>
+
+      <View style={{ gap: theme.spacing.md }}>
+        <VadSectionHeader title="Conviction feed" subtitle="Reasoning from people watching the same markets." />
+        <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} />
       </View>
-    </VadCard>
-
-    <View style={{ gap: theme.spacing.md }}>
-      <VadSectionHeader title="Discover markets" subtitle={`${active.length} live · ${markets.length} total`} actionLabel="See all" onAction={onExploreMarkets} />
-      {categories.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>{categories.map((category) => <Pressable key={category} onPress={onExploreMarkets} style={{ borderRadius: theme.radius.pill, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs }}><VadText variant="caption" tone="secondary">{category}</VadText></Pressable>)}</View> : null}
-      <View style={{ gap: theme.spacing.md }}>{featured.map((market) => <MarketCard key={market.instrument_public_id} market={market} onPress={() => onOpenMarket(market)} />)}</View>
-      {!featured.length ? <VadEmptyState title="No live markets yet" body="Approved canonical markets will appear here automatically once governance activates them." /> : null}
     </View>
-
-    <View style={{ gap: theme.spacing.md }}>
-      <VadSectionHeader title="Conviction feed" subtitle="People, probabilities and the reasoning behind each call." />
-      <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} />
-    </View>
-  </View>;
+  );
 }
