@@ -166,7 +166,10 @@ export function KycCard() {
               gap: theme.spacing.xs,
             }}
           >
-            <StatusFact label="Provider" value={status.providerCode} />
+            <StatusFact
+              label="Provider"
+              value={status.providerCode ?? 'DIDIT'}
+            />
             <StatusFact
               label="Level"
               value={status.verificationLevel ?? 'STANDARD'}
