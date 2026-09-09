@@ -20,7 +20,7 @@ export function MarketsScreen({
 }) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
-  const wide = width >= 820;
+  const columns = width >= 1120 ? 3 : width >= 760 ? 2 : 1;
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
   const [sortMode, setSortMode] = useState<MarketSortMode>('activity');
@@ -85,21 +85,39 @@ export function MarketsScreen({
     (market) => market.status === 'OPEN' || market.status === 'ACTIVE',
   ).length;
 
+  const recentlyTraded = markets.filter((market) => market.last_trade_at).length;
+
+  const cardWidth =
+    columns === 3 ? '32.2%' : columns === 2 ? '49.2%' : '100%';
+
   return (
-    <View style={{ gap: theme.spacing.xl }}>
-      <View style={{ gap: theme.spacing.md }}>
-        <View style={{ gap: theme.spacing.xs }}>
+    <View style={{ gap: theme.spacing.xxl }}>
+      <View
+        style={{
+          flexDirection: width >= 820 ? 'row' : 'column',
+          justifyContent: 'space-between',
+          gap: theme.spacing.lg,
+          alignItems: width >= 820 ? 'flex-end' : 'stretch',
+        }}
+      >
+        <View style={{ flex: 1, gap: theme.spacing.xs }}>
           <VadText variant="label" tone="brand">DISCOVER</VadText>
           <VadText variant="title">Markets</VadText>
           <VadText tone="secondary">
-            Search the catalogue, compare live probability, and open one
-            market at a time for trading, discussion and rules.
+            Compare live probability first. Open a market only when you want its
+            trade ticket, discussion and resolution rules.
           </VadText>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: theme.spacing.xl }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: theme.spacing.xl,
+            flexWrap: 'wrap',
+          }}
+        >
           <Metric label="Live" value={String(live)} />
-          <Metric label="All markets" value={String(markets.length)} />
+          <Metric label="Traded" value={String(recentlyTraded)} />
           <Metric label="Categories" value={String(categories.length)} />
         </View>
       </View>
@@ -115,45 +133,45 @@ export function MarketsScreen({
         resultCount={orderedMarkets.length}
       />
 
-      <View
-        style={{
-          flexDirection: wide ? 'row' : 'column',
-          flexWrap: wide ? 'wrap' : 'nowrap',
-          gap: theme.spacing.md,
-          alignItems: 'stretch',
-        }}
-      >
-        {orderedMarkets.map((market) => (
-          <View
-            key={market.instrument_public_id}
-            style={{ width: wide ? '48.8%' : '100%' }}
-          >
-            <MarketCard
-              market={market}
-              onPress={() => onOpenMarket(market)}
-            />
-          </View>
-        ))}
-      </View>
-
-      {!markets.length ? (
+      {orderedMarkets.length ? (
+        <View
+          style={{
+            flexDirection: columns > 1 ? 'row' : 'column',
+            flexWrap: columns > 1 ? 'wrap' : 'nowrap',
+            gap: theme.spacing.md,
+            alignItems: 'stretch',
+          }}
+        >
+          {orderedMarkets.map((market) => (
+            <View
+              key={market.instrument_public_id}
+              style={{ width: cardWidth }}
+            >
+              <MarketCard
+                market={market}
+                onPress={() => onOpenMarket(market)}
+              />
+            </View>
+          ))}
+        </View>
+      ) : !markets.length ? (
         <VadEmptyState
           title="No live markets yet"
           body="Approved canonical markets will appear here automatically once governance activates them."
         />
-      ) : orderedMarkets.length === 0 ? (
+      ) : (
         <VadEmptyState
           title="No matching markets"
           body="Try another search, category or sorting option."
         />
-      ) : null}
+      )}
     </View>
   );
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ minWidth: 86, gap: 2 }}>
+    <View style={{ minWidth: 76, gap: 2 }}>
       <VadText variant="caption" tone="tertiary">{label}</VadText>
       <VadText variant="bodyStrong">{value}</VadText>
     </View>
