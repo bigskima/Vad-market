@@ -1,26 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
-import { palette } from '@/constants/palette';
+import { VadButton } from '@/components/ui/vad-button';
+import { VadCard } from '@/components/ui/vad-card';
+import { VadInput } from '@/components/ui/vad-input';
+import { VadText } from '@/components/ui/vad-text';
+import { useVadTheme } from '@/providers/theme-provider';
 import { createPaymentIntent, getProviderReadiness, quotePayment, type PaymentQuote } from '@/services/payment-api';
 
 type Mode = 'DEPOSIT' | 'WITHDRAWAL';
 
 export function PaymentReadinessCard() {
+  const theme = useVadTheme();
   const [readiness, setReadiness] = useState<{ depositConfigured?: boolean; withdrawalConfigured?: boolean }>({});
   const [mode, setMode] = useState<Mode>('DEPOSIT');
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<PaymentQuote | null>(null);
   const [working, setWorking] = useState(false);
-
-  const load = useCallback(async () => {
-    try { setReadiness(await getProviderReadiness()); } catch { setReadiness({}); }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => { void load(); }, 0);
-    return () => clearTimeout(timer);
-  }, [load]);
+  const load = useCallback(async () => { try { setReadiness(await getProviderReadiness()); } catch { setReadiness({}); } }, []);
+  useEffect(() => { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); }, [load]);
 
   async function preview() {
     const value = Number(amount);
@@ -34,23 +32,19 @@ export function PaymentReadinessCard() {
   async function create() {
     if (!quote?.enabled) return;
     setWorking(true);
-    try {
-      const publicId = await createPaymentIntent(mode, Number(amount));
-      Alert.alert('Payment intent created', `Reference ${publicId}. The external provider step will begin only after a payment provider is configured.`);
-      setQuote(null); setAmount('');
-    } catch (error) { Alert.alert('Payment unavailable', error instanceof Error ? error.message : 'Please try again.'); }
+    try { const publicId = await createPaymentIntent(mode, Number(amount)); Alert.alert('Payment intent created', `Reference ${publicId}. External processing starts only through a configured provider.`); setQuote(null); setAmount(''); }
+    catch (error) { Alert.alert('Payment unavailable', error instanceof Error ? error.message : 'Please try again.'); }
     finally { setWorking(false); }
   }
 
   const providerReady = mode === 'DEPOSIT' ? readiness.depositConfigured : readiness.withdrawalConfigured;
-
-  return <View style={s.card}>
-    <View style={s.row}><View style={s.copy}><Text style={s.eyebrow}>MONEY MOVEMENT</Text><Text style={s.title}>NGN funding & withdrawals</Text><Text style={s.muted}>Provider-neutral until a payment company is selected.</Text></View><View style={s.badge}><Text style={s.badgeText}>{providerReady ? 'READY' : 'NO PROVIDER'}</Text></View></View>
-    <View style={s.modeRow}><Pressable style={[s.mode,mode==='DEPOSIT'&&s.modeActive]} onPress={() => { setMode('DEPOSIT'); setQuote(null); }}><Text style={s.modeText}>Deposit</Text></Pressable><Pressable style={[s.mode,mode==='WITHDRAWAL'&&s.modeActive]} onPress={() => { setMode('WITHDRAWAL'); setQuote(null); }}><Text style={s.modeText}>Withdraw</Text></Pressable></View>
-    <TextInput value={amount} onChangeText={(value) => { setAmount(value); setQuote(null); }} keyboardType="decimal-pad" placeholder="Amount in NGN" placeholderTextColor={palette.textMuted} style={s.input} />
-    <Pressable disabled={working || !amount} style={[s.button,(working||!amount)&&s.disabled]} onPress={() => void preview()}><Text style={s.buttonText}>{working ? 'Checking…' : 'Check availability & fees'}</Text></Pressable>
-    {quote && <View style={s.quote}><Text style={s.quoteTitle}>{quote.enabled ? 'Available' : 'Not available yet'}</Text><Text style={s.muted}>{quote.enabled ? `${quote.providerCode} · fee ₦${Number(quote.feeAmount ?? 0).toLocaleString()} · net ₦${Number(quote.netAmount ?? quote.amount).toLocaleString()}` : reasonText(quote)}</Text>{quote.enabled && <Pressable style={s.button} disabled={working} onPress={() => void create()}><Text style={s.buttonText}>Create payment intent</Text></Pressable>}</View>}
-  </View>;
+  return <VadCard style={{ gap: theme.spacing.sm }}>
+    <View style={{ flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'flex-start' }}><View style={{ flex: 1, gap: theme.spacing.xxs }}><VadText variant="label" tone="brand">MONEY MOVEMENT</VadText><VadText variant="heading">NGN funding & withdrawals</VadText><VadText variant="caption" tone="secondary">Provider-neutral until a payment company is selected.</VadText></View><VadCard variant="outlined" style={{ padding: theme.spacing.xs, borderRadius: theme.radius.pill }}><VadText variant="caption" tone={providerReady ? 'yes' : 'secondary'}>{providerReady ? 'READY' : 'NO PROVIDER'}</VadText></VadCard></View>
+    <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}><VadButton fullWidth={false} label="Deposit" variant={mode === 'DEPOSIT' ? 'primary' : 'secondary'} onPress={() => { setMode('DEPOSIT'); setQuote(null); }} /><VadButton fullWidth={false} label="Withdraw" variant={mode === 'WITHDRAWAL' ? 'primary' : 'secondary'} onPress={() => { setMode('WITHDRAWAL'); setQuote(null); }} /></View>
+    <VadInput value={amount} onChangeText={(value) => { setAmount(value); setQuote(null); }} keyboardType="decimal-pad" placeholder="Amount in NGN" />
+    <VadButton label="Check availability & fees" loading={working} disabled={!amount} onPress={() => void preview()} />
+    {quote ? <VadCard variant="raised" style={{ gap: theme.spacing.xs }}><VadText variant="bodyStrong" tone={quote.enabled ? 'yes' : 'warning'}>{quote.enabled ? 'Available' : 'Not available yet'}</VadText><VadText tone="secondary">{quote.enabled ? `${quote.providerCode} · fee ₦${Number(quote.feeAmount ?? 0).toLocaleString()} · net ₦${Number(quote.netAmount ?? quote.amount).toLocaleString()}` : reasonText(quote)}</VadText>{quote.enabled ? <VadButton label="Create payment intent" loading={working} onPress={() => void create()} /> : null}</VadCard> : null}
+  </VadCard>;
 }
 
 function reasonText(quote: PaymentQuote) {
@@ -63,5 +57,3 @@ function reasonText(quote: PaymentQuote) {
     default: return quote.reason ?? 'This action is not available yet.';
   }
 }
-
-const s = StyleSheet.create({card:{backgroundColor:palette.panel,borderColor:palette.line,borderWidth:1,borderRadius:20,padding:15,gap:12},row:{flexDirection:'row',gap:10,alignItems:'flex-start'},copy:{flex:1,gap:3},eyebrow:{color:palette.signal,fontWeight:'900',fontSize:11,letterSpacing:1.1},title:{color:palette.text,fontWeight:'900',fontSize:18},muted:{color:palette.textMuted,fontSize:12,lineHeight:18},badge:{borderWidth:1,borderColor:palette.line,borderRadius:999,paddingHorizontal:8,paddingVertical:6},badgeText:{color:palette.text,fontWeight:'900',fontSize:9},modeRow:{flexDirection:'row',gap:8},mode:{flex:1,borderWidth:1,borderColor:palette.line,borderRadius:12,padding:10,alignItems:'center'},modeActive:{borderColor:palette.signal,backgroundColor:palette.inkRaised},modeText:{color:palette.text,fontWeight:'800'},input:{borderWidth:1,borderColor:palette.line,borderRadius:12,padding:12,color:palette.text},button:{backgroundColor:palette.signal,borderRadius:13,padding:12,alignItems:'center'},buttonText:{color:palette.ink,fontWeight:'900'},disabled:{opacity:.45},quote:{backgroundColor:palette.inkRaised,borderRadius:13,padding:12,gap:8},quoteTitle:{color:palette.text,fontWeight:'900'}});
