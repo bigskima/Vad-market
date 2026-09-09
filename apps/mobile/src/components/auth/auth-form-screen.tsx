@@ -22,6 +22,8 @@ type Props = {
   onBack(): void;
 };
 
+type MessageKind = 'info' | 'success' | 'error';
+
 export function AuthFormScreen({ initialMode, onBack }: Props) {
   const { signIn, signUp } = useAuth();
   const theme = useVadTheme();
@@ -31,8 +33,11 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageKind, setMessageKind] = useState<MessageKind>('info');
+  const [signupComplete, setSignupComplete] = useState(false);
 
   const emailValid = email.trim().includes('@');
   const passwordValid = password.length >= 8;
@@ -49,6 +54,7 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
 
     setIsSubmitting(true);
     setMessage(null);
+    setSignupComplete(false);
 
     try {
       const result =
@@ -60,7 +66,29 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
               password,
             });
 
-      setMessage(result.message ?? null);
+      if (!result.ok) {
+        setMessage(
+          result.message ??
+            (mode === 'signIn'
+              ? 'Unable to sign in. Check your details and try again.'
+              : 'Unable to create your account. Review your details and try again.'),
+        );
+        setMessageKind('error');
+        return;
+      }
+
+      if (mode === 'signUp' && result.message) {
+        setMessage(result.message);
+        setMessageKind('success');
+        setSignupComplete(true);
+        setPassword('');
+        return;
+      }
+
+      if (result.message) {
+        setMessage(result.message);
+        setMessageKind('info');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -69,7 +97,24 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
   function switchMode(nextMode: AuthMode) {
     setMode(nextMode);
     setMessage(null);
+    setSignupComplete(false);
+    setPassword('');
+    setShowPassword(false);
   }
+
+  const messageBackground =
+    messageKind === 'error'
+      ? theme.colors.noSoft
+      : messageKind === 'success'
+        ? theme.colors.yesSoft
+        : theme.colors.infoSoft;
+
+  const messageTone =
+    messageKind === 'error'
+      ? 'danger'
+      : messageKind === 'success'
+        ? 'yes'
+        : 'secondary';
 
   return (
     <SafeAreaView
@@ -82,6 +127,7 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
         <ScrollView
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={{
             flexGrow: 1,
             alignSelf: 'center',
@@ -109,10 +155,9 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
                   minHeight: 42,
                   justifyContent: 'center',
                   paddingHorizontal: theme.spacing.sm,
-                  borderRadius: theme.radius.md,
                   borderWidth: 1,
                   borderColor: theme.colors.border,
-                  backgroundColor: theme.colors.surface,
+                  borderRadius: theme.radius.md,
                   opacity: pressed ? 0.65 : 1,
                 })}
               >
@@ -132,6 +177,9 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
             </View>
 
             <View style={{ gap: theme.spacing.xs }}>
+              <VadText variant="label" tone="brand">
+                {mode === 'signIn' ? 'SIGN IN' : 'CREATE ACCOUNT'}
+              </VadText>
               <VadText variant="title">
                 {mode === 'signIn'
                   ? 'Welcome back.'
@@ -145,11 +193,11 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
             </View>
 
             <View
+              accessibilityRole="tablist"
               style={{
                 flexDirection: 'row',
-                borderRadius: theme.radius.lg,
-                padding: theme.spacing.xxs,
-                backgroundColor: theme.colors.surfaceRaised,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.colors.border,
               }}
             >
               {(['signIn', 'signUp'] as const).map((item) => {
@@ -163,12 +211,12 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
                     onPress={() => switchMode(item)}
                     style={({ pressed }) => ({
                       flex: 1,
-                      minHeight: 44,
+                      minHeight: 46,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: theme.radius.md,
-                      backgroundColor: selected
-                        ? theme.colors.surface
+                      borderBottomWidth: 2,
+                      borderBottomColor: selected
+                        ? theme.colors.brandPrimary
                         : 'transparent',
                       opacity: pressed ? 0.7 : 1,
                     })}
@@ -196,87 +244,155 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
                   : 'transparent',
               }}
             >
-              <View style={{ gap: theme.spacing.md }}>
-                {mode === 'signUp' ? (
-                  <VadInput
-                    label="Name"
-                    value={displayName}
-                    onChangeText={setDisplayName}
-                    autoComplete="name"
-                    placeholder="Your name"
-                    returnKeyType="next"
-                    error={
-                      displayName.length > 0 && !displayName.trim()
-                        ? 'Enter the name you want to use on VAD.'
-                        : undefined
-                    }
+              {signupComplete ? (
+                <View style={{ gap: theme.spacing.lg }}>
+                  <View
+                    style={{
+                      borderLeftWidth: 3,
+                      borderLeftColor: theme.colors.yes,
+                      backgroundColor: theme.colors.yesSoft,
+                      borderRadius: theme.radius.md,
+                      padding: theme.spacing.md,
+                      gap: theme.spacing.xs,
+                    }}
+                  >
+                    <VadText variant="label" tone="yes">ACCOUNT CREATED</VadText>
+                    <VadText variant="heading">Check your email.</VadText>
+                    <VadText variant="caption" tone="secondary">
+                      {message ??
+                        'Confirm your email address before signing in to VAD.'}
+                    </VadText>
+                    <VadText variant="caption" tone="tertiary">
+                      {email.trim()}
+                    </VadText>
+                  </View>
+
+                  <VadButton
+                    label="Continue to sign in"
+                    onPress={() => switchMode('signIn')}
                   />
-                ) : null}
-
-                <VadInput
-                  label="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  keyboardType="email-address"
-                  placeholder="you@example.com"
-                  returnKeyType="next"
-                  error={
-                    email.length > 0 && !emailValid
-                      ? 'Enter a valid email address.'
-                      : undefined
-                  }
-                />
-
-                <VadInput
-                  label="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete={
-                    mode === 'signIn'
-                      ? 'current-password'
-                      : 'new-password'
-                  }
-                  secureTextEntry
-                  placeholder="At least 8 characters"
-                  returnKeyType="done"
-                  onSubmitEditing={() => void submit()}
-                  error={
-                    password.length > 0 && !passwordValid
-                      ? 'Use at least 8 characters.'
-                      : undefined
-                  }
-                />
-              </View>
-
-              {message ? (
-                <View
-                  style={{
-                    borderRadius: theme.radius.md,
-                    backgroundColor: theme.colors.infoSoft,
-                    padding: theme.spacing.sm,
-                  }}
-                >
-                  <VadText variant="caption" tone="secondary">
-                    {message}
-                  </VadText>
                 </View>
-              ) : null}
+              ) : (
+                <>
+                  <View style={{ gap: theme.spacing.md }}>
+                    {mode === 'signUp' ? (
+                      <VadInput
+                        label="Name"
+                        value={displayName}
+                        onChangeText={setDisplayName}
+                        autoComplete="name"
+                        textContentType="name"
+                        placeholder="Your name"
+                        returnKeyType="next"
+                        error={
+                          displayName.length > 0 && !displayName.trim()
+                            ? 'Enter the name you want to use on VAD.'
+                            : undefined
+                        }
+                      />
+                    ) : null}
 
-              <VadButton
-                label={
-                  mode === 'signIn'
-                    ? 'Sign in'
-                    : 'Create account'
-                }
-                loading={isSubmitting}
-                disabled={!canSubmit}
-                onPress={() => void submit()}
-              />
+                    <VadInput
+                      label="Email"
+                      value={email}
+                      onChangeText={setEmail}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="email"
+                      textContentType="emailAddress"
+                      keyboardType="email-address"
+                      placeholder="you@example.com"
+                      returnKeyType="next"
+                      error={
+                        email.length > 0 && !emailValid
+                          ? 'Enter a valid email address.'
+                          : undefined
+                      }
+                    />
+
+                    <View style={{ gap: theme.spacing.xs }}>
+                      <VadInput
+                        label="Password"
+                        value={password}
+                        onChangeText={setPassword}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete={
+                          mode === 'signIn'
+                            ? 'current-password'
+                            : 'new-password'
+                        }
+                        textContentType={
+                          mode === 'signIn'
+                            ? 'password'
+                            : 'newPassword'
+                        }
+                        secureTextEntry={!showPassword}
+                        placeholder="At least 8 characters"
+                        returnKeyType="done"
+                        onSubmitEditing={() => void submit()}
+                        error={
+                          password.length > 0 && !passwordValid
+                            ? 'Use at least 8 characters.'
+                            : undefined
+                        }
+                      />
+
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          showPassword ? 'Hide password' : 'Show password'
+                        }
+                        onPress={() => setShowPassword((value) => !value)}
+                        hitSlop={8}
+                        style={({ pressed }) => ({
+                          alignSelf: 'flex-start',
+                          minHeight: 30,
+                          justifyContent: 'center',
+                          opacity: pressed ? 0.6 : 1,
+                        })}
+                      >
+                        <VadText variant="caption" tone="brand">
+                          {showPassword ? 'Hide password' : 'Show password'}
+                        </VadText>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {message ? (
+                    <View
+                      accessibilityRole="alert"
+                      style={{
+                        borderLeftWidth: 3,
+                        borderLeftColor:
+                          messageKind === 'error'
+                            ? theme.colors.danger
+                            : messageKind === 'success'
+                              ? theme.colors.yes
+                              : theme.colors.info,
+                        borderRadius: theme.radius.md,
+                        backgroundColor: messageBackground,
+                        padding: theme.spacing.sm,
+                      }}
+                    >
+                      <VadText variant="caption" tone={messageTone}>
+                        {message}
+                      </VadText>
+                    </View>
+                  ) : null}
+
+                  <VadButton
+                    label={
+                      mode === 'signIn'
+                        ? 'Sign in'
+                        : 'Create account'
+                    }
+                    loading={isSubmitting}
+                    disabled={!canSubmit}
+                    onPress={() => void submit()}
+                  />
+                </>
+              )}
             </View>
 
             <VadText
