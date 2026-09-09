@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
 import { VadText } from '@/components/ui/vad-text';
@@ -9,26 +10,27 @@ export function ProductTopBar({
   active,
   email,
   isAdmin,
-  onHome,
-  onAccount,
+  canCreate,
+  onCreate,
   onAdmin,
-  onSignOut,
+  onAccount,
 }: {
   active: ProductTab;
   email: string;
   isAdmin: boolean;
-  onHome: () => void;
-  onAccount: () => void;
+  canCreate: boolean;
+  onCreate: () => void;
   onAdmin: () => void;
-  onSignOut: () => void;
+  onAccount: () => void;
 }) {
   const theme = useVadTheme();
+  const insets = useSafeAreaInsets();
   const initial = email.trim().charAt(0).toUpperCase() || 'V';
 
   return (
     <View
       style={{
-        paddingTop: 50,
+        paddingTop: insets.top + theme.spacing.xs,
         paddingHorizontal: theme.spacing.lg,
         paddingBottom: theme.spacing.sm,
         flexDirection: 'row',
@@ -36,34 +38,49 @@ export function ProductTopBar({
         gap: theme.spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
+        backgroundColor: theme.colors.background,
       }}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Go to VAD home"
-        onPress={onHome}
-        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}
-      >
-        <VadLogo size={36} />
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+        <VadLogo size={34} />
         <View style={{ gap: 1 }}>
-          <VadText variant="caption" tone="secondary">VAD</VadText>
+          <VadText variant="caption" tone="tertiary">VAD</VadText>
           <VadText variant="bodyStrong">{active}</VadText>
         </View>
-      </Pressable>
+      </View>
+
+      {canCreate ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Propose a market"
+          onPress={onCreate}
+          style={({ pressed }) => ({
+            minWidth: 38,
+            height: 38,
+            borderRadius: 19,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.brandPrimary,
+            opacity: pressed ? 0.75 : 1,
+          })}
+        >
+          <VadText variant="heading" tone="inverse">+</VadText>
+        </Pressable>
+      ) : null}
 
       {isAdmin ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open admin control plane"
+          accessibilityLabel="Open VAD operations"
           onPress={onAdmin}
-          style={{
-            minHeight: 36,
+          style={({ pressed }) => ({
+            minHeight: 38,
             justifyContent: 'center',
             borderRadius: theme.radius.pill,
-            backgroundColor: theme.colors.brandSoft,
+            backgroundColor: theme.colors.surfaceRaised,
             paddingHorizontal: theme.spacing.sm,
-          }}
+            opacity: pressed ? 0.7 : 1,
+          })}
         >
           <VadText variant="caption" tone="brand">Ops</VadText>
         </Pressable>
@@ -73,34 +90,21 @@ export function ProductTopBar({
         accessibilityRole="button"
         accessibilityLabel="Open account"
         onPress={onAccount}
-        style={{
+        style={({ pressed }) => ({
           width: 38,
           height: 38,
           borderRadius: 19,
           alignItems: 'center',
           justifyContent: 'center',
           borderWidth: 1,
-          borderColor: theme.colors.borderStrong,
-          backgroundColor: theme.colors.surfaceRaised,
-        }}
+          borderColor: active === 'Account' ? theme.colors.brandPrimary : theme.colors.borderStrong,
+          backgroundColor: active === 'Account' ? theme.colors.brandSoft : theme.colors.surfaceRaised,
+          opacity: pressed ? 0.7 : 1,
+        })}
       >
-        <VadText variant="label">{initial}</VadText>
-      </Pressable>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Sign out"
-        onPress={onSignOut}
-        style={{
-          minHeight: 36,
-          justifyContent: 'center',
-          borderRadius: theme.radius.pill,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          paddingHorizontal: theme.spacing.sm,
-        }}
-      >
-        <VadText variant="caption" tone="secondary">Exit</VadText>
+        <VadText variant="label" tone={active === 'Account' ? 'brand' : 'primary'}>
+          {initial}
+        </VadText>
       </Pressable>
     </View>
   );
