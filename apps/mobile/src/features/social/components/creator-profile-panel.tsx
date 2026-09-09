@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import {
+  Pressable,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadText } from '@/components/ui/vad-text';
@@ -20,6 +24,8 @@ export function CreatorProfilePanel({
   predictions: CreatorPrediction[];
 }) {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 820;
   const [tab, setTab] = useState<CreatorTab>('signal');
 
   return (
@@ -48,40 +54,61 @@ export function CreatorProfilePanel({
         <View style={{ gap: theme.spacing.xl }}>
           <View
             style={{
-              borderRadius: theme.radius.xl,
-              backgroundColor: theme.colors.brandSoft,
-              padding: theme.spacing.xl,
-              gap: theme.spacing.sm,
+              flexDirection: wide ? 'row' : 'column',
+              alignItems: 'stretch',
+              gap: theme.spacing.md,
             }}
           >
-            <VadText variant="caption" tone="brand">
-              EVIDENCE-WEIGHTED REPUTATION
-            </VadText>
-            <VadText variant="display" tone="brand">
-              {reputation.evidenceWeightedReputation}%
-            </VadText>
-            <VadText variant="caption" tone="secondary">
-              Based on {reputation.resolvedPredictions} resolved predictions.
-            </VadText>
-          </View>
+            <View
+              style={{
+                flex: 1.1,
+                borderRadius: theme.radius.xl,
+                backgroundColor: theme.colors.brandSoft,
+                padding: theme.spacing.xl,
+                gap: theme.spacing.sm,
+              }}
+            >
+              <VadText variant="caption" tone="brand">
+                EVIDENCE-WEIGHTED REPUTATION
+              </VadText>
+              <VadText variant="display" tone="brand">
+                {reputation.evidenceWeightedReputation}%
+              </VadText>
+              <VadText variant="caption" tone="secondary">
+                Based on {reputation.resolvedPredictions} resolved predictions.
+              </VadText>
+            </View>
 
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <SignalMetric
-              label="Accuracy"
-              value={
-                reputation.accuracy == null
-                  ? '—'
-                  : pct(reputation.accuracy)
-              }
-            />
-            <SignalMetric
-              label="Calibration"
-              value={
-                reputation.calibrationScore == null
-                  ? '—'
-                  : pct(reputation.calibrationScore)
-              }
-            />
+            <View
+              style={{
+                flex: 0.9,
+                borderTopWidth: 1,
+                borderBottomWidth: 1,
+                borderColor: theme.colors.border,
+                paddingVertical: theme.spacing.md,
+                paddingHorizontal: wide ? theme.spacing.md : 0,
+                flexDirection: 'row',
+                gap: theme.spacing.xl,
+                alignItems: 'center',
+              }}
+            >
+              <SignalMetric
+                label="Accuracy"
+                value={
+                  reputation.accuracy == null
+                    ? '—'
+                    : pct(reputation.accuracy)
+                }
+              />
+              <SignalMetric
+                label="Calibration"
+                value={
+                  reputation.calibrationScore == null
+                    ? '—'
+                    : pct(reputation.calibrationScore)
+                }
+              />
+            </View>
           </View>
 
           <View
@@ -94,7 +121,10 @@ export function CreatorProfilePanel({
               label="Correct predictions"
               value={String(reputation.correctPredictions)}
             />
-            <MetricRow label="Published posts" value={String(reputation.posts)} />
+            <MetricRow
+              label="Published posts"
+              value={String(reputation.posts)}
+            />
             <MetricRow
               label="Following"
               value={String(reputation.following)}
@@ -147,12 +177,14 @@ function PredictionHistory({
             : item.correct === false
               ? 'no'
               : 'secondary';
+
         const resultLabel =
           item.resolution_status === 'FINAL'
             ? item.correct
               ? 'Correct'
               : 'Missed'
             : 'Unresolved';
+
         const stanceTone =
           item.stance_outcome_code === 'YES' ? 'yes' : 'no';
 
@@ -160,15 +192,33 @@ function PredictionHistory({
           <View
             key={item.post_public_id}
             style={{
+              minHeight: 92,
               paddingVertical: theme.spacing.md,
               gap: theme.spacing.sm,
               borderBottomWidth: 1,
               borderBottomColor: theme.colors.border,
             }}
           >
-            <VadText variant="bodyStrong" numberOfLines={2}>
-              {item.market_title}
-            </VadText>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                gap: theme.spacing.md,
+                alignItems: 'flex-start',
+              }}
+            >
+              <VadText
+                variant="bodyStrong"
+                numberOfLines={2}
+                style={{ flex: 1 }}
+              >
+                {item.market_title}
+              </VadText>
+
+              <VadText variant="caption" tone={resultTone}>
+                {resultLabel}
+              </VadText>
+            </View>
 
             <View
               style={{
@@ -199,10 +249,6 @@ function PredictionHistory({
                   Resolved {item.resolved_outcome_code}
                 </VadText>
               ) : null}
-
-              <VadText variant="caption" tone={resultTone}>
-                {resultLabel}
-              </VadText>
             </View>
 
             {item.body ? (
@@ -234,46 +280,51 @@ function Tab({
 
   return (
     <Pressable
+      accessibilityRole="tab"
+      accessibilityState={{ selected }}
       onPress={onPress}
-      style={{
+      style={({ pressed }) => ({
         flex: 1,
         minHeight: 44,
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: theme.radius.md,
         backgroundColor: selected ? theme.colors.surface : 'transparent',
-      }}
+        opacity: pressed ? 0.7 : 1,
+      })}
     >
-      <VadText variant="label" tone={selected ? 'brand' : 'secondary'}>
+      <VadText
+        variant="label"
+        tone={selected ? 'brand' : 'secondary'}
+      >
         {label}
       </VadText>
     </Pressable>
   );
 }
 
-function SignalMetric({ label, value }: { label: string; value: string }) {
-  const theme = useVadTheme();
-
+function SignalMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
-    <View
-      style={{
-        flex: 1,
-        minHeight: 82,
-        borderRadius: theme.radius.lg,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
-        padding: theme.spacing.md,
-        gap: 2,
-      }}
-    >
+    <View style={{ flex: 1, minWidth: 90, gap: 2 }}>
       <VadText variant="heading">{value}</VadText>
       <VadText variant="caption" tone="secondary">{label}</VadText>
     </View>
   );
 }
 
-function MetricRow({ label, value }: { label: string; value: string }) {
+function MetricRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   const theme = useVadTheme();
 
   return (
@@ -288,7 +339,11 @@ function MetricRow({ label, value }: { label: string; value: string }) {
         borderBottomColor: theme.colors.border,
       }}
     >
-      <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>
+      <VadText
+        variant="caption"
+        tone="secondary"
+        style={{ flex: 1 }}
+      >
         {label}
       </VadText>
       <VadText variant="bodyStrong">{value}</VadText>
