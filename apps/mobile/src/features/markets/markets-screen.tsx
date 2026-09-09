@@ -10,6 +10,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { placeOrder, quoteTrade, type MarketCatalogItem, type TradeQuote } from '@/services/market-api';
 import { MarketCard } from './components/market-card';
 import { MarketDetailHeader } from './components/market-detail-header';
+import { MarketDiscoveryControls } from './components/market-discovery-controls';
 import { money } from './format';
 
 export function MarketsScreen({ markets, initialMarket, canTrade, onSelectedChange, onReload }: { markets: MarketCatalogItem[]; initialMarket: MarketCatalogItem | null; canTrade: boolean; onSelectedChange: (market: MarketCatalogItem | null) => void; onReload: () => Promise<void> }) {
@@ -20,8 +21,18 @@ export function MarketsScreen({ markets, initialMarket, canTrade, onSelectedChan
   const [quantity, setQuantity] = useState('100');
   const [quote, setQuote] = useState<TradeQuote | null>(null);
   const [working, setWorking] = useState(false);
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('All');
   const selected = initialMarket;
-  const orderedMarkets = useMemo(() => [...markets].sort((a, b) => Number(Boolean(b.last_trade_at)) - Number(Boolean(a.last_trade_at))), [markets]);
+  const categories = useMemo(() => [...new Set(markets.map((market) => market.category).filter((value): value is string => Boolean(value)))].sort(), [markets]);
+  const orderedMarkets = useMemo(() => [...markets]
+    .filter((market) => category === 'All' || market.category === category)
+    .filter((market) => {
+      const needle = query.trim().toLowerCase();
+      if (!needle) return true;
+      return [market.title, market.category, market.asset_code, market.status].some((value) => String(value ?? '').toLowerCase().includes(needle));
+    })
+    .sort((a, b) => Number(Boolean(b.last_trade_at)) - Number(Boolean(a.last_trade_at))), [markets, category, query]);
 
   function chooseMarket(market: MarketCatalogItem) { onSelectedChange(market); setOutcome('YES'); setSide('BUY'); setPrice(String(Number(market.yes_price ?? 0.5))); setQuantity('100'); setQuote(null); }
   function chooseOutcome(next: 'YES' | 'NO') { setOutcome(next); setPrice(String(Number(next === 'YES' ? selected?.yes_price ?? 0.5 : selected?.no_price ?? 0.5))); setQuote(null); }
@@ -45,8 +56,9 @@ export function MarketsScreen({ markets, initialMarket, canTrade, onSelectedChan
   if (!selected) return <View style={{ gap: theme.spacing.md }}>
     <View style={{ gap: theme.spacing.xxs }}><VadText variant="title">Markets</VadText><VadText tone="secondary">Discover live conviction markets. Pricing, eligibility and settlement remain backend-authoritative.</VadText></View>
     <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}><Summary label="Live" value={String(markets.length)} /><Summary label="Asset" value="NGN" /><Summary label="Liquidity" value={markets.some((m) => m.last_trade_at) ? 'Active' : 'Forming'} /></View>
+    <MarketDiscoveryControls query={query} onQueryChange={setQuery} categories={categories} activeCategory={category} onCategoryChange={setCategory} />
     {orderedMarkets.map((market) => <MarketCard key={market.instrument_public_id} market={market} onPress={() => chooseMarket(market)} />)}
-    {!markets.length ? <VadEmptyState title="No live markets yet" body="Approved canonical markets will appear here automatically once governance and oracle requirements are satisfied." /> : null}
+    {!markets.length ? <VadEmptyState title="No live markets yet" body="Approved canonical markets will appear here automatically once governance and oracle requirements are satisfied." /> : orderedMarkets.length === 0 ? <VadEmptyState title="No matching markets" body="Try another search or category. Market discovery never changes the canonical market itself." /> : null}
   </View>;
 
   return <View style={{ gap: theme.spacing.md }}>
