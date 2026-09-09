@@ -45,7 +45,7 @@ export function FundingOverview() {
   if (loading) {
     return (
       <View style={{ gap: theme.spacing.md }}>
-        <VadSkeleton height={130} radius={theme.radius.xl} />
+        <VadSkeleton height={120} radius={theme.radius.xl} />
         <VadSkeleton height={72} />
         <VadSkeleton height={72} />
       </View>
@@ -59,34 +59,16 @@ export function FundingOverview() {
     .length;
 
   return (
-    <View style={{ gap: theme.spacing.xl }}>
+    <View style={{ gap: theme.spacing.xxl }}>
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
-          gap: theme.spacing.md,
-          alignItems: 'stretch',
+          gap: theme.spacing.xl,
+          alignItems: wide ? 'flex-end' : 'stretch',
         }}
       >
-        <View
-          style={{
-            flex: 1.1,
-            borderRadius: theme.radius.xl,
-            backgroundColor:
-              readyCount === 3
-                ? theme.colors.yesSoft
-                : readyCount > 0
-                  ? theme.colors.brandSoft
-                  : theme.colors.surfaceRaised,
-            padding: theme.spacing.xl,
-            gap: theme.spacing.sm,
-          }}
-        >
-          <VadText
-            variant="caption"
-            tone={readyCount === 3 ? 'yes' : 'brand'}
-          >
-            PAYMENT READINESS
-          </VadText>
+        <View style={{ flex: 1, gap: theme.spacing.xs }}>
+          <VadText variant="label" tone="brand">PAYMENT READINESS</VadText>
           <VadText variant="title">
             {readyCount === 3
               ? 'Wallet routes are ready.'
@@ -94,37 +76,55 @@ export function FundingOverview() {
                 ? 'Some wallet routes still need attention.'
                 : 'Wallet routes are not ready yet.'}
           </VadText>
-          <VadText variant="caption" tone="secondary">
-            {readyCount} of 3 readiness checks are currently available.
+          <VadText tone="secondary">
+            Readiness tells you whether the external routes are available.
+            Identity, balance, limits and capability checks still happen live
+            when you start a payment.
           </VadText>
         </View>
 
         <View
           style={{
-            flex: 0.9,
-            borderRadius: theme.radius.xl,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
-            padding: theme.spacing.lg,
-            gap: theme.spacing.md,
-            justifyContent: 'center',
+            minWidth: wide ? 260 : undefined,
+            gap: 2,
+            alignItems: wide ? 'flex-end' : 'flex-start',
           }}
         >
-          <StatusFact label="Deposit" ready={depositReady} />
-          <StatusFact label="Withdrawal" ready={withdrawalReady} />
-          <StatusFact
-            label={readiness?.kycProvider ?? 'Identity'}
-            ready={kycReady}
-          />
+          <VadText variant="caption" tone="secondary">READINESS</VadText>
+          <VadText
+            variant="display"
+            tone={readyCount === 3 ? 'yes' : readyCount ? 'brand' : 'warning'}
+          >
+            {readyCount}/3
+          </VadText>
+          <VadText variant="caption" tone="tertiary">
+            checks currently available
+          </VadText>
         </View>
       </View>
 
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderBottomWidth: 1,
+          borderColor: theme.colors.border,
+        }}
+      >
+        <StatusFact label="Deposit route" ready={depositReady} />
+        <StatusFact label="Withdrawal route" ready={withdrawalReady} />
+        <StatusFact
+          label={(readiness?.kycProvider ?? 'Identity') + ' verification'}
+          ready={kycReady}
+        />
+      </View>
+
       <View style={{ gap: theme.spacing.sm }}>
-        <VadText variant="heading">Money movement</VadText>
-        <VadText variant="caption" tone="secondary">
-          Open the dedicated flow for the action you want to perform.
-        </VadText>
+        <View style={{ gap: 2 }}>
+          <VadText variant="heading">Money movement</VadText>
+          <VadText variant="caption" tone="secondary">
+            Each action opens a dedicated reviewed flow.
+          </VadText>
+        </View>
 
         <View
           style={{
@@ -154,33 +154,22 @@ export function FundingOverview() {
             ready={kycReady}
             onPress={() => router.push('/account/verification')}
           />
+          <ReadinessRow
+            title="Payment activity"
+            detail="See deposits, withdrawals and their current state"
+            ready
+            statusLabel="OPEN"
+            onPress={() => router.push('/wallet/activity')}
+          />
         </View>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push('/wallet/activity')}
-        style={({ pressed }) => ({
-          minHeight: 64,
-          borderRadius: theme.radius.lg,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          backgroundColor: theme.colors.surface,
-          paddingHorizontal: theme.spacing.md,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.spacing.md,
-          opacity: pressed ? 0.65 : 1,
-        })}
-      >
-        <View style={{ flex: 1, gap: 2 }}>
-          <VadText variant="bodyStrong">Payment activity</VadText>
-          <VadText variant="caption" tone="secondary">
-            See deposit and withdrawal intents and their current status.
-          </VadText>
-        </View>
-        <VadText variant="heading" tone="tertiary">›</VadText>
-      </Pressable>
+      {readiness?.generatedAt ? (
+        <VadText variant="caption" tone="tertiary">
+          Readiness checked{' '}
+          {new Date(readiness.generatedAt).toLocaleString()}.
+        </VadText>
+      ) : null}
 
       <VadText variant="caption" tone="tertiary">
         Provider readiness never bypasses identity, balance, fee, limit or
@@ -202,29 +191,33 @@ function StatusFact({
   return (
     <View
       style={{
-        minHeight: 38,
+        minHeight: 58,
+        paddingVertical: theme.spacing.sm,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: theme.spacing.sm,
+        gap: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
       }}
     >
       <View
         style={{
-          width: 24,
-          height: 24,
-          borderRadius: 12,
+          width: 28,
+          height: 28,
+          borderRadius: 14,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: ready
             ? theme.colors.yesSoft
-            : theme.colors.surfaceRaised,
+            : theme.colors.warningSoft,
         }}
       >
-        <VadText variant="caption" tone={ready ? 'yes' : 'tertiary'}>
-          {ready ? '✓' : '–'}
+        <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>
+          {ready ? '✓' : '!'}
         </VadText>
       </View>
-      <VadText variant="caption" style={{ flex: 1 }}>{label}</VadText>
+
+      <VadText variant="bodyStrong" style={{ flex: 1 }}>{label}</VadText>
       <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>
         {ready ? 'READY' : 'NOT READY'}
       </VadText>
@@ -236,11 +229,13 @@ function ReadinessRow({
   title,
   detail,
   ready,
+  statusLabel,
   onPress,
 }: {
   title: string;
   detail: string;
   ready: boolean;
+  statusLabel?: string;
   onPress: () => void;
 }) {
   const theme = useVadTheme();
@@ -260,23 +255,6 @@ function ReadinessRow({
         opacity: pressed ? 0.65 : 1,
       })}
     >
-      <View
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 17,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: ready
-            ? theme.colors.yesSoft
-            : theme.colors.surfaceRaised,
-        }}
-      >
-        <VadText variant="caption" tone={ready ? 'yes' : 'tertiary'}>
-          {ready ? '✓' : '–'}
-        </VadText>
-      </View>
-
       <View style={{ flex: 1, gap: 2 }}>
         <VadText variant="bodyStrong">{title}</VadText>
         <VadText variant="caption" tone="secondary">{detail}</VadText>
@@ -284,7 +262,7 @@ function ReadinessRow({
 
       <View style={{ alignItems: 'flex-end', gap: 2 }}>
         <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>
-          {ready ? 'READY' : 'NOT READY'}
+          {statusLabel ?? (ready ? 'READY' : 'NOT READY')}
         </VadText>
         <VadText variant="caption" tone="tertiary">›</VadText>
       </View>
