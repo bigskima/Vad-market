@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import {
   Pressable,
   useWindowDimensions,
   View,
+  type DimensionValue,
 } from 'react-native';
 
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
@@ -27,6 +29,7 @@ export function PortfolioScreen({
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 860;
+  const desktopTable = width >= 980;
   const [tab, setTab] = useState<PortfolioTab>('positions');
 
   const deployed = positions.reduce(
@@ -42,6 +45,11 @@ export function PortfolioScreen({
     0,
   );
 
+  const totalShares = positions.reduce(
+    (sum, row) => sum + Number(row.quantity ?? 0),
+    0,
+  );
+
   return (
     <View style={{ gap: theme.spacing.xxxl }}>
       <View
@@ -51,17 +59,12 @@ export function PortfolioScreen({
           gap: theme.spacing.xl,
         }}
       >
-        <View
-          style={{
-            flex: 1,
-            gap: theme.spacing.xs,
-          }}
-        >
+        <View style={{ flex: 1, gap: theme.spacing.xs }}>
           <VadText variant="label" tone="brand">PORTFOLIO</VadText>
           <VadText variant="title">Your market exposure.</VadText>
           <VadText tone="secondary">
-            Positions show filled exposure. Orders show capital still waiting
-            for compatible liquidity.
+            Filled positions and waiting orders stay separate so you can tell
+            what is already exposed from what is still trying to execute.
           </VadText>
         </View>
 
@@ -89,6 +92,10 @@ export function PortfolioScreen({
         }}
       >
         <Metric label="Positions" value={String(positions.length)} />
+        <Metric
+          label="Shares held"
+          value={Number(totalShares).toLocaleString()}
+        />
         <Metric label="Open orders" value={String(orders.length)} />
         <Metric
           label="Open order notional"
@@ -97,6 +104,7 @@ export function PortfolioScreen({
       </View>
 
       <View
+        accessibilityRole="tablist"
         style={{
           flexDirection: 'row',
           borderBottomWidth: 1,
@@ -116,52 +124,298 @@ export function PortfolioScreen({
       </View>
 
       {tab === 'positions' ? (
-        <View
-          style={{
-            borderTopWidth: positions.length ? 1 : 0,
-            borderTopColor: theme.colors.border,
-          }}
-        >
-          {positions.length ? (
-            positions.map((position) => (
-              <PositionRowView
-                key={
-                  position.instrument_id + '-' + position.outcome_code
-                }
-                position={position}
-                onPress={() => onOpenPosition(position)}
-              />
-            ))
-          ) : (
-            <VadEmptyState
-              title="No positions yet"
-              body="When an order fills, your YES or NO holdings will appear here."
+        positions.length ? (
+          desktopTable ? (
+            <DesktopPositions
+              positions={positions}
+              onOpenPosition={onOpenPosition}
             />
-          )}
-        </View>
-      ) : (
-        <View
-          style={{
-            borderTopWidth: orders.length ? 1 : 0,
-            borderTopColor: theme.colors.border,
-          }}
-        >
-          {orders.length ? (
-            orders.map((order) => (
+          ) : (
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: theme.colors.border,
+              }}
+            >
+              {positions.map((position) => (
+                <PositionRowView
+                  key={
+                    position.instrument_id + '-' + position.outcome_code
+                  }
+                  position={position}
+                  onPress={() => onOpenPosition(position)}
+                />
+              ))}
+            </View>
+          )
+        ) : (
+          <VadEmptyState
+            title="No positions yet"
+            body="When an order fills, your YES or NO holdings will appear here."
+          />
+        )
+      ) : orders.length ? (
+        desktopTable ? (
+          <DesktopOrders
+            orders={orders}
+            onOpenOrder={onOpenOrder}
+          />
+        ) : (
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+            }}
+          >
+            {orders.map((order) => (
               <OrderRowView
                 key={order.order_id}
                 order={order}
                 onPress={() => onOpenOrder(order)}
               />
-            ))
-          ) : (
-            <VadEmptyState
-              title="No open orders"
-              body="Orders waiting for compatible liquidity will appear here."
-            />
-          )}
-        </View>
+            ))}
+          </View>
+        )
+      ) : (
+        <VadEmptyState
+          title="No open orders"
+          body="Orders waiting for compatible liquidity will appear here."
+        />
       )}
+    </View>
+  );
+}
+
+function DesktopPositions({
+  positions,
+  onOpenPosition,
+}: {
+  positions: PositionRow[];
+  onOpenPosition: (position: PositionRow) => void;
+}) {
+  const theme = useVadTheme();
+
+  return (
+    <View
+      style={{
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: theme.colors.border,
+      }}
+    >
+      <TableHeader
+        cells={[
+          ['Market', 2.4],
+          ['Outcome', 0.7],
+          ['Shares', 0.8],
+          ['Average', 0.8],
+          ['Cost basis', 1],
+          ['Status', 0.8],
+        ]}
+      />
+
+      {positions.map((position) => {
+        const yes = position.outcome_code === 'YES';
+
+        return (
+          <Pressable
+            key={position.instrument_id + '-' + position.outcome_code}
+            accessibilityRole="button"
+            onPress={() => onOpenPosition(position)}
+            style={({ pressed }) => ({
+              minHeight: 64,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.spacing.md,
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+              opacity: pressed ? 0.65 : 1,
+            })}
+          >
+            <Cell flex={2.4}>
+              <VadText variant="bodyStrong" numberOfLines={2}>
+                {position.market_title}
+              </VadText>
+            </Cell>
+            <Cell flex={0.7}>
+              <VadText variant="label" tone={yes ? 'yes' : 'no'}>
+                {position.outcome_code}
+              </VadText>
+            </Cell>
+            <Cell flex={0.8}>
+              <VadText variant="bodyStrong">
+                {Number(position.quantity).toLocaleString()}
+              </VadText>
+            </Cell>
+            <Cell flex={0.8}>
+              <VadText variant="bodyStrong">
+                {pct(position.average_price)}
+              </VadText>
+            </Cell>
+            <Cell flex={1}>
+              <VadText variant="bodyStrong">
+                {money(position.total_cost_basis)}
+              </VadText>
+            </Cell>
+            <Cell flex={0.8}>
+              <VadText variant="caption" tone="secondary">
+                {position.status}
+              </VadText>
+            </Cell>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function DesktopOrders({
+  orders,
+  onOpenOrder,
+}: {
+  orders: OrderRow[];
+  onOpenOrder: (order: OrderRow) => void;
+}) {
+  const theme = useVadTheme();
+
+  return (
+    <View
+      style={{
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: theme.colors.border,
+      }}
+    >
+      <TableHeader
+        cells={[
+          ['Order', 1.2],
+          ['Limit', 0.8],
+          ['Quantity', 0.8],
+          ['Remaining', 0.9],
+          ['Filled', 1.2],
+          ['Status', 0.8],
+          ['Created', 1],
+        ]}
+      />
+
+      {orders.map((order) => {
+        const fillRatio =
+          Number(order.quantity) > 0
+            ? Number(order.filled_quantity) / Number(order.quantity)
+            : 0;
+        const fillPercent = Math.max(0, Math.min(1, fillRatio));
+
+        return (
+          <Pressable
+            key={order.order_id}
+            accessibilityRole="button"
+            onPress={() => onOpenOrder(order)}
+            style={({ pressed }) => ({
+              minHeight: 68,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.spacing.md,
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+              opacity: pressed ? 0.65 : 1,
+            })}
+          >
+            <Cell flex={1.2}>
+              <VadText variant="bodyStrong">{order.side}</VadText>
+              <VadText variant="caption" tone="tertiary">
+                #{String(order.order_id).slice(0, 8)}
+              </VadText>
+            </Cell>
+            <Cell flex={0.8}>
+              <VadText variant="bodyStrong">{money(order.limit_price)}</VadText>
+            </Cell>
+            <Cell flex={0.8}>
+              <VadText variant="bodyStrong">
+                {Number(order.quantity).toLocaleString()}
+              </VadText>
+            </Cell>
+            <Cell flex={0.9}>
+              <VadText variant="bodyStrong">
+                {Number(order.remaining_quantity).toLocaleString()}
+              </VadText>
+            </Cell>
+            <Cell flex={1.2}>
+              <View style={{ gap: theme.spacing.xs }}>
+                <VadText variant="caption" tone="secondary">
+                  {pct(fillPercent)}
+                </VadText>
+                <View
+                  style={{
+                    height: 4,
+                    borderRadius: theme.radius.pill,
+                    backgroundColor: theme.colors.surfaceMuted,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: (Math.round(fillPercent * 100) + '%') as DimensionValue,
+                      height: '100%',
+                      backgroundColor: theme.colors.brandPrimary,
+                    }}
+                  />
+                </View>
+              </View>
+            </Cell>
+            <Cell flex={0.8}>
+              <VadText variant="caption" tone="secondary">
+                {order.status}
+              </VadText>
+            </Cell>
+            <Cell flex={1}>
+              <VadText variant="caption" tone="secondary">
+                {new Date(order.created_at).toLocaleDateString()}
+              </VadText>
+            </Cell>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function TableHeader({
+  cells,
+}: {
+  cells: [string, number][];
+}) {
+  const theme = useVadTheme();
+
+  return (
+    <View
+      style={{
+        minHeight: 42,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+      }}
+    >
+      {cells.map(([label, flex]) => (
+        <Cell key={label} flex={flex}>
+          <VadText variant="caption" tone="tertiary">
+            {label.toUpperCase()}
+          </VadText>
+        </Cell>
+      ))}
+    </View>
+  );
+}
+
+function Cell({
+  flex,
+  children,
+}: {
+  flex: number;
+  children: ReactNode;
+}) {
+  return (
+    <View style={{ flex, minWidth: 0 }}>
+      {children}
     </View>
   );
 }
@@ -355,7 +609,7 @@ function OrderRowView({
       >
         <View
           style={{
-            width: `${Math.round(fillPercent * 100)}%` as `${number}%`,
+            width: (Math.round(fillPercent * 100) + '%') as DimensionValue,
             height: '100%',
             backgroundColor: theme.colors.brandPrimary,
           }}
