@@ -4,6 +4,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { pct } from '../format';
+import { MarketProbabilityBar } from './market-probability-bar';
 
 export function MarketCard({
   market,
@@ -13,7 +14,9 @@ export function MarketCard({
   onPress: () => void;
 }) {
   const theme = useVadTheme();
-  const isOpen = market.status === 'OPEN' || market.status === 'ACTIVE';
+  const isOpen =
+    market.status === 'OPEN' || market.status === 'ACTIVE';
+
   const closesLabel = market.closes_at
     ? new Date(market.closes_at).toLocaleDateString(undefined, {
         month: 'short',
@@ -26,7 +29,7 @@ export function MarketCard({
       onPress={onPress}
       accessibilityRole="button"
       style={({ pressed }) => ({
-        minHeight: 220,
+        minHeight: 196,
         borderWidth: 1,
         borderColor: theme.colors.border,
         borderRadius: theme.radius.xl,
@@ -34,7 +37,7 @@ export function MarketCard({
         padding: theme.spacing.md,
         gap: theme.spacing.md,
         justifyContent: 'space-between',
-        opacity: pressed ? 0.78 : 1,
+        opacity: pressed ? 0.74 : 1,
       })}
     >
       <View style={{ gap: theme.spacing.md }}>
@@ -72,6 +75,7 @@ export function MarketCard({
               {isOpen ? 'LIVE' : market.status}
             </VadText>
           </View>
+
           <VadText variant="caption" tone="tertiary">
             {closesLabel}
           </VadText>
@@ -81,13 +85,24 @@ export function MarketCard({
           {market.title}
         </VadText>
 
-        <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
-          <Outcome
+        <MarketProbabilityBar
+          yes={market.yes_price}
+          no={market.no_price}
+        />
+
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            gap: theme.spacing.lg,
+          }}
+        >
+          <Price
             label="YES"
             value={pct(market.yes_price)}
             positive
           />
-          <Outcome
+          <Price
             label="NO"
             value={pct(market.no_price)}
             positive={false}
@@ -115,7 +130,7 @@ export function MarketCard({
   );
 }
 
-function Outcome({
+function Price({
   label,
   value,
   positive,
@@ -124,20 +139,24 @@ function Outcome({
   value: string;
   positive: boolean;
 }) {
-  const theme = useVadTheme();
-
   return (
     <View
       style={{
-        flex: 1,
-        borderRadius: theme.radius.lg,
-        backgroundColor: positive ? theme.colors.yesSoft : theme.colors.noSoft,
-        paddingHorizontal: theme.spacing.sm,
-        paddingVertical: theme.spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: 6,
       }}
     >
-      <VadText variant="caption" tone="secondary">{label}</VadText>
-      <VadText variant="heading" tone={positive ? 'yes' : 'no'}>
+      <VadText
+        variant="caption"
+        tone={positive ? 'yes' : 'no'}
+      >
+        {label}
+      </VadText>
+      <VadText
+        variant="bodyStrong"
+        tone={positive ? 'yes' : 'no'}
+      >
         {value}
       </VadText>
     </View>
