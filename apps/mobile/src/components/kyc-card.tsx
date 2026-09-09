@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -28,12 +29,19 @@ export function KycCard() {
   });
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
+
     try {
       setStatus(await getMyKycStatus());
-    } catch {
-      // Keep the safe default state when the status endpoint is unavailable.
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Verification status could not be loaded.',
+      );
     } finally {
       setLoading(false);
     }
@@ -78,6 +86,19 @@ export function KycCard() {
         <VadSkeleton height={72} />
         <VadSkeleton height={72} />
       </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <VadErrorState
+        title="Verification status unavailable"
+        message={error}
+        onRetry={() => {
+          setLoading(true);
+          void load();
+        }}
+      />
     );
   }
 
