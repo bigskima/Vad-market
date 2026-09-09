@@ -35,11 +35,13 @@ export function ConvictionPostCard({
   const theme = useVadTheme();
   const authorName =
     post.author_display_name ?? post.author_handle ?? 'VAD creator';
+
   const stance =
     post.stance_outcome_code === 'YES' ||
     post.stance_outcome_code === 'NO'
       ? post.stance_outcome_code
       : null;
+
   const postType = post.post_type.replaceAll('_', ' ');
 
   return (
@@ -58,7 +60,11 @@ export function ConvictionPostCard({
           gap: theme.spacing.sm,
         }}
       >
-        <Pressable onPress={onOpenCreator}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={'Open ' + authorName + ' profile'}
+          onPress={onOpenCreator}
+        >
           <ProfileAvatar
             path={post.author_avatar_path}
             name={authorName}
@@ -67,6 +73,7 @@ export function ConvictionPostCard({
         </Pressable>
 
         <Pressable
+          accessibilityRole="button"
           onPress={onOpenCreator}
           style={{ flex: 1, gap: 2 }}
         >
@@ -96,20 +103,17 @@ export function ConvictionPostCard({
         </Pressable>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityState={{
+            selected: post.viewer_follows_author,
+          }}
           onPress={onFollow}
+          hitSlop={8}
           style={({ pressed }) => ({
             minHeight: 34,
             justifyContent: 'center',
-            borderRadius: theme.radius.pill,
-            borderWidth: 1,
-            borderColor: post.viewer_follows_author
-              ? theme.colors.border
-              : theme.colors.brandPrimary,
-            backgroundColor: post.viewer_follows_author
-              ? 'transparent'
-              : theme.colors.brandSoft,
-            paddingHorizontal: theme.spacing.sm,
-            opacity: pressed ? 0.65 : 1,
+            paddingHorizontal: theme.spacing.xs,
+            opacity: pressed ? 0.6 : 1,
           })}
         >
           <VadText
@@ -125,6 +129,7 @@ export function ConvictionPostCard({
         <VadText style={{ fontSize: 16, lineHeight: 24 }}>
           {post.body}
         </VadText>
+
         {post.confidence != null ? (
           <VadText variant="caption" tone="secondary">
             Confidence {pct(post.confidence)}
@@ -134,16 +139,24 @@ export function ConvictionPostCard({
 
       {post.market_title ? (
         <Pressable
+          accessibilityRole={linkedMarket ? 'button' : undefined}
+          accessibilityLabel={
+            linkedMarket ? 'Open linked market' : undefined
+          }
           onPress={onOpenMarket}
           disabled={!linkedMarket}
           style={({ pressed }) => ({
-            borderRadius: theme.radius.lg,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
+            borderLeftWidth: 3,
+            borderLeftColor: stance === 'NO'
+              ? theme.colors.no
+              : stance === 'YES'
+                ? theme.colors.yes
+                : theme.colors.brandPrimary,
             backgroundColor: theme.colors.surfaceRaised,
-            padding: theme.spacing.md,
+            paddingVertical: theme.spacing.md,
+            paddingHorizontal: theme.spacing.md,
             gap: theme.spacing.sm,
-            opacity: pressed && linkedMarket ? 0.75 : 1,
+            opacity: pressed && linkedMarket ? 0.72 : 1,
           })}
         >
           <View
@@ -164,28 +177,19 @@ export function ConvictionPostCard({
             </View>
 
             {stance ? (
-              <View
-                style={{
-                  borderRadius: theme.radius.pill,
-                  backgroundColor:
-                    stance === 'YES'
-                      ? theme.colors.yesSoft
-                      : theme.colors.noSoft,
-                  paddingHorizontal: theme.spacing.sm,
-                  paddingVertical: theme.spacing.xs,
-                }}
+              <VadText
+                variant="label"
+                tone={stance === 'YES' ? 'yes' : 'no'}
               >
-                <VadText
-                  variant="label"
-                  tone={stance === 'YES' ? 'yes' : 'no'}
-                >
-                  {stance}
-                </VadText>
-              </View>
+                {stance}
+              </VadText>
             ) : null}
           </View>
 
-          <MarketProbabilityBar yes={post.yes_price} no={post.no_price} />
+          <MarketProbabilityBar
+            yes={post.yes_price}
+            no={post.no_price}
+          />
 
           <View
             style={{
@@ -208,7 +212,7 @@ export function ConvictionPostCard({
       <View
         style={{
           flexDirection: 'row',
-          gap: theme.spacing.lg,
+          gap: theme.spacing.xl,
           alignItems: 'center',
         }}
       >
@@ -246,6 +250,8 @@ function Action({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       hitSlop={8}
       style={({ pressed }) => ({
@@ -262,7 +268,10 @@ function Action({
       >
         {label}
       </VadText>
-      <VadText variant="caption" tone={active ? 'brand' : 'tertiary'}>
+      <VadText
+        variant="caption"
+        tone={active ? 'brand' : 'tertiary'}
+      >
         {count}
       </VadText>
     </Pressable>

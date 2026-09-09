@@ -1,5 +1,10 @@
 import { router } from 'expo-router';
-import { Pressable, useWindowDimensions, View } from 'react-native';
+import type { ReactNode } from 'react';
+import {
+  Pressable,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadText } from '@/components/ui/vad-text';
@@ -32,16 +37,22 @@ export default function AccountScreen() {
       >
         <View
           style={{
-            width: wide ? '34%' : '100%',
+            width: wide ? '32%' : '100%',
             gap: theme.spacing.xl,
           }}
         >
-          <View style={{ gap: theme.spacing.lg }}>
+          <View
+            style={{
+              flexDirection: wide ? 'column' : 'row',
+              alignItems: wide ? 'flex-start' : 'center',
+              gap: theme.spacing.md,
+            }}
+          >
             <View
               style={{
-                width: 76,
-                height: 76,
-                borderRadius: 38,
+                width: 62,
+                height: 62,
+                borderRadius: 31,
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: theme.colors.brandSoft,
@@ -49,27 +60,34 @@ export default function AccountScreen() {
                 borderColor: theme.colors.borderStrong,
               }}
             >
-              <VadText variant="title" tone="brand">{initial}</VadText>
+              <VadText variant="heading" tone="brand">{initial}</VadText>
             </View>
 
-            <View style={{ gap: theme.spacing.xxs }}>
+            <View style={{ flex: 1, gap: theme.spacing.xxs }}>
               <VadText variant="label" tone="brand">ACCOUNT</VadText>
               <VadText variant="title">Your VAD identity.</VadText>
-              <VadText tone="secondary">{email}</VadText>
+              <VadText
+                variant="caption"
+                tone="secondary"
+                numberOfLines={2}
+              >
+                {email}
+              </VadText>
             </View>
           </View>
 
           <View
             style={{
               borderTopWidth: 1,
-              borderTopColor: theme.colors.border,
-              paddingTop: theme.spacing.md,
+              borderBottomWidth: wide ? 0 : 1,
+              borderColor: theme.colors.border,
+              paddingVertical: theme.spacing.md,
               gap: theme.spacing.md,
             }}
           >
             <VadText variant="caption" tone="tertiary">
-              Trading, wallet access and money movement remain governed by
-              live account, jurisdiction and verification policy.
+              Trading and money movement remain governed by live account,
+              jurisdiction and verification policy.
             </VadText>
 
             <VadButton
@@ -81,24 +99,16 @@ export default function AccountScreen() {
           </View>
         </View>
 
-        <View style={{ flex: 1, width: wide ? undefined : '100%' }}>
-          <View
-            style={{
-              marginBottom: theme.spacing.sm,
-              gap: theme.spacing.xxs,
-            }}
-          >
-            <VadText variant="heading">Settings</VadText>
-            <VadText variant="caption" tone="secondary">
-              Manage identity, verification, money movement and appearance.
-            </VadText>
-          </View>
-
-          <View
-            style={{
-              borderTopWidth: 1,
-              borderTopColor: theme.colors.border,
-            }}
+        <View
+          style={{
+            flex: 1,
+            width: wide ? undefined : '100%',
+            gap: theme.spacing.xl,
+          }}
+        >
+          <SettingGroup
+            title="Identity"
+            subtitle="How you appear publicly and how VAD verifies your account."
           >
             <AccountRow
               title="Profile"
@@ -110,6 +120,12 @@ export default function AccountScreen() {
               subtitle="KYC status and verification provider"
               onPress={() => router.push('/account/verification')}
             />
+          </SettingGroup>
+
+          <SettingGroup
+            title="Money & experience"
+            subtitle="Funding controls and how VAD appears on this device."
+          >
             <AccountRow
               title="Funding & withdrawals"
               subtitle="Payment readiness, limits, fees and activity"
@@ -120,10 +136,40 @@ export default function AccountScreen() {
               subtitle={appearance}
               onPress={() => router.push('/account/appearance')}
             />
-          </View>
+          </SettingGroup>
         </View>
       </View>
     </ProductRoute>
+  );
+}
+
+function SettingGroup({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+}) {
+  const theme = useVadTheme();
+
+  return (
+    <View style={{ gap: theme.spacing.sm }}>
+      <View style={{ gap: 2 }}>
+        <VadText variant="heading">{title}</VadText>
+        <VadText variant="caption" tone="secondary">{subtitle}</VadText>
+      </View>
+
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+        }}
+      >
+        {children}
+      </View>
+    </View>
   );
 }
 
@@ -143,7 +189,7 @@ function AccountRow({
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 78,
+        minHeight: 76,
         paddingVertical: theme.spacing.md,
         flexDirection: 'row',
         alignItems: 'center',

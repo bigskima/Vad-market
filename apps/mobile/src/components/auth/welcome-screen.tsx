@@ -1,4 +1,8 @@
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import {
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
@@ -16,18 +20,22 @@ export function WelcomeScreen({ onContinue }: Props) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 820;
+  const compact = width < 380;
 
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: theme.colors.background }}
     >
       <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           flexGrow: 1,
           alignSelf: 'center',
           width: '100%',
           maxWidth: 1080,
-          paddingHorizontal: theme.spacing.lg,
+          paddingHorizontal: compact
+            ? theme.spacing.md
+            : theme.spacing.lg,
           paddingVertical: theme.spacing.xxl,
           gap: theme.spacing.xxxl,
         }}
@@ -39,7 +47,7 @@ export function WelcomeScreen({ onContinue }: Props) {
             gap: theme.spacing.sm,
           }}
         >
-          <VadLogo size={46} />
+          <VadLogo size={44} />
           <View>
             <VadText variant="heading">VAD</VadText>
             <VadText variant="caption" tone="secondary">
@@ -60,33 +68,27 @@ export function WelcomeScreen({ onContinue }: Props) {
           <View
             style={{
               flex: wide ? 1.1 : undefined,
-              gap: theme.spacing.lg,
+              gap: theme.spacing.xl,
             }}
           >
-            <View
-              style={{
-                alignSelf: 'flex-start',
-                borderRadius: theme.radius.pill,
-                backgroundColor: theme.colors.brandSoft,
-                paddingHorizontal: theme.spacing.sm,
-                paddingVertical: theme.spacing.xs,
-              }}
-            >
-              <VadText variant="caption" tone="brand">
+            <View style={{ gap: theme.spacing.md }}>
+              <VadText variant="label" tone="brand">
                 CONVICTION MARKET
               </VadText>
-            </View>
-
-            <View style={{ gap: theme.spacing.md }}>
               <VadText variant="display">Back what you believe.</VadText>
               <VadText tone="secondary">
                 Explore live market probabilities, inspect the rules behind
-                every market and take a position with transparent resolution.
+                every question and take a position only when your conviction is
+                stronger than the crowd.
               </VadText>
             </View>
 
             <View
               style={{
+                borderTopWidth: 1,
+                borderBottomWidth: 1,
+                borderColor: theme.colors.border,
+                paddingVertical: theme.spacing.md,
                 flexDirection: 'row',
                 gap: theme.spacing.xl,
                 flexWrap: 'wrap',
@@ -102,7 +104,6 @@ export function WelcomeScreen({ onContinue }: Props) {
                 style={{
                   maxWidth: 420,
                   gap: theme.spacing.sm,
-                  marginTop: theme.spacing.md,
                 }}
               >
                 <VadButton
@@ -124,7 +125,7 @@ export function WelcomeScreen({ onContinue }: Props) {
               borderRadius: theme.radius.xl,
               backgroundColor: theme.colors.brandPrimary,
               padding: theme.spacing.xl,
-              gap: theme.spacing.xl,
+              gap: theme.spacing.lg,
             }}
           >
             <View
@@ -148,7 +149,7 @@ export function WelcomeScreen({ onContinue }: Props) {
 
             <View
               style={{
-                height: 10,
+                height: 8,
                 borderRadius: theme.radius.pill,
                 overflow: 'hidden',
                 backgroundColor: theme.colors.brandStrong,
@@ -166,7 +167,7 @@ export function WelcomeScreen({ onContinue }: Props) {
             <View
               style={{
                 flexDirection: 'row',
-                gap: theme.spacing.lg,
+                gap: theme.spacing.xl,
                 flexWrap: 'wrap',
               }}
             >
@@ -175,8 +176,8 @@ export function WelcomeScreen({ onContinue }: Props) {
             </View>
 
             <VadText variant="caption" tone="inverse">
-              Market price reflects participant conviction. Final settlement
-              follows the independent resolution process.
+              Price shows participant conviction. Final settlement still follows
+              the independent resolution process.
             </VadText>
           </View>
         </View>
@@ -201,7 +202,7 @@ export function WelcomeScreen({ onContinue }: Props) {
           style={{ textAlign: wide ? 'left' : 'center' }}
         >
           Market access and money movement remain subject to live
-          jurisdiction, KYC and platform policy.
+          jurisdiction, identity and platform policy.
         </VadText>
       </ScrollView>
     </SafeAreaView>
