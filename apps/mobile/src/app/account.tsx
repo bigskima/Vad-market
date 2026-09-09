@@ -7,6 +7,7 @@ import { PaymentReadinessCard } from '@/components/payment-readiness-card';
 import { ProfileEditorCard } from '@/components/profile/profile-editor-card';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadScreen } from '@/components/ui/vad-screen';
+import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -24,11 +25,13 @@ export default function AccountOperationsScreen() {
       <Pressable onPress={() => router.push('/admin')}><VadText variant="label" tone="brand">Admin</VadText></Pressable>
     </View>
     <VadScreen contentStyle={{ paddingTop: theme.spacing.xl }}>
+      <VadSectionHeader eyebrow="PROFILE" title="Your public identity" body="Your name, handle and profile media are reused across creator pages, conviction posts and comments." />
       <ProfileEditorCard />
-      <VadText variant="label" tone="brand">IDENTITY · FUNDING · WITHDRAWALS</VadText>
-      <VadText variant="title">Your VAD account operations.</VadText>
-      <VadText tone="secondary">Verification and money movement stay governed by live backend capability, KYC and provider policies.</VadText>
+
+      <VadSectionHeader eyebrow="TRUST" title="Identity and verification" body="Verification level and capability are controlled by live compliance policy, not by the profile form." />
       <KycCard />
+
+      <VadSectionHeader eyebrow="MONEY" title="Funding and withdrawals" body="Money movement remains governed by provider readiness, KYC, limits and ledger state." />
       <PaymentReadinessCard />
       <VadCard variant="outlined" style={{ gap: theme.spacing.xs }}><VadText variant="bodyStrong">Payment provider not selected yet</VadText><VadText tone="secondary">VAD will not send money to an external provider until a configured Nigeria/NGN route has passed provider governance. Your ledger remains the financial source of truth.</VadText></VadCard>
     </VadScreen>
