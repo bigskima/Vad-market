@@ -13,7 +13,7 @@ export default function WalletActivityRoute() {
   };
 
   return (
-    <ProductSubpage title="Wallet activity">
+    <ProductSubpage title="Wallet activity" maxWidth={900}>
       <WalletActivityScreen onOpenTransaction={openTransaction} />
     </ProductSubpage>
   );
