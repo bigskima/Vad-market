@@ -3,11 +3,13 @@ import { View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import { listMarkets, type MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
+import { MarketInsightPanel } from './components/market-insight-panel';
 
 export function MarketDetailScreen({ instrumentPublicId }: { instrumentPublicId: string }) {
   const theme = useVadTheme();
@@ -26,15 +28,27 @@ export function MarketDetailScreen({ instrumentPublicId }: { instrumentPublicId:
 
   useEffect(() => { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); }, [load]);
 
-  if (loading) return <View style={{ gap: theme.spacing.sm }}><VadSkeleton height={40} width="75%" /><VadSkeleton height={180} /><VadSkeleton height={100} /></View>;
+  if (loading) return <View style={{ gap: theme.spacing.sm }}><VadSkeleton height={40} width="75%" /><VadSkeleton height={180} /><VadSkeleton height={150} /><VadSkeleton height={120} /></View>;
   if (error || !market) return <VadErrorState title="Market unavailable" message={error ?? 'This market is not currently in the live catalog.'} onRetry={() => void load()} />;
 
-  return <View style={{ gap: theme.spacing.lg }}>
+  return <View style={{ gap: theme.spacing.xl }}>
     <MarketDetailHeader market={market} />
-    <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
-      <VadText variant="heading">How this market works</VadText>
-      <VadText tone="secondary">Prices express participant conviction. Final truth comes from the configured oracle and governance process, not the creator, AI, or current market price.</VadText>
-      <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}><Meta label="Asset" value={market.asset_code} /><Meta label="Status" value={market.status} /></View>
+    <MarketInsightPanel market={market} />
+
+    <View style={{ gap: theme.spacing.sm }}>
+      <VadText variant="label" tone="brand">RESOLUTION</VadText>
+      <VadSectionHeader title="Rules before position" subtitle="Understand how the outcome is determined before you commit capital." />
+      <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
+        <VadText variant="bodyStrong">Truth is independent from price.</VadText>
+        <VadText tone="secondary">Current prices represent participant conviction only. Final truth comes from the configured oracle policy, evidence and governance process—not the creator, AI, or the winning side of the order book.</VadText>
+        <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}><Meta label="Asset" value={market.asset_code} /><Meta label="State" value={market.status} /></View>
+      </VadCard>
+    </View>
+
+    <VadCard variant="outlined" style={{ gap: theme.spacing.xs }}>
+      <VadText variant="label" tone="brand">TRADING SAFETY</VadText>
+      <VadText variant="bodyStrong">Orders stay server-authoritative.</VadText>
+      <VadText tone="secondary">The trading flow validates price, quantity, balance, reservations and market status on the backend before an order can become live.</VadText>
     </VadCard>
   </View>;
 }
