@@ -25,13 +25,16 @@ export default function AccountOperationsScreen() {
       <Pressable onPress={() => router.push('/admin')}><VadText variant="label" tone="brand">Admin</VadText></Pressable>
     </View>
     <VadScreen contentStyle={{ paddingTop: theme.spacing.xl }}>
-      <VadSectionHeader eyebrow="PROFILE" title="Your public identity" body="Your name, handle and profile media are reused across creator pages, conviction posts and comments." />
+      <VadText variant="label" tone="brand">PROFILE</VadText>
+      <VadSectionHeader title="Your public identity" subtitle="Your name, handle and profile media are reused across creator pages, conviction posts and comments." />
       <ProfileEditorCard />
 
-      <VadSectionHeader eyebrow="TRUST" title="Identity and verification" body="Verification level and capability are controlled by live compliance policy, not by the profile form." />
+      <VadText variant="label" tone="brand">TRUST</VadText>
+      <VadSectionHeader title="Identity and verification" subtitle="Verification level and capability are controlled by live compliance policy, not by the profile form." />
       <KycCard />
 
-      <VadSectionHeader eyebrow="MONEY" title="Funding and withdrawals" body="Money movement remains governed by provider readiness, KYC, limits and ledger state." />
+      <VadText variant="label" tone="brand">MONEY</VadText>
+      <VadSectionHeader title="Funding and withdrawals" subtitle="Money movement remains governed by provider readiness, KYC, limits and ledger state." />
       <PaymentReadinessCard />
       <VadCard variant="outlined" style={{ gap: theme.spacing.xs }}><VadText variant="bodyStrong">Payment provider not selected yet</VadText><VadText tone="secondary">VAD will not send money to an external provider until a configured Nigeria/NGN route has passed provider governance. Your ledger remains the financial source of truth.</VadText></VadCard>
     </VadScreen>
