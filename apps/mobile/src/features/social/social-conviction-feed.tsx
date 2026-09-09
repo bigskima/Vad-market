@@ -51,6 +51,8 @@ export function SocialConvictionFeed({
   const [working, setWorking] = useState(false);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
   const [comments, setComments] = useState<PostComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
   const [commentBody, setCommentBody] = useState('');
 
   const load = useCallback(async () => {
@@ -207,15 +209,20 @@ export function SocialConvictionFeed({
   }
 
   async function openComments(post: ConvictionPost) {
+    setCommentsPostId(post.post_public_id);
+    setComments([]);
+    setCommentBody('');
+    setCommentsError(null);
+    setCommentsLoading(true);
+
     try {
       setComments(await getPostComments(post.post_public_id));
-      setCommentsPostId(post.post_public_id);
-      setCommentBody('');
     } catch (error) {
-      Alert.alert(
-        'Comments unavailable',
+      setCommentsError(
         error instanceof Error ? error.message : 'Please try again.',
       );
+    } finally {
+      setCommentsLoading(false);
     }
   }
 
@@ -383,6 +390,8 @@ export function SocialConvictionFeed({
         onClose={() => {
           setCommentsPostId(null);
           setComments([]);
+          setCommentsError(null);
+          setCommentsLoading(false);
           setCommentBody('');
         }}
       >
@@ -391,7 +400,19 @@ export function SocialConvictionFeed({
           contentContainerStyle={{ gap: theme.spacing.sm }}
           keyboardShouldPersistTaps="handled"
         >
-          {comments.length ? (
+          {commentsLoading ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <VadSkeleton height={58} />
+              <VadSkeleton height={58} />
+              <VadSkeleton height={58} />
+            </View>
+          ) : commentsError ? (
+            <VadErrorState
+              title="Discussion unavailable"
+              message={commentsError}
+              onRetry={() => commentsPost && void openComments(commentsPost)}
+            />
+          ) : comments.length ? (
             comments.map((comment) => {
               const authorName =
                 comment.author_display_name ??
@@ -438,7 +459,7 @@ export function SocialConvictionFeed({
             </VadText>
           )}
 
-          {commentsPost ? (
+          {commentsPost && !commentsLoading && !commentsError ? (
             <View style={{ gap: theme.spacing.xs }}>
               <VadInput
                 value={commentBody}
