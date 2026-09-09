@@ -2,8 +2,6 @@ import { useState } from 'react';
 import {
   TextInput,
   View,
-  type NativeSyntheticEvent,
-  type TextInputFocusEventData,
   type TextInputProps,
 } from 'react-native';
 
@@ -32,20 +30,6 @@ export function VadInput({
   const theme = useVadTheme();
   const [focused, setFocused] = useState(false);
 
-  function handleFocus(
-    event: NativeSyntheticEvent<TextInputFocusEventData>,
-  ) {
-    setFocused(true);
-    onFocus?.(event);
-  }
-
-  function handleBlur(
-    event: NativeSyntheticEvent<TextInputFocusEventData>,
-  ) {
-    setFocused(false);
-    onBlur?.(event);
-  }
-
   const borderColor = error
     ? theme.colors.danger
     : focused
@@ -67,8 +51,14 @@ export function VadInput({
         {...props}
         editable={editable}
         multiline={multiline}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
+        onFocus={(event) => {
+          setFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          onBlur?.(event);
+        }}
         accessibilityLabel={accessibilityLabel ?? label}
         accessibilityHint={accessibilityHint ?? error ?? hint}
         placeholderTextColor={theme.colors.textTertiary}

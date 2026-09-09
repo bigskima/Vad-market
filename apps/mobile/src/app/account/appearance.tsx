@@ -46,7 +46,7 @@ export default function AppearanceScreen() {
         <VadText variant="label" tone="brand">APPEARANCE</VadText>
         <VadText variant="title">Choose how VAD feels on this device.</VadText>
         <VadText tone="secondary">
-          System follows your device automatically. Light and Dark stay fixed
+          System follows your device automatically. Light and Dark remain fixed
           until you change them.
         </VadText>
       </View>
@@ -55,161 +55,176 @@ export default function AppearanceScreen() {
         style={{
           flexDirection: wide ? 'row' : 'column',
           alignItems: 'flex-start',
-          gap: wide ? theme.spacing.xxl : theme.spacing.lg,
+          gap: wide ? theme.spacing.xxxl : theme.spacing.xl,
         }}
       >
-        <View style={{ flex: 1, width: '100%', gap: theme.spacing.sm }}>
-          {options.map((option) => {
-            const selected = theme.preference === option.value;
+        <View style={{ flex: 1, width: '100%' }}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+            }}
+          >
+            {options.map((option) => {
+              const selected = theme.preference === option.value;
 
-            return (
-              <Pressable
-                key={option.value}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                onPress={() => theme.setPreference(option.value)}
-                style={({ pressed }) => ({
-                  minHeight: 78,
-                  borderBottomWidth: 1,
-                  borderBottomColor: theme.colors.border,
-                  paddingVertical: theme.spacing.sm,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: theme.spacing.md,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <View
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 21,
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  onPress={() => theme.setPreference(option.value)}
+                  style={({ pressed }) => ({
+                    minHeight: 82,
+                    borderBottomWidth: 1,
+                    borderBottomColor: theme.colors.border,
+                    paddingVertical: theme.spacing.sm,
+                    flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: selected
-                      ? theme.colors.brandSoft
-                      : theme.colors.surfaceRaised,
-                  }}
+                    gap: theme.spacing.md,
+                    opacity: pressed ? 0.65 : 1,
+                  })}
                 >
-                  <VadText
-                    variant="heading"
-                    tone={selected ? 'brand' : 'secondary'}
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
                   >
-                    {option.glyph}
-                  </VadText>
-                </View>
+                    <VadText
+                      variant="heading"
+                      tone={selected ? 'brand' : 'secondary'}
+                    >
+                      {option.glyph}
+                    </VadText>
+                  </View>
 
-                <View style={{ flex: 1, gap: 2 }}>
-                  <VadText variant="bodyStrong">{option.title}</VadText>
-                  <VadText variant="caption" tone="secondary">
-                    {option.subtitle}
-                  </VadText>
-                </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <VadText
+                      variant="bodyStrong"
+                      tone={selected ? 'brand' : 'primary'}
+                    >
+                      {option.title}
+                    </VadText>
+                    <VadText variant="caption" tone="secondary">
+                      {option.subtitle}
+                    </VadText>
+                  </View>
 
-                <View
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 11,
-                    borderWidth: 2,
-                    borderColor: selected
-                      ? theme.colors.brandPrimary
-                      : theme.colors.borderStrong,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {selected ? (
-                    <View
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        backgroundColor: theme.colors.brandPrimary,
-                      }}
-                    />
-                  ) : null}
-                </View>
-              </Pressable>
-            );
-          })}
+                  <View
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 11,
+                      borderWidth: 2,
+                      borderColor: selected
+                        ? theme.colors.brandPrimary
+                        : theme.colors.borderStrong,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {selected ? (
+                      <View
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: 5,
+                          backgroundColor: theme.colors.brandPrimary,
+                        }}
+                      />
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         <View
           style={{
-            width: wide ? 330 : '100%',
-            borderRadius: theme.radius.xl,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
-            overflow: 'hidden',
+            width: wide ? 340 : '100%',
+            gap: theme.spacing.lg,
           }}
         >
-          <View
-            style={{
-              backgroundColor: theme.colors.surfaceRaised,
-              padding: theme.spacing.md,
-              borderBottomWidth: 1,
-              borderBottomColor: theme.colors.border,
-            }}
-          >
+          <View style={{ gap: 2 }}>
             <VadText variant="caption" tone="tertiary">LIVE PREVIEW</VadText>
+            <VadText variant="heading">
+              {theme.mode === 'dark' ? 'Dark' : 'Light'} mode
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              {theme.preference === 'system'
+                ? 'System is selected and currently resolves to ' + theme.mode + '.'
+                : 'This appearance will stay selected on this device.'}
+            </VadText>
           </View>
 
-          <View style={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
-            <View style={{ gap: theme.spacing.xs }}>
-              <VadText variant="heading">
-                {theme.mode === 'dark' ? 'Dark' : 'Light'} mode
-              </VadText>
-              <VadText variant="caption" tone="secondary">
-                {theme.preference === 'system'
-                  ? 'System is selected and currently resolves to ' + theme.mode + '.'
-                  : 'This appearance will stay selected on this device.'}
-              </VadText>
-            </View>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor: theme.colors.border,
+              paddingVertical: theme.spacing.md,
+              gap: theme.spacing.md,
+            }}
+          >
+            <VadText variant="caption" tone="brand">MARKET PREVIEW</VadText>
+            <VadText variant="bodyStrong">
+              Will the market resolve YES?
+            </VadText>
 
             <View
               style={{
-                borderRadius: theme.radius.lg,
-                backgroundColor: theme.colors.brandSoft,
-                padding: theme.spacing.md,
-                gap: theme.spacing.sm,
+                height: 7,
+                borderRadius: theme.radius.pill,
+                backgroundColor: theme.colors.surfaceMuted,
+                overflow: 'hidden',
               }}
             >
-              <VadText variant="caption" tone="brand">MARKET PREVIEW</VadText>
-              <VadText variant="bodyStrong">
-                Will the market resolve YES?
-              </VadText>
               <View
                 style={{
-                  flexDirection: 'row',
-                  gap: theme.spacing.sm,
+                  width: '64%',
+                  height: '100%',
+                  backgroundColor: theme.colors.yes,
                 }}
-              >
-                <PreviewOutcome
-                  label="YES"
-                  value="64%"
-                  positive
-                />
-                <PreviewOutcome
-                  label="NO"
-                  value="36%"
-                  positive={false}
-                />
-              </View>
+              />
             </View>
 
             <View
               style={{
-                minHeight: 42,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: theme.radius.md,
-                backgroundColor: theme.colors.brandPrimary,
+                flexDirection: 'row',
+                gap: theme.spacing.xl,
               }}
             >
-              <VadText variant="label" tone="inverse">Primary action</VadText>
+              <PreviewOutcome label="YES" value="64%" positive />
+              <PreviewOutcome label="NO" value="36%" positive={false} />
             </View>
+          </View>
+
+          <View
+            style={{
+              minHeight: 46,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: theme.radius.md,
+              backgroundColor: theme.colors.brandPrimary,
+            }}
+          >
+            <VadText variant="label" tone="inverse">Primary action</VadText>
+          </View>
+
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: theme.spacing.sm,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Swatch label="Background" value={theme.colors.background} />
+            <Swatch label="Surface" value={theme.colors.surface} />
+            <Swatch label="Brand" value={theme.colors.brandPrimary} />
           </View>
         </View>
       </View>
@@ -226,25 +241,33 @@ function PreviewOutcome({
   value: string;
   positive: boolean;
 }) {
-  const theme = useVadTheme();
-
   return (
-    <View
-      style={{
-        flex: 1,
-        borderRadius: theme.radius.md,
-        backgroundColor: positive
-          ? theme.colors.yesSoft
-          : theme.colors.noSoft,
-        padding: theme.spacing.sm,
-      }}
-    >
+    <View style={{ flex: 1, gap: 2 }}>
       <VadText variant="caption" tone={positive ? 'yes' : 'no'}>
         {label}
       </VadText>
       <VadText variant="heading" tone={positive ? 'yes' : 'no'}>
         {value}
       </VadText>
+    </View>
+  );
+}
+
+function Swatch({ label, value }: { label: string; value: string }) {
+  const theme = useVadTheme();
+
+  return (
+    <View style={{ minWidth: 92, flex: 1, gap: theme.spacing.xs }}>
+      <View
+        style={{
+          height: 28,
+          borderRadius: theme.radius.md,
+          backgroundColor: value,
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+        }}
+      />
+      <VadText variant="caption" tone="tertiary">{label}</VadText>
     </View>
   );
 }

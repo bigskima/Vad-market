@@ -25,7 +25,6 @@ function ThemedNavigation() {
     <>
       <StatusBar
         style={theme.mode === 'dark' ? 'light' : 'dark'}
-        backgroundColor={theme.colors.background}
       />
       <Stack
         screenOptions={{

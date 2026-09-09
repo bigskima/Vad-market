@@ -6,7 +6,9 @@ import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
+import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
@@ -40,6 +42,8 @@ export function SocialConvictionFeed({
 }) {
   const theme = useVadTheme();
   const [posts, setPosts] = useState<ConvictionPost[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [body, setBody] = useState('');
   const [market, setMarket] = useState<MarketCatalogItem | null>(null);
@@ -47,13 +51,23 @@ export function SocialConvictionFeed({
   const [working, setWorking] = useState(false);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
   const [comments, setComments] = useState<PostComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
   const [commentBody, setCommentBody] = useState('');
 
   const load = useCallback(async () => {
+    setFeedError(null);
+
     try {
       setPosts(await getConvictionFeed());
-    } catch {
-      setPosts([]);
+    } catch (error) {
+      setFeedError(
+        error instanceof Error
+          ? error.message
+          : 'Community activity could not be loaded.',
+      );
+    } finally {
+      setPostsLoading(false);
     }
   }, []);
 
@@ -116,16 +130,99 @@ export function SocialConvictionFeed({
     }
   }
 
-  async function openComments(post: ConvictionPost) {
+  async function toggleLike(post: ConvictionPost) {
+    const wasLiked = post.viewer_liked;
+    const previousCount = Number(post.reaction_count);
+
+    setPosts((current) =>
+      current.map((item) =>
+        item.post_public_id === post.post_public_id
+          ? {
+              ...item,
+              viewer_liked: !wasLiked,
+              reaction_count: Math.max(
+                0,
+                previousCount + (wasLiked ? -1 : 1),
+              ),
+            }
+          : item,
+      ),
+    );
+
     try {
-      setComments(await getPostComments(post.post_public_id));
-      setCommentsPostId(post.post_public_id);
-      setCommentBody('');
+      await togglePostLike(post.post_public_id);
+      void load();
     } catch (error) {
+      setPosts((current) =>
+        current.map((item) =>
+          item.post_public_id === post.post_public_id
+            ? {
+                ...item,
+                viewer_liked: wasLiked,
+                reaction_count: previousCount,
+              }
+            : item,
+        ),
+      );
+
       Alert.alert(
-        'Comments unavailable',
+        'Like not updated',
         error instanceof Error ? error.message : 'Please try again.',
       );
+    }
+  }
+
+  async function toggleFollow(post: ConvictionPost) {
+    const wasFollowing = post.viewer_follows_author;
+
+    setPosts((current) =>
+      current.map((item) =>
+        item.author_user_id === post.author_user_id
+          ? {
+              ...item,
+              viewer_follows_author: !wasFollowing,
+            }
+          : item,
+      ),
+    );
+
+    try {
+      await toggleCreatorFollow(post.author_user_id);
+      void load();
+    } catch (error) {
+      setPosts((current) =>
+        current.map((item) =>
+          item.author_user_id === post.author_user_id
+            ? {
+                ...item,
+                viewer_follows_author: wasFollowing,
+              }
+            : item,
+        ),
+      );
+
+      Alert.alert(
+        'Follow not updated',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    }
+  }
+
+  async function openComments(post: ConvictionPost) {
+    setCommentsPostId(post.post_public_id);
+    setComments([]);
+    setCommentBody('');
+    setCommentsError(null);
+    setCommentsLoading(true);
+
+    try {
+      setComments(await getPostComments(post.post_public_id));
+    } catch (error) {
+      setCommentsError(
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    } finally {
+      setCommentsLoading(false);
     }
   }
 
@@ -139,8 +236,18 @@ export function SocialConvictionFeed({
         commentBody.trim(),
       );
       setCommentBody('');
+      setPosts((current) =>
+        current.map((item) =>
+          item.post_public_id === post.post_public_id
+            ? {
+                ...item,
+                comment_count: Number(item.comment_count) + 1,
+              }
+            : item,
+        ),
+      );
       setComments(await getPostComments(post.post_public_id));
-      await load();
+      void load();
     } catch (error) {
       Alert.alert(
         'Comment not posted',
@@ -204,7 +311,30 @@ export function SocialConvictionFeed({
         />
       ) : null}
 
-      {!visiblePosts.length ? (
+      {feedError && visiblePosts.length ? (
+        <VadErrorState
+          title="Community refresh failed"
+          message={feedError}
+          onRetry={() => void load()}
+        />
+      ) : null}
+
+      {postsLoading ? (
+        <View style={{ gap: theme.spacing.sm }}>
+          <VadSkeleton height={86} />
+          <VadSkeleton height={112} />
+          <VadSkeleton height={86} />
+        </View>
+      ) : feedError && !visiblePosts.length ? (
+        <VadErrorState
+          title="Community unavailable"
+          message={feedError}
+          onRetry={() => {
+            setPostsLoading(true);
+            void load();
+          }}
+        />
+      ) : !visiblePosts.length ? (
         <VadEmptyState
           title={
             marketFilter ? 'No discussion yet' : 'No creator posts yet'
@@ -241,14 +371,8 @@ export function SocialConvictionFeed({
                 linkedMarket={linked}
                 commentsOpen={commentsOpen}
                 creatorOpen={false}
-                onFollow={() =>
-                  void toggleCreatorFollow(
-                    post.author_user_id,
-                  ).then(load)
-                }
-                onLike={() =>
-                  void togglePostLike(post.post_public_id).then(load)
-                }
+                onFollow={() => void toggleFollow(post)}
+                onLike={() => void toggleLike(post)}
                 onComments={() => void openComments(post)}
                 onOpenCreator={() =>
                   router.push('/creator/' + post.author_user_id)
@@ -266,6 +390,8 @@ export function SocialConvictionFeed({
         onClose={() => {
           setCommentsPostId(null);
           setComments([]);
+          setCommentsError(null);
+          setCommentsLoading(false);
           setCommentBody('');
         }}
       >
@@ -274,7 +400,19 @@ export function SocialConvictionFeed({
           contentContainerStyle={{ gap: theme.spacing.sm }}
           keyboardShouldPersistTaps="handled"
         >
-          {comments.length ? (
+          {commentsLoading ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <VadSkeleton height={58} />
+              <VadSkeleton height={58} />
+              <VadSkeleton height={58} />
+            </View>
+          ) : commentsError ? (
+            <VadErrorState
+              title="Discussion unavailable"
+              message={commentsError}
+              onRetry={() => commentsPost && void openComments(commentsPost)}
+            />
+          ) : comments.length ? (
             comments.map((comment) => {
               const authorName =
                 comment.author_display_name ??
@@ -321,7 +459,7 @@ export function SocialConvictionFeed({
             </VadText>
           )}
 
-          {commentsPost ? (
+          {commentsPost && !commentsLoading && !commentsError ? (
             <View style={{ gap: theme.spacing.xs }}>
               <VadInput
                 value={commentBody}

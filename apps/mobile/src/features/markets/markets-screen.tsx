@@ -14,15 +14,22 @@ import {
 export function MarketsScreen({
   markets,
   onOpenMarket,
+  initialCategory,
 }: {
   markets: MarketCatalogItem[];
   onOpenMarket: (market: MarketCatalogItem) => void;
+  initialCategory?: string;
 }) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const columns = width >= 1120 ? 3 : width >= 760 ? 2 : 1;
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('All');
+  const [category, setCategory] = useState(() =>
+    initialCategory &&
+    markets.some((market) => market.category === initialCategory)
+      ? initialCategory
+      : 'All',
+  );
   const [sortMode, setSortMode] = useState<MarketSortMode>('activity');
 
   const categories = useMemo(
@@ -76,7 +83,9 @@ export function MarketsScreen({
 
       return (
         Number(Boolean(b.last_trade_at)) -
-        Number(Boolean(a.last_trade_at))
+        Number(Boolean(a.last_trade_at)) ||
+        new Date(b.updated_at).getTime() -
+          new Date(a.updated_at).getTime()
       );
     });
   }, [markets, category, query, sortMode]);
@@ -85,7 +94,13 @@ export function MarketsScreen({
     (market) => market.status === 'OPEN' || market.status === 'ACTIVE',
   ).length;
 
-  const recentlyTraded = markets.filter((market) => market.last_trade_at).length;
+  const recentlyTraded = markets.filter(
+    (market) => market.last_trade_at,
+  ).length;
+
+  const visibleLive = orderedMarkets.filter(
+    (market) => market.status === 'OPEN' || market.status === 'ACTIVE',
+  ).length;
 
   const cardWidth =
     columns === 3 ? '32.2%' : columns === 2 ? '49.2%' : '100%';
@@ -102,15 +117,20 @@ export function MarketsScreen({
       >
         <View style={{ flex: 1, gap: theme.spacing.xs }}>
           <VadText variant="label" tone="brand">DISCOVER</VadText>
-          <VadText variant="title">Markets</VadText>
+          <VadText variant="title">
+            {category === 'All' ? 'Markets' : category + ' markets'}
+          </VadText>
           <VadText tone="secondary">
-            Compare live probability first. Open a market only when you want its
-            trade ticket, discussion and resolution rules.
+            Compare probability first. Open a market when you want its trade
+            ticket, discussion and resolution rules.
           </VadText>
         </View>
 
         <View
           style={{
+            borderTopWidth: width >= 820 ? 0 : 1,
+            borderTopColor: theme.colors.border,
+            paddingTop: width >= 820 ? 0 : theme.spacing.md,
             flexDirection: 'row',
             gap: theme.spacing.xl,
             flexWrap: 'wrap',
@@ -132,6 +152,22 @@ export function MarketsScreen({
         onSortModeChange={setSortMode}
         resultCount={orderedMarkets.length}
       />
+
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          gap: theme.spacing.md,
+          alignItems: 'center',
+        }}
+      >
+        <VadText variant="caption" tone="secondary">
+          {orderedMarkets.length} shown
+        </VadText>
+        <VadText variant="caption" tone="tertiary">
+          {visibleLive} currently live
+        </VadText>
+      </View>
 
       {orderedMarkets.length ? (
         <View
@@ -163,6 +199,12 @@ export function MarketsScreen({
         <VadEmptyState
           title="No matching markets"
           body="Try another search, category or sorting option."
+          actionLabel="Clear filters"
+          onAction={() => {
+            setQuery('');
+            setCategory('All');
+            setSortMode('activity');
+          }}
         />
       )}
     </View>

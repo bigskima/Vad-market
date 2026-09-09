@@ -118,7 +118,7 @@ export function AdminProvidersScreen() {
           >
             <View
               style={{
-                width: Math.round(readinessRatio * 100) + '%',
+                width: `${Math.round(readinessRatio * 100)}%` as `${number}%`,
                 height: '100%',
                 backgroundColor:
                   readinessRatio === 1 && data.providers.length

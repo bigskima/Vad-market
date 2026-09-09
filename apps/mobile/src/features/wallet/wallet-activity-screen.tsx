@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { PaymentRow } from '@/features/wallet/wallet-screen';
@@ -21,13 +22,27 @@ export function WalletActivityScreen({
   const theme = useVadTheme();
   const [rows, setRows] = useState<PaymentIntentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>('all');
 
   const load = useCallback(async () => {
+    setError(null);
+
     try {
-      setRows(await getMyPaymentIntents(50));
-    } catch {
-      setRows([]);
+      const next = await getMyPaymentIntents(50);
+      setRows(
+        [...next].sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime(),
+        ),
+      );
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Wallet activity could not be loaded.',
+      );
     } finally {
       setLoading(false);
     }
@@ -61,14 +76,31 @@ export function WalletActivityScreen({
     [filter, rows],
   );
 
+  const groupedRows = useMemo(() => {
+    const groups: { label: string; rows: PaymentIntentRow[] }[] = [];
+
+    visibleRows.forEach((row) => {
+      const label = dayLabel(row.created_at);
+      const existing = groups.find((group) => group.label === label);
+
+      if (existing) {
+        existing.rows.push(row);
+      } else {
+        groups.push({ label, rows: [row] });
+      }
+    });
+
+    return groups;
+  }, [visibleRows]);
+
   return (
     <View style={{ gap: theme.spacing.xl }}>
       <View style={{ gap: theme.spacing.xs }}>
         <VadText variant="label" tone="brand">WALLET ACTIVITY</VadText>
         <VadText variant="title">Money movement, in one timeline.</VadText>
         <VadText tone="secondary">
-          Review deposit and withdrawal intents without mixing them with
-          trading orders or portfolio exposure.
+          Deposit and withdrawal intents live here, separate from market orders
+          and portfolio exposure.
         </VadText>
       </View>
 
@@ -79,27 +111,48 @@ export function WalletActivityScreen({
           <VadSkeleton height={62} />
           <VadSkeleton height={62} />
         </View>
+      ) : error && !rows.length ? (
+        <VadErrorState
+          title="Wallet activity unavailable"
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            void load();
+          }}
+        />
       ) : (
         <>
-          <View
-            style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              gap: theme.spacing.sm,
-            }}
-          >
-            <Summary label="All" value={counts.all} />
-            <Summary label="Processing" value={counts.processing} />
-            <Summary label="Settled" value={counts.settled} />
-            <Summary label="Failed" value={counts.failed} />
-          </View>
+          {error ? (
+            <VadErrorState
+              title="Wallet activity refresh failed"
+              message={error}
+              onRetry={() => void load()}
+            />
+          ) : null}
 
           <View
             style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor: theme.colors.border,
+              paddingVertical: theme.spacing.md,
               flexDirection: 'row',
-              padding: theme.spacing.xxs,
-              borderRadius: theme.radius.lg,
-              backgroundColor: theme.colors.surfaceRaised,
+              flexWrap: 'wrap',
+              gap: theme.spacing.xl,
+            }}
+          >
+            <Summary label="All" value={counts.all} />
+            <Summary label="Processing" value={counts.processing} tone={counts.processing ? 'warning' : 'primary'} />
+            <Summary label="Settled" value={counts.settled} tone={counts.settled ? 'yes' : 'primary'} />
+            <Summary label="Failed" value={counts.failed} tone={counts.failed ? 'no' : 'primary'} />
+          </View>
+
+          <View
+            accessibilityRole="tablist"
+            style={{
+              flexDirection: 'row',
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
             }}
           >
             {(
@@ -120,19 +173,20 @@ export function WalletActivityScreen({
                   onPress={() => setFilter(value)}
                   style={({ pressed }) => ({
                     flex: 1,
-                    minHeight: 42,
+                    minHeight: 44,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderRadius: theme.radius.md,
-                    backgroundColor: selected
-                      ? theme.colors.surface
+                    borderBottomWidth: 2,
+                    borderBottomColor: selected
+                      ? theme.colors.brandPrimary
                       : 'transparent',
-                    opacity: pressed ? 0.68 : 1,
+                    opacity: pressed ? 0.65 : 1,
                   })}
                 >
                   <VadText
                     variant="caption"
                     tone={selected ? 'brand' : 'secondary'}
+                    numberOfLines={1}
                   >
                     {label}
                   </VadText>
@@ -141,19 +195,29 @@ export function WalletActivityScreen({
             })}
           </View>
 
-          {visibleRows.length ? (
-            <View
-              style={{
-                borderTopWidth: 1,
-                borderTopColor: theme.colors.border,
-              }}
-            >
-              {visibleRows.map((row) => (
-                <PaymentRow
-                  key={row.intent_public_id}
-                  intent={row}
-                  onPress={() => onOpenTransaction(row)}
-                />
+          {groupedRows.length ? (
+            <View style={{ gap: theme.spacing.xl }}>
+              {groupedRows.map((group) => (
+                <View key={group.label} style={{ gap: theme.spacing.xs }}>
+                  <VadText variant="caption" tone="tertiary">
+                    {group.label.toUpperCase()}
+                  </VadText>
+
+                  <View
+                    style={{
+                      borderTopWidth: 1,
+                      borderTopColor: theme.colors.border,
+                    }}
+                  >
+                    {group.rows.map((row) => (
+                      <PaymentRow
+                        key={row.intent_public_id}
+                        intent={row}
+                        onPress={() => onOpenTransaction(row)}
+                      />
+                    ))}
+                  </View>
+                </View>
               ))}
             </View>
           ) : (
@@ -168,6 +232,8 @@ export function WalletActivityScreen({
                   ? 'Your deposit and withdrawal intents will appear here.'
                   : 'Try another activity filter.'
               }
+              actionLabel={filter !== 'all' ? 'Show all activity' : undefined}
+              onAction={filter !== 'all' ? () => setFilter('all') : undefined}
             />
           )}
         </>
@@ -194,24 +260,46 @@ function classify(status: string): Exclude<ActivityFilter, 'all'> {
   return 'processing';
 }
 
-function Summary({ label, value }: { label: string; value: number }) {
-  const theme = useVadTheme();
+function dayLabel(value: string) {
+  const date = new Date(value);
+  const now = new Date();
 
+  const startToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
+
+  const startDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  ).getTime();
+
+  const diffDays = Math.round((startToday - startDate) / 86400000);
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+  });
+}
+
+function Summary({
+  label,
+  value,
+  tone = 'primary',
+}: {
+  label: string;
+  value: number;
+  tone?: 'primary' | 'warning' | 'yes' | 'no';
+}) {
   return (
-    <View
-      style={{
-        flexGrow: 1,
-        flexBasis: 120,
-        minHeight: 72,
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        borderRadius: theme.radius.lg,
-        backgroundColor: theme.colors.surface,
-        paddingHorizontal: theme.spacing.md,
-      }}
-    >
-      <VadText variant="heading">{value}</VadText>
+    <View style={{ minWidth: 88, flexGrow: 1, flexBasis: 100, gap: 2 }}>
+      <VadText variant="heading" tone={tone}>{value}</VadText>
       <VadText variant="caption" tone="secondary">{label}</VadText>
     </View>
   );

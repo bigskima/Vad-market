@@ -5,7 +5,6 @@ import {
   type PropsWithChildren,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -28,22 +27,26 @@ function isThemePreference(value: string | null): value is VadThemePreference {
   return value === 'system' || value === 'light' || value === 'dark';
 }
 
+function readInitialPreference(): VadThemePreference {
+  try {
+    const stored =
+      globalThis.localStorage?.getItem(THEME_PREFERENCE_KEY) ?? null;
+
+    return isThemePreference(stored) ? stored : 'system';
+  } catch {
+    return 'system';
+  }
+}
+
 export function VadThemeProvider({ children }: PropsWithChildren) {
   const systemScheme = useColorScheme();
   const systemMode: VadThemeMode = systemScheme === 'dark' ? 'dark' : 'light';
-  const [preference, setPreferenceState] = useState<VadThemePreference>('system');
-
-  useEffect(() => {
-    try {
-      const stored = globalThis.localStorage?.getItem(THEME_PREFERENCE_KEY) ?? null;
-      if (isThemePreference(stored)) setPreferenceState(stored);
-    } catch {
-      // Theme preference remains system-controlled if local persistence is unavailable.
-    }
-  }, []);
+  const [preference, setPreferenceState] =
+    useState<VadThemePreference>(readInitialPreference);
 
   const setPreference = useCallback((next: VadThemePreference) => {
     setPreferenceState(next);
+
     try {
       globalThis.localStorage?.setItem(THEME_PREFERENCE_KEY, next);
     } catch {
@@ -51,7 +54,8 @@ export function VadThemeProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const resolvedMode: VadThemeMode = preference === 'system' ? systemMode : preference;
+  const resolvedMode: VadThemeMode =
+    preference === 'system' ? systemMode : preference;
 
   const value = useMemo<VadThemeContextValue>(
     () => ({
@@ -63,11 +67,19 @@ export function VadThemeProvider({ children }: PropsWithChildren) {
     [preference, resolvedMode, setPreference, systemMode],
   );
 
-  return <VadThemeContext.Provider value={value}>{children}</VadThemeContext.Provider>;
+  return (
+    <VadThemeContext.Provider value={value}>
+      {children}
+    </VadThemeContext.Provider>
+  );
 }
 
 export function useVadTheme() {
   const theme = useContext(VadThemeContext);
-  if (!theme) throw new Error('useVadTheme must be used within VadThemeProvider.');
+
+  if (!theme) {
+    throw new Error('useVadTheme must be used within VadThemeProvider.');
+  }
+
   return theme;
 }

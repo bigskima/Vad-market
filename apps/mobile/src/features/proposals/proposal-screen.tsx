@@ -105,26 +105,25 @@ export function ProposalScreen({
           </VadText>
         </View>
 
-        <View style={{ minWidth: wide ? 250 : undefined }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              padding: theme.spacing.xxs,
-              borderRadius: theme.radius.lg,
-              backgroundColor: theme.colors.surfaceRaised,
-            }}
-          >
-            <ModeTab
-              label="New proposal"
-              selected={view === 'new'}
-              onPress={() => setView('new')}
-            />
-            <ModeTab
-              label={'History ' + proposals.length}
-              selected={view === 'history'}
-              onPress={() => setView('history')}
-            />
-          </View>
+        <View
+          accessibilityRole="tablist"
+          style={{
+            minWidth: wide ? 280 : undefined,
+            flexDirection: 'row',
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+          }}
+        >
+          <ModeTab
+            label="New proposal"
+            selected={view === 'new'}
+            onPress={() => setView('new')}
+          />
+          <ModeTab
+            label={'History ' + proposals.length}
+            selected={view === 'history'}
+            onPress={() => setView('history')}
+          />
         </View>
       </View>
 
@@ -286,29 +285,39 @@ export function ProposalScreen({
 
           <View
             style={{
-              width: wide ? 290 : '100%',
-              borderRadius: theme.radius.xl,
-              backgroundColor: theme.colors.surfaceRaised,
-              padding: theme.spacing.lg,
+              width: wide ? 300 : '100%',
               gap: theme.spacing.md,
             }}
           >
-            <VadText variant="label" tone="brand">PROPOSAL GUIDE</VadText>
-            <Guide
-              number="1"
-              title="Ask one resolvable question"
-              body="Avoid combining several outcomes into one market."
-            />
-            <Guide
-              number="2"
-              title="Add context, not persuasion"
-              body="Explain the subject without writing the answer into the proposal."
-            />
-            <Guide
-              number="3"
-              title="Governance decides activation"
-              body="Submitting does not make the market live or tradable."
-            />
+            <View style={{ gap: 2 }}>
+              <VadText variant="label" tone="brand">PROPOSAL GUIDE</VadText>
+              <VadText variant="caption" tone="secondary">
+                Three checks before you submit.
+              </VadText>
+            </View>
+
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: theme.colors.border,
+              }}
+            >
+              <Guide
+                number="1"
+                title="Ask one resolvable question"
+                body="Avoid combining several outcomes into one market."
+              />
+              <Guide
+                number="2"
+                title="Add context, not persuasion"
+                body="Explain the subject without writing the answer into the proposal."
+              />
+              <Guide
+                number="3"
+                title="Governance decides activation"
+                body="Submitting does not make the market live or tradable."
+              />
+            </View>
           </View>
         </View>
       ) : (
@@ -378,12 +387,14 @@ function ModeTab({
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,
-        minHeight: 44,
-        borderRadius: theme.radius.md,
+        minHeight: 46,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: selected ? theme.colors.surface : 'transparent',
-        opacity: pressed ? 0.7 : 1,
+        borderBottomWidth: 2,
+        borderBottomColor: selected
+          ? theme.colors.brandPrimary
+          : 'transparent',
+        opacity: pressed ? 0.65 : 1,
       })}
     >
       <VadText variant="label" tone={selected ? 'brand' : 'secondary'}>
@@ -477,19 +488,18 @@ function Guide({
   const theme = useVadTheme();
 
   return (
-    <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-      <View
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 14,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: theme.colors.brandSoft,
-        }}
-      >
-        <VadText variant="caption" tone="brand">{number}</VadText>
-      </View>
+    <View
+      style={{
+        minHeight: 78,
+        flexDirection: 'row',
+        gap: theme.spacing.sm,
+        alignItems: 'flex-start',
+        paddingVertical: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+      }}
+    >
+      <VadText variant="label" tone="brand">{number}</VadText>
 
       <View style={{ flex: 1, gap: 2 }}>
         <VadText variant="bodyStrong">{title}</VadText>
@@ -497,6 +507,37 @@ function Guide({
       </View>
     </View>
   );
+}
+
+function proposalStatusTone(
+  status: string,
+): 'brand' | 'yes' | 'warning' | 'danger' | 'secondary' {
+  const normalized = status.toUpperCase();
+
+  if (
+    normalized.includes('APPROV') ||
+    normalized.includes('ACTIVE') ||
+    normalized.includes('LIVE')
+  ) {
+    return 'yes';
+  }
+
+  if (
+    normalized.includes('REJECT') ||
+    normalized.includes('FAIL') ||
+    normalized.includes('CANCEL')
+  ) {
+    return 'danger';
+  }
+
+  if (
+    normalized.includes('PENDING') ||
+    normalized.includes('REVIEW')
+  ) {
+    return 'warning';
+  }
+
+  return 'brand';
 }
 
 function ProposalHistory({
@@ -556,18 +597,12 @@ function ProposalHistory({
               </VadText>
             </View>
 
-            <View
-              style={{
-                borderRadius: theme.radius.pill,
-                backgroundColor: theme.colors.brandSoft,
-                paddingHorizontal: theme.spacing.sm,
-                paddingVertical: theme.spacing.xs,
-              }}
+            <VadText
+              variant="caption"
+              tone={proposalStatusTone(proposal.status)}
             >
-              <VadText variant="caption" tone="brand">
-                {proposal.status.replaceAll('_', ' ')}
-              </VadText>
-            </View>
+              {proposal.status.replaceAll('_', ' ')}
+            </VadText>
           </View>
 
           {proposal.context ? (

@@ -25,7 +25,7 @@ export function HomeScreen({
   markets: MarketCatalogItem[];
   ngn?: WalletRow;
   onOpenMarket: (market: MarketCatalogItem) => void;
-  onExploreMarkets: () => void;
+  onExploreMarkets: (category?: string) => void;
   onOpenWallet: () => void;
   onOpenCommunity: () => void;
 }) {
@@ -58,7 +58,7 @@ export function HomeScreen({
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
-          gap: theme.spacing.lg,
+          gap: theme.spacing.xl,
           alignItems: 'stretch',
         }}
       >
@@ -66,24 +66,27 @@ export function HomeScreen({
           style={{
             flex: 1.15,
             justifyContent: 'center',
-            gap: theme.spacing.md,
-            paddingVertical: wide ? theme.spacing.md : 0,
+            gap: theme.spacing.lg,
           }}
         >
           <View style={{ gap: theme.spacing.xs }}>
             <VadText variant="label" tone="brand">MARKET PULSE</VadText>
             <VadText variant="title">What is the crowd pricing now?</VadText>
             <VadText tone="secondary">
-              Scan active questions, compare conviction and open the market only
-              when you want the full rules, discussion or trade flow.
+              Start with the signal. Open a market only when you want the full
+              rules, discussion or trade flow.
             </VadText>
           </View>
 
           <View
             style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor: theme.colors.border,
+              paddingVertical: theme.spacing.md,
               flexDirection: 'row',
-              gap: theme.spacing.xl,
               flexWrap: 'wrap',
+              gap: theme.spacing.xl,
             }}
           >
             <Metric label="Live" value={String(active.length)} />
@@ -97,11 +100,11 @@ export function HomeScreen({
           <View
             style={{
               flexDirection: 'row',
-              gap: theme.spacing.sm,
+              gap: theme.spacing.lg,
               flexWrap: 'wrap',
             }}
           >
-            <QuickLink label="Browse markets" onPress={onExploreMarkets} />
+            <QuickLink label="Browse markets" onPress={() => onExploreMarkets()} />
             <QuickLink label="Community" onPress={onOpenCommunity} />
             <QuickLink label="Wallet" onPress={onOpenWallet} />
           </View>
@@ -109,16 +112,16 @@ export function HomeScreen({
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Open Wallet"
           onPress={onOpenWallet}
           style={({ pressed }) => ({
             flex: 0.85,
-            borderRadius: theme.radius.xl,
-            backgroundColor: theme.colors.surfaceRaised,
-            borderWidth: 1,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
             borderColor: theme.colors.border,
-            padding: theme.spacing.lg,
+            paddingVertical: theme.spacing.lg,
             gap: theme.spacing.lg,
-            opacity: pressed ? 0.78 : 1,
+            opacity: pressed ? 0.72 : 1,
           })}
         >
           <View
@@ -133,7 +136,7 @@ export function HomeScreen({
               <VadText variant="caption" tone="secondary">
                 AVAILABLE TO USE
               </VadText>
-              <VadText variant="title">{money(ngn?.available)}</VadText>
+              <VadText variant="display">{money(ngn?.available)}</VadText>
             </View>
             <VadText variant="label" tone="brand">Wallet →</VadText>
           </View>
@@ -158,43 +161,31 @@ export function HomeScreen({
       </View>
 
       {categories.length ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: theme.spacing.xs }}
-        >
-          <Pressable
-            onPress={onExploreMarkets}
-            style={({ pressed }) => ({
-              minHeight: 36,
-              justifyContent: 'center',
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.brandSoft,
-              paddingHorizontal: theme.spacing.md,
-              opacity: pressed ? 0.7 : 1,
-            })}
+        <View style={{ gap: theme.spacing.xs }}>
+          <VadText variant="caption" tone="secondary">Explore by category</VadText>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              gap: theme.spacing.md,
+              paddingRight: theme.spacing.md,
+            }}
           >
-            <VadText variant="caption" tone="brand">All markets</VadText>
-          </Pressable>
+            <CategoryLink
+              label="All markets"
+              active
+              onPress={() => onExploreMarkets()}
+            />
 
-          {categories.map((category) => (
-            <Pressable
-              key={category}
-              onPress={onExploreMarkets}
-              style={({ pressed }) => ({
-                minHeight: 36,
-                justifyContent: 'center',
-                borderRadius: theme.radius.pill,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                paddingHorizontal: theme.spacing.md,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <VadText variant="caption" tone="secondary">{category}</VadText>
-            </Pressable>
-          ))}
-        </ScrollView>
+            {categories.map((category) => (
+              <CategoryLink
+                key={category}
+                label={category}
+                onPress={() => onExploreMarkets(category)}
+              />
+            ))}
+          </ScrollView>
+        </View>
       ) : null}
 
       <View style={{ gap: theme.spacing.lg }}>
@@ -202,7 +193,7 @@ export function HomeScreen({
           title="Trending now"
           subtitle="The most recently active market signals."
           actionLabel="See all"
-          onAction={onExploreMarkets}
+          onAction={() => onExploreMarkets()}
         />
 
         {spotlight ? (
@@ -248,20 +239,21 @@ export function HomeScreen({
 
               <View
                 style={{
-                  minWidth: wide ? 220 : undefined,
+                  minWidth: wide ? 250 : undefined,
                   flexDirection: 'row',
-                  gap: theme.spacing.sm,
+                  gap: theme.spacing.xl,
+                  borderTopWidth: wide ? 0 : 1,
+                  borderTopColor: 'rgba(255,255,255,0.24)',
+                  paddingTop: wide ? 0 : theme.spacing.md,
                 }}
               >
                 <Signal
                   label="YES"
                   value={pct(spotlight.yes_price)}
-                  positive
                 />
                 <Signal
                   label="NO"
                   value={pct(spotlight.no_price)}
-                  positive={false}
                 />
               </View>
             </View>
@@ -293,12 +285,15 @@ export function HomeScreen({
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: theme.spacing.md }}
+            contentContainerStyle={{
+              gap: theme.spacing.md,
+              paddingRight: theme.spacing.md,
+            }}
           >
             {trending.map((market) => (
               <View
                 key={market.instrument_public_id}
-                style={{ width: wide ? 340 : 300 }}
+                style={{ width: wide ? 340 : Math.min(width - 56, 320) }}
               >
                 <MarketCard
                   market={market}
@@ -331,7 +326,7 @@ export function HomeScreen({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ minWidth: 92, gap: 2 }}>
+    <View style={{ minWidth: 92, flexGrow: 1, flexBasis: 96, gap: 2 }}>
       <VadText variant="caption" tone="tertiary">{label}</VadText>
       <VadText variant="bodyStrong">{value}</VadText>
     </View>
@@ -345,24 +340,55 @@ function QuickLink({
   label: string;
   onPress: () => void;
 }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        minHeight: 34,
+        justifyContent: 'center',
+        opacity: pressed ? 0.58 : 1,
+      })}
+    >
+      <VadText variant="label" tone="brand">{label} →</VadText>
+    </Pressable>
+  );
+}
+
+function CategoryLink({
+  label,
+  active = false,
+  onPress,
+}: {
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+}) {
   const theme = useVadTheme();
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 38,
+        minHeight: 36,
         justifyContent: 'center',
-        borderRadius: theme.radius.pill,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
-        paddingHorizontal: theme.spacing.md,
-        opacity: pressed ? 0.68 : 1,
+        borderBottomWidth: 2,
+        borderBottomColor: active
+          ? theme.colors.brandPrimary
+          : 'transparent',
+        paddingHorizontal: theme.spacing.xs,
+        opacity: pressed ? 0.6 : 1,
       })}
     >
-      <VadText variant="caption">{label}</VadText>
+      <VadText
+        variant="caption"
+        tone={active ? 'brand' : 'secondary'}
+      >
+        {label}
+      </VadText>
     </Pressable>
   );
 }
@@ -370,30 +396,14 @@ function QuickLink({
 function Signal({
   label,
   value,
-  positive,
 }: {
   label: string;
   value: string;
-  positive: boolean;
 }) {
-  const theme = useVadTheme();
-
   return (
-    <View
-      style={{
-        flex: 1,
-        minWidth: 96,
-        borderRadius: theme.radius.lg,
-        backgroundColor: 'rgba(255,255,255,0.12)',
-        padding: theme.spacing.md,
-        gap: 2,
-      }}
-    >
+    <View style={{ flex: 1, minWidth: 96, gap: 2 }}>
       <VadText variant="caption" tone="inverse">{label}</VadText>
-      <VadText variant="heading" tone="inverse">{value}</VadText>
-      <VadText variant="caption" tone="inverse">
-        {positive ? 'Crowd yes' : 'Crowd no'}
-      </VadText>
+      <VadText variant="title" tone="inverse">{value}</VadText>
     </View>
   );
 }
