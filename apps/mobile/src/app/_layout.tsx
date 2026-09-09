@@ -1,17 +1,32 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
+import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/providers/auth-provider';
 import { ProductDataProvider } from '@/providers/product-data-provider';
-import { VadThemeProvider, useVadTheme } from '@/providers/theme-provider';
+import {
+  VadThemeProvider,
+  useVadTheme,
+} from '@/providers/theme-provider';
 
 function ThemedNavigation() {
   const theme = useVadTheme();
 
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    void SystemUI.setBackgroundColorAsync(theme.colors.background);
+  }, [theme.colors.background]);
+
   return (
     <>
-      <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+      <StatusBar
+        style={theme.mode === 'dark' ? 'light' : 'dark'}
+        backgroundColor={theme.colors.background}
+      />
       <Stack
         screenOptions={{
           headerShown: false,
