@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import {
-  Alert,
   useWindowDimensions,
   View,
   type DimensionValue,
 } from 'react-native';
 
+import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadText } from '@/components/ui/vad-text';
@@ -26,6 +26,8 @@ export function PortfolioOrderScreen({
   const wide = width >= 760;
   const data = useProductDataContext();
   const [cancelling, setCancelling] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const order = data.orders.find(
     (row) => String(row.order_id) === orderId,
@@ -51,18 +53,15 @@ export function PortfolioOrderScreen({
 
   async function cancel() {
     setCancelling(true);
+    setCancelError(null);
 
     try {
       await cancelOrder(String(order.order_id));
+      setConfirmOpen(false);
       await data.load();
-      Alert.alert(
-        'Order cancelled',
-        'The remaining open quantity has been removed from the order book.',
-      );
       onCancelled?.();
     } catch (error) {
-      Alert.alert(
-        'Order not cancelled',
+      setCancelError(
         error instanceof Error ? error.message : 'Please try again.',
       );
     } finally {
@@ -71,18 +70,8 @@ export function PortfolioOrderScreen({
   }
 
   function requestCancel() {
-    Alert.alert(
-      'Cancel this order?',
-      'Any quantity already filled stays filled. Only the remaining open quantity will be cancelled.',
-      [
-        { text: 'Keep order', style: 'cancel' },
-        {
-          text: 'Cancel order',
-          style: 'destructive',
-          onPress: () => void cancel(),
-        },
-      ],
-    );
+    setCancelError(null);
+    setConfirmOpen(true);
   }
 
   return (
@@ -253,6 +242,72 @@ export function PortfolioOrderScreen({
           onPress={requestCancel}
         />
       </View>
+
+      <VadBottomSheet
+        visible={confirmOpen}
+        title="Cancel remaining order?"
+        onClose={() => {
+          if (!cancelling) setConfirmOpen(false);
+        }}
+      >
+        <View style={{ gap: theme.spacing.lg }}>
+          <View style={{ gap: theme.spacing.xs }}>
+            <VadText variant="bodyStrong">
+              {Number(order.remaining_quantity).toLocaleString()} shares are
+              still open.
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              Any quantity already filled stays filled. Cancelling removes only
+              the remaining open quantity from the order book.
+            </VadText>
+          </View>
+
+          {cancelError ? (
+            <View
+              style={{
+                borderLeftWidth: 3,
+                borderLeftColor: theme.colors.danger,
+                backgroundColor: theme.colors.noSoft,
+                padding: theme.spacing.md,
+              }}
+            >
+              <VadText variant="caption" tone="danger">
+                {cancelError}
+              </VadText>
+            </View>
+          ) : null}
+
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor: theme.colors.border,
+            }}
+          >
+            <Detail
+              label="Remaining"
+              value={Number(order.remaining_quantity).toLocaleString()}
+            />
+            <Detail
+              label="Remaining notional"
+              value={money(remainingNotional)}
+            />
+          </View>
+
+          <VadButton
+            label="Cancel remaining order"
+            variant="danger"
+            loading={cancelling}
+            onPress={() => void cancel()}
+          />
+          <VadButton
+            label="Keep order"
+            variant="secondary"
+            disabled={cancelling}
+            onPress={() => setConfirmOpen(false)}
+          />
+        </View>
+      </VadBottomSheet>
     </View>
   );
 }
