@@ -63,7 +63,19 @@ export function VadProductShell({ email, canTrade, canSubmitProposal, onSignOut 
     if (results[7].status === 'fulfilled') setAdminOracle(results[7].value);
   }, []);
 
-  useEffect(() => { void load().finally(() => setLoading(false)); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void load().finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [load]);
+
   const refresh = useCallback(async () => { setRefreshing(true); await load(); setRefreshing(false); }, [load]);
   const ngn = useMemo(() => wallet.find((row) => row.asset_code === 'NGN') ?? wallet[0], [wallet]);
   const tabs: Tab[] = adminSummary ? ['Home', 'Markets', 'Portfolio', 'Create', 'Admin'] : ['Home', 'Markets', 'Portfolio', 'Create'];
