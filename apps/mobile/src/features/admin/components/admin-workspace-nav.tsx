@@ -24,47 +24,54 @@ export function AdminWorkspaceNav() {
         backgroundColor: theme.colors.background,
       }}
     >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: theme.spacing.lg,
-          gap: theme.spacing.xs,
+      <View
+        style={{
+          width: '100%',
+          maxWidth: 1180,
+          alignSelf: 'center',
         }}
       >
-        {sections.map((section) => {
-          const selected =
-            section.href === '/admin'
-              ? pathname === '/admin'
-              : pathname.startsWith(section.href);
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: theme.spacing.lg,
+            gap: theme.spacing.md,
+          }}
+        >
+          {sections.map((section) => {
+            const selected =
+              section.href === '/admin'
+                ? pathname === '/admin'
+                : pathname.startsWith(section.href);
 
-          return (
-            <Pressable
-              key={section.href}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              onPress={() => router.replace(section.href)}
-              style={({ pressed }) => ({
-                minHeight: 44,
-                justifyContent: 'center',
-                borderBottomWidth: 2,
-                borderBottomColor: selected
-                  ? theme.colors.brandPrimary
-                  : 'transparent',
-                paddingHorizontal: theme.spacing.xs,
-                opacity: pressed ? 0.65 : 1,
-              })}
-            >
-              <VadText
-                variant="caption"
-                tone={selected ? 'brand' : 'secondary'}
+            return (
+              <Pressable
+                key={section.href}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                onPress={() => router.replace(section.href)}
+                style={({ pressed }) => ({
+                  minHeight: 44,
+                  justifyContent: 'center',
+                  borderBottomWidth: 2,
+                  borderBottomColor: selected
+                    ? theme.colors.brandPrimary
+                    : 'transparent',
+                  opacity: pressed ? 0.65 : 1,
+                })}
               >
-                {section.label}
-              </VadText>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+                <VadText
+                  variant="caption"
+                  tone={selected ? 'brand' : 'secondary'}
+                >
+                  {section.label}
+                </VadText>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
     </View>
   );
 }

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { AdminSectionTabs } from '@/features/admin/components/admin-section-tabs';
+import { AdminMetricCard } from '@/features/admin/dashboard/admin-metric-card';
 import {
   OperationsRow,
   OperationsSection,
@@ -14,6 +15,8 @@ import { useVadTheme } from '@/providers/theme-provider';
 
 export function AdminGovernanceScreen() {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 860;
   const data = useAdminData();
   const [tab, setTab] = useState('markets');
 
@@ -38,15 +41,44 @@ export function AdminGovernanceScreen() {
     );
   }
 
+  const total = data.marketQueue.length + data.oracleQueue.length;
+
   return (
-    <View style={{ gap: theme.spacing.xl }}>
-      <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="label" tone="brand">GOVERNANCE</VadText>
-        <VadText variant="title">Markets & resolution.</VadText>
-        <VadText tone="secondary">
-          Review market proposals and oracle cases in separate queues without
-          mixing governance with provider or finance operations.
-        </VadText>
+    <View style={{ gap: theme.spacing.xxl }}>
+      <View
+        style={{
+          flexDirection: wide ? 'row' : 'column',
+          gap: theme.spacing.xl,
+          alignItems: wide ? 'flex-end' : 'stretch',
+        }}
+      >
+        <View style={{ flex: 1, gap: theme.spacing.xs }}>
+          <VadText variant="label" tone="brand">GOVERNANCE</VadText>
+          <VadText variant="title">Markets & resolution.</VadText>
+          <VadText tone="secondary">
+            Keep proposal review separate from oracle resolution so each queue
+            has one clear operational purpose.
+          </VadText>
+        </View>
+
+        <View
+          style={{
+            minWidth: wide ? 300 : undefined,
+            flexDirection: 'row',
+            gap: theme.spacing.sm,
+          }}
+        >
+          <AdminMetricCard
+            label="Market review"
+            value={data.marketQueue.length}
+            tone={data.marketQueue.length ? 'warning' : 'yes'}
+          />
+          <AdminMetricCard
+            label="Oracle"
+            value={data.oracleQueue.length}
+            tone={data.oracleQueue.length ? 'warning' : 'yes'}
+          />
+        </View>
       </View>
 
       <AdminSectionTabs
@@ -69,14 +101,20 @@ export function AdminGovernanceScreen() {
       {tab === 'markets' ? (
         <OperationsSection
           title="Market review"
-          description="Questions waiting for governance review."
+          description={
+            total
+              ? 'Questions waiting for governance review.'
+              : 'No governance work is waiting.'
+          }
           count={data.marketQueue.length}
         >
           {data.marketQueue.length ? (
             data.marketQueue.map((row, index) => (
               <OperationsRow
                 key={'market-' + index}
-                title={String(row.question ?? row.title ?? 'Market proposal')}
+                title={String(
+                  row.question ?? row.title ?? 'Market proposal',
+                )}
                 detail={
                   String(row.category ?? 'General') +
                   ' · ' +

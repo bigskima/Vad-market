@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -14,6 +14,8 @@ import { useVadTheme } from '@/providers/theme-provider';
 
 export function AdminPaymentsScreen() {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 860;
   const data = useAdminData();
 
   if (data.loading) {
@@ -44,18 +46,74 @@ export function AdminPaymentsScreen() {
     (row) => row.status === 'SETTLED',
   ).length;
 
+  const visibleTotal = data.paymentQueue.length;
+
   return (
-    <View style={{ gap: theme.spacing.xl }}>
-      <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="label" tone="brand">PAYMENTS</VadText>
-        <VadText variant="title">Money movement operations.</VadText>
-        <VadText tone="secondary">
-          Review deposit and withdrawal intents while the ledger remains the
-          financial source of truth.
-        </VadText>
+    <View style={{ gap: theme.spacing.xxl }}>
+      <View
+        style={{
+          flexDirection: wide ? 'row' : 'column',
+          gap: theme.spacing.xl,
+          alignItems: 'stretch',
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            gap: theme.spacing.xs,
+          }}
+        >
+          <VadText variant="label" tone="brand">PAYMENTS</VadText>
+          <VadText variant="title">Money movement operations.</VadText>
+          <VadText tone="secondary">
+            Review payment-intent state while the ledger remains the financial
+            source of truth for available, reserved and settled balances.
+          </VadText>
+        </View>
+
+        <View
+          style={{
+            flex: wide ? 0.9 : undefined,
+            borderRadius: theme.radius.xl,
+            backgroundColor:
+              failed > 0
+                ? theme.colors.noSoft
+                : pending > 0
+                  ? theme.colors.warningSoft
+                  : theme.colors.yesSoft,
+            padding: theme.spacing.lg,
+            gap: theme.spacing.md,
+          }}
+        >
+          <VadText
+            variant="caption"
+            tone={failed > 0 ? 'no' : pending > 0 ? 'warning' : 'yes'}
+          >
+            PAYMENT HEALTH
+          </VadText>
+
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: theme.spacing.xl,
+              flexWrap: 'wrap',
+            }}
+          >
+            <HealthFact label="Pending" value={String(pending)} />
+            <HealthFact label="Failed" value={String(failed)} />
+            <HealthFact label="Settled" value={String(settledVisible)} />
+          </View>
+        </View>
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: theme.spacing.sm,
+        }}
+      >
         <AdminMetricCard
           label="Pending"
           value={pending}
@@ -71,14 +129,18 @@ export function AdminPaymentsScreen() {
           value={settledVisible}
           tone="yes"
         />
+        <AdminMetricCard
+          label="Visible intents"
+          value={visibleTotal}
+        />
       </View>
 
       <OperationsSection
         title="Payment intents"
         description="Provider and ledger state for visible payment operations."
-        count={data.paymentQueue.length}
+        count={visibleTotal}
       >
-        {data.paymentQueue.length ? (
+        {visibleTotal ? (
           data.paymentQueue.map((row) => (
             <OperationsRow
               key={row.intent_public_id}
@@ -98,6 +160,15 @@ export function AdminPaymentsScreen() {
           </View>
         )}
       </OperationsSection>
+    </View>
+  );
+}
+
+function HealthFact({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ minWidth: 82, gap: 2 }}>
+      <VadText variant="caption" tone="secondary">{label}</VadText>
+      <VadText variant="heading">{value}</VadText>
     </View>
   );
 }

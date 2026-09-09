@@ -19,15 +19,17 @@ export function AdminMetricCard({
   return (
     <View
       style={{
-        minWidth: 128,
+        minWidth: 120,
         flexGrow: 1,
-        flexBasis: 150,
+        flexBasis: 140,
+        minHeight: 78,
+        justifyContent: 'center',
         gap: theme.spacing.xxs,
-        padding: theme.spacing.md,
-        borderRadius: theme.radius.lg,
-        borderWidth: 1,
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
         borderColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
       }}
     >
       <VadText variant="heading" tone={tone}>{String(value)}</VadText>
