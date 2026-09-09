@@ -1,15 +1,13 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
-import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
-import { pct } from '@/features/markets/format';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import {
@@ -22,6 +20,7 @@ import {
   type ConvictionPost,
   type PostComment,
 } from '@/services/social-api';
+import { ConvictionComposer } from './components/conviction-composer';
 import { ConvictionPostCard } from './components/conviction-post-card';
 
 export function SocialConvictionFeed({
@@ -62,6 +61,7 @@ export function SocialConvictionFeed({
     const timer = setTimeout(() => {
       void load();
     }, 0);
+
     return () => clearTimeout(timer);
   }, [load]);
 
@@ -70,7 +70,8 @@ export function SocialConvictionFeed({
       marketFilter
         ? posts.filter(
             (post) =>
-              post.instrument_public_id === marketFilter.instrument_public_id,
+              post.instrument_public_id ===
+              marketFilter.instrument_public_id,
           )
         : posts,
     [marketFilter, posts],
@@ -88,15 +89,18 @@ export function SocialConvictionFeed({
 
   async function publish() {
     if (!body.trim()) return;
-    setWorking(true);
 
+    setWorking(true);
     try {
       await publishConvictionPost({
         body: body.trim(),
-        postType: selectedMarket && stance ? 'PREDICTION' : 'ANALYSIS',
-        instrumentPublicId: selectedMarket?.instrument_public_id ?? null,
+        postType:
+          selectedMarket && stance ? 'PREDICTION' : 'ANALYSIS',
+        instrumentPublicId:
+          selectedMarket?.instrument_public_id ?? null,
         stanceOutcomeCode: stance,
       });
+
       setBody('');
       setMarket(null);
       setStance(null);
@@ -127,10 +131,13 @@ export function SocialConvictionFeed({
 
   async function submitComment(post: ConvictionPost) {
     if (!commentBody.trim()) return;
-    setWorking(true);
 
+    setWorking(true);
     try {
-      await addPostComment(post.post_public_id, commentBody.trim());
+      await addPostComment(
+        post.post_public_id,
+        commentBody.trim(),
+      );
       setCommentBody('');
       setComments(await getPostComments(post.post_public_id));
       await load();
@@ -158,14 +165,21 @@ export function SocialConvictionFeed({
             gap: theme.spacing.sm,
           }}
         >
-          <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>
-            {marketFilter
-              ? 'Share analysis or a prediction about this market.'
-              : 'Publish analysis or attach a live market to make a prediction.'}
-          </VadText>
+          <View style={{ flex: 1, gap: 2 }}>
+            <VadText variant="bodyStrong">
+              {marketFilter ? 'Market discussion' : 'Community feed'}
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              {marketFilter
+                ? 'Add reasoning or publish a market prediction.'
+                : 'Share analysis, or attach a live market when you are making a prediction.'}
+            </VadText>
+          </View>
+
           <VadButton
             label={composerOpen ? 'Close' : 'New post'}
             fullWidth={false}
+            size="small"
             variant={composerOpen ? 'ghost' : 'secondary'}
             onPress={() => setComposerOpen((value) => !value)}
           />
@@ -173,120 +187,28 @@ export function SocialConvictionFeed({
       ) : null}
 
       {showComposer && composerOpen ? (
-        <VadCard
-          variant="raised"
-          style={{
-            gap: theme.spacing.md,
-            borderRadius: theme.radius.xl,
+        <ConvictionComposer
+          markets={markets}
+          marketFilter={marketFilter}
+          selectedMarket={selectedMarket}
+          body={body}
+          stance={stance}
+          working={working}
+          onBodyChange={setBody}
+          onMarketChange={(nextMarket) => {
+            setMarket(nextMarket);
+            setStance(null);
           }}
-        >
-          <View style={{ gap: theme.spacing.xxs }}>
-            <VadText variant="heading">Share your conviction</VadText>
-            <VadText variant="caption" tone="secondary">
-              Explain what you believe and the reasoning behind it.
-            </VadText>
-          </View>
-
-          <VadInput
-            multiline
-            value={body}
-            onChangeText={setBody}
-            placeholder="What do you believe, and why?"
-          />
-
-          {marketFilter ? (
-            <View
-              style={{
-                borderRadius: theme.radius.lg,
-                backgroundColor: theme.colors.surfaceMuted,
-                padding: theme.spacing.sm,
-                gap: 2,
-              }}
-            >
-              <VadText variant="caption" tone="tertiary">
-                ATTACHED MARKET
-              </VadText>
-              <VadText variant="bodyStrong" numberOfLines={2}>
-                {marketFilter.title}
-              </VadText>
-            </View>
-          ) : (
-            <View style={{ gap: theme.spacing.xs }}>
-              <VadText variant="label" tone="secondary">
-                Live market · optional
-              </VadText>
-              {markets.slice(0, 4).map((item) => (
-                <Pressable
-                  key={item.instrument_public_id}
-                  onPress={() => {
-                    setMarket(
-                      market?.instrument_public_id ===
-                        item.instrument_public_id
-                        ? null
-                        : item,
-                    );
-                    setStance(null);
-                  }}
-                >
-                  <VadCard
-                    variant={
-                      market?.instrument_public_id ===
-                      item.instrument_public_id
-                        ? 'muted'
-                        : 'outlined'
-                    }
-                    style={{
-                      padding: theme.spacing.sm,
-                      borderRadius: theme.radius.lg,
-                    }}
-                  >
-                    <VadText
-                      variant="caption"
-                      tone={
-                        market?.instrument_public_id ===
-                        item.instrument_public_id
-                          ? 'brand'
-                          : 'primary'
-                      }
-                      numberOfLines={2}
-                    >
-                      {item.title}
-                    </VadText>
-                  </VadCard>
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          {selectedMarket ? (
-            <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
-              <VadButton
-                fullWidth={false}
-                label={'YES ' + pct(selectedMarket.yes_price)}
-                variant={stance === 'YES' ? 'primary' : 'secondary'}
-                onPress={() => setStance('YES')}
-              />
-              <VadButton
-                fullWidth={false}
-                label={'NO ' + pct(selectedMarket.no_price)}
-                variant={stance === 'NO' ? 'primary' : 'secondary'}
-                onPress={() => setStance('NO')}
-              />
-            </View>
-          ) : null}
-
-          <VadButton
-            label="Publish conviction"
-            loading={working}
-            disabled={!body.trim()}
-            onPress={() => void publish()}
-          />
-        </VadCard>
+          onStanceChange={setStance}
+          onPublish={() => void publish()}
+        />
       ) : null}
 
       {!visiblePosts.length ? (
         <VadEmptyState
-          title={marketFilter ? 'No discussion yet' : 'No creator posts yet'}
+          title={
+            marketFilter ? 'No discussion yet' : 'No creator posts yet'
+          }
           body={
             marketFilter
               ? 'Be the first to add reasoning or a prediction to this market.'
@@ -294,34 +216,48 @@ export function SocialConvictionFeed({
           }
         />
       ) : (
-        visiblePosts.map((post) => {
-          const linked = post.instrument_public_id
-            ? markets.find(
-                (item) =>
-                  item.instrument_public_id === post.instrument_public_id,
-              )
-            : undefined;
-          const commentsOpen = commentsPostId === post.post_public_id;
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border,
+          }}
+        >
+          {visiblePosts.map((post) => {
+            const linked = post.instrument_public_id
+              ? markets.find(
+                  (item) =>
+                    item.instrument_public_id ===
+                    post.instrument_public_id,
+                )
+              : undefined;
 
-          return (
-            <ConvictionPostCard
-              key={post.post_public_id}
-              post={post}
-              linkedMarket={linked}
-              commentsOpen={commentsOpen}
-              creatorOpen={false}
-              onFollow={() =>
-                void toggleCreatorFollow(post.author_user_id).then(load)
-              }
-              onLike={() => void togglePostLike(post.post_public_id).then(load)}
-              onComments={() => void openComments(post)}
-              onOpenCreator={() =>
-                router.push('/creator/' + post.author_user_id)
-              }
-              onOpenMarket={() => linked && onOpenMarket(linked)}
-            />
-          );
-        })
+            const commentsOpen =
+              commentsPostId === post.post_public_id;
+
+            return (
+              <ConvictionPostCard
+                key={post.post_public_id}
+                post={post}
+                linkedMarket={linked}
+                commentsOpen={commentsOpen}
+                creatorOpen={false}
+                onFollow={() =>
+                  void toggleCreatorFollow(
+                    post.author_user_id,
+                  ).then(load)
+                }
+                onLike={() =>
+                  void togglePostLike(post.post_public_id).then(load)
+                }
+                onComments={() => void openComments(post)}
+                onOpenCreator={() =>
+                  router.push('/creator/' + post.author_user_id)
+                }
+                onOpenMarket={() => linked && onOpenMarket(linked)}
+              />
+            );
+          })}
+        </View>
       )}
 
       <VadBottomSheet
@@ -334,7 +270,7 @@ export function SocialConvictionFeed({
         }}
       >
         <ScrollView
-          style={{ maxHeight: 360 }}
+          style={{ maxHeight: 380 }}
           contentContainerStyle={{ gap: theme.spacing.sm }}
           keyboardShouldPersistTaps="handled"
         >
@@ -361,11 +297,19 @@ export function SocialConvictionFeed({
                     name={authorName}
                     size={34}
                   />
-                  <View style={{ flex: 1, gap: theme.spacing.xxs }}>
+
+                  <View
+                    style={{
+                      flex: 1,
+                      gap: theme.spacing.xxs,
+                    }}
+                  >
                     <VadText variant="label">{authorName}</VadText>
                     <VadText>{comment.body}</VadText>
                     <VadText variant="caption" tone="secondary">
-                      {new Date(comment.created_at).toLocaleString()}
+                      {new Date(
+                        comment.created_at,
+                      ).toLocaleString()}
                     </VadText>
                   </View>
                 </View>

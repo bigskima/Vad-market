@@ -1,4 +1,8 @@
-import { Pressable, View } from 'react-native';
+import {
+  Pressable,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
@@ -20,119 +24,227 @@ const options: {
   {
     value: 'light',
     title: 'Light',
-    subtitle: 'Use VAD with bright surfaces and dark text.',
+    subtitle: 'Use bright surfaces with dark text.',
     glyph: '☀',
   },
   {
     value: 'dark',
     title: 'Dark',
-    subtitle: 'Use VAD with low-light surfaces and bright text.',
+    subtitle: 'Use low-light surfaces with bright text.',
     glyph: '☾',
   },
 ];
 
 export default function AppearanceScreen() {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 820;
 
   return (
-    <ProductSubpage title="Appearance">
+    <ProductSubpage title="Appearance" maxWidth={980}>
       <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="title">Choose how VAD looks.</VadText>
+        <VadText variant="label" tone="brand">APPEARANCE</VadText>
+        <VadText variant="title">Choose how VAD feels on this device.</VadText>
         <VadText tone="secondary">
-          Your preference is saved on this device. System mode follows your device automatically.
+          System follows your device automatically. Light and Dark stay fixed
+          until you change them.
         </VadText>
-      </View>
-
-      <View style={{ gap: theme.spacing.sm }}>
-        {options.map((option) => {
-          const selected = theme.preference === option.value;
-
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              onPress={() => theme.setPreference(option.value)}
-              style={({ pressed }) => ({
-                minHeight: 86,
-                borderRadius: theme.radius.xl,
-                borderWidth: 1,
-                borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
-                backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
-                padding: theme.spacing.md,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: theme.spacing.md,
-                opacity: pressed ? 0.75 : 1,
-              })}
-            >
-              <View
-                style={{
-                  width: 46,
-                  height: 46,
-                  borderRadius: 23,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: selected ? theme.colors.surface : theme.colors.surfaceRaised,
-                }}
-              >
-                <VadText variant="heading" tone={selected ? 'brand' : 'secondary'}>
-                  {option.glyph}
-                </VadText>
-              </View>
-
-              <View style={{ flex: 1, gap: 2 }}>
-                <VadText variant="bodyStrong">{option.title}</VadText>
-                <VadText variant="caption" tone="secondary">{option.subtitle}</VadText>
-              </View>
-
-              <View
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 11,
-                  borderWidth: 2,
-                  borderColor: selected ? theme.colors.brandPrimary : theme.colors.borderStrong,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {selected ? (
-                  <View
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 5,
-                      backgroundColor: theme.colors.brandPrimary,
-                    }}
-                  />
-                ) : null}
-              </View>
-            </Pressable>
-          );
-        })}
       </View>
 
       <View
         style={{
-          borderRadius: theme.radius.xl,
-          backgroundColor: theme.colors.surfaceRaised,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          padding: theme.spacing.lg,
-          gap: theme.spacing.sm,
+          flexDirection: wide ? 'row' : 'column',
+          alignItems: 'flex-start',
+          gap: wide ? theme.spacing.xxl : theme.spacing.lg,
         }}
       >
-        <VadText variant="caption" tone="tertiary">CURRENT APPEARANCE</VadText>
-        <VadText variant="heading">
-          {theme.mode === 'dark' ? 'Dark' : 'Light'}
-        </VadText>
-        <VadText variant="caption" tone="secondary">
-          {theme.preference === 'system'
-            ? 'System mode is active and currently resolves to ' + theme.mode + '.'
-            : 'VAD will keep this appearance until you change it.'}
-        </VadText>
+        <View style={{ flex: 1, width: '100%', gap: theme.spacing.sm }}>
+          {options.map((option) => {
+            const selected = theme.preference === option.value;
+
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                onPress={() => theme.setPreference(option.value)}
+                style={({ pressed }) => ({
+                  minHeight: 78,
+                  borderBottomWidth: 1,
+                  borderBottomColor: theme.colors.border,
+                  paddingVertical: theme.spacing.sm,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: theme.spacing.md,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <View
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 21,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: selected
+                      ? theme.colors.brandSoft
+                      : theme.colors.surfaceRaised,
+                  }}
+                >
+                  <VadText
+                    variant="heading"
+                    tone={selected ? 'brand' : 'secondary'}
+                  >
+                    {option.glyph}
+                  </VadText>
+                </View>
+
+                <View style={{ flex: 1, gap: 2 }}>
+                  <VadText variant="bodyStrong">{option.title}</VadText>
+                  <VadText variant="caption" tone="secondary">
+                    {option.subtitle}
+                  </VadText>
+                </View>
+
+                <View
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    borderWidth: 2,
+                    borderColor: selected
+                      ? theme.colors.brandPrimary
+                      : theme.colors.borderStrong,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {selected ? (
+                    <View
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: theme.colors.brandPrimary,
+                      }}
+                    />
+                  ) : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View
+          style={{
+            width: wide ? 330 : '100%',
+            borderRadius: theme.radius.xl,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
+            overflow: 'hidden',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: theme.colors.surfaceRaised,
+              padding: theme.spacing.md,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
+            }}
+          >
+            <VadText variant="caption" tone="tertiary">LIVE PREVIEW</VadText>
+          </View>
+
+          <View style={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
+            <View style={{ gap: theme.spacing.xs }}>
+              <VadText variant="heading">
+                {theme.mode === 'dark' ? 'Dark' : 'Light'} mode
+              </VadText>
+              <VadText variant="caption" tone="secondary">
+                {theme.preference === 'system'
+                  ? 'System is selected and currently resolves to ' + theme.mode + '.'
+                  : 'This appearance will stay selected on this device.'}
+              </VadText>
+            </View>
+
+            <View
+              style={{
+                borderRadius: theme.radius.lg,
+                backgroundColor: theme.colors.brandSoft,
+                padding: theme.spacing.md,
+                gap: theme.spacing.sm,
+              }}
+            >
+              <VadText variant="caption" tone="brand">MARKET PREVIEW</VadText>
+              <VadText variant="bodyStrong">
+                Will the market resolve YES?
+              </VadText>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  gap: theme.spacing.sm,
+                }}
+              >
+                <PreviewOutcome
+                  label="YES"
+                  value="64%"
+                  positive
+                />
+                <PreviewOutcome
+                  label="NO"
+                  value="36%"
+                  positive={false}
+                />
+              </View>
+            </View>
+
+            <View
+              style={{
+                minHeight: 42,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: theme.radius.md,
+                backgroundColor: theme.colors.brandPrimary,
+              }}
+            >
+              <VadText variant="label" tone="inverse">Primary action</VadText>
+            </View>
+          </View>
+        </View>
       </View>
     </ProductSubpage>
+  );
+}
+
+function PreviewOutcome({
+  label,
+  value,
+  positive,
+}: {
+  label: string;
+  value: string;
+  positive: boolean;
+}) {
+  const theme = useVadTheme();
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        borderRadius: theme.radius.md,
+        backgroundColor: positive
+          ? theme.colors.yesSoft
+          : theme.colors.noSoft,
+        padding: theme.spacing.sm,
+      }}
+    >
+      <VadText variant="caption" tone={positive ? 'yes' : 'no'}>
+        {label}
+      </VadText>
+      <VadText variant="heading" tone={positive ? 'yes' : 'no'}>
+        {value}
+      </VadText>
+    </View>
   );
 }
