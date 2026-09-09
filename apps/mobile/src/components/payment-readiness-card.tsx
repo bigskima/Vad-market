@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -36,6 +37,7 @@ export function PaymentReadinessCard({
   const [mode, setMode] = useState<Mode>(initialMode);
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<PaymentQuote | null>(null);
+  const [createdIntentId, setCreatedIntentId] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
 
   const load = useCallback(async () => {
@@ -76,14 +78,8 @@ export function PaymentReadinessCard({
     setWorking(true);
     try {
       const publicId = await createPaymentIntent(mode, Number(amount));
-      Alert.alert(
-        'Payment intent created',
-        'Reference ' +
-          publicId +
-          '. Its status will appear in Wallet activity.',
-      );
+      setCreatedIntentId(publicId);
       setQuote(null);
-      setAmount('');
     } catch (error) {
       Alert.alert(
         'Payment unavailable',
@@ -94,6 +90,17 @@ export function PaymentReadinessCard({
     }
   }
 
+  function resetFlow() {
+    setCreatedIntentId(null);
+    setQuote(null);
+    setAmount('');
+  }
+
+  function switchMode(nextMode: Mode) {
+    setMode(nextMode);
+    resetFlow();
+  }
+
   const providerReady =
     mode === 'DEPOSIT'
       ? readiness.depositConfigured
@@ -101,17 +108,76 @@ export function PaymentReadinessCard({
 
   const amountValue = Number(amount);
   const validAmount = Number.isFinite(amountValue) && amountValue > 0;
-  const stage = quote ? 2 : amount ? 1 : 0;
+  const stage = createdIntentId ? 3 : quote ? 2 : amount ? 1 : 0;
+  const actionLabel = mode === 'DEPOSIT' ? 'deposit' : 'withdrawal';
+
+  if (createdIntentId) {
+    return (
+      <View style={{ gap: theme.spacing.xl }}>
+        <View
+          style={{
+            borderLeftWidth: 3,
+            borderLeftColor: theme.colors.yes,
+            backgroundColor: theme.colors.yesSoft,
+            padding: theme.spacing.xl,
+            gap: theme.spacing.md,
+          }}
+        >
+          <VadText variant="label" tone="yes">
+            {mode === 'DEPOSIT' ? 'DEPOSIT CREATED' : 'WITHDRAWAL CREATED'}
+          </VadText>
+          <VadText variant="title">Your payment intent is now live.</VadText>
+          <VadText tone="secondary">
+            VAD has created the {actionLabel} request. Its provider and ledger
+            state will continue updating in Wallet activity.
+          </VadText>
+
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+              paddingTop: theme.spacing.md,
+              gap: 2,
+            }}
+          >
+            <VadText variant="caption" tone="tertiary">REFERENCE</VadText>
+            <VadText variant="bodyStrong" selectable>
+              {createdIntentId}
+            </VadText>
+          </View>
+        </View>
+
+        <View style={{ flexDirection: split ? 'row' : 'column', gap: theme.spacing.sm }}>
+          <VadButton
+            label="Open Wallet activity"
+            onPress={() => router.push('/wallet/activity')}
+            style={{ flex: 1 }}
+          />
+          <VadButton
+            label={'Create another ' + actionLabel}
+            variant="secondary"
+            onPress={resetFlow}
+            style={{ flex: 1 }}
+          />
+        </View>
+
+        <VadText variant="caption" tone="tertiary">
+          Creating an intent does not mean settlement is complete. Wallet and
+          ledger state remain authoritative.
+        </VadText>
+      </View>
+    );
+  }
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
       {!lockMode ? (
         <View
+          accessibilityRole="tablist"
           style={{
             flexDirection: 'row',
-            padding: theme.spacing.xxs,
-            borderRadius: theme.radius.lg,
-            backgroundColor: theme.colors.surfaceRaised,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
           }}
         >
           {(['DEPOSIT', 'WITHDRAWAL'] as const).map((item) => {
@@ -122,21 +188,17 @@ export function PaymentReadinessCard({
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
                 key={item}
-                onPress={() => {
-                  setMode(item);
-                  setQuote(null);
-                  setAmount('');
-                }}
+                onPress={() => switchMode(item)}
                 style={({ pressed }) => ({
                   flex: 1,
-                  minHeight: 44,
+                  minHeight: 46,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: theme.radius.md,
-                  backgroundColor: selected
-                    ? theme.colors.surface
+                  borderBottomWidth: 2,
+                  borderBottomColor: selected
+                    ? theme.colors.brandPrimary
                     : 'transparent',
-                  opacity: pressed ? 0.7 : 1,
+                  opacity: pressed ? 0.65 : 1,
                 })}
               >
                 <VadText
@@ -172,7 +234,7 @@ export function PaymentReadinessCard({
         style={{
           flexDirection: split && quote ? 'row' : 'column',
           alignItems: 'flex-start',
-          gap: theme.spacing.lg,
+          gap: theme.spacing.xl,
         }}
       >
         <View
@@ -184,12 +246,10 @@ export function PaymentReadinessCard({
         >
           <View
             style={{
-              minHeight: 68,
-              borderRadius: theme.radius.lg,
-              backgroundColor: providerReady
-                ? theme.colors.yesSoft
-                : theme.colors.surfaceRaised,
-              padding: theme.spacing.md,
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor: theme.colors.border,
+              paddingVertical: theme.spacing.md,
               flexDirection: 'row',
               justifyContent: 'space-between',
               gap: theme.spacing.md,
@@ -201,7 +261,7 @@ export function PaymentReadinessCard({
                 Payment route
               </VadText>
               <VadText variant="bodyStrong">
-                {providerReady ? 'Ready for review' : 'Not ready'}
+                {providerReady ? 'Ready for live checks' : 'Not configured'}
               </VadText>
             </View>
 
@@ -209,7 +269,7 @@ export function PaymentReadinessCard({
               variant="caption"
               tone={providerReady ? 'yes' : 'warning'}
             >
-              {providerReady ? 'READY' : 'CHECK REQUIRED'}
+              {providerReady ? 'READY' : 'ACTION REQUIRED'}
             </VadText>
           </View>
 
@@ -226,6 +286,10 @@ export function PaymentReadinessCard({
             }}
             keyboardType="decimal-pad"
             placeholder="Amount in NGN"
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              if (validAmount) void preview();
+            }}
             hint={
               validAmount
                 ? 'Amount entered: ₦' + amountValue.toLocaleString()
@@ -237,6 +301,26 @@ export function PaymentReadinessCard({
                 : undefined
             }
           />
+
+          {!providerReady ? (
+            <View
+              style={{
+                borderLeftWidth: 3,
+                borderLeftColor: theme.colors.warning,
+                backgroundColor: theme.colors.warningSoft,
+                padding: theme.spacing.md,
+                gap: 2,
+              }}
+            >
+              <VadText variant="caption" tone="warning">
+                PAYMENT ROUTE NOT READY
+              </VadText>
+              <VadText variant="caption" tone="secondary">
+                You can enter an amount, but the backend will not allow this
+                action until an active provider route is available.
+              </VadText>
+            </View>
+          ) : null}
 
           {!quote ? (
             <VadButton
@@ -253,13 +337,12 @@ export function PaymentReadinessCard({
             style={{
               width: '100%',
               flex: split ? 1 : undefined,
-              borderWidth: 1,
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
               borderColor: quote.enabled
                 ? theme.colors.brandPrimary
                 : theme.colors.warning,
-              borderRadius: theme.radius.xl,
-              backgroundColor: theme.colors.surface,
-              padding: theme.spacing.lg,
+              paddingVertical: theme.spacing.lg,
               gap: theme.spacing.md,
             }}
           >
@@ -285,10 +368,7 @@ export function PaymentReadinessCard({
                 />
                 <MoneyRow
                   label="Fee"
-                  value={
-                    '₦' +
-                    Number(quote.feeAmount ?? 0).toLocaleString()
-                  }
+                  value={'₦' + Number(quote.feeAmount ?? 0).toLocaleString()}
                 />
                 <MoneyRow
                   label="Net amount"
@@ -298,6 +378,7 @@ export function PaymentReadinessCard({
                       quote.netAmount ?? quote.amount,
                     ).toLocaleString()
                   }
+                  emphasized
                 />
                 <MoneyRow
                   label="Provider"
@@ -345,7 +426,7 @@ function PaymentProgress({ stage }: { stage: number }) {
   return (
     <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
       {labels.map((label, index) => {
-        const active = index <= stage;
+        const active = index <= Math.min(stage, 2);
 
         return (
           <View key={label} style={{ flex: 1, gap: theme.spacing.xxs }}>
@@ -361,7 +442,7 @@ function PaymentProgress({ stage }: { stage: number }) {
             <VadText
               variant="caption"
               tone={
-                index === stage
+                index === Math.min(stage, 2)
                   ? 'brand'
                   : active
                     ? 'primary'
@@ -377,7 +458,15 @@ function PaymentProgress({ stage }: { stage: number }) {
   );
 }
 
-function MoneyRow({ label, value }: { label: string; value: string }) {
+function MoneyRow({
+  label,
+  value,
+  emphasized = false,
+}: {
+  label: string;
+  value: string;
+  emphasized?: boolean;
+}) {
   const theme = useVadTheme();
 
   return (
@@ -394,7 +483,12 @@ function MoneyRow({ label, value }: { label: string; value: string }) {
       <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>
         {label}
       </VadText>
-      <VadText variant="bodyStrong">{value}</VadText>
+      <VadText
+        variant={emphasized ? 'heading' : 'bodyStrong'}
+        tone={emphasized ? 'brand' : 'primary'}
+      >
+        {value}
+      </VadText>
     </View>
   );
 }
