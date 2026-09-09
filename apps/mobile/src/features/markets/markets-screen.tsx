@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
@@ -24,7 +24,12 @@ export function MarketsScreen({
   const { width } = useWindowDimensions();
   const columns = width >= 1120 ? 3 : width >= 760 ? 2 : 1;
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState(initialCategory ?? 'All');
+  const [category, setCategory] = useState(() =>
+    initialCategory &&
+    markets.some((market) => market.category === initialCategory)
+      ? initialCategory
+      : 'All',
+  );
   const [sortMode, setSortMode] = useState<MarketSortMode>('activity');
 
   const categories = useMemo(
@@ -38,14 +43,6 @@ export function MarketsScreen({
       ].sort(),
     [markets],
   );
-
-  useEffect(() => {
-    if (!initialCategory) return;
-
-    if (categories.includes(initialCategory)) {
-      setCategory(initialCategory);
-    }
-  }, [categories, initialCategory]);
 
   const orderedMarkets = useMemo(() => {
     const needle = query.trim().toLowerCase();
