@@ -10,19 +10,22 @@ import { MarketProbabilityBar } from './market-probability-bar';
 export function MarketCard({ market, onPress }: { market: MarketCatalogItem; onPress: () => void }) {
   const theme = useVadTheme();
   const isOpen = market.status === 'OPEN' || market.status === 'ACTIVE';
+  const closesLabel = market.closes_at ? new Date(market.closes_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Policy close';
+  const activityLabel = market.last_trade_at ? `Traded ${new Date(market.last_trade_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Price forming';
 
   return (
     <Pressable onPress={onPress} accessibilityRole="button">
       {({ pressed }) => (
         <VadCard variant="surface" style={{ gap: theme.spacing.md, opacity: pressed ? 0.82 : 1, borderRadius: theme.radius.xl }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
-            <View style={{ flex: 1, gap: theme.spacing.xs }}>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-                <View style={{ backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xxs }}><VadText variant="caption" tone="secondary">{market.category ?? 'General'}</VadText></View>
-                <View style={{ backgroundColor: isOpen ? theme.colors.yesSoft : theme.colors.surfaceMuted, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xxs }}><VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'}>{isOpen ? 'LIVE' : market.status}</VadText></View>
-              </View>
-              <VadText variant="heading">{market.title}</VadText>
-              <VadText variant="caption" tone="secondary">Settles in {market.asset_code} · tap for rules, evidence and order book</VadText>
+          <View style={{ gap: theme.spacing.sm }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+              <View style={{ backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xxs }}><VadText variant="caption" tone="secondary">{market.category ?? 'General'}</VadText></View>
+              <View style={{ backgroundColor: isOpen ? theme.colors.yesSoft : theme.colors.surfaceMuted, borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xxs }}><VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'}>{isOpen ? 'LIVE' : market.status}</VadText></View>
+            </View>
+            <VadText variant="heading">{market.title}</VadText>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+              <VadText variant="caption" tone="secondary">{activityLabel}</VadText>
+              <VadText variant="caption" tone="secondary">Closes {closesLabel}</VadText>
             </View>
           </View>
 
@@ -30,11 +33,16 @@ export function MarketCard({ market, onPress }: { market: MarketCatalogItem; onP
 
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
             <View style={{ flex: 1, backgroundColor: theme.colors.yesSoft, borderRadius: theme.radius.lg, padding: theme.spacing.sm }}>
-              <VadText variant="caption" tone="secondary">Market price</VadText><VadText variant="bodyStrong" tone="yes">YES {pct(market.yes_price)}</VadText>
+              <VadText variant="caption" tone="secondary">YES price</VadText><VadText variant="bodyStrong" tone="yes">{pct(market.yes_price)}</VadText>
             </View>
             <View style={{ flex: 1, backgroundColor: theme.colors.noSoft, borderRadius: theme.radius.lg, padding: theme.spacing.sm }}>
-              <VadText variant="caption" tone="secondary">Market price</VadText><VadText variant="bodyStrong" tone="no">NO {pct(market.no_price)}</VadText>
+              <VadText variant="caption" tone="secondary">NO price</VadText><VadText variant="bodyStrong" tone="no">{pct(market.no_price)}</VadText>
             </View>
+          </View>
+
+          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <VadText variant="caption" tone="secondary">Settles in {market.asset_code}</VadText>
+            <VadText variant="label" tone="brand">View market →</VadText>
           </View>
         </VadCard>
       )}
