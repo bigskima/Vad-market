@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import type { ReactNode } from 'react';
 import {
   Pressable,
   useWindowDimensions,
@@ -149,7 +150,7 @@ function SettingGroup({
 }: {
   title: string;
   subtitle: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const theme = useVadTheme();
 
