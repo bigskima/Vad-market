@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -10,6 +10,8 @@ import { useVadTheme } from '@/providers/theme-provider';
 
 export function AdminDashboardScreen() {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 860;
   const data = useAdminData();
 
   if (data.loading) {
@@ -40,6 +42,7 @@ export function AdminDashboardScreen() {
   const paymentAttention = Number(
     data.operations?.paymentProviderPending ?? data.paymentQueue.length,
   );
+
   const attention =
     data.marketQueue.length +
     data.oracleQueue.length +
@@ -48,32 +51,61 @@ export function AdminDashboardScreen() {
     data.providerChanges.length;
 
   return (
-    <View style={{ gap: theme.spacing.xxl }}>
-      <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="label" tone="brand">OPERATIONS OVERVIEW</VadText>
-        <VadText variant="title">What needs attention now?</VadText>
-        <VadText tone="secondary">
-          Each control area now has its own workspace. Backend roles and
-          maker-checker rules remain authoritative.
-        </VadText>
+    <View style={{ gap: theme.spacing.xxxl }}>
+      <View
+        style={{
+          flexDirection: wide ? 'row' : 'column',
+          gap: theme.spacing.xl,
+          alignItems: 'stretch',
+        }}
+      >
+        <View
+          style={{
+            flex: 1.1,
+            justifyContent: 'center',
+            gap: theme.spacing.xs,
+          }}
+        >
+          <VadText variant="label" tone="brand">OPERATIONS OVERVIEW</VadText>
+          <VadText variant="title">What needs attention now?</VadText>
+          <VadText tone="secondary">
+            Use this page to triage work. Each control area stays separate and
+            backend roles, permissions and maker-checker rules remain authoritative.
+          </VadText>
+        </View>
+
+        <View
+          style={{
+            flex: 0.9,
+            borderRadius: theme.radius.xl,
+            backgroundColor:
+              attention > 0
+                ? theme.colors.warningSoft
+                : theme.colors.yesSoft,
+            padding: theme.spacing.xl,
+            gap: theme.spacing.sm,
+          }}
+        >
+          <VadText
+            variant="caption"
+            tone={attention > 0 ? 'warning' : 'yes'}
+          >
+            ATTENTION ITEMS
+          </VadText>
+          <VadText variant="display">{attention}</VadText>
+          <VadText variant="caption" tone="secondary">
+            Across governance, providers, compliance and payments.
+          </VadText>
+        </View>
       </View>
 
       <View
         style={{
-          borderRadius: theme.radius.xl,
-          backgroundColor: theme.colors.brandPrimary,
-          padding: theme.spacing.xl,
-          gap: theme.spacing.md,
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: theme.spacing.sm,
         }}
       >
-        <VadText variant="caption" tone="inverse">ATTENTION ITEMS</VadText>
-        <VadText variant="display" tone="inverse">{attention}</VadText>
-        <VadText variant="caption" tone="inverse">
-          Across governance, providers, compliance and payments.
-        </VadText>
-      </View>
-
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
         <AdminMetricCard
           label="Market review"
           value={data.marketQueue.length}
@@ -84,11 +116,20 @@ export function AdminDashboardScreen() {
           value={data.oracleQueue.length}
           tone={data.oracleQueue.length ? 'warning' : 'yes'}
         />
-        <AdminMetricCard label="KYC review" value={kycAttention} />
-        <AdminMetricCard label="Payments pending" value={paymentAttention} />
+        <AdminMetricCard
+          label="KYC review"
+          value={kycAttention}
+          tone={kycAttention ? 'warning' : 'yes'}
+        />
+        <AdminMetricCard
+          label="Payments pending"
+          value={paymentAttention}
+          tone={paymentAttention ? 'warning' : 'yes'}
+        />
         <AdminMetricCard
           label="Provider approvals"
           value={data.providerChanges.length}
+          tone={data.providerChanges.length ? 'warning' : 'yes'}
         />
         <AdminMetricCard
           label="Providers configured"
@@ -97,37 +138,49 @@ export function AdminDashboardScreen() {
         />
       </View>
 
-      <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-        <WorkspaceRow
-          title="Governance"
-          detail="Market proposals and oracle resolution queues"
-          count={data.marketQueue.length + data.oracleQueue.length}
-          onPress={() => router.push('/admin/governance')}
-        />
-        <WorkspaceRow
-          title="Providers"
-          detail="Runtime readiness and maker-checker changes"
-          count={data.providerChanges.length}
-          onPress={() => router.push('/admin/providers')}
-        />
-        <WorkspaceRow
-          title="Compliance"
-          detail="Identity verification review"
-          count={kycAttention}
-          onPress={() => router.push('/admin/compliance')}
-        />
-        <WorkspaceRow
-          title="Payments"
-          detail="Deposit and withdrawal operational states"
-          count={paymentAttention}
-          onPress={() => router.push('/admin/payments')}
-        />
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadText variant="heading">Control areas</VadText>
+        <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+          <WorkspaceRow
+            title="Governance"
+            detail="Market proposals and oracle resolution queues"
+            count={data.marketQueue.length + data.oracleQueue.length}
+            onPress={() => router.push('/admin/governance')}
+          />
+          <WorkspaceRow
+            title="Providers"
+            detail="Runtime readiness and maker-checker changes"
+            count={data.providerChanges.length}
+            onPress={() => router.push('/admin/providers')}
+          />
+          <WorkspaceRow
+            title="Compliance"
+            detail="Identity verification review"
+            count={kycAttention}
+            onPress={() => router.push('/admin/compliance')}
+          />
+          <WorkspaceRow
+            title="Payments"
+            detail="Deposit and withdrawal operational states"
+            count={paymentAttention}
+            onPress={() => router.push('/admin/payments')}
+          />
+        </View>
       </View>
 
       {data.runtime ? (
         <View style={{ gap: theme.spacing.sm }}>
           <VadText variant="heading">Runtime snapshot</VadText>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+          <VadText variant="caption" tone="secondary">
+            Live operational signals returned by the backend.
+          </VadText>
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: theme.spacing.sm,
+            }}
+          >
             {Object.entries(data.runtime)
               .filter(([key]) => key !== 'generatedAt')
               .slice(0, 6)
@@ -160,6 +213,7 @@ function WorkspaceRow({
 
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({
         minHeight: 76,
@@ -178,7 +232,10 @@ function WorkspaceRow({
       </View>
 
       <View style={{ alignItems: 'flex-end', gap: 2 }}>
-        <VadText variant="heading" tone={count ? 'warning' : 'secondary'}>
+        <VadText
+          variant="heading"
+          tone={count ? 'warning' : 'yes'}
+        >
           {count}
         </VadText>
         <VadText variant="caption" tone="tertiary">›</VadText>
