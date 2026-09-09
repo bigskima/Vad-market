@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import type { PropsWithChildren } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
@@ -18,6 +18,8 @@ export function ProductSubpage({
 }>) {
   const theme = useVadTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const compact = width < 380;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -34,7 +36,9 @@ export function ProductSubpage({
             width: '100%',
             maxWidth: Math.max(maxWidth, 760),
             alignSelf: 'center',
-            paddingHorizontal: theme.spacing.lg,
+            paddingHorizontal: compact
+              ? theme.spacing.md
+              : theme.spacing.lg,
             paddingBottom: theme.spacing.sm,
             minHeight: 50,
             flexDirection: 'row',
@@ -46,6 +50,7 @@ export function ProductSubpage({
             accessibilityRole="button"
             accessibilityLabel="Go back"
             onPress={() => router.back()}
+            hitSlop={8}
             style={({ pressed }) => ({
               minWidth: 44,
               height: 40,
@@ -58,7 +63,9 @@ export function ProductSubpage({
           </Pressable>
 
           <View style={{ flex: 1, alignItems: 'center' }}>
-            <VadText variant="bodyStrong">{title}</VadText>
+            <VadText variant="bodyStrong" numberOfLines={1}>
+              {title}
+            </VadText>
           </View>
 
           <View style={{ width: 44, alignItems: 'flex-end' }}>
@@ -68,10 +75,18 @@ export function ProductSubpage({
       </View>
 
       <VadScreen
+        scrollProps={{
+          keyboardShouldPersistTaps: 'handled',
+          keyboardDismissMode: 'on-drag',
+          contentInsetAdjustmentBehavior: 'automatic',
+        }}
         contentStyle={{
           alignSelf: 'center',
           width: '100%',
           maxWidth,
+          paddingHorizontal: compact
+            ? theme.spacing.md
+            : theme.spacing.lg,
           paddingTop: theme.spacing.lg,
           paddingBottom: theme.spacing.xxxl,
           gap: theme.spacing.lg,
