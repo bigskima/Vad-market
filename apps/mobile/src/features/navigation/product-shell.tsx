@@ -28,7 +28,7 @@ export function ProductShell({ email, canTrade, canCreatePost, canSubmitProposal
   return <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
     <View style={{ paddingTop: 50, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
       <Pressable onPress={() => changeTab('Home')} style={{ flex: 1 }}><VadText variant="heading" tone="brand">VAD</VadText><VadText variant="caption" tone="secondary">Value Asset Depot</VadText></Pressable>
-      {data.adminSummary ? <Pressable onPress={() => router.push('/admin-operations')} style={{ padding: theme.spacing.xs }}><VadText variant="label" tone="brand">Admin</VadText></Pressable> : null}
+      {data.adminSummary ? <Pressable onPress={() => router.push('/admin')} style={{ padding: theme.spacing.xs }}><VadText variant="label" tone="brand">Admin</VadText></Pressable> : null}
       <Pressable onPress={() => router.push('/account')} style={{ padding: theme.spacing.xs }}><VadText variant="label">Account</VadText></Pressable>
       <Pressable onPress={() => void onSignOut()} style={{ padding: theme.spacing.xs }}><VadText variant="label" tone="secondary">Sign out</VadText></Pressable>
     </View>

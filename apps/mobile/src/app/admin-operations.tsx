@@ -15,9 +15,9 @@ export default function AdminOperationsRoute() {
 
   return <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
     <View style={{ paddingTop: 52, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surface }}>
-      <Pressable onPress={() => router.back()}><VadText variant="label" tone="brand">← Account</VadText></Pressable>
+      <Pressable onPress={() => router.replace('/admin')}><VadText variant="label" tone="brand">← Control plane</VadText></Pressable>
       <VadText variant="heading">Operations</VadText>
-      <View style={{ width: 64 }} />
+      <View style={{ width: 86 }} />
     </View>
     <VadScreen contentStyle={{ paddingTop: theme.spacing.xl }}><AdminOperationsFeature /></VadScreen>
   </View>;
