@@ -103,24 +103,40 @@ const authenticatedHandler = withSupabase(
       );
     }
 
-    const [rulesResult, assetsResult] = await Promise.all([
+    const { data: jurisdiction, error: jurisdictionError } = await ctx.supabase
+      .from("jurisdictions")
+      .select("id,status")
+      .eq("country_code", account.country_code)
+      .maybeSingle();
+
+    if (jurisdictionError || !jurisdiction || jurisdiction.status !== "ACTIVE") {
+      return apiError(
+        requestId,
+        "JURISDICTION_UNAVAILABLE",
+        "VAD financial services are not enabled for this account location.",
+        403,
+        false,
+      );
+    }
+
+    const [rulesResult, jurisdictionAssetsResult] = await Promise.all([
       ctx.supabase
         .from("capability_rules")
         .select("capability_key,enabled,reason_code,version")
         .eq("country_code", account.country_code)
         .order("version", { ascending: false }),
       ctx.supabase
-        .from("assets")
-        .select("code")
-        .eq("status", "ACTIVE")
-        .order("code"),
+        .from("jurisdiction_assets")
+        .select("asset_id")
+        .eq("jurisdiction_id", jurisdiction.id)
+        .eq("status", "ACTIVE"),
     ]);
 
-    if (rulesResult.error || assetsResult.error) {
+    if (rulesResult.error || jurisdictionAssetsResult.error) {
       console.error("runtime-capabilities policy lookup failed", {
         requestId,
         rulesCode: rulesResult.error?.code,
-        assetsCode: assetsResult.error?.code,
+        jurisdictionAssetsCode: jurisdictionAssetsResult.error?.code,
       });
       return apiError(
         requestId,
@@ -131,9 +147,38 @@ const authenticatedHandler = withSupabase(
       );
     }
 
+    const eligibleAssetIds = jurisdictionAssetsResult.data.map((row) => row.asset_id);
+    let activeAssetCodes: string[] = [];
+
+    if (eligibleAssetIds.length > 0) {
+      const { data: assets, error: assetsError } = await ctx.supabase
+        .from("assets")
+        .select("code")
+        .in("id", eligibleAssetIds)
+        .eq("status", "ACTIVE")
+        .order("code");
+
+      if (assetsError) {
+        console.error("runtime-capabilities asset lookup failed", {
+          requestId,
+          assetsCode: assetsError.code,
+        });
+        return apiError(
+          requestId,
+          "POLICY_CONTEXT_UNAVAILABLE",
+          "VAD cannot confirm available assets right now.",
+          503,
+          true,
+        );
+      }
+
+      activeAssetCodes = assets.map((asset) => asset.code);
+    }
+
     const capabilities = closedCapabilities();
     const reasons: Partial<Record<ClientCapabilityKey, string>> = {};
     const seen = new Set<ClientCapabilityKey>();
+    const accountIsActive = account.status === "ACTIVE";
 
     for (const rule of rulesResult.data as CapabilityRule[]) {
       const databaseKey = rule.capability_key as DatabaseCapabilityKey;
@@ -141,7 +186,6 @@ const authenticatedHandler = withSupabase(
       if (!clientKey || seen.has(clientKey)) continue;
 
       seen.add(clientKey);
-      const accountIsActive = account.status === "ACTIVE";
       capabilities[clientKey] = accountIsActive && rule.enabled;
       if (!capabilities[clientKey]) {
         reasons[clientKey] = accountIsActive
@@ -154,14 +198,24 @@ const authenticatedHandler = withSupabase(
       if (!seen.has(clientKey)) reasons[clientKey] = "NO_ACTIVE_POLICY";
     }
 
+    if (activeAssetCodes.length === 0) {
+      capabilities.trade = false;
+      capabilities.deposit = false;
+      capabilities.withdraw = false;
+      reasons.trade = "NO_ACTIVE_ASSET";
+      reasons.deposit = "NO_ACTIVE_ASSET";
+      reasons.withdraw = "NO_ACTIVE_ASSET";
+    }
+
     return json({
-      version: 1,
+      version: 2,
       status: "ready",
       requestId,
       evaluatedAt: new Date().toISOString(),
       context: {
         countryCode: account.country_code,
-        activeAssetCodes: assetsResult.data.map((asset) => asset.code),
+        jurisdictionStatus: jurisdiction.status,
+        activeAssetCodes,
       },
       capabilities,
       reasons,
