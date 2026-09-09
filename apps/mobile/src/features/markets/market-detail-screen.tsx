@@ -10,8 +10,9 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { listMarkets, type MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { MarketInsightPanel } from './components/market-insight-panel';
+import { TradingTicket } from './components/trading-ticket';
 
-export function MarketDetailScreen({ instrumentPublicId }: { instrumentPublicId: string }) {
+export function MarketDetailScreen({ instrumentPublicId, canTrade }: { instrumentPublicId: string; canTrade: boolean }) {
   const theme = useVadTheme();
   const [market, setMarket] = useState<MarketCatalogItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,7 +29,7 @@ export function MarketDetailScreen({ instrumentPublicId }: { instrumentPublicId:
 
   useEffect(() => { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); }, [load]);
 
-  if (loading) return <View style={{ gap: theme.spacing.sm }}><VadSkeleton height={40} width="75%" /><VadSkeleton height={180} /><VadSkeleton height={150} /><VadSkeleton height={120} /></View>;
+  if (loading) return <View style={{ gap: theme.spacing.sm }}><VadSkeleton height={40} width="75%" /><VadSkeleton height={180} /><VadSkeleton height={150} /><VadSkeleton height={220} /></View>;
   if (error || !market) return <VadErrorState title="Market unavailable" message={error ?? 'This market is not currently in the live catalog.'} onRetry={() => void load()} />;
 
   return <View style={{ gap: theme.spacing.xl }}>
@@ -43,6 +44,12 @@ export function MarketDetailScreen({ instrumentPublicId }: { instrumentPublicId:
         <VadText tone="secondary">Current prices represent participant conviction only. Final truth comes from the configured oracle policy, evidence and governance process—not the creator, AI, or the winning side of the order book.</VadText>
         <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}><Meta label="Asset" value={market.asset_code} /><Meta label="State" value={market.status} /></View>
       </VadCard>
+    </View>
+
+    <View style={{ gap: theme.spacing.sm }}>
+      <VadText variant="label" tone="brand">TRADE</VadText>
+      <VadSectionHeader title="Take a position" subtitle="Review a server-authoritative quote before any funds or shares are reserved." />
+      <TradingTicket market={market} canTrade={canTrade} onPlaced={load} />
     </View>
 
     <VadCard variant="outlined" style={{ gap: theme.spacing.xs }}>
