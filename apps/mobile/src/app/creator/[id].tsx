@@ -8,7 +8,7 @@ export default function CreatorRoute() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   return (
-    <ProductSubpage title="Creator">
+    <ProductSubpage title="Creator" maxWidth={900}>
       <CreatorProfileScreen creatorUserId={id ?? ''} />
     </ProductSubpage>
   );

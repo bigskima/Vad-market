@@ -13,8 +13,12 @@ export default function MarketDetailRoute() {
   const { session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
-  const marketId = Array.isArray(params.marketId) ? params.marketId[0] : params.marketId;
-  const market = data.markets.find((item) => item.instrument_public_id === marketId);
+  const marketId = Array.isArray(params.marketId)
+    ? params.marketId[0]
+    : params.marketId;
+  const market = data.markets.find(
+    (item) => item.instrument_public_id === marketId,
+  );
 
   const openMarket = (next: MarketCatalogItem) => {
     router.replace({
@@ -24,7 +28,7 @@ export default function MarketDetailRoute() {
   };
 
   return (
-    <ProductSubpage title="Market">
+    <ProductSubpage title="Market" maxWidth={980}>
       {market ? (
         <MarketDetailScreen
           market={market}
