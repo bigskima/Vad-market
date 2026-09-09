@@ -34,6 +34,15 @@ export function PortfolioPositionScreen({
   }
 
   const yes = position.outcome_code === 'YES';
+  const shares = Number(position.quantity);
+  const average = Number(position.average_price);
+  const costBasis = Number(position.total_cost_basis);
+  const portfolioCost = data.positions.reduce(
+    (sum, row) => sum + Number(row.total_cost_basis ?? 0),
+    0,
+  );
+  const portfolioWeight =
+    portfolioCost > 0 ? costBasis / portfolioCost : 0;
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
@@ -46,23 +55,11 @@ export function PortfolioPositionScreen({
             flexWrap: 'wrap',
           }}
         >
-          <View
-            style={{
-              alignSelf: 'flex-start',
-              borderRadius: theme.radius.pill,
-              backgroundColor: yes
-                ? theme.colors.yesSoft
-                : theme.colors.noSoft,
-              paddingHorizontal: theme.spacing.sm,
-              paddingVertical: theme.spacing.xs,
-            }}
-          >
-            <VadText variant="label" tone={yes ? 'yes' : 'no'}>
-              {position.outcome_code}
-            </VadText>
-          </View>
-
-          <VadText variant="caption" tone="tertiary">
+          <VadText variant="label" tone={yes ? 'yes' : 'no'}>
+            {position.outcome_code} POSITION
+          </VadText>
+          <VadText variant="caption" tone="tertiary">·</VadText>
+          <VadText variant="caption" tone="secondary">
             {position.status}
           </VadText>
         </View>
@@ -73,18 +70,17 @@ export function PortfolioPositionScreen({
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
+          gap: theme.spacing.xl,
           alignItems: 'stretch',
-          gap: theme.spacing.md,
         }}
       >
         <View
           style={{
-            flex: 1.2,
-            borderRadius: theme.radius.xl,
-            backgroundColor: yes
-              ? theme.colors.yesSoft
-              : theme.colors.noSoft,
-            padding: theme.spacing.xl,
+            flex: 1.15,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: yes ? theme.colors.yes : theme.colors.no,
+            paddingVertical: theme.spacing.lg,
             gap: theme.spacing.sm,
           }}
         >
@@ -94,9 +90,7 @@ export function PortfolioPositionScreen({
           >
             COST BASIS
           </VadText>
-          <VadText variant="display">
-            {money(position.total_cost_basis)}
-          </VadText>
+          <VadText variant="display">{money(costBasis)}</VadText>
           <VadText variant="caption" tone="secondary">
             Capital recorded against this {position.outcome_code} position.
           </VadText>
@@ -104,24 +98,50 @@ export function PortfolioPositionScreen({
 
         <View
           style={{
-            flex: 0.8,
-            borderRadius: theme.radius.xl,
-            borderWidth: 1,
+            flex: 0.85,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
             borderColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
-            padding: theme.spacing.lg,
+            paddingVertical: theme.spacing.lg,
             gap: theme.spacing.lg,
-            justifyContent: 'center',
           }}
         >
-          <Snapshot
-            label="Shares"
-            value={Number(position.quantity).toLocaleString()}
-          />
-          <Snapshot
-            label="Average entry"
-            value={pct(position.average_price)}
-          />
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: theme.spacing.xl,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Snapshot
+              label="Shares"
+              value={shares.toLocaleString()}
+            />
+            <Snapshot
+              label="Average entry"
+              value={pct(average)}
+            />
+          </View>
+
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+              paddingTop: theme.spacing.md,
+              flexDirection: 'row',
+              gap: theme.spacing.xl,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Snapshot
+              label="Portfolio weight"
+              value={pct(portfolioWeight)}
+            />
+            <Snapshot
+              label="Outcome"
+              value={position.outcome_code}
+            />
+          </View>
         </View>
       </View>
 
@@ -133,21 +153,22 @@ export function PortfolioPositionScreen({
             borderTopColor: theme.colors.border,
           }}
         >
-          <Detail
-            label="Outcome"
-            value={position.outcome_code}
-          />
+          <Detail label="Outcome" value={position.outcome_code} />
           <Detail
             label="Shares"
-            value={Number(position.quantity).toLocaleString()}
+            value={shares.toLocaleString()}
           />
           <Detail
             label="Average entry"
-            value={pct(position.average_price)}
+            value={pct(average)}
           />
           <Detail
             label="Cost basis"
-            value={money(position.total_cost_basis)}
+            value={money(costBasis)}
+          />
+          <Detail
+            label="Portfolio cost weight"
+            value={pct(portfolioWeight)}
           />
           <Detail
             label="Position status"
@@ -158,17 +179,18 @@ export function PortfolioPositionScreen({
 
       <View
         style={{
-          borderLeftWidth: 3,
-          borderLeftColor: theme.colors.brandPrimary,
-          borderRadius: theme.radius.md,
-          backgroundColor: theme.colors.brandSoft,
-          padding: theme.spacing.md,
+          borderTopWidth: 1,
+          borderBottomWidth: 1,
+          borderColor: theme.colors.border,
+          paddingVertical: theme.spacing.md,
+          gap: 2,
         }}
       >
-        <VadText variant="caption" tone="brand">
-          This screen reflects the position recorded by VAD. Market price,
-          resolution and settlement remain governed by the live market and
-          authoritative ledger.
+        <VadText variant="bodyStrong">How to read this position</VadText>
+        <VadText variant="caption" tone="secondary">
+          Portfolio weight compares this position&apos;s recorded cost basis
+          with your other active positions. Market pricing, resolution, fees
+          and settlement remain backend-authoritative.
         </VadText>
       </View>
     </View>
@@ -177,7 +199,7 @@ export function PortfolioPositionScreen({
 
 function Snapshot({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ gap: 2 }}>
+    <View style={{ minWidth: 110, flex: 1, gap: 2 }}>
       <VadText variant="caption" tone="tertiary">{label}</VadText>
       <VadText variant="heading">{value}</VadText>
     </View>
@@ -208,7 +230,7 @@ function Detail({ label, value }: { label: string; value: string }) {
       </VadText>
       <VadText
         variant="bodyStrong"
-        style={{ flex: 1, textAlign: 'right' }}
+        style={{ flex: 1.2, textAlign: 'right' }}
       >
         {value}
       </VadText>

@@ -6,6 +6,7 @@ import {
   View,
 } from 'react-native';
 
+import { VadButton } from '@/components/ui/vad-button';
 import { VadText } from '@/components/ui/vad-text';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -83,7 +84,14 @@ export function MarketDetailScreen({
         })}
       </ScrollView>
 
-      {tab === 'Overview' ? <Overview market={market} /> : null}
+      {tab === 'Overview' ? (
+        <Overview
+          market={market}
+          canTrade={canTrade}
+          onTrade={() => setTab('Trade')}
+          onDiscuss={() => setTab('Discussion')}
+        />
+      ) : null}
 
       {tab === 'Trade' ? (
         <TradingTicket
@@ -107,7 +115,17 @@ export function MarketDetailScreen({
   );
 }
 
-function Overview({ market }: { market: MarketCatalogItem }) {
+function Overview({
+  market,
+  canTrade,
+  onTrade,
+  onDiscuss,
+}: {
+  market: MarketCatalogItem;
+  canTrade: boolean;
+  onTrade: () => void;
+  onDiscuss: () => void;
+}) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 780;
@@ -131,7 +149,6 @@ function Overview({ market }: { market: MarketCatalogItem }) {
           style={{
             borderLeftWidth: 3,
             borderLeftColor: theme.colors.brandPrimary,
-            borderRadius: theme.radius.md,
             backgroundColor: theme.colors.brandSoft,
             padding: theme.spacing.md,
             gap: 2,
@@ -144,6 +161,25 @@ function Overview({ market }: { market: MarketCatalogItem }) {
             YES and NO prices reflect current trading. The final outcome is
             determined independently under the approved market policy.
           </VadText>
+        </View>
+
+        <View
+          style={{
+            flexDirection: wide ? 'row' : 'column',
+            gap: theme.spacing.sm,
+          }}
+        >
+          <VadButton
+            label={canTrade ? 'Trade this market' : 'Check trade availability'}
+            onPress={onTrade}
+            style={{ flex: 1 }}
+          />
+          <VadButton
+            label="Open discussion"
+            variant="secondary"
+            onPress={onDiscuss}
+            style={{ flex: 1 }}
+          />
         </View>
       </View>
 
