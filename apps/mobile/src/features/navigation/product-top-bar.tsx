@@ -75,9 +75,10 @@ export function ProductTopBar({
             style={{
               flex: 1,
               flexDirection: 'row',
-              alignItems: 'center',
+              alignItems: 'stretch',
               justifyContent: 'center',
-              gap: theme.spacing.xxs,
+              gap: theme.spacing.md,
+              alignSelf: 'stretch',
             }}
           >
             {PRODUCT_TABS.map((tab) => {
@@ -90,12 +91,11 @@ export function ProductTopBar({
                   accessibilityState={{ selected }}
                   onPress={() => onNavigate(tab.value)}
                   style={({ pressed }) => ({
-                    minHeight: 38,
+                    minHeight: 46,
                     justifyContent: 'center',
-                    borderRadius: theme.radius.pill,
-                    paddingHorizontal: theme.spacing.md,
-                    backgroundColor: selected
-                      ? theme.colors.brandSoft
+                    borderBottomWidth: 2,
+                    borderBottomColor: selected
+                      ? theme.colors.brandPrimary
                       : 'transparent',
                     opacity: pressed ? 0.65 : 1,
                   })}
@@ -129,7 +129,7 @@ export function ProductTopBar({
               style={({ pressed }) => ({
                 minHeight: 38,
                 justifyContent: 'center',
-                borderRadius: theme.radius.pill,
+                borderRadius: theme.radius.md,
                 backgroundColor: theme.colors.brandPrimary,
                 paddingHorizontal: showNavigation
                   ? theme.spacing.md
@@ -151,8 +151,6 @@ export function ProductTopBar({
               style={({ pressed }) => ({
                 minHeight: 38,
                 justifyContent: 'center',
-                borderRadius: theme.radius.pill,
-                backgroundColor: theme.colors.surfaceRaised,
                 paddingHorizontal: theme.spacing.sm,
                 opacity: pressed ? 0.7 : 1,
               })}
