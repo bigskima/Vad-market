@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -13,6 +13,8 @@ import { useVadTheme } from '@/providers/theme-provider';
 
 export function AdminComplianceScreen() {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 860;
   const data = useAdminData();
 
   if (data.loading) {
@@ -39,19 +41,80 @@ export function AdminComplianceScreen() {
     data.operations?.kycInReview ?? data.kycQueue.length,
   );
   const verified = Number(data.operations?.kycVerified ?? 0);
+  const totalVisible = inReview + verified;
+  const completionRatio =
+    totalVisible > 0 ? verified / totalVisible : 0;
 
   return (
-    <View style={{ gap: theme.spacing.xl }}>
-      <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="label" tone="brand">COMPLIANCE</VadText>
-        <VadText variant="title">Identity verification.</VadText>
-        <VadText tone="secondary">
-          Track provider-hosted verification states without exposing raw
-          identity documents in the operations UI.
-        </VadText>
+    <View style={{ gap: theme.spacing.xxl }}>
+      <View
+        style={{
+          flexDirection: wide ? 'row' : 'column',
+          gap: theme.spacing.xl,
+          alignItems: 'stretch',
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            gap: theme.spacing.xs,
+          }}
+        >
+          <VadText variant="label" tone="brand">COMPLIANCE</VadText>
+          <VadText variant="title">Identity verification.</VadText>
+          <VadText tone="secondary">
+            Review provider-hosted verification states without exposing raw
+            identity documents in the operations interface.
+          </VadText>
+        </View>
+
+        <View
+          style={{
+            flex: wide ? 0.9 : undefined,
+            borderRadius: theme.radius.xl,
+            backgroundColor:
+              inReview > 0
+                ? theme.colors.warningSoft
+                : theme.colors.yesSoft,
+            padding: theme.spacing.lg,
+            gap: theme.spacing.md,
+          }}
+        >
+          <VadText
+            variant="caption"
+            tone={inReview > 0 ? 'warning' : 'yes'}
+          >
+            REVIEW LOAD
+          </VadText>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              gap: theme.spacing.md,
+              alignItems: 'flex-end',
+            }}
+          >
+            <View style={{ gap: 2 }}>
+              <VadText variant="title">{inReview}</VadText>
+              <VadText variant="caption" tone="secondary">
+                cases in review
+              </VadText>
+            </View>
+            <VadText variant="heading" tone="yes">
+              {Math.round(completionRatio * 100)}% verified
+            </VadText>
+          </View>
+        </View>
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: theme.spacing.sm,
+        }}
+      >
         <AdminMetricCard
           label="In review"
           value={inReview}
@@ -93,6 +156,11 @@ export function AdminComplianceScreen() {
           </View>
         )}
       </OperationsSection>
+
+      <VadText variant="caption" tone="tertiary">
+        Raw identity-document payloads remain outside this operations view.
+        Admins work from provider references and verification state.
+      </VadText>
     </View>
   );
 }
