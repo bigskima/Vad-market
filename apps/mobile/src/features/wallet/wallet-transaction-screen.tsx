@@ -66,19 +66,11 @@ export function WalletTransactionScreen({
   const incoming = intent.operation === 'DEPOSIT';
   const normalizedStatus = intent.status.replaceAll('_', ' ');
   const settled = Boolean(intent.settled_at);
+  const failed = Boolean(intent.failure_code);
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
-      <View
-        style={{
-          borderRadius: theme.radius.xl,
-          backgroundColor: incoming
-            ? theme.colors.yesSoft
-            : theme.colors.surfaceRaised,
-          padding: theme.spacing.xl,
-          gap: theme.spacing.lg,
-        }}
-      >
+      <View style={{ gap: theme.spacing.sm }}>
         <View
           style={{
             flexDirection: 'row',
@@ -87,65 +79,78 @@ export function WalletTransactionScreen({
             alignItems: 'flex-start',
           }}
         >
-          <View style={{ gap: 2 }}>
-            <VadText
-              variant="caption"
-              tone={incoming ? 'yes' : 'secondary'}
-            >
+          <View style={{ flex: 1, gap: 2 }}>
+            <VadText variant="caption" tone={incoming ? 'yes' : 'secondary'}>
               {intent.operation}
             </VadText>
             <VadText variant="display">{money(intent.amount)}</VadText>
           </View>
 
-          <View
-            style={{
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surface,
-              paddingHorizontal: theme.spacing.sm,
-              paddingVertical: theme.spacing.xs,
-            }}
+          <VadText
+            variant="caption"
+            tone={settled ? 'yes' : failed ? 'danger' : 'brand'}
           >
-            <VadText
-              variant="caption"
-              tone={settled ? 'yes' : intent.failure_code ? 'warning' : 'brand'}
-            >
-              {normalizedStatus}
-            </VadText>
-          </View>
+            {normalizedStatus}
+          </VadText>
         </View>
 
         <View
           style={{
             borderTopWidth: 1,
-            borderTopColor: theme.colors.border,
-            paddingTop: theme.spacing.md,
+            borderBottomWidth: 1,
+            borderColor: theme.colors.border,
+            paddingVertical: theme.spacing.md,
             flexDirection: 'row',
             gap: theme.spacing.xl,
             flexWrap: 'wrap',
           }}
         >
           <MoneyFact label="Fee" value={money(intent.fee_amount)} />
-          <MoneyFact label="Net" value={money(intent.net_amount)} />
+          <MoneyFact label="Net" value={money(intent.net_amount)} emphasized />
           <MoneyFact label="Asset" value={intent.asset_code} />
+        </View>
+      </View>
+
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadText variant="heading">Status</VadText>
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border,
+          }}
+        >
+          <StatusStep
+            label="Intent created"
+            detail={new Date(intent.created_at).toLocaleString()}
+            state="complete"
+          />
+          <StatusStep
+            label="Provider processing"
+            detail={
+              failed
+                ? 'Provider processing ended with an issue.'
+                : settled
+                  ? 'Provider processing completed.'
+                  : 'Waiting for the payment route to complete.'
+            }
+            state={failed ? 'failed' : settled ? 'complete' : 'active'}
+          />
+          <StatusStep
+            label="Settled"
+            detail={
+              intent.settled_at
+                ? new Date(intent.settled_at).toLocaleString()
+                : 'Not settled yet'
+            }
+            state={settled ? 'complete' : failed ? 'waiting' : 'waiting'}
+          />
         </View>
       </View>
 
       <View style={{ gap: theme.spacing.sm }}>
         <VadText variant="heading">Transaction details</VadText>
         <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-          <Detail label="Reference" value={intent.intent_public_id} />
-          <Detail
-            label="Created"
-            value={new Date(intent.created_at).toLocaleString()}
-          />
-          <Detail
-            label="Settled"
-            value={
-              intent.settled_at
-                ? new Date(intent.settled_at).toLocaleString()
-                : 'Not settled yet'
-            }
-          />
+          <Detail label="Reference" value={intent.intent_public_id} selectable />
           <Detail
             label="Payment route"
             value={intent.provider_configured ? 'Configured' : 'Not configured'}
@@ -157,19 +162,18 @@ export function WalletTransactionScreen({
         <View
           style={{
             borderLeftWidth: 3,
-            borderLeftColor: theme.colors.warning,
-            borderRadius: theme.radius.md,
-            backgroundColor: theme.colors.warningSoft,
+            borderLeftColor: theme.colors.danger,
+            backgroundColor: theme.colors.noSoft,
             padding: theme.spacing.md,
             gap: 2,
           }}
         >
-          <VadText variant="caption" tone="warning">PAYMENT ISSUE</VadText>
+          <VadText variant="caption" tone="danger">PAYMENT ISSUE</VadText>
           <VadText variant="bodyStrong">
             {intent.failure_code.replaceAll('_', ' ')}
           </VadText>
           <VadText variant="caption" tone="secondary">
-            Refresh the transaction after the underlying issue has been resolved.
+            Refresh this transaction after the underlying issue has been resolved.
           </VadText>
         </View>
       ) : null}
@@ -182,23 +186,112 @@ export function WalletTransactionScreen({
       />
 
       <VadText variant="caption" tone="tertiary">
-        Wallet activity reflects the payment intent state. Ledger balances remain
-        authoritative for available and reserved funds.
+        Payment intent state explains the external flow. Ledger balances remain
+        authoritative for available, reserved and settled funds.
       </VadText>
     </View>
   );
 }
 
-function MoneyFact({ label, value }: { label: string; value: string }) {
+function MoneyFact({
+  label,
+  value,
+  emphasized = false,
+}: {
+  label: string;
+  value: string;
+  emphasized?: boolean;
+}) {
   return (
-    <View style={{ minWidth: 90, gap: 2 }}>
+    <View style={{ minWidth: 90, flexGrow: 1, flexBasis: 100, gap: 2 }}>
       <VadText variant="caption" tone="secondary">{label}</VadText>
-      <VadText variant="bodyStrong">{value}</VadText>
+      <VadText
+        variant={emphasized ? 'heading' : 'bodyStrong'}
+        tone={emphasized ? 'brand' : 'primary'}
+      >
+        {value}
+      </VadText>
     </View>
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function StatusStep({
+  label,
+  detail,
+  state,
+}: {
+  label: string;
+  detail: string;
+  state: 'complete' | 'active' | 'waiting' | 'failed';
+}) {
+  const theme = useVadTheme();
+
+  const tone =
+    state === 'complete'
+      ? 'yes'
+      : state === 'active'
+        ? 'brand'
+        : state === 'failed'
+          ? 'danger'
+          : 'tertiary';
+
+  return (
+    <View
+      style={{
+        minHeight: 64,
+        paddingVertical: theme.spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+      }}
+    >
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor:
+            state === 'complete'
+              ? theme.colors.yesSoft
+              : state === 'active'
+                ? theme.colors.brandSoft
+                : state === 'failed'
+                  ? theme.colors.noSoft
+                  : theme.colors.surfaceRaised,
+        }}
+      >
+        <VadText variant="caption" tone={tone}>
+          {state === 'complete'
+            ? '✓'
+            : state === 'active'
+              ? '•'
+              : state === 'failed'
+                ? '!'
+                : '–'}
+        </VadText>
+      </View>
+
+      <View style={{ flex: 1, gap: 2 }}>
+        <VadText variant="bodyStrong">{label}</VadText>
+        <VadText variant="caption" tone="secondary">{detail}</VadText>
+      </View>
+    </View>
+  );
+}
+
+function Detail({
+  label,
+  value,
+  selectable = false,
+}: {
+  label: string;
+  value: string;
+  selectable?: boolean;
+}) {
   const theme = useVadTheme();
 
   return (
@@ -213,17 +306,14 @@ function Detail({ label, value }: { label: string; value: string }) {
         borderBottomColor: theme.colors.border,
       }}
     >
-      <VadText
-        variant="caption"
-        tone="tertiary"
-        style={{ flex: 1 }}
-      >
+      <VadText variant="caption" tone="tertiary" style={{ flex: 1 }}>
         {label}
       </VadText>
       <VadText
         variant="bodyStrong"
         style={{ flex: 1.6, textAlign: 'right' }}
-        numberOfLines={2}
+        numberOfLines={selectable ? undefined : 2}
+        selectable={selectable}
       >
         {value}
       </VadText>
