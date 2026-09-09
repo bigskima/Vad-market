@@ -47,10 +47,10 @@ export const typography = {
     fontWeight: '600' as const,
   },
   label: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '700' as const,
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
   caption: {
     fontSize: 12,
