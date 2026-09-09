@@ -27,8 +27,26 @@ export type PaymentQueueRow = {
   settled_at: string | null;
 };
 
+export type OperationsSummary = {
+  kycAwaitingUser: number | string;
+  kycInReview: number | string;
+  kycVerified: number | string;
+  paymentCreated: number | string;
+  paymentProviderPending: number | string;
+  paymentFailed: number | string;
+  pendingProviderChanges: number | string;
+  configuredProviders: number | string;
+  generatedAt: string;
+};
+
 function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
+}
+
+export async function getAdminOperationsSummary() {
+  const { data, error } = await supabase.rpc('admin_operations_summary');
+  fail(error);
+  return data as OperationsSummary;
 }
 
 export async function getAdminKycQueue(limit = 100) {
