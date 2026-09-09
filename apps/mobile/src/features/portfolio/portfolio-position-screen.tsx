@@ -37,8 +37,12 @@ export function PortfolioPositionScreen({
   const shares = Number(position.quantity);
   const average = Number(position.average_price);
   const costBasis = Number(position.total_cost_basis);
-  const impliedGrossSettlement = shares;
-  const grossUpside = Math.max(0, impliedGrossSettlement - costBasis);
+  const portfolioCost = data.positions.reduce(
+    (sum, row) => sum + Number(row.total_cost_basis ?? 0),
+    0,
+  );
+  const portfolioWeight =
+    portfolioCost > 0 ? costBasis / portfolioCost : 0;
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
@@ -130,12 +134,12 @@ export function PortfolioPositionScreen({
             }}
           >
             <Snapshot
-              label="Gross if correct"
-              value={money(impliedGrossSettlement)}
+              label="Portfolio weight"
+              value={pct(portfolioWeight)}
             />
             <Snapshot
-              label="Gross upside"
-              value={money(grossUpside)}
+              label="Outcome"
+              value={position.outcome_code}
             />
           </View>
         </View>
@@ -163,8 +167,8 @@ export function PortfolioPositionScreen({
             value={money(costBasis)}
           />
           <Detail
-            label="Gross settlement if correct"
-            value={money(impliedGrossSettlement)}
+            label="Portfolio cost weight"
+            value={pct(portfolioWeight)}
           />
           <Detail
             label="Position status"
@@ -184,9 +188,9 @@ export function PortfolioPositionScreen({
       >
         <VadText variant="bodyStrong">How to read this position</VadText>
         <VadText variant="caption" tone="secondary">
-          Gross settlement assumes one settlement unit per winning share.
-          Actual resolution, fees and final settlement remain governed by the
-          live market and authoritative ledger.
+          Portfolio weight compares this position&apos;s recorded cost basis
+          with your other active positions. Market pricing, resolution, fees
+          and settlement remain backend-authoritative.
         </VadText>
       </View>
     </View>
