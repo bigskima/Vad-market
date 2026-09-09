@@ -1,79 +1,297 @@
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
 
-import { VadCard } from '@/components/ui/vad-card';
+import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadText } from '@/components/ui/vad-text';
 import { pct } from '@/features/markets/format';
 import { useVadTheme } from '@/providers/theme-provider';
-import type { CreatorPrediction, CreatorReputation } from '@/services/social-api';
+import type {
+  CreatorPrediction,
+  CreatorReputation,
+} from '@/services/social-api';
 
-export function CreatorProfilePanel({ reputation, predictions }: { reputation: CreatorReputation; predictions: CreatorPrediction[] }) {
+type CreatorTab = 'signal' | 'predictions';
+
+export function CreatorProfilePanel({
+  reputation,
+  predictions,
+}: {
+  reputation: CreatorReputation;
+  predictions: CreatorPrediction[];
+}) {
+  const theme = useVadTheme();
+  const [tab, setTab] = useState<CreatorTab>('signal');
+
+  return (
+    <View style={{ gap: theme.spacing.lg }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          padding: theme.spacing.xxs,
+          borderRadius: theme.radius.lg,
+          backgroundColor: theme.colors.surfaceRaised,
+        }}
+      >
+        <Tab
+          label="Signal"
+          selected={tab === 'signal'}
+          onPress={() => setTab('signal')}
+        />
+        <Tab
+          label={'Predictions ' + predictions.length}
+          selected={tab === 'predictions'}
+          onPress={() => setTab('predictions')}
+        />
+      </View>
+
+      {tab === 'signal' ? (
+        <View style={{ gap: theme.spacing.xl }}>
+          <View
+            style={{
+              borderRadius: theme.radius.xl,
+              backgroundColor: theme.colors.brandSoft,
+              padding: theme.spacing.xl,
+              gap: theme.spacing.sm,
+            }}
+          >
+            <VadText variant="caption" tone="brand">
+              EVIDENCE-WEIGHTED REPUTATION
+            </VadText>
+            <VadText variant="display" tone="brand">
+              {reputation.evidenceWeightedReputation}%
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              Based on {reputation.resolvedPredictions} resolved predictions.
+            </VadText>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <SignalMetric
+              label="Accuracy"
+              value={
+                reputation.accuracy == null
+                  ? '—'
+                  : pct(reputation.accuracy)
+              }
+            />
+            <SignalMetric
+              label="Calibration"
+              value={
+                reputation.calibrationScore == null
+                  ? '—'
+                  : pct(reputation.calibrationScore)
+              }
+            />
+          </View>
+
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+            }}
+          >
+            <MetricRow
+              label="Correct predictions"
+              value={String(reputation.correctPredictions)}
+            />
+            <MetricRow label="Published posts" value={String(reputation.posts)} />
+            <MetricRow
+              label="Following"
+              value={String(reputation.following)}
+            />
+            <MetricRow
+              label="Originated markets"
+              value={String(reputation.originatedMarkets)}
+            />
+          </View>
+
+          <VadText variant="caption" tone="tertiary">
+            This reputation is descriptive only. Oracle resolution and
+            settlement remain independent.
+          </VadText>
+        </View>
+      ) : (
+        <PredictionHistory predictions={predictions} />
+      )}
+    </View>
+  );
+}
+
+function PredictionHistory({
+  predictions,
+}: {
+  predictions: CreatorPrediction[];
+}) {
   const theme = useVadTheme();
 
-  return <View style={{ gap: theme.spacing.lg }}>
-    <VadCard variant="raised" style={{ gap: theme.spacing.md, borderRadius: theme.radius.xl }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: theme.spacing.md }}>
-        <View style={{ gap: theme.spacing.xxs }}>
-          <VadText variant="caption" tone="secondary">Evidence-weighted reputation</VadText>
-          <VadText variant="display" tone="brand">{reputation.evidenceWeightedReputation}%</VadText>
-        </View>
-        <VadText variant="caption" tone="tertiary">{reputation.resolvedPredictions} resolved</VadText>
-      </View>
+  if (!predictions.length) {
+    return (
+      <VadEmptyState
+        title="No resolved prediction history"
+        body="Resolved creator predictions will appear here as the track record grows."
+      />
+    );
+  }
 
-      <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
-        <SignalMetric label="Accuracy" value={reputation.accuracy == null ? '—' : pct(reputation.accuracy)} />
-        <SignalMetric label="Calibration" value={reputation.calibrationScore == null ? '—' : pct(reputation.calibrationScore)} />
-      </View>
+  return (
+    <View
+      style={{
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+      }}
+    >
+      {predictions.slice(0, 12).map((item) => {
+        const resultTone =
+          item.correct === true
+            ? 'yes'
+            : item.correct === false
+              ? 'no'
+              : 'secondary';
+        const resultLabel =
+          item.resolution_status === 'FINAL'
+            ? item.correct
+              ? 'Correct'
+              : 'Missed'
+            : 'Unresolved';
+        const stanceTone =
+          item.stance_outcome_code === 'YES' ? 'yes' : 'no';
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-        <SmallMetric label="Correct" value={String(reputation.correctPredictions)} />
-        <SmallMetric label="Posts" value={String(reputation.posts)} />
-        <SmallMetric label="Following" value={String(reputation.following)} />
-        <SmallMetric label="Markets" value={String(reputation.originatedMarkets)} />
-      </View>
+        return (
+          <View
+            key={item.post_public_id}
+            style={{
+              paddingVertical: theme.spacing.md,
+              gap: theme.spacing.sm,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
+            }}
+          >
+            <VadText variant="bodyStrong" numberOfLines={2}>
+              {item.market_title}
+            </VadText>
 
-      <VadText variant="caption" tone="secondary">Descriptive reputation only. Oracle resolution and settlement remain independent.</VadText>
-    </VadCard>
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: theme.spacing.xs,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}
+            >
+              <View
+                style={{
+                  borderRadius: theme.radius.pill,
+                  backgroundColor:
+                    item.stance_outcome_code === 'YES'
+                      ? theme.colors.yesSoft
+                      : theme.colors.noSoft,
+                  paddingHorizontal: theme.spacing.sm,
+                  paddingVertical: theme.spacing.xxs,
+                }}
+              >
+                <VadText variant="caption" tone={stanceTone}>
+                  Called {item.stance_outcome_code}
+                </VadText>
+              </View>
 
-    <View style={{ gap: theme.spacing.sm }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <VadText variant="heading">Resolved conviction</VadText>
-        <VadText variant="caption" tone="secondary">{predictions.length} shown</VadText>
-      </View>
+              {item.resolved_outcome_code ? (
+                <VadText variant="caption" tone="secondary">
+                  Resolved {item.resolved_outcome_code}
+                </VadText>
+              ) : null}
 
-      {predictions.length ? predictions.slice(0, 8).map((item) => {
-        const resultTone = item.correct === true ? 'yes' : item.correct === false ? 'no' : 'secondary';
-        const resultLabel = item.resolution_status === 'FINAL'
-          ? item.correct ? 'Correct' : 'Missed'
-          : 'Unresolved';
-
-        return <VadCard key={item.post_public_id} variant="outlined" style={{ gap: theme.spacing.sm, borderRadius: theme.radius.lg }}>
-          <VadText variant="bodyStrong" numberOfLines={2}>{item.market_title}</VadText>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
-            <View style={{ borderRadius: theme.radius.pill, backgroundColor: item.stance_outcome_code === 'YES' ? theme.colors.yesSoft : theme.colors.noSoft, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xxs }}>
-              <VadText variant="caption" tone={item.stance_outcome_code === 'YES' ? 'yes' : 'no'}>{item.stance_outcome_code}</VadText>
+              <VadText variant="caption" tone={resultTone}>
+                {resultLabel}
+              </VadText>
             </View>
-            {item.resolved_outcome_code ? <VadText variant="caption" tone="secondary">Resolved {item.resolved_outcome_code}</VadText> : null}
-            <VadText variant="caption" tone={resultTone}>{resultLabel}</VadText>
+
+            {item.body ? (
+              <VadText
+                variant="caption"
+                tone="secondary"
+                numberOfLines={2}
+              >
+                {item.body}
+              </VadText>
+            ) : null}
           </View>
-          {item.body ? <VadText variant="caption" tone="secondary" numberOfLines={2}>{item.body}</VadText> : null}
-        </VadCard>;
-      }) : <VadCard variant="muted"><VadText tone="secondary">No resolved prediction history is available yet.</VadText></VadCard>}
+        );
+      })}
     </View>
-  </View>;
+  );
+}
+
+function Tab({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const theme = useVadTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        flex: 1,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: theme.radius.md,
+        backgroundColor: selected ? theme.colors.surface : 'transparent',
+      }}
+    >
+      <VadText variant="label" tone={selected ? 'brand' : 'secondary'}>
+        {label}
+      </VadText>
+    </Pressable>
+  );
 }
 
 function SignalMetric({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
-  return <VadCard variant="muted" style={{ flex: 1, gap: theme.spacing.xxs, padding: theme.spacing.sm }}>
-    <VadText variant="heading">{value}</VadText>
-    <VadText variant="caption" tone="secondary">{label}</VadText>
-  </VadCard>;
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        minHeight: 82,
+        borderRadius: theme.radius.lg,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surface,
+        padding: theme.spacing.md,
+        gap: 2,
+      }}
+    >
+      <VadText variant="heading">{value}</VadText>
+      <VadText variant="caption" tone="secondary">{label}</VadText>
+    </View>
+  );
 }
 
-function SmallMetric({ label, value }: { label: string; value: string }) {
+function MetricRow({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
-  return <View style={{ width: '47%', minWidth: 112, gap: theme.spacing.xxs, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.xs }}>
-    <VadText variant="bodyStrong">{value}</VadText>
-    <VadText variant="caption" tone="secondary">{label}</VadText>
-  </View>;
+
+  return (
+    <View
+      style={{
+        minHeight: 54,
+        paddingVertical: theme.spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+      }}
+    >
+      <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>
+        {label}
+      </VadText>
+      <VadText variant="bodyStrong">{value}</VadText>
+    </View>
+  );
 }
