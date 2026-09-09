@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
+import { SocialConvictionFeed } from '@/components/social-conviction-feed';
 import { palette } from '@/constants/palette';
 import {
   getAdminMarketQueue,
@@ -23,12 +24,12 @@ import {
 } from '@/services/market-api';
 
 type Tab = 'Home' | 'Markets' | 'Portfolio' | 'Create' | 'Admin';
-type Props = { email: string; canTrade: boolean; canSubmitProposal: boolean; onSignOut: () => Promise<void> | void };
+type Props = { email: string; canTrade: boolean; canCreatePost: boolean; canSubmitProposal: boolean; onSignOut: () => Promise<void> | void };
 
 const money = (value: unknown) => `₦${Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const pct = (value: unknown) => `${Math.round(Number(value ?? 0) * 100)}%`;
 
-export function VadProductShell({ email, canTrade, canSubmitProposal, onSignOut }: Props) {
+export function VadProductShell({ email, canTrade, canCreatePost, canSubmitProposal, onSignOut }: Props) {
   const [tab, setTab] = useState<Tab>('Home');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -108,7 +109,7 @@ export function VadProductShell({ email, canTrade, canSubmitProposal, onSignOut 
   return <View style={s.root}>
     <View style={s.topbar}><View><Text style={s.brand}>VAD</Text><Text style={s.muted}>Value Asset Depot</Text></View><Pressable onPress={() => void onSignOut()}><Text style={s.link}>Sign out</Text></Pressable></View>
     <ScrollView contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={palette.signal} />}>
-      {tab === 'Home' && <><Text style={s.eyebrow}>OPEN CONVICTION · CONTROLLED TRUTH</Text><Text style={s.hero}>Markets built around what people believe next.</Text><Text style={s.muted}>{email}</Text><View style={s.balance}><Text style={s.darkMuted}>Available NGN</Text><Text style={s.balanceValue}>{money(ngn?.available)}</Text><Text style={s.darkMuted}>Reserved {money(ngn?.reserved)}</Text></View><Heading title="Live conviction" meta={`${markets.length} markets`} />{markets.slice(0, 4).map((m) => <Market key={m.instrument_public_id} market={m} onPress={() => { setSelected(m); setTab('Markets'); }} />)}{!markets.length && <Empty text="No financial market is live yet. Approved canonical markets will appear automatically." />}</>}
+      {tab === 'Home' && <><Text style={s.eyebrow}>OPEN CONVICTION · CONTROLLED TRUTH</Text><Text style={s.hero}>Markets built around what people believe next.</Text><Text style={s.muted}>{email}</Text><View style={s.balance}><Text style={s.darkMuted}>Available NGN</Text><Text style={s.balanceValue}>{money(ngn?.available)}</Text><Text style={s.darkMuted}>Reserved {money(ngn?.reserved)}</Text></View><Heading title="Live conviction" meta={`${markets.length} markets`} />{markets.slice(0, 3).map((m) => <Market key={m.instrument_public_id} market={m} onPress={() => { setSelected(m); setTab('Markets'); }} />)}{!markets.length && <Empty text="No financial market is live yet. Approved canonical markets will appear automatically." />}<SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={(market) => { setSelected(market); setTab('Markets'); }} /></>}
 
       {tab === 'Markets' && <><Heading title="Markets" meta="NGN launch" />{selected ? <><Pressable onPress={() => { setSelected(null); setQuote(null); }}><Text style={s.link}>← All markets</Text></Pressable><Text style={s.marketTitle}>{selected.title}</Text><Text style={s.muted}>{selected.category ?? 'General'} · {selected.closes_at ? `closes ${new Date(selected.closes_at).toLocaleString()}` : 'close time by policy'}</Text><View style={s.row}><Choice active={outcome === 'YES'} label={`YES ${pct(selected.yes_price)}`} onPress={() => { setOutcome('YES'); setPrice(String(Number(selected.yes_price ?? .5))); setQuote(null); }} /><Choice active={outcome === 'NO'} label={`NO ${pct(selected.no_price)}`} onPress={() => { setOutcome('NO'); setPrice(String(Number(selected.no_price ?? .5))); setQuote(null); }} /></View><View style={s.row}><Choice active={side === 'BUY'} label="Buy" onPress={() => { setSide('BUY'); setQuote(null); }} /><Choice active={side === 'SELL'} label="Sell" onPress={() => { setSide('SELL'); setQuote(null); }} /></View><Field label="Limit price (₦ per share)" value={price} onChangeText={(v) => { setPrice(v); setQuote(null); }} keyboardType="decimal-pad" /><Field label="Shares" value={quantity} onChangeText={(v) => { setQuantity(v); setQuote(null); }} keyboardType="decimal-pad" />{!canTrade && <Text style={s.warning}>Trading is disabled for this account by runtime policy.</Text>}<Button label={working ? 'Working…' : 'Preview order'} disabled={working || !canTrade} onPress={() => void preview()} />{quote && <View style={s.quote}><Text style={s.cardTitle}>Order preview</Text><Line label="Notional" value={money(quote.notional)} /><Line label="Maker fee" value={money(quote.makerFee)} /><Line label="Taker fee" value={money(quote.takerFee)} />{quote.side === 'BUY' ? <Line label="Max cash reserved" value={money(quote.maximumCashReservation)} /> : <Line label="Shares available" value={String(quote.availableSharesToSell)} />}<Line label="Gross if correct" value={money(quote.potentialGrossSettlement)} /><Button label="Place order" disabled={working} onPress={() => void execute()} /></View>}</> : markets.map((m) => <Market key={m.instrument_public_id} market={m} onPress={() => setSelected(m)} />)}</>}
 

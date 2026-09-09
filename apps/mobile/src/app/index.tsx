@@ -24,6 +24,7 @@ export default function IndexScreen() {
     <VadProductShell
       email={session.user.email ?? session.user.phone ?? 'VAD member'}
       canTrade={runtime.snapshot.capabilities.trade}
+      canCreatePost={runtime.snapshot.capabilities.createPost}
       canSubmitProposal={runtime.snapshot.capabilities.submitMarketProposal}
       onSignOut={signOut}
     />
