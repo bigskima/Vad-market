@@ -32,6 +32,7 @@ export function HomeScreen({
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 860;
+  const desktopMarketGrid = width >= 960;
 
   const active = markets.filter(
     (market) => market.status === 'OPEN' || market.status === 'ACTIVE',
@@ -282,26 +283,53 @@ export function HomeScreen({
         )}
 
         {trending.length ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              gap: theme.spacing.md,
-              paddingRight: theme.spacing.md,
-            }}
-          >
-            {trending.map((market) => (
-              <View
-                key={market.instrument_public_id}
-                style={{ width: wide ? 340 : Math.min(width - 56, 320) }}
-              >
-                <MarketCard
-                  market={market}
-                  onPress={() => onOpenMarket(market)}
-                />
-              </View>
-            ))}
-          </ScrollView>
+          desktopMarketGrid ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                gap: theme.spacing.md,
+                alignItems: 'stretch',
+              }}
+            >
+              {trending.map((market) => (
+                <View
+                  key={market.instrument_public_id}
+                  style={{
+                    flexGrow: 1,
+                    flexBasis: 360,
+                    minWidth: 0,
+                  }}
+                >
+                  <MarketCard
+                    market={market}
+                    onPress={() => onOpenMarket(market)}
+                  />
+                </View>
+              ))}
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                gap: theme.spacing.md,
+                paddingRight: theme.spacing.md,
+              }}
+            >
+              {trending.map((market) => (
+                <View
+                  key={market.instrument_public_id}
+                  style={{ width: Math.min(width - 56, 320) }}
+                >
+                  <MarketCard
+                    market={market}
+                    onPress={() => onOpenMarket(market)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          )
         ) : null}
       </View>
 
