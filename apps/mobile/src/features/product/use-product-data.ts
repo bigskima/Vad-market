@@ -19,6 +19,7 @@ import {
 export function useProductData() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [markets, setMarkets] = useState<MarketCatalogItem[]>([]);
   const [wallet, setWallet] = useState<WalletRow[]>([]);
   const [positions, setPositions] = useState<PositionRow[]>([]);
@@ -33,6 +34,9 @@ export function useProductData() {
       listMarkets(), getWalletSummary(), getPositions(), getOpenOrders(), getMyProposals(),
       getAdminRuntimeSummary(), getAdminMarketQueue(), getAdminOracleQueue(),
     ]);
+    const primary = results.slice(0, 5);
+    if (primary.every((result) => result.status === 'rejected')) setError('VAD could not load your markets and account data. Check your connection and try again.');
+    else setError(null);
     if (results[0].status === 'fulfilled') setMarkets(results[0].value);
     if (results[1].status === 'fulfilled') setWallet(results[1].value);
     if (results[2].status === 'fulfilled') setPositions(results[2].value);
@@ -45,18 +49,12 @@ export function useProductData() {
 
   useEffect(() => {
     let cancelled = false;
-    const timer = setTimeout(() => {
-      void load().finally(() => { if (!cancelled) setLoading(false); });
-    }, 0);
+    const timer = setTimeout(() => { void load().finally(() => { if (!cancelled) setLoading(false); }); }, 0);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [load]);
 
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
-    try { await load(); } finally { setRefreshing(false); }
-  }, [load]);
-
+  const refresh = useCallback(async () => { setRefreshing(true); try { await load(); } finally { setRefreshing(false); } }, [load]);
   const ngn = useMemo(() => wallet.find((row) => row.asset_code === 'NGN') ?? wallet[0], [wallet]);
 
-  return { loading, refreshing, markets, wallet, positions, orders, proposals, adminSummary, adminMarkets, adminOracle, ngn, load, refresh };
+  return { loading, refreshing, error, markets, wallet, positions, orders, proposals, adminSummary, adminMarkets, adminOracle, ngn, load, refresh };
 }
