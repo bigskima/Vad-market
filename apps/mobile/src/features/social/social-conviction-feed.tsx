@@ -1,6 +1,8 @@
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 
+import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
@@ -9,9 +11,8 @@ import { VadText } from '@/components/ui/vad-text';
 import { pct } from '@/features/markets/format';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
-import { addPostComment, getConvictionFeed, getCreatorPredictionHistory, getCreatorReputation, getPostComments, publishConvictionPost, toggleCreatorFollow, togglePostLike, type ConvictionPost, type CreatorPrediction, type CreatorReputation, type PostComment } from '@/services/social-api';
+import { addPostComment, getConvictionFeed, getPostComments, publishConvictionPost, toggleCreatorFollow, togglePostLike, type ConvictionPost, type PostComment } from '@/services/social-api';
 import { ConvictionPostCard } from './components/conviction-post-card';
-import { CreatorProfilePanel } from './components/creator-profile-panel';
 
 export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: { markets: MarketCatalogItem[]; canCreatePost: boolean; onOpenMarket: (market: MarketCatalogItem) => void }) {
   const theme = useVadTheme();
@@ -24,22 +25,9 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: {
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
   const [comments, setComments] = useState<PostComment[]>([]);
   const [commentBody, setCommentBody] = useState('');
-  const [creatorUserId, setCreatorUserId] = useState<string | null>(null);
-  const [creatorReputation, setCreatorReputation] = useState<CreatorReputation | null>(null);
-  const [creatorPredictions, setCreatorPredictions] = useState<CreatorPrediction[]>([]);
 
   const load = useCallback(async () => { try { setPosts(await getConvictionFeed()); } catch { setPosts([]); } }, []);
   useEffect(() => { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); }, [load]);
-
-  async function openCreator(post: ConvictionPost) {
-    if (creatorUserId === post.author_user_id) { setCreatorUserId(null); setCreatorReputation(null); setCreatorPredictions([]); return; }
-    setWorking(true);
-    try {
-      const [reputation, predictions] = await Promise.all([getCreatorReputation(post.author_user_id), getCreatorPredictionHistory(post.author_user_id, 5)]);
-      setCreatorUserId(post.author_user_id); setCreatorReputation(reputation); setCreatorPredictions(predictions);
-    } catch (error) { Alert.alert('Creator profile unavailable', error instanceof Error ? error.message : 'Please try again.'); }
-    finally { setWorking(false); }
-  }
 
   async function publish() {
     if (!body.trim()) return;
@@ -50,8 +38,7 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: {
   }
 
   async function openComments(post: ConvictionPost) {
-    if (commentsPostId === post.post_public_id) { setCommentsPostId(null); setComments([]); return; }
-    try { setComments(await getPostComments(post.post_public_id)); setCommentsPostId(post.post_public_id); }
+    try { setComments(await getPostComments(post.post_public_id)); setCommentsPostId(post.post_public_id); setCommentBody(''); }
     catch (error) { Alert.alert('Comments unavailable', error instanceof Error ? error.message : 'Please try again.'); }
   }
 
@@ -63,6 +50,8 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: {
     finally { setWorking(false); }
   }
 
+  const commentsPost = posts.find((post) => post.post_public_id === commentsPostId) ?? null;
+
   return <View style={{ gap: theme.spacing.md }}>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}><View style={{ flex: 1 }}><VadText variant="heading">Conviction feed</VadText><VadText variant="caption" tone="secondary">Ideas, arguments and market-linked predictions from the network.</VadText></View>{canCreatePost ? <VadButton label={composerOpen ? 'Close' : 'Post'} fullWidth={false} variant={composerOpen ? 'ghost' : 'primary'} onPress={() => setComposerOpen((value) => !value)} /> : null}</View>
 
@@ -71,11 +60,14 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: {
     {!posts.length ? <VadEmptyState title="No creator posts yet" body="The first conviction can start a discussion without creating a duplicate financial market." /> : posts.map((post) => {
       const linked = post.instrument_public_id ? markets.find((item) => item.instrument_public_id === post.instrument_public_id) : undefined;
       const commentsOpen = commentsPostId === post.post_public_id;
-      const creatorOpen = creatorUserId === post.author_user_id && creatorReputation;
-      return <ConvictionPostCard key={post.post_public_id} post={post} linkedMarket={linked} commentsOpen={commentsOpen} creatorOpen={Boolean(creatorOpen)} onFollow={() => void toggleCreatorFollow(post.author_user_id).then(load)} onLike={() => void togglePostLike(post.post_public_id).then(load)} onComments={() => void openComments(post)} onOpenCreator={() => void openCreator(post)} onOpenMarket={() => linked && onOpenMarket(linked)}>
-        {creatorOpen ? <CreatorProfilePanel reputation={creatorReputation} predictions={creatorPredictions} /> : null}
-        {commentsOpen ? <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>{comments.length ? comments.map((comment) => <View key={comment.comment_public_id} style={{ borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: theme.spacing.xs }}><VadText variant="label">{comment.author_display_name ?? comment.author_handle ?? 'VAD member'}</VadText><VadText>{comment.body}</VadText></View>) : <VadText tone="secondary">No comments yet. Add context without leaving the post.</VadText>}<View style={{ gap: theme.spacing.xs }}><VadInput value={commentBody} onChangeText={setCommentBody} placeholder="Add to the discussion…" /><VadButton label="Send comment" disabled={!commentBody.trim()} loading={working} onPress={() => void submitComment(post)} /></View></VadCard> : null}
-      </ConvictionPostCard>;
+      return <ConvictionPostCard key={post.post_public_id} post={post} linkedMarket={linked} commentsOpen={commentsOpen} creatorOpen={false} onFollow={() => void toggleCreatorFollow(post.author_user_id).then(load)} onLike={() => void togglePostLike(post.post_public_id).then(load)} onComments={() => void openComments(post)} onOpenCreator={() => router.push(`/creator/${post.author_user_id}`)} onOpenMarket={() => linked && onOpenMarket(linked)} />;
     })}
+
+    <VadBottomSheet visible={Boolean(commentsPost)} title="Discussion" onClose={() => { setCommentsPostId(null); setComments([]); setCommentBody(''); }}>
+      <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ gap: theme.spacing.sm }} keyboardShouldPersistTaps="handled">
+        {comments.length ? comments.map((comment) => <View key={comment.comment_public_id} style={{ borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: theme.spacing.sm, gap: theme.spacing.xxs }}><VadText variant="label">{comment.author_display_name ?? comment.author_handle ?? 'VAD member'}</VadText><VadText>{comment.body}</VadText><VadText variant="caption" tone="secondary">{new Date(comment.created_at).toLocaleString()}</VadText></View>) : <VadText tone="secondary">No comments yet. Add context without leaving the conviction.</VadText>}
+        {commentsPost ? <View style={{ gap: theme.spacing.xs }}><VadInput value={commentBody} onChangeText={setCommentBody} placeholder="Add to the discussion…" /><VadButton label="Send comment" disabled={!commentBody.trim()} loading={working} onPress={() => void submitComment(commentsPost)} /></View> : null}
+      </ScrollView>
+    </VadBottomSheet>
   </View>;
 }
