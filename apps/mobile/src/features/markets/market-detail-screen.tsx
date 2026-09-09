@@ -27,7 +27,7 @@ export function MarketDetailScreen({ instrumentPublicId }: { instrumentPublicId:
   useEffect(() => { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); }, [load]);
 
   if (loading) return <View style={{ gap: theme.spacing.sm }}><VadSkeleton height={40} width="75%" /><VadSkeleton height={180} /><VadSkeleton height={100} /></View>;
-  if (error || !market) return <VadErrorState title="Market unavailable" body={error ?? 'This market is not currently in the live catalog.'} onRetry={() => void load()} />;
+  if (error || !market) return <VadErrorState title="Market unavailable" message={error ?? 'This market is not currently in the live catalog.'} onRetry={() => void load()} />;
 
   return <View style={{ gap: theme.spacing.lg }}>
     <MarketDetailHeader market={market} />
