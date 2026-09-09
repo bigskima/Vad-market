@@ -115,7 +115,7 @@ export function PortfolioOrderScreen({ orderId }: { orderId: string }) {
           >
             <View
               style={{
-                width: Math.round(fillPercent * 100) + '%',
+                width: `${Math.round(fillPercent * 100)}%` as `${number}%`,
                 height: '100%',
                 backgroundColor: theme.colors.brandPrimary,
               }}
