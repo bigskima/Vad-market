@@ -2,11 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
-import { VadCard } from '@/components/ui/vad-card';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
-import { createPaymentIntent, getProviderReadiness, quotePayment, type PaymentQuote } from '@/services/payment-api';
+import {
+  createPaymentIntent,
+  getProviderReadiness,
+  quotePayment,
+  type PaymentQuote,
+} from '@/services/payment-api';
 
 type Mode = 'DEPOSIT' | 'WITHDRAWAL';
 
@@ -18,29 +22,42 @@ export function PaymentReadinessCard({
   lockMode?: boolean;
 }) {
   const theme = useVadTheme();
-  const [readiness, setReadiness] = useState<{ depositConfigured?: boolean; withdrawalConfigured?: boolean }>({});
+  const [readiness, setReadiness] = useState<{
+    depositConfigured?: boolean;
+    withdrawalConfigured?: boolean;
+  }>({});
   const [mode, setMode] = useState<Mode>(initialMode);
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<PaymentQuote | null>(null);
   const [working, setWorking] = useState(false);
 
   const load = useCallback(async () => {
-    try { setReadiness(await getProviderReadiness()); } catch { setReadiness({}); }
+    try {
+      setReadiness(await getProviderReadiness());
+    } catch {
+      setReadiness({});
+    }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => { void load(); }, 0);
+    const timer = setTimeout(() => {
+      void load();
+    }, 0);
     return () => clearTimeout(timer);
   }, [load]);
 
   async function preview() {
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) return;
+
     setWorking(true);
     try {
       setQuote(await quotePayment(mode, value));
     } catch (error) {
-      Alert.alert('Could not prepare payment', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert(
+        'Could not prepare payment',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
     } finally {
       setWorking(false);
     }
@@ -48,122 +65,297 @@ export function PaymentReadinessCard({
 
   async function create() {
     if (!quote?.enabled) return;
+
     setWorking(true);
     try {
       const publicId = await createPaymentIntent(mode, Number(amount));
-      Alert.alert('Payment intent created', 'Reference ' + publicId + '. External processing starts only through a configured provider.');
+      Alert.alert(
+        'Payment intent created',
+        'Reference ' +
+          publicId +
+          '. Its status will appear in Wallet activity.',
+      );
       setQuote(null);
       setAmount('');
     } catch (error) {
-      Alert.alert('Payment unavailable', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert(
+        'Payment unavailable',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
     } finally {
       setWorking(false);
     }
   }
 
-  const providerReady = mode === 'DEPOSIT' ? readiness.depositConfigured : readiness.withdrawalConfigured;
+  const providerReady =
+    mode === 'DEPOSIT'
+      ? readiness.depositConfigured
+      : readiness.withdrawalConfigured;
   const amountValue = Number(amount);
   const validAmount = Number.isFinite(amountValue) && amountValue > 0;
+  const stage = quote ? 2 : amount ? 1 : 0;
 
-  return <VadCard variant="raised" style={{ gap: theme.spacing.md, borderRadius: theme.radius.xl }}>
-    <View style={{ flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'flex-start' }}>
-      <View style={{ flex: 1, gap: theme.spacing.xxs }}>
-        <VadText variant="label" tone="brand">{mode === 'DEPOSIT' ? 'DEPOSIT' : 'WITHDRAW'}</VadText>
-        <VadText variant="heading">{mode === 'DEPOSIT' ? 'Add NGN to your wallet' : 'Withdraw NGN from VAD'}</VadText>
-        <VadText variant="caption" tone="secondary">Live KYC, limits, fees and provider readiness are checked before money can move.</VadText>
+  return (
+    <View style={{ gap: theme.spacing.xl }}>
+      {!lockMode ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            padding: theme.spacing.xxs,
+            borderRadius: theme.radius.lg,
+            backgroundColor: theme.colors.surfaceRaised,
+          }}
+        >
+          {(['DEPOSIT', 'WITHDRAWAL'] as const).map((item) => {
+            const selected = mode === item;
+
+            return (
+              <Pressable
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                key={item}
+                onPress={() => {
+                  setMode(item);
+                  setQuote(null);
+                  setAmount('');
+                }}
+                style={{
+                  flex: 1,
+                  minHeight: 44,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: theme.radius.md,
+                  backgroundColor: selected
+                    ? theme.colors.surface
+                    : 'transparent',
+                }}
+              >
+                <VadText
+                  variant="label"
+                  tone={selected ? 'brand' : 'secondary'}
+                >
+                  {item === 'DEPOSIT' ? 'Deposit' : 'Withdraw'}
+                </VadText>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      <View style={{ gap: theme.spacing.xs }}>
+        <VadText variant="label" tone="brand">
+          {mode === 'DEPOSIT' ? 'DEPOSIT' : 'WITHDRAW'}
+        </VadText>
+        <VadText variant="title">
+          {mode === 'DEPOSIT'
+            ? 'Add NGN to your wallet.'
+            : 'Move NGN out of VAD.'}
+        </VadText>
+        <VadText tone="secondary">
+          VAD checks live KYC, provider readiness, limits and fees before an
+          intent can be created.
+        </VadText>
       </View>
+
+      <PaymentProgress stage={stage} />
 
       <View
         style={{
-          borderRadius: theme.radius.pill,
-          backgroundColor: providerReady ? theme.colors.yesSoft : theme.colors.surfaceMuted,
-          paddingHorizontal: theme.spacing.sm,
-          paddingVertical: theme.spacing.xs,
+          borderRadius: theme.radius.lg,
+          backgroundColor: providerReady
+            ? theme.colors.yesSoft
+            : theme.colors.surfaceRaised,
+          padding: theme.spacing.md,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          gap: theme.spacing.md,
+          alignItems: 'center',
         }}
       >
-        <VadText variant="caption" tone={providerReady ? 'yes' : 'secondary'}>
-          {providerReady ? 'ROUTE READY' : 'NO ROUTE'}
+        <View style={{ flex: 1, gap: 2 }}>
+          <VadText variant="caption" tone="secondary">Payment route</VadText>
+          <VadText variant="bodyStrong">
+            {providerReady ? 'Configured' : 'Not ready'}
+          </VadText>
+        </View>
+        <VadText variant="caption" tone={providerReady ? 'yes' : 'warning'}>
+          {providerReady ? 'READY' : 'CHECK REQUIRED'}
         </VadText>
       </View>
-    </View>
 
-    {!lockMode ? (
-      <View style={{ flexDirection: 'row', backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.xxs, gap: theme.spacing.xxs }}>
-        {(['DEPOSIT', 'WITHDRAWAL'] as const).map((item) => {
-          const selected = mode === item;
-          return <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            key={item}
-            onPress={() => { setMode(item); setQuote(null); setAmount(''); }}
+      <VadInput
+        label={mode === 'DEPOSIT' ? 'Deposit amount' : 'Withdrawal amount'}
+        value={amount}
+        onChangeText={(value) => {
+          setAmount(value);
+          setQuote(null);
+        }}
+        keyboardType="decimal-pad"
+        placeholder="Amount in NGN"
+      />
+
+      {!quote ? (
+        <VadButton
+          label="Review availability & fees"
+          loading={working}
+          disabled={!validAmount}
+          onPress={() => void preview()}
+        />
+      ) : (
+        <View style={{ gap: theme.spacing.md }}>
+          <View
             style={{
-              flex: 1,
-              alignItems: 'center',
-              paddingVertical: theme.spacing.sm,
-              borderRadius: theme.radius.md,
-              backgroundColor: selected ? theme.colors.brandSoft : 'transparent',
+              borderWidth: 1,
+              borderColor: quote.enabled
+                ? theme.colors.brandPrimary
+                : theme.colors.warning,
+              borderRadius: theme.radius.xl,
+              backgroundColor: theme.colors.surface,
+              padding: theme.spacing.lg,
+              gap: theme.spacing.md,
             }}
           >
-            <VadText variant="label" tone={selected ? 'brand' : 'secondary'}>
-              {item === 'DEPOSIT' ? 'Deposit' : 'Withdraw'}
-            </VadText>
-          </Pressable>;
-        })}
-      </View>
-    ) : null}
+            <View style={{ gap: 2 }}>
+              <VadText
+                variant="label"
+                tone={quote.enabled ? 'brand' : 'warning'}
+              >
+                {quote.enabled ? 'PAYMENT REVIEW' : 'ACTION REQUIRED'}
+              </VadText>
+              <VadText variant="heading">
+                {quote.enabled
+                  ? 'Check the final amounts.'
+                  : 'This payment cannot continue yet.'}
+              </VadText>
+            </View>
 
-    <VadInput
-      label={mode === 'DEPOSIT' ? 'Deposit amount' : 'Withdrawal amount'}
-      value={amount}
-      onChangeText={(value) => { setAmount(value); setQuote(null); }}
-      keyboardType="decimal-pad"
-      placeholder="Amount in NGN"
-    />
+            {quote.enabled ? (
+              <>
+                <MoneyRow label="Amount" value={'₦' + Number(quote.amount).toLocaleString()} />
+                <MoneyRow
+                  label="Fee"
+                  value={'₦' + Number(quote.feeAmount ?? 0).toLocaleString()}
+                />
+                <MoneyRow
+                  label="Net amount"
+                  value={
+                    '₦' +
+                    Number(quote.netAmount ?? quote.amount).toLocaleString()
+                  }
+                />
+                <MoneyRow
+                  label="Provider"
+                  value={String(quote.providerCode ?? 'Configured route')}
+                />
+              </>
+            ) : (
+              <VadText tone="secondary">{reasonText(quote)}</VadText>
+            )}
+          </View>
 
-    <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
-      <MoneyFact label="Currency" value="NGN" />
-      <MoneyFact label="Provider" value={providerReady ? 'Configured' : 'Pending'} />
+          {quote.enabled ? (
+            <VadButton
+              label={
+                mode === 'DEPOSIT'
+                  ? 'Create deposit intent'
+                  : 'Create withdrawal intent'
+              }
+              loading={working}
+              onPress={() => void create()}
+            />
+          ) : null}
+
+          <VadButton
+            label="Edit amount"
+            variant="ghost"
+            disabled={working}
+            onPress={() => setQuote(null)}
+          />
+        </View>
+      )}
     </View>
-
-    <VadButton label="Check availability & fees" loading={working} disabled={!validAmount} onPress={() => void preview()} />
-
-    {quote ? <VadCard variant={quote.enabled ? 'muted' : 'outlined'} style={{ gap: theme.spacing.sm, borderRadius: theme.radius.lg }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
-        <VadText variant="bodyStrong" tone={quote.enabled ? 'yes' : 'warning'}>
-          {quote.enabled ? 'Ready to continue' : 'Not available yet'}
-        </VadText>
-        <VadText variant="caption" tone="secondary">{mode === 'DEPOSIT' ? 'Deposit quote' : 'Withdrawal quote'}</VadText>
-      </View>
-
-      <VadText tone="secondary">
-        {quote.enabled
-          ? String(quote.providerCode) + ' · fee ₦' + Number(quote.feeAmount ?? 0).toLocaleString() + ' · net ₦' + Number(quote.netAmount ?? quote.amount).toLocaleString()
-          : reasonText(quote)}
-      </VadText>
-
-      {quote.enabled ? <VadButton label={mode === 'DEPOSIT' ? 'Continue deposit' : 'Continue withdrawal'} loading={working} onPress={() => void create()} /> : null}
-    </VadCard> : null}
-
-    {!providerReady && !quote ? (
-      <VadText variant="caption" tone="secondary">
-        You can still request a quote. The backend will return the exact reason if this operation cannot proceed.
-      </VadText>
-    ) : null}
-  </VadCard>;
+  );
 }
 
-function MoneyFact({ label, value }: { label: string; value: string }) {
+function PaymentProgress({ stage }: { stage: number }) {
   const theme = useVadTheme();
-  return <View style={{ flex: 1, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.xs, gap: theme.spacing.xxs }}><VadText variant="caption" tone="secondary">{label}</VadText><VadText variant="bodyStrong">{value}</VadText></View>;
+  const labels = ['Amount', 'Check', 'Confirm'];
+
+  return (
+    <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
+      {labels.map((label, index) => {
+        const active = index <= stage;
+
+        return (
+          <View key={label} style={{ flex: 1, gap: theme.spacing.xxs }}>
+            <View
+              style={{
+                height: 4,
+                borderRadius: theme.radius.pill,
+                backgroundColor: active
+                  ? theme.colors.brandPrimary
+                  : theme.colors.surfaceMuted,
+              }}
+            />
+            <VadText
+              variant="caption"
+              tone={index === stage ? 'brand' : active ? 'primary' : 'tertiary'}
+            >
+              {label}
+            </VadText>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function MoneyRow({ label, value }: { label: string; value: string }) {
+  const theme = useVadTheme();
+
+  return (
+    <View
+      style={{
+        minHeight: 44,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+      }}
+    >
+      <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>
+        {label}
+      </VadText>
+      <VadText variant="bodyStrong">{value}</VadText>
+    </View>
+  );
 }
 
 function reasonText(quote: PaymentQuote) {
   switch (quote.reason) {
-    case 'NO_PAYMENT_PROVIDER': return 'No NGN payment provider has been configured yet.';
-    case 'KYC_REQUIRED': return String(quote.requiredKycLevel ?? 'Required') + ' identity verification is needed before this action.';
-    case 'CAPABILITY_DISABLED': return 'This money-movement capability is currently disabled by VAD policy.';
-    case 'BELOW_MINIMUM': return 'Minimum amount is ₦' + Number(quote.minimum ?? 0).toLocaleString() + '.';
-    case 'ABOVE_MAXIMUM': return 'Maximum amount is ₦' + Number(quote.maximum ?? 0).toLocaleString() + '.';
-    default: return quote.reason ?? 'This action is not available yet.';
+    case 'NO_PAYMENT_PROVIDER':
+      return 'No NGN payment provider has been configured yet.';
+    case 'KYC_REQUIRED':
+      return (
+        String(quote.requiredKycLevel ?? 'Required') +
+        ' identity verification is needed before this action.'
+      );
+    case 'CAPABILITY_DISABLED':
+      return 'This money-movement capability is currently disabled by VAD policy.';
+    case 'BELOW_MINIMUM':
+      return (
+        'Minimum amount is ₦' +
+        Number(quote.minimum ?? 0).toLocaleString() +
+        '.'
+      );
+    case 'ABOVE_MAXIMUM':
+      return (
+        'Maximum amount is ₦' +
+        Number(quote.maximum ?? 0).toLocaleString() +
+        '.'
+      );
+    default:
+      return quote.reason ?? 'This action is not available yet.';
   }
 }
