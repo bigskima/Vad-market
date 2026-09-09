@@ -1,10 +1,10 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AuthScreen } from '@/components/auth-screen';
-import { FoundationHome } from '@/components/foundation-home';
+import { VadProductShell } from '@/components/vad-product-shell';
 import { palette } from '@/constants/palette';
-import { useAuth } from '@/providers/auth-provider';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function IndexScreen() {
   const { isLoading, session, signOut } = useAuth();
@@ -21,10 +21,10 @@ export default function IndexScreen() {
   if (!session) return <AuthScreen />;
 
   return (
-    <FoundationHome
+    <VadProductShell
       email={session.user.email ?? session.user.phone ?? 'VAD member'}
-      runtime={runtime}
-      onRefresh={runtime.refresh}
+      canTrade={runtime.snapshot.capabilities.trade}
+      canSubmitProposal={runtime.snapshot.capabilities.submitMarketProposal}
       onSignOut={signOut}
     />
   );
