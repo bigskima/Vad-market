@@ -34,19 +34,9 @@ export function OperationsSection({
         </View>
 
         {count != null ? (
-          <View
-            style={{
-              minWidth: 34,
-              minHeight: 28,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surfaceRaised,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: theme.spacing.xs,
-            }}
-          >
-            <VadText variant="caption" tone="secondary">{count}</VadText>
-          </View>
+          <VadText variant="caption" tone="tertiary">
+            {count} {count === 1 ? 'item' : 'items'}
+          </VadText>
         ) : null}
       </View>
 
@@ -69,13 +59,27 @@ export function OperationsRow({
   ready?: boolean;
 }) {
   const theme = useVadTheme();
+  const normalized = status.toUpperCase();
+
+  const tone =
+    ready
+      ? 'yes'
+      : normalized.includes('FAIL') ||
+          normalized.includes('REJECT') ||
+          normalized.includes('DISABLED')
+        ? 'danger'
+        : normalized.includes('PENDING') ||
+            normalized.includes('REVIEW') ||
+            normalized.includes('UNCONFIGURED')
+          ? 'warning'
+          : 'secondary';
 
   return (
     <View
       style={{
         minHeight: 68,
         flexDirection: 'row',
-        gap: theme.spacing.sm,
+        gap: theme.spacing.md,
         alignItems: 'center',
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
@@ -89,20 +93,9 @@ export function OperationsRow({
         </VadText>
       </View>
 
-      <View
-        style={{
-          borderRadius: theme.radius.pill,
-          backgroundColor: ready
-            ? theme.colors.yesSoft
-            : theme.colors.surfaceRaised,
-          paddingHorizontal: theme.spacing.sm,
-          paddingVertical: theme.spacing.xs,
-        }}
-      >
-        <VadText variant="caption" tone={ready ? 'yes' : 'secondary'}>
-          {status}
-        </VadText>
-      </View>
+      <VadText variant="caption" tone={tone}>
+        {status}
+      </VadText>
     </View>
   );
 }
