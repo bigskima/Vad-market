@@ -11,7 +11,7 @@ export default function PortfolioPositionRoute() {
   const outcome = Array.isArray(params.outcome) ? params.outcome[0] : params.outcome;
 
   return (
-    <ProductSubpage title="Position">
+    <ProductSubpage title="Position" maxWidth={900}>
       <PortfolioPositionScreen
         instrumentId={instrumentId ?? ''}
         outcomeCode={outcome ?? ''}
