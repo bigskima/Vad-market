@@ -43,70 +43,64 @@ export function PortfolioScreen({
   );
 
   return (
-    <View style={{ gap: theme.spacing.xxl }}>
+    <View style={{ gap: theme.spacing.xxxl }}>
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
-          alignItems: 'stretch',
+          alignItems: wide ? 'flex-end' : 'stretch',
           gap: theme.spacing.xl,
         }}
       >
         <View
           style={{
-            flex: wide ? 1.05 : undefined,
-            justifyContent: 'center',
+            flex: 1,
             gap: theme.spacing.xs,
           }}
         >
           <VadText variant="label" tone="brand">PORTFOLIO</VadText>
           <VadText variant="title">Your market exposure.</VadText>
           <VadText tone="secondary">
-            Positions and orders stay separate from Wallet so you can see
-            exactly where your capital is committed.
+            Positions show filled exposure. Orders show capital still waiting
+            for compatible liquidity.
           </VadText>
         </View>
 
         <View
           style={{
-            flex: wide ? 0.95 : undefined,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            borderRadius: theme.radius.xl,
-            backgroundColor: theme.colors.surfaceRaised,
-            padding: theme.spacing.lg,
-            gap: theme.spacing.lg,
+            minWidth: wide ? 280 : undefined,
+            gap: 2,
+            alignItems: wide ? 'flex-end' : 'flex-start',
           }}
         >
-          <View style={{ gap: theme.spacing.xxs }}>
-            <VadText variant="caption" tone="secondary">
-              Capital deployed
-            </VadText>
-            <VadText variant="title">{money(deployed)}</VadText>
-          </View>
-
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: theme.spacing.xl,
-              flexWrap: 'wrap',
-            }}
-          >
-            <Metric label="Positions" value={String(positions.length)} />
-            <Metric label="Open orders" value={String(orders.length)} />
-            <Metric
-              label="Order notional"
-              value={money(openOrderNotional)}
-            />
-          </View>
+          <VadText variant="caption" tone="secondary">CAPITAL DEPLOYED</VadText>
+          <VadText variant="display">{money(deployed)}</VadText>
         </View>
       </View>
 
       <View
         style={{
+          borderTopWidth: 1,
+          borderBottomWidth: 1,
+          borderColor: theme.colors.border,
+          paddingVertical: theme.spacing.md,
           flexDirection: 'row',
-          padding: theme.spacing.xxs,
-          borderRadius: theme.radius.lg,
-          backgroundColor: theme.colors.surfaceRaised,
+          flexWrap: 'wrap',
+          gap: theme.spacing.xl,
+        }}
+      >
+        <Metric label="Positions" value={String(positions.length)} />
+        <Metric label="Open orders" value={String(orders.length)} />
+        <Metric
+          label="Open order notional"
+          value={money(openOrderNotional)}
+        />
+      </View>
+
+      <View
+        style={{
+          flexDirection: 'row',
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.border,
         }}
       >
         <PortfolioTabButton
@@ -190,14 +184,14 @@ function PortfolioTabButton({
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,
-        minHeight: 44,
-        borderRadius: theme.radius.md,
+        minHeight: 46,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: selected
-          ? theme.colors.surface
+        borderBottomWidth: 2,
+        borderBottomColor: selected
+          ? theme.colors.brandPrimary
           : 'transparent',
-        opacity: pressed ? 0.7 : 1,
+        opacity: pressed ? 0.65 : 1,
       })}
     >
       <VadText
@@ -212,7 +206,7 @@ function PortfolioTabButton({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ minWidth: 92, gap: 2 }}>
+    <View style={{ minWidth: 100, flexGrow: 1, flexBasis: 130, gap: 2 }}>
       <VadText variant="caption" tone="tertiary">{label}</VadText>
       <VadText variant="bodyStrong">{value}</VadText>
     </View>
@@ -234,7 +228,7 @@ function PositionRowView({
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 92,
+        minHeight: 96,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
         paddingVertical: theme.spacing.md,
@@ -295,17 +289,18 @@ function OrderRowView({
   onPress: () => void;
 }) {
   const theme = useVadTheme();
-  const fillPct =
+  const fillRatio =
     Number(order.quantity) > 0
       ? Number(order.filled_quantity) / Number(order.quantity)
       : 0;
+  const fillPercent = Math.max(0, Math.min(1, fillRatio));
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 92,
+        minHeight: 110,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
         paddingVertical: theme.spacing.md,
@@ -347,7 +342,24 @@ function OrderRowView({
           label="Remaining"
           value={Number(order.remaining_quantity).toLocaleString()}
         />
-        <Metric label="Filled" value={pct(fillPct)} />
+        <Metric label="Filled" value={pct(fillPercent)} />
+      </View>
+
+      <View
+        style={{
+          height: 5,
+          borderRadius: theme.radius.pill,
+          backgroundColor: theme.colors.surfaceMuted,
+          overflow: 'hidden',
+        }}
+      >
+        <View
+          style={{
+            width: Math.round(fillPercent * 100) + '%',
+            height: '100%',
+            backgroundColor: theme.colors.brandPrimary,
+          }}
+        />
       </View>
     </Pressable>
   );
