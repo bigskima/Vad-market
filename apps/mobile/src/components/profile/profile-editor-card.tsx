@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Image, Pressable, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Pressable,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadInput } from '@/components/ui/vad-input';
@@ -18,6 +24,8 @@ import { ProfileAvatar } from './profile-avatar';
 
 export function ProfileEditorCard() {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 760;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [handle, setHandle] = useState('');
@@ -56,7 +64,10 @@ export function ProfileEditorCard() {
       await updateMyProfile({ displayName, handle, bio });
       await load();
       setEditing(false);
-      Alert.alert('Profile updated', 'Your public VAD identity is up to date.');
+      Alert.alert(
+        'Profile updated',
+        'Your public VAD identity is up to date.',
+      );
     } catch (error) {
       Alert.alert(
         'Profile not updated',
@@ -72,12 +83,15 @@ export function ProfileEditorCard() {
     try {
       const image = await pickProfileImage();
       if (!image) return;
+
       await uploadProfileMedia(kind, image.bytes, image.mimeType);
       await load();
     } catch (error) {
       Alert.alert(
         'Image not uploaded',
-        error instanceof Error ? error.message : 'Please try another image.',
+        error instanceof Error
+          ? error.message
+          : 'Please try another image.',
       );
     } finally {
       setWorking(false);
@@ -94,7 +108,10 @@ export function ProfileEditorCard() {
   if (loading) {
     return (
       <View style={{ gap: theme.spacing.md }}>
-        <VadSkeleton height={160} radius={theme.radius.xl} />
+        <VadSkeleton
+          height={wide ? 190 : 160}
+          radius={theme.radius.xl}
+        />
         <VadSkeleton width={86} height={86} radius={43} />
         <VadSkeleton width="48%" height={28} />
         <VadSkeleton height={82} />
@@ -103,7 +120,8 @@ export function ProfileEditorCard() {
   }
 
   const banner = profileMediaUrl(profile?.banner_path);
-  const publicName = profile?.display_name || profile?.handle || 'VAD member';
+  const publicName =
+    profile?.display_name || profile?.handle || 'VAD member';
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
@@ -121,7 +139,10 @@ export function ProfileEditorCard() {
           accessibilityLabel="Change profile banner"
           onPress={() => void choose('banner')}
           disabled={working}
-          style={{ height: 160, backgroundColor: theme.colors.brandSoft }}
+          style={{
+            height: wide ? 190 : 160,
+            backgroundColor: theme.colors.brandSoft,
+          }}
         >
           {banner ? (
             <Image
@@ -140,7 +161,7 @@ export function ProfileEditorCard() {
             >
               <VadText variant="heading" tone="brand">Add a banner</VadText>
               <VadText variant="caption" tone="secondary">
-                Give your VAD profile a recognizable header.
+                Give your public profile a recognizable header.
               </VadText>
             </View>
           )}
@@ -198,8 +219,11 @@ export function ProfileEditorCard() {
               label={editing ? 'Cancel' : 'Edit profile'}
               variant="secondary"
               fullWidth={false}
+              size="small"
               disabled={working}
-              onPress={editing ? cancelEdit : () => setEditing(true)}
+              onPress={
+                editing ? cancelEdit : () => setEditing(true)
+              }
             />
           </View>
 
@@ -228,55 +252,87 @@ export function ProfileEditorCard() {
       {editing ? (
         <View style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: theme.spacing.xs }}>
-            <VadText variant="heading">Public identity</VadText>
+            <VadText variant="label" tone="brand">PUBLIC IDENTITY</VadText>
+            <VadText variant="heading">Edit how people see you.</VadText>
             <VadText variant="caption" tone="secondary">
               These details appear on creator posts, market discussions and
               comments.
             </VadText>
           </View>
 
-          <VadInput
-            label="Display name"
-            value={displayName}
-            onChangeText={setDisplayName}
-            placeholder="Your public name"
-            returnKeyType="next"
-          />
-          <VadInput
-            label="Handle"
-            value={handle}
-            onChangeText={setHandle}
-            placeholder="yourhandle"
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="next"
-          />
+          <View
+            style={{
+              flexDirection: wide ? 'row' : 'column',
+              gap: theme.spacing.md,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <VadInput
+                label="Display name"
+                value={displayName}
+                onChangeText={setDisplayName}
+                placeholder="Your public name"
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <VadInput
+                label="Handle"
+                value={handle}
+                onChangeText={setHandle}
+                placeholder="yourhandle"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+            </View>
+          </View>
+
           <VadInput
             label="Bio"
             value={bio}
             onChangeText={setBio}
             placeholder="What should people know about your perspective?"
             multiline
+            hint={
+              bio.trim()
+                ? bio.trim().length + ' characters'
+                : 'Optional'
+            }
           />
 
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: theme.spacing.sm,
+            }}
+          >
             <VadButton
               label="Cancel"
               variant="secondary"
               disabled={working}
               onPress={cancelEdit}
+              style={{ flex: 1 }}
             />
             <VadButton
               label="Save changes"
               loading={working}
               disabled={!displayName.trim() && !handle.trim()}
               onPress={() => void save()}
+              style={{ flex: 1 }}
             />
           </View>
         </View>
       ) : (
         <View style={{ gap: theme.spacing.sm }}>
-          <VadText variant="heading">Profile media</VadText>
+          <View style={{ gap: 2 }}>
+            <VadText variant="heading">Profile media</VadText>
+            <VadText variant="caption" tone="secondary">
+              Update your photo or banner without changing your public details.
+            </VadText>
+          </View>
+
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <MediaAction
               label="Profile photo"
@@ -308,11 +364,12 @@ function MediaAction({
 
   return (
     <Pressable
+      accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,
-        minHeight: 60,
+        minHeight: 64,
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: theme.colors.border,
