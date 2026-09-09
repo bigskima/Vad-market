@@ -19,16 +19,15 @@ export function VadErrorState({
     <View
       accessibilityRole="alert"
       style={{
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: theme.colors.danger,
+        paddingVertical: theme.spacing.md,
         gap: theme.spacing.sm,
-        borderLeftWidth: 3,
-        borderLeftColor: theme.colors.danger,
-        backgroundColor: theme.colors.surfaceRaised,
-        borderRadius: theme.radius.md,
-        padding: theme.spacing.md,
       }}
     >
       <View style={{ gap: theme.spacing.xxs }}>
-        <VadText variant="bodyStrong">{title}</VadText>
+        <VadText variant="bodyStrong" tone="danger">{title}</VadText>
         <VadText variant="caption" tone="secondary">{message}</VadText>
       </View>
 

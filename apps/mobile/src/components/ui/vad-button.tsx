@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -17,6 +18,8 @@ type Props = PressableProps & {
   loading?: boolean;
   fullWidth?: boolean;
   size?: Size;
+  leading?: ReactNode;
+  trailing?: ReactNode;
 };
 
 export function VadButton({
@@ -28,6 +31,9 @@ export function VadButton({
   disabled,
   style,
   accessibilityState,
+  accessibilityLabel,
+  leading,
+  trailing,
   ...props
 }: Props) {
   const theme = useVadTheme();
@@ -58,6 +64,7 @@ export function VadButton({
       {...props}
       disabled={isDisabled}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{
         ...accessibilityState,
         disabled: isDisabled,
@@ -73,9 +80,7 @@ export function VadButton({
           paddingHorizontal: compact
             ? theme.spacing.md
             : theme.spacing.lg,
-          borderRadius: compact
-            ? theme.radius.md
-            : theme.radius.md,
+          borderRadius: theme.radius.md,
           borderWidth:
             variant === 'primary' || variant === 'danger' ? 0 : 1,
           borderColor,
@@ -95,11 +100,15 @@ export function VadButton({
               : theme.colors.brandPrimary
           }
         />
-      ) : null}
+      ) : (
+        leading ?? null
+      )}
 
       <View>
         <VadText variant="label" tone={tone}>{label}</VadText>
       </View>
+
+      {!loading ? trailing ?? null : null}
     </Pressable>
   );
 }

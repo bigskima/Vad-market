@@ -20,23 +20,23 @@ export function VadEmptyState({
   return (
     <View
       style={{
-        minHeight: 150,
+        minHeight: 124,
         justifyContent: 'center',
         alignItems: 'flex-start',
         gap: theme.spacing.xs,
         borderTopWidth: 1,
         borderBottomWidth: 1,
         borderColor: theme.colors.border,
-        paddingVertical: theme.spacing.xl,
+        paddingVertical: theme.spacing.lg,
       }}
     >
       <View
         style={{
-          width: 34,
-          height: 4,
-          borderRadius: 999,
+          width: 30,
+          height: 3,
+          borderRadius: theme.radius.pill,
           backgroundColor: theme.colors.brandPrimary,
-          marginBottom: theme.spacing.xs,
+          marginBottom: theme.spacing.xxs,
         }}
       />
       <VadText variant="heading">{title}</VadText>

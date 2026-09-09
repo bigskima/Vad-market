@@ -24,6 +24,8 @@ export function VadInput({
   style,
   onFocus,
   onBlur,
+  accessibilityLabel,
+  accessibilityHint,
   editable = true,
   ...props
 }: Props) {
@@ -55,7 +57,7 @@ export function VadInput({
       {label ? (
         <VadText
           variant="label"
-          tone={focused ? 'primary' : 'secondary'}
+          tone={error ? 'danger' : focused ? 'primary' : 'secondary'}
         >
           {label}
         </VadText>
@@ -67,12 +69,14 @@ export function VadInput({
         multiline={multiline}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityHint={accessibilityHint ?? error ?? hint}
         placeholderTextColor={theme.colors.textTertiary}
         selectionColor={theme.colors.brandPrimary}
         cursorColor={theme.colors.brandPrimary}
         style={[
           {
-            minHeight: multiline ? 112 : 50,
+            minHeight: multiline ? 104 : 50,
             borderWidth: focused ? 1.5 : 1,
             borderColor,
             borderRadius: theme.radius.md,

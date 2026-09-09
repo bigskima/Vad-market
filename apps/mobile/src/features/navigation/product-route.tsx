@@ -38,20 +38,64 @@ export function ProductRoute({
 
   if (isLoading || data.loading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: theme.colors.background,
-          paddingTop: 72,
-          paddingHorizontal: theme.spacing.lg,
-          gap: theme.spacing.lg,
-        }}
-      >
-        <VadSkeleton width={110} height={22} />
-        <VadSkeleton height={110} radius={theme.radius.xl} />
-        <VadSkeleton width="62%" height={26} />
-        <VadSkeleton height={96} radius={theme.radius.lg} />
-        <VadSkeleton height={96} radius={theme.radius.lg} />
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <View
+          style={{
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+            paddingTop: 18,
+            paddingHorizontal: theme.spacing.lg,
+            paddingBottom: theme.spacing.sm,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 1180,
+              alignSelf: 'center',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.spacing.md,
+            }}
+          >
+            <VadSkeleton width={34} height={34} radius={17} />
+            <VadSkeleton width={72} height={18} />
+            <View style={{ flex: 1 }} />
+            <VadSkeleton width={38} height={38} radius={19} />
+          </View>
+        </View>
+
+        <View
+          style={{
+            flex: 1,
+            width: '100%',
+            maxWidth: 1120,
+            alignSelf: 'center',
+            paddingHorizontal: desktop
+              ? theme.spacing.xl
+              : theme.spacing.lg,
+            paddingTop: desktop
+              ? theme.spacing.xl
+              : theme.spacing.lg,
+            gap: theme.spacing.lg,
+          }}
+        >
+          <VadSkeleton width="38%" height={22} />
+          <VadSkeleton width="62%" height={32} />
+          <VadSkeleton height={126} radius={theme.radius.xl} />
+          <VadSkeleton height={82} radius={theme.radius.lg} />
+          <VadSkeleton height={82} radius={theme.radius.lg} />
+        </View>
+
+        {!desktop ? (
+          <View
+            style={{
+              minHeight: 66,
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+            }}
+          />
+        ) : null}
       </View>
     );
   }
@@ -94,6 +138,7 @@ export function ProductRoute({
         style={{ flex: 1 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl
             refreshing={data.refreshing}
@@ -112,7 +157,7 @@ export function ProductRoute({
           paddingTop: desktop
             ? theme.spacing.xl
             : theme.spacing.lg,
-          paddingBottom: theme.spacing.xxxl,
+          paddingBottom: desktop ? theme.spacing.xxxl : 112,
           gap: theme.spacing.lg,
         }}
       >
