@@ -1,6 +1,11 @@
 import { Redirect, router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import {
+  RefreshControl,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -17,8 +22,14 @@ type Props = {
   allowCreate?: boolean;
 };
 
-export function ProductRoute({ active, children, allowCreate = false }: Props) {
+export function ProductRoute({
+  active,
+  children,
+  allowCreate = false,
+}: Props) {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const desktop = width >= 900;
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
@@ -68,7 +79,12 @@ export function ProductRoute({ active, children, allowCreate = false }: Props) {
         active={active}
         email={session.user.email ?? session.user.phone ?? 'VAD member'}
         isAdmin={Boolean(data.adminSummary)}
-        canCreate={allowCreate && runtime.snapshot.capabilities.submitMarketProposal}
+        canCreate={
+          allowCreate &&
+          runtime.snapshot.capabilities.submitMarketProposal
+        }
+        showNavigation={desktop}
+        onNavigate={navigate}
         onCreate={() => router.push('/create-market')}
         onAdmin={() => router.push('/admin')}
         onAccount={() => router.replace('/account')}
@@ -77,6 +93,7 @@ export function ProductRoute({ active, children, allowCreate = false }: Props) {
       <ScrollView
         style={{ flex: 1 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl
             refreshing={data.refreshing}
@@ -89,17 +106,28 @@ export function ProductRoute({ active, children, allowCreate = false }: Props) {
           alignSelf: 'center',
           width: '100%',
           maxWidth: 1120,
-          paddingHorizontal: theme.spacing.lg,
-          paddingTop: theme.spacing.lg,
+          paddingHorizontal: desktop
+            ? theme.spacing.xl
+            : theme.spacing.lg,
+          paddingTop: desktop
+            ? theme.spacing.xl
+            : theme.spacing.lg,
           paddingBottom: theme.spacing.xxxl,
           gap: theme.spacing.lg,
         }}
       >
-        {data.error ? <VadErrorState message={data.error} onRetry={() => void data.load()} /> : null}
+        {data.error ? (
+          <VadErrorState
+            message={data.error}
+            onRetry={() => void data.load()}
+          />
+        ) : null}
         {children}
       </ScrollView>
 
-      <ProductTabBar active={active} onChange={navigate} />
+      {!desktop ? (
+        <ProductTabBar active={active} onChange={navigate} />
+      ) : null}
     </View>
   );
 }
