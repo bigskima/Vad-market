@@ -54,9 +54,35 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: {
   const commentsPost = posts.find((post) => post.post_public_id === commentsPostId) ?? null;
 
   return <View style={{ gap: theme.spacing.md }}>
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}><View style={{ flex: 1 }}><VadText variant="heading">Conviction feed</VadText><VadText variant="caption" tone="secondary">Ideas, arguments and market-linked predictions from the network.</VadText></View>{canCreatePost ? <VadButton label={composerOpen ? 'Close' : 'Post'} fullWidth={false} variant={composerOpen ? 'ghost' : 'primary'} onPress={() => setComposerOpen((value) => !value)} /> : null}</View>
+    {canCreatePost ? <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
+      <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>Publish analysis or attach a live market to make a prediction.</VadText>
+      <VadButton label={composerOpen ? 'Close' : 'New post'} fullWidth={false} variant={composerOpen ? 'ghost' : 'secondary'} onPress={() => setComposerOpen((value) => !value)} />
+    </View> : null}
 
-    {composerOpen ? <VadCard variant="raised" style={{ gap: theme.spacing.sm }}><View><VadText variant="bodyStrong">Share your conviction</VadText><VadText variant="caption" tone="secondary">Explain the reasoning. Attach a live market only when it is genuinely related.</VadText></View><VadInput multiline value={body} onChangeText={setBody} placeholder="What do you believe, and why?" /><VadText variant="label" tone="secondary">Attach a live market (optional)</VadText><View style={{ gap: theme.spacing.xs }}>{markets.slice(0, 4).map((item) => <Pressable key={item.instrument_public_id} onPress={() => { setMarket(market?.instrument_public_id === item.instrument_public_id ? null : item); setStance(null); }}><VadCard variant={market?.instrument_public_id === item.instrument_public_id ? 'muted' : 'outlined'} style={{ padding: theme.spacing.sm }}><VadText variant="caption" tone={market?.instrument_public_id === item.instrument_public_id ? 'brand' : 'primary'} numberOfLines={2}>{item.title}</VadText></VadCard></Pressable>)}</View>{market ? <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}><VadButton fullWidth={false} label={`YES ${pct(market.yes_price)}`} variant={stance === 'YES' ? 'primary' : 'secondary'} onPress={() => setStance('YES')} /><VadButton fullWidth={false} label={`NO ${pct(market.no_price)}`} variant={stance === 'NO' ? 'primary' : 'secondary'} onPress={() => setStance('NO')} /></View> : null}<VadButton label="Publish conviction" loading={working} disabled={!body.trim()} onPress={() => void publish()} /></VadCard> : null}
+    {composerOpen ? <VadCard variant="raised" style={{ gap: theme.spacing.md, borderRadius: theme.radius.xl }}>
+      <View style={{ gap: theme.spacing.xxs }}>
+        <VadText variant="heading">Share your conviction</VadText>
+        <VadText variant="caption" tone="secondary">Lead with reasoning. Attach a market only when it is directly relevant.</VadText>
+      </View>
+
+      <VadInput multiline value={body} onChangeText={setBody} placeholder="What do you believe, and why?" />
+
+      <View style={{ gap: theme.spacing.xs }}>
+        <VadText variant="label" tone="secondary">Live market · optional</VadText>
+        {markets.slice(0, 4).map((item) => <Pressable key={item.instrument_public_id} onPress={() => { setMarket(market?.instrument_public_id === item.instrument_public_id ? null : item); setStance(null); }}>
+          <VadCard variant={market?.instrument_public_id === item.instrument_public_id ? 'muted' : 'outlined'} style={{ padding: theme.spacing.sm, borderRadius: theme.radius.lg }}>
+            <VadText variant="caption" tone={market?.instrument_public_id === item.instrument_public_id ? 'brand' : 'primary'} numberOfLines={2}>{item.title}</VadText>
+          </VadCard>
+        </Pressable>)}
+      </View>
+
+      {market ? <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
+        <VadButton fullWidth={false} label={`YES ${pct(market.yes_price)}`} variant={stance === 'YES' ? 'primary' : 'secondary'} onPress={() => setStance('YES')} />
+        <VadButton fullWidth={false} label={`NO ${pct(market.no_price)}`} variant={stance === 'NO' ? 'primary' : 'secondary'} onPress={() => setStance('NO')} />
+      </View> : null}
+
+      <VadButton label="Publish conviction" loading={working} disabled={!body.trim()} onPress={() => void publish()} />
+    </VadCard> : null}
 
     {!posts.length ? <VadEmptyState title="No creator posts yet" body="The first conviction can start a discussion without creating a duplicate financial market." /> : posts.map((post) => {
       const linked = post.instrument_public_id ? markets.find((item) => item.instrument_public_id === post.instrument_public_id) : undefined;
@@ -68,9 +94,20 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: {
       <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ gap: theme.spacing.sm }} keyboardShouldPersistTaps="handled">
         {comments.length ? comments.map((comment) => {
           const authorName = comment.author_display_name ?? comment.author_handle ?? 'VAD member';
-          return <View key={comment.comment_public_id} style={{ flexDirection: 'row', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: theme.spacing.sm }}><ProfileAvatar path={comment.author_avatar_path} name={authorName} size={34} /><View style={{ flex: 1, gap: theme.spacing.xxs }}><VadText variant="label">{authorName}</VadText><VadText>{comment.body}</VadText><VadText variant="caption" tone="secondary">{new Date(comment.created_at).toLocaleString()}</VadText></View></View>;
+          return <View key={comment.comment_public_id} style={{ flexDirection: 'row', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: theme.spacing.sm }}>
+            <ProfileAvatar path={comment.author_avatar_path} name={authorName} size={34} />
+            <View style={{ flex: 1, gap: theme.spacing.xxs }}>
+              <VadText variant="label">{authorName}</VadText>
+              <VadText>{comment.body}</VadText>
+              <VadText variant="caption" tone="secondary">{new Date(comment.created_at).toLocaleString()}</VadText>
+            </View>
+          </View>;
         }) : <VadText tone="secondary">No comments yet. Add context without leaving the conviction.</VadText>}
-        {commentsPost ? <View style={{ gap: theme.spacing.xs }}><VadInput value={commentBody} onChangeText={setCommentBody} placeholder="Add to the discussion…" /><VadButton label="Send comment" disabled={!commentBody.trim()} loading={working} onPress={() => void submitComment(commentsPost)} /></View> : null}
+
+        {commentsPost ? <View style={{ gap: theme.spacing.xs }}>
+          <VadInput value={commentBody} onChangeText={setCommentBody} placeholder="Add to the discussion…" />
+          <VadButton label="Send comment" disabled={!commentBody.trim()} loading={working} onPress={() => void submitComment(commentsPost)} />
+        </View> : null}
       </ScrollView>
     </VadBottomSheet>
   </View>;
