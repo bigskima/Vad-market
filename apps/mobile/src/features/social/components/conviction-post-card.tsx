@@ -8,13 +8,13 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import type { ConvictionPost } from '@/services/social-api';
 
-export function ConvictionPostCard({ post, linkedMarket, commentsOpen, onFollow, onLike, onComments, onOpenMarket, children }: { post: ConvictionPost; linkedMarket?: MarketCatalogItem; commentsOpen: boolean; onFollow: () => void; onLike: () => void; onComments: () => void; onOpenMarket: () => void; children?: ReactNode }) {
+export function ConvictionPostCard({ post, linkedMarket, commentsOpen, creatorOpen, onFollow, onLike, onComments, onOpenMarket, onOpenCreator, children }: { post: ConvictionPost; linkedMarket?: MarketCatalogItem; commentsOpen: boolean; creatorOpen: boolean; onFollow: () => void; onLike: () => void; onComments: () => void; onOpenMarket: () => void; onOpenCreator: () => void; children?: ReactNode }) {
   const theme = useVadTheme();
   const initial = (post.author_display_name ?? post.author_handle ?? 'V').slice(0, 1).toUpperCase();
   return <VadCard style={{ gap: theme.spacing.md }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-      <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: theme.colors.brandSoft, alignItems: 'center', justifyContent: 'center' }}><VadText variant="bodyStrong" tone="brand">{initial}</VadText></View>
-      <View style={{ flex: 1 }}><VadText variant="bodyStrong">{post.author_display_name ?? post.author_handle ?? 'VAD creator'}</VadText><VadText variant="caption" tone="secondary">@{post.author_handle ?? 'member'} · {new Date(post.created_at).toLocaleDateString()}</VadText></View>
+      <Pressable onPress={onOpenCreator} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: theme.colors.brandSoft, alignItems: 'center', justifyContent: 'center' }}><VadText variant="bodyStrong" tone="brand">{initial}</VadText></Pressable>
+      <Pressable onPress={onOpenCreator} style={{ flex: 1 }}><VadText variant="bodyStrong" tone={creatorOpen ? 'brand' : 'primary'}>{post.author_display_name ?? post.author_handle ?? 'VAD creator'}</VadText><VadText variant="caption" tone="secondary">@{post.author_handle ?? 'member'} · {new Date(post.created_at).toLocaleDateString()}</VadText></Pressable>
       <Pressable onPress={onFollow}><VadText variant="label" tone="brand">{post.viewer_follows_author ? 'Following' : 'Follow'}</VadText></Pressable>
     </View>
 
