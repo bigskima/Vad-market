@@ -79,9 +79,10 @@ export function AdminProvidersScreen() {
         <View
           style={{
             flex: wide ? 0.9 : undefined,
-            borderRadius: theme.radius.xl,
-            backgroundColor: theme.colors.surfaceRaised,
-            padding: theme.spacing.lg,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: theme.colors.border,
+            paddingVertical: theme.spacing.lg,
             gap: theme.spacing.md,
           }}
         >
