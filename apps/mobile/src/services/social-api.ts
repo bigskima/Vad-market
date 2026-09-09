@@ -24,6 +24,47 @@ export type ConvictionPost = {
   created_at: string;
 };
 
+export type CreatorReputation = {
+  userId: string;
+  followers: number;
+  following: number;
+  posts: number;
+  predictions: number;
+  originatedMarkets: number;
+  resolvedPredictions: number;
+  correctPredictions: number;
+  accuracy: number | null;
+  calibratedPredictions: number;
+  brierScore: number | null;
+  calibrationScore: number | null;
+  evidenceWeightedReputation: number;
+  method: string;
+  generatedAt: string;
+};
+
+export type PostComment = {
+  comment_public_id: string;
+  author_user_id: string;
+  author_handle: string | null;
+  author_display_name: string | null;
+  body: string;
+  created_at: string;
+};
+
+export type CreatorPrediction = {
+  post_public_id: string;
+  body: string;
+  confidence: number | string | null;
+  stance_outcome_code: string;
+  event_public_id: string;
+  market_title: string;
+  resolution_status: string | null;
+  resolved_outcome_code: string | null;
+  correct: boolean | null;
+  created_at: string;
+  finalized_at: string | null;
+};
+
 function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
@@ -69,4 +110,44 @@ export async function addPostComment(postPublicId: string, body: string) {
   const { data, error } = await supabase.rpc('add_post_comment', { p_post_public_id: postPublicId, p_body: body });
   fail(error);
   return data as string;
+}
+
+export async function getPostComments(postPublicId: string, limit = 50) {
+  const { data, error } = await supabase.rpc('post_comments', { p_post_public_id: postPublicId, p_limit: limit });
+  fail(error);
+  return (data ?? []) as PostComment[];
+}
+
+export async function getCreatorReputation(creatorUserId: string) {
+  const { data, error } = await supabase.rpc('creator_reputation', { p_creator_user_id: creatorUserId });
+  fail(error);
+  return data as CreatorReputation;
+}
+
+export async function getCreatorPredictionHistory(creatorUserId: string, limit = 20, offset = 0) {
+  const { data, error } = await supabase.rpc('creator_prediction_history', {
+    p_creator_user_id: creatorUserId,
+    p_limit: limit,
+    p_offset: offset,
+  });
+  fail(error);
+  return (data ?? []) as CreatorPrediction[];
+}
+
+export async function getCreatorOriginatedMarkets(creatorUserId: string, limit = 20, offset = 0) {
+  const { data, error } = await supabase.rpc('creator_originated_markets', {
+    p_creator_user_id: creatorUserId,
+    p_limit: limit,
+    p_offset: offset,
+  });
+  fail(error);
+  return (data ?? []) as Record<string, unknown>[];
+}
+
+export async function getMarketCreatorAttribution(instrumentPublicId: string) {
+  const { data, error } = await supabase.rpc('market_creator_attribution', {
+    p_instrument_public_id: instrumentPublicId,
+  });
+  fail(error);
+  return data as Record<string, unknown> | null;
 }
