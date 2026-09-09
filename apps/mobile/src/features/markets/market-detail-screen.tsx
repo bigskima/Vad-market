@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
@@ -28,15 +33,19 @@ export function MarketDetailScreen({
   onOpenMarket: (market: MarketCatalogItem) => void;
 }) {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const compactTabs = width < 560;
   const [tab, setTab] = useState<DetailTab>('Overview');
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
       <MarketDetailHeader market={market} />
 
-      <View
-        style={{
-          flexDirection: 'row',
+      <ScrollView
+        horizontal={compactTabs}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          minWidth: compactTabs ? undefined : '100%',
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
         }}
@@ -50,27 +59,38 @@ export function MarketDetailScreen({
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               onPress={() => setTab(item)}
-              style={{
-                flex: 1,
-                minHeight: 44,
+              style={({ pressed }) => ({
+                minWidth: compactTabs ? 104 : undefined,
+                flex: compactTabs ? undefined : 1,
+                minHeight: 46,
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderBottomWidth: 2,
-                borderBottomColor: selected ? theme.colors.brandPrimary : 'transparent',
-              }}
+                borderBottomColor: selected
+                  ? theme.colors.brandPrimary
+                  : 'transparent',
+                opacity: pressed ? 0.68 : 1,
+              })}
             >
-              <VadText variant="caption" tone={selected ? 'brand' : 'secondary'}>
+              <VadText
+                variant="caption"
+                tone={selected ? 'brand' : 'secondary'}
+              >
                 {item}
               </VadText>
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
       {tab === 'Overview' ? <Overview market={market} /> : null}
 
       {tab === 'Trade' ? (
-        <TradingTicket market={market} canTrade={canTrade} onPlaced={onPlaced} />
+        <TradingTicket
+          market={market}
+          canTrade={canTrade}
+          onPlaced={onPlaced}
+        />
       ) : null}
 
       {tab === 'Discussion' ? (
@@ -89,50 +109,66 @@ export function MarketDetailScreen({
 
 function Overview({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 780;
 
   return (
-    <View style={{ gap: theme.spacing.lg }}>
-      <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="heading">What this market asks</VadText>
-        <VadText tone="secondary">{market.title}</VadText>
+    <View
+      style={{
+        flexDirection: wide ? 'row' : 'column',
+        alignItems: 'flex-start',
+        gap: wide ? theme.spacing.xxl : theme.spacing.lg,
+      }}
+    >
+      <View style={{ flex: 1.1, width: '100%', gap: theme.spacing.lg }}>
+        <View style={{ gap: theme.spacing.xs }}>
+          <VadText variant="label" tone="brand">MARKET OVERVIEW</VadText>
+          <VadText variant="heading">What this market asks</VadText>
+          <VadText tone="secondary">{market.title}</VadText>
+        </View>
+
+        <View
+          style={{
+            borderLeftWidth: 3,
+            borderLeftColor: theme.colors.brandPrimary,
+            borderRadius: theme.radius.md,
+            backgroundColor: theme.colors.brandSoft,
+            padding: theme.spacing.md,
+            gap: 2,
+          }}
+        >
+          <VadText variant="bodyStrong">
+            Price discovery and resolution are separate.
+          </VadText>
+          <VadText variant="caption" tone="secondary">
+            YES and NO prices reflect current trading. The final outcome is
+            determined independently under the approved market policy.
+          </VadText>
+        </View>
       </View>
 
-      <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-        <Fact label="Category" value={market.category ?? 'General'} />
-        <Fact label="Settlement asset" value={market.asset_code} />
-        <Fact label="Market type" value={market.market_type} />
-        <Fact
-          label="Close time"
-          value={
-            market.closes_at
-              ? new Date(market.closes_at).toLocaleString()
-              : 'Defined by market policy'
-          }
-        />
-        <Fact
-          label="Last activity"
-          value={
-            market.last_trade_at
-              ? new Date(market.last_trade_at).toLocaleString()
-              : 'No completed trades yet'
-          }
-        />
-      </View>
-
-      <View
-        style={{
-          borderRadius: theme.radius.xl,
-          backgroundColor: theme.colors.surfaceRaised,
-          padding: theme.spacing.lg,
-          gap: theme.spacing.xs,
-        }}
-      >
-        <VadText variant="bodyStrong">
-          Probability is a market signal, not the final outcome.
-        </VadText>
-        <VadText variant="caption" tone="secondary">
-          The displayed YES and NO prices reflect current trading. Resolution is determined separately under the approved market policy.
-        </VadText>
+      <View style={{ flex: 0.9, width: '100%' }}>
+        <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+          <Fact label="Category" value={market.category ?? 'General'} />
+          <Fact label="Settlement asset" value={market.asset_code} />
+          <Fact label="Market type" value={market.market_type} />
+          <Fact
+            label="Close time"
+            value={
+              market.closes_at
+                ? new Date(market.closes_at).toLocaleString()
+                : 'Defined by market policy'
+            }
+          />
+          <Fact
+            label="Last activity"
+            value={
+              market.last_trade_at
+                ? new Date(market.last_trade_at).toLocaleString()
+                : 'No completed trades yet'
+            }
+          />
+        </View>
       </View>
     </View>
   );
@@ -140,51 +176,78 @@ function Overview({ market }: { market: MarketCatalogItem }) {
 
 function Rules({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 820;
+
+  const rules = [
+    {
+      number: '1',
+      title: 'Trading closes before resolution',
+      body: market.closes_at
+        ? 'Trading is scheduled to close on ' +
+          new Date(market.closes_at).toLocaleString() +
+          '.'
+        : 'The closing time follows the approved market policy.',
+    },
+    {
+      number: '2',
+      title: 'The market price does not decide the answer',
+      body: 'YES and NO prices represent participant conviction. The final result comes from the approved resolution process.',
+    },
+    {
+      number: '3',
+      title: 'Settlement follows the authoritative ledger',
+      body:
+        'Positions and payouts settle in ' +
+        market.asset_code +
+        ' only after the market has a final outcome.',
+    },
+  ];
 
   return (
-    <View style={{ gap: theme.spacing.lg }}>
+    <View style={{ gap: theme.spacing.xl }}>
       <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="heading">Resolution & trading rules</VadText>
+        <VadText variant="label" tone="brand">MARKET RULES</VadText>
+        <VadText variant="heading">Resolution & settlement.</VadText>
         <VadText tone="secondary">
-          These safeguards keep price discovery separate from the final market outcome.
+          These are the operating boundaries users should understand before
+          taking a position.
         </VadText>
       </View>
 
-      <Rule
-        number="1"
-        title="Market closes before resolution"
-        body={
-          market.closes_at
-            ? 'Trading is scheduled to close on ' +
-              new Date(market.closes_at).toLocaleString() +
-              '.'
-            : 'The closing time follows the approved market policy.'
-        }
-      />
-      <Rule
-        number="2"
-        title="The market price does not decide the answer"
-        body="YES and NO prices represent participant conviction. The final result comes from the approved resolution process."
-      />
-      <Rule
-        number="3"
-        title="Settlement follows the authoritative ledger"
-        body={
-          'Positions and payouts settle in ' +
-          market.asset_code +
-          ' only after the market has a final outcome.'
-        }
-      />
+      <View
+        style={{
+          flexDirection: wide ? 'row' : 'column',
+          gap: theme.spacing.md,
+          alignItems: 'stretch',
+        }}
+      >
+        {rules.map((rule) => (
+          <Rule
+            key={rule.number}
+            number={rule.number}
+            title={rule.title}
+            body={rule.body}
+            wide={wide}
+          />
+        ))}
+      </View>
 
       <View
         style={{
-          borderRadius: theme.radius.lg,
-          backgroundColor: theme.colors.brandSoft,
-          padding: theme.spacing.md,
+          borderTopWidth: 1,
+          borderBottomWidth: 1,
+          borderColor: theme.colors.border,
+          paddingVertical: theme.spacing.md,
+          gap: 2,
         }}
       >
-        <VadText variant="caption" tone="brand">
-          VAD keeps trading, resolution and settlement as separate governed steps.
+        <VadText variant="bodyStrong">
+          Trading → Resolution → Settlement
+        </VadText>
+        <VadText variant="caption" tone="secondary">
+          VAD keeps these as separate governed stages. A popular market outcome
+          does not become true merely because it has the higher price.
         </VadText>
       </View>
     </View>
@@ -211,7 +274,7 @@ function Fact({ label, value }: { label: string; value: string }) {
       </VadText>
       <VadText
         variant="bodyStrong"
-        style={{ flex: 1, textAlign: 'right' }}
+        style={{ flex: 1.25, textAlign: 'right' }}
       >
         {value}
       </VadText>
@@ -223,15 +286,26 @@ function Rule({
   number,
   title,
   body,
+  wide,
 }: {
   number: string;
   title: string;
   body: string;
+  wide: boolean;
 }) {
   const theme = useVadTheme();
 
   return (
-    <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+    <View
+      style={{
+        flex: wide ? 1 : undefined,
+        minHeight: wide ? 170 : undefined,
+        borderTopWidth: 1,
+        borderColor: theme.colors.border,
+        paddingTop: theme.spacing.md,
+        gap: theme.spacing.md,
+      }}
+    >
       <View
         style={{
           width: 34,
@@ -244,7 +318,8 @@ function Rule({
       >
         <VadText variant="label" tone="brand">{number}</VadText>
       </View>
-      <View style={{ flex: 1, gap: 3 }}>
+
+      <View style={{ gap: theme.spacing.xs }}>
         <VadText variant="bodyStrong">{title}</VadText>
         <VadText variant="caption" tone="secondary">{body}</VadText>
       </View>
