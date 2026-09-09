@@ -4,9 +4,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 
-export type ProductTab = 'Home' | 'Markets' | 'Wallet' | 'Portfolio' | 'Account';
+export type ProductTab =
+  | 'Home'
+  | 'Markets'
+  | 'Wallet'
+  | 'Portfolio'
+  | 'Account';
 
-const tabs: { value: ProductTab; glyph: string; label: string }[] = [
+export const PRODUCT_TABS: {
+  value: ProductTab;
+  glyph: string;
+  label: string;
+}[] = [
   { value: 'Home', glyph: '⌂', label: 'Home' },
   { value: 'Markets', glyph: '◎', label: 'Markets' },
   { value: 'Wallet', glyph: '₦', label: 'Wallet' },
@@ -29,14 +38,23 @@ export function ProductTabBar({
       style={{
         borderTopWidth: 1,
         borderTopColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
-        paddingHorizontal: theme.spacing.xs,
-        paddingTop: theme.spacing.xs,
+        backgroundColor: theme.colors.background,
         paddingBottom: Math.max(insets.bottom, theme.spacing.xs),
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
-        {tabs.map((tab) => {
+      <View
+        accessibilityRole="tablist"
+        style={{
+          width: '100%',
+          maxWidth: 720,
+          alignSelf: 'center',
+          flexDirection: 'row',
+          alignItems: 'stretch',
+          paddingHorizontal: theme.spacing.xs,
+          paddingTop: theme.spacing.xs,
+        }}
+      >
+        {PRODUCT_TABS.map((tab) => {
           const selected = tab.value === active;
 
           return (
@@ -62,7 +80,9 @@ export function ProductTabBar({
                   alignItems: 'center',
                   justifyContent: 'center',
                   paddingHorizontal: theme.spacing.xs,
-                  backgroundColor: selected ? theme.colors.brandSoft : 'transparent',
+                  backgroundColor: selected
+                    ? theme.colors.brandSoft
+                    : 'transparent',
                 }}
               >
                 <VadText
@@ -72,7 +92,11 @@ export function ProductTabBar({
                   {tab.glyph}
                 </VadText>
               </View>
-              <VadText variant="caption" tone={selected ? 'brand' : 'tertiary'}>
+
+              <VadText
+                variant="caption"
+                tone={selected ? 'brand' : 'tertiary'}
+              >
                 {tab.label}
               </VadText>
             </Pressable>
