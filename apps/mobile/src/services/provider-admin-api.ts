@@ -13,6 +13,17 @@ export type ProviderReadinessRow = {
   priority: number | null;
 };
 
+export type ProviderChangeRequest = {
+  request_public_id: string;
+  provider_code: string;
+  environment: 'SANDBOX' | 'PRODUCTION';
+  current_status: string;
+  requested_status: 'ACTIVE' | 'DISABLED' | 'DEGRADED' | 'UNAVAILABLE';
+  reason: string;
+  requested_by: string;
+  created_at: string;
+};
+
 function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
@@ -21,6 +32,12 @@ export async function getAdminProviderReadiness() {
   const { data, error } = await supabase.rpc('admin_provider_readiness');
   fail(error);
   return (data ?? []) as ProviderReadinessRow[];
+}
+
+export async function getProviderChangeQueue() {
+  const { data, error } = await supabase.rpc('admin_provider_change_queue');
+  fail(error);
+  return (data ?? []) as ProviderChangeRequest[];
 }
 
 export async function registerProvider(input: {
@@ -71,7 +88,33 @@ export async function upsertProviderRoute(input: {
   return Number(data);
 }
 
-export async function setProviderStatus(providerCode: string, environment: 'SANDBOX' | 'PRODUCTION', status: 'ACTIVE' | 'DISABLED' | 'DEGRADED' | 'UNAVAILABLE') {
+export async function requestProviderStatus(input: {
+  providerCode: string;
+  environment: 'SANDBOX' | 'PRODUCTION';
+  requestedStatus: 'ACTIVE' | 'DISABLED' | 'DEGRADED' | 'UNAVAILABLE';
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_request_provider_status', {
+    p_provider_code: input.providerCode,
+    p_environment: input.environment,
+    p_requested_status: input.requestedStatus,
+    p_reason: input.reason,
+  });
+  fail(error);
+  return data as string;
+}
+
+export async function decideProviderStatusRequest(requestPublicId: string, decision: 'APPROVE' | 'REJECT', decisionReason: string) {
+  const { error } = await supabase.rpc('admin_decide_provider_status_request', {
+    p_request_public_id: requestPublicId,
+    p_decision: decision,
+    p_decision_reason: decisionReason,
+  });
+  fail(error);
+}
+
+// Safety-only direct action. ACTIVE/DEGRADED transitions are intentionally rejected server-side.
+export async function setProviderSafetyStatus(providerCode: string, environment: 'SANDBOX' | 'PRODUCTION', status: 'DISABLED' | 'UNAVAILABLE') {
   const { error } = await supabase.rpc('admin_set_provider_status', { p_provider_code: providerCode, p_environment: environment, p_status: status });
   fail(error);
 }
