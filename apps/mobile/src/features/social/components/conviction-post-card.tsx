@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
@@ -7,7 +8,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import type { ConvictionPost } from '@/services/social-api';
 
-export function ConvictionPostCard({ post, linkedMarket, commentsOpen, onFollow, onLike, onComments, onOpenMarket, children }: { post: ConvictionPost; linkedMarket?: MarketCatalogItem; commentsOpen: boolean; onFollow: () => void; onLike: () => void; onComments: () => void; onOpenMarket: () => void; children?: React.ReactNode }) {
+export function ConvictionPostCard({ post, linkedMarket, commentsOpen, onFollow, onLike, onComments, onOpenMarket, children }: { post: ConvictionPost; linkedMarket?: MarketCatalogItem; commentsOpen: boolean; onFollow: () => void; onLike: () => void; onComments: () => void; onOpenMarket: () => void; children?: ReactNode }) {
   const theme = useVadTheme();
   const initial = (post.author_display_name ?? post.author_handle ?? 'V').slice(0, 1).toUpperCase();
   return <VadCard style={{ gap: theme.spacing.md }}>
