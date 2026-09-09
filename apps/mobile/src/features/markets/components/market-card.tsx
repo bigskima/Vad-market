@@ -29,10 +29,10 @@ export function MarketCard({
       onPress={onPress}
       accessibilityRole="button"
       style={({ pressed }) => ({
-        minHeight: 196,
+        minHeight: 184,
         borderWidth: 1,
         borderColor: theme.colors.border,
-        borderRadius: theme.radius.xl,
+        borderRadius: theme.radius.lg,
         backgroundColor: theme.colors.surface,
         padding: theme.spacing.md,
         gap: theme.spacing.md,
