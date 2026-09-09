@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -15,6 +15,8 @@ import { useVadTheme } from '@/providers/theme-provider';
 
 export function AdminProvidersScreen() {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 860;
   const data = useAdminData();
   const [tab, setTab] = useState('readiness');
 
@@ -47,18 +49,94 @@ export function AdminProvidersScreen() {
       ),
   ).length;
 
+  const readinessRatio =
+    data.providers.length > 0 ? ready / data.providers.length : 0;
+
   return (
-    <View style={{ gap: theme.spacing.xl }}>
-      <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="label" tone="brand">PROVIDERS</VadText>
-        <VadText variant="title">Provider readiness.</VadText>
-        <VadText tone="secondary">
-          Configuration, runtime status and governed changes are visible here
-          without treating a configured provider as automatically active.
-        </VadText>
+    <View style={{ gap: theme.spacing.xxl }}>
+      <View
+        style={{
+          flexDirection: wide ? 'row' : 'column',
+          gap: theme.spacing.xl,
+          alignItems: 'stretch',
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            gap: theme.spacing.xs,
+          }}
+        >
+          <VadText variant="label" tone="brand">PROVIDERS</VadText>
+          <VadText variant="title">Runtime readiness.</VadText>
+          <VadText tone="secondary">
+            A configured provider is not automatically active. Readiness,
+            runtime state and governed status changes remain separate signals.
+          </VadText>
+        </View>
+
+        <View
+          style={{
+            flex: wide ? 0.9 : undefined,
+            borderRadius: theme.radius.xl,
+            backgroundColor: theme.colors.surfaceRaised,
+            padding: theme.spacing.lg,
+            gap: theme.spacing.md,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              gap: theme.spacing.md,
+            }}
+          >
+            <View style={{ gap: 2 }}>
+              <VadText variant="caption" tone="secondary">
+                READY ROUTES
+              </VadText>
+              <VadText variant="title">
+                {ready} / {data.providers.length}
+              </VadText>
+            </View>
+            <VadText
+              variant="heading"
+              tone={readinessRatio === 1 && data.providers.length ? 'yes' : 'brand'}
+            >
+              {Math.round(readinessRatio * 100)}%
+            </VadText>
+          </View>
+
+          <View
+            style={{
+              height: 8,
+              borderRadius: theme.radius.pill,
+              backgroundColor: theme.colors.surfaceMuted,
+              overflow: 'hidden',
+            }}
+          >
+            <View
+              style={{
+                width: Math.round(readinessRatio * 100) + '%',
+                height: '100%',
+                backgroundColor:
+                  readinessRatio === 1 && data.providers.length
+                    ? theme.colors.yes
+                    : theme.colors.brandPrimary,
+              }}
+            />
+          </View>
+        </View>
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: theme.spacing.sm,
+        }}
+      >
         <AdminMetricCard
           label="Configured"
           value={configured}
@@ -70,7 +148,7 @@ export function AdminProvidersScreen() {
           tone={ready ? 'yes' : 'primary'}
         />
         <AdminMetricCard
-          label="Pending changes"
+          label="Pending approvals"
           value={data.providerChanges.length}
           tone={data.providerChanges.length ? 'warning' : 'yes'}
         />
@@ -122,7 +200,12 @@ export function AdminProvidersScreen() {
                     ? String(row.provider_status)
                     : 'UNCONFIGURED'
                 }
-                ready={row.configured}
+                ready={
+                  row.configured &&
+                  ['ACTIVE', 'READY', 'HEALTHY', 'ENABLED'].includes(
+                    String(row.provider_status).toUpperCase(),
+                  )
+                }
               />
             ))
           ) : (
