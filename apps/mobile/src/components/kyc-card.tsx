@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, View } from 'react-native';
+import {
+  Alert,
+  Linking,
+  Pressable,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -13,6 +19,8 @@ import {
 
 export function KycCard() {
   const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 760;
   const [status, setStatus] = useState<KycStatus>({
     status: 'NOT_STARTED',
     providerCode: 'DIDIT',
@@ -44,9 +52,13 @@ export function KycCard() {
     setWorking(true);
     try {
       const session = await startDiditKyc();
+
       if (!(await Linking.canOpenURL(session.verificationUrl))) {
-        throw new Error('The verification link could not be opened on this device.');
+        throw new Error(
+          'The verification link could not be opened on this device.',
+        );
       }
+
       await Linking.openURL(session.verificationUrl);
       await load();
     } catch (error) {
@@ -62,17 +74,20 @@ export function KycCard() {
   if (loading) {
     return (
       <View style={{ gap: theme.spacing.md }}>
-        <VadSkeleton height={110} radius={theme.radius.xl} />
-        <VadSkeleton height={58} />
-        <VadSkeleton height={58} />
+        <VadSkeleton height={140} radius={theme.radius.xl} />
+        <VadSkeleton height={72} />
+        <VadSkeleton height={72} />
       </View>
     );
   }
 
   const verified = status.status === 'VERIFIED';
-  const inProgress = ['CREATED', 'PROVIDER_PENDING', 'IN_REVIEW'].includes(
-    status.status,
-  );
+  const inProgress = [
+    'CREATED',
+    'PROVIDER_PENDING',
+    'IN_REVIEW',
+  ].includes(status.status);
+
   const statusTone = verified
     ? 'yes'
     : inProgress
@@ -80,6 +95,7 @@ export function KycCard() {
       : status.providerConfigured
         ? 'brand'
         : 'secondary';
+
   const statusLabel = verified
     ? 'VERIFIED'
     : !status.providerConfigured
@@ -90,97 +106,137 @@ export function KycCard() {
     <View style={{ gap: theme.spacing.xl }}>
       <View
         style={{
-          borderRadius: theme.radius.xl,
-          backgroundColor: verified
-            ? theme.colors.yesSoft
-            : inProgress
-              ? theme.colors.warningSoft
-              : theme.colors.surfaceRaised,
-          padding: theme.spacing.xl,
-          gap: theme.spacing.sm,
+          flexDirection: wide ? 'row' : 'column',
+          gap: theme.spacing.md,
+          alignItems: 'stretch',
         }}
       >
         <View
           style={{
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            gap: theme.spacing.sm,
+            flex: 1.05,
+            borderRadius: theme.radius.xl,
+            backgroundColor: verified
+              ? theme.colors.yesSoft
+              : inProgress
+                ? theme.colors.warningSoft
+                : theme.colors.surfaceRaised,
+            padding: theme.spacing.xl,
+            gap: theme.spacing.md,
           }}
         >
-          <View style={{ flex: 1, gap: 2 }}>
-            <VadText variant="caption" tone={statusTone}>
-              IDENTITY STATUS
-            </VadText>
-            <VadText variant="title">
-              {verified
-                ? 'Identity verified'
-                : inProgress
-                  ? 'Verification in progress'
-                  : 'Verify your identity'}
-            </VadText>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: theme.spacing.sm,
+            }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <VadText variant="caption" tone={statusTone}>
+                IDENTITY STATUS
+              </VadText>
+              <VadText variant="title">
+                {verified
+                  ? 'Identity verified'
+                  : inProgress
+                    ? 'Verification in progress'
+                    : 'Verify your identity'}
+              </VadText>
+            </View>
+
+            <View
+              style={{
+                borderRadius: theme.radius.pill,
+                backgroundColor: theme.colors.surface,
+                paddingHorizontal: theme.spacing.sm,
+                paddingVertical: theme.spacing.xs,
+              }}
+            >
+              <VadText variant="caption" tone={statusTone}>
+                {statusLabel}
+              </VadText>
+            </View>
           </View>
 
           <View
             style={{
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.surface,
-              paddingHorizontal: theme.spacing.sm,
-              paddingVertical: theme.spacing.xs,
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+              paddingTop: theme.spacing.md,
+              gap: theme.spacing.xs,
             }}
           >
-            <VadText variant="caption" tone={statusTone}>
-              {statusLabel}
-            </VadText>
+            <StatusFact label="Provider" value={status.providerCode} />
+            <StatusFact
+              label="Level"
+              value={status.verificationLevel ?? 'STANDARD'}
+            />
+            <StatusFact
+              label="Route"
+              value={
+                status.providerConfigured ? 'Configured' : 'Not configured'
+              }
+            />
           </View>
         </View>
 
-        <VadText variant="caption" tone="secondary">
-          {status.providerCode} · {status.verificationLevel ?? 'STANDARD'}
-        </VadText>
-      </View>
-
-      <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-        <VerificationStep
-          label="Start verification"
-          detail={
-            status.providerConfigured
-              ? 'Provider route is available.'
-              : 'Provider route is not configured.'
-          }
-          state={
-            verified || inProgress
-              ? 'complete'
-              : status.providerConfigured
-                ? 'active'
-                : 'blocked'
-          }
-        />
-        <VerificationStep
-          label="Provider review"
-          detail={
-            inProgress
-              ? 'Your verification is being processed.'
-              : verified
-                ? 'Provider review completed.'
-                : 'Begins after you submit verification.'
-          }
-          state={verified ? 'complete' : inProgress ? 'active' : 'waiting'}
-        />
-        <VerificationStep
-          label="Verified"
-          detail={
-            verified
-              ? 'Identity assurance can now be used by live capability policy.'
-              : 'Unlocks only the capabilities that require this verification level.'
-          }
-          state={verified ? 'complete' : 'waiting'}
-        />
+        <View
+          style={{
+            flex: 0.95,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border,
+          }}
+        >
+          <VerificationStep
+            label="Start verification"
+            detail={
+              status.providerConfigured
+                ? 'Provider route is available.'
+                : 'Provider route is not configured.'
+            }
+            state={
+              verified || inProgress
+                ? 'complete'
+                : status.providerConfigured
+                  ? 'active'
+                  : 'blocked'
+            }
+          />
+          <VerificationStep
+            label="Provider review"
+            detail={
+              inProgress
+                ? 'Your verification is being processed.'
+                : verified
+                  ? 'Provider review completed.'
+                  : 'Begins after you submit verification.'
+            }
+            state={
+              verified
+                ? 'complete'
+                : inProgress
+                  ? 'active'
+                  : 'waiting'
+            }
+          />
+          <VerificationStep
+            label="Verified"
+            detail={
+              verified
+                ? 'Identity assurance can now be used by live capability policy.'
+                : 'Verification unlocks only the capabilities that require it.'
+            }
+            state={verified ? 'complete' : 'waiting'}
+          />
+        </View>
       </View>
 
       {!status.providerConfigured && !verified ? (
         <View
           style={{
-            borderRadius: theme.radius.lg,
+            borderLeftWidth: 3,
+            borderLeftColor: theme.colors.warning,
+            borderRadius: theme.radius.md,
             backgroundColor: theme.colors.warningSoft,
             padding: theme.spacing.md,
             gap: 2,
@@ -190,24 +246,31 @@ export function KycCard() {
             VERIFICATION ROUTE UNAVAILABLE
           </VadText>
           <VadText variant="caption" tone="secondary">
-            {status.providerCode} is selected, but its active runtime route is not
-            currently available.
+            {status.providerCode} is selected, but its active runtime route is
+            not currently available.
           </VadText>
         </View>
       ) : null}
 
       {!verified ? (
         <VadButton
-          label={inProgress ? 'Continue verification' : 'Start verification'}
+          label={
+            inProgress
+              ? 'Continue verification'
+              : 'Start verification'
+          }
           loading={working}
           disabled={!status.providerConfigured}
           onPress={() => void start()}
         />
       ) : (
         <Pressable
+          accessibilityRole="button"
           onPress={() => void load()}
           style={({ pressed }) => ({
             alignSelf: 'flex-start',
+            minHeight: 38,
+            justifyContent: 'center',
             opacity: pressed ? 0.6 : 1,
           })}
         >
@@ -223,6 +286,21 @@ export function KycCard() {
   );
 }
 
+function StatusFact({ label, value }: { label: string; value: string }) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        gap: 12,
+        justifyContent: 'space-between',
+      }}
+    >
+      <VadText variant="caption" tone="secondary">{label}</VadText>
+      <VadText variant="caption">{value}</VadText>
+    </View>
+  );
+}
+
 function VerificationStep({
   label,
   detail,
@@ -233,6 +311,7 @@ function VerificationStep({
   state: 'complete' | 'active' | 'waiting' | 'blocked';
 }) {
   const theme = useVadTheme();
+
   const tone =
     state === 'complete'
       ? 'yes'
@@ -245,7 +324,7 @@ function VerificationStep({
   return (
     <View
       style={{
-        minHeight: 72,
+        minHeight: 76,
         paddingVertical: theme.spacing.md,
         flexDirection: 'row',
         gap: theme.spacing.md,
@@ -272,7 +351,11 @@ function VerificationStep({
         }}
       >
         <VadText variant="caption" tone={tone}>
-          {state === 'complete' ? '✓' : state === 'active' ? '•' : '–'}
+          {state === 'complete'
+            ? '✓'
+            : state === 'active'
+              ? '•'
+              : '–'}
         </VadText>
       </View>
 
