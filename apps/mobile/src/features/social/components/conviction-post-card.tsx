@@ -34,7 +34,7 @@ export function ConvictionPostCard({ post, linkedMarket, commentsOpen, creatorOp
   </VadCard>;
 }
 
-function Probability({ label, value, tone }: { label: string; value: number | null; tone: 'yes' | 'no' }) {
+function Probability({ label, value, tone }: { label: string; value: unknown; tone: 'yes' | 'no' }) {
   const theme = useVadTheme();
   const color = tone === 'yes' ? theme.colors.yes : theme.colors.no;
   const soft = tone === 'yes' ? theme.colors.yesSoft : theme.colors.noSoft;
