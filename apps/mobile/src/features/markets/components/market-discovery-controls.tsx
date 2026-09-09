@@ -41,7 +41,7 @@ export function MarketDiscoveryControls({
   const wide = width >= 820;
 
   return (
-    <View style={{ gap: theme.spacing.md }}>
+    <View style={{ gap: theme.spacing.lg }}>
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
@@ -55,17 +55,26 @@ export function MarketDiscoveryControls({
             value={query}
             onChangeText={onQueryChange}
             placeholder="Question, category or asset"
+            returnKeyType="search"
+            autoCorrect={false}
+            accessibilityHint="Search the live market catalogue"
           />
         </View>
 
-        <View style={{ gap: theme.spacing.xs, minWidth: wide ? 290 : undefined }}>
+        <View
+          style={{
+            gap: theme.spacing.xs,
+            minWidth: wide ? 300 : undefined,
+          }}
+        >
           <VadText variant="label" tone="secondary">Sort by</VadText>
+
           <View
+            accessibilityRole="tablist"
             style={{
               flexDirection: 'row',
-              padding: theme.spacing.xxs,
-              borderRadius: theme.radius.lg,
-              backgroundColor: theme.colors.surfaceRaised,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
             }}
           >
             {SORT_OPTIONS.map((option) => {
@@ -82,17 +91,18 @@ export function MarketDiscoveryControls({
                     minHeight: 42,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderRadius: theme.radius.md,
-                    backgroundColor: active
-                      ? theme.colors.surface
+                    borderBottomWidth: 2,
+                    borderBottomColor: active
+                      ? theme.colors.brandPrimary
                       : 'transparent',
                     paddingHorizontal: theme.spacing.xs,
-                    opacity: pressed ? 0.7 : 1,
+                    opacity: pressed ? 0.65 : 1,
                   })}
                 >
                   <VadText
                     variant="caption"
                     tone={active ? 'brand' : 'secondary'}
+                    numberOfLines={1}
                   >
                     {option.label}
                   </VadText>
@@ -121,7 +131,10 @@ export function MarketDiscoveryControls({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: theme.spacing.xs }}
+          contentContainerStyle={{
+            gap: theme.spacing.xs,
+            paddingRight: theme.spacing.md,
+          }}
         >
           {['All', ...categories].map((category) => {
             const active = category === activeCategory;
@@ -135,16 +148,12 @@ export function MarketDiscoveryControls({
                 style={({ pressed }) => ({
                   minHeight: 36,
                   justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: active
+                  borderBottomWidth: 2,
+                  borderBottomColor: active
                     ? theme.colors.brandPrimary
-                    : theme.colors.border,
-                  backgroundColor: active
-                    ? theme.colors.brandSoft
                     : 'transparent',
-                  borderRadius: theme.radius.pill,
-                  paddingHorizontal: theme.spacing.sm,
-                  opacity: pressed ? 0.7 : 1,
+                  paddingHorizontal: theme.spacing.xs,
+                  opacity: pressed ? 0.65 : 1,
                 })}
               >
                 <VadText
