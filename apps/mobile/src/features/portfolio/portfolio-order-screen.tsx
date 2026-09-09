@@ -42,21 +42,23 @@ export function PortfolioOrderScreen({
     );
   }
 
+  const currentOrder = order;
+
   const fillRatio =
-    Number(order.quantity) > 0
-      ? Number(order.filled_quantity) / Number(order.quantity)
+    Number(currentOrder.quantity) > 0
+      ? Number(currentOrder.filled_quantity) / Number(currentOrder.quantity)
       : 0;
 
   const fillPercent = Math.max(0, Math.min(1, fillRatio));
   const remainingNotional =
-    Number(order.limit_price) * Number(order.remaining_quantity);
+    Number(currentOrder.limit_price) * Number(currentOrder.remaining_quantity);
 
   async function cancel() {
     setCancelling(true);
     setCancelError(null);
 
     try {
-      await cancelOrder(String(order.order_id));
+      await cancelOrder(String(currentOrder.order_id));
       setConfirmOpen(false);
       await data.load();
       onCancelled?.();
@@ -88,13 +90,13 @@ export function PortfolioOrderScreen({
           <VadText variant="label" tone="brand">OPEN ORDER</VadText>
           <VadText variant="caption" tone="tertiary">·</VadText>
           <VadText variant="caption" tone="secondary">
-            {order.status}
+            {currentOrder.status}
           </VadText>
         </View>
 
-        <VadText variant="title">{order.side} order</VadText>
+        <VadText variant="title">{currentOrder.side} order</VadText>
         <VadText tone="secondary">
-          Created {new Date(order.created_at).toLocaleString()}
+          Created {new Date(currentOrder.created_at).toLocaleString()}
         </VadText>
       </View>
 
@@ -118,9 +120,9 @@ export function PortfolioOrderScreen({
           <VadText variant="caption" tone="secondary">
             LIMIT PRICE
           </VadText>
-          <VadText variant="display">{money(order.limit_price)}</VadText>
+          <VadText variant="display">{money(currentOrder.limit_price)}</VadText>
           <VadText variant="caption" tone="secondary">
-            {Number(order.remaining_quantity).toLocaleString()} shares remain
+            {Number(currentOrder.remaining_quantity).toLocaleString()} shares remain
             open · {money(remainingNotional)} remaining notional.
           </VadText>
         </View>
@@ -174,11 +176,11 @@ export function PortfolioOrderScreen({
           >
             <Snapshot
               label="Filled"
-              value={Number(order.filled_quantity).toLocaleString()}
+              value={Number(currentOrder.filled_quantity).toLocaleString()}
             />
             <Snapshot
               label="Remaining"
-              value={Number(order.remaining_quantity).toLocaleString()}
+              value={Number(currentOrder.remaining_quantity).toLocaleString()}
             />
           </View>
         </View>
@@ -194,20 +196,20 @@ export function PortfolioOrderScreen({
         >
           <Detail
             label="Order reference"
-            value={String(order.order_id)}
+            value={String(currentOrder.order_id)}
             selectable
           />
           <Detail
             label="Quantity"
-            value={Number(order.quantity).toLocaleString()}
+            value={Number(currentOrder.quantity).toLocaleString()}
           />
           <Detail
             label="Filled"
-            value={Number(order.filled_quantity).toLocaleString()}
+            value={Number(currentOrder.filled_quantity).toLocaleString()}
           />
           <Detail
             label="Remaining"
-            value={Number(order.remaining_quantity).toLocaleString()}
+            value={Number(currentOrder.remaining_quantity).toLocaleString()}
           />
           <Detail
             label="Remaining notional"
@@ -217,7 +219,7 @@ export function PortfolioOrderScreen({
             label="Fill progress"
             value={pct(fillPercent)}
           />
-          <Detail label="Status" value={order.status} />
+          <Detail label="Status" value={currentOrder.status} />
         </View>
       </View>
 
@@ -253,7 +255,7 @@ export function PortfolioOrderScreen({
         <View style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: theme.spacing.xs }}>
             <VadText variant="bodyStrong">
-              {Number(order.remaining_quantity).toLocaleString()} shares are
+              {Number(currentOrder.remaining_quantity).toLocaleString()} shares are
               still open.
             </VadText>
             <VadText variant="caption" tone="secondary">
@@ -286,7 +288,7 @@ export function PortfolioOrderScreen({
           >
             <Detail
               label="Remaining"
-              value={Number(order.remaining_quantity).toLocaleString()}
+              value={Number(currentOrder.remaining_quantity).toLocaleString()}
             />
             <Detail
               label="Remaining notional"
