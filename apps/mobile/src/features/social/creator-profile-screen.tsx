@@ -28,7 +28,7 @@ export function CreatorProfileScreen({ creatorUserId }: { creatorUserId: string 
   useEffect(() => { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); }, [load]);
 
   if (loading) return <View style={{ gap: theme.spacing.sm }}><VadSkeleton height={34} width="60%" /><VadSkeleton height={150} /><VadSkeleton height={110} /></View>;
-  if (error || !reputation) return <VadErrorState title="Creator profile unavailable" body={error ?? 'This creator could not be loaded.'} onRetry={() => void load()} />;
+  if (error || !reputation) return <VadErrorState title="Creator profile unavailable" message={error ?? 'This creator could not be loaded.'} onRetry={() => void load()} />;
 
   return <ScrollView contentContainerStyle={{ gap: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
     <View style={{ gap: theme.spacing.xxs }}><VadText variant="label" tone="brand">CREATOR REPUTATION</VadText><VadText variant="title">Conviction history</VadText><VadText tone="secondary">Reputation is based on published evidence and resolved predictions. It never decides market truth.</VadText></View>
