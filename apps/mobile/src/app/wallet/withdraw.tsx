@@ -3,7 +3,7 @@ import { ProductSubpage } from '@/features/navigation/product-subpage';
 
 export default function WithdrawRoute() {
   return (
-    <ProductSubpage title="Withdraw NGN">
+    <ProductSubpage title="Withdraw NGN" maxWidth={980}>
       <PaymentReadinessCard initialMode="WITHDRAWAL" lockMode />
     </ProductSubpage>
   );
