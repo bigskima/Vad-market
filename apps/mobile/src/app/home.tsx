@@ -15,13 +15,25 @@ export default function HomeRoute() {
     });
   };
 
+  const exploreMarkets = (category?: string) => {
+    if (category) {
+      router.push({
+        pathname: '/markets',
+        params: { category },
+      });
+      return;
+    }
+
+    router.push('/markets');
+  };
+
   return (
     <ProductRoute active="Home" allowCreate>
       <HomeScreen
         markets={data.markets}
         ngn={data.ngn}
         onOpenMarket={openMarket}
-        onExploreMarkets={() => router.push('/markets')}
+        onExploreMarkets={exploreMarkets}
         onOpenWallet={() => router.push('/wallet')}
         onOpenCommunity={() => router.push('/community')}
       />
