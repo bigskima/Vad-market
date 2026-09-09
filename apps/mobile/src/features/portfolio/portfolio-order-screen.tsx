@@ -1,16 +1,31 @@
-import { useWindowDimensions, View } from 'react-native';
+import { useState } from 'react';
+import {
+  Alert,
+  useWindowDimensions,
+  View,
+  type DimensionValue,
+} from 'react-native';
 
+import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadText } from '@/components/ui/vad-text';
 import { money, pct } from '@/features/markets/format';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { cancelOrder } from '@/services/market-api';
 
-export function PortfolioOrderScreen({ orderId }: { orderId: string }) {
+export function PortfolioOrderScreen({
+  orderId,
+  onCancelled,
+}: {
+  orderId: string;
+  onCancelled?: () => void;
+}) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 760;
   const data = useProductDataContext();
+  const [cancelling, setCancelling] = useState(false);
 
   const order = data.orders.find(
     (row) => String(row.order_id) === orderId,
@@ -20,7 +35,7 @@ export function PortfolioOrderScreen({ orderId }: { orderId: string }) {
     return (
       <VadEmptyState
         title="Order unavailable"
-        body="This order is no longer in your current open-order list."
+        body="This order is no longer in your current open-order list. It may have filled, been cancelled or otherwise left the open queue."
       />
     );
   }
@@ -31,6 +46,44 @@ export function PortfolioOrderScreen({ orderId }: { orderId: string }) {
       : 0;
 
   const fillPercent = Math.max(0, Math.min(1, fillRatio));
+  const remainingNotional =
+    Number(order.limit_price) * Number(order.remaining_quantity);
+
+  async function cancel() {
+    setCancelling(true);
+
+    try {
+      await cancelOrder(String(order.order_id));
+      await data.load();
+      Alert.alert(
+        'Order cancelled',
+        'The remaining open quantity has been removed from the order book.',
+      );
+      onCancelled?.();
+    } catch (error) {
+      Alert.alert(
+        'Order not cancelled',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  function requestCancel() {
+    Alert.alert(
+      'Cancel this order?',
+      'Any quantity already filled stays filled. Only the remaining open quantity will be cancelled.',
+      [
+        { text: 'Keep order', style: 'cancel' },
+        {
+          text: 'Cancel order',
+          style: 'destructive',
+          onPress: () => void cancel(),
+        },
+      ],
+    );
+  }
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
@@ -59,16 +112,17 @@ export function PortfolioOrderScreen({ orderId }: { orderId: string }) {
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
-          gap: theme.spacing.md,
+          gap: theme.spacing.xl,
           alignItems: 'stretch',
         }}
       >
         <View
           style={{
             flex: 1.1,
-            borderRadius: theme.radius.xl,
-            backgroundColor: theme.colors.surfaceRaised,
-            padding: theme.spacing.xl,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: theme.colors.border,
+            paddingVertical: theme.spacing.lg,
             gap: theme.spacing.sm,
           }}
         >
@@ -77,18 +131,18 @@ export function PortfolioOrderScreen({ orderId }: { orderId: string }) {
           </VadText>
           <VadText variant="display">{money(order.limit_price)}</VadText>
           <VadText variant="caption" tone="secondary">
-            {Number(order.remaining_quantity).toLocaleString()} shares remain open.
+            {Number(order.remaining_quantity).toLocaleString()} shares remain
+            open · {money(remainingNotional)} remaining notional.
           </VadText>
         </View>
 
         <View
           style={{
             flex: 0.9,
-            borderRadius: theme.radius.xl,
-            borderWidth: 1,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
             borderColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
-            padding: theme.spacing.lg,
+            paddingVertical: theme.spacing.lg,
             gap: theme.spacing.md,
           }}
         >
@@ -115,7 +169,7 @@ export function PortfolioOrderScreen({ orderId }: { orderId: string }) {
           >
             <View
               style={{
-                width: `${Math.round(fillPercent * 100)}%` as `${number}%`,
+                width: (Math.round(fillPercent * 100) + '%') as DimensionValue,
                 height: '100%',
                 backgroundColor: theme.colors.brandPrimary,
               }}
@@ -150,6 +204,11 @@ export function PortfolioOrderScreen({ orderId }: { orderId: string }) {
           }}
         >
           <Detail
+            label="Order reference"
+            value={String(order.order_id)}
+            selectable
+          />
+          <Detail
             label="Quantity"
             value={Number(order.quantity).toLocaleString()}
           />
@@ -162,11 +221,37 @@ export function PortfolioOrderScreen({ orderId }: { orderId: string }) {
             value={Number(order.remaining_quantity).toLocaleString()}
           />
           <Detail
+            label="Remaining notional"
+            value={money(remainingNotional)}
+          />
+          <Detail
             label="Fill progress"
             value={pct(fillPercent)}
           />
           <Detail label="Status" value={order.status} />
         </View>
+      </View>
+
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+          paddingTop: theme.spacing.lg,
+          gap: theme.spacing.sm,
+        }}
+      >
+        <VadText variant="bodyStrong">Order controls</VadText>
+        <VadText variant="caption" tone="secondary">
+          Cancelling affects only the quantity still open. Completed fills are
+          not reversed.
+        </VadText>
+
+        <VadButton
+          label="Cancel remaining order"
+          variant="danger"
+          loading={cancelling}
+          onPress={requestCancel}
+        />
       </View>
     </View>
   );
@@ -181,7 +266,15 @@ function Snapshot({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function Detail({
+  label,
+  value,
+  selectable = false,
+}: {
+  label: string;
+  value: string;
+  selectable?: boolean;
+}) {
   const theme = useVadTheme();
 
   return (
@@ -205,7 +298,9 @@ function Detail({ label, value }: { label: string; value: string }) {
       </VadText>
       <VadText
         variant="bodyStrong"
-        style={{ flex: 1, textAlign: 'right' }}
+        style={{ flex: 1.4, textAlign: 'right' }}
+        selectable={selectable}
+        numberOfLines={selectable ? undefined : 2}
       >
         {value}
       </VadText>
