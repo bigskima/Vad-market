@@ -28,3 +28,4 @@ export const typography = {
 } as const;
 
 export type VadThemeMode = 'light' | 'dark';
+export type VadThemePreference = 'system' | VadThemeMode;

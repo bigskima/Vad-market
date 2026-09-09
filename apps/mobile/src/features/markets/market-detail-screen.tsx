@@ -1,63 +1,253 @@
-import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
 
-import { VadCard } from '@/components/ui/vad-card';
-import { VadErrorState } from '@/components/ui/vad-error-state';
-import { VadSectionHeader } from '@/components/ui/vad-section-header';
-import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
 import { useVadTheme } from '@/providers/theme-provider';
-import { listMarkets, type MarketCatalogItem } from '@/services/market-api';
+import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
-import { MarketInsightPanel } from './components/market-insight-panel';
 import { TradingTicket } from './components/trading-ticket';
 
-export function MarketDetailScreen({ instrumentPublicId, canTrade }: { instrumentPublicId: string; canTrade: boolean }) {
+type DetailTab = 'Overview' | 'Trade' | 'Discussion' | 'Rules';
+
+const tabs: DetailTab[] = ['Overview', 'Trade', 'Discussion', 'Rules'];
+
+export function MarketDetailScreen({
+  market,
+  markets,
+  canTrade,
+  canCreatePost,
+  onPlaced,
+  onOpenMarket,
+}: {
+  market: MarketCatalogItem;
+  markets: MarketCatalogItem[];
+  canTrade: boolean;
+  canCreatePost: boolean;
+  onPlaced: () => Promise<void>;
+  onOpenMarket: (market: MarketCatalogItem) => void;
+}) {
   const theme = useVadTheme();
-  const [market, setMarket] = useState<MarketCatalogItem | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<DetailTab>('Overview');
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const markets = await listMarkets();
-      setMarket(markets.find((item) => item.instrument_public_id === instrumentPublicId) ?? null);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Market details are unavailable.'); }
-    finally { setLoading(false); }
-  }, [instrumentPublicId]);
+  return (
+    <View style={{ gap: theme.spacing.xl }}>
+      <MarketDetailHeader market={market} />
 
-  useEffect(() => { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); }, [load]);
+      <View
+        style={{
+          flexDirection: 'row',
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.border,
+        }}
+      >
+        {tabs.map((item) => {
+          const selected = item === tab;
 
-  if (loading) return <View style={{ gap: theme.spacing.sm }}><VadSkeleton height={40} width="75%" /><VadSkeleton height={180} /><VadSkeleton height={150} /><VadSkeleton height={220} /></View>;
-  if (error || !market) return <VadErrorState title="Market unavailable" message={error ?? 'This market is not currently in the live catalog.'} onRetry={() => void load()} />;
+          return (
+            <Pressable
+              key={item}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              onPress={() => setTab(item)}
+              style={{
+                flex: 1,
+                minHeight: 44,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderBottomWidth: 2,
+                borderBottomColor: selected ? theme.colors.brandPrimary : 'transparent',
+              }}
+            >
+              <VadText variant="caption" tone={selected ? 'brand' : 'secondary'}>
+                {item}
+              </VadText>
+            </Pressable>
+          );
+        })}
+      </View>
 
-  return <View style={{ gap: theme.spacing.xl }}>
-    <MarketDetailHeader market={market} />
-    <MarketInsightPanel market={market} />
+      {tab === 'Overview' ? <Overview market={market} /> : null}
 
-    <View style={{ gap: theme.spacing.sm }}>
-      <VadText variant="label" tone="brand">RESOLUTION</VadText>
-      <VadSectionHeader title="Rules before position" subtitle="Understand how the outcome is determined before you commit capital." />
-      <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
-        <VadText variant="bodyStrong">Truth is independent from price.</VadText>
-        <VadText tone="secondary">Current prices represent participant conviction only. Final truth comes from the configured oracle policy, evidence and governance process—not the creator, AI, or the winning side of the order book.</VadText>
-        <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}><Meta label="Asset" value={market.asset_code} /><Meta label="State" value={market.status} /></View>
-      </VadCard>
+      {tab === 'Trade' ? (
+        <TradingTicket market={market} canTrade={canTrade} onPlaced={onPlaced} />
+      ) : null}
+
+      {tab === 'Discussion' ? (
+        <SocialConvictionFeed
+          markets={markets}
+          canCreatePost={canCreatePost}
+          onOpenMarket={onOpenMarket}
+          marketFilter={market}
+        />
+      ) : null}
+
+      {tab === 'Rules' ? <Rules market={market} /> : null}
     </View>
-
-    <View style={{ gap: theme.spacing.sm }}>
-      <VadText variant="label" tone="brand">TRADE</VadText>
-      <VadSectionHeader title="Take a position" subtitle="Review a server-authoritative quote before any funds or shares are reserved." />
-      <TradingTicket market={market} canTrade={canTrade} onPlaced={load} />
-    </View>
-
-    <VadCard variant="outlined" style={{ gap: theme.spacing.xs }}>
-      <VadText variant="label" tone="brand">TRADING SAFETY</VadText>
-      <VadText variant="bodyStrong">Orders stay server-authoritative.</VadText>
-      <VadText tone="secondary">The trading flow validates price, quantity, balance, reservations and market status on the backend before an order can become live.</VadText>
-    </VadCard>
-  </View>;
+  );
 }
 
-function Meta({ label, value }: { label: string; value: string }) { const theme = useVadTheme(); return <VadCard variant="muted" style={{ flex: 1, padding: theme.spacing.sm }}><VadText variant="caption" tone="secondary">{label}</VadText><VadText variant="bodyStrong">{value}</VadText></VadCard>; }
+function Overview({ market }: { market: MarketCatalogItem }) {
+  const theme = useVadTheme();
+
+  return (
+    <View style={{ gap: theme.spacing.lg }}>
+      <View style={{ gap: theme.spacing.xs }}>
+        <VadText variant="heading">What this market asks</VadText>
+        <VadText tone="secondary">{market.title}</VadText>
+      </View>
+
+      <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+        <Fact label="Category" value={market.category ?? 'General'} />
+        <Fact label="Settlement asset" value={market.asset_code} />
+        <Fact label="Market type" value={market.market_type} />
+        <Fact
+          label="Close time"
+          value={
+            market.closes_at
+              ? new Date(market.closes_at).toLocaleString()
+              : 'Defined by market policy'
+          }
+        />
+        <Fact
+          label="Last activity"
+          value={
+            market.last_trade_at
+              ? new Date(market.last_trade_at).toLocaleString()
+              : 'No completed trades yet'
+          }
+        />
+      </View>
+
+      <View
+        style={{
+          borderRadius: theme.radius.xl,
+          backgroundColor: theme.colors.surfaceRaised,
+          padding: theme.spacing.lg,
+          gap: theme.spacing.xs,
+        }}
+      >
+        <VadText variant="bodyStrong">
+          Probability is a market signal, not the final outcome.
+        </VadText>
+        <VadText variant="caption" tone="secondary">
+          The displayed YES and NO prices reflect current trading. Resolution is determined separately under the approved market policy.
+        </VadText>
+      </View>
+    </View>
+  );
+}
+
+function Rules({ market }: { market: MarketCatalogItem }) {
+  const theme = useVadTheme();
+
+  return (
+    <View style={{ gap: theme.spacing.lg }}>
+      <View style={{ gap: theme.spacing.xs }}>
+        <VadText variant="heading">Resolution & trading rules</VadText>
+        <VadText tone="secondary">
+          These safeguards keep price discovery separate from the final market outcome.
+        </VadText>
+      </View>
+
+      <Rule
+        number="1"
+        title="Market closes before resolution"
+        body={
+          market.closes_at
+            ? 'Trading is scheduled to close on ' +
+              new Date(market.closes_at).toLocaleString() +
+              '.'
+            : 'The closing time follows the approved market policy.'
+        }
+      />
+      <Rule
+        number="2"
+        title="The market price does not decide the answer"
+        body="YES and NO prices represent participant conviction. The final result comes from the approved resolution process."
+      />
+      <Rule
+        number="3"
+        title="Settlement follows the authoritative ledger"
+        body={
+          'Positions and payouts settle in ' +
+          market.asset_code +
+          ' only after the market has a final outcome.'
+        }
+      />
+
+      <View
+        style={{
+          borderRadius: theme.radius.lg,
+          backgroundColor: theme.colors.brandSoft,
+          padding: theme.spacing.md,
+        }}
+      >
+        <VadText variant="caption" tone="brand">
+          VAD keeps trading, resolution and settlement as separate governed steps.
+        </VadText>
+      </View>
+    </View>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  const theme = useVadTheme();
+
+  return (
+    <View
+      style={{
+        minHeight: 58,
+        paddingVertical: theme.spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+      }}
+    >
+      <VadText variant="caption" tone="tertiary" style={{ flex: 1 }}>
+        {label}
+      </VadText>
+      <VadText
+        variant="bodyStrong"
+        style={{ flex: 1, textAlign: 'right' }}
+      >
+        {value}
+      </VadText>
+    </View>
+  );
+}
+
+function Rule({
+  number,
+  title,
+  body,
+}: {
+  number: string;
+  title: string;
+  body: string;
+}) {
+  const theme = useVadTheme();
+
+  return (
+    <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+      <View
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: theme.colors.brandSoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <VadText variant="label" tone="brand">{number}</VadText>
+      </View>
+      <View style={{ flex: 1, gap: 3 }}>
+        <VadText variant="bodyStrong">{title}</VadText>
+        <VadText variant="caption" tone="secondary">{body}</VadText>
+      </View>
+    </View>
+  );
+}
