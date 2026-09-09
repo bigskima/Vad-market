@@ -5,7 +5,7 @@ export type PickedProfileImage = { bytes: ArrayBuffer; mimeType: string; preview
 
 type NativePicker = {
   requestMediaLibraryPermissionsAsync?: (writeOnly?: boolean) => Promise<{ granted?: boolean; status?: string }>;
-  launchImageLibraryAsync?: (options?: Record<string, unknown>) => Promise<{ canceled?: boolean; assets?: Array<{ uri?: string; base64?: string | null; mimeType?: string | null }> | null }>;
+  launchImageLibraryAsync?: (options?: Record<string, unknown>) => Promise<{ canceled?: boolean; assets?: { uri?: string; base64?: string | null; mimeType?: string | null }[] | null }>;
 };
 
 function decodeBase64(value: string) {
