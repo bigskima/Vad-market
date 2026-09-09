@@ -65,23 +65,22 @@ export function ProductTabBar({
               onPress={() => onChange(tab.value)}
               style={({ pressed }) => ({
                 flex: 1,
-                minHeight: 54,
+                minHeight: 56,
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 3,
-                opacity: pressed ? 0.65 : 1,
+                opacity: pressed ? 0.6 : 1,
               })}
             >
               <View
                 style={{
-                  minWidth: 34,
+                  width: 34,
                   height: 26,
-                  borderRadius: theme.radius.pill,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  paddingHorizontal: theme.spacing.xs,
-                  backgroundColor: selected
-                    ? theme.colors.brandSoft
+                  borderBottomWidth: 2,
+                  borderBottomColor: selected
+                    ? theme.colors.brandPrimary
                     : 'transparent',
                 }}
               >
@@ -96,6 +95,7 @@ export function ProductTabBar({
               <VadText
                 variant="caption"
                 tone={selected ? 'brand' : 'tertiary'}
+                numberOfLines={1}
               >
                 {tab.label}
               </VadText>
