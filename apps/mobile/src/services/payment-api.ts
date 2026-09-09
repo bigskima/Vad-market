@@ -39,7 +39,7 @@ export async function quotePayment(operation: 'DEPOSIT' | 'WITHDRAWAL', amount: 
 }
 
 export async function createPaymentIntent(operation: 'DEPOSIT' | 'WITHDRAWAL', amount: number, assetCode = 'NGN') {
-  const idempotencyKey = `mobile:${operation.toLowerCase()}:${crypto.randomUUID()}`;
+  const idempotencyKey = `mobile:${operation.toLowerCase()}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('create_payment_intent', {
     p_operation: operation,
     p_asset_code: assetCode,
