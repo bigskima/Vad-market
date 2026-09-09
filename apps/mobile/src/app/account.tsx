@@ -15,28 +15,61 @@ import { useVadTheme } from '@/providers/theme-provider';
 export default function AccountOperationsScreen() {
   const { isLoading, session } = useAuth();
   const theme = useVadTheme();
+
   if (isLoading) return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />;
   if (!session) return <Redirect href="/" />;
 
   return <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
     <View style={{ paddingTop: 52, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surface }}>
-      <Pressable onPress={() => router.back()}><VadText variant="label" tone="brand">← Back</VadText></Pressable>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}><VadLogo size={30} /><VadText variant="heading">Account</VadText></View>
-      <Pressable onPress={() => router.push('/admin')}><VadText variant="label" tone="brand">Admin</VadText></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={{ minWidth: 64, paddingVertical: theme.spacing.xs }}>
+        <VadText variant="label" tone="brand">← Back</VadText>
+      </Pressable>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
+        <VadLogo size={28} />
+        <VadText variant="bodyStrong">Account</VadText>
+      </View>
+      <View style={{ minWidth: 64 }} />
     </View>
+
     <VadScreen contentStyle={{ paddingTop: theme.spacing.xl }}>
-      <VadText variant="label" tone="brand">PROFILE</VadText>
-      <VadSectionHeader title="Your public identity" subtitle="Your name, handle and profile media are reused across creator pages, conviction posts and comments." />
-      <ProfileEditorCard />
+      <View style={{ gap: theme.spacing.xxs }}>
+        <VadText variant="label" tone="brand">ACCOUNT CENTER</VadText>
+        <VadText variant="title">Identity, trust and money</VadText>
+        <VadText tone="secondary">Keep your public profile, verification state and funding readiness in one place.</VadText>
+      </View>
 
-      <VadText variant="label" tone="brand">TRUST</VadText>
-      <VadSectionHeader title="Identity and verification" subtitle="Verification level and capability are controlled by live compliance policy, not by the profile form." />
-      <KycCard />
+      <VadCard variant="muted" style={{ flexDirection: 'row', gap: theme.spacing.xs, borderRadius: theme.radius.xl }}>
+        <AccountPill label="Profile" />
+        <AccountPill label="Verification" />
+        <AccountPill label="Funding" />
+      </VadCard>
 
-      <VadText variant="label" tone="brand">MONEY</VadText>
-      <VadSectionHeader title="Funding and withdrawals" subtitle="Money movement remains governed by provider readiness, KYC, limits and ledger state." />
-      <PaymentReadinessCard />
-      <VadCard variant="outlined" style={{ gap: theme.spacing.xs }}><VadText variant="bodyStrong">Payment provider not selected yet</VadText><VadText tone="secondary">VAD will not send money to an external provider until a configured Nigeria/NGN route has passed provider governance. Your ledger remains the financial source of truth.</VadText></VadCard>
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadSectionHeader title="Your public identity" subtitle="Name, handle and profile media used across creator pages, conviction posts and comments." />
+        <ProfileEditorCard />
+      </View>
+
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadSectionHeader title="Identity and verification" subtitle="Verification level and capability are controlled by live compliance policy." />
+        <KycCard />
+      </View>
+
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadSectionHeader title="Funding and withdrawals" subtitle="Provider readiness, KYC, limits and ledger state govern money movement." />
+        <PaymentReadinessCard />
+        <VadCard variant="outlined" style={{ gap: theme.spacing.xs, borderRadius: theme.radius.lg }}>
+          <VadText variant="label" tone="brand">PROVIDER STATUS</VadText>
+          <VadText variant="bodyStrong">External payment route not selected</VadText>
+          <VadText variant="caption" tone="secondary">VAD will not send funds to an external provider until a configured Nigeria/NGN route passes provider governance. The ledger remains the financial source of truth.</VadText>
+        </VadCard>
+      </View>
     </VadScreen>
+  </View>;
+}
+
+function AccountPill({ label }: { label: string }) {
+  const theme = useVadTheme();
+  return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 48, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface }}>
+    <VadText variant="caption" tone="secondary">{label}</VadText>
   </View>;
 }
