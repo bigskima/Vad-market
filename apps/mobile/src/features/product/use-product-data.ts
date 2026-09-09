@@ -73,16 +73,17 @@ export function useProductData(enabled = true) {
   }, [enabled]);
 
   useEffect(() => {
-    if (!enabled) {
-      reset();
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
     let cancelled = false;
-    setLoading(true);
+
     const timer = setTimeout(() => {
+      if (!enabled) {
+        reset();
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      setLoading(true);
       void load().finally(() => {
         if (!cancelled) setLoading(false);
       });
