@@ -10,8 +10,12 @@ import { useVadTheme } from '@/providers/theme-provider';
 
 export function ProductSubpage({
   title,
+  maxWidth = 760,
   children,
-}: PropsWithChildren<{ title: string }>) {
+}: PropsWithChildren<{
+  title: string;
+  maxWidth?: number;
+}>) {
   const theme = useVadTheme();
   const insets = useSafeAreaInsets();
 
@@ -20,37 +24,46 @@ export function ProductSubpage({
       <View
         style={{
           paddingTop: insets.top + theme.spacing.xs,
-          paddingHorizontal: theme.spacing.lg,
-          paddingBottom: theme.spacing.sm,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.spacing.sm,
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
           backgroundColor: theme.colors.background,
         }}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          onPress={() => router.back()}
-          style={({ pressed }) => ({
-            minWidth: 44,
-            height: 40,
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
+        <View
+          style={{
+            width: '100%',
+            maxWidth: Math.max(maxWidth, 760),
+            alignSelf: 'center',
+            paddingHorizontal: theme.spacing.lg,
+            paddingBottom: theme.spacing.sm,
+            minHeight: 50,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.spacing.sm,
+          }}
         >
-          <VadText variant="heading">‹</VadText>
-        </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            onPress={() => router.back()}
+            style={({ pressed }) => ({
+              minWidth: 44,
+              height: 40,
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <VadText variant="heading">‹</VadText>
+          </Pressable>
 
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          <VadText variant="bodyStrong">{title}</VadText>
-        </View>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <VadText variant="bodyStrong">{title}</VadText>
+          </View>
 
-        <View style={{ width: 44, alignItems: 'flex-end' }}>
-          <VadLogo size={26} />
+          <View style={{ width: 44, alignItems: 'flex-end' }}>
+            <VadLogo size={26} />
+          </View>
         </View>
       </View>
 
@@ -58,7 +71,7 @@ export function ProductSubpage({
         contentStyle={{
           alignSelf: 'center',
           width: '100%',
-          maxWidth: 760,
+          maxWidth,
           paddingTop: theme.spacing.lg,
           paddingBottom: theme.spacing.xxxl,
           gap: theme.spacing.lg,
