@@ -13,6 +13,7 @@
   "scripts": {
     "dev": "npm run start --workspace @vad/mobile",
     "web": "npm run web --workspace @vad/mobile",
+    "build:web": "npm run build:web --workspace @vad/mobile",
     "android": "npm run android --workspace @vad/mobile",
     "ios": "npm run ios --workspace @vad/mobile",
     "lint": "npm run lint --workspaces --if-present",
