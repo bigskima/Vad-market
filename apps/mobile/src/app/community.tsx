@@ -20,7 +20,7 @@ export default function CommunityRoute() {
   };
 
   return (
-    <ProductSubpage title="Community">
+    <ProductSubpage title="Community" maxWidth={860}>
       <SocialConvictionFeed
         markets={data.markets}
         canCreatePost={runtime.snapshot.capabilities.createPost}
