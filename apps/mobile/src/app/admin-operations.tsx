@@ -1,5 +1,5 @@
 import { Redirect, router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { palette } from '@/constants/palette';
@@ -62,6 +62,6 @@ export default function AdminOperationsScreen() {
   </View>;
 }
 
-function Section({title,children}:{title:string;children:React.ReactNode}) { return <View style={s.card}><Text style={s.title}>{title}</Text>{children}</View>; }
+function Section({title,children}:{title:string;children:ReactNode}) { return <View style={s.card}><Text style={s.title}>{title}</Text>{children}</View>; }
 
 const s=StyleSheet.create({root:{flex:1,backgroundColor:palette.ink},topbar:{paddingTop:54,paddingHorizontal:20,paddingBottom:14,borderBottomWidth:1,borderBottomColor:palette.line,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},brand:{color:palette.text,fontWeight:'900',fontSize:18},link:{color:palette.signal,fontWeight:'800'},content:{padding:20,paddingBottom:80,gap:14},eyebrow:{color:palette.signal,fontWeight:'900',fontSize:11,letterSpacing:1.1},hero:{color:palette.text,fontWeight:'900',fontSize:29},muted:{color:palette.textMuted,fontSize:12,lineHeight:18},metrics:{flexDirection:'row',flexWrap:'wrap',gap:8},metric:{minWidth:105,flexGrow:1,borderWidth:1,borderColor:palette.line,borderRadius:16,padding:12,gap:3},metricValue:{color:palette.text,fontSize:22,fontWeight:'900'},card:{backgroundColor:palette.panel,borderWidth:1,borderColor:palette.line,borderRadius:20,padding:14,gap:10},title:{color:palette.text,fontSize:17,fontWeight:'900'},rowCard:{flexDirection:'row',gap:10,alignItems:'center',backgroundColor:palette.inkRaised,borderRadius:13,padding:11},flex:{flex:1,gap:2},rowTitle:{color:palette.text,fontWeight:'800'},status:{color:palette.textMuted,fontSize:10,fontWeight:'900'},ready:{color:palette.signal}});
