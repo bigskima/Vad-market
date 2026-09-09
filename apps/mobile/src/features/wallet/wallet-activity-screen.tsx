@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { PaymentRow } from '@/features/wallet/wallet-screen';
@@ -21,9 +22,12 @@ export function WalletActivityScreen({
   const theme = useVadTheme();
   const [rows, setRows] = useState<PaymentIntentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>('all');
 
   const load = useCallback(async () => {
+    setError(null);
+
     try {
       const next = await getMyPaymentIntents(50);
       setRows(
@@ -33,8 +37,12 @@ export function WalletActivityScreen({
             new Date(a.created_at).getTime(),
         ),
       );
-    } catch {
-      setRows([]);
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Wallet activity could not be loaded.',
+      );
     } finally {
       setLoading(false);
     }
@@ -103,8 +111,25 @@ export function WalletActivityScreen({
           <VadSkeleton height={62} />
           <VadSkeleton height={62} />
         </View>
+      ) : error && !rows.length ? (
+        <VadErrorState
+          title="Wallet activity unavailable"
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            void load();
+          }}
+        />
       ) : (
         <>
+          {error ? (
+            <VadErrorState
+              title="Wallet activity refresh failed"
+              message={error}
+              onRetry={() => void load()}
+            />
+          ) : null}
+
           <View
             style={{
               borderTopWidth: 1,
