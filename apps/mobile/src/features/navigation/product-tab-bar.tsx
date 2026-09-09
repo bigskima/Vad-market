@@ -13,14 +13,13 @@ export type ProductTab =
 
 export const PRODUCT_TABS: {
   value: ProductTab;
-  glyph: string;
   label: string;
 }[] = [
-  { value: 'Home', glyph: '⌂', label: 'Home' },
-  { value: 'Markets', glyph: '◎', label: 'Markets' },
-  { value: 'Wallet', glyph: '₦', label: 'Wallet' },
-  { value: 'Portfolio', glyph: '◒', label: 'Portfolio' },
-  { value: 'Account', glyph: '●', label: 'Account' },
+  { value: 'Home', label: 'Home' },
+  { value: 'Markets', label: 'Markets' },
+  { value: 'Wallet', label: 'Wallet' },
+  { value: 'Portfolio', label: 'Portfolio' },
+  { value: 'Account', label: 'Account' },
 ];
 
 export function ProductTabBar({
@@ -51,7 +50,6 @@ export function ProductTabBar({
           flexDirection: 'row',
           alignItems: 'stretch',
           paddingHorizontal: theme.spacing.xs,
-          paddingTop: theme.spacing.xs,
         }}
       >
         {PRODUCT_TABS.map((tab) => {
@@ -62,38 +60,28 @@ export function ProductTabBar({
               key={tab.value}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
+              accessibilityLabel={tab.label}
               onPress={() => onChange(tab.value)}
               style={({ pressed }) => ({
                 flex: 1,
-                minHeight: 56,
+                minHeight: 58,
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 3,
+                gap: theme.spacing.xs,
                 opacity: pressed ? 0.6 : 1,
               })}
             >
               <View
                 style={{
-                  width: 34,
-                  height: 26,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderBottomWidth: 2,
-                  borderBottomColor: selected
-                    ? theme.colors.brandPrimary
-                    : 'transparent',
+                  width: selected ? 22 : 0,
+                  height: 3,
+                  borderRadius: theme.radius.pill,
+                  backgroundColor: theme.colors.brandPrimary,
                 }}
-              >
-                <VadText
-                  variant={tab.value === 'Wallet' ? 'label' : 'bodyStrong'}
-                  tone={selected ? 'brand' : 'tertiary'}
-                >
-                  {tab.glyph}
-                </VadText>
-              </View>
+              />
 
               <VadText
-                variant="caption"
+                variant={selected ? 'label' : 'caption'}
                 tone={selected ? 'brand' : 'tertiary'}
                 numberOfLines={1}
               >
