@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { VadLogo } from '@/components/brand/vad-logo';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
@@ -27,7 +28,7 @@ export function ProductShell({ email, canTrade, canCreatePost, canSubmitProposal
 
   return <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
     <View style={{ paddingTop: 50, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
-      <Pressable onPress={() => changeTab('Home')} style={{ flex: 1 }}><VadText variant="heading" tone="brand">VAD</VadText><VadText variant="caption" tone="secondary">Value Asset Depot</VadText></Pressable>
+      <Pressable onPress={() => changeTab('Home')} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}><VadLogo size={36} /><View><VadText variant="heading">VAD</VadText><VadText variant="caption" tone="secondary">Value Asset Depot</VadText></View></Pressable>
       {data.adminSummary ? <Pressable onPress={() => router.push('/admin')} style={{ padding: theme.spacing.xs }}><VadText variant="label" tone="brand">Admin</VadText></Pressable> : null}
       <Pressable onPress={() => router.push('/account')} style={{ padding: theme.spacing.xs }}><VadText variant="label">Account</VadText></Pressable>
       <Pressable onPress={() => void onSignOut()} style={{ padding: theme.spacing.xs }}><VadText variant="label" tone="secondary">Sign out</VadText></Pressable>

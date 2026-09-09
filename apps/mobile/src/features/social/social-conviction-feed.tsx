@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -65,7 +66,10 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: {
 
     <VadBottomSheet visible={Boolean(commentsPost)} title="Discussion" onClose={() => { setCommentsPostId(null); setComments([]); setCommentBody(''); }}>
       <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ gap: theme.spacing.sm }} keyboardShouldPersistTaps="handled">
-        {comments.length ? comments.map((comment) => <View key={comment.comment_public_id} style={{ borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: theme.spacing.sm, gap: theme.spacing.xxs }}><VadText variant="label">{comment.author_display_name ?? comment.author_handle ?? 'VAD member'}</VadText><VadText>{comment.body}</VadText><VadText variant="caption" tone="secondary">{new Date(comment.created_at).toLocaleString()}</VadText></View>) : <VadText tone="secondary">No comments yet. Add context without leaving the conviction.</VadText>}
+        {comments.length ? comments.map((comment) => {
+          const authorName = comment.author_display_name ?? comment.author_handle ?? 'VAD member';
+          return <View key={comment.comment_public_id} style={{ flexDirection: 'row', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: theme.spacing.sm }}><ProfileAvatar path={comment.author_avatar_path} name={authorName} size={34} /><View style={{ flex: 1, gap: theme.spacing.xxs }}><VadText variant="label">{authorName}</VadText><VadText>{comment.body}</VadText><VadText variant="caption" tone="secondary">{new Date(comment.created_at).toLocaleString()}</VadText></View></View>;
+        }) : <VadText tone="secondary">No comments yet. Add context without leaving the conviction.</VadText>}
         {commentsPost ? <View style={{ gap: theme.spacing.xs }}><VadInput value={commentBody} onChangeText={setCommentBody} placeholder="Add to the discussion…" /><VadButton label="Send comment" disabled={!commentBody.trim()} loading={working} onPress={() => void submitComment(commentsPost)} /></View> : null}
       </ScrollView>
     </VadBottomSheet>
