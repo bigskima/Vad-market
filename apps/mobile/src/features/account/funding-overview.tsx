@@ -6,6 +6,7 @@ import {
   View,
 } from 'react-native';
 
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -26,12 +27,19 @@ export function FundingOverview() {
   const wide = width >= 760;
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
+
     try {
       setReadiness(await getProviderReadiness());
-    } catch {
-      setReadiness(null);
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Payment readiness could not be loaded.',
+      );
     } finally {
       setLoading(false);
     }
@@ -49,6 +57,19 @@ export function FundingOverview() {
         <VadSkeleton height={72} />
         <VadSkeleton height={72} />
       </View>
+    );
+  }
+
+  if (error && !readiness) {
+    return (
+      <VadErrorState
+        title="Payment readiness unavailable"
+        message={error}
+        onRetry={() => {
+          setLoading(true);
+          void load();
+        }}
+      />
     );
   }
 
