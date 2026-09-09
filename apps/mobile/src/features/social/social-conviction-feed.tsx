@@ -116,6 +116,84 @@ export function SocialConvictionFeed({
     }
   }
 
+  async function toggleLike(post: ConvictionPost) {
+    const wasLiked = post.viewer_liked;
+    const previousCount = Number(post.reaction_count);
+
+    setPosts((current) =>
+      current.map((item) =>
+        item.post_public_id === post.post_public_id
+          ? {
+              ...item,
+              viewer_liked: !wasLiked,
+              reaction_count: Math.max(
+                0,
+                previousCount + (wasLiked ? -1 : 1),
+              ),
+            }
+          : item,
+      ),
+    );
+
+    try {
+      await togglePostLike(post.post_public_id);
+      void load();
+    } catch (error) {
+      setPosts((current) =>
+        current.map((item) =>
+          item.post_public_id === post.post_public_id
+            ? {
+                ...item,
+                viewer_liked: wasLiked,
+                reaction_count: previousCount,
+              }
+            : item,
+        ),
+      );
+
+      Alert.alert(
+        'Like not updated',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    }
+  }
+
+  async function toggleFollow(post: ConvictionPost) {
+    const wasFollowing = post.viewer_follows_author;
+
+    setPosts((current) =>
+      current.map((item) =>
+        item.author_user_id === post.author_user_id
+          ? {
+              ...item,
+              viewer_follows_author: !wasFollowing,
+            }
+          : item,
+      ),
+    );
+
+    try {
+      await toggleCreatorFollow(post.author_user_id);
+      void load();
+    } catch (error) {
+      setPosts((current) =>
+        current.map((item) =>
+          item.author_user_id === post.author_user_id
+            ? {
+                ...item,
+                viewer_follows_author: wasFollowing,
+              }
+            : item,
+        ),
+      );
+
+      Alert.alert(
+        'Follow not updated',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    }
+  }
+
   async function openComments(post: ConvictionPost) {
     try {
       setComments(await getPostComments(post.post_public_id));
@@ -139,8 +217,18 @@ export function SocialConvictionFeed({
         commentBody.trim(),
       );
       setCommentBody('');
+      setPosts((current) =>
+        current.map((item) =>
+          item.post_public_id === post.post_public_id
+            ? {
+                ...item,
+                comment_count: Number(item.comment_count) + 1,
+              }
+            : item,
+        ),
+      );
       setComments(await getPostComments(post.post_public_id));
-      await load();
+      void load();
     } catch (error) {
       Alert.alert(
         'Comment not posted',
@@ -241,14 +329,8 @@ export function SocialConvictionFeed({
                 linkedMarket={linked}
                 commentsOpen={commentsOpen}
                 creatorOpen={false}
-                onFollow={() =>
-                  void toggleCreatorFollow(
-                    post.author_user_id,
-                  ).then(load)
-                }
-                onLike={() =>
-                  void togglePostLike(post.post_public_id).then(load)
-                }
+                onFollow={() => void toggleFollow(post)}
+                onLike={() => void toggleLike(post)}
                 onComments={() => void openComments(post)}
                 onOpenCreator={() =>
                   router.push('/creator/' + post.author_user_id)
