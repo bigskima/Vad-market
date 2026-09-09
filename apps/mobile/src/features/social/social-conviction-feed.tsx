@@ -29,11 +29,15 @@ export function SocialConvictionFeed({
   canCreatePost,
   onOpenMarket,
   marketFilter,
+  maxPosts,
+  showComposer = true,
 }: {
   markets: MarketCatalogItem[];
   canCreatePost: boolean;
   onOpenMarket: (market: MarketCatalogItem) => void;
   marketFilter?: MarketCatalogItem;
+  maxPosts?: number;
+  showComposer?: boolean;
 }) {
   const theme = useVadTheme();
   const [posts, setPosts] = useState<ConvictionPost[]>([]);
@@ -61,12 +65,23 @@ export function SocialConvictionFeed({
     return () => clearTimeout(timer);
   }, [load]);
 
-  const visiblePosts = useMemo(
+  const filteredPosts = useMemo(
     () =>
       marketFilter
-        ? posts.filter((post) => post.instrument_public_id === marketFilter.instrument_public_id)
+        ? posts.filter(
+            (post) =>
+              post.instrument_public_id === marketFilter.instrument_public_id,
+          )
         : posts,
     [marketFilter, posts],
+  );
+
+  const visiblePosts = useMemo(
+    () =>
+      typeof maxPosts === 'number'
+        ? filteredPosts.slice(0, Math.max(0, maxPosts))
+        : filteredPosts,
+    [filteredPosts, maxPosts],
   );
 
   const selectedMarket = marketFilter ?? market;
@@ -129,12 +144,20 @@ export function SocialConvictionFeed({
     }
   }
 
-  const commentsPost = posts.find((post) => post.post_public_id === commentsPostId) ?? null;
+  const commentsPost =
+    posts.find((post) => post.post_public_id === commentsPostId) ?? null;
 
   return (
     <View style={{ gap: theme.spacing.md }}>
-      {canCreatePost ? (
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
+      {showComposer && canCreatePost ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: theme.spacing.sm,
+          }}
+        >
           <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>
             {marketFilter
               ? 'Share analysis or a prediction about this market.'
@@ -149,8 +172,14 @@ export function SocialConvictionFeed({
         </View>
       ) : null}
 
-      {composerOpen ? (
-        <VadCard variant="raised" style={{ gap: theme.spacing.md, borderRadius: theme.radius.xl }}>
+      {showComposer && composerOpen ? (
+        <VadCard
+          variant="raised"
+          style={{
+            gap: theme.spacing.md,
+            borderRadius: theme.radius.xl,
+          }}
+        >
           <View style={{ gap: theme.spacing.xxs }}>
             <VadText variant="heading">Share your conviction</VadText>
             <VadText variant="caption" tone="secondary">
@@ -174,34 +203,48 @@ export function SocialConvictionFeed({
                 gap: 2,
               }}
             >
-              <VadText variant="caption" tone="tertiary">ATTACHED MARKET</VadText>
-              <VadText variant="bodyStrong" numberOfLines={2}>{marketFilter.title}</VadText>
+              <VadText variant="caption" tone="tertiary">
+                ATTACHED MARKET
+              </VadText>
+              <VadText variant="bodyStrong" numberOfLines={2}>
+                {marketFilter.title}
+              </VadText>
             </View>
           ) : (
             <View style={{ gap: theme.spacing.xs }}>
-              <VadText variant="label" tone="secondary">Live market · optional</VadText>
+              <VadText variant="label" tone="secondary">
+                Live market · optional
+              </VadText>
               {markets.slice(0, 4).map((item) => (
                 <Pressable
                   key={item.instrument_public_id}
                   onPress={() => {
                     setMarket(
-                      market?.instrument_public_id === item.instrument_public_id ? null : item,
+                      market?.instrument_public_id ===
+                        item.instrument_public_id
+                        ? null
+                        : item,
                     );
                     setStance(null);
                   }}
                 >
                   <VadCard
                     variant={
-                      market?.instrument_public_id === item.instrument_public_id
+                      market?.instrument_public_id ===
+                      item.instrument_public_id
                         ? 'muted'
                         : 'outlined'
                     }
-                    style={{ padding: theme.spacing.sm, borderRadius: theme.radius.lg }}
+                    style={{
+                      padding: theme.spacing.sm,
+                      borderRadius: theme.radius.lg,
+                    }}
                   >
                     <VadText
                       variant="caption"
                       tone={
-                        market?.instrument_public_id === item.instrument_public_id
+                        market?.instrument_public_id ===
+                        item.instrument_public_id
                           ? 'brand'
                           : 'primary'
                       }
@@ -253,7 +296,10 @@ export function SocialConvictionFeed({
       ) : (
         visiblePosts.map((post) => {
           const linked = post.instrument_public_id
-            ? markets.find((item) => item.instrument_public_id === post.instrument_public_id)
+            ? markets.find(
+                (item) =>
+                  item.instrument_public_id === post.instrument_public_id,
+              )
             : undefined;
           const commentsOpen = commentsPostId === post.post_public_id;
 
@@ -264,10 +310,14 @@ export function SocialConvictionFeed({
               linkedMarket={linked}
               commentsOpen={commentsOpen}
               creatorOpen={false}
-              onFollow={() => void toggleCreatorFollow(post.author_user_id).then(load)}
+              onFollow={() =>
+                void toggleCreatorFollow(post.author_user_id).then(load)
+              }
               onLike={() => void togglePostLike(post.post_public_id).then(load)}
               onComments={() => void openComments(post)}
-              onOpenCreator={() => router.push('/creator/' + post.author_user_id)}
+              onOpenCreator={() =>
+                router.push('/creator/' + post.author_user_id)
+              }
               onOpenMarket={() => linked && onOpenMarket(linked)}
             />
           );
@@ -291,7 +341,9 @@ export function SocialConvictionFeed({
           {comments.length ? (
             comments.map((comment) => {
               const authorName =
-                comment.author_display_name ?? comment.author_handle ?? 'VAD member';
+                comment.author_display_name ??
+                comment.author_handle ??
+                'VAD member';
 
               return (
                 <View
@@ -320,7 +372,9 @@ export function SocialConvictionFeed({
               );
             })
           ) : (
-            <VadText tone="secondary">No comments yet. Add to the discussion.</VadText>
+            <VadText tone="secondary">
+              No comments yet. Add to the discussion.
+            </VadText>
           )}
 
           {commentsPost ? (
