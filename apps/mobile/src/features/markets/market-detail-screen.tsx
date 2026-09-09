@@ -36,7 +36,8 @@ export function MarketDetailScreen({ instrumentPublicId }: { instrumentPublicId:
     <MarketInsightPanel market={market} />
 
     <View style={{ gap: theme.spacing.sm }}>
-      <VadSectionHeader eyebrow="RESOLUTION" title="Rules before position" body="Understand how the outcome is determined before you commit capital." />
+      <VadText variant="label" tone="brand">RESOLUTION</VadText>
+      <VadSectionHeader title="Rules before position" subtitle="Understand how the outcome is determined before you commit capital." />
       <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
         <VadText variant="bodyStrong">Truth is independent from price.</VadText>
         <VadText tone="secondary">Current prices represent participant conviction only. Final truth comes from the configured oracle policy, evidence and governance process—not the creator, AI, or the winning side of the order book.</VadText>
