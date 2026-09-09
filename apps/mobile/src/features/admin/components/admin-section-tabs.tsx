@@ -16,34 +16,39 @@ export function AdminSectionTabs({
 
   return (
     <View
+      accessibilityRole="tablist"
       style={{
         flexDirection: 'row',
-        padding: theme.spacing.xxs,
-        borderRadius: theme.radius.lg,
-        backgroundColor: theme.colors.surfaceRaised,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
       }}
     >
       {items.map((item) => {
         const selected = item.key === active;
+
         return (
           <Pressable
             key={item.key}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             onPress={() => onChange(item.key)}
-            style={{
+            style={({ pressed }) => ({
               flex: 1,
-              minHeight: 44,
+              minHeight: 46,
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: theme.radius.md,
-              backgroundColor: selected ? theme.colors.surface : 'transparent',
+              borderBottomWidth: 2,
+              borderBottomColor: selected
+                ? theme.colors.brandPrimary
+                : 'transparent',
               paddingHorizontal: theme.spacing.xs,
-            }}
+              opacity: pressed ? 0.65 : 1,
+            })}
           >
             <VadText
               variant="caption"
               tone={selected ? 'brand' : 'secondary'}
+              numberOfLines={1}
             >
               {item.label}
               {item.count != null ? ' ' + item.count : ''}
