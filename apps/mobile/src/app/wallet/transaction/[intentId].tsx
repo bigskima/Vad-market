@@ -5,10 +5,12 @@ import { WalletTransactionScreen } from '@/features/wallet/wallet-transaction-sc
 
 export default function WalletTransactionRoute() {
   const params = useLocalSearchParams<{ intentId: string }>();
-  const intentId = Array.isArray(params.intentId) ? params.intentId[0] : params.intentId;
+  const intentId = Array.isArray(params.intentId)
+    ? params.intentId[0]
+    : params.intentId;
 
   return (
-    <ProductSubpage title="Transaction">
+    <ProductSubpage title="Transaction" maxWidth={680}>
       <WalletTransactionScreen intentId={intentId ?? ''} />
     </ProductSubpage>
   );
