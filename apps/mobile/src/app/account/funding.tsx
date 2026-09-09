@@ -3,7 +3,7 @@ import { ProductSubpage } from '@/features/navigation/product-subpage';
 
 export default function AccountFundingScreen() {
   return (
-    <ProductSubpage title="Funding & withdrawals">
+    <ProductSubpage title="Funding & withdrawals" maxWidth={900}>
       <FundingOverview />
     </ProductSubpage>
   );
