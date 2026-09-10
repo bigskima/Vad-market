@@ -15,7 +15,8 @@ export type AdminHref =
   | '/admin/content'
   | '/admin/home-content'
   | '/admin/providers'
-  | '/admin/roles';
+  | '/admin/roles'
+  | '/admin/service-controls';
 
 export type AdminNavItem = {
   label: string;
@@ -23,6 +24,7 @@ export type AdminNavItem = {
   href: AdminHref;
   description: string;
   permissions: string[];
+  superAdminOnly?: boolean;
 };
 
 export type AdminNavGroup = {
@@ -151,6 +153,14 @@ export const adminNavigationGroups: AdminNavGroup[] = [
     label: 'Access & Platform',
     items: [
       {
+        label: 'Service Controls',
+        shortLabel: 'Controls',
+        href: '/admin/service-controls',
+        description: 'Immediate Super Admin pause and resume controls',
+        permissions: [],
+        superAdminOnly: true,
+      },
+      {
         label: 'Roles & Access',
         shortLabel: 'Access',
         href: '/admin/roles',
@@ -165,11 +175,13 @@ export function getVisibleAdminGroups(access: AdminAccess) {
   return adminNavigationGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter(
-        (item) =>
+      items: group.items.filter((item) => {
+        if (item.superAdminOnly && !access.isSuperAdmin) return false;
+        return (
           item.permissions.length === 0 ||
-          hasAnyAdminPermission(access, item.permissions),
-      ),
+          hasAnyAdminPermission(access, item.permissions)
+        );
+      }),
     }))
     .filter((group) => group.items.length > 0);
 }
