@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 
+import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
+import { VadButton } from '@/components/ui/vad-button';
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { AdminSectionTabs } from '@/features/admin/components/admin-section-tabs';
@@ -12,14 +15,40 @@ import {
 } from '@/features/admin/operations/operations-section';
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
-import type { ProviderReadinessRow } from '@/services/provider-admin-api';
+import { hasAdminPermission } from '@/services/admin-control-api';
+import {
+  decideProviderStatusRequest,
+  requestProviderStatus,
+  setProviderSafetyStatus,
+  type ProviderChangeRequest,
+  type ProviderReadinessRow,
+} from '@/services/provider-admin-api';
+
+type ProviderStatus = 'ACTIVE' | 'DISABLED' | 'DEGRADED' | 'UNAVAILABLE';
+type Decision = 'APPROVE' | 'REJECT';
+
+const statusOptions: { value: ProviderStatus; title: string; detail: string }[] = [
+  { value: 'ACTIVE', title: 'Active', detail: 'Return the provider to normal routing after checker approval.' },
+  { value: 'DEGRADED', title: 'Degraded', detail: 'Keep the provider available while signaling reduced operational confidence.' },
+  { value: 'DISABLED', title: 'Disabled', detail: 'Stop normal routing to this provider.' },
+  { value: 'UNAVAILABLE', title: 'Unavailable', detail: 'Mark the provider as currently unavailable for selection.' },
+];
 
 export function AdminProvidersScreen() {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 860;
   const data = useAdminData();
+  const canManage = hasAdminPermission(data.access, 'providers.manage');
   const [tab, setTab] = useState('readiness');
+  const [selectedProvider, setSelectedProvider] = useState<ProviderReadinessRow | null>(null);
+  const [targetStatus, setTargetStatus] = useState<ProviderStatus | null>(null);
+  const [selectedChange, setSelectedChange] = useState<ProviderChangeRequest | null>(null);
+  const [decision, setDecision] = useState<Decision | null>(null);
+  const [reason, setReason] = useState('');
+  const [working, setWorking] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   if (data.loading) {
     return (
@@ -50,6 +79,111 @@ export function AdminProvidersScreen() {
   const readinessRatio =
     data.providers.length > 0 ? ready / data.providers.length : 0;
 
+  function openProvider(row: ProviderReadinessRow) {
+    if (!canManage) return;
+    setSelectedProvider(row);
+    setTargetStatus(null);
+    setReason('');
+    setActionError(null);
+    setActionMessage(null);
+  }
+
+  function openChange(row: ProviderChangeRequest) {
+    if (!canManage) return;
+    setSelectedChange(row);
+    setDecision(null);
+    setReason('');
+    setActionError(null);
+    setActionMessage(null);
+  }
+
+  async function submitStatusRequest() {
+    if (!selectedProvider || !targetStatus || reason.trim().length < 3) return;
+
+    setWorking(true);
+    setActionError(null);
+    try {
+      const requestId = await requestProviderStatus({
+        providerCode: selectedProvider.provider_code,
+        environment: selectedProvider.environment,
+        requestedStatus: targetStatus,
+        reason: reason.trim(),
+      });
+      setSelectedProvider(null);
+      setTargetStatus(null);
+      setReason('');
+      setActionMessage(`Provider status request ${requestId} is waiting for an independent checker.`);
+      setTab('changes');
+      await data.refresh();
+    } catch (reasonValue) {
+      setActionError(
+        reasonValue instanceof Error
+          ? reasonValue.message
+          : 'Provider status request could not be created.',
+      );
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function emergencyDowngrade(status: 'DISABLED' | 'UNAVAILABLE') {
+    if (!selectedProvider) return;
+
+    setWorking(true);
+    setActionError(null);
+    try {
+      await setProviderSafetyStatus(
+        selectedProvider.provider_code,
+        selectedProvider.environment,
+        status,
+      );
+      setSelectedProvider(null);
+      setTargetStatus(null);
+      setReason('');
+      setActionMessage(`${selectedProvider.provider_code} was immediately marked ${status.toLowerCase()} as a safety action.`);
+      await data.refresh();
+    } catch (reasonValue) {
+      setActionError(
+        reasonValue instanceof Error
+          ? reasonValue.message
+          : 'Emergency provider downgrade could not be completed.',
+      );
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function submitDecision() {
+    if (!selectedChange || !decision || reason.trim().length < 3) return;
+
+    setWorking(true);
+    setActionError(null);
+    try {
+      await decideProviderStatusRequest(
+        selectedChange.request_public_id,
+        decision,
+        reason.trim(),
+      );
+      setSelectedChange(null);
+      setDecision(null);
+      setReason('');
+      setActionMessage(
+        decision === 'APPROVE'
+          ? `${selectedChange.provider_code} status change approved.`
+          : `${selectedChange.provider_code} status change rejected.`,
+      );
+      await data.refresh();
+    } catch (reasonValue) {
+      setActionError(
+        reasonValue instanceof Error
+          ? reasonValue.message
+          : 'Provider decision could not be completed.',
+      );
+    } finally {
+      setWorking(false);
+    }
+  }
+
   return (
     <View style={{ gap: theme.spacing.xxxl }}>
       <View
@@ -69,9 +203,9 @@ export function AdminProvidersScreen() {
           <VadText variant="label" tone="brand">PROVIDER CONTROL</VadText>
           <VadText variant="title">External routes at a glance.</VadText>
           <VadText tone="secondary">
-            Configuration, provider health and route state are separate. A row
-            is shown as ready only when the configured provider and its route
-            both report an operational state.
+            Provider admins can request governed status changes, independently
+            approve another operator&apos;s request, or immediately downgrade a
+            provider for safety. Backend maker-checker rules remain authoritative.
           </VadText>
         </View>
 
@@ -142,6 +276,28 @@ export function AdminProvidersScreen() {
         </View>
       </View>
 
+      {actionMessage ? (
+        <View
+          style={{
+            borderLeftWidth: 3,
+            borderLeftColor: theme.colors.yes,
+            backgroundColor: theme.colors.yesSoft,
+            padding: theme.spacing.md,
+            gap: theme.spacing.xs,
+          }}
+        >
+          <VadText variant="caption" tone="yes">PROVIDER ACTION RECORDED</VadText>
+          <VadText variant="caption" tone="secondary">{actionMessage}</VadText>
+          <VadButton
+            label="Dismiss"
+            variant="ghost"
+            size="small"
+            fullWidth={false}
+            onPress={() => setActionMessage(null)}
+          />
+        </View>
+      ) : null}
+
       <View
         style={{
           flexDirection: 'row',
@@ -183,7 +339,11 @@ export function AdminProvidersScreen() {
       {tab === 'readiness' ? (
         <OperationsSection
           title="Provider routes"
-          description="Provider status and route status are shown independently in each row."
+          description={
+            canManage
+              ? 'Select a row to request a provider-level status change or use an emergency safety downgrade.'
+              : 'Provider status and route status are shown independently in each row.'
+          }
           count={data.providers.length}
         >
           {data.providers.length ? (
@@ -211,6 +371,8 @@ export function AdminProvidersScreen() {
                   }
                   status={status}
                   ready={readyRow}
+                  actionLabel={canManage ? 'Manage' : undefined}
+                  onPress={canManage ? () => openProvider(row) : undefined}
                 />
               );
             })
@@ -221,7 +383,7 @@ export function AdminProvidersScreen() {
       ) : (
         <OperationsSection
           title="Pending approvals"
-          description="Governed provider status changes awaiting a separate checker."
+          description="Governed provider status changes awaiting a different checker."
           count={data.providerChanges.length}
         >
           {data.providerChanges.length ? (
@@ -232,6 +394,8 @@ export function AdminProvidersScreen() {
                 detail={row.reason}
                 meta={`${row.environment} · requested ${new Date(row.created_at).toLocaleString()}`}
                 status="PENDING"
+                actionLabel={canManage ? 'Decide' : undefined}
+                onPress={canManage ? () => openChange(row) : undefined}
               />
             ))
           ) : (
@@ -251,11 +415,183 @@ export function AdminProvidersScreen() {
       >
         <VadText variant="bodyStrong">Maker-checker boundary</VadText>
         <VadText variant="caption" tone="secondary">
-          This overview reports current readiness and pending changes. Governed
-          status transitions remain controlled by the existing backend approval
-          functions and permission checks.
+          Active or degraded transitions require a request and a different
+          checker. Immediate actions are restricted to safety downgrades only.
         </VadText>
       </View>
+
+      <VadBottomSheet
+        visible={Boolean(selectedProvider)}
+        title="Provider status control"
+        onClose={() => {
+          if (!working) setSelectedProvider(null);
+        }}
+      >
+        {selectedProvider ? (
+          <View style={{ gap: theme.spacing.lg }}>
+            <View style={{ gap: 2 }}>
+              <VadText variant="label" tone="brand">PROVIDER</VadText>
+              <VadText variant="heading">
+                {selectedProvider.provider_code} · {selectedProvider.environment}
+              </VadText>
+              <VadText variant="caption" tone="secondary">
+                Current provider status: {selectedProvider.provider_status}
+              </VadText>
+            </View>
+
+            <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+              {statusOptions.map((option) => {
+                const selected = targetStatus === option.value;
+                const current = selectedProvider.provider_status.toUpperCase() === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected, disabled: current }}
+                    disabled={working || current}
+                    onPress={() => setTargetStatus(option.value)}
+                    style={({ pressed }) => ({
+                      minHeight: 68,
+                      borderBottomWidth: 1,
+                      borderBottomColor: theme.colors.border,
+                      paddingVertical: theme.spacing.sm,
+                      flexDirection: 'row',
+                      gap: theme.spacing.md,
+                      alignItems: 'center',
+                      opacity: current ? 0.4 : pressed ? 0.65 : 1,
+                    })}
+                  >
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <VadText variant="bodyStrong" tone={selected ? 'brand' : 'primary'}>
+                        {option.title}
+                      </VadText>
+                      <VadText variant="caption" tone="secondary">{option.detail}</VadText>
+                    </View>
+                    {selected ? <VadText tone="brand">✓</VadText> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <VadInput
+              label="Reason"
+              value={reason}
+              onChangeText={(value) => {
+                setReason(value);
+                setActionError(null);
+              }}
+              placeholder="Why should this provider status change?"
+              multiline
+              error={reason.length > 0 && reason.trim().length < 3 ? 'Enter at least 3 characters.' : undefined}
+            />
+
+            {actionError ? <VadErrorState title="Provider action failed" message={actionError} /> : null}
+
+            <VadButton
+              label="Request status change"
+              loading={working}
+              disabled={!targetStatus || reason.trim().length < 3}
+              onPress={() => void submitStatusRequest()}
+            />
+
+            {targetStatus === 'DISABLED' || targetStatus === 'UNAVAILABLE' ? (
+              <View
+                style={{
+                  borderTopWidth: 1,
+                  borderTopColor: theme.colors.border,
+                  paddingTop: theme.spacing.md,
+                  gap: theme.spacing.sm,
+                }}
+              >
+                <VadText variant="bodyStrong">Emergency safety action</VadText>
+                <VadText variant="caption" tone="secondary">
+                  Safety downgrades can be applied immediately. Reactivation still requires maker-checker approval.
+                </VadText>
+                <VadButton
+                  label={`Apply ${targetStatus.toLowerCase()} now`}
+                  variant="danger"
+                  loading={working}
+                  onPress={() => void emergencyDowngrade(targetStatus)}
+                />
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </VadBottomSheet>
+
+      <VadBottomSheet
+        visible={Boolean(selectedChange)}
+        title="Provider approval"
+        onClose={() => {
+          if (!working) setSelectedChange(null);
+        }}
+      >
+        {selectedChange ? (
+          <View style={{ gap: theme.spacing.lg }}>
+            <View style={{ gap: 2 }}>
+              <VadText variant="label" tone="brand">STATUS REQUEST</VadText>
+              <VadText variant="heading">
+                {selectedChange.provider_code}: {selectedChange.current_status} → {selectedChange.requested_status}
+              </VadText>
+              <VadText variant="caption" tone="secondary">
+                {selectedChange.reason}
+              </VadText>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <VadButton
+                label="Approve"
+                variant={decision === 'APPROVE' ? 'primary' : 'secondary'}
+                onPress={() => setDecision('APPROVE')}
+                style={{ flex: 1 }}
+              />
+              <VadButton
+                label="Reject"
+                variant={decision === 'REJECT' ? 'danger' : 'secondary'}
+                onPress={() => setDecision('REJECT')}
+                style={{ flex: 1 }}
+              />
+            </View>
+
+            <VadInput
+              label="Decision reason"
+              value={reason}
+              onChangeText={(value) => {
+                setReason(value);
+                setActionError(null);
+              }}
+              placeholder="Why are you approving or rejecting this change?"
+              multiline
+              error={reason.length > 0 && reason.trim().length < 3 ? 'Enter at least 3 characters.' : undefined}
+            />
+
+            <View
+              style={{
+                borderLeftWidth: 3,
+                borderLeftColor: theme.colors.brandPrimary,
+                backgroundColor: theme.colors.brandSoft,
+                padding: theme.spacing.md,
+                gap: 2,
+              }}
+            >
+              <VadText variant="caption" tone="brand">INDEPENDENT CHECKER</VadText>
+              <VadText variant="caption" tone="secondary">
+                The operator who requested this change cannot approve it. The backend enforces that separation.
+              </VadText>
+            </View>
+
+            {actionError ? <VadErrorState title="Decision failed" message={actionError} /> : null}
+
+            <VadButton
+              label={decision ? `${decision === 'APPROVE' ? 'Approve' : 'Reject'} provider change` : 'Choose a decision'}
+              variant={decision === 'REJECT' ? 'danger' : 'primary'}
+              loading={working}
+              disabled={!decision || reason.trim().length < 3}
+              onPress={() => void submitDecision()}
+            />
+          </View>
+        ) : null}
+      </VadBottomSheet>
     </View>
   );
 }
