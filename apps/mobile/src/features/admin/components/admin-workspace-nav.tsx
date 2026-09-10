@@ -49,6 +49,12 @@ const sections = [
     href: '/admin/content',
     permissions: ['content.moderate'],
   },
+  {
+    label: 'Roles',
+    short: 'Roles',
+    href: '/admin/roles',
+    permissions: ['admin.roles.manage'],
+  },
 ] as const;
 
 export function AdminWorkspaceNav() {
