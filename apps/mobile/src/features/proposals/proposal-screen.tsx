@@ -426,7 +426,7 @@ function ProposalHistory({ proposals, loading, error, onRetry, onStart }: { prop
               {proposal.published_instrument_public_id ? (
                 <VadButton
                   label="Open market"
-                  size="sm"
+                  size="small"
                   variant="secondary"
                   onPress={() => router.push({ pathname: '/market/[marketId]', params: { marketId: proposal.published_instrument_public_id! } })}
                 />
