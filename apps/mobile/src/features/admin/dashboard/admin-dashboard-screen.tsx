@@ -20,6 +20,7 @@ export function AdminDashboardScreen() {
   const canPayments = hasAnyAdminPermission(data.access, ['finance.read', 'payments.refund']);
   const canUsers = hasAnyAdminPermission(data.access, ['users.manage', 'support.read', 'admin.roles.manage']);
   const canContent = hasAnyAdminPermission(data.access, ['content.moderate']);
+  const canRoles = hasAnyAdminPermission(data.access, ['admin.roles.manage']);
 
   if (data.loading) {
     return (
@@ -215,6 +216,13 @@ export function AdminDashboardScreen() {
               title="Content"
               detail="Audited removal and restoration of posts and comments"
               onPress={() => router.push('/admin/content')}
+            />
+          ) : null}
+          {canRoles ? (
+            <WorkspaceRow
+              title="Roles"
+              detail="Assign and revoke scoped operational authority"
+              onPress={() => router.push('/admin/roles')}
             />
           ) : null}
         </View>
