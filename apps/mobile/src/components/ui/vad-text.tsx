@@ -39,7 +39,8 @@ export function VadText({ variant = 'body', tone = 'primary', style, children, .
     inverse: theme.colors.textInverse,
   } as const;
 
-  const requestedStyleColor = StyleSheet.flatten(style)?.color;
+  const flattenedStyle = StyleSheet.flatten(style) as TextStyle | undefined;
+  const requestedStyleColor = flattenedStyle?.color;
   const safeStyleColor =
     tone === 'primary' &&
     requestedStyleColor != null &&
