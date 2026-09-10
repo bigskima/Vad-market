@@ -8,6 +8,8 @@ import {
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { money, pct } from '@/features/markets/format';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -32,6 +34,28 @@ export function PortfolioOrderScreen({
   const order = data.orders.find(
     (row) => String(row.order_id) === orderId,
   );
+
+  if (data.loading) {
+    return (
+      <View style={{ gap: theme.spacing.md }}>
+        <VadSkeleton width="46%" height={30} />
+        <VadSkeleton height={136} radius={theme.radius.xl} />
+        <VadSkeleton height={58} />
+        <VadSkeleton height={58} />
+        <VadSkeleton height={48} />
+      </View>
+    );
+  }
+
+  if (!order && data.sectionErrors.orders) {
+    return (
+      <VadErrorState
+        title="Order could not be loaded"
+        message={data.sectionErrors.orders}
+        onRetry={() => void data.load()}
+      />
+    );
+  }
 
   if (!order) {
     return (
