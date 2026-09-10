@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { money } from '@/features/markets/format';
@@ -32,14 +33,22 @@ export function WalletScreen({
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 860;
+  const compact = width < 380;
   const [intents, setIntents] = useState<PaymentIntentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setActivityError(null);
+
     try {
       setIntents(await getMyPaymentIntents(6));
-    } catch {
-      setIntents([]);
+    } catch (error) {
+      setActivityError(
+        error instanceof Error
+          ? error.message
+          : 'Wallet activity could not be loaded.',
+      );
     } finally {
       setLoading(false);
     }
@@ -56,7 +65,7 @@ export function WalletScreen({
   const total = available + reserved + pending;
 
   return (
-    <View style={{ gap: theme.spacing.xxxl }}>
+    <View style={{ gap: compact ? theme.spacing.xxl : theme.spacing.xxxl }}>
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
@@ -70,7 +79,7 @@ export function WalletScreen({
           <VadText variant="title">Your money in VAD.</VadText>
           <VadText tone="secondary">
             Cash stays separate from market exposure so available, reserved and
-            pending funds are always easy to understand.
+            pending funds remain easy to understand.
           </VadText>
         </View>
 
@@ -82,7 +91,9 @@ export function WalletScreen({
           }}
         >
           <VadText variant="caption" tone="secondary">TOTAL NGN BALANCE</VadText>
-          <VadText variant="display">{money(total)}</VadText>
+          <VadText variant="display" numberOfLines={1} adjustsFontSizeToFit>
+            {money(total)}
+          </VadText>
         </View>
       </View>
 
@@ -99,41 +110,33 @@ export function WalletScreen({
           style={{
             flexDirection: 'row',
             flexWrap: 'wrap',
-            gap: theme.spacing.xl,
+            gap: compact ? theme.spacing.md : theme.spacing.xl,
           }}
         >
           <BalanceFact label="Available" value={money(available)} tone="yes" />
           <BalanceFact label="Reserved" value={money(reserved)} />
-          <BalanceFact label="Pending withdrawal" value={money(pending)} />
+          <BalanceFact label="Pending" value={money(pending)} />
         </View>
 
         <View
           style={{
-            flexDirection: 'row',
-            alignItems: 'stretch',
             borderTopWidth: 1,
             borderTopColor: theme.colors.border,
-            paddingTop: theme.spacing.sm,
           }}
         >
           <WalletAction
-            glyph="↓"
             label="Deposit"
-            detail="Add NGN"
+            detail="Add NGN to your wallet"
             onPress={onDeposit}
           />
-          <Divider />
           <WalletAction
-            glyph="↑"
             label="Withdraw"
-            detail="Move NGN out"
+            detail="Move available NGN out"
             onPress={onWithdraw}
           />
-          <Divider />
           <WalletAction
-            glyph="≡"
-            label="Activity"
-            detail="Payment history"
+            label="Wallet activity"
+            detail="See deposits and withdrawals"
             onPress={onActivity}
           />
         </View>
@@ -174,28 +177,49 @@ export function WalletScreen({
             <VadSkeleton height={62} />
             <VadSkeleton height={62} />
           </>
-        ) : intents.length ? (
-          <View
-            style={{
-              borderTopWidth: 1,
-              borderTopColor: theme.colors.border,
+        ) : activityError && !intents.length ? (
+          <VadErrorState
+            title="Wallet activity unavailable"
+            message={activityError}
+            onRetry={() => {
+              setLoading(true);
+              void load();
             }}
-          >
-            {intents.map((intent) => (
-              <PaymentRow
-                key={intent.intent_public_id}
-                intent={intent}
-                onPress={() => onOpenTransaction(intent)}
-              />
-            ))}
-          </View>
-        ) : (
-          <VadEmptyState
-            title="No payment activity yet"
-            body="Deposits and withdrawals will appear here when payment intents are created."
-            actionLabel="Deposit NGN"
-            onAction={onDeposit}
           />
+        ) : (
+          <>
+            {activityError ? (
+              <VadErrorState
+                title="Wallet activity refresh failed"
+                message={activityError}
+                onRetry={() => void load()}
+              />
+            ) : null}
+
+            {intents.length ? (
+              <View
+                style={{
+                  borderTopWidth: 1,
+                  borderTopColor: theme.colors.border,
+                }}
+              >
+                {intents.map((intent) => (
+                  <PaymentRow
+                    key={intent.intent_public_id}
+                    intent={intent}
+                    onPress={() => onOpenTransaction(intent)}
+                  />
+                ))}
+              </View>
+            ) : (
+              <VadEmptyState
+                title="No payment activity yet"
+                body="Deposits and withdrawals will appear here when payment intents are created."
+                actionLabel="Deposit NGN"
+                onAction={onDeposit}
+              />
+            )}
+          </>
         )}
       </View>
     </View>
@@ -228,24 +252,17 @@ export function PaymentRow({
         opacity: pressed && onPress ? 0.65 : 1,
       })}
     >
-      <View
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 17,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: incoming
-            ? theme.colors.yesSoft
-            : theme.colors.surfaceRaised,
-        }}
-      >
-        <VadText
-          variant="label"
-          tone={incoming ? 'yes' : 'secondary'}
-        >
-          {incoming ? '↓' : '↑'}
-        </VadText>
+      <View style={{ width: 6, alignSelf: 'stretch', justifyContent: 'center' }}>
+        <View
+          style={{
+            width: 3,
+            height: 28,
+            borderRadius: theme.radius.pill,
+            backgroundColor: incoming
+              ? theme.colors.yes
+              : theme.colors.brandPrimary,
+          }}
+        />
       </View>
 
       <View style={{ flex: 1, gap: 2 }}>
@@ -265,7 +282,7 @@ export function PaymentRow({
       <View style={{ alignItems: 'flex-end', gap: 2 }}>
         <VadText variant="bodyStrong">{money(intent.amount)}</VadText>
         {onPress ? (
-          <VadText variant="caption" tone="tertiary">›</VadText>
+          <VadText variant="caption" tone="brand">Open</VadText>
         ) : null}
       </View>
     </Pressable>
@@ -282,34 +299,20 @@ function BalanceFact({
   tone?: 'primary' | 'yes';
 }) {
   return (
-    <View style={{ minWidth: 110, flexGrow: 1, flexBasis: 130, gap: 2 }}>
+    <View style={{ minWidth: 92, flexGrow: 1, flexBasis: 110, gap: 2 }}>
       <VadText variant="caption" tone="tertiary">{label}</VadText>
-      <VadText variant="bodyStrong" tone={tone}>{value}</VadText>
+      <VadText variant="bodyStrong" tone={tone} numberOfLines={1}>
+        {value}
+      </VadText>
     </View>
   );
 }
 
-function Divider() {
-  const theme = useVadTheme();
-
-  return (
-    <View
-      style={{
-        width: 1,
-        alignSelf: 'stretch',
-        backgroundColor: theme.colors.border,
-      }}
-    />
-  );
-}
-
 function WalletAction({
-  glyph,
   label,
   detail,
   onPress,
 }: {
-  glyph: string;
   label: string;
   detail: string;
   onPress: () => void;
@@ -323,20 +326,22 @@ function WalletAction({
       accessibilityHint={detail}
       onPress={onPress}
       style={({ pressed }) => ({
-        flex: 1,
-        minHeight: 64,
+        minHeight: 62,
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 2,
-        paddingHorizontal: theme.spacing.xs,
+        gap: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+        paddingVertical: theme.spacing.sm,
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <VadText variant="heading" tone="brand">{glyph}</VadText>
-      <VadText variant="label">{label}</VadText>
-      <VadText variant="caption" tone="tertiary" numberOfLines={1}>
-        {detail}
-      </VadText>
+      <View style={{ flex: 1, gap: 2 }}>
+        <VadText variant="bodyStrong">{label}</VadText>
+        <VadText variant="caption" tone="secondary">{detail}</VadText>
+      </View>
+
+      <VadText variant="label" tone="brand">Open</VadText>
     </Pressable>
   );
 }
