@@ -24,6 +24,7 @@ export function useAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [runtime, setRuntime] = useState<Record<string, number | string> | null>(null);
   const [operations, setOperations] = useState<OperationsSummary | null>(null);
   const [marketQueue, setMarketQueue] = useState<Record<string, unknown>[]>([]);
@@ -53,12 +54,14 @@ export function useAdminDashboard() {
       setError(
         'Operations data could not refresh. Existing control-plane data is preserved where available.',
       );
-    } else if (failures > 0) {
-      setError(
-        'Some operations data could not refresh. Successful queues were updated while previous data was preserved elsewhere.',
-      );
+      setWarning(null);
     } else {
       setError(null);
+      setWarning(
+        failures > 0
+          ? 'Some operations data could not refresh. Successful queues were updated while previous data was preserved elsewhere.'
+          : null,
+      );
     }
 
     if (results[0].status === 'fulfilled') setRuntime(results[0].value);
@@ -99,6 +102,7 @@ export function useAdminDashboard() {
     loading,
     refreshing,
     error,
+    warning,
     runtime,
     operations,
     marketQueue,
