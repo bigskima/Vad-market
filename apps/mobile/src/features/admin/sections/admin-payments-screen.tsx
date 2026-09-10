@@ -67,7 +67,7 @@ export function AdminPaymentsScreen() {
     (sum, row) => sum + Number(row.amount ?? 0),
     0,
   );
-  const visibleFees = data.paymentQueue.reduce(
+  const visibleQuotedFees = data.paymentQueue.reduce(
     (sum, row) => sum + Number(row.fee_amount ?? 0),
     0,
   );
@@ -127,7 +127,8 @@ export function AdminPaymentsScreen() {
           <VadText variant="title">Money movement without ledger ambiguity.</VadText>
           <VadText tone="secondary">
             Payment intents explain external provider flow. Wallet and ledger
-            balances remain the source of truth for financial state.
+            balances remain the source of truth for financial state, while
+            recognized VAD revenue is tracked separately.
           </VadText>
         </View>
 
@@ -216,7 +217,11 @@ export function AdminPaymentsScreen() {
           value={money(visibleAmount)}
           tone="brand"
         />
-        <AdminMetricCard label="Visible fees" value={money(visibleFees)} />
+        <AdminMetricCard
+          label="Quoted fees"
+          value={money(visibleQuotedFees)}
+          detail="Not recognized revenue"
+        />
       </View>
 
       <OperationsSection
@@ -241,7 +246,7 @@ export function AdminPaymentsScreen() {
                 }
                 meta={
                   `${new Date(row.created_at).toLocaleString()} · ` +
-                  `fee ${money(row.fee_amount)}` +
+                  `quoted fee ${money(row.fee_amount)}` +
                   (row.failure_code ? ` · ${row.failure_code.replaceAll('_', ' ')}` : '')
                 }
                 status={row.status}
@@ -274,15 +279,19 @@ export function AdminPaymentsScreen() {
       >
         <Boundary
           title="Payment intent"
-          body="Tracks provider-facing lifecycle, fees, failure state and settlement timestamp."
+          body="Tracks provider-facing lifecycle, quoted fees, failure state and settlement timestamp."
+        />
+        <Boundary
+          title="VAD revenue"
+          body="Counts recognized fee income from posted ledger activity. A quoted or pending payment fee is not revenue yet."
+        />
+        <Boundary
+          title="Platform balance"
+          body="Available, reserved, collateral, pending and clearing balances remain separate from VAD revenue."
         />
         <Boundary
           title="Refund workflow"
           body="Creates a linked REFUND intent. It does not falsely mark money returned before provider processing completes."
-        />
-        <Boundary
-          title="Ledger"
-          body="Remains authoritative for available, reserved, pending and settled balances."
         />
       </View>
 
