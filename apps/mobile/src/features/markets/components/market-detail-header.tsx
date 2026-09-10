@@ -14,13 +14,14 @@ export function MarketDetailHeader({
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 820;
+  const compact = width < 380;
   const yes = Number(market.yes_price ?? 0);
   const no = Number(
     market.no_price ?? Math.max(0, 1 - yes),
   );
 
   return (
-    <View style={{ gap: theme.spacing.xl }}>
+    <View style={{ gap: compact ? theme.spacing.lg : theme.spacing.xl }}>
       <View
         style={{
           flexDirection: 'row',
@@ -29,19 +30,18 @@ export function MarketDetailHeader({
           flexWrap: 'wrap',
         }}
       >
-        <View
-          style={{
-            borderRadius: theme.radius.pill,
-            backgroundColor: theme.colors.brandSoft,
-            paddingHorizontal: theme.spacing.sm,
-            paddingVertical: theme.spacing.xxs,
-          }}
+        <VadText variant="label" tone="brand">
+          {(market.category ?? 'General').toUpperCase()}
+        </VadText>
+        <VadText variant="caption" tone="tertiary">·</VadText>
+        <VadText
+          variant="caption"
+          tone={
+            market.status === 'OPEN' || market.status === 'ACTIVE'
+              ? 'yes'
+              : 'secondary'
+          }
         >
-          <VadText variant="caption" tone="brand">
-            {(market.category ?? 'General').toUpperCase()}
-          </VadText>
-        </View>
-        <VadText variant="caption" tone="tertiary">
           {market.status}
         </VadText>
         <VadText variant="caption" tone="tertiary">·</VadText>
@@ -55,16 +55,17 @@ export function MarketDetailHeader({
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
-          gap: theme.spacing.lg,
+          gap: wide ? theme.spacing.xl : theme.spacing.lg,
           alignItems: 'stretch',
         }}
       >
         <View
           style={{
             flex: 1.2,
-            borderRadius: theme.radius.xl,
-            backgroundColor: theme.colors.surfaceRaised,
-            padding: theme.spacing.lg,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: theme.colors.border,
+            paddingVertical: theme.spacing.lg,
             gap: theme.spacing.md,
           }}
         >
@@ -76,17 +77,21 @@ export function MarketDetailHeader({
               gap: theme.spacing.lg,
             }}
           >
-            <View style={{ gap: 2 }}>
+            <View style={{ flex: 1, gap: 2 }}>
               <VadText variant="caption" tone="secondary">
-                MARKET PROBABILITY
+                CURRENT YES SIGNAL
               </VadText>
-              <VadText variant="display" tone="yes">
+              <VadText
+                variant="display"
+                tone="yes"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 {pct(yes)}
               </VadText>
-              <VadText variant="caption" tone="yes">YES</VadText>
             </View>
 
-            <View style={{ alignItems: 'flex-end', gap: 2 }}>
+            <View style={{ minWidth: 84, alignItems: 'flex-end', gap: 2 }}>
               <VadText variant="caption" tone="secondary">NO</VadText>
               <VadText variant="heading" tone="no">
                 {pct(no)}
@@ -97,19 +102,18 @@ export function MarketDetailHeader({
           <MarketProbabilityBar yes={yes} no={no} />
 
           <VadText variant="caption" tone="tertiary">
-            Live trading signal. It does not determine final resolution.
+            Current trading signal only. Final resolution remains independent.
           </VadText>
         </View>
 
         <View
           style={{
             flex: 0.8,
-            borderRadius: theme.radius.xl,
-            borderWidth: 1,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
             borderColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
-            padding: theme.spacing.lg,
-            gap: theme.spacing.lg,
+            paddingVertical: theme.spacing.lg,
+            gap: theme.spacing.md,
             justifyContent: 'center',
           }}
         >
@@ -137,10 +141,29 @@ export function MarketDetailHeader({
 }
 
 function Meta({ label, value }: { label: string; value: string }) {
+  const theme = useVadTheme();
+
   return (
-    <View style={{ gap: 2 }}>
-      <VadText variant="caption" tone="tertiary">{label}</VadText>
-      <VadText variant="bodyStrong">{value}</VadText>
+    <View
+      style={{
+        minHeight: 44,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+      }}
+    >
+      <VadText variant="caption" tone="tertiary" style={{ flex: 1 }}>
+        {label}
+      </VadText>
+      <VadText
+        variant="bodyStrong"
+        style={{ flex: 1.55, textAlign: 'right' }}
+        numberOfLines={2}
+      >
+        {value}
+      </VadText>
     </View>
   );
 }
