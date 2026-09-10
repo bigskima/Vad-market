@@ -23,6 +23,7 @@ export function AdminWorkspaceHeader({
   const theme = useVadTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const desktop = width >= 900;
   const compact = width < 420;
 
   return (
@@ -39,14 +40,16 @@ export function AdminWorkspaceHeader({
           width: '100%',
           maxWidth: 1180,
           alignSelf: 'center',
-          paddingHorizontal: compact
-            ? theme.spacing.md
-            : theme.spacing.lg,
+          paddingHorizontal: desktop
+            ? theme.spacing.xl
+            : compact
+              ? theme.spacing.md
+              : theme.spacing.lg,
           paddingBottom: theme.spacing.sm,
-          minHeight: 52,
+          minHeight: desktop ? 64 : 54,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: compact ? theme.spacing.xs : theme.spacing.sm,
+          gap: compact ? theme.spacing.xs : theme.spacing.md,
         }}
       >
         <Pressable
@@ -55,15 +58,20 @@ export function AdminWorkspaceHeader({
           onPress={onBack}
           hitSlop={8}
           style={({ pressed }) => ({
-            minHeight: 38,
-            justifyContent: 'center',
+            minHeight: 40,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.spacing.xs,
             paddingRight: theme.spacing.sm,
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <VadText variant="caption" tone="brand">
-            {compact ? 'Back' : 'Back to ' + backLabel}
-          </VadText>
+          <VadText variant="heading" tone="brand">‹</VadText>
+          {!compact ? (
+            <VadText variant="caption" tone="secondary">
+              {desktop ? backLabel : 'Back'}
+            </VadText>
+          ) : null}
         </Pressable>
 
         <View
@@ -71,12 +79,12 @@ export function AdminWorkspaceHeader({
             flex: 1,
             flexDirection: 'row',
             alignItems: 'center',
-            gap: theme.spacing.xs,
+            gap: theme.spacing.sm,
           }}
         >
-          <VadLogo size={compact ? 26 : 30} />
-          <View style={{ flex: 1 }}>
-            <VadText variant="bodyStrong" numberOfLines={1}>
+          <VadLogo size={desktop ? 32 : 28} />
+          <View style={{ flex: 1, gap: 1 }}>
+            <VadText variant={desktop ? 'heading' : 'bodyStrong'} numberOfLines={1}>
               {title}
             </VadText>
             {!compact ? (
@@ -85,6 +93,20 @@ export function AdminWorkspaceHeader({
               </VadText>
             ) : null}
           </View>
+        </View>
+
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radius.pill,
+            paddingHorizontal: theme.spacing.sm,
+            minHeight: 30,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <VadText variant="caption" tone="brand">OPS</VadText>
         </View>
 
         {actionLabel && onAction ? (
