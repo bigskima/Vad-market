@@ -10,6 +10,7 @@ import {
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
+import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
@@ -126,11 +127,25 @@ export function ProductRoute({
   const requiredReason = requiredCapability
     ? runtime.snapshot.reasons[requiredCapability]
     : undefined;
+  const requiredMessage = requiredCapability
+    ? runtime.snapshot.messages?.[requiredCapability]
+    : undefined;
   const requiredLoading = Boolean(
     requiredCapability &&
       runtime.isRefreshing &&
       requiredReason === 'CAPABILITIES_LOADING',
   );
+  const maintenance = runtime.snapshot.context.platformStatus === 'MAINTENANCE';
+  const maintenanceLabel =
+    runtime.snapshot.context.platformPauseScope === 'USER'
+      ? 'ACCOUNT ACTIONS PAUSED'
+      : 'VAD MAINTENANCE MODE';
+  const maintenanceMessage =
+    runtime.snapshot.context.platformMessage ??
+    (runtime.snapshot.context.platformPauseScope === 'USER'
+      ? 'New actions are temporarily paused for this account. Read-only areas remain available.'
+      : 'VAD is temporarily read-only while maintenance is in progress.');
+  const resumesAt = runtime.snapshot.context.platformResumesAt;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -179,6 +194,29 @@ export function ProductRoute({
           />
         ) : null}
 
+        {maintenance ? (
+          <View
+            accessibilityRole="alert"
+            style={{
+              borderWidth: 1,
+              borderColor: theme.colors.warning,
+              borderRadius: theme.radius.lg,
+              backgroundColor: theme.colors.warningSoft,
+              paddingHorizontal: theme.spacing.md,
+              paddingVertical: density.compact ? theme.spacing.sm : theme.spacing.md,
+              gap: 3,
+            }}
+          >
+            <VadText variant="caption" tone="warning">{maintenanceLabel}</VadText>
+            <VadText variant="caption" tone="secondary">{maintenanceMessage}</VadText>
+            {resumesAt ? (
+              <VadText variant="caption" tone="tertiary">
+                Scheduled to resume {new Date(resumesAt).toLocaleString()}.
+              </VadText>
+            ) : null}
+          </View>
+        ) : null}
+
         {requiredLoading ? (
           <View style={{ gap: theme.spacing.md }}>
             <VadSkeleton width="48%" height={26} />
@@ -188,7 +226,7 @@ export function ProductRoute({
         ) : requiredCapability && !requiredAllowed ? (
           <VadEmptyState
             title={capabilityTitle}
-            body={runtimeCapabilityReason(requiredReason)}
+            body={requiredMessage ?? runtimeCapabilityReason(requiredReason)}
             actionLabel="Refresh availability"
             onAction={() => void runtime.refresh()}
           />
