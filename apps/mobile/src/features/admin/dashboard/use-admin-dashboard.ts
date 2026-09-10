@@ -6,6 +6,10 @@ import {
   type AdminAccess,
 } from '@/services/admin-control-api';
 import {
+  getAdminFinanceSummary,
+  type AdminFinanceSummary,
+} from '@/services/finance-admin-api';
+import {
   getAdminMarketQueue,
   getAdminOracleQueue,
   getAdminRuntimeSummary,
@@ -32,6 +36,7 @@ export function useAdminDashboard(access: AdminAccess) {
   const [warning, setWarning] = useState<string | null>(null);
   const [runtime, setRuntime] = useState<Record<string, number | string> | null>(null);
   const [operations, setOperations] = useState<OperationsSummary | null>(null);
+  const [finance, setFinance] = useState<AdminFinanceSummary | null>(null);
   const [marketQueue, setMarketQueue] = useState<Record<string, unknown>[]>([]);
   const [oracleQueue, setOracleQueue] = useState<Record<string, unknown>[]>([]);
   const [kycQueue, setKycQueue] = useState<KycQueueRow[]>([]);
@@ -79,6 +84,12 @@ export function useAdminDashboard(access: AdminAccess) {
       ]),
       getAdminOperationsSummary,
       setOperations,
+    );
+
+    queue(
+      hasAdminPermission(access, 'finance.read'),
+      getAdminFinanceSummary,
+      setFinance,
     );
 
     queue(
@@ -173,6 +184,7 @@ export function useAdminDashboard(access: AdminAccess) {
     warning,
     runtime,
     operations,
+    finance,
     marketQueue,
     oracleQueue,
     kycQueue,
