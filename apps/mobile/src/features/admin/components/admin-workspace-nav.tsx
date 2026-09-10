@@ -7,22 +7,62 @@ import {
 } from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
+import { useAdminData } from '@/providers/admin-data-provider';
+import { hasAnyAdminPermission } from '@/services/admin-control-api';
 import { useVadTheme } from '@/providers/theme-provider';
 
 const sections = [
-  { label: 'Overview', short: 'Overview', href: '/admin' },
-  { label: 'Governance', short: 'Governance', href: '/admin/governance' },
-  { label: 'Providers', short: 'Providers', href: '/admin/providers' },
-  { label: 'Compliance', short: 'KYC', href: '/admin/compliance' },
-  { label: 'Payments', short: 'Payments', href: '/admin/payments' },
+  { label: 'Overview', short: 'Overview', href: '/admin', permissions: [] },
+  {
+    label: 'Governance',
+    short: 'Governance',
+    href: '/admin/governance',
+    permissions: ['markets.manage', 'oracle.review'],
+  },
+  {
+    label: 'Providers',
+    short: 'Providers',
+    href: '/admin/providers',
+    permissions: ['providers.manage', 'finance.read'],
+  },
+  {
+    label: 'Compliance',
+    short: 'KYC',
+    href: '/admin/compliance',
+    permissions: ['compliance.manage', 'support.read'],
+  },
+  {
+    label: 'Payments',
+    short: 'Payments',
+    href: '/admin/payments',
+    permissions: ['finance.read', 'payments.refund'],
+  },
+  {
+    label: 'Users',
+    short: 'Users',
+    href: '/admin/users',
+    permissions: ['users.manage', 'support.read', 'admin.roles.manage'],
+  },
+  {
+    label: 'Content',
+    short: 'Content',
+    href: '/admin/content',
+    permissions: ['content.moderate'],
+  },
 ] as const;
 
 export function AdminWorkspaceNav() {
   const theme = useVadTheme();
+  const data = useAdminData();
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
   const compact = width < 380;
+  const visibleSections = sections.filter(
+    (section) =>
+      section.permissions.length === 0 ||
+      hasAnyAdminPermission(data.access, [...section.permissions]),
+  );
 
   return (
     <View
@@ -52,7 +92,7 @@ export function AdminWorkspaceNav() {
             gap: desktop ? theme.spacing.xl : theme.spacing.md,
           }}
         >
-          {sections.map((section) => {
+          {visibleSections.map((section) => {
             const selected =
               section.href === '/admin'
                 ? pathname === '/admin'
@@ -67,7 +107,7 @@ export function AdminWorkspaceNav() {
                 onPress={() => router.replace(section.href)}
                 style={({ pressed }) => ({
                   minHeight: desktop ? 50 : 46,
-                  minWidth: desktop ? 92 : undefined,
+                  minWidth: desktop ? 82 : undefined,
                   alignItems: desktop ? 'center' : 'flex-start',
                   justifyContent: 'center',
                   borderBottomWidth: 2,
