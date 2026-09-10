@@ -1,5 +1,6 @@
 import { Pressable, type PressableProps } from 'react-native';
 
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { VadIcon, type VadIconName } from './vad-icon';
 
@@ -9,7 +10,7 @@ export function VadIconButton({
   icon,
   label,
   variant = 'tonal',
-  size = 42,
+  size,
   ...props
 }: Omit<PressableProps, 'children'> & {
   icon: VadIconName;
@@ -18,6 +19,8 @@ export function VadIconButton({
   size?: number;
 }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
+  const resolvedSize = size ?? (density.phone ? 38 : 42);
   const backgroundColor =
     variant === 'brand'
       ? theme.colors.brandPrimary
@@ -30,11 +33,11 @@ export function VadIconButton({
       {...props}
       accessibilityRole="button"
       accessibilityLabel={label}
-      hitSlop={6}
+      hitSlop={density.phone ? 7 : 6}
       style={({ pressed }) => ({
-        width: size,
-        height: size,
-        borderRadius: size / 2,
+        width: resolvedSize,
+        height: resolvedSize,
+        borderRadius: resolvedSize / 2,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor,
@@ -46,7 +49,7 @@ export function VadIconButton({
     >
       <VadIcon
         name={icon}
-        size={Math.round(size * 0.48)}
+        size={Math.round(resolvedSize * 0.46)}
         tone={variant === 'brand' ? 'inverse' : 'primary'}
       />
     </Pressable>

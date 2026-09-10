@@ -1,5 +1,6 @@
 import { Pressable, type PressableProps, View } from 'react-native';
 
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { VadIcon, type VadIconName } from './vad-icon';
 import { VadText } from './vad-text';
@@ -21,6 +22,7 @@ export function VadChip({
   onPress?: () => void;
 }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const palette = {
     neutral: {
       background: selected ? theme.colors.surfaceMuted : theme.colors.surfaceRaised,
@@ -54,11 +56,15 @@ export function VadChip({
     },
   } as const;
   const colors = palette[tone];
+  const staticHeight = density.phone ? 28 : 32;
+  const pressHeight = density.phone ? 32 : 36;
+  const staticPadding = density.phone ? 10 : theme.spacing.sm;
+  const pressPadding = density.phone ? 12 : theme.spacing.md;
 
   const content = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      {icon ? <VadIcon name={icon} size={14} tone={colors.icon} /> : null}
-      <VadText variant="caption" tone={colors.text}>{label}</VadText>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: density.phone ? 5 : 6 }}>
+      {icon ? <VadIcon name={icon} size={density.phone ? 13 : 14} tone={colors.icon} /> : null}
+      <VadText variant="caption" tone={colors.text} numberOfLines={1}>{label}</VadText>
     </View>
   );
 
@@ -66,8 +72,8 @@ export function VadChip({
     return (
       <View
         style={{
-          minHeight: 32,
-          paddingHorizontal: theme.spacing.sm,
+          minHeight: staticHeight,
+          paddingHorizontal: staticPadding,
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: theme.radius.pill,
@@ -87,9 +93,10 @@ export function VadChip({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
+      hitSlop={4}
       style={({ pressed }) => ({
-        minHeight: 36,
-        paddingHorizontal: theme.spacing.md,
+        minHeight: pressHeight,
+        paddingHorizontal: pressPadding,
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: theme.radius.pill,

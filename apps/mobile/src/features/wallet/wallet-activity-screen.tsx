@@ -1,17 +1,20 @@
+import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
-  useWindowDimensions,
   View,
 } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
+import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { money } from '@/features/markets/format';
 import { PaymentRow } from '@/features/wallet/wallet-screen';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getMyPaymentIntents,
@@ -20,15 +23,21 @@ import {
 
 type ActivityFilter = 'all' | 'processing' | 'settled' | 'failed';
 
+const FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'processing', label: 'Pending' },
+  { value: 'settled', label: 'Settled' },
+  { value: 'failed', label: 'Failed' },
+] as const;
+
 export function WalletActivityScreen({
   onOpenTransaction,
 }: {
   onOpenTransaction: (intent: PaymentIntentRow) => void;
 }) {
   const theme = useVadTheme();
-  const { width } = useWindowDimensions();
-  const desktopTable = width >= 920;
-  const compact = width < 380;
+  const density = useProductDensity();
+  const desktopTable = density.width >= 920;
   const [rows, setRows] = useState<PaymentIntentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -115,20 +124,19 @@ export function WalletActivityScreen({
   }, [visibleRows]);
 
   return (
-    <View style={{ gap: theme.spacing.xxl }}>
+    <View style={{ gap: density.compact ? theme.spacing.lg : theme.spacing.xl }}>
       <View
         style={{
-          flexDirection: width >= 760 ? 'row' : 'column',
-          alignItems: width >= 760 ? 'flex-end' : 'stretch',
-          gap: theme.spacing.lg,
+          flexDirection: density.width >= 760 ? 'row' : 'column',
+          alignItems: density.width >= 760 ? 'flex-end' : 'stretch',
+          gap: density.compact ? theme.spacing.sm : theme.spacing.md,
         }}
       >
-        <View style={{ flex: 1, gap: theme.spacing.xs }}>
-          <VadText variant="label" tone="brand">WALLET ACTIVITY</VadText>
-          <VadText variant="title">Your money-movement timeline.</VadText>
-          <VadText tone="secondary">
-            Deposits and withdrawals stay separate from market orders so every
-            payment intent can be reviewed on its own.
+        <View style={{ flex: 1, gap: 2 }}>
+          <VadText variant="caption" tone="brand">WALLET ACTIVITY</VadText>
+          <VadText variant="title">Money movement</VadText>
+          <VadText variant="caption" tone="secondary">
+            Deposits, withdrawals and their latest provider status.
           </VadText>
         </View>
 
@@ -136,7 +144,7 @@ export function WalletActivityScreen({
           label="Refresh"
           variant="secondary"
           size="small"
-          fullWidth={width < 520}
+          fullWidth={false}
           loading={refreshing}
           onPress={() => void load(true)}
         />
@@ -144,10 +152,10 @@ export function WalletActivityScreen({
 
       {loading ? (
         <View style={{ gap: theme.spacing.sm }}>
-          <VadSkeleton height={88} />
-          <VadSkeleton height={52} />
-          <VadSkeleton height={68} />
-          <VadSkeleton height={68} />
+          <VadSkeleton height={density.compact ? 76 : 88} radius={theme.radius.lg} />
+          <VadSkeleton height={density.compact ? 36 : 40} radius={theme.radius.pill} />
+          <VadSkeleton height={density.compact ? 60 : 66} radius={theme.radius.lg} />
+          <VadSkeleton height={density.compact ? 60 : 66} radius={theme.radius.lg} />
         </View>
       ) : error && !rows.length ? (
         <VadErrorState
@@ -168,87 +176,24 @@ export function WalletActivityScreen({
             />
           ) : null}
 
-          <View
-            style={{
-              borderTopWidth: 1,
-              borderBottomWidth: 1,
-              borderColor: theme.colors.border,
-              paddingVertical: theme.spacing.md,
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              gap: compact ? theme.spacing.md : theme.spacing.xl,
-            }}
-          >
-            <Summary label="All" value={String(counts.all)} />
-            <Summary
-              label="Processing"
-              value={String(counts.processing)}
-              tone={counts.processing ? 'warning' : 'primary'}
-            />
-            <Summary
-              label="Settled"
-              value={String(counts.settled)}
-              tone={counts.settled ? 'yes' : 'primary'}
-            />
-            <Summary
-              label="Deposits"
-              value={money(totals.deposits)}
-              tone={totals.deposits ? 'yes' : 'primary'}
-            />
-            <Summary
-              label="Withdrawals"
-              value={money(totals.withdrawals)}
-              tone={totals.withdrawals ? 'brand' : 'primary'}
-            />
-          </View>
+          <VadCard variant="raised" style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <Summary label="Deposited" value={money(totals.deposits)} tone={totals.deposits ? 'yes' : 'primary'} />
+              <Summary label="Withdrawn" value={money(totals.withdrawals)} tone={totals.withdrawals ? 'brand' : 'primary'} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+              <MiniStat label="All" value={counts.all} />
+              <MiniStat label="Pending" value={counts.processing} tone={counts.processing ? 'warning' : 'primary'} />
+              <MiniStat label="Settled" value={counts.settled} tone={counts.settled ? 'yes' : 'primary'} />
+              <MiniStat label="Failed" value={counts.failed} tone={counts.failed ? 'danger' : 'primary'} />
+            </View>
+          </VadCard>
 
-          <View
-            accessibilityRole="tablist"
-            style={{
-              flexDirection: 'row',
-              borderBottomWidth: 1,
-              borderBottomColor: theme.colors.border,
-            }}
-          >
-            {(
-              [
-                ['all', 'All'],
-                ['processing', 'Processing'],
-                ['settled', 'Settled'],
-                ['failed', 'Failed'],
-              ] as const
-            ).map(([value, label]) => {
-              const selected = filter === value;
-
-              return (
-                <Pressable
-                  key={value}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected }}
-                  onPress={() => setFilter(value)}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    minHeight: 46,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderBottomWidth: 2,
-                    borderBottomColor: selected
-                      ? theme.colors.brandPrimary
-                      : 'transparent',
-                    opacity: pressed ? 0.65 : 1,
-                  })}
-                >
-                  <VadText
-                    variant="caption"
-                    tone={selected ? 'brand' : 'secondary'}
-                    numberOfLines={1}
-                  >
-                    {label}
-                  </VadText>
-                </Pressable>
-              );
-            })}
-          </View>
+          <VadSegmentedControl
+            value={filter}
+            options={FILTERS}
+            onChange={setFilter}
+          />
 
           {visibleRows.length ? (
             desktopTable ? (
@@ -257,19 +202,13 @@ export function WalletActivityScreen({
                 onOpenTransaction={onOpenTransaction}
               />
             ) : (
-              <View style={{ gap: theme.spacing.xl }}>
+              <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
                 {groupedRows.map((group) => (
-                  <View key={group.label} style={{ gap: theme.spacing.xs }}>
+                  <View key={group.label} style={{ gap: 6 }}>
                     <VadText variant="caption" tone="tertiary">
                       {group.label.toUpperCase()}
                     </VadText>
-
-                    <View
-                      style={{
-                        borderTopWidth: 1,
-                        borderTopColor: theme.colors.border,
-                      }}
-                    >
+                    <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
                       {group.rows.map((row) => (
                         <PaymentRow
                           key={row.intent_public_id}
@@ -284,16 +223,8 @@ export function WalletActivityScreen({
             )
           ) : (
             <VadEmptyState
-              title={
-                filter === 'all'
-                  ? 'No payment activity yet'
-                  : 'Nothing in this status'
-              }
-              body={
-                filter === 'all'
-                  ? 'Your deposit and withdrawal intents will appear here.'
-                  : 'Try another activity filter.'
-              }
+              title={filter === 'all' ? 'No payment activity yet' : 'Nothing in this status'}
+              body={filter === 'all' ? 'Your deposit and withdrawal intents will appear here.' : 'Try another activity filter.'}
               actionLabel={filter !== 'all' ? 'Show all activity' : undefined}
               onAction={filter !== 'all' ? () => setFilter('all') : undefined}
             />
@@ -314,21 +245,8 @@ function DesktopActivityTable({
   const theme = useVadTheme();
 
   return (
-    <View
-      style={{
-        borderTopWidth: 1,
-        borderBottomWidth: 1,
-        borderColor: theme.colors.border,
-      }}
-    >
-      <View
-        style={{
-          minHeight: 42,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.spacing.md,
-        }}
-      >
+    <View style={{ borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.border }}>
+      <View style={{ minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
         <TableLabel flex={1.2}>TYPE</TableLabel>
         <TableLabel flex={1}>AMOUNT</TableLabel>
         <TableLabel flex={1}>STATUS</TableLabel>
@@ -338,12 +256,7 @@ function DesktopActivityTable({
 
       {rows.map((row) => {
         const classification = classify(row);
-        const statusTone =
-          classification === 'settled'
-            ? 'yes'
-            : classification === 'failed'
-              ? 'danger'
-              : 'warning';
+        const statusTone = classification === 'settled' ? 'yes' : classification === 'failed' ? 'danger' : 'warning';
 
         return (
           <Pressable
@@ -352,7 +265,7 @@ function DesktopActivityTable({
             accessibilityLabel={`Open ${row.operation.toLowerCase()} transaction`}
             onPress={() => onOpenTransaction(row)}
             style={({ pressed }) => ({
-              minHeight: 68,
+              minHeight: 62,
               flexDirection: 'row',
               alignItems: 'center',
               gap: theme.spacing.md,
@@ -362,31 +275,13 @@ function DesktopActivityTable({
             })}
           >
             <TableCell flex={1.2}>
-              <VadText variant="bodyStrong">
-                {operationLabel(row.operation)}
-              </VadText>
-              <VadText variant="caption" tone="tertiary">
-                {row.asset_code}
-              </VadText>
+              <VadText variant="bodyStrong">{operationLabel(row.operation)}</VadText>
+              <VadText variant="caption" tone="tertiary">{row.asset_code}</VadText>
             </TableCell>
-            <TableCell flex={1}>
-              <VadText variant="bodyStrong">{money(row.amount)}</VadText>
-            </TableCell>
-            <TableCell flex={1}>
-              <VadText variant="caption" tone={statusTone}>
-                {row.status.replaceAll('_', ' ')}
-              </VadText>
-            </TableCell>
-            <TableCell flex={1.2}>
-              <VadText variant="caption" tone="secondary">
-                {new Date(row.created_at).toLocaleString()}
-              </VadText>
-            </TableCell>
-            <TableCell flex={1.7}>
-              <VadText variant="caption" tone="secondary" numberOfLines={1}>
-                {row.intent_public_id}
-              </VadText>
-            </TableCell>
+            <TableCell flex={1}><VadText variant="bodyStrong">{money(row.amount)}</VadText></TableCell>
+            <TableCell flex={1}><VadText variant="caption" tone={statusTone}>{row.status.replaceAll('_', ' ')}</VadText></TableCell>
+            <TableCell flex={1.2}><VadText variant="caption" tone="secondary">{new Date(row.created_at).toLocaleString()}</VadText></TableCell>
+            <TableCell flex={1.7}><VadText variant="caption" tone="secondary" numberOfLines={1}>{row.intent_public_id}</VadText></TableCell>
           </Pressable>
         );
       })}
@@ -394,27 +289,11 @@ function DesktopActivityTable({
   );
 }
 
-function TableLabel({
-  flex,
-  children,
-}: {
-  flex: number;
-  children: string;
-}) {
-  return (
-    <View style={{ flex, minWidth: 0 }}>
-      <VadText variant="caption" tone="tertiary">{children}</VadText>
-    </View>
-  );
+function TableLabel({ flex, children }: { flex: number; children: string }) {
+  return <View style={{ flex, minWidth: 0 }}><VadText variant="caption" tone="tertiary">{children}</VadText></View>;
 }
 
-function TableCell({
-  flex,
-  children,
-}: {
-  flex: number;
-  children: React.ReactNode;
-}) {
+function TableCell({ flex, children }: { flex: number; children: ReactNode }) {
   return <View style={{ flex, minWidth: 0 }}>{children}</View>;
 }
 
@@ -423,15 +302,8 @@ function classify(row: PaymentIntentRow): Exclude<ActivityFilter, 'all'> {
   if (row.failure_code) return 'failed';
 
   const normalized = row.status.toUpperCase();
-
   if (normalized === 'SETTLED' || normalized === 'COMPLETED') return 'settled';
-
-  if (
-    normalized.includes('FAIL') ||
-    normalized.includes('REJECT') ||
-    normalized.includes('CANCEL')
-  ) return 'failed';
-
+  if (normalized.includes('FAIL') || normalized.includes('REJECT') || normalized.includes('CANCEL')) return 'failed';
   return 'processing';
 }
 
@@ -444,19 +316,8 @@ function operationLabel(operation: PaymentIntentRow['operation']) {
 function dayLabel(value: string) {
   const date = new Date(value);
   const now = new Date();
-
-  const startToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  ).getTime();
-
-  const startDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  ).getTime();
-
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   const diffDays = Math.round((startToday - startDate) / 86400000);
 
   if (diffDays === 0) return 'Today';
@@ -469,20 +330,20 @@ function dayLabel(value: string) {
   });
 }
 
-function Summary({
-  label,
-  value,
-  tone = 'primary',
-}: {
-  label: string;
-  value: string;
-  tone?: 'primary' | 'warning' | 'yes' | 'brand';
-}) {
+function Summary({ label, value, tone = 'primary' }: { label: string; value: string; tone?: 'primary' | 'yes' | 'brand' }) {
   return (
-    <View style={{ minWidth: 94, flexGrow: 1, flexBasis: 118, gap: 2 }}>
-      <VadText variant="heading" tone={tone} numberOfLines={1}>
-        {value}
-      </VadText>
+    <View style={{ flex: 1, minWidth: 0, gap: 0 }}>
+      <VadText variant="caption" tone="tertiary">{label}</VadText>
+      <VadText variant="heading" tone={tone} numberOfLines={1} adjustsFontSizeToFit>{value}</VadText>
+    </View>
+  );
+}
+
+function MiniStat({ label, value, tone = 'primary' }: { label: string; value: number; tone?: 'primary' | 'warning' | 'yes' | 'danger' }) {
+  const theme = useVadTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, minHeight: 26, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surface }}>
+      <VadText variant="caption" tone={tone}>{value}</VadText>
       <VadText variant="caption" tone="secondary">{label}</VadText>
     </View>
   );

@@ -6,6 +6,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 
 type Props = PropsWithChildren<{
@@ -21,12 +22,13 @@ export function VadScreen({
   children,
 }: Props) {
   const theme = useVadTheme();
+  const density = useProductDensity();
 
   const base = {
     flexGrow: 1,
-    padding: theme.spacing.lg,
-    paddingBottom: 96,
-    gap: theme.spacing.md,
+    padding: density.phone ? density.horizontalPadding : theme.spacing.lg,
+    paddingBottom: density.phone ? theme.spacing.xxl : 96,
+    gap: density.compact ? theme.spacing.sm : theme.spacing.md,
   } as const;
 
   if (scroll) {
@@ -50,8 +52,8 @@ export function VadScreen({
         {
           flex: 1,
           backgroundColor: theme.colors.background,
-          padding: theme.spacing.lg,
-          gap: theme.spacing.md,
+          padding: density.phone ? density.horizontalPadding : theme.spacing.lg,
+          gap: density.compact ? theme.spacing.sm : theme.spacing.md,
         },
         contentStyle,
       ]}
