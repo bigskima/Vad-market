@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   Image,
   Pressable,
   useWindowDimensions,
@@ -8,6 +7,7 @@ import {
 } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
@@ -26,6 +26,7 @@ export function ProfileEditorCard() {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 760;
+  const compact = width < 380;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [handle, setHandle] = useState('');
@@ -33,8 +34,13 @@ export function ProfileEditorCard() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoadError(null);
+
     try {
       const next = await getMyProfile();
       setProfile(next);
@@ -42,8 +48,7 @@ export function ProfileEditorCard() {
       setHandle(next.handle ?? '');
       setBio(next.bio ?? '');
     } catch (error) {
-      Alert.alert(
-        'Profile unavailable',
+      setLoadError(
         error instanceof Error ? error.message : 'Please try again.',
       );
     } finally {
@@ -60,17 +65,16 @@ export function ProfileEditorCard() {
 
   async function save() {
     setWorking(true);
+    setActionError(null);
+    setSuccessMessage(null);
+
     try {
       await updateMyProfile({ displayName, handle, bio });
       await load();
       setEditing(false);
-      Alert.alert(
-        'Profile updated',
-        'Your public VAD identity is up to date.',
-      );
+      setSuccessMessage('Your public VAD identity has been updated.');
     } catch (error) {
-      Alert.alert(
-        'Profile not updated',
+      setActionError(
         error instanceof Error ? error.message : 'Please try again.',
       );
     } finally {
@@ -80,15 +84,22 @@ export function ProfileEditorCard() {
 
   async function choose(kind: 'avatar' | 'banner') {
     setWorking(true);
+    setActionError(null);
+    setSuccessMessage(null);
+
     try {
       const image = await pickProfileImage();
       if (!image) return;
 
       await uploadProfileMedia(kind, image.bytes, image.mimeType);
       await load();
+      setSuccessMessage(
+        kind === 'avatar'
+          ? 'Profile photo updated.'
+          : 'Profile banner updated.',
+      );
     } catch (error) {
-      Alert.alert(
-        'Image not uploaded',
+      setActionError(
         error instanceof Error
           ? error.message
           : 'Please try another image.',
@@ -102,47 +113,54 @@ export function ProfileEditorCard() {
     setDisplayName(profile?.display_name ?? '');
     setHandle(profile?.handle ?? '');
     setBio(profile?.bio ?? '');
+    setActionError(null);
     setEditing(false);
   }
 
   if (loading) {
     return (
       <View style={{ gap: theme.spacing.md }}>
-        <VadSkeleton
-          height={wide ? 190 : 160}
-          radius={theme.radius.xl}
-        />
-        <VadSkeleton width={86} height={86} radius={43} />
+        <VadSkeleton height={wide ? 176 : 132} radius={theme.radius.lg} />
+        <VadSkeleton width={compact ? 72 : 84} height={compact ? 72 : 84} radius={42} />
         <VadSkeleton width="48%" height={28} />
         <VadSkeleton height={82} />
       </View>
     );
   }
 
+  if (loadError && !profile) {
+    return (
+      <VadErrorState
+        title="Profile unavailable"
+        message={loadError}
+        onRetry={() => {
+          setLoading(true);
+          void load();
+        }}
+      />
+    );
+  }
+
   const banner = profileMediaUrl(profile?.banner_path);
   const publicName =
     profile?.display_name || profile?.handle || 'VAD member';
+  const avatarSize = compact ? 72 : 84;
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
-      <View
-        style={{
-          borderRadius: theme.radius.xl,
-          overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          backgroundColor: theme.colors.surface,
-        }}
-      >
+      <View style={{ gap: theme.spacing.lg }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Change profile banner"
           onPress={() => void choose('banner')}
           disabled={working}
-          style={{
-            height: wide ? 190 : 160,
+          style={({ pressed }) => ({
+            height: wide ? 176 : 132,
+            overflow: 'hidden',
+            borderRadius: theme.radius.lg,
             backgroundColor: theme.colors.brandSoft,
-          }}
+            opacity: working ? 0.5 : pressed ? 0.78 : 1,
+          })}
         >
           {banner ? (
             <Image
@@ -154,14 +172,14 @@ export function ProfileEditorCard() {
             <View
               style={{
                 flex: 1,
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: theme.spacing.xs,
+                justifyContent: 'flex-end',
+                padding: theme.spacing.md,
+                gap: 2,
               }}
             >
-              <VadText variant="heading" tone="brand">Add a banner</VadText>
+              <VadText variant="label" tone="brand">PROFILE BANNER</VadText>
               <VadText variant="caption" tone="secondary">
-                Give your public profile a recognizable header.
+                Tap to add a recognizable public header.
               </VadText>
             </View>
           )}
@@ -171,8 +189,8 @@ export function ProfileEditorCard() {
               position: 'absolute',
               right: theme.spacing.sm,
               bottom: theme.spacing.sm,
-              borderRadius: theme.radius.pill,
               backgroundColor: theme.colors.surface,
+              borderRadius: theme.radius.md,
               paddingHorizontal: theme.spacing.sm,
               paddingVertical: theme.spacing.xs,
             }}
@@ -183,71 +201,88 @@ export function ProfileEditorCard() {
 
         <View
           style={{
-            paddingHorizontal: theme.spacing.lg,
-            paddingBottom: theme.spacing.lg,
-            gap: theme.spacing.md,
+            flexDirection: wide ? 'row' : 'column',
+            gap: theme.spacing.lg,
+            alignItems: wide ? 'flex-end' : 'flex-start',
           }}
         >
-          <View
-            style={{
-              marginTop: -46,
-              flexDirection: 'row',
-              alignItems: 'flex-end',
-              justifyContent: 'space-between',
-              gap: theme.spacing.md,
-            }}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Change profile photo"
+            onPress={() => void choose('avatar')}
+            disabled={working}
+            style={({ pressed }) => ({
+              marginTop: wide ? -54 : -46,
+              borderWidth: 3,
+              borderColor: theme.colors.background,
+              borderRadius: theme.radius.pill,
+              opacity: working ? 0.5 : pressed ? 0.75 : 1,
+            })}
           >
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Change profile photo"
-              onPress={() => void choose('avatar')}
-              disabled={working}
+            <ProfileAvatar
+              path={profile?.avatar_path}
+              name={publicName}
+              size={avatarSize}
+            />
+          </Pressable>
+
+          <View style={{ flex: 1, width: '100%', gap: theme.spacing.xs }}>
+            <View
               style={{
-                borderWidth: 4,
-                borderColor: theme.colors.surface,
-                borderRadius: 50,
+                flexDirection: 'row',
+                gap: theme.spacing.md,
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
               }}
             >
-              <ProfileAvatar
-                path={profile?.avatar_path}
-                name={publicName}
-                size={88}
-              />
-            </Pressable>
-
-            <VadButton
-              label={editing ? 'Cancel' : 'Edit profile'}
-              variant="secondary"
-              fullWidth={false}
-              size="small"
-              disabled={working}
-              onPress={
-                editing ? cancelEdit : () => setEditing(true)
-              }
-            />
-          </View>
-
-          {!editing ? (
-            <View style={{ gap: theme.spacing.xs }}>
-              <View style={{ gap: 2 }}>
+              <View style={{ flex: 1, gap: 2 }}>
                 <VadText variant="title">{publicName}</VadText>
                 <VadText variant="caption" tone="secondary">
                   @{profile?.handle || 'member'}
                 </VadText>
               </View>
 
-              {profile?.bio ? (
+              <VadButton
+                label={editing ? 'Cancel' : 'Edit profile'}
+                variant="secondary"
+                fullWidth={false}
+                size="small"
+                disabled={working}
+                onPress={editing ? cancelEdit : () => setEditing(true)}
+              />
+            </View>
+
+            {!editing ? (
+              profile?.bio ? (
                 <VadText tone="secondary">{profile.bio}</VadText>
               ) : (
                 <VadText variant="caption" tone="secondary">
                   Add a short bio so people understand the perspective behind
                   your convictions.
                 </VadText>
-              )}
-            </View>
-          ) : null}
+              )
+            ) : null}
+          </View>
         </View>
       </View>
+
+      {successMessage ? (
+        <InlineStatus
+          tone="yes"
+          title="Saved"
+          message={successMessage}
+          onDismiss={() => setSuccessMessage(null)}
+        />
+      ) : null}
+
+      {actionError ? (
+        <InlineStatus
+          tone="danger"
+          title="Update failed"
+          message={actionError}
+          onDismiss={() => setActionError(null)}
+        />
+      ) : null}
 
       {editing ? (
         <View style={{ gap: theme.spacing.lg }}>
@@ -270,7 +305,10 @@ export function ProfileEditorCard() {
               <VadInput
                 label="Display name"
                 value={displayName}
-                onChangeText={setDisplayName}
+                onChangeText={(value) => {
+                  setDisplayName(value);
+                  setActionError(null);
+                }}
                 placeholder="Your public name"
                 returnKeyType="next"
               />
@@ -280,7 +318,10 @@ export function ProfileEditorCard() {
               <VadInput
                 label="Handle"
                 value={handle}
-                onChangeText={setHandle}
+                onChangeText={(value) => {
+                  setHandle(value);
+                  setActionError(null);
+                }}
                 placeholder="yourhandle"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -292,7 +333,10 @@ export function ProfileEditorCard() {
           <VadInput
             label="Bio"
             value={bio}
-            onChangeText={setBio}
+            onChangeText={(value) => {
+              setBio(value);
+              setActionError(null);
+            }}
             placeholder="What should people know about your perspective?"
             multiline
             hint={
@@ -304,7 +348,7 @@ export function ProfileEditorCard() {
 
           <View
             style={{
-              flexDirection: 'row',
+              flexDirection: compact ? 'column' : 'row',
               gap: theme.spacing.sm,
             }}
           >
@@ -329,18 +373,25 @@ export function ProfileEditorCard() {
           <View style={{ gap: 2 }}>
             <VadText variant="heading">Profile media</VadText>
             <VadText variant="caption" tone="secondary">
-              Update your photo or banner without changing your public details.
+              Update your photo or banner without changing public details.
             </VadText>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+            }}
+          >
             <MediaAction
               label="Profile photo"
+              detail="Change your creator avatar"
               onPress={() => void choose('avatar')}
               disabled={working}
             />
             <MediaAction
               label="Banner"
+              detail="Change your public profile header"
               onPress={() => void choose('banner')}
               disabled={working}
             />
@@ -353,10 +404,12 @@ export function ProfileEditorCard() {
 
 function MediaAction({
   label,
+  detail,
   onPress,
   disabled,
 }: {
   label: string;
+  detail: string;
   onPress: () => void;
   disabled: boolean;
 }) {
@@ -368,19 +421,63 @@ function MediaAction({
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
-        flex: 1,
         minHeight: 64,
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        borderRadius: theme.radius.lg,
-        paddingHorizontal: theme.spacing.md,
-        backgroundColor: theme.colors.surface,
-        opacity: disabled ? 0.5 : pressed ? 0.7 : 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+        paddingVertical: theme.spacing.sm,
+        opacity: disabled ? 0.5 : pressed ? 0.65 : 1,
       })}
     >
-      <VadText variant="label">{label}</VadText>
-      <VadText variant="caption" tone="tertiary">Change →</VadText>
+      <View style={{ flex: 1, gap: 2 }}>
+        <VadText variant="bodyStrong">{label}</VadText>
+        <VadText variant="caption" tone="secondary">{detail}</VadText>
+      </View>
+
+      <VadText variant="label" tone="brand">Change</VadText>
     </Pressable>
+  );
+}
+
+function InlineStatus({
+  tone,
+  title,
+  message,
+  onDismiss,
+}: {
+  tone: 'yes' | 'danger';
+  title: string;
+  message: string;
+  onDismiss: () => void;
+}) {
+  const theme = useVadTheme();
+  const positive = tone === 'yes';
+
+  return (
+    <View
+      style={{
+        borderLeftWidth: 3,
+        borderLeftColor: positive
+          ? theme.colors.yes
+          : theme.colors.danger,
+        backgroundColor: positive
+          ? theme.colors.yesSoft
+          : theme.colors.noSoft,
+        padding: theme.spacing.md,
+        gap: theme.spacing.xs,
+      }}
+    >
+      <VadText variant="caption" tone={tone}>{title.toUpperCase()}</VadText>
+      <VadText variant="caption" tone="secondary">{message}</VadText>
+      <VadButton
+        label="Dismiss"
+        variant="ghost"
+        size="small"
+        fullWidth={false}
+        onPress={onDismiss}
+      />
+    </View>
   );
 }

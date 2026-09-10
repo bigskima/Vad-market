@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   Linking,
   Pressable,
   useWindowDimensions,
@@ -22,6 +21,7 @@ export function KycCard() {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 760;
+  const compact = width < 380;
   const [status, setStatus] = useState<KycStatus>({
     status: 'NOT_STARTED',
     providerCode: 'DIDIT',
@@ -30,6 +30,8 @@ export function KycCard() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -58,6 +60,9 @@ export function KycCard() {
     if (!status.providerConfigured) return;
 
     setWorking(true);
+    setActionError(null);
+    setActionMessage(null);
+
     try {
       const session = await startDiditKyc();
 
@@ -68,11 +73,13 @@ export function KycCard() {
       }
 
       await Linking.openURL(session.verificationUrl);
-      await load();
-    } catch (error) {
-      Alert.alert(
-        'Verification unavailable',
-        error instanceof Error ? error.message : 'Please try again.',
+      setActionMessage(
+        'Verification opened with the identity provider. Return here and refresh your status when you finish.',
+      );
+      void load();
+    } catch (reason) {
+      setActionError(
+        reason instanceof Error ? reason.message : 'Please try again.',
       );
     } finally {
       setWorking(false);
@@ -82,9 +89,9 @@ export function KycCard() {
   if (loading) {
     return (
       <View style={{ gap: theme.spacing.md }}>
-        <VadSkeleton height={140} radius={theme.radius.xl} />
-        <VadSkeleton height={72} />
-        <VadSkeleton height={72} />
+        <VadSkeleton height={124} radius={theme.radius.lg} />
+        <VadSkeleton height={68} />
+        <VadSkeleton height={68} />
       </View>
     );
   }
@@ -128,27 +135,29 @@ export function KycCard() {
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
-          gap: theme.spacing.md,
+          gap: theme.spacing.xl,
           alignItems: 'stretch',
         }}
       >
         <View
           style={{
             flex: 1.05,
-            borderRadius: theme.radius.xl,
-            backgroundColor: verified
-              ? theme.colors.yesSoft
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: verified
+              ? theme.colors.yes
               : inProgress
-                ? theme.colors.warningSoft
-                : theme.colors.surfaceRaised,
-            padding: theme.spacing.xl,
+                ? theme.colors.warning
+                : theme.colors.border,
+            paddingVertical: theme.spacing.lg,
             gap: theme.spacing.md,
           }}
         >
           <View
             style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
+              flexDirection: compact ? 'column' : 'row',
+              alignItems: compact ? 'flex-start' : 'flex-start',
+              justifyContent: 'space-between',
               gap: theme.spacing.sm,
             }}
           >
@@ -165,26 +174,15 @@ export function KycCard() {
               </VadText>
             </View>
 
-            <View
-              style={{
-                borderRadius: theme.radius.pill,
-                backgroundColor: theme.colors.surface,
-                paddingHorizontal: theme.spacing.sm,
-                paddingVertical: theme.spacing.xs,
-              }}
-            >
-              <VadText variant="caption" tone={statusTone}>
-                {statusLabel}
-              </VadText>
-            </View>
+            <VadText variant="caption" tone={statusTone}>
+              {statusLabel}
+            </VadText>
           </View>
 
           <View
             style={{
               borderTopWidth: 1,
               borderTopColor: theme.colors.border,
-              paddingTop: theme.spacing.md,
-              gap: theme.spacing.xs,
             }}
           >
             <StatusFact
@@ -212,6 +210,7 @@ export function KycCard() {
           }}
         >
           <VerificationStep
+            number="1"
             label="Start verification"
             detail={
               status.providerConfigured
@@ -227,6 +226,7 @@ export function KycCard() {
             }
           />
           <VerificationStep
+            number="2"
             label="Provider review"
             detail={
               inProgress
@@ -244,11 +244,12 @@ export function KycCard() {
             }
           />
           <VerificationStep
+            number="3"
             label="Verified"
             detail={
               verified
                 ? 'Identity assurance can now be used by live capability policy.'
-                : 'Verification unlocks only the capabilities that require it.'
+                : 'Verification unlocks only capabilities that require it.'
             }
             state={verified ? 'complete' : 'waiting'}
           />
@@ -256,37 +257,56 @@ export function KycCard() {
       </View>
 
       {!status.providerConfigured && !verified ? (
-        <View
-          style={{
-            borderLeftWidth: 3,
-            borderLeftColor: theme.colors.warning,
-            borderRadius: theme.radius.md,
-            backgroundColor: theme.colors.warningSoft,
-            padding: theme.spacing.md,
-            gap: 2,
-          }}
-        >
-          <VadText variant="caption" tone="warning">
-            VERIFICATION ROUTE UNAVAILABLE
-          </VadText>
-          <VadText variant="caption" tone="secondary">
-            {status.providerCode} is selected, but its active runtime route is
-            not currently available.
-          </VadText>
-        </View>
+        <InlineStatus
+          tone="warning"
+          title="Verification route unavailable"
+          message={
+            (status.providerCode ?? 'The selected provider') +
+            ' is selected, but its active runtime route is not currently available.'
+          }
+        />
+      ) : null}
+
+      {actionMessage ? (
+        <InlineStatus
+          tone="yes"
+          title="Verification opened"
+          message={actionMessage}
+        />
+      ) : null}
+
+      {actionError ? (
+        <InlineStatus
+          tone="danger"
+          title="Verification unavailable"
+          message={actionError}
+        />
       ) : null}
 
       {!verified ? (
-        <VadButton
-          label={
-            inProgress
-              ? 'Continue verification'
-              : 'Start verification'
-          }
-          loading={working}
-          disabled={!status.providerConfigured}
-          onPress={() => void start()}
-        />
+        <View
+          style={{
+            flexDirection: compact ? 'column' : 'row',
+            gap: theme.spacing.sm,
+          }}
+        >
+          <VadButton
+            label={inProgress ? 'Continue verification' : 'Start verification'}
+            loading={working}
+            disabled={!status.providerConfigured}
+            onPress={() => void start()}
+            style={{ flex: 1 }}
+          />
+          {inProgress ? (
+            <VadButton
+              label="Refresh status"
+              variant="secondary"
+              disabled={working}
+              onPress={() => void load()}
+              style={{ flex: 1 }}
+            />
+          ) : null}
+        </View>
       ) : (
         <Pressable
           accessibilityRole="button"
@@ -311,25 +331,34 @@ export function KycCard() {
 }
 
 function StatusFact({ label, value }: { label: string; value: string }) {
+  const theme = useVadTheme();
+
   return (
     <View
       style={{
+        minHeight: 44,
         flexDirection: 'row',
-        gap: 12,
-        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
       }}
     >
-      <VadText variant="caption" tone="secondary">{label}</VadText>
-      <VadText variant="caption">{value}</VadText>
+      <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>
+        {label}
+      </VadText>
+      <VadText variant="bodyStrong">{value}</VadText>
     </View>
   );
 }
 
 function VerificationStep({
+  number,
   label,
   detail,
   state,
 }: {
+  number: string;
   label: string;
   detail: string;
   state: 'complete' | 'active' | 'waiting' | 'blocked';
@@ -348,45 +377,70 @@ function VerificationStep({
   return (
     <View
       style={{
-        minHeight: 76,
+        minHeight: 72,
         paddingVertical: theme.spacing.md,
         flexDirection: 'row',
         gap: theme.spacing.md,
-        alignItems: 'center',
+        alignItems: 'flex-start',
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
       }}
     >
-      <View
-        style={{
-          width: 30,
-          height: 30,
-          borderRadius: 15,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor:
-            state === 'complete'
-              ? theme.colors.yesSoft
-              : state === 'active'
-                ? theme.colors.brandSoft
-                : state === 'blocked'
-                  ? theme.colors.warningSoft
-                  : theme.colors.surfaceRaised,
-        }}
-      >
-        <VadText variant="caption" tone={tone}>
-          {state === 'complete'
-            ? '✓'
-            : state === 'active'
-              ? '•'
-              : '–'}
-        </VadText>
-      </View>
+      <VadText variant="label" tone={tone}>{number}</VadText>
 
       <View style={{ flex: 1, gap: 2 }}>
         <VadText variant="bodyStrong">{label}</VadText>
         <VadText variant="caption" tone="secondary">{detail}</VadText>
       </View>
+
+      <VadText variant="caption" tone={tone}>
+        {state === 'complete'
+          ? 'DONE'
+          : state === 'active'
+            ? 'ACTIVE'
+            : state === 'blocked'
+              ? 'BLOCKED'
+              : 'WAITING'}
+      </VadText>
+    </View>
+  );
+}
+
+function InlineStatus({
+  tone,
+  title,
+  message,
+}: {
+  tone: 'yes' | 'warning' | 'danger';
+  title: string;
+  message: string;
+}) {
+  const theme = useVadTheme();
+  const borderColor =
+    tone === 'yes'
+      ? theme.colors.yes
+      : tone === 'warning'
+        ? theme.colors.warning
+        : theme.colors.danger;
+  const backgroundColor =
+    tone === 'yes'
+      ? theme.colors.yesSoft
+      : tone === 'warning'
+        ? theme.colors.warningSoft
+        : theme.colors.noSoft;
+
+  return (
+    <View
+      style={{
+        borderLeftWidth: 3,
+        borderLeftColor: borderColor,
+        backgroundColor,
+        padding: theme.spacing.md,
+        gap: 2,
+      }}
+    >
+      <VadText variant="caption" tone={tone}>{title.toUpperCase()}</VadText>
+      <VadText variant="caption" tone="secondary">{message}</VadText>
     </View>
   );
 }

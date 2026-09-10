@@ -17,6 +17,7 @@ export default function AccountScreen() {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 860;
+  const compact = width < 380;
   const email = session?.user.email ?? session?.user.phone ?? 'VAD member';
   const initial = email.trim().charAt(0).toUpperCase() || 'V';
 
@@ -32,7 +33,11 @@ export default function AccountScreen() {
         style={{
           flexDirection: wide ? 'row' : 'column',
           alignItems: 'flex-start',
-          gap: wide ? theme.spacing.xxxl : theme.spacing.xxl,
+          gap: wide
+          ? theme.spacing.xxxl
+          : compact
+            ? theme.spacing.xl
+            : theme.spacing.xxl,
         }}
       >
         <View
@@ -203,7 +208,7 @@ function AccountRow({
         <VadText variant="bodyStrong">{title}</VadText>
         <VadText variant="caption" tone="secondary">{subtitle}</VadText>
       </View>
-      <VadText variant="heading" tone="tertiary">›</VadText>
+      <VadText variant="label" tone="brand">Open</VadText>
     </Pressable>
   );
 }

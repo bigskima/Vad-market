@@ -77,12 +77,13 @@ export function AdminDashboardScreen() {
         <View
           style={{
             flex: 0.9,
-            borderRadius: theme.radius.xl,
-            backgroundColor:
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor:
               attention > 0
-                ? theme.colors.warningSoft
-                : theme.colors.yesSoft,
-            padding: theme.spacing.xl,
+                ? theme.colors.warning
+                : theme.colors.yes,
+            paddingVertical: theme.spacing.lg,
             gap: theme.spacing.sm,
           }}
         >
@@ -238,7 +239,7 @@ function WorkspaceRow({
         >
           {count}
         </VadText>
-        <VadText variant="caption" tone="tertiary">›</VadText>
+        <VadText variant="caption" tone="brand">Open</VadText>
       </View>
     </Pressable>
   );
