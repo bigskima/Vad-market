@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Pressable,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { VadCard } from '@/components/ui/vad-card';
+import { VadChip } from '@/components/ui/vad-chip';
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getProviderReadiness } from '@/services/payment-api';
@@ -36,23 +36,18 @@ export function FundingOverview({
   policyLoading?: boolean;
 }) {
   const theme = useVadTheme();
-  const { width } = useWindowDimensions();
-  const wide = width >= 760;
+  const density = useProductDensity();
+  const wide = density.width >= 760;
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
-
     try {
       setReadiness(await getProviderReadiness());
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : 'Payment readiness could not be loaded.',
-      );
+      setError(reason instanceof Error ? reason.message : 'Payment readiness could not be loaded.');
     } finally {
       setLoading(false);
     }
@@ -65,348 +60,115 @@ export function FundingOverview({
 
   if (loading) {
     return (
-      <View style={{ gap: theme.spacing.md }}>
-        <VadSkeleton height={120} radius={theme.radius.xl} />
-        <VadSkeleton height={72} />
-        <VadSkeleton height={72} />
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadSkeleton height={density.compact ? 96 : 112} radius={density.cardRadius} />
+        <VadSkeleton height={96} radius={density.cardRadius} />
+        <VadSkeleton height={126} radius={density.cardRadius} />
       </View>
     );
   }
 
   if (error && !readiness) {
-    return (
-      <VadErrorState
-        title="Payment readiness unavailable"
-        message={error}
-        onRetry={() => {
-          setLoading(true);
-          void load();
-        }}
-      />
-    );
+    return <VadErrorState title="Payment readiness unavailable" message={error} onRetry={() => { setLoading(true); void load(); }} />;
   }
 
   const depositReady = Boolean(readiness?.depositConfigured);
   const withdrawalReady = Boolean(readiness?.withdrawalConfigured);
   const kycReady = Boolean(readiness?.kycConfigured);
-  const providerReadyCount = [depositReady, withdrawalReady, kycReady].filter(
-    Boolean,
-  ).length;
+  const providerReadyCount = [depositReady, withdrawalReady, kycReady].filter(Boolean).length;
 
   return (
-    <View style={{ gap: theme.spacing.xxl }}>
-      {error ? (
-        <VadErrorState
-          title="Payment readiness refresh failed"
-          message={error}
-          onRetry={() => void load()}
-        />
-      ) : null}
+    <View style={{ gap: density.sectionGap }}>
+      {error ? <VadErrorState title="Payment readiness refresh failed" message={error} onRetry={() => void load()} /> : null}
 
-      <View
-        style={{
-          flexDirection: wide ? 'row' : 'column',
-          gap: theme.spacing.xl,
-          alignItems: wide ? 'flex-end' : 'stretch',
-        }}
-      >
-        <View style={{ flex: 1, gap: theme.spacing.xs }}>
-          <VadText variant="label" tone="brand">FUNDING & WITHDRAWALS</VadText>
-          <VadText variant="title">Know what is ready before moving money.</VadText>
-          <VadText tone="secondary">
-            Provider routing and account policy are separate checks. A provider
-            can be configured while deposits or withdrawals remain disabled by
-            the current VAD launch policy.
-          </VadText>
+      <VadCard variant="brand" style={{ gap: theme.spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <VadText variant="caption" tone="brand">FUNDING & WITHDRAWALS</VadText>
+            <VadText variant="heading">Money movement readiness</VadText>
+            <VadText variant="caption" tone="secondary">Provider setup and account policy are checked separately before money moves.</VadText>
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: 2 }}>
+            <VadText variant="display" tone={providerReadyCount === 3 ? 'yes' : providerReadyCount ? 'brand' : 'warning'}>{providerReadyCount}/3</VadText>
+            <VadText variant="caption" tone="tertiary">routes ready</VadText>
+          </View>
         </View>
+      </VadCard>
 
-        <View
-          style={{
-            minWidth: wide ? 260 : undefined,
-            gap: 2,
-            alignItems: wide ? 'flex-end' : 'flex-start',
-          }}
-        >
-          <VadText variant="caption" tone="secondary">PROVIDER READINESS</VadText>
-          <VadText
-            variant="display"
-            tone={
-              providerReadyCount === 3
-                ? 'yes'
-                : providerReadyCount
-                  ? 'brand'
-                  : 'warning'
-            }
-          >
-            {providerReadyCount}/3
-          </VadText>
-          <VadText variant="caption" tone="tertiary">
-            external checks configured
-          </VadText>
-        </View>
+      <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
+        <VadCard variant="raised" style={{ flex: 1, gap: theme.spacing.xs }}>
+          <VadText variant="bodyStrong">External routes</VadText>
+          <StatusFact label="Deposit provider" ready={depositReady} />
+          <StatusFact label="Withdrawal provider" ready={withdrawalReady} />
+          <StatusFact label={`${readiness?.kycProvider ?? 'Identity'} verification`} ready={kycReady} />
+        </VadCard>
+
+        <VadCard variant="raised" style={{ flex: 1, gap: theme.spacing.xs }}>
+          <VadText variant="bodyStrong">Account policy</VadText>
+          <PolicyFact label="Deposits" allowed={depositAllowed} loading={policyLoading} reason={depositReason} />
+          <PolicyFact label="Withdrawals" allowed={withdrawalAllowed} loading={policyLoading} reason={withdrawalReason} />
+        </VadCard>
       </View>
 
-      <View style={{ gap: theme.spacing.sm }}>
-        <VadText variant="heading">External routes</VadText>
-        <View
-          style={{
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor: theme.colors.border,
-          }}
-        >
-          <StatusFact label="Deposit provider route" ready={depositReady} />
-          <StatusFact label="Withdrawal provider route" ready={withdrawalReady} />
-          <StatusFact
-            label={(readiness?.kycProvider ?? 'Identity') + ' verification'}
-            ready={kycReady}
-          />
+      <VadCard style={{ gap: theme.spacing.xs }}>
+        <View style={{ gap: 2, marginBottom: theme.spacing.xs }}>
+          <VadText variant="bodyStrong">Money movement</VadText>
+          <VadText variant="caption" tone="secondary">Each action opens its dedicated reviewed flow and checks live policy again.</VadText>
         </View>
-      </View>
+        <ReadinessRow title="Deposit NGN" detail={depositAllowed ? 'Add funds to your VAD wallet' : runtimeCapabilityReason(depositReason)} ready={depositReady && depositAllowed} statusLabel={policyLoading ? 'CHECKING' : !depositAllowed ? 'BLOCKED' : depositReady ? 'READY' : 'ROUTE OFF'} icon="arrowDown" onPress={() => router.push('/wallet/deposit')} />
+        <ReadinessRow title="Withdraw NGN" detail={withdrawalAllowed ? 'Move available funds out' : runtimeCapabilityReason(withdrawalReason)} ready={withdrawalReady && withdrawalAllowed} statusLabel={policyLoading ? 'CHECKING' : !withdrawalAllowed ? 'BLOCKED' : withdrawalReady ? 'READY' : 'ROUTE OFF'} icon="arrowUp" onPress={() => router.push('/wallet/withdraw')} />
+        <ReadinessRow title="Identity verification" detail={readiness?.kycProvider ? `${readiness.kycProvider} verification status` : 'Verification route'} ready={kycReady} statusLabel={kycReady ? 'READY' : 'CHECK'} icon="account" onPress={() => router.push('/account/verification')} />
+        <ReadinessRow title="Payment activity" detail="Deposits, withdrawals and current states" ready statusLabel="OPEN" icon="activity" onPress={() => router.push('/wallet/activity')} />
+      </VadCard>
 
-      <View style={{ gap: theme.spacing.sm }}>
-        <VadText variant="heading">Account policy</VadText>
-        <View
-          style={{
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor: theme.colors.border,
-          }}
-        >
-          <PolicyFact
-            label="Deposits"
-            allowed={depositAllowed}
-            loading={policyLoading}
-            reason={depositReason}
-          />
-          <PolicyFact
-            label="Withdrawals"
-            allowed={withdrawalAllowed}
-            loading={policyLoading}
-            reason={withdrawalReason}
-          />
-        </View>
-      </View>
-
-      <View style={{ gap: theme.spacing.sm }}>
-        <View style={{ gap: 2 }}>
-          <VadText variant="heading">Money movement</VadText>
-          <VadText variant="caption" tone="secondary">
-            Each action opens a dedicated reviewed flow and re-checks live policy.
-          </VadText>
-        </View>
-
-        <View
-          style={{
-            borderTopWidth: 1,
-            borderTopColor: theme.colors.border,
-          }}
-        >
-          <ReadinessRow
-            title="Deposit"
-            detail={
-              depositAllowed
-                ? 'Add NGN to your VAD wallet'
-                : runtimeCapabilityReason(depositReason)
-            }
-            ready={depositReady && depositAllowed}
-            statusLabel={
-              policyLoading
-                ? 'CHECKING'
-                : !depositAllowed
-                  ? 'POLICY BLOCKED'
-                  : depositReady
-                    ? 'READY'
-                    : 'ROUTE NOT READY'
-            }
-            onPress={() => router.push('/wallet/deposit')}
-          />
-          <ReadinessRow
-            title="Withdrawal"
-            detail={
-              withdrawalAllowed
-                ? 'Move available NGN out of VAD'
-                : runtimeCapabilityReason(withdrawalReason)
-            }
-            ready={withdrawalReady && withdrawalAllowed}
-            statusLabel={
-              policyLoading
-                ? 'CHECKING'
-                : !withdrawalAllowed
-                  ? 'POLICY BLOCKED'
-                  : withdrawalReady
-                    ? 'READY'
-                    : 'ROUTE NOT READY'
-            }
-            onPress={() => router.push('/wallet/withdraw')}
-          />
-          <ReadinessRow
-            title="Identity verification"
-            detail={
-              readiness?.kycProvider
-                ? readiness.kycProvider + ' verification status'
-                : 'Verification route'
-            }
-            ready={kycReady}
-            onPress={() => router.push('/account/verification')}
-          />
-          <ReadinessRow
-            title="Payment activity"
-            detail="See deposits, withdrawals and their current state"
-            ready
-            statusLabel="OPEN"
-            onPress={() => router.push('/wallet/activity')}
-          />
-        </View>
-      </View>
-
-      {readiness?.generatedAt ? (
-        <VadText variant="caption" tone="tertiary">
-          Provider readiness checked{' '}
-          {new Date(readiness.generatedAt).toLocaleString()}.
-        </VadText>
-      ) : null}
-
-      <VadText variant="caption" tone="tertiary">
-        Provider readiness never bypasses identity, balance, fee, limit or
-        capability policy. Those checks remain backend-authoritative.
-      </VadText>
+      <VadCard variant="raised" style={{ gap: 2 }}>
+        <VadText variant="caption" tone="secondary">Provider readiness never bypasses identity, balance, fee, limit or capability policy. Those checks remain backend-authoritative.</VadText>
+        {readiness?.generatedAt ? <VadText variant="caption" tone="tertiary">Checked {new Date(readiness.generatedAt).toLocaleString()}</VadText> : null}
+      </VadCard>
     </View>
   );
 }
 
-function StatusFact({
-  label,
-  ready,
-}: {
-  label: string;
-  ready: boolean;
-}) {
+function StatusFact({ label, ready }: { label: string; ready: boolean }) {
   const theme = useVadTheme();
-
   return (
-    <View
-      style={{
-        minHeight: 58,
-        paddingVertical: theme.spacing.sm,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-      }}
-    >
-      <View
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 14,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: ready
-            ? theme.colors.yesSoft
-            : theme.colors.warningSoft,
-        }}
-      >
-        <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>
-          {ready ? '✓' : '!'}
-        </VadText>
+    <View style={{ minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+      <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: ready ? theme.colors.yesSoft : theme.colors.warningSoft }}>
+        <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>{ready ? '✓' : '!'}</VadText>
       </View>
-
-      <VadText variant="bodyStrong" style={{ flex: 1 }}>{label}</VadText>
-      <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>
-        {ready ? 'READY' : 'NOT READY'}
-      </VadText>
+      <VadText variant="caption" style={{ flex: 1 }}>{label}</VadText>
+      <VadChip label={ready ? 'Ready' : 'Not ready'} tone={ready ? 'yes' : 'warning'} />
     </View>
   );
 }
 
-function PolicyFact({
-  label,
-  allowed,
-  loading,
-  reason,
-}: {
-  label: string;
-  allowed: boolean;
-  loading: boolean;
-  reason?: string;
-}) {
+function PolicyFact({ label, allowed, loading, reason }: { label: string; allowed: boolean; loading: boolean; reason?: string }) {
   const theme = useVadTheme();
-
   return (
-    <View
-      style={{
-        minHeight: 68,
-        paddingVertical: theme.spacing.sm,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-      }}
-    >
-      <View style={{ flex: 1, gap: 2 }}>
-        <VadText variant="bodyStrong">{label}</VadText>
-        <VadText variant="caption" tone="secondary">
-          {loading
-            ? runtimeCapabilityReason('CAPABILITIES_LOADING')
-            : allowed
-              ? 'Enabled for this account by current VAD policy.'
-              : runtimeCapabilityReason(reason)}
-        </VadText>
+    <View style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+      <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+        <VadText variant="caption">{label}</VadText>
+        <VadText variant="caption" tone="secondary" numberOfLines={2}>{loading ? runtimeCapabilityReason('CAPABILITIES_LOADING') : allowed ? 'Enabled by current account policy.' : runtimeCapabilityReason(reason)}</VadText>
       </View>
-
-      <VadText
-        variant="caption"
-        tone={loading ? 'warning' : allowed ? 'yes' : 'warning'}
-      >
-        {loading ? 'CHECKING' : allowed ? 'ENABLED' : 'NOT ENABLED'}
-      </VadText>
+      <VadChip label={loading ? 'Checking' : allowed ? 'Enabled' : 'Blocked'} tone={allowed && !loading ? 'yes' : 'warning'} />
     </View>
   );
 }
 
-function ReadinessRow({
-  title,
-  detail,
-  ready,
-  statusLabel,
-  onPress,
-}: {
-  title: string;
-  detail: string;
-  ready: boolean;
-  statusLabel?: string;
-  onPress: () => void;
-}) {
+function ReadinessRow({ title, detail, ready, statusLabel, icon, onPress }: { title: string; detail: string; ready: boolean; statusLabel: string; icon: 'arrowDown' | 'arrowUp' | 'account' | 'activity'; onPress: () => void }) {
   const theme = useVadTheme();
-
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        minHeight: 76,
-        paddingVertical: theme.spacing.md,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-        opacity: pressed ? 0.65 : 1,
-      })}
-    >
-      <View style={{ flex: 1, gap: 2 }}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border, opacity: pressed ? 0.66 : 1 })}>
+      <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: ready ? theme.colors.yesSoft : theme.colors.surfaceRaised }}>
+        <VadIcon name={icon} size={17} tone={ready ? 'yes' : 'secondary'} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
         <VadText variant="bodyStrong">{title}</VadText>
-        <VadText variant="caption" tone="secondary">{detail}</VadText>
+        <VadText variant="caption" tone="secondary" numberOfLines={2}>{detail}</VadText>
       </View>
-
       <View style={{ alignItems: 'flex-end', gap: 2 }}>
-        <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>
-          {statusLabel ?? (ready ? 'READY' : 'NOT READY')}
-        </VadText>
-        <VadText variant="caption" tone="tertiary">›</VadText>
+        <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>{statusLabel}</VadText>
+        <VadIcon name="chevronRight" size={14} tone="tertiary" />
       </View>
     </Pressable>
   );

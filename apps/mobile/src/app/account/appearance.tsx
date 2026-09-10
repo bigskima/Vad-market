@@ -1,293 +1,118 @@
-import {
-  Pressable,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { VadCard } from '@/components/ui/vad-card';
+import { VadChip } from '@/components/ui/vad-chip';
 import { VadText } from '@/components/ui/vad-text';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { VadThemePreference } from '@/theme/tokens';
 
-const options: {
-  value: VadThemePreference;
-  title: string;
-  subtitle: string;
-  glyph: string;
-}[] = [
-  {
-    value: 'system',
-    title: 'System',
-    subtitle: 'Follow your phone or browser appearance automatically.',
-    glyph: '◐',
-  },
-  {
-    value: 'light',
-    title: 'Light',
-    subtitle: 'Use bright surfaces with dark text.',
-    glyph: '☀',
-  },
-  {
-    value: 'dark',
-    title: 'Dark',
-    subtitle: 'Use low-light surfaces with bright text.',
-    glyph: '☾',
-  },
+const options: { value: VadThemePreference; title: string; subtitle: string; glyph: string }[] = [
+  { value: 'system', title: 'System', subtitle: 'Follow this device automatically.', glyph: '◐' },
+  { value: 'light', title: 'Light', subtitle: 'Bright surfaces with dark text.', glyph: '☀' },
+  { value: 'dark', title: 'Dark', subtitle: 'Low-light surfaces with bright text.', glyph: '☾' },
 ];
 
 export default function AppearanceScreen() {
   const theme = useVadTheme();
-  const { width } = useWindowDimensions();
-  const wide = width >= 820;
-  const compact = width < 380;
+  const density = useProductDensity();
+  const wide = density.width >= 820;
 
   return (
     <ProductSubpage title="Appearance" maxWidth={1040}>
-      <View
-        style={{
-          flexDirection: width >= 680 ? 'row' : 'column',
-          alignItems: width >= 680 ? 'flex-end' : 'stretch',
-          gap: theme.spacing.lg,
-        }}
-      >
-        <View style={{ flex: 1, gap: theme.spacing.xs }}>
-          <VadText variant="label" tone="brand">APPEARANCE</VadText>
-          <VadText variant="title">Make VAD comfortable on this device.</VadText>
-          <VadText tone="secondary">
-            System follows your device automatically. Light and Dark remain
-            fixed until you change them.
-          </VadText>
-        </View>
-
-        <View style={{ gap: 2, alignItems: width >= 680 ? 'flex-end' : 'flex-start' }}>
-          <VadText variant="caption" tone="secondary">ACTIVE THEME</VadText>
-          <VadText variant="heading" tone="brand">
-            {theme.mode === 'dark' ? 'Dark' : 'Light'}
-          </VadText>
-          <VadText variant="caption" tone="tertiary">
-            {theme.preference === 'system' ? 'Following system' : 'Fixed preference'}
-          </VadText>
-        </View>
-      </View>
-
-      <View
-        style={{
-          flexDirection: wide ? 'row' : 'column',
-          alignItems: 'flex-start',
-          gap: wide ? theme.spacing.xxxl : theme.spacing.xl,
-        }}
-      >
-        <View style={{ flex: 1, width: '100%', gap: theme.spacing.sm }}>
-          <View style={{ gap: 2 }}>
-            <VadText variant="heading">Theme preference</VadText>
-            <VadText variant="caption" tone="secondary">
-              Saved locally so the choice applies consistently on this device.
-            </VadText>
+      <View style={{ gap: density.sectionGap }}>
+        <VadCard variant="brand" style={{ gap: theme.spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <VadText variant="caption" tone="brand">APPEARANCE</VadText>
+              <VadText variant="heading">Theme on this device</VadText>
+              <VadText variant="caption" tone="secondary">System follows your device. Light and Dark stay fixed until you change them.</VadText>
+            </View>
+            <VadChip label={theme.mode === 'dark' ? 'Dark' : 'Light'} tone="brand" />
           </View>
+        </VadCard>
 
-          <View
-            accessibilityRole="radiogroup"
-            style={{
-              borderTopWidth: 1,
-              borderTopColor: theme.colors.border,
-            }}
-          >
-            {options.map((option) => {
-              const selected = theme.preference === option.value;
-
-              return (
-                <Pressable
-                  key={option.value}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={option.title}
-                  accessibilityHint={option.subtitle}
-                  onPress={() => theme.setPreference(option.value)}
-                  style={({ pressed }) => ({
-                    minHeight: compact ? 76 : 82,
-                    borderBottomWidth: 1,
-                    borderBottomColor: theme.colors.border,
-                    paddingVertical: theme.spacing.sm,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: theme.spacing.md,
-                    opacity: pressed ? 0.65 : 1,
-                  })}
-                >
-                  <View
-                    style={{
-                      width: 42,
-                      height: 42,
+        <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: theme.spacing.md }}>
+          <VadCard style={{ flex: 1, width: '100%', gap: theme.spacing.sm }}>
+            <VadText variant="bodyStrong">Theme preference</VadText>
+            <View accessibilityRole="radiogroup" style={{ gap: theme.spacing.xs }}>
+              {options.map((option) => {
+                const selected = theme.preference === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={option.title}
+                    accessibilityHint={option.subtitle}
+                    onPress={() => theme.setPreference(option.value)}
+                    style={({ pressed }) => ({
+                      minHeight: density.compact ? 52 : 58,
                       borderRadius: theme.radius.md,
+                      backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surfaceRaised,
+                      borderWidth: 1,
+                      borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
+                      paddingHorizontal: theme.spacing.sm,
+                      flexDirection: 'row',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: selected
-                        ? theme.colors.brandSoft
-                        : theme.colors.surfaceRaised,
-                    }}
+                      gap: theme.spacing.sm,
+                      opacity: pressed ? 0.68 : 1,
+                    })}
                   >
-                    <VadText
-                      variant="heading"
-                      tone={selected ? 'brand' : 'secondary'}
-                    >
-                      {option.glyph}
-                    </VadText>
-                  </View>
+                    <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface }}>
+                      <VadText variant="bodyStrong" tone={selected ? 'brand' : 'secondary'}>{option.glyph}</VadText>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+                      <VadText variant="bodyStrong" tone={selected ? 'brand' : 'primary'}>{option.title}</VadText>
+                      <VadText variant="caption" tone="secondary" numberOfLines={1}>{option.subtitle}</VadText>
+                    </View>
+                    <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: selected ? theme.colors.brandPrimary : theme.colors.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
+                      {selected ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.brandPrimary }} /> : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </VadCard>
 
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <VadText
-                      variant="bodyStrong"
-                      tone={selected ? 'brand' : 'primary'}
-                    >
-                      {option.title}
-                    </VadText>
-                    <VadText variant="caption" tone="secondary">
-                      {option.subtitle}
-                    </VadText>
-                  </View>
+          <VadCard variant="raised" style={{ width: wide ? 340 : '100%', gap: theme.spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+              <View style={{ flex: 1, gap: 1 }}>
+                <VadText variant="bodyStrong">Live preview</VadText>
+                <VadText variant="caption" tone="secondary">Plain text must remain readable in either mode.</VadText>
+              </View>
+              <VadChip label={theme.preference === 'system' ? 'System' : 'Fixed'} />
+            </View>
 
-                  <View
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 11,
-                      borderWidth: 2,
-                      borderColor: selected
-                        ? theme.colors.brandPrimary
-                        : theme.colors.borderStrong,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {selected ? (
-                      <View
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: 5,
-                          backgroundColor: theme.colors.brandPrimary,
-                        }}
-                      />
-                    ) : null}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+            <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, overflow: 'hidden', backgroundColor: theme.colors.surface }}>
+              <View style={{ minHeight: 46, paddingHorizontal: theme.spacing.sm, backgroundColor: theme.colors.surfaceRaised, borderBottomWidth: 1, borderBottomColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: theme.colors.brandPrimary }} />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <View style={{ width: '44%', height: 7, borderRadius: theme.radius.pill, backgroundColor: theme.colors.textPrimary }} />
+                  <View style={{ width: '68%', height: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.borderStrong }} />
+                </View>
+              </View>
 
-        <View
-          style={{
-            width: wide ? 360 : '100%',
-            gap: theme.spacing.lg,
-          }}
-        >
-          <View style={{ gap: 2 }}>
-            <VadText variant="caption" tone="tertiary">LIVE THEME PREVIEW</VadText>
-            <VadText variant="heading">
-              {theme.mode === 'dark' ? 'Dark surfaces' : 'Light surfaces'}
-            </VadText>
-            <VadText variant="caption" tone="secondary">
-              This preview demonstrates hierarchy and contrast only. It does not
-              display simulated market prices or account data.
-            </VadText>
-          </View>
-
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              borderRadius: theme.radius.lg,
-              overflow: 'hidden',
-              backgroundColor: theme.colors.surface,
-            }}
-          >
-            <View
-              style={{
-                minHeight: 62,
-                padding: theme.spacing.md,
-                backgroundColor: theme.colors.surfaceRaised,
-                borderBottomWidth: 1,
-                borderBottomColor: theme.colors.border,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: theme.spacing.md,
-              }}
-            >
-              <View
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
-                  backgroundColor: theme.colors.brandPrimary,
-                }}
-              />
-              <View style={{ flex: 1, gap: theme.spacing.xs }}>
-                <View
-                  style={{
-                    width: '48%',
-                    height: 8,
-                    borderRadius: theme.radius.pill,
-                    backgroundColor: theme.colors.textPrimary,
-                  }}
-                />
-                <View
-                  style={{
-                    width: '72%',
-                    height: 6,
-                    borderRadius: theme.radius.pill,
-                    backgroundColor: theme.colors.borderStrong,
-                  }}
-                />
+              <View style={{ padding: theme.spacing.sm, gap: theme.spacing.xs }}>
+                <VadText variant="caption" tone="brand">THEME-SAFE COPY</VadText>
+                <VadText variant="bodyStrong">Readable in every mode</VadText>
+                <VadText variant="caption" tone="secondary">Primary and secondary text resolve from active theme tokens rather than fixed black or white values.</VadText>
+                <View style={{ minHeight: 38, borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandPrimary, alignItems: 'center', justifyContent: 'center' }}>
+                  <VadText variant="label" tone="inverse">Primary action</VadText>
+                </View>
+                <View style={{ minHeight: 38, borderRadius: theme.radius.pill, borderWidth: 1, borderColor: theme.colors.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
+                  <VadText variant="label">Secondary action</VadText>
+                </View>
               </View>
             </View>
 
-            <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
-              <VadText variant="label" tone="brand">CONTENT HIERARCHY</VadText>
-              <VadText variant="heading">Readable in every mode.</VadText>
-              <VadText variant="caption" tone="secondary">
-                Primary, secondary and interactive elements all use the active
-                theme tokens rather than fixed light-mode values.
-              </VadText>
-
-              <View
-                style={{
-                  minHeight: 44,
-                  borderRadius: theme.radius.md,
-                  backgroundColor: theme.colors.brandPrimary,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <VadText variant="label" tone="inverse">Primary action</VadText>
-              </View>
-
-              <View
-                style={{
-                  minHeight: 44,
-                  borderRadius: theme.radius.md,
-                  borderWidth: 1,
-                  borderColor: theme.colors.borderStrong,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <VadText variant="label">Secondary action</VadText>
-              </View>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
+              <Swatch label="Background" value={theme.colors.background} />
+              <Swatch label="Surface" value={theme.colors.surface} />
+              <Swatch label="Brand" value={theme.colors.brandPrimary} />
             </View>
-          </View>
-
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: theme.spacing.sm,
-              flexWrap: 'wrap',
-            }}
-          >
-            <Swatch label="Background" value={theme.colors.background} />
-            <Swatch label="Surface" value={theme.colors.surface} />
-            <Swatch label="Brand" value={theme.colors.brandPrimary} />
-          </View>
+          </VadCard>
         </View>
       </View>
     </ProductSubpage>
@@ -296,19 +121,10 @@ export default function AppearanceScreen() {
 
 function Swatch({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
-
   return (
-    <View style={{ minWidth: 92, flex: 1, gap: theme.spacing.xs }}>
-      <View
-        style={{
-          height: 28,
-          borderRadius: theme.radius.md,
-          backgroundColor: value,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-        }}
-      />
-      <VadText variant="caption" tone="tertiary">{label}</VadText>
+    <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+      <View style={{ height: 22, borderRadius: theme.radius.md, backgroundColor: value, borderWidth: 1, borderColor: theme.colors.border }} />
+      <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
     </View>
   );
 }
