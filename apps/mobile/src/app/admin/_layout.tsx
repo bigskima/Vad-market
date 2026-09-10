@@ -1,4 +1,5 @@
 import { Redirect, router, Slot } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -6,15 +7,47 @@ import { AdminWorkspaceHeader } from '@/features/admin/components/admin-workspac
 import { AdminWorkspaceNav } from '@/features/admin/components/admin-workspace-nav';
 import { useAuth } from '@/providers/auth-provider';
 import { AdminDataProvider } from '@/providers/admin-data-provider';
-import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { getAdminRuntimeSummary } from '@/services/market-api';
 
 export default function AdminLayout() {
   const { isLoading, session } = useAuth();
-  const product = useProductDataContext();
   const theme = useVadTheme();
+  const userId = session?.user.id ?? null;
+  const [accessChecking, setAccessChecking] = useState(true);
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
 
-  if (isLoading || (session && product.adminLoading)) {
+  useEffect(() => {
+    let ignore = false;
+
+    if (!userId) {
+      setHasAdminAccess(false);
+      setAccessChecking(false);
+      return () => {
+        ignore = true;
+      };
+    }
+
+    setAccessChecking(true);
+    setHasAdminAccess(false);
+
+    void getAdminRuntimeSummary()
+      .then((summary) => {
+        if (!ignore) setHasAdminAccess(Boolean(summary));
+      })
+      .catch(() => {
+        if (!ignore) setHasAdminAccess(false);
+      })
+      .finally(() => {
+        if (!ignore) setAccessChecking(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [userId]);
+
+  if (isLoading || (session && accessChecking)) {
     return (
       <View
         style={{
@@ -44,10 +77,10 @@ export default function AdminLayout() {
 
   if (!session) return <Redirect href="/" />;
 
-  // The backend permission checks remain authoritative. This gate prevents a
-  // signed-in non-operator from briefly seeing the Operations shell by typing
-  // an admin URL directly.
-  if (!product.adminSummary) return <Redirect href="/home" />;
+  // Database RPC permission checks remain authoritative. This client-side gate
+  // keeps a signed-in non-operator from seeing the Operations shell after
+  // typing an admin URL directly.
+  if (!hasAdminAccess) return <Redirect href="/home" />;
 
   return (
     <AdminDataProvider>
