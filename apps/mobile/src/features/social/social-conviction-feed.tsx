@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
@@ -54,6 +54,9 @@ export function SocialConvictionFeed({
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [commentBody, setCommentBody] = useState('');
+  const [composerError, setComposerError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [commentSubmitError, setCommentSubmitError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setFeedError(null);
@@ -105,6 +108,7 @@ export function SocialConvictionFeed({
     if (!body.trim()) return;
 
     setWorking(true);
+    setComposerError(null);
     try {
       await publishConvictionPost({
         body: body.trim(),
@@ -121,8 +125,7 @@ export function SocialConvictionFeed({
       setComposerOpen(false);
       await load();
     } catch (error) {
-      Alert.alert(
-        'Post not published',
+      setComposerError(
         error instanceof Error ? error.message : 'Please try again.',
       );
     } finally {
@@ -149,6 +152,8 @@ export function SocialConvictionFeed({
       ),
     );
 
+    setActionError(null);
+
     try {
       await togglePostLike(post.post_public_id);
       void load();
@@ -165,9 +170,10 @@ export function SocialConvictionFeed({
         ),
       );
 
-      Alert.alert(
-        'Like not updated',
-        error instanceof Error ? error.message : 'Please try again.',
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : 'The like could not be updated.',
       );
     }
   }
@@ -186,6 +192,8 @@ export function SocialConvictionFeed({
       ),
     );
 
+    setActionError(null);
+
     try {
       await toggleCreatorFollow(post.author_user_id);
       void load();
@@ -201,9 +209,10 @@ export function SocialConvictionFeed({
         ),
       );
 
-      Alert.alert(
-        'Follow not updated',
-        error instanceof Error ? error.message : 'Please try again.',
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : 'The follow state could not be updated.',
       );
     }
   }
@@ -213,6 +222,7 @@ export function SocialConvictionFeed({
     setComments([]);
     setCommentBody('');
     setCommentsError(null);
+    setCommentSubmitError(null);
     setCommentsLoading(true);
 
     try {
@@ -230,6 +240,7 @@ export function SocialConvictionFeed({
     if (!commentBody.trim()) return;
 
     setWorking(true);
+    setCommentSubmitError(null);
     try {
       await addPostComment(
         post.post_public_id,
@@ -249,8 +260,7 @@ export function SocialConvictionFeed({
       setComments(await getPostComments(post.post_public_id));
       void load();
     } catch (error) {
-      Alert.alert(
-        'Comment not posted',
+      setCommentSubmitError(
         error instanceof Error ? error.message : 'Please try again.',
       );
     } finally {
@@ -294,20 +304,45 @@ export function SocialConvictionFeed({
       ) : null}
 
       {showComposer && composerOpen ? (
-        <ConvictionComposer
-          markets={markets}
-          marketFilter={marketFilter}
-          selectedMarket={selectedMarket}
-          body={body}
-          stance={stance}
-          working={working}
-          onBodyChange={setBody}
-          onMarketChange={(nextMarket) => {
-            setMarket(nextMarket);
-            setStance(null);
-          }}
-          onStanceChange={setStance}
-          onPublish={() => void publish()}
+        <View style={{ gap: theme.spacing.sm }}>
+          <ConvictionComposer
+            markets={markets}
+            marketFilter={marketFilter}
+            selectedMarket={selectedMarket}
+            body={body}
+            stance={stance}
+            working={working}
+            onBodyChange={(value) => {
+              setBody(value);
+              setComposerError(null);
+            }}
+            onMarketChange={(nextMarket) => {
+              setMarket(nextMarket);
+              setStance(null);
+              setComposerError(null);
+            }}
+            onStanceChange={(nextStance) => {
+              setStance(nextStance);
+              setComposerError(null);
+            }}
+            onPublish={() => void publish()}
+          />
+
+          {composerError ? (
+            <InlineError
+              title="Post not published"
+              message={composerError}
+              onDismiss={() => setComposerError(null)}
+            />
+          ) : null}
+        </View>
+      ) : null}
+
+      {actionError ? (
+        <InlineError
+          title="Community action not saved"
+          message={actionError}
+          onDismiss={() => setActionError(null)}
         />
       ) : null}
 
@@ -391,6 +426,7 @@ export function SocialConvictionFeed({
           setCommentsPostId(null);
           setComments([]);
           setCommentsError(null);
+          setCommentSubmitError(null);
           setCommentsLoading(false);
           setCommentBody('');
         }}
@@ -461,9 +497,20 @@ export function SocialConvictionFeed({
 
           {commentsPost && !commentsLoading && !commentsError ? (
             <View style={{ gap: theme.spacing.xs }}>
+              {commentSubmitError ? (
+                <InlineError
+                  title="Comment not posted"
+                  message={commentSubmitError}
+                  onDismiss={() => setCommentSubmitError(null)}
+                />
+              ) : null}
+
               <VadInput
                 value={commentBody}
-                onChangeText={setCommentBody}
+                onChangeText={(value) => {
+                  setCommentBody(value);
+                  setCommentSubmitError(null);
+                }}
                 placeholder="Add to the discussion…"
               />
               <VadButton
@@ -476,6 +523,41 @@ export function SocialConvictionFeed({
           ) : null}
         </ScrollView>
       </VadBottomSheet>
+    </View>
+  );
+}
+
+
+function InlineError({
+  title,
+  message,
+  onDismiss,
+}: {
+  title: string;
+  message: string;
+  onDismiss: () => void;
+}) {
+  const theme = useVadTheme();
+
+  return (
+    <View
+      style={{
+        borderLeftWidth: 3,
+        borderLeftColor: theme.colors.danger,
+        backgroundColor: theme.colors.noSoft,
+        padding: theme.spacing.md,
+        gap: theme.spacing.xs,
+      }}
+    >
+      <VadText variant="caption" tone="danger">{title.toUpperCase()}</VadText>
+      <VadText variant="caption" tone="secondary">{message}</VadText>
+      <VadButton
+        label="Dismiss"
+        variant="ghost"
+        size="small"
+        fullWidth={false}
+        onPress={onDismiss}
+      />
     </View>
   );
 }
