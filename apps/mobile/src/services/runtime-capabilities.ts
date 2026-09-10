@@ -26,13 +26,14 @@ export function unavailableCapabilities(
   ) as RuntimeCapabilitiesResponse['reasons'];
 
   return {
-    version: 2,
+    version: 3,
     status: 'degraded',
     requestId: 'local-fail-closed',
     evaluatedAt: new Date().toISOString(),
     context: { countryCode: 'NG', activeAssetCodes: [] },
     capabilities,
     reasons,
+    messages: {},
   };
 }
 
