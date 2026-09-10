@@ -25,7 +25,8 @@ export function PortfolioOrderScreen({
 }) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
-  const wide = width >= 760;
+  const wide = width >= 840;
+  const compact = width < 380;
   const data = useProductDataContext();
   const [cancelling, setCancelling] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -39,10 +40,9 @@ export function PortfolioOrderScreen({
     return (
       <View style={{ gap: theme.spacing.md }}>
         <VadSkeleton width="46%" height={30} />
-        <VadSkeleton height={136} radius={theme.radius.xl} />
-        <VadSkeleton height={58} />
-        <VadSkeleton height={58} />
-        <VadSkeleton height={48} />
+        <VadSkeleton height={160} radius={theme.radius.xl} />
+        <VadSkeleton height={62} />
+        <VadSkeleton height={62} />
       </View>
     );
   }
@@ -67,15 +67,15 @@ export function PortfolioOrderScreen({
   }
 
   const currentOrder = order;
-
-  const fillRatio =
-    Number(currentOrder.quantity) > 0
-      ? Number(currentOrder.filled_quantity) / Number(currentOrder.quantity)
-      : 0;
-
+  const quantity = Number(currentOrder.quantity);
+  const filled = Number(currentOrder.filled_quantity);
+  const remaining = Number(currentOrder.remaining_quantity);
+  const limitPrice = Number(currentOrder.limit_price);
+  const fillRatio = quantity > 0 ? filled / quantity : 0;
   const fillPercent = Math.max(0, Math.min(1, fillRatio));
-  const remainingNotional =
-    Number(currentOrder.limit_price) * Number(currentOrder.remaining_quantity);
+  const progressWidth = `${Math.round(fillPercent * 100)}%` as DimensionValue;
+  const originalNotional = limitPrice * quantity;
+  const remainingNotional = limitPrice * remaining;
 
   async function cancel() {
     setCancelling(true);
@@ -101,7 +101,7 @@ export function PortfolioOrderScreen({
   }
 
   return (
-    <View style={{ gap: theme.spacing.xl }}>
+    <View style={{ gap: theme.spacing.xxl }}>
       <View style={{ gap: theme.spacing.xs }}>
         <View
           style={{
@@ -114,13 +114,16 @@ export function PortfolioOrderScreen({
           <VadText variant="label" tone="brand">OPEN ORDER</VadText>
           <VadText variant="caption" tone="tertiary">·</VadText>
           <VadText variant="caption" tone="secondary">
-            {currentOrder.status}
+            {currentOrder.status.replaceAll('_', ' ')}
           </VadText>
         </View>
 
-        <VadText variant="title">{currentOrder.side} order</VadText>
+        <VadText variant="title">
+          {currentOrder.side === 'BUY' ? 'Buy' : currentOrder.side === 'SELL' ? 'Sell' : currentOrder.side} order
+        </VadText>
         <VadText tone="secondary">
-          Created {new Date(currentOrder.created_at).toLocaleString()}
+          Created {new Date(currentOrder.created_at).toLocaleString()}. Only the
+          quantity still open can be cancelled from this screen.
         </VadText>
       </View>
 
@@ -136,19 +139,28 @@ export function PortfolioOrderScreen({
             flex: 1.1,
             borderTopWidth: 1,
             borderBottomWidth: 1,
-            borderColor: theme.colors.border,
-            paddingVertical: theme.spacing.lg,
-            gap: theme.spacing.sm,
+            borderColor: theme.colors.brandPrimary,
+            paddingVertical: compact ? theme.spacing.md : theme.spacing.lg,
+            gap: theme.spacing.md,
           }}
         >
-          <VadText variant="caption" tone="secondary">
-            LIMIT PRICE
+          <VadText variant="caption" tone="brand">LIMIT PRICE</VadText>
+          <VadText variant="display" numberOfLines={1} adjustsFontSizeToFit>
+            {money(limitPrice)}
           </VadText>
-          <VadText variant="display">{money(currentOrder.limit_price)}</VadText>
-          <VadText variant="caption" tone="secondary">
-            {Number(currentOrder.remaining_quantity).toLocaleString()} shares remain
-            open · {money(remainingNotional)} remaining notional.
-          </VadText>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+              paddingTop: theme.spacing.md,
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: theme.spacing.xl,
+            }}
+          >
+            <Snapshot label="Original shares" value={quantity.toLocaleString()} />
+            <Snapshot label="Original notional" value={money(originalNotional)} />
+          </View>
         </View>
 
         <View
@@ -157,7 +169,7 @@ export function PortfolioOrderScreen({
             borderTopWidth: 1,
             borderBottomWidth: 1,
             borderColor: theme.colors.border,
-            paddingVertical: theme.spacing.lg,
+            paddingVertical: compact ? theme.spacing.md : theme.spacing.lg,
             gap: theme.spacing.md,
           }}
         >
@@ -165,16 +177,26 @@ export function PortfolioOrderScreen({
             style={{
               flexDirection: 'row',
               justifyContent: 'space-between',
+              alignItems: 'flex-end',
               gap: theme.spacing.md,
             }}
           >
-            <VadText variant="caption" tone="secondary">
-              Fill progress
+            <View style={{ flex: 1, gap: 2 }}>
+              <VadText variant="caption" tone="secondary">FILL PROGRESS</VadText>
+              <VadText variant="heading">{pct(fillPercent)}</VadText>
+            </View>
+            <VadText variant="caption" tone="tertiary">
+              {remaining.toLocaleString()} shares open
             </VadText>
-            <VadText variant="bodyStrong">{pct(fillPercent)}</VadText>
           </View>
 
           <View
+            accessibilityRole="progressbar"
+            accessibilityValue={{
+              min: 0,
+              max: 100,
+              now: Math.round(fillPercent * 100),
+            }}
             style={{
               height: 8,
               borderRadius: theme.radius.pill,
@@ -184,7 +206,7 @@ export function PortfolioOrderScreen({
           >
             <View
               style={{
-                width: (Math.round(fillPercent * 100) + '%') as DimensionValue,
+                width: progressWidth,
                 height: '100%',
                 backgroundColor: theme.colors.brandPrimary,
               }}
@@ -198,75 +220,90 @@ export function PortfolioOrderScreen({
               flexWrap: 'wrap',
             }}
           >
-            <Snapshot
-              label="Filled"
-              value={Number(currentOrder.filled_quantity).toLocaleString()}
-            />
-            <Snapshot
-              label="Remaining"
-              value={Number(currentOrder.remaining_quantity).toLocaleString()}
-            />
+            <Snapshot label="Filled" value={filled.toLocaleString()} />
+            <Snapshot label="Remaining" value={remaining.toLocaleString()} />
           </View>
-        </View>
-      </View>
-
-      <View style={{ gap: theme.spacing.sm }}>
-        <VadText variant="heading">Order details</VadText>
-        <View
-          style={{
-            borderTopWidth: 1,
-            borderTopColor: theme.colors.border,
-          }}
-        >
-          <Detail
-            label="Order reference"
-            value={String(currentOrder.order_id)}
-            selectable
-          />
-          <Detail
-            label="Quantity"
-            value={Number(currentOrder.quantity).toLocaleString()}
-          />
-          <Detail
-            label="Filled"
-            value={Number(currentOrder.filled_quantity).toLocaleString()}
-          />
-          <Detail
-            label="Remaining"
-            value={Number(currentOrder.remaining_quantity).toLocaleString()}
-          />
-          <Detail
-            label="Remaining notional"
-            value={money(remainingNotional)}
-          />
-          <Detail
-            label="Fill progress"
-            value={pct(fillPercent)}
-          />
-          <Detail label="Status" value={currentOrder.status} />
         </View>
       </View>
 
       <View
         style={{
-          borderTopWidth: 1,
-          borderTopColor: theme.colors.border,
-          paddingTop: theme.spacing.lg,
-          gap: theme.spacing.sm,
+          flexDirection: wide ? 'row' : 'column',
+          alignItems: 'flex-start',
+          gap: theme.spacing.xxl,
         }}
       >
-        <VadText variant="bodyStrong">Order controls</VadText>
-        <VadText variant="caption" tone="secondary">
-          Cancelling affects only the quantity still open. Completed fills are
-          not reversed.
-        </VadText>
+        <View style={{ flex: 1.1, width: '100%', gap: theme.spacing.sm }}>
+          <View style={{ gap: 2 }}>
+            <VadText variant="heading">Order details</VadText>
+            <VadText variant="caption" tone="secondary">
+              Current order-book state returned by the backend.
+            </VadText>
+          </View>
 
-        <VadButton
-          label="Cancel remaining order"
-          variant="danger"
-          loading={cancelling}
-          onPress={requestCancel}
-        />
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+            }}
+          >
+            <Detail
+              label="Order reference"
+              value={String(currentOrder.order_id)}
+              selectable
+            />
+            <Detail label="Side" value={currentOrder.side} />
+            <Detail label="Limit price" value={money(limitPrice)} />
+            <Detail label="Quantity" value={quantity.toLocaleString()} />
+            <Detail label="Filled" value={filled.toLocaleString()} />
+            <Detail label="Remaining" value={remaining.toLocaleString()} />
+            <Detail label="Remaining notional" value={money(remainingNotional)} />
+            <Detail label="Status" value={currentOrder.status.replaceAll('_', ' ')} />
+          </View>
+        </View>
+
+        <View style={{ flex: 0.8, width: '100%', gap: theme.spacing.lg }}>
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor: theme.colors.border,
+              paddingVertical: theme.spacing.md,
+              gap: theme.spacing.md,
+            }}
+          >
+            <View style={{ gap: 2 }}>
+              <VadText variant="heading">Remaining exposure</VadText>
+              <VadText variant="caption" tone="secondary">
+                The still-open part of this limit order.
+              </VadText>
+            </View>
+            <Snapshot label="Open shares" value={remaining.toLocaleString()} />
+            <Snapshot label="Open notional" value={money(remainingNotional)} />
+          </View>
+
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderColor: theme.colors.border,
+              paddingTop: theme.spacing.md,
+              gap: theme.spacing.sm,
+            }}
+          >
+            <VadText variant="bodyStrong">Order controls</VadText>
+            <VadText variant="caption" tone="secondary">
+              Cancelling removes only the quantity still open. Existing fills
+              are not reversed.
+            </VadText>
+            <VadButton
+              label="Cancel remaining order"
+              variant="danger"
+              loading={cancelling}
+              disabled={remaining <= 0}
+              onPress={requestCancel}
+            />
+          </View>
+        </View>
       </View>
 
       <VadBottomSheet
@@ -279,8 +316,7 @@ export function PortfolioOrderScreen({
         <View style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: theme.spacing.xs }}>
             <VadText variant="bodyStrong">
-              {Number(currentOrder.remaining_quantity).toLocaleString()} shares are
-              still open.
+              {remaining.toLocaleString()} shares are still open.
             </VadText>
             <VadText variant="caption" tone="secondary">
               Any quantity already filled stays filled. Cancelling removes only
@@ -290,6 +326,7 @@ export function PortfolioOrderScreen({
 
           {cancelError ? (
             <View
+              accessibilityRole="alert"
               style={{
                 borderLeftWidth: 3,
                 borderLeftColor: theme.colors.danger,
@@ -310,14 +347,8 @@ export function PortfolioOrderScreen({
               borderColor: theme.colors.border,
             }}
           >
-            <Detail
-              label="Remaining"
-              value={Number(currentOrder.remaining_quantity).toLocaleString()}
-            />
-            <Detail
-              label="Remaining notional"
-              value={money(remainingNotional)}
-            />
+            <Detail label="Remaining" value={remaining.toLocaleString()} />
+            <Detail label="Remaining notional" value={money(remainingNotional)} />
           </View>
 
           <VadButton
@@ -340,9 +371,9 @@ export function PortfolioOrderScreen({
 
 function Snapshot({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ minWidth: 92, gap: 2 }}>
+    <View style={{ minWidth: 104, flex: 1, gap: 2 }}>
       <VadText variant="caption" tone="tertiary">{label}</VadText>
-      <VadText variant="bodyStrong">{value}</VadText>
+      <VadText variant="bodyStrong" numberOfLines={1}>{value}</VadText>
     </View>
   );
 }
@@ -370,11 +401,7 @@ function Detail({
         borderBottomColor: theme.colors.border,
       }}
     >
-      <VadText
-        variant="caption"
-        tone="tertiary"
-        style={{ flex: 1 }}
-      >
+      <VadText variant="caption" tone="tertiary" style={{ flex: 1 }}>
         {label}
       </VadText>
       <VadText
