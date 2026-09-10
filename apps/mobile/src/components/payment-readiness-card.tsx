@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   Pressable,
   useWindowDimensions,
   View,
 } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -20,6 +20,11 @@ import {
 
 type Mode = 'DEPOSIT' | 'WITHDRAWAL';
 
+type Readiness = {
+  depositConfigured?: boolean;
+  withdrawalConfigured?: boolean;
+};
+
 export function PaymentReadinessCard({
   initialMode = 'DEPOSIT',
   lockMode = false,
@@ -30,21 +35,27 @@ export function PaymentReadinessCard({
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const split = width >= 820;
-  const [readiness, setReadiness] = useState<{
-    depositConfigured?: boolean;
-    withdrawalConfigured?: boolean;
-  }>({});
+  const compact = width < 380;
+  const [readiness, setReadiness] = useState<Readiness | null>(null);
+  const [readinessError, setReadinessError] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>(initialMode);
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<PaymentQuote | null>(null);
   const [createdIntentId, setCreatedIntentId] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setReadinessError(null);
+
     try {
       setReadiness(await getProviderReadiness());
-    } catch {
-      setReadiness({});
+    } catch (error) {
+      setReadinessError(
+        error instanceof Error
+          ? error.message
+          : 'Payment readiness could not be loaded.',
+      );
     }
   }, []);
 
@@ -55,17 +66,38 @@ export function PaymentReadinessCard({
     return () => clearTimeout(timer);
   }, [load]);
 
+  function clearReview() {
+    setQuote(null);
+    setActionError(null);
+  }
+
+  function resetFlow() {
+    setCreatedIntentId(null);
+    setQuote(null);
+    setAmount('');
+    setActionError(null);
+  }
+
+  function switchMode(nextMode: Mode) {
+    setMode(nextMode);
+    resetFlow();
+  }
+
   async function preview() {
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) return;
 
     setWorking(true);
+    setActionError(null);
+
     try {
       setQuote(await quotePayment(mode, value));
     } catch (error) {
-      Alert.alert(
-        'Could not prepare payment',
-        error instanceof Error ? error.message : 'Please try again.',
+      setQuote(null);
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : 'The payment review could not be prepared.',
       );
     } finally {
       setWorking(false);
@@ -76,35 +108,27 @@ export function PaymentReadinessCard({
     if (!quote?.enabled) return;
 
     setWorking(true);
+    setActionError(null);
+
     try {
       const publicId = await createPaymentIntent(mode, Number(amount));
       setCreatedIntentId(publicId);
       setQuote(null);
     } catch (error) {
-      Alert.alert(
-        'Payment unavailable',
-        error instanceof Error ? error.message : 'Please try again.',
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : 'The payment intent could not be created.',
       );
     } finally {
       setWorking(false);
     }
   }
 
-  function resetFlow() {
-    setCreatedIntentId(null);
-    setQuote(null);
-    setAmount('');
-  }
-
-  function switchMode(nextMode: Mode) {
-    setMode(nextMode);
-    resetFlow();
-  }
-
   const providerReady =
     mode === 'DEPOSIT'
-      ? readiness.depositConfigured
-      : readiness.withdrawalConfigured;
+      ? readiness?.depositConfigured
+      : readiness?.withdrawalConfigured;
 
   const amountValue = Number(amount);
   const validAmount = Number.isFinite(amountValue) && amountValue > 0;
@@ -119,17 +143,17 @@ export function PaymentReadinessCard({
             borderLeftWidth: 3,
             borderLeftColor: theme.colors.yes,
             backgroundColor: theme.colors.yesSoft,
-            padding: theme.spacing.xl,
+            padding: compact ? theme.spacing.lg : theme.spacing.xl,
             gap: theme.spacing.md,
           }}
         >
           <VadText variant="label" tone="yes">
             {mode === 'DEPOSIT' ? 'DEPOSIT CREATED' : 'WITHDRAWAL CREATED'}
           </VadText>
-          <VadText variant="title">Your payment intent is now live.</VadText>
+          <VadText variant="title">Your payment intent is live.</VadText>
           <VadText tone="secondary">
-            VAD has created the {actionLabel} request. Its provider and ledger
-            state will continue updating in Wallet activity.
+            VAD created the {actionLabel} request. Provider and ledger state can
+            continue changing until the intent settles or fails.
           </VadText>
 
           <View
@@ -147,7 +171,12 @@ export function PaymentReadinessCard({
           </View>
         </View>
 
-        <View style={{ flexDirection: split ? 'row' : 'column', gap: theme.spacing.sm }}>
+        <View
+          style={{
+            flexDirection: split ? 'row' : 'column',
+            gap: theme.spacing.sm,
+          }}
+        >
           <VadButton
             label="Open Wallet activity"
             onPress={() => router.push('/wallet/activity')}
@@ -162,8 +191,8 @@ export function PaymentReadinessCard({
         </View>
 
         <VadText variant="caption" tone="tertiary">
-          Creating an intent does not mean settlement is complete. Wallet and
-          ledger state remain authoritative.
+          Creating an intent is not settlement. Wallet and ledger balances stay
+          authoritative.
         </VadText>
       </View>
     );
@@ -185,9 +214,9 @@ export function PaymentReadinessCard({
 
             return (
               <Pressable
+                key={item}
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
-                key={item}
                 onPress={() => switchMode(item)}
                 style={({ pressed }) => ({
                   flex: 1,
@@ -223,12 +252,20 @@ export function PaymentReadinessCard({
             : 'Move available funds out.'}
         </VadText>
         <VadText tone="secondary">
-          Enter an amount first. VAD then checks the live payment route,
-          identity policy, limits and fees before you can continue.
+          VAD checks the live route, identity policy, limits and fees before the
+          request can continue.
         </VadText>
       </View>
 
       <PaymentProgress stage={stage} />
+
+      {readinessError ? (
+        <VadErrorState
+          title="Payment readiness unavailable"
+          message={readinessError}
+          onRetry={() => void load()}
+        />
+      ) : null}
 
       <View
         style={{
@@ -261,7 +298,11 @@ export function PaymentReadinessCard({
                 Payment route
               </VadText>
               <VadText variant="bodyStrong">
-                {providerReady ? 'Ready for live checks' : 'Not configured'}
+                {readiness == null
+                  ? 'Checking readiness'
+                  : providerReady
+                    ? 'Ready for live checks'
+                    : 'Not configured'}
               </VadText>
             </View>
 
@@ -269,20 +310,20 @@ export function PaymentReadinessCard({
               variant="caption"
               tone={providerReady ? 'yes' : 'warning'}
             >
-              {providerReady ? 'READY' : 'ACTION REQUIRED'}
+              {readiness == null
+                ? 'CHECKING'
+                : providerReady
+                  ? 'READY'
+                  : 'ACTION REQUIRED'}
             </VadText>
           </View>
 
           <VadInput
-            label={
-              mode === 'DEPOSIT'
-                ? 'Deposit amount'
-                : 'Withdrawal amount'
-            }
+            label={mode === 'DEPOSIT' ? 'Deposit amount' : 'Withdrawal amount'}
             value={amount}
             onChangeText={(value) => {
               setAmount(value);
-              setQuote(null);
+              clearReview();
             }}
             keyboardType="decimal-pad"
             placeholder="Amount in NGN"
@@ -302,31 +343,27 @@ export function PaymentReadinessCard({
             }
           />
 
-          {!providerReady ? (
-            <View
-              style={{
-                borderLeftWidth: 3,
-                borderLeftColor: theme.colors.warning,
-                backgroundColor: theme.colors.warningSoft,
-                padding: theme.spacing.md,
-                gap: 2,
-              }}
-            >
-              <VadText variant="caption" tone="warning">
-                PAYMENT ROUTE NOT READY
-              </VadText>
-              <VadText variant="caption" tone="secondary">
-                You can enter an amount, but the backend will not allow this
-                action until an active provider route is available.
-              </VadText>
-            </View>
+          {readiness && !providerReady ? (
+            <InlineStatus
+              tone="warning"
+              title="Payment route not ready"
+              message="The backend will not allow this action until an active provider route is available."
+            />
+          ) : null}
+
+          {actionError ? (
+            <InlineStatus
+              tone="danger"
+              title={quote ? 'Payment not created' : 'Payment review unavailable'}
+              message={actionError}
+            />
           ) : null}
 
           {!quote ? (
             <VadButton
               label="Check availability & fees"
               loading={working}
-              disabled={!validAmount}
+              disabled={!validAmount || readinessError != null}
               onPress={() => void preview()}
             />
           ) : null}
@@ -362,29 +399,16 @@ export function PaymentReadinessCard({
 
             {quote.enabled ? (
               <>
-                <MoneyRow
-                  label="Amount"
-                  value={'₦' + Number(quote.amount).toLocaleString()}
-                />
-                <MoneyRow
-                  label="Fee"
-                  value={'₦' + Number(quote.feeAmount ?? 0).toLocaleString()}
-                />
+                <MoneyRow label="Amount" value={'₦' + Number(quote.amount).toLocaleString()} />
+                <MoneyRow label="Fee" value={'₦' + Number(quote.feeAmount ?? 0).toLocaleString()} />
                 <MoneyRow
                   label="Net amount"
-                  value={
-                    '₦' +
-                    Number(
-                      quote.netAmount ?? quote.amount,
-                    ).toLocaleString()
-                  }
+                  value={'₦' + Number(quote.netAmount ?? quote.amount).toLocaleString()}
                   emphasized
                 />
                 <MoneyRow
                   label="Provider"
-                  value={String(
-                    quote.providerCode ?? 'Configured route',
-                  )}
+                  value={String(quote.providerCode ?? 'Configured route')}
                 />
 
                 <VadButton
@@ -405,7 +429,7 @@ export function PaymentReadinessCard({
               label="Edit amount"
               variant="ghost"
               disabled={working}
-              onPress={() => setQuote(null)}
+              onPress={clearReview}
             />
           </View>
         ) : null}
@@ -493,6 +517,38 @@ function MoneyRow({
   );
 }
 
+function InlineStatus({
+  tone,
+  title,
+  message,
+}: {
+  tone: 'warning' | 'danger';
+  title: string;
+  message: string;
+}) {
+  const theme = useVadTheme();
+  const danger = tone === 'danger';
+
+  return (
+    <View
+      style={{
+        borderLeftWidth: 3,
+        borderLeftColor: danger
+          ? theme.colors.danger
+          : theme.colors.warning,
+        backgroundColor: danger
+          ? theme.colors.noSoft
+          : theme.colors.warningSoft,
+        padding: theme.spacing.md,
+        gap: 2,
+      }}
+    >
+      <VadText variant="caption" tone={tone}>{title.toUpperCase()}</VadText>
+      <VadText variant="caption" tone="secondary">{message}</VadText>
+    </View>
+  );
+}
+
 function reasonText(quote: PaymentQuote) {
   switch (quote.reason) {
     case 'NO_PAYMENT_PROVIDER':
@@ -505,17 +561,9 @@ function reasonText(quote: PaymentQuote) {
     case 'CAPABILITY_DISABLED':
       return 'This money-movement capability is currently disabled by VAD policy.';
     case 'BELOW_MINIMUM':
-      return (
-        'Minimum amount is ₦' +
-        Number(quote.minimum ?? 0).toLocaleString() +
-        '.'
-      );
+      return 'Minimum amount is ₦' + Number(quote.minimum ?? 0).toLocaleString() + '.';
     case 'ABOVE_MAXIMUM':
-      return (
-        'Maximum amount is ₦' +
-        Number(quote.maximum ?? 0).toLocaleString() +
-        '.'
-      );
+      return 'Maximum amount is ₦' + Number(quote.maximum ?? 0).toLocaleString() + '.';
     default:
       return quote.reason ?? 'This action is not available yet.';
   }
