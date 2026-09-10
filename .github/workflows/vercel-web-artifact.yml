@@ -1,0 +1,29 @@
+name: VAD Vercel Web Artifact
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: https://kixxqfqntfzlprapqkem.supabase.co
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_yBTPjrfEAAKD9LZ9cE6YaQ_OQisiT1c
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vad-web-dist
+          path: apps/mobile/dist
+          if-no-files-found: error
+          retention-days: 1
