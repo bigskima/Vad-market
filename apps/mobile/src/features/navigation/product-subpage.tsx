@@ -23,6 +23,13 @@ export function ProductSubpage({
   const { width } = useWindowDimensions();
   const { isLoading, session } = useAuth();
   const compact = width < 380;
+  const desktop = width >= 900;
+  const headerWidth = Math.max(maxWidth, desktop ? 980 : 760);
+  const horizontalPadding = desktop
+    ? theme.spacing.xl
+    : compact
+      ? theme.spacing.md
+      : theme.spacing.lg;
 
   if (isLoading) {
     return (
@@ -37,23 +44,20 @@ export function ProductSubpage({
           <View
             style={{
               width: '100%',
-              maxWidth: Math.max(maxWidth, 760),
+              maxWidth: headerWidth,
               alignSelf: 'center',
-              paddingHorizontal: compact
-                ? theme.spacing.md
-                : theme.spacing.lg,
+              paddingHorizontal: horizontalPadding,
               paddingBottom: theme.spacing.sm,
-              minHeight: 50,
+              minHeight: desktop ? 58 : 50,
               flexDirection: 'row',
               alignItems: 'center',
               gap: theme.spacing.sm,
             }}
           >
-            <VadSkeleton width={44} height={34} />
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <VadSkeleton width={110} height={18} />
-            </View>
-            <VadSkeleton width={26} height={26} radius={8} />
+            <VadSkeleton width={desktop ? 68 : 44} height={34} />
+            <VadSkeleton width={desktop ? 150 : 110} height={18} />
+            <View style={{ flex: 1 }} />
+            <VadSkeleton width={28} height={28} radius={8} />
           </View>
         </View>
 
@@ -62,10 +66,8 @@ export function ProductSubpage({
             width: '100%',
             maxWidth,
             alignSelf: 'center',
-            paddingHorizontal: compact
-              ? theme.spacing.md
-              : theme.spacing.lg,
-            paddingTop: theme.spacing.lg,
+            paddingHorizontal: horizontalPadding,
+            paddingTop: desktop ? theme.spacing.xl : theme.spacing.lg,
             gap: theme.spacing.md,
           }}
         >
@@ -93,13 +95,11 @@ export function ProductSubpage({
         <View
           style={{
             width: '100%',
-            maxWidth: Math.max(maxWidth, 760),
+            maxWidth: headerWidth,
             alignSelf: 'center',
-            paddingHorizontal: compact
-              ? theme.spacing.md
-              : theme.spacing.lg,
+            paddingHorizontal: horizontalPadding,
             paddingBottom: theme.spacing.sm,
-            minHeight: 50,
+            minHeight: desktop ? 58 : 50,
             flexDirection: 'row',
             alignItems: 'center',
             gap: theme.spacing.sm,
@@ -111,24 +111,37 @@ export function ProductSubpage({
             onPress={() => router.back()}
             hitSlop={8}
             style={({ pressed }) => ({
-              minWidth: 44,
+              minWidth: desktop ? 68 : 44,
               height: 40,
-              alignItems: 'flex-start',
-              justifyContent: 'center',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              gap: theme.spacing.xs,
               opacity: pressed ? 0.6 : 1,
             })}
           >
             <VadText variant="heading">‹</VadText>
+            {desktop ? (
+              <VadText variant="caption" tone="secondary">Back</VadText>
+            ) : null}
           </Pressable>
 
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <VadText variant="bodyStrong" numberOfLines={1}>
+          <View
+            style={{
+              flex: 1,
+              alignItems: desktop ? 'flex-start' : 'center',
+            }}
+          >
+            <VadText
+              variant={desktop ? 'heading' : 'bodyStrong'}
+              numberOfLines={1}
+            >
               {title}
             </VadText>
           </View>
 
-          <View style={{ width: 44, alignItems: 'flex-end' }}>
-            <VadLogo size={26} />
+          <View style={{ width: desktop ? 68 : 44, alignItems: 'flex-end' }}>
+            <VadLogo size={desktop ? 28 : 26} />
           </View>
         </View>
       </View>
@@ -143,10 +156,8 @@ export function ProductSubpage({
           alignSelf: 'center',
           width: '100%',
           maxWidth,
-          paddingHorizontal: compact
-            ? theme.spacing.md
-            : theme.spacing.lg,
-          paddingTop: theme.spacing.lg,
+          paddingHorizontal: horizontalPadding,
+          paddingTop: desktop ? theme.spacing.xl : theme.spacing.lg,
           paddingBottom: theme.spacing.xxxl,
           gap: theme.spacing.lg,
         }}
