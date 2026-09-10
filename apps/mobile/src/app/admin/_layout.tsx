@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
-import { AdminWorkspaceHeader } from '@/features/admin/components/admin-workspace-header';
-import { AdminWorkspaceNav } from '@/features/admin/components/admin-workspace-nav';
+import { AdminShell } from '@/features/admin/components/admin-shell';
 import { useAuth } from '@/providers/auth-provider';
 import { AdminDataProvider } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -81,22 +80,15 @@ export default function AdminLayout() {
 
   if (!session) return <Redirect href="/" />;
 
-  // Role discovery controls which Operations surfaces are presented. Every
-  // action RPC performs its own backend permission check as the final authority.
+  // Navigation visibility is permission-scoped, while every privileged action
+  // remains backend-authoritative through its own RPC authorization checks.
   if (!hasAdminAccess) return <Redirect href="/home" />;
 
   return (
     <AdminDataProvider access={access}>
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <AdminWorkspaceHeader
-          title="VAD Operations"
-          subtitle={access.isSuperAdmin ? 'Super Admin control plane' : 'Role-scoped control plane'}
-          backLabel="App"
-          onBack={() => router.replace('/home')}
-        />
-        <AdminWorkspaceNav />
+      <AdminShell onExit={() => router.replace('/home')}>
         <Slot />
-      </View>
+      </AdminShell>
     </AdminDataProvider>
   );
 }
