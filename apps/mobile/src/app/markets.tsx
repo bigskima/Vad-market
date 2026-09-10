@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { MarketsScreen } from '@/features/markets/markets-screen';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -23,13 +24,25 @@ export default function MarketsRoute() {
     });
   };
 
+  const marketReadFailedWithoutData = Boolean(
+    data.sectionErrors.markets && !data.markets.length,
+  );
+
   return (
     <ProductRoute active="Markets" allowCreate>
-      <MarketsScreen
-        markets={data.markets}
-        onOpenMarket={openMarket}
-        initialCategory={initialCategory}
-      />
+      {marketReadFailedWithoutData ? (
+        <VadErrorState
+          title="Markets could not be loaded"
+          message={data.sectionErrors.markets ?? 'Market data is unavailable.'}
+          onRetry={() => void data.load()}
+        />
+      ) : (
+        <MarketsScreen
+          markets={data.markets}
+          onOpenMarket={openMarket}
+          initialCategory={initialCategory}
+        />
+      )}
     </ProductRoute>
   );
 }
