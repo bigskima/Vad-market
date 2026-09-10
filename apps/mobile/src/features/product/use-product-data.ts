@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
+  getHomeExperience,
+  type FeaturedMarketRow,
+  type HomePromotion,
+  type PublicNotice,
+} from '@/services/home-content-api';
+import {
   getAdminRuntimeSummary,
   getMyProposals,
   getOpenOrders,
@@ -49,6 +55,10 @@ export function useProductData(enabled = true) {
   const [positions, setPositions] = useState<PositionRow[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [proposals, setProposals] = useState<ProposalRow[]>([]);
+  const [homePromotions, setHomePromotions] = useState<HomePromotion[]>([]);
+  const [publicNotices, setPublicNotices] = useState<PublicNotice[]>([]);
+  const [featuredMarkets, setFeaturedMarkets] = useState<FeaturedMarketRow[]>([]);
+  const [homeExperienceError, setHomeExperienceError] = useState<string | null>(null);
   const [adminSummary, setAdminSummary] = useState<Record<
     string,
     number | string
@@ -60,6 +70,10 @@ export function useProductData(enabled = true) {
     setPositions([]);
     setOrders([]);
     setProposals([]);
+    setHomePromotions([]);
+    setPublicNotices([]);
+    setFeaturedMarkets([]);
+    setHomeExperienceError(null);
     setAdminSummary(null);
     setSectionErrors(emptySectionErrors);
     setError(null);
@@ -73,6 +87,24 @@ export function useProductData(enabled = true) {
     } catch {
       // The customer product must never fail because an admin-only probe did.
       setAdminSummary(null);
+    }
+  }, [enabled]);
+
+  const probeHomeExperience = useCallback(async () => {
+    if (!enabled) return;
+
+    try {
+      const next = await getHomeExperience();
+      setHomePromotions(next.promotions);
+      setPublicNotices(next.notices);
+      setFeaturedMarkets(next.featuredMarkets);
+      setHomeExperienceError(null);
+    } catch (reason) {
+      setHomeExperienceError(
+        reason instanceof Error
+          ? reason.message
+          : 'Home highlights could not be refreshed.',
+      );
     }
   }, [enabled]);
 
@@ -130,10 +162,11 @@ export function useProductData(enabled = true) {
 
       setLoading(true);
 
-      // Product-critical reads determine the loading shell. The admin probe is
-      // deliberately independent so normal users are never held behind an
-      // admin-only RPC before Home/Markets/Wallet can render.
+      // Customer-critical reads determine the loading shell. Optional home
+      // merchandising and the admin probe stay independent so they can never
+      // hold normal product navigation behind a secondary read.
       void probeAdmin();
+      void probeHomeExperience();
       void load().finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -143,19 +176,19 @@ export function useProductData(enabled = true) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [enabled, load, probeAdmin, reset]);
+  }, [enabled, load, probeAdmin, probeHomeExperience, reset]);
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
 
     setRefreshing(true);
     try {
-      await load();
+      await Promise.all([load(), probeHomeExperience()]);
       void probeAdmin();
     } finally {
       setRefreshing(false);
     }
-  }, [enabled, load, probeAdmin]);
+  }, [enabled, load, probeAdmin, probeHomeExperience]);
 
   const ngn = useMemo(
     () => wallet.find((row) => row.asset_code === 'NGN') ?? wallet[0],
@@ -172,6 +205,10 @@ export function useProductData(enabled = true) {
     positions,
     orders,
     proposals,
+    homePromotions,
+    publicNotices,
+    featuredMarkets,
+    homeExperienceError,
     adminSummary,
     ngn,
     load,

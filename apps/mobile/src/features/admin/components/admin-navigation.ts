@@ -6,12 +6,14 @@ export type AdminHref =
   | '/admin/queue'
   | '/admin/search'
   | '/admin/governance'
+  | '/admin/market-publishing'
   | '/admin/revenue'
   | '/admin/fees'
   | '/admin/payments'
   | '/admin/compliance'
   | '/admin/users'
   | '/admin/content'
+  | '/admin/home-content'
   | '/admin/providers'
   | '/admin/roles';
 
@@ -65,6 +67,13 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         description: 'Market proposals, interventions and resolution',
         permissions: ['markets.manage', 'oracle.review'],
       },
+      {
+        label: 'Publish & Feature',
+        shortLabel: 'Publish',
+        href: '/admin/market-publishing',
+        description: 'Publish approved markets and curate Home features',
+        permissions: ['markets.manage'],
+      },
     ],
   },
   {
@@ -115,6 +124,13 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         shortLabel: 'Content',
         href: '/admin/content',
         description: 'Moderation and content restoration',
+        permissions: ['content.moderate'],
+      },
+      {
+        label: 'Home Content',
+        shortLabel: 'Home',
+        href: '/admin/home-content',
+        description: 'Promotional banners and public awareness notices',
         permissions: ['content.moderate'],
       },
     ],

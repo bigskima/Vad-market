@@ -61,6 +61,21 @@ export type AdminMarketApprovalOptions = {
   jurisdictions: { countryCode: string; name: string; assets: string[] }[];
 };
 
+export type AdminMarketPublicationRow = {
+  instrument_public_id: string;
+  event_public_id: string;
+  title: string;
+  category: string;
+  asset_code: string;
+  instrument_status: string;
+  event_status: string;
+  opens_at: string | null;
+  closes_at: string;
+  is_featured: boolean;
+  feature_rank: number | null;
+  featured_at: string | null;
+};
+
 function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
@@ -300,4 +315,40 @@ export async function approveAdminMarketProposal(input: {
   });
   fail(error);
   return (data ?? {}) as Record<string, unknown>;
+}
+
+export async function getAdminMarketPublicationQueue() {
+  const { data, error } = await supabase.rpc('admin_market_publication_queue');
+  fail(error);
+  return (data ?? []) as AdminMarketPublicationRow[];
+}
+
+export async function publishAdminMarket(input: {
+  instrumentPublicId: string;
+  featureRank?: number;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_publish_market', {
+    p_instrument_public_id: input.instrumentPublicId,
+    p_feature_rank: input.featureRank ?? 100,
+    p_reason: input.reason.trim(),
+  });
+  fail(error);
+  return Boolean(data);
+}
+
+export async function setAdminMarketFeatured(input: {
+  instrumentPublicId: string;
+  featured: boolean;
+  featureRank?: number;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_market_featured', {
+    p_instrument_public_id: input.instrumentPublicId,
+    p_featured: input.featured,
+    p_rank: input.featureRank ?? 100,
+    p_reason: input.reason.trim(),
+  });
+  fail(error);
+  return Boolean(data);
 }
