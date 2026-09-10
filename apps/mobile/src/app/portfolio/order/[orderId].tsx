@@ -10,7 +10,7 @@ export default function PortfolioOrderRoute() {
     : params.orderId;
 
   return (
-    <ProductSubpage title="Order" maxWidth={900}>
+    <ProductSubpage title="Order" maxWidth={1040}>
       <PortfolioOrderScreen
         orderId={orderId ?? ''}
         onCancelled={() => router.replace('/portfolio')}
