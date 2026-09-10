@@ -7,8 +7,11 @@ import {
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
+import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   submitMarketProposal,
@@ -21,10 +24,18 @@ type ProposalStep = 0 | 1 | 2;
 export function ProposalScreen({
   proposals,
   canSubmitProposal,
+  capabilityReason,
+  capabilityLoading = false,
+  historyLoading = false,
+  historyError = null,
   onReload,
 }: {
   proposals: ProposalRow[];
   canSubmitProposal: boolean;
+  capabilityReason?: string;
+  capabilityLoading?: boolean;
+  historyLoading?: boolean;
+  historyError?: string | null;
   onReload: () => Promise<void>;
 }) {
   const theme = useVadTheme();
@@ -62,7 +73,12 @@ export function ProposalScreen({
   }
 
   async function submit() {
-    if (!canSubmitProposal || !questionReady) return;
+    if (
+      capabilityLoading ||
+      !canSubmitProposal ||
+      !questionReady ||
+      working
+    ) return;
 
     setWorking(true);
     setSubmitError(null);
@@ -176,7 +192,7 @@ export function ProposalScreen({
             onPress={() => setView('new')}
           />
           <ModeTab
-            label={'History ' + proposals.length}
+            label={historyLoading ? 'History …' : 'History ' + proposals.length}
             selected={view === 'history'}
             onPress={() => setView('history')}
           />
@@ -186,6 +202,9 @@ export function ProposalScreen({
       {view === 'history' ? (
         <ProposalHistory
           proposals={proposals}
+          loading={historyLoading}
+          error={historyError}
+          onRetry={() => void onReload()}
           onStart={() => {
             resetComposer();
             setView('new');
@@ -285,11 +304,20 @@ export function ProposalScreen({
                   <ReviewRow label="Context" value={context.trim() || 'Not specified'} />
                 </View>
 
-                {!canSubmitProposal ? (
+                {capabilityLoading ? (
+                  <InlineStatus
+                    tone="warning"
+                    title="Checking availability"
+                    message={runtimeCapabilityReason('CAPABILITIES_LOADING')}
+                  />
+                ) : !canSubmitProposal ? (
                   <InlineStatus
                     tone="warning"
                     title="Proposal unavailable"
-                    message="Proposal creation is currently unavailable for this account under live platform policy."
+                    message={runtimeCapabilityReason(
+                      capabilityReason,
+                      'Proposal creation is currently unavailable for this account under live platform policy.',
+                    )}
                   />
                 ) : null}
 
@@ -328,8 +356,12 @@ export function ProposalScreen({
               ) : (
                 <VadButton
                   label="Submit proposal"
-                  loading={working}
-                  disabled={!canSubmitProposal || !questionReady}
+                  loading={working || capabilityLoading}
+                  disabled={
+                    capabilityLoading ||
+                    !canSubmitProposal ||
+                    !questionReady
+                  }
                   onPress={() => void submit()}
                   style={{ flex: 1 }}
                 />
@@ -371,12 +403,39 @@ export function ProposalScreen({
 
 function ProposalHistory({
   proposals,
+  loading,
+  error,
+  onRetry,
   onStart,
 }: {
   proposals: ProposalRow[];
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
   onStart: () => void;
 }) {
   const theme = useVadTheme();
+
+  if (loading && !proposals.length) {
+    return (
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadSkeleton width="42%" height={26} />
+        <VadSkeleton height={92} />
+        <VadSkeleton height={92} />
+        <VadSkeleton height={92} />
+      </View>
+    );
+  }
+
+  if (error && !proposals.length) {
+    return (
+      <VadErrorState
+        title="Proposal history unavailable"
+        message={error}
+        onRetry={onRetry}
+      />
+    );
+  }
 
   if (!proposals.length) {
     return (
@@ -391,6 +450,14 @@ function ProposalHistory({
 
   return (
     <View style={{ gap: theme.spacing.md }}>
+      {error ? (
+        <VadErrorState
+          title="Proposal history refresh failed"
+          message={error}
+          onRetry={onRetry}
+        />
+      ) : null}
+
       <View style={{ gap: 2 }}>
         <VadText variant="heading">Proposal history</VadText>
         <VadText variant="caption" tone="secondary">
