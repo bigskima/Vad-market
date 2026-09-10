@@ -1,5 +1,10 @@
 import { router, usePathname } from 'expo-router';
-import { Pressable, ScrollView, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -15,6 +20,8 @@ const sections = [
 export function AdminWorkspaceNav() {
   const theme = useVadTheme();
   const pathname = usePathname();
+  const { width } = useWindowDimensions();
+  const compact = width < 380;
 
   return (
     <View
@@ -35,7 +42,9 @@ export function AdminWorkspaceNav() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
-            paddingHorizontal: theme.spacing.lg,
+            paddingHorizontal: compact
+              ? theme.spacing.md
+              : theme.spacing.lg,
             gap: theme.spacing.md,
           }}
         >
