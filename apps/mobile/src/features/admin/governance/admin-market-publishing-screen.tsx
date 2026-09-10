@@ -179,19 +179,15 @@ export function AdminMarketPublishingScreen() {
         </View>
         {ready.length ? (
           <View style={{ gap: theme.spacing.sm }}>
-            {ready.map((row) => {
-              const opensInFuture = Boolean(row.opens_at && new Date(row.opens_at).getTime() > Date.now());
-              return (
-                <MarketRow key={row.instrument_public_id} row={row}>
-                  <VadButton
-                    label={opensInFuture ? 'Waiting for opening time' : 'Publish & feature'}
-                    size="small"
-                    disabled={opensInFuture}
-                    onPress={() => openAction(row, 'PUBLISH')}
-                  />
-                </MarketRow>
-              );
-            })}
+            {ready.map((row) => (
+              <MarketRow key={row.instrument_public_id} row={row}>
+                <VadButton
+                  label="Publish & feature"
+                  size="small"
+                  onPress={() => openAction(row, 'PUBLISH')}
+                />
+              </MarketRow>
+            ))}
           </View>
         ) : (
           <VadEmptyState title="No approved drafts waiting" body="Newly approved markets appear here before publication." />
@@ -233,13 +229,16 @@ export function AdminMarketPublishingScreen() {
             <VadCard variant="raised" style={{ gap: 3 }}>
               <VadText variant="bodyStrong">{pending.row.title}</VadText>
               <VadText variant="caption" tone="secondary">{pending.row.category} · {pending.row.asset_code}</VadText>
+              <VadText variant="caption" tone="tertiary">
+                Configured opening: {pending.row.opens_at ? new Date(pending.row.opens_at).toLocaleString() : 'by policy'}
+              </VadText>
             </VadCard>
 
             {pending.action === 'PUBLISH' ? (
               <VadCard variant="brand" style={{ gap: 3 }}>
                 <VadText variant="bodyStrong">Publication is a live-state change.</VadText>
                 <VadText variant="caption" tone="secondary">
-                  VAD will open the instrument, refresh the public market catalog and feature this market automatically.
+                  VAD will verify the opening/closing window on the server, open the instrument, refresh the public market catalog and feature this market automatically.
                 </VadText>
               </VadCard>
             ) : null}
