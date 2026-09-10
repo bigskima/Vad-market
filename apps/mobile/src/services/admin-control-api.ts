@@ -35,6 +35,32 @@ export type AdminContentRow = {
   created_at: string;
 };
 
+export type AdminRoleCatalogRow = {
+  role_code: string;
+  role_name: string;
+  description: string;
+  is_system: boolean;
+  assigned_count: number;
+};
+
+export type AdminRoleAssignmentRow = {
+  assignment_id: number;
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  role_code: string;
+  role_name: string;
+  reason: string;
+  effective_at: string;
+  expires_at: string | null;
+};
+
+export type AdminMarketApprovalOptions = {
+  templates: { code: string; name: string }[];
+  oraclePolicies: { publicId: string; name: string; version: number }[];
+  jurisdictions: { countryCode: string; name: string; assets: string[] }[];
+};
+
 function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
@@ -172,4 +198,106 @@ export async function settleAdminMarket(instrumentPublicId: string) {
   });
   fail(error);
   return String(data);
+}
+
+export async function getAdminRoleCatalog() {
+  const { data, error } = await supabase.rpc('admin_role_catalog');
+  fail(error);
+  return (data ?? []) as AdminRoleCatalogRow[];
+}
+
+export async function getAdminRoleAssignments(search?: string) {
+  const { data, error } = await supabase.rpc('admin_role_assignments', {
+    p_search: search?.trim() || null,
+  });
+  fail(error);
+  return (data ?? []) as AdminRoleAssignmentRow[];
+}
+
+export async function assignAdminRole(input: {
+  userId: string;
+  roleCode: string;
+  reason: string;
+  expiresAt?: string | null;
+}) {
+  const { data, error } = await supabase.rpc('admin_assign_role', {
+    p_user_id: input.userId,
+    p_role_code: input.roleCode,
+    p_reason: input.reason.trim(),
+    p_expires_at: input.expiresAt ?? null,
+  });
+  fail(error);
+  return Number(data);
+}
+
+export async function revokeAdminRole(assignmentId: number, reason: string) {
+  const { data, error } = await supabase.rpc('admin_revoke_role', {
+    p_assignment_id: assignmentId,
+    p_reason: reason.trim(),
+  });
+  fail(error);
+  return Boolean(data);
+}
+
+export async function getAdminMarketApprovalOptions() {
+  const { data, error } = await supabase.rpc('admin_market_approval_options');
+  fail(error);
+  const raw = (data ?? {}) as Partial<AdminMarketApprovalOptions>;
+  return {
+    templates: Array.isArray(raw.templates) ? raw.templates : [],
+    oraclePolicies: Array.isArray(raw.oraclePolicies) ? raw.oraclePolicies : [],
+    jurisdictions: Array.isArray(raw.jurisdictions) ? raw.jurisdictions : [],
+  } satisfies AdminMarketApprovalOptions;
+}
+
+export async function decideAdminMarketProposal(input: {
+  proposalPublicId: string;
+  decision: 'REJECT' | 'NEEDS_CLARIFICATION';
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_decide_market_proposal', {
+    p_proposal_public_id: input.proposalPublicId,
+    p_decision: input.decision,
+    p_reason: input.reason.trim(),
+  });
+  fail(error);
+  return Boolean(data);
+}
+
+export async function approveAdminMarketProposal(input: {
+  proposalPublicId: string;
+  templateCode: string;
+  title: string;
+  description: string;
+  category: string;
+  normalizedParameters: Record<string, unknown>;
+  resolutionScope: Record<string, unknown>;
+  opensAt: string;
+  closesAt: string;
+  resolvesAfter: string;
+  oraclePolicyPublicId: string;
+  countryCode: string;
+  assetCode: string;
+  minOrderNotional: number;
+  pricingPrecision: number;
+}) {
+  const { data, error } = await supabase.rpc('admin_approve_market_proposal', {
+    p_proposal_public_id: input.proposalPublicId,
+    p_template_code: input.templateCode,
+    p_title: input.title.trim(),
+    p_description: input.description.trim(),
+    p_category: input.category.trim(),
+    p_normalized_parameters: input.normalizedParameters,
+    p_resolution_scope: input.resolutionScope,
+    p_opens_at: input.opensAt,
+    p_closes_at: input.closesAt,
+    p_resolves_after: input.resolvesAfter,
+    p_oracle_policy_public_id: input.oraclePolicyPublicId,
+    p_country_code: input.countryCode,
+    p_asset_code: input.assetCode,
+    p_min_order_notional: input.minOrderNotional,
+    p_pricing_precision: input.pricingPrecision,
+  });
+  fail(error);
+  return (data ?? {}) as Record<string, unknown>;
 }
