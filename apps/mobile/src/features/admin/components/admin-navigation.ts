@@ -15,6 +15,7 @@ export type AdminHref =
   | '/admin/content'
   | '/admin/home-content'
   | '/admin/providers'
+  | '/admin/ai'
   | '/admin/roles'
   | '/admin/service-controls';
 
@@ -146,6 +147,13 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         href: '/admin/providers',
         description: 'Provider readiness and governed changes',
         permissions: ['providers.manage', 'finance.read'],
+      },
+      {
+        label: 'AI Routing',
+        shortLabel: 'AI',
+        href: '/admin/ai',
+        description: 'Provider-neutral AI model routing and admission capability',
+        permissions: ['providers.manage'],
       },
     ],
   },

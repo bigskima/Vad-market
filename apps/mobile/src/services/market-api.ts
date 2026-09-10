@@ -65,6 +65,12 @@ export type OrderRow = {
   created_at: string;
 };
 
+export type MarketAdmissionLane =
+  | 'AUTO_PUBLISHED'
+  | 'UNDER_REVIEW'
+  | 'NEEDS_CLARIFICATION'
+  | 'MERGED';
+
 export type ProposalRow = {
   public_id: string;
   question: string;
@@ -72,7 +78,39 @@ export type ProposalRow = {
   category: string | null;
   status: string;
   confidence: number | null;
+  admission_lane: MarketAdmissionLane | null;
+  admission_confidence: number | string | null;
+  decision_reason: string | null;
+  published_instrument_public_id: string | null;
+  clarification_questions: string[] | null;
+  risk_flags: string[] | null;
   created_at: string;
+  updated_at: string;
+};
+
+export type MarketAdmissionResult = {
+  proposalId: string;
+  lane: MarketAdmissionLane;
+  status: string;
+  reason: string;
+  runId: string;
+  published: boolean;
+  instrumentId?: string | null;
+  eventId?: string | null;
+  clarificationQuestions?: string[];
+  riskFlags?: string[];
+};
+
+export type MarketAdmissionResponse = {
+  proposalId: string;
+  admission: MarketAdmissionResult;
+  ai?: {
+    attempted?: boolean;
+    providerCode?: string;
+    modelCode?: string;
+    failoverCount?: number;
+    reason?: string;
+  };
 };
 
 function assertNoError(error: { message: string } | null) {
@@ -141,15 +179,27 @@ export async function cancelOrder(orderPublicId: string) {
   return Boolean(data);
 }
 
-export async function submitMarketProposal(input: { question: string; context?: string; category?: string; confidence?: number }) {
-  const { data, error } = await supabase.rpc('submit_market_proposal', {
-    p_question: input.question,
-    p_context: input.context ?? null,
-    p_category: input.category ?? null,
-    p_confidence: input.confidence ?? null,
+export async function submitMarketProposal(input: {
+  question: string;
+  context?: string;
+  category?: string;
+  assetCode?: string;
+}) {
+  const { data, error } = await supabase.functions.invoke('market-admission', {
+    body: {
+      question: input.question.trim(),
+      context: input.context?.trim() || null,
+      category: input.category?.trim() || null,
+      assetCode: input.assetCode?.trim().toUpperCase() || null,
+    },
   });
-  assertNoError(error);
-  return data as string;
+
+  if (error) throw new Error(error.message);
+  const payload = data as Partial<MarketAdmissionResponse> & { error?: string; message?: string };
+  if (payload.error || !payload.admission) {
+    throw new Error(payload.message || payload.error || 'VAD could not evaluate this proposal right now.');
+  }
+  return payload as MarketAdmissionResponse;
 }
 
 export async function getAdminRuntimeSummary() {

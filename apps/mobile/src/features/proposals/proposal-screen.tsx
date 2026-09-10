@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -15,6 +16,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   submitMarketProposal,
+  type MarketAdmissionResponse,
   type ProposalRow,
 } from '@/services/market-api';
 
@@ -28,6 +30,7 @@ const VIEWS = [
 
 export function ProposalScreen({
   proposals,
+  activeAssetCodes,
   canSubmitProposal,
   capabilityReason,
   capabilityLoading = false,
@@ -36,6 +39,7 @@ export function ProposalScreen({
   onReload,
 }: {
   proposals: ProposalRow[];
+  activeAssetCodes: readonly string[];
   canSubmitProposal: boolean;
   capabilityReason?: string;
   capabilityLoading?: boolean;
@@ -51,20 +55,26 @@ export function ProposalScreen({
   const [question, setQuestion] = useState('');
   const [context, setContext] = useState('');
   const [category, setCategory] = useState('');
+  const [preferredAssetCode, setPreferredAssetCode] = useState(activeAssetCodes[0] ?? '');
   const [working, setWorking] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submittedId, setSubmittedId] = useState<string | null>(null);
+  const [admission, setAdmission] = useState<MarketAdmissionResponse | null>(null);
 
-  const questionReady = question.trim().length >= 10;
+  const assetCode = activeAssetCodes.includes(preferredAssetCode)
+    ? preferredAssetCode
+    : activeAssetCodes[0] ?? '';
+  const questionReady = Boolean(question.trim());
   const looksLikeQuestion = question.trim().endsWith('?');
+  const hasAsset = Boolean(assetCode) || activeAssetCodes.length === 0;
 
   function resetComposer() {
     setQuestion('');
     setContext('');
     setCategory('');
+    setPreferredAssetCode(activeAssetCodes[0] ?? '');
     setStep(0);
     setSubmitError(null);
-    setSubmittedId(null);
+    setAdmission(null);
   }
 
   function goNext() {
@@ -77,19 +87,20 @@ export function ProposalScreen({
   }
 
   async function submit() {
-    if (capabilityLoading || !canSubmitProposal || !questionReady || working) return;
+    if (capabilityLoading || !canSubmitProposal || !questionReady || !hasAsset || working) return;
 
     setWorking(true);
     setSubmitError(null);
 
     try {
-      const id = await submitMarketProposal({
+      const result = await submitMarketProposal({
         question: question.trim(),
         context: context.trim() || undefined,
         category: category.trim() || undefined,
+        assetCode: assetCode || undefined,
       });
 
-      setSubmittedId(id);
+      setAdmission(result);
       await onReload();
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Please try again.');
@@ -98,40 +109,16 @@ export function ProposalScreen({
     }
   }
 
-  if (submittedId) {
+  if (admission) {
     return (
-      <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-        <VadCard variant="raised" style={{ borderColor: theme.colors.yes, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-          <VadChip label="PROPOSAL SUBMITTED" tone="yes" />
-          <View style={{ gap: 2 }}>
-            <VadText variant={density.compact ? 'heading' : 'title'}>Sent for governance review.</VadText>
-            <VadText variant="caption" tone="secondary">
-              The proposal is not tradable yet. Governance still reviews clarity, duplication and resolution requirements.
-            </VadText>
-          </View>
-          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 1 }}>
-            <VadText variant="caption" tone="tertiary">REFERENCE</VadText>
-            <VadText variant="bodyStrong" selectable>{submittedId}</VadText>
-          </View>
-        </VadCard>
-
-        <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
-          <VadButton
-            label="Proposal history"
-            onPress={() => {
-              setSubmittedId(null);
-              setView('history');
-            }}
-            style={{ flex: 1 }}
-          />
-          <VadButton
-            label="Create another"
-            variant="secondary"
-            onPress={resetComposer}
-            style={{ flex: 1 }}
-          />
-        </View>
-      </View>
+      <AdmissionOutcome
+        response={admission}
+        onHistory={() => {
+          setAdmission(null);
+          setView('history');
+        }}
+        onCreateAnother={resetComposer}
+      />
     );
   }
 
@@ -142,7 +129,7 @@ export function ProposalScreen({
           <VadText variant="caption" tone="brand">CREATE MARKET</VadText>
           <VadText variant={density.compact ? 'heading' : 'title'}>Propose one clear outcome.</VadText>
           <VadText variant="caption" tone="secondary">
-            Governance reviews the question before any market can go live.
+            VAD runs automated intelligence, canonical duplicate checks and deterministic safety rules first. Only exceptions need human review.
           </VadText>
         </View>
 
@@ -176,7 +163,7 @@ export function ProposalScreen({
                 <View style={{ gap: 2 }}>
                   <VadText variant="heading">What should the market ask?</VadText>
                   <VadText variant="caption" tone="secondary">
-                    Write one outcome that can eventually be verified independently.
+                    State one objective YES/NO outcome with enough timing and criteria for an independent resolver.
                   </VadText>
                 </View>
 
@@ -189,11 +176,11 @@ export function ProposalScreen({
                   }}
                   multiline
                   placeholder="Will … happen before …?"
-                  hint={`${question.trim().length} characters`}
+                  hint={`${question.trim().length} characters · live policy performs the final validation`}
                 />
 
                 <View style={{ gap: 6 }}>
-                  <QualityRow label="Enough detail to review" ready={questionReady} />
+                  <QualityRow label="Question entered" ready={questionReady} />
                   <QualityRow label="Written as a question" ready={looksLikeQuestion} advisory />
                 </View>
               </View>
@@ -202,11 +189,27 @@ export function ProposalScreen({
             {step === 1 ? (
               <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
                 <View style={{ gap: 2 }}>
-                  <VadText variant="heading">Add useful context.</VadText>
+                  <VadText variant="heading">Give VAD the resolution context.</VadText>
                   <VadText variant="caption" tone="secondary">
-                    Help reviewers understand the subject without trying to predetermine the answer.
+                    Add facts that make the market objectively resolvable. The intelligence layer will not invent missing dates, criteria or sources.
                   </VadText>
                 </View>
+
+                {activeAssetCodes.length > 0 ? (
+                  <View style={{ gap: 6 }}>
+                    <VadText variant="caption" tone="tertiary">SETTLEMENT ASSET</VadText>
+                    <VadSegmentedControl
+                      value={assetCode}
+                      options={activeAssetCodes.map((code) => ({ value: code, label: code }))}
+                      onChange={(value) => {
+                        setPreferredAssetCode(value);
+                        setSubmitError(null);
+                      }}
+                    />
+                  </View>
+                ) : (
+                  <InlineStatus tone="warning" title="No settlement asset" message="No settlement asset is currently available for your account location." />
+                )}
 
                 <VadInput
                   label="Category · optional"
@@ -219,15 +222,15 @@ export function ProposalScreen({
                 />
 
                 <VadInput
-                  label="Context · optional"
+                  label="Resolution context"
                   value={context}
                   onChangeText={(value) => {
                     setContext(value);
                     setSubmitError(null);
                   }}
                   multiline
-                  placeholder="What should reviewers understand about this question?"
-                  hint={context.trim() ? `${context.trim().length} characters` : 'Optional'}
+                  placeholder="Include the event, deadline, measurable YES condition and credible evidence source where known."
+                  hint={context.trim() ? `${context.trim().length} characters` : 'Strongly recommended for automatic admission'}
                 />
               </View>
             ) : null}
@@ -235,16 +238,17 @@ export function ProposalScreen({
             {step === 2 ? (
               <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
                 <View style={{ gap: 2 }}>
-                  <VadText variant="heading">Review before submitting.</VadText>
+                  <VadText variant="heading">Ready for automated admission.</VadText>
                   <VadText variant="caption" tone="secondary">
-                    This sends a governance proposal; it does not create an immediately tradable market.
+                    AI intelligence assists with normalization and risk analysis, but server-side rules remain the publication authority.
                   </VadText>
                 </View>
 
                 <View>
                   <ReviewRow label="Question" value={question.trim()} />
+                  <ReviewRow label="Settlement" value={assetCode || 'Unavailable'} />
                   <ReviewRow label="Category" value={category.trim() || 'Not specified'} />
-                  <ReviewRow label="Context" value={context.trim() || 'Not specified'} />
+                  <ReviewRow label="Resolution context" value={context.trim() || 'Not specified'} />
                 </View>
 
                 {capabilityLoading ? (
@@ -255,6 +259,8 @@ export function ProposalScreen({
                     title="Proposal unavailable"
                     message={runtimeCapabilityReason(capabilityReason, 'Proposal creation is currently unavailable for this account under live platform policy.')}
                   />
+                ) : !hasAsset ? (
+                  <InlineStatus tone="warning" title="Settlement unavailable" message="Select an active settlement asset before submitting." />
                 ) : null}
 
                 {submitError ? (
@@ -269,9 +275,9 @@ export function ProposalScreen({
                 <VadButton label="Continue" disabled={step === 0 && !questionReady} onPress={goNext} style={{ flex: 1 }} />
               ) : (
                 <VadButton
-                  label="Submit proposal"
+                  label="Run admission checks"
                   loading={working || capabilityLoading}
-                  disabled={capabilityLoading || !canSubmitProposal || !questionReady}
+                  disabled={capabilityLoading || !canSubmitProposal || !questionReady || !hasAsset}
                   onPress={() => void submit()}
                   style={{ flex: 1 }}
                 />
@@ -279,17 +285,90 @@ export function ProposalScreen({
             </View>
           </VadCard>
 
-          <VadCard variant="muted" style={{ width: wide ? 300 : '100%', gap: theme.spacing.sm }}>
+          <VadCard variant="muted" style={{ width: wide ? 310 : '100%', gap: theme.spacing.sm }}>
             <View style={{ gap: 1 }}>
-              <VadText variant="caption" tone="brand">PROPOSAL GUIDE</VadText>
-              <VadText variant="bodyStrong">Before you submit</VadText>
+              <VadText variant="caption" tone="brand">INTELLIGENT ADMISSION</VadText>
+              <VadText variant="bodyStrong">How VAD handles scale</VadText>
             </View>
-            <Guide number="1" title="One resolvable question" body="Avoid combining several outcomes." />
-            <Guide number="2" title="Context, not persuasion" body="Explain the subject without writing the answer." />
-            <Guide number="3" title="Governance activates" body="Submission never makes a market live by itself." />
+            <Guide number="1" title="Structure" body="Deterministic checks require a valid market shape, timing, jurisdiction and settlement asset." />
+            <Guide number="2" title="Intelligence" body="Configured AI models assess clarity, objectivity, duplicate risk, manipulation risk and resolvability." />
+            <Guide number="3" title="Authority" body="Only proposals that pass both layers can publish automatically. Ambiguous or risky cases go to people." />
+            <Guide number="4" title="Provider-neutral" body="VAD selects enabled AI models by capability and priority, with failover instead of depending on one vendor." />
           </VadCard>
         </View>
       )}
+    </View>
+  );
+}
+
+function AdmissionOutcome({
+  response,
+  onHistory,
+  onCreateAnother,
+}: {
+  response: MarketAdmissionResponse;
+  onHistory: () => void;
+  onCreateAnother: () => void;
+}) {
+  const theme = useVadTheme();
+  const density = useProductDensity();
+  const result = response.admission;
+  const live = result.lane === 'AUTO_PUBLISHED';
+  const merged = result.lane === 'MERGED';
+  const clarification = result.lane === 'NEEDS_CLARIFICATION';
+  const chipTone = live || merged ? 'yes' : clarification ? 'warning' : 'brand';
+  const title = live
+    ? 'Market is live.'
+    : merged
+      ? 'Matched an existing market.'
+      : clarification
+        ? 'A few details are needed.'
+        : 'Sent to the exception queue.';
+  const body = live
+    ? 'The proposal passed deterministic validation and the active intelligence thresholds. It is now tradable.'
+    : merged
+      ? 'VAD detected the same canonical event and avoided creating a duplicate market.'
+      : clarification
+        ? 'VAD will not publish an unclear market. Update the missing details and submit a clearer proposal.'
+        : 'Automated checks did not have enough confidence to publish safely, so a human review is required.';
+
+  return (
+    <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
+      <VadCard variant="raised" style={{ borderColor: live || merged ? theme.colors.yes : clarification ? theme.colors.warning : theme.colors.borderStrong, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
+        <VadChip label={result.lane.replaceAll('_', ' ')} tone={chipTone} />
+        <View style={{ gap: 2 }}>
+          <VadText variant={density.compact ? 'heading' : 'title'}>{title}</VadText>
+          <VadText variant="caption" tone="secondary">{body}</VadText>
+        </View>
+
+        <View style={{ gap: 5, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm }}>
+          <VadText variant="caption" tone="tertiary">WHY</VadText>
+          <VadText variant="caption" tone="secondary">{result.reason}</VadText>
+          <VadText variant="caption" tone="tertiary">REFERENCE</VadText>
+          <VadText variant="bodyStrong" selectable>{response.proposalId}</VadText>
+        </View>
+
+        {result.clarificationQuestions?.length ? (
+          <View style={{ gap: 5 }}>
+            <VadText variant="caption" tone="tertiary">CLARIFY BEFORE RESUBMITTING</VadText>
+            {result.clarificationQuestions.map((item, index) => (
+              <VadText key={`${item}-${index}`} variant="caption" tone="secondary">{`${index + 1}. ${item}`}</VadText>
+            ))}
+          </View>
+        ) : null}
+
+        {result.instrumentId ? (
+          <VadButton
+            label={live ? 'Open live market' : 'Open existing market'}
+            onPress={() => router.push({ pathname: '/market/[marketId]', params: { marketId: result.instrumentId! } })}
+          />
+        ) : null}
+      </VadCard>
+
+      <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
+        <VadButton label="Proposal history" onPress={onHistory} style={{ flex: 1 }} />
+        <VadButton label="Create another" variant="secondary" onPress={onCreateAnother} style={{ flex: 1 }} />
+      </View>
     </View>
   );
 }
@@ -313,7 +392,7 @@ function ProposalHistory({ proposals, loading, error, onRetry, onStart }: { prop
   }
 
   if (!proposals.length) {
-    return <VadEmptyState title="No proposals yet" body="Your submitted market ideas will appear here with their governance status." actionLabel="Start a proposal" onAction={onStart} />;
+    return <VadEmptyState title="No proposals yet" body="Your submitted market ideas will appear here with their automated-admission or review status." actionLabel="Start a proposal" onAction={onStart} />;
   }
 
   return (
@@ -321,22 +400,37 @@ function ProposalHistory({ proposals, loading, error, onRetry, onStart }: { prop
       {error ? <VadErrorState title="Proposal history refresh failed" message={error} onRetry={onRetry} /> : null}
       <View style={{ gap: 1 }}>
         <VadText variant="heading">Proposal history</VadText>
-        <VadText variant="caption" tone="secondary">Governance status may change after review.</VadText>
+        <VadText variant="caption" tone="secondary">Most clear markets can be processed automatically; only exceptions wait for a reviewer.</VadText>
       </View>
 
       <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
-        {proposals.map((proposal) => (
-          <VadCard key={proposal.public_id} variant="raised" style={{ gap: 6 }}>
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <VadText variant="bodyStrong" style={{ flex: 1 }} numberOfLines={3}>{proposal.question}</VadText>
-              <VadChip label={proposal.status.replaceAll('_', ' ')} tone={proposalStatusChipTone(proposal.status)} />
-            </View>
-            <VadText variant="caption" tone="secondary">
-              {(proposal.category ?? 'General') + ' · ' + new Date(proposal.created_at).toLocaleDateString()}
-            </VadText>
-            {proposal.context ? <VadText variant="caption" tone="tertiary" numberOfLines={2}>{proposal.context}</VadText> : null}
-          </VadCard>
-        ))}
+        {proposals.map((proposal) => {
+          const displayStatus = proposal.admission_lane ?? proposal.status;
+          return (
+            <VadCard key={proposal.public_id} variant="raised" style={{ gap: 6 }}>
+              <View style={{ flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <VadText variant="bodyStrong" style={{ flex: 1 }} numberOfLines={3}>{proposal.question}</VadText>
+                <VadChip label={displayStatus.replaceAll('_', ' ')} tone={proposalStatusChipTone(displayStatus)} />
+              </View>
+              <VadText variant="caption" tone="secondary">
+                {(proposal.category ?? 'General') + ' · ' + new Date(proposal.created_at).toLocaleDateString()}
+              </VadText>
+              {proposal.decision_reason ? <VadText variant="caption" tone="secondary">{proposal.decision_reason}</VadText> : null}
+              {proposal.clarification_questions?.length ? (
+                <VadText variant="caption" tone="warning" numberOfLines={3}>{proposal.clarification_questions.join(' · ')}</VadText>
+              ) : null}
+              {proposal.context ? <VadText variant="caption" tone="tertiary" numberOfLines={2}>{proposal.context}</VadText> : null}
+              {proposal.published_instrument_public_id ? (
+                <VadButton
+                  label="Open market"
+                  size="small"
+                  variant="secondary"
+                  onPress={() => router.push({ pathname: '/market/[marketId]', params: { marketId: proposal.published_instrument_public_id! } })}
+                />
+              ) : null}
+            </VadCard>
+          );
+        })}
       </View>
     </View>
   );
@@ -412,8 +506,8 @@ function InlineStatus({ tone, title, message }: { tone: 'warning' | 'danger'; ti
 
 function proposalStatusChipTone(status: string): 'brand' | 'yes' | 'warning' | 'no' {
   const normalized = status.toUpperCase();
-  if (normalized.includes('APPROV') || normalized.includes('ACTIVE') || normalized.includes('LIVE')) return 'yes';
+  if (normalized.includes('AUTO_PUBLISHED') || normalized.includes('MERGED') || normalized.includes('APPROV') || normalized.includes('ACTIVE') || normalized.includes('LIVE')) return 'yes';
   if (normalized.includes('REJECT') || normalized.includes('FAIL') || normalized.includes('CANCEL')) return 'no';
-  if (normalized.includes('PENDING') || normalized.includes('REVIEW')) return 'warning';
+  if (normalized.includes('CLARIFICATION') || normalized.includes('PENDING') || normalized.includes('REVIEW')) return 'warning';
   return 'brand';
 }
