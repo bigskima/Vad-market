@@ -12,6 +12,7 @@ import {
 } from '@/features/admin/operations/operations-section';
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import type { ProviderReadinessRow } from '@/services/provider-admin-api';
 
 export function AdminProvidersScreen() {
   const theme = useVadTheme();
@@ -24,8 +25,9 @@ export function AdminProvidersScreen() {
     return (
       <View style={{ gap: theme.spacing.md }}>
         <VadSkeleton width="50%" height={32} />
-        <VadSkeleton height={92} />
-        <VadSkeleton height={72} />
+        <VadSkeleton height={112} />
+        <VadSkeleton height={52} />
+        <VadSkeleton height={76} />
       </View>
     );
   }
@@ -41,19 +43,15 @@ export function AdminProvidersScreen() {
   }
 
   const configured = data.providers.filter((row) => row.configured).length;
-  const ready = data.providers.filter(
-    (row) =>
-      row.configured &&
-      ['ACTIVE', 'READY', 'HEALTHY', 'ENABLED'].includes(
-        String(row.provider_status).toUpperCase(),
-      ),
+  const ready = data.providers.filter(isReady).length;
+  const degraded = data.providers.filter(
+    (row) => row.configured && !isReady(row),
   ).length;
-
   const readinessRatio =
     data.providers.length > 0 ? ready / data.providers.length : 0;
 
   return (
-    <View style={{ gap: theme.spacing.xxl }}>
+    <View style={{ gap: theme.spacing.xxxl }}>
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
@@ -63,16 +61,17 @@ export function AdminProvidersScreen() {
       >
         <View
           style={{
-            flex: 1,
+            flex: 1.1,
             justifyContent: 'center',
             gap: theme.spacing.xs,
           }}
         >
-          <VadText variant="label" tone="brand">PROVIDERS</VadText>
-          <VadText variant="title">Runtime readiness.</VadText>
+          <VadText variant="label" tone="brand">PROVIDER CONTROL</VadText>
+          <VadText variant="title">External routes at a glance.</VadText>
           <VadText tone="secondary">
-            A configured provider is not automatically active. Readiness,
-            runtime state and governed status changes remain separate signals.
+            Configuration, provider health and route state are separate. A row
+            is shown as ready only when the configured provider and its route
+            both report an operational state.
           </VadText>
         </View>
 
@@ -81,7 +80,10 @@ export function AdminProvidersScreen() {
             flex: wide ? 0.9 : undefined,
             borderTopWidth: 1,
             borderBottomWidth: 1,
-            borderColor: theme.colors.border,
+            borderColor:
+              readinessRatio === 1 && data.providers.length
+                ? theme.colors.yes
+                : theme.colors.border,
             paddingVertical: theme.spacing.lg,
             gap: theme.spacing.md,
           }}
@@ -91,14 +93,13 @@ export function AdminProvidersScreen() {
               flexDirection: 'row',
               justifyContent: 'space-between',
               gap: theme.spacing.md,
+              alignItems: 'flex-end',
             }}
           >
             <View style={{ gap: 2 }}>
-              <VadText variant="caption" tone="secondary">
-                READY ROUTES
-              </VadText>
-              <VadText variant="title">
-                {ready} / {data.providers.length}
+              <VadText variant="caption" tone="secondary">READY ROUTES</VadText>
+              <VadText variant="display">
+                {ready}/{data.providers.length}
               </VadText>
             </View>
             <VadText
@@ -110,6 +111,12 @@ export function AdminProvidersScreen() {
           </View>
 
           <View
+            accessibilityRole="progressbar"
+            accessibilityValue={{
+              min: 0,
+              max: 100,
+              now: Math.round(readinessRatio * 100),
+            }}
             style={{
               height: 8,
               borderRadius: theme.radius.pill,
@@ -128,6 +135,10 @@ export function AdminProvidersScreen() {
               }}
             />
           </View>
+
+          <VadText variant="caption" tone="tertiary">
+            Based on the provider readiness rows returned to this operator role.
+          </VadText>
         </View>
       </View>
 
@@ -138,15 +149,12 @@ export function AdminProvidersScreen() {
           gap: theme.spacing.sm,
         }}
       >
+        <AdminMetricCard label="Configured" value={configured} tone="brand" />
+        <AdminMetricCard label="Ready" value={ready} tone={ready ? 'yes' : 'primary'} />
         <AdminMetricCard
-          label="Configured"
-          value={configured}
-          tone="brand"
-        />
-        <AdminMetricCard
-          label="Ready"
-          value={ready}
-          tone={ready ? 'yes' : 'primary'}
+          label="Needs attention"
+          value={degraded}
+          tone={degraded ? 'warning' : 'yes'}
         />
         <AdminMetricCard
           label="Pending approvals"
@@ -161,7 +169,7 @@ export function AdminProvidersScreen() {
         items={[
           {
             key: 'readiness',
-            label: 'Readiness',
+            label: 'Provider routes',
             count: data.providers.length,
           },
           {
@@ -175,40 +183,37 @@ export function AdminProvidersScreen() {
       {tab === 'readiness' ? (
         <OperationsSection
           title="Provider routes"
-          description="Runtime readiness by provider, environment and operation."
+          description="Provider status and route status are shown independently in each row."
           count={data.providers.length}
         >
           {data.providers.length ? (
-            data.providers.map((row, index) => (
-              <OperationsRow
-                key={
-                  row.provider_code +
-                  '-' +
-                  String(row.operation) +
-                  '-' +
-                  index
-                }
-                title={row.provider_code + ' · ' + row.environment}
-                detail={
-                  String(row.operation ?? 'No route') +
-                  ' · ' +
-                  String(row.country_code ?? '—') +
-                  ' · ' +
-                  String(row.asset_code ?? 'all assets')
-                }
-                status={
-                  row.configured
-                    ? String(row.provider_status)
-                    : 'UNCONFIGURED'
-                }
-                ready={
-                  row.configured &&
-                  ['ACTIVE', 'READY', 'HEALTHY', 'ENABLED'].includes(
-                    String(row.provider_status).toUpperCase(),
-                  )
-                }
-              />
-            ))
+            data.providers.map((row, index) => {
+              const readyRow = isReady(row);
+              const status = !row.configured
+                ? 'UNCONFIGURED'
+                : readyRow
+                  ? 'READY'
+                  : row.route_status ?? row.provider_status;
+
+              return (
+                <OperationsRow
+                  key={`${row.provider_code}-${String(row.operation)}-${index}`}
+                  title={`${row.provider_code} · ${row.environment}`}
+                  detail={
+                    `${String(row.operation ?? 'No route')} · ` +
+                    `${String(row.country_code ?? '—')} · ` +
+                    `${String(row.asset_code ?? 'all assets')}`
+                  }
+                  meta={
+                    `Provider ${String(row.provider_status)} · ` +
+                    `Route ${String(row.route_status ?? 'not reported')} · ` +
+                    `Priority ${row.priority ?? '—'}`
+                  }
+                  status={status}
+                  ready={readyRow}
+                />
+              );
+            })
           ) : (
             <EmptyText>No provider readiness rows are available.</EmptyText>
           )}
@@ -216,21 +221,16 @@ export function AdminProvidersScreen() {
       ) : (
         <OperationsSection
           title="Pending approvals"
-          description="Governed provider status changes awaiting a checker."
+          description="Governed provider status changes awaiting a separate checker."
           count={data.providerChanges.length}
         >
           {data.providerChanges.length ? (
             data.providerChanges.map((row) => (
               <OperationsRow
                 key={row.request_public_id}
-                title={
-                  row.provider_code +
-                  ': ' +
-                  row.current_status +
-                  ' → ' +
-                  row.requested_status
-                }
+                title={`${row.provider_code}: ${row.current_status} → ${row.requested_status}`}
                 detail={row.reason}
+                meta={`${row.environment} · requested ${new Date(row.created_at).toLocaleString()}`}
                 status="PENDING"
               />
             ))
@@ -239,8 +239,40 @@ export function AdminProvidersScreen() {
           )}
         </OperationsSection>
       )}
+
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderBottomWidth: 1,
+          borderColor: theme.colors.border,
+          paddingVertical: theme.spacing.md,
+          gap: 2,
+        }}
+      >
+        <VadText variant="bodyStrong">Maker-checker boundary</VadText>
+        <VadText variant="caption" tone="secondary">
+          This overview reports current readiness and pending changes. Governed
+          status transitions remain controlled by the existing backend approval
+          functions and permission checks.
+        </VadText>
+      </View>
     </View>
   );
+}
+
+function isReady(row: ProviderReadinessRow) {
+  if (!row.configured) return false;
+
+  const providerReady = ['ACTIVE', 'READY', 'HEALTHY', 'ENABLED'].includes(
+    String(row.provider_status).toUpperCase(),
+  );
+  const routeReady =
+    row.route_status == null ||
+    ['ACTIVE', 'READY', 'HEALTHY', 'ENABLED'].includes(
+      String(row.route_status).toUpperCase(),
+    );
+
+  return providerReady && routeReady;
 }
 
 function EmptyText({ children }: { children: string }) {
