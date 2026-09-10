@@ -9,6 +9,7 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { AdminSectionTabs } from '@/features/admin/components/admin-section-tabs';
 import { AdminMetricCard } from '@/features/admin/dashboard/admin-metric-card';
+import { AdminMarketProposalReview } from '@/features/admin/governance/admin-market-proposal-review';
 import {
   OperationsRow,
   OperationsSection,
@@ -23,6 +24,7 @@ import {
 } from '@/services/admin-control-api';
 
 type OracleRow = Record<string, unknown>;
+type ProposalRow = Record<string, unknown>;
 type ResolutionAction = 'CREATE' | 'FINALIZE' | 'VOID';
 
 export function AdminGovernanceScreen() {
@@ -35,6 +37,7 @@ export function AdminGovernanceScreen() {
   const [tab, setTab] = useState(
     canManageMarkets ? 'markets' : 'oracle',
   );
+  const [selectedProposal, setSelectedProposal] = useState<ProposalRow | null>(null);
   const [selectedOracle, setSelectedOracle] = useState<OracleRow | null>(null);
   const [action, setAction] = useState<ResolutionAction | null>(null);
   const [outcomeCode, setOutcomeCode] = useState('');
@@ -164,9 +167,7 @@ export function AdminGovernanceScreen() {
           <VadText variant="label" tone="brand">GOVERNANCE</VadText>
           <VadText variant="title">Markets & resolution.</VadText>
           <VadText tone="secondary">
-            Market governance and oracle resolution stay permission-scoped.
-            Resolution finalization keeps the backend maker-checker and dispute
-            window controls intact.
+            Review, approve, return or reject market proposals and resolve oracle cases. Backend canonicalization, permissions, dispute windows and settlement boundaries remain authoritative.
           </VadText>
         </View>
 
@@ -229,7 +230,7 @@ export function AdminGovernanceScreen() {
           title="Market review"
           description={
             total
-              ? 'Questions waiting for market-governance review. Approval remains a structured workflow because a market requires template, oracle policy, timing, jurisdiction and asset configuration.'
+              ? 'Open a proposal to approve it with explicit canonical configuration, request clarification, or reject it.'
               : 'No governance work is waiting.'
           }
           count={data.marketQueue.length}
@@ -237,7 +238,7 @@ export function AdminGovernanceScreen() {
           {data.marketQueue.length ? (
             data.marketQueue.map((row, index) => (
               <OperationsRow
-                key={'market-' + index}
+                key={String(row.proposal_public_id ?? 'market-' + index)}
                 title={String(
                   row.question ?? row.title ?? 'Market proposal',
                 )}
@@ -252,6 +253,8 @@ export function AdminGovernanceScreen() {
                     : undefined
                 }
                 status={String(row.proposal_status ?? row.status ?? 'PENDING')}
+                actionLabel="Review"
+                onPress={() => setSelectedProposal(row)}
               />
             ))
           ) : (
@@ -297,6 +300,15 @@ export function AdminGovernanceScreen() {
       ) : (
         <EmptyText>No governance surface is assigned to this role.</EmptyText>
       )}
+
+      <AdminMarketProposalReview
+        proposal={selectedProposal}
+        onClose={() => setSelectedProposal(null)}
+        onCompleted={async (message) => {
+          setActionMessage(message);
+          await data.refresh();
+        }}
+      />
 
       <VadBottomSheet
         visible={Boolean(selectedOracle)}
@@ -443,13 +455,15 @@ function ActionChoice({
 }) {
   const theme = useVadTheme();
   return (
-    <VadButton
-      label={label}
-      variant={selected ? 'primary' : 'ghost'}
-      disabled={disabled}
-      onPress={onPress}
-      style={{ marginVertical: theme.spacing.xs }}
-    />
+    <View style={{ gap: 2, paddingVertical: theme.spacing.xs }}>
+      <VadButton
+        label={label}
+        variant={selected ? 'primary' : 'ghost'}
+        disabled={disabled}
+        onPress={onPress}
+      />
+      <VadText variant="caption" tone="tertiary">{detail}</VadText>
+    </View>
   );
 }
 
