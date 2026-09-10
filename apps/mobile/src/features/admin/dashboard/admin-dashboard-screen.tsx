@@ -7,12 +7,19 @@ import { VadText } from '@/components/ui/vad-text';
 import { AdminMetricCard } from '@/features/admin/dashboard/admin-metric-card';
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { hasAnyAdminPermission } from '@/services/admin-control-api';
 
 export function AdminDashboardScreen() {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 860;
   const data = useAdminData();
+  const canGovern = hasAnyAdminPermission(data.access, ['markets.manage', 'oracle.review']);
+  const canProviders = hasAnyAdminPermission(data.access, ['providers.manage', 'finance.read']);
+  const canCompliance = hasAnyAdminPermission(data.access, ['compliance.manage', 'support.read']);
+  const canPayments = hasAnyAdminPermission(data.access, ['finance.read', 'payments.refund']);
+  const canUsers = hasAnyAdminPermission(data.access, ['users.manage', 'support.read', 'admin.roles.manage']);
+  const canContent = hasAnyAdminPermission(data.access, ['content.moderate']);
 
   if (data.loading) {
     return (
@@ -36,19 +43,23 @@ export function AdminDashboardScreen() {
   }
 
   const configured = data.providers.filter((row) => row.configured).length;
-  const kycAttention = Number(
-    data.operations?.kycInReview ?? data.kycQueue.length,
-  );
-  const paymentAttention = Number(
-    data.operations?.paymentProviderPending ?? data.paymentQueue.length,
-  );
+  const kycAttention = canCompliance
+    ? Number(data.operations?.kycInReview ?? data.kycQueue.length)
+    : 0;
+  const paymentAttention = canPayments
+    ? Number(data.operations?.paymentProviderPending ?? data.paymentQueue.length)
+    : 0;
+  const governanceAttention = canGovern
+    ? data.marketQueue.length + data.oracleQueue.length
+    : 0;
+  const providerAttention = canProviders ? data.providerChanges.length : 0;
 
   const attention =
-    data.marketQueue.length +
-    data.oracleQueue.length +
-    kycAttention +
-    paymentAttention +
-    data.providerChanges.length;
+    governanceAttention + kycAttention + paymentAttention + providerAttention;
+
+  const roleLabel = data.access.isSuperAdmin
+    ? 'Super Admin'
+    : data.access.roles.map((role) => role.name).join(' · ') || 'Operations role';
 
   return (
     <View style={{ gap: theme.spacing.xxxl }}>
@@ -69,9 +80,11 @@ export function AdminDashboardScreen() {
           <VadText variant="label" tone="brand">OPERATIONS OVERVIEW</VadText>
           <VadText variant="title">What needs attention now?</VadText>
           <VadText tone="secondary">
-            Use this page to triage work. Each control area stays separate and
-            backend roles, permissions and maker-checker rules remain authoritative.
+            This workspace is assembled from your live roles. Super Admin sees
+            the full control plane; other operators see only the areas granted
+            by backend permissions.
           </VadText>
+          <VadText variant="caption" tone="tertiary">SIGNED IN AS · {roleLabel}</VadText>
         </View>
 
         <View
@@ -91,11 +104,11 @@ export function AdminDashboardScreen() {
             variant="caption"
             tone={attention > 0 ? 'warning' : 'yes'}
           >
-            ATTENTION ITEMS
+            VISIBLE ATTENTION ITEMS
           </VadText>
           <VadText variant="display">{attention}</VadText>
           <VadText variant="caption" tone="secondary">
-            Across governance, providers, compliance and payments.
+            Counted only across control areas available to this operator.
           </VadText>
         </View>
       </View>
@@ -107,65 +120,103 @@ export function AdminDashboardScreen() {
           gap: theme.spacing.sm,
         }}
       >
-        <AdminMetricCard
-          label="Market review"
-          value={data.marketQueue.length}
-          tone={data.marketQueue.length ? 'warning' : 'yes'}
-        />
-        <AdminMetricCard
-          label="Oracle queue"
-          value={data.oracleQueue.length}
-          tone={data.oracleQueue.length ? 'warning' : 'yes'}
-        />
-        <AdminMetricCard
-          label="KYC review"
-          value={kycAttention}
-          tone={kycAttention ? 'warning' : 'yes'}
-        />
-        <AdminMetricCard
-          label="Payments pending"
-          value={paymentAttention}
-          tone={paymentAttention ? 'warning' : 'yes'}
-        />
-        <AdminMetricCard
-          label="Provider approvals"
-          value={data.providerChanges.length}
-          tone={data.providerChanges.length ? 'warning' : 'yes'}
-        />
-        <AdminMetricCard
-          label="Providers configured"
-          value={configured}
-          tone="brand"
-        />
+        {canGovern ? (
+          <>
+            <AdminMetricCard
+              label="Market review"
+              value={data.marketQueue.length}
+              tone={data.marketQueue.length ? 'warning' : 'yes'}
+            />
+            <AdminMetricCard
+              label="Oracle queue"
+              value={data.oracleQueue.length}
+              tone={data.oracleQueue.length ? 'warning' : 'yes'}
+            />
+          </>
+        ) : null}
+        {canCompliance ? (
+          <AdminMetricCard
+            label="KYC review"
+            value={kycAttention}
+            tone={kycAttention ? 'warning' : 'yes'}
+          />
+        ) : null}
+        {canPayments ? (
+          <AdminMetricCard
+            label="Payments pending"
+            value={paymentAttention}
+            tone={paymentAttention ? 'warning' : 'yes'}
+          />
+        ) : null}
+        {canProviders ? (
+          <>
+            <AdminMetricCard
+              label="Provider approvals"
+              value={data.providerChanges.length}
+              tone={data.providerChanges.length ? 'warning' : 'yes'}
+            />
+            <AdminMetricCard
+              label="Providers configured"
+              value={configured}
+              tone="brand"
+            />
+          </>
+        ) : null}
       </View>
 
       <View style={{ gap: theme.spacing.sm }}>
         <VadText variant="heading">Control areas</VadText>
+        <VadText variant="caption" tone="secondary">
+          The available areas below come from your active backend roles, not a
+          client-side administrator flag.
+        </VadText>
         <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-          <WorkspaceRow
-            title="Governance"
-            detail="Market proposals and oracle resolution queues"
-            count={data.marketQueue.length + data.oracleQueue.length}
-            onPress={() => router.push('/admin/governance')}
-          />
-          <WorkspaceRow
-            title="Providers"
-            detail="Runtime readiness and maker-checker changes"
-            count={data.providerChanges.length}
-            onPress={() => router.push('/admin/providers')}
-          />
-          <WorkspaceRow
-            title="Compliance"
-            detail="Identity verification review"
-            count={kycAttention}
-            onPress={() => router.push('/admin/compliance')}
-          />
-          <WorkspaceRow
-            title="Payments"
-            detail="Deposit and withdrawal operational states"
-            count={paymentAttention}
-            onPress={() => router.push('/admin/payments')}
-          />
+          {canGovern ? (
+            <WorkspaceRow
+              title="Governance"
+              detail="Market review and oracle resolution controls"
+              count={governanceAttention}
+              onPress={() => router.push('/admin/governance')}
+            />
+          ) : null}
+          {canProviders ? (
+            <WorkspaceRow
+              title="Providers"
+              detail="Runtime readiness, safety actions and maker-checker approvals"
+              count={providerAttention}
+              onPress={() => router.push('/admin/providers')}
+            />
+          ) : null}
+          {canCompliance ? (
+            <WorkspaceRow
+              title="Compliance"
+              detail="Identity-verification operational review"
+              count={kycAttention}
+              onPress={() => router.push('/admin/compliance')}
+            />
+          ) : null}
+          {canPayments ? (
+            <WorkspaceRow
+              title="Payments"
+              detail="Deposit/withdrawal state and permission-gated refund workflow"
+              count={paymentAttention}
+              onPress={() => router.push('/admin/payments')}
+            />
+          ) : null}
+          {canUsers ? (
+            <WorkspaceRow
+              title="Users"
+              detail="Account review, restrictions, suspension and bans"
+              onPress={() => router.push('/admin/users')}
+            />
+          ) : null}
+          {canContent ? (
+            <WorkspaceRow
+              title="Content"
+              detail="Audited removal and restoration of posts and comments"
+              onPress={() => router.push('/admin/content')}
+            />
+          ) : null}
         </View>
       </View>
 
@@ -173,7 +224,7 @@ export function AdminDashboardScreen() {
         <View style={{ gap: theme.spacing.sm }}>
           <VadText variant="heading">Runtime snapshot</VadText>
           <VadText variant="caption" tone="secondary">
-            Live operational signals returned by the backend.
+            Live operational signals returned by the backend for this role.
           </VadText>
           <View
             style={{
@@ -207,7 +258,7 @@ function WorkspaceRow({
 }: {
   title: string;
   detail: string;
-  count: number;
+  count?: number;
   onPress: () => void;
 }) {
   const theme = useVadTheme();
@@ -233,12 +284,14 @@ function WorkspaceRow({
       </View>
 
       <View style={{ alignItems: 'flex-end', gap: 2 }}>
-        <VadText
-          variant="heading"
-          tone={count ? 'warning' : 'yes'}
-        >
-          {count}
-        </VadText>
+        {count != null ? (
+          <VadText
+            variant="heading"
+            tone={count ? 'warning' : 'yes'}
+          >
+            {count}
+          </VadText>
+        ) : null}
         <VadText variant="caption" tone="brand">Open</VadText>
       </View>
     </Pressable>
