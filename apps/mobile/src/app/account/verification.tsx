@@ -3,7 +3,7 @@ import { ProductSubpage } from '@/features/navigation/product-subpage';
 
 export default function AccountVerificationScreen() {
   return (
-    <ProductSubpage title="Verification" maxWidth={900}>
+    <ProductSubpage title="Identity verification" maxWidth={1040}>
       <KycCard />
     </ProductSubpage>
   );

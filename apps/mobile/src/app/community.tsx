@@ -30,7 +30,7 @@ export default function CommunityRoute() {
   };
 
   return (
-    <ProductSubpage title="Community" maxWidth={900}>
+    <ProductSubpage title="Community" maxWidth={1040}>
       <View style={{ gap: theme.spacing.xs }}>
         <VadText variant="label" tone="brand">COMMUNITY</VadText>
         <VadText variant="title">Conviction with a public track record.</VadText>
