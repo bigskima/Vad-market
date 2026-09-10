@@ -1,12 +1,12 @@
 import { AdminPermissionGate } from '@/features/admin/components/admin-permission-gate';
 import { AdminRouteContainer } from '@/features/admin/components/admin-route-container';
-import { AdminProvidersScreen } from '@/features/admin/sections/admin-providers-screen';
+import { AdminContentScreen } from '@/features/admin/sections/admin-content-screen';
 
-export default function AdminProvidersRoute() {
+export default function AdminContentRoute() {
   return (
-    <AdminPermissionGate permissions={['providers.manage', 'finance.read']}>
+    <AdminPermissionGate permissions={['content.moderate']}>
       <AdminRouteContainer>
-        <AdminProvidersScreen />
+        <AdminContentScreen />
       </AdminRouteContainer>
     </AdminPermissionGate>
   );

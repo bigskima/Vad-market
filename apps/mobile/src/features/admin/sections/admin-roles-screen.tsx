@@ -1,0 +1,242 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, useWindowDimensions, View } from 'react-native';
+
+import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
+import { VadButton } from '@/components/ui/vad-button';
+import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadInput } from '@/components/ui/vad-input';
+import { VadSkeleton } from '@/components/ui/vad-skeleton';
+import { VadText } from '@/components/ui/vad-text';
+import { OperationsRow, OperationsSection } from '@/features/admin/operations/operations-section';
+import { useVadTheme } from '@/providers/theme-provider';
+import {
+  assignAdminRole,
+  getAdminRoleAssignments,
+  getAdminRoleCatalog,
+  getAdminUsers,
+  revokeAdminRole,
+  type AdminRoleAssignmentRow,
+  type AdminRoleCatalogRow,
+  type AdminUserRow,
+} from '@/services/admin-control-api';
+
+export function AdminRolesScreen() {
+  const theme = useVadTheme();
+  const { width } = useWindowDimensions();
+  const wide = width >= 900;
+  const [roles, setRoles] = useState<AdminRoleCatalogRow[]>([]);
+  const [assignments, setAssignments] = useState<AdminRoleAssignmentRow[]>([]);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
+  const [selectedRole, setSelectedRole] = useState<AdminRoleCatalogRow | null>(null);
+  const [reason, setReason] = useState('');
+  const [working, setWorking] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<AdminRoleAssignmentRow | null>(null);
+  const [revokeReason, setRevokeReason] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = useCallback(async (background = false) => {
+    if (background) setRefreshing(true);
+    setError(null);
+    try {
+      const [roleRows, assignmentRows, userRows] = await Promise.all([
+        getAdminRoleCatalog(),
+        getAdminRoleAssignments(),
+        getAdminUsers(100),
+      ]);
+      setRoles(roleRows);
+      setAssignments(assignmentRows);
+      setUsers(userRows);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Role administration could not be loaded.');
+    } finally {
+      if (background) setRefreshing(false);
+      else setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => void load(), 0);
+    return () => clearTimeout(timer);
+  }, [load]);
+
+  const assignableRoles = useMemo(
+    () => roles.filter((role) => role.role_code !== 'SUPER_ADMIN'),
+    [roles],
+  );
+
+  const filteredAssignments = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return assignments;
+    return assignments.filter((row) =>
+      [row.email, row.display_name, row.role_name, row.role_code]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query)),
+    );
+  }, [assignments, search]);
+
+  async function grantRole() {
+    if (!selectedUser || !selectedRole || reason.trim().length < 3) return;
+    setWorking(true);
+    setActionError(null);
+    setMessage(null);
+    try {
+      await assignAdminRole({
+        userId: selectedUser.user_id,
+        roleCode: selectedRole.role_code,
+        reason,
+      });
+      setMessage(`${selectedRole.role_name} was assigned to ${selectedUser.email ?? selectedUser.display_name ?? 'the selected user'}.`);
+      setAssignOpen(false);
+      setSelectedUser(null);
+      setSelectedRole(null);
+      setReason('');
+      await load(true);
+    } catch (value) {
+      setActionError(value instanceof Error ? value.message : 'Role could not be assigned.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function revokeRole() {
+    if (!selectedAssignment || revokeReason.trim().length < 3) return;
+    setWorking(true);
+    setActionError(null);
+    setMessage(null);
+    try {
+      await revokeAdminRole(selectedAssignment.assignment_id, revokeReason);
+      setMessage(`${selectedAssignment.role_name} was revoked.`);
+      setSelectedAssignment(null);
+      setRevokeReason('');
+      await load(true);
+    } catch (value) {
+      setActionError(value instanceof Error ? value.message : 'Role could not be revoked.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={{ gap: theme.spacing.md }}>
+        <VadSkeleton width="52%" height={32} />
+        <VadSkeleton height={110} />
+        <VadSkeleton height={70} />
+        <VadSkeleton height={70} />
+      </View>
+    );
+  }
+
+  if (error && !roles.length && !assignments.length) {
+    return <VadErrorState title="Role administration unavailable" message={error} onRetry={() => void load()} />;
+  }
+
+  return (
+    <View style={{ gap: theme.spacing.xxxl }}>
+      <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.xl }}>
+        <View style={{ flex: 1, gap: theme.spacing.xs }}>
+          <VadText variant="label" tone="brand">SUPER ADMIN</VadText>
+          <VadText variant="title">Roles & operational authority.</VadText>
+          <VadText tone="secondary">
+            Assign scoped operational roles without sharing Super Admin access. Every grant and revocation is written to the audit ledger.
+          </VadText>
+        </View>
+        <View style={{ flex: wide ? 0.8 : undefined, gap: theme.spacing.sm, justifyContent: 'center' }}>
+          <VadButton label="Assign operational role" onPress={() => { setAssignOpen(true); setActionError(null); }} />
+          <VadButton label="Refresh roles" variant="secondary" loading={refreshing} onPress={() => void load(true)} />
+        </View>
+      </View>
+
+      {message ? (
+        <View style={{ borderLeftWidth: 3, borderLeftColor: theme.colors.yes, backgroundColor: theme.colors.yesSoft, padding: theme.spacing.md }}>
+          <VadText variant="caption" tone="yes">{message}</VadText>
+        </View>
+      ) : null}
+      {error ? <VadErrorState title="Some role data is stale" message={error} onRetry={() => void load(true)} /> : null}
+
+      <OperationsSection title="Role catalogue" description="Super Admin is intentionally excluded from ordinary assignment." count={roles.length}>
+        {roles.map((role) => (
+          <OperationsRow
+            key={role.role_code}
+            title={role.role_name}
+            detail={role.description}
+            meta={`${role.assigned_count} active assignment${Number(role.assigned_count) === 1 ? '' : 's'}`}
+            status={role.role_code === 'SUPER_ADMIN' ? 'PROTECTED' : 'ASSIGNABLE'}
+            ready={role.role_code !== 'SUPER_ADMIN'}
+          />
+        ))}
+      </OperationsSection>
+
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadInput label="Search assignments" value={search} onChangeText={setSearch} placeholder="Email, name or role" />
+        <OperationsSection title="Active assignments" description="Select a scoped assignment to revoke it." count={filteredAssignments.length}>
+          {filteredAssignments.length ? filteredAssignments.map((row) => (
+            <OperationsRow
+              key={String(row.assignment_id)}
+              title={`${row.role_name} · ${row.display_name ?? row.email ?? 'User'}`}
+              detail={row.email ?? row.user_id}
+              meta={row.expires_at ? `Expires ${new Date(row.expires_at).toLocaleString()}` : 'No scheduled expiry'}
+              status={row.role_code === 'SUPER_ADMIN' ? 'PROTECTED' : 'ACTIVE'}
+              ready
+              actionLabel={row.role_code === 'SUPER_ADMIN' ? undefined : 'Revoke'}
+              onPress={row.role_code === 'SUPER_ADMIN' ? undefined : () => { setSelectedAssignment(row); setRevokeReason(''); setActionError(null); }}
+            />
+          )) : <VadEmptyState title="No matching role assignments" body="Change the search or assign a scoped role." />}
+        </OperationsSection>
+      </View>
+
+      <VadBottomSheet visible={assignOpen} title="Assign operational role" onClose={() => { if (!working) setAssignOpen(false); }}>
+        <View style={{ gap: theme.spacing.lg }}>
+          <VadText variant="caption" tone="secondary">Choose a user and a scoped role. Super Admin elevation remains outside this ordinary workflow.</VadText>
+          <View style={{ gap: theme.spacing.sm }}>
+            <VadText variant="bodyStrong">User</VadText>
+            {users.slice(0, 30).map((user) => (
+              <Choice key={user.user_id} label={user.display_name ?? user.email ?? user.user_id} detail={user.email ?? user.country_code} selected={selectedUser?.user_id === user.user_id} onPress={() => setSelectedUser(user)} />
+            ))}
+          </View>
+          <View style={{ gap: theme.spacing.sm }}>
+            <VadText variant="bodyStrong">Role</VadText>
+            {assignableRoles.map((role) => (
+              <Choice key={role.role_code} label={role.role_name} detail={role.description} selected={selectedRole?.role_code === role.role_code} onPress={() => setSelectedRole(role)} />
+            ))}
+          </View>
+          <VadInput label="Reason" value={reason} onChangeText={(value) => { setReason(value); setActionError(null); }} placeholder="Why is this access required?" multiline />
+          {actionError ? <VadErrorState title="Role action failed" message={actionError} /> : null}
+          <VadButton label="Assign role" loading={working} disabled={!selectedUser || !selectedRole || reason.trim().length < 3} onPress={() => void grantRole()} />
+        </View>
+      </VadBottomSheet>
+
+      <VadBottomSheet visible={Boolean(selectedAssignment)} title="Revoke operational role" onClose={() => { if (!working) setSelectedAssignment(null); }}>
+        {selectedAssignment ? (
+          <View style={{ gap: theme.spacing.lg }}>
+            <View style={{ gap: 2 }}>
+              <VadText variant="heading">{selectedAssignment.role_name}</VadText>
+              <VadText variant="caption" tone="secondary">{selectedAssignment.email ?? selectedAssignment.user_id}</VadText>
+            </View>
+            <VadInput label="Revocation reason" value={revokeReason} onChangeText={(value) => { setRevokeReason(value); setActionError(null); }} placeholder="Why should this access be removed?" multiline />
+            {actionError ? <VadErrorState title="Role action failed" message={actionError} /> : null}
+            <VadButton label="Revoke role" variant="danger" loading={working} disabled={revokeReason.trim().length < 3} onPress={() => void revokeRole()} />
+          </View>
+        ) : null}
+      </VadBottomSheet>
+    </View>
+  );
+}
+
+function Choice({ label, detail, selected, onPress }: { label: string; detail: string; selected: boolean; onPress: () => void }) {
+  const theme = useVadTheme();
+  return (
+    <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={({ pressed }) => ({ borderWidth: 1, borderColor: selected ? theme.colors.brandPrimary : theme.colors.border, backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surfaceRaised, padding: theme.spacing.md, gap: 2, opacity: pressed ? 0.65 : 1 })}>
+      <VadText variant="bodyStrong" tone={selected ? 'brand' : 'primary'}>{label}</VadText>
+      <VadText variant="caption" tone="secondary">{detail}</VadText>
+    </Pressable>
+  );
+}

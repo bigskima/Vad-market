@@ -15,11 +15,14 @@ export function AdminRouteContainer({ children }: PropsWithChildren) {
   const theme = useVadTheme();
   const data = useAdminData();
   const { width } = useWindowDimensions();
+  const desktop = width >= 900;
   const compact = width < 380;
 
   return (
     <VadScreen
       scrollProps={{
+        keyboardShouldPersistTaps: 'handled',
+        contentInsetAdjustmentBehavior: 'automatic',
         refreshControl: (
           <RefreshControl
             refreshing={data.refreshing}
@@ -33,40 +36,55 @@ export function AdminRouteContainer({ children }: PropsWithChildren) {
         alignSelf: 'center',
         width: '100%',
         maxWidth: 1180,
-        paddingHorizontal: compact
-          ? theme.spacing.md
-          : theme.spacing.lg,
-        paddingTop: compact
-          ? theme.spacing.lg
-          : theme.spacing.xl,
+        paddingHorizontal: desktop
+          ? theme.spacing.xl
+          : compact
+            ? theme.spacing.md
+            : theme.spacing.lg,
+        paddingTop: desktop
+          ? theme.spacing.xl
+          : compact
+            ? theme.spacing.md
+            : theme.spacing.lg,
         paddingBottom: theme.spacing.xxxl,
-        gap: theme.spacing.xl,
+        gap: desktop ? theme.spacing.xxl : theme.spacing.xl,
       }}
     >
       {data.warning ? (
         <View
+          accessibilityRole="alert"
           style={{
-            borderLeftWidth: 3,
-            borderLeftColor: theme.colors.warning,
-            backgroundColor: theme.colors.warningSoft,
-            padding: theme.spacing.md,
-            gap: theme.spacing.xs,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: theme.colors.warning,
+            paddingVertical: theme.spacing.md,
+            flexDirection: width >= 680 ? 'row' : 'column',
+            alignItems: width >= 680 ? 'center' : 'stretch',
+            gap: theme.spacing.md,
           }}
         >
-          <VadText variant="caption" tone="warning">
-            SOME OPERATIONS DATA MAY BE STALE
-          </VadText>
-          <VadText variant="caption" tone="secondary">
-            {data.warning}
-          </VadText>
+          <View style={{ flex: 1, gap: 2 }}>
+            <VadText variant="caption" tone="warning">
+              SOME OPERATIONS DATA MAY BE STALE
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              {data.warning}
+            </VadText>
+          </View>
+
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Refresh operations data"
             disabled={data.refreshing}
             onPress={() => void data.refresh()}
             style={({ pressed }) => ({
-              minHeight: 32,
-              alignSelf: 'flex-start',
+              minHeight: 38,
+              alignSelf: width >= 680 ? 'center' : 'flex-start',
               justifyContent: 'center',
+              paddingHorizontal: theme.spacing.sm,
+              borderWidth: 1,
+              borderColor: theme.colors.borderStrong,
+              borderRadius: theme.radius.md,
               opacity: data.refreshing ? 0.45 : pressed ? 0.6 : 1,
             })}
           >

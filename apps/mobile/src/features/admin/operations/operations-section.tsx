@@ -1,5 +1,5 @@
-import type { PropsWithChildren } from 'react';
-import { View } from 'react-native';
+import type { PropsWithChildren, ReactNode } from 'react';
+import { Pressable, View } from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -22,7 +22,7 @@ export function OperationsSection({
         style={{
           flexDirection: 'row',
           justifyContent: 'space-between',
-          gap: theme.spacing.sm,
+          gap: theme.spacing.md,
           alignItems: 'flex-start',
         }}
       >
@@ -34,13 +34,30 @@ export function OperationsSection({
         </View>
 
         {count != null ? (
-          <VadText variant="caption" tone="tertiary">
-            {count} {count === 1 ? 'item' : 'items'}
-          </VadText>
+          <View
+            style={{
+              minWidth: 34,
+              minHeight: 28,
+              paddingHorizontal: theme.spacing.sm,
+              borderRadius: theme.radius.pill,
+              backgroundColor: theme.colors.surfaceRaised,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <VadText variant="caption" tone="secondary">
+              {count}
+            </VadText>
+          </View>
         ) : null}
       </View>
 
-      <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+        }}
+      >
         {children}
       </View>
     </View>
@@ -52,11 +69,17 @@ export function OperationsRow({
   detail,
   status,
   ready = false,
+  meta,
+  actionLabel,
+  onPress,
 }: {
   title: string;
   detail: string;
   status: string;
   ready?: boolean;
+  meta?: string;
+  actionLabel?: string;
+  onPress?: () => void;
 }) {
   const theme = useVadTheme();
   const normalized = status.toUpperCase();
@@ -66,36 +89,114 @@ export function OperationsRow({
       ? 'yes'
       : normalized.includes('FAIL') ||
           normalized.includes('REJECT') ||
-          normalized.includes('DISABLED')
+          normalized.includes('DISABLED') ||
+          normalized.includes('ERROR')
         ? 'danger'
         : normalized.includes('PENDING') ||
             normalized.includes('REVIEW') ||
-            normalized.includes('UNCONFIGURED')
+            normalized.includes('UNCONFIGURED') ||
+            normalized.includes('CREATED')
           ? 'warning'
-          : 'secondary';
+          : normalized.includes('ACTIVE') ||
+              normalized.includes('READY') ||
+              normalized.includes('SETTLED') ||
+              normalized.includes('VERIFIED')
+            ? 'yes'
+            : 'secondary';
 
-  return (
-    <View
-      style={{
-        minHeight: 68,
-        flexDirection: 'row',
-        gap: theme.spacing.md,
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-        paddingVertical: theme.spacing.sm,
-      }}
-    >
-      <View style={{ flex: 1, gap: theme.spacing.xxs }}>
+  const statusBackground =
+    tone === 'yes'
+      ? theme.colors.yesSoft
+      : tone === 'warning'
+        ? theme.colors.warningSoft
+        : tone === 'danger'
+          ? theme.colors.noSoft
+          : theme.colors.surfaceRaised;
+
+  const content: ReactNode = (
+    <>
+      <View
+        style={{
+          width: 3,
+          alignSelf: 'stretch',
+          borderRadius: theme.radius.pill,
+          backgroundColor:
+            tone === 'yes'
+              ? theme.colors.yes
+              : tone === 'warning'
+                ? theme.colors.warning
+                : tone === 'danger'
+                  ? theme.colors.danger
+                  : theme.colors.borderStrong,
+        }}
+      />
+
+      <View style={{ flex: 1, minWidth: 0, gap: theme.spacing.xxs }}>
         <VadText variant="bodyStrong" numberOfLines={2}>{title}</VadText>
         <VadText variant="caption" tone="secondary" numberOfLines={2}>
           {detail}
         </VadText>
+        {meta ? (
+          <VadText variant="caption" tone="tertiary" numberOfLines={1}>
+            {meta}
+          </VadText>
+        ) : null}
       </View>
 
-      <VadText variant="caption" tone={tone}>
-        {status}
-      </VadText>
-    </View>
+      <View style={{ alignItems: 'flex-end', gap: theme.spacing.xs }}>
+        <View
+          style={{
+            maxWidth: 132,
+            minHeight: 30,
+            borderRadius: theme.radius.pill,
+            backgroundColor: statusBackground,
+            paddingHorizontal: theme.spacing.sm,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <VadText
+            variant="caption"
+            tone={tone}
+            numberOfLines={1}
+          >
+            {status.replaceAll('_', ' ')}
+          </VadText>
+        </View>
+        {onPress ? (
+          <VadText variant="caption" tone="brand">
+            {actionLabel ?? 'Manage'}
+          </VadText>
+        ) : null}
+      </View>
+    </>
   );
+
+  const rowStyle = {
+    minHeight: meta ? 86 : 74,
+    flexDirection: 'row' as const,
+    gap: theme.spacing.md,
+    alignItems: 'center' as const,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingVertical: theme.spacing.md,
+  };
+
+  if (onPress) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${actionLabel ?? 'Manage'}: ${title}`}
+        onPress={onPress}
+        style={({ pressed }) => ({
+          ...rowStyle,
+          opacity: pressed ? 0.65 : 1,
+        })}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={rowStyle}>{content}</View>;
 }
