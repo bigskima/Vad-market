@@ -27,6 +27,7 @@ export function VadBottomSheet({
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const dialog = width >= 760;
+  const compact = width < 380;
 
   return (
     <Modal
@@ -59,8 +60,8 @@ export function VadBottomSheet({
             edges={dialog ? [] : ['bottom']}
             style={{
               width: '100%',
-              maxWidth: dialog ? 680 : undefined,
-              maxHeight: dialog ? '82%' : '80%',
+              maxWidth: dialog ? 660 : undefined,
+              maxHeight: dialog ? '82%' : '88%',
               backgroundColor: theme.colors.surface,
               borderRadius: dialog ? theme.radius.xl : 0,
               borderTopLeftRadius: theme.radius.xl,
@@ -93,7 +94,7 @@ export function VadBottomSheet({
                 minHeight: 58,
                 flexDirection: 'row',
                 alignItems: 'center',
-                paddingHorizontal: theme.spacing.lg,
+                paddingHorizontal: compact ? theme.spacing.md : theme.spacing.lg,
                 paddingTop: theme.spacing.md,
                 paddingBottom: theme.spacing.sm,
                 borderBottomWidth: 1,
@@ -123,7 +124,7 @@ export function VadBottomSheet({
             <View
               style={{
                 flexShrink: 1,
-                paddingHorizontal: theme.spacing.lg,
+                paddingHorizontal: compact ? theme.spacing.md : theme.spacing.lg,
                 paddingTop: theme.spacing.md,
                 paddingBottom: theme.spacing.lg,
               }}
