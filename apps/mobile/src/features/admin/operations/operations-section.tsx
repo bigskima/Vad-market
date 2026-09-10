@@ -1,5 +1,5 @@
-import type { PropsWithChildren } from 'react';
-import { View } from 'react-native';
+import type { PropsWithChildren, ReactNode } from 'react';
+import { Pressable, View } from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -70,12 +70,16 @@ export function OperationsRow({
   status,
   ready = false,
   meta,
+  actionLabel,
+  onPress,
 }: {
   title: string;
   detail: string;
   status: string;
   ready?: boolean;
   meta?: string;
+  actionLabel?: string;
+  onPress?: () => void;
 }) {
   const theme = useVadTheme();
   const normalized = status.toUpperCase();
@@ -109,18 +113,8 @@ export function OperationsRow({
           ? theme.colors.noSoft
           : theme.colors.surfaceRaised;
 
-  return (
-    <View
-      style={{
-        minHeight: meta ? 82 : 72,
-        flexDirection: 'row',
-        gap: theme.spacing.md,
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-        paddingVertical: theme.spacing.md,
-      }}
-    >
+  const content: ReactNode = (
+    <>
       <View
         style={{
           width: 3,
@@ -149,25 +143,60 @@ export function OperationsRow({
         ) : null}
       </View>
 
-      <View
-        style={{
-          maxWidth: 132,
-          minHeight: 30,
-          borderRadius: theme.radius.pill,
-          backgroundColor: statusBackground,
-          paddingHorizontal: theme.spacing.sm,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <VadText
-          variant="caption"
-          tone={tone}
-          numberOfLines={1}
+      <View style={{ alignItems: 'flex-end', gap: theme.spacing.xs }}>
+        <View
+          style={{
+            maxWidth: 132,
+            minHeight: 30,
+            borderRadius: theme.radius.pill,
+            backgroundColor: statusBackground,
+            paddingHorizontal: theme.spacing.sm,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          {status.replaceAll('_', ' ')}
-        </VadText>
+          <VadText
+            variant="caption"
+            tone={tone}
+            numberOfLines={1}
+          >
+            {status.replaceAll('_', ' ')}
+          </VadText>
+        </View>
+        {onPress ? (
+          <VadText variant="caption" tone="brand">
+            {actionLabel ?? 'Manage'}
+          </VadText>
+        ) : null}
       </View>
-    </View>
+    </>
   );
+
+  const rowStyle = {
+    minHeight: meta ? 86 : 74,
+    flexDirection: 'row' as const,
+    gap: theme.spacing.md,
+    alignItems: 'center' as const,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingVertical: theme.spacing.md,
+  };
+
+  if (onPress) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${actionLabel ?? 'Manage'}: ${title}`}
+        onPress={onPress}
+        style={({ pressed }) => ({
+          ...rowStyle,
+          opacity: pressed ? 0.65 : 1,
+        })}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={rowStyle}>{content}</View>;
 }
