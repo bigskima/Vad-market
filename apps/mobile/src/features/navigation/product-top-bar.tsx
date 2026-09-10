@@ -2,6 +2,8 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
+import { VadIcon } from '@/components/ui/vad-icon';
+import { VadIconButton } from '@/components/ui/vad-icon-button';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import { PRODUCT_TABS, type ProductTab } from './product-tab-bar';
@@ -37,7 +39,7 @@ export function ProductTopBar({
         paddingTop: insets.top + theme.spacing.xs,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.surface,
       }}
     >
       <View
@@ -47,24 +49,18 @@ export function ProductTopBar({
           alignSelf: 'center',
           paddingHorizontal: theme.spacing.lg,
           paddingBottom: theme.spacing.sm,
-          minHeight: 54,
+          minHeight: 58,
           flexDirection: 'row',
           alignItems: 'center',
           gap: theme.spacing.md,
         }}
       >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.spacing.sm,
-          }}
-        >
-          <VadLogo size={34} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <VadLogo size={36} />
           <View style={{ gap: 1 }}>
-            <VadText variant="caption" tone="tertiary">VAD</VadText>
+            <VadText variant="label">VAD</VadText>
             {!showNavigation ? (
-              <VadText variant="bodyStrong">{active}</VadText>
+              <VadText variant="caption" tone="secondary">{active}</VadText>
             ) : null}
           </View>
         </View>
@@ -75,15 +71,13 @@ export function ProductTopBar({
             style={{
               flex: 1,
               flexDirection: 'row',
-              alignItems: 'stretch',
+              alignItems: 'center',
               justifyContent: 'center',
-              gap: theme.spacing.md,
-              alignSelf: 'stretch',
+              gap: theme.spacing.xs,
             }}
           >
             {PRODUCT_TABS.map((tab) => {
               const selected = tab.value === active;
-
               return (
                 <Pressable
                   key={tab.value}
@@ -91,19 +85,15 @@ export function ProductTopBar({
                   accessibilityState={{ selected }}
                   onPress={() => onNavigate(tab.value)}
                   style={({ pressed }) => ({
-                    minHeight: 46,
+                    minHeight: 40,
+                    borderRadius: theme.radius.pill,
                     justifyContent: 'center',
-                    borderBottomWidth: 2,
-                    borderBottomColor: selected
-                      ? theme.colors.brandPrimary
-                      : 'transparent',
-                    opacity: pressed ? 0.65 : 1,
+                    paddingHorizontal: theme.spacing.md,
+                    backgroundColor: selected ? theme.colors.brandSoft : 'transparent',
+                    opacity: pressed ? 0.66 : 1,
                   })}
                 >
-                  <VadText
-                    variant="caption"
-                    tone={selected ? 'brand' : 'secondary'}
-                  >
+                  <VadText variant="caption" tone={selected ? 'brand' : 'secondary'}>
                     {tab.label}
                   </VadText>
                 </Pressable>
@@ -114,51 +104,25 @@ export function ProductTopBar({
           <View style={{ flex: 1 }} />
         )}
 
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.spacing.xs,
-          }}
-        >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
           {canCreate ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Propose a market"
+            <VadIconButton
+              icon="plus"
+              label="Propose a market"
+              variant="brand"
+              size={40}
               onPress={onCreate}
-              style={({ pressed }) => ({
-                minHeight: 38,
-                justifyContent: 'center',
-                borderRadius: theme.radius.md,
-                backgroundColor: theme.colors.brandPrimary,
-                paddingHorizontal: showNavigation
-                  ? theme.spacing.md
-                  : theme.spacing.sm,
-                opacity: pressed ? 0.75 : 1,
-              })}
-            >
-              <VadText variant="caption" tone="inverse">
-                {showNavigation ? 'Create market' : '+'}
-              </VadText>
-            </Pressable>
+            />
           ) : null}
 
           {isAdmin ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open VAD operations"
+            <VadIconButton
+              icon="operations"
+              label="Open VAD operations"
+              variant="tonal"
+              size={40}
               onPress={onAdmin}
-              style={({ pressed }) => ({
-                minHeight: 38,
-                justifyContent: 'center',
-                paddingHorizontal: theme.spacing.sm,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <VadText variant="caption" tone="brand">
-                {showNavigation ? 'Operations' : 'Ops'}
-              </VadText>
-            </Pressable>
+            />
           ) : null}
 
           <Pressable
@@ -166,29 +130,19 @@ export function ProductTopBar({
             accessibilityLabel="Open account"
             onPress={onAccount}
             style={({ pressed }) => ({
-              width: 38,
-              height: 38,
-              borderRadius: 19,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1,
-              borderColor:
-                active === 'Account'
-                  ? theme.colors.brandPrimary
-                  : theme.colors.borderStrong,
-              backgroundColor:
-                active === 'Account'
-                  ? theme.colors.brandSoft
-                  : theme.colors.surfaceRaised,
+              borderColor: active === 'Account' ? theme.colors.brandPrimary : theme.colors.border,
+              backgroundColor: active === 'Account' ? theme.colors.brandSoft : theme.colors.surfaceRaised,
               opacity: pressed ? 0.7 : 1,
+              transform: [{ scale: pressed ? 0.96 : 1 }],
             })}
           >
-            <VadText
-              variant="label"
-              tone={active === 'Account' ? 'brand' : 'primary'}
-            >
-              {initial}
-            </VadText>
+            <VadText variant="label" tone={active === 'Account' ? 'brand' : 'primary'}>{initial}</VadText>
           </Pressable>
         </View>
       </View>

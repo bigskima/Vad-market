@@ -22,5 +22,18 @@ export function VadText({ variant = 'body', tone = 'primary', style, children, .
     inverse: theme.colors.textInverse,
   } as const;
 
-  return <Text {...props} style={[theme.typography[variant], { color: tones[tone] }, style]}>{children}</Text>;
+  return (
+    <Text
+      {...props}
+      style={[
+        theme.typography[variant],
+        style,
+        // Keep the semantic/theme color last so arbitrary screen styles cannot
+        // accidentally make ordinary text white in light mode or black in dark mode.
+        { color: tones[tone] },
+      ]}
+    >
+      {children}
+    </Text>
+  );
 }

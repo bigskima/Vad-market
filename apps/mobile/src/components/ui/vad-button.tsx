@@ -9,8 +9,8 @@ import {
 import { useVadTheme } from '@/providers/theme-provider';
 import { VadText } from './vad-text';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type Size = 'default' | 'small';
+type Variant = 'primary' | 'secondary' | 'tonal' | 'ghost' | 'danger';
+type Size = 'small' | 'default' | 'large';
 
 type Props = PressableProps & {
   label: string;
@@ -38,7 +38,8 @@ export function VadButton({
 }: Props) {
   const theme = useVadTheme();
   const isDisabled = Boolean(disabled || loading);
-  const compact = size === 'small';
+  const heights = { small: 40, default: 50, large: 56 } as const;
+  const paddings = { small: theme.spacing.md, default: theme.spacing.lg, large: theme.spacing.xl } as const;
 
   const backgroundColor =
     variant === 'primary'
@@ -46,18 +47,24 @@ export function VadButton({
       : variant === 'danger'
         ? theme.colors.danger
         : variant === 'secondary'
-          ? theme.colors.surfaceRaised
-          : 'transparent';
+          ? theme.colors.surface
+          : variant === 'tonal'
+            ? theme.colors.brandSoft
+            : 'transparent';
 
   const borderColor =
-    variant === 'ghost' || variant === 'secondary'
-      ? theme.colors.border
-      : backgroundColor;
+    variant === 'secondary'
+      ? theme.colors.borderStrong
+      : variant === 'ghost'
+        ? 'transparent'
+        : backgroundColor;
 
   const tone =
     variant === 'primary' || variant === 'danger'
       ? 'inverse'
-      : 'primary';
+      : variant === 'tonal'
+        ? 'brand'
+        : 'primary';
 
   return (
     <Pressable
@@ -72,21 +79,19 @@ export function VadButton({
       }}
       style={(state) => [
         {
-          minHeight: compact ? 40 : 48,
+          minHeight: heights[size],
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',
           gap: theme.spacing.xs,
-          paddingHorizontal: compact
-            ? theme.spacing.md
-            : theme.spacing.lg,
-          borderRadius: theme.radius.md,
-          borderWidth:
-            variant === 'primary' || variant === 'danger' ? 0 : 1,
+          paddingHorizontal: paddings[size],
+          borderRadius: theme.radius.pill,
+          borderWidth: variant === 'secondary' ? 1 : 0,
           borderColor,
           backgroundColor,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
-          opacity: isDisabled ? 0.42 : state.pressed ? 0.72 : 1,
+          opacity: isDisabled ? 0.42 : state.pressed ? 0.78 : 1,
+          transform: [{ scale: state.pressed && !isDisabled ? 0.985 : 1 }],
         },
         typeof style === 'function' ? style(state) : style,
       ]}
@@ -104,7 +109,7 @@ export function VadButton({
         leading ?? null
       )}
 
-      <View>
+      <View style={{ minWidth: 0 }}>
         <VadText variant="label" tone={tone}>{label}</VadText>
       </View>
 
