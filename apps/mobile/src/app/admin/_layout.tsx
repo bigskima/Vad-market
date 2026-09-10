@@ -10,42 +10,40 @@ import { AdminDataProvider } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getAdminRuntimeSummary } from '@/services/market-api';
 
+type AdminAccessState = {
+  userId: string;
+  allowed: boolean;
+};
+
 export default function AdminLayout() {
   const { isLoading, session } = useAuth();
   const theme = useVadTheme();
   const userId = session?.user.id ?? null;
-  const [accessChecking, setAccessChecking] = useState(true);
-  const [hasAdminAccess, setHasAdminAccess] = useState(false);
+  const [access, setAccess] = useState<AdminAccessState | null>(null);
 
   useEffect(() => {
+    if (!userId) return;
+
     let ignore = false;
-
-    if (!userId) {
-      setHasAdminAccess(false);
-      setAccessChecking(false);
-      return () => {
-        ignore = true;
-      };
-    }
-
-    setAccessChecking(true);
-    setHasAdminAccess(false);
-
     void getAdminRuntimeSummary()
       .then((summary) => {
-        if (!ignore) setHasAdminAccess(Boolean(summary));
+        if (!ignore) {
+          setAccess({ userId, allowed: Boolean(summary) });
+        }
       })
       .catch(() => {
-        if (!ignore) setHasAdminAccess(false);
-      })
-      .finally(() => {
-        if (!ignore) setAccessChecking(false);
+        if (!ignore) setAccess({ userId, allowed: false });
       });
 
     return () => {
       ignore = true;
     };
   }, [userId]);
+
+  const accessChecking = Boolean(userId && access?.userId !== userId);
+  const hasAdminAccess = Boolean(
+    userId && access?.userId === userId && access.allowed,
+  );
 
   if (isLoading || (session && accessChecking)) {
     return (
