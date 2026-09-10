@@ -1,8 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { getAdminMarketQueue, getAdminOracleQueue, getAdminRuntimeSummary } from '@/services/market-api';
-import { getAdminKycQueue, getAdminOperationsSummary, getAdminPaymentQueue, type KycQueueRow, type OperationsSummary, type PaymentQueueRow } from '@/services/operations-admin-api';
-import { getAdminProviderReadiness, getProviderChangeQueue, type ProviderChangeRequest, type ProviderReadinessRow } from '@/services/provider-admin-api';
+import {
+  getAdminMarketQueue,
+  getAdminOracleQueue,
+  getAdminRuntimeSummary,
+} from '@/services/market-api';
+import {
+  getAdminKycQueue,
+  getAdminOperationsSummary,
+  getAdminPaymentQueue,
+  type KycQueueRow,
+  type OperationsSummary,
+  type PaymentQueueRow,
+} from '@/services/operations-admin-api';
+import {
+  getAdminProviderReadiness,
+  getProviderChangeQueue,
+  type ProviderChangeRequest,
+  type ProviderReadinessRow,
+} from '@/services/provider-admin-api';
 
 export function useAdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -18,12 +34,33 @@ export function useAdminDashboard() {
   const [providerChanges, setProviderChanges] = useState<ProviderChangeRequest[]>([]);
 
   const load = useCallback(async () => {
-    setError(null);
     const results = await Promise.allSettled([
-      getAdminRuntimeSummary(), getAdminOperationsSummary(), getAdminMarketQueue(), getAdminOracleQueue(),
-      getAdminKycQueue(12), getAdminPaymentQueue(12), getAdminProviderReadiness(), getProviderChangeQueue(),
+      getAdminRuntimeSummary(),
+      getAdminOperationsSummary(),
+      getAdminMarketQueue(),
+      getAdminOracleQueue(),
+      getAdminKycQueue(12),
+      getAdminPaymentQueue(12),
+      getAdminProviderReadiness(),
+      getProviderChangeQueue(),
     ]);
-    if (results.every((result) => result.status === 'rejected')) { setError('Admin data is unavailable or this account does not have control-plane permissions.'); return; }
+
+    const failures = results.filter(
+      (result) => result.status === 'rejected',
+    ).length;
+
+    if (failures === results.length) {
+      setError(
+        'Operations data could not refresh. Existing control-plane data is preserved where available.',
+      );
+    } else if (failures > 0) {
+      setError(
+        'Some operations data could not refresh. Successful queues were updated while previous data was preserved elsewhere.',
+      );
+    } else {
+      setError(null);
+    }
+
     if (results[0].status === 'fulfilled') setRuntime(results[0].value);
     if (results[1].status === 'fulfilled') setOperations(results[1].value);
     if (results[2].status === 'fulfilled') setMarketQueue(results[2].value);
@@ -34,7 +71,43 @@ export function useAdminDashboard() {
     if (results[7].status === 'fulfilled') setProviderChanges(results[7].value);
   }, []);
 
-  useEffect(() => { let cancelled = false; const timer = setTimeout(() => { void load().finally(() => { if (!cancelled) setLoading(false); }); }, 0); return () => { cancelled = true; clearTimeout(timer); }; }, [load]);
-  const refresh = useCallback(async () => { setRefreshing(true); try { await load(); } finally { setRefreshing(false); } }, [load]);
-  return { loading, refreshing, error, runtime, operations, marketQueue, oracleQueue, kycQueue, paymentQueue, providers, providerChanges, load, refresh };
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setLoading(true);
+      void load().finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [load]);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load]);
+
+  return {
+    loading,
+    refreshing,
+    error,
+    runtime,
+    operations,
+    marketQueue,
+    oracleQueue,
+    kycQueue,
+    paymentQueue,
+    providers,
+    providerChanges,
+    load,
+    refresh,
+  };
 }
