@@ -6,61 +6,62 @@ import {
   unavailableCapabilities,
 } from '@/services/runtime-capabilities';
 
+type CapabilitySnapshot = ReturnType<typeof unavailableCapabilities>;
+
+type CapabilityState = {
+  userId: string;
+  snapshot: CapabilitySnapshot;
+};
+
 export function useRuntimeCapabilities(session: Session | null) {
   const userId = session?.user.id ?? null;
-  const [snapshot, setSnapshot] = useState(() =>
-    unavailableCapabilities('AUTHENTICATION_REQUIRED'),
-  );
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [state, setState] = useState<CapabilityState | null>(null);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!userId) {
-      setSnapshot(unavailableCapabilities('AUTHENTICATION_REQUIRED'));
-      setIsRefreshing(false);
-      return;
-    }
+    if (!userId) return;
 
-    setIsRefreshing(true);
+    setManualRefreshing(true);
     try {
-      setSnapshot(await fetchRuntimeCapabilities());
+      const nextSnapshot = await fetchRuntimeCapabilities();
+      setState({ userId, snapshot: nextSnapshot });
     } catch {
-      setSnapshot(unavailableCapabilities());
+      setState({ userId, snapshot: unavailableCapabilities() });
     } finally {
-      setIsRefreshing(false);
+      setManualRefreshing(false);
     }
   }, [userId]);
 
   useEffect(() => {
+    if (!userId) return;
+
     let ignore = false;
-
-    if (!userId) {
-      setSnapshot(unavailableCapabilities('AUTHENTICATION_REQUIRED'));
-      setIsRefreshing(false);
-      return () => {
-        ignore = true;
-      };
-    }
-
-    // Never carry capabilities from a previous session into a new user while
-    // the server-authoritative snapshot is still loading.
-    setSnapshot(unavailableCapabilities('CAPABILITIES_LOADING'));
-    setIsRefreshing(true);
-
     void fetchRuntimeCapabilities()
       .then((nextSnapshot) => {
-        if (!ignore) setSnapshot(nextSnapshot);
+        if (!ignore) setState({ userId, snapshot: nextSnapshot });
       })
       .catch(() => {
-        if (!ignore) setSnapshot(unavailableCapabilities());
-      })
-      .finally(() => {
-        if (!ignore) setIsRefreshing(false);
+        if (!ignore) {
+          setState({ userId, snapshot: unavailableCapabilities() });
+        }
       });
 
     return () => {
       ignore = true;
     };
   }, [userId]);
+
+  // The state is keyed to the authenticated user. A session switch therefore
+  // fails closed immediately without carrying the prior user's capabilities
+  // while the next server-authoritative snapshot is loading.
+  const snapshot = !userId
+    ? unavailableCapabilities('AUTHENTICATION_REQUIRED')
+    : state?.userId === userId
+      ? state.snapshot
+      : unavailableCapabilities('CAPABILITIES_LOADING');
+
+  const isRefreshing =
+    manualRefreshing || Boolean(userId && state?.userId !== userId);
 
   return { snapshot, isRefreshing, refresh } as const;
 }
