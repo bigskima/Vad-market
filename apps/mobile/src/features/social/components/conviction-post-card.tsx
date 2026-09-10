@@ -14,6 +14,8 @@ export function ConvictionPostCard({
   linkedMarket,
   commentsOpen,
   creatorOpen,
+  followDisabled = false,
+  likeDisabled = false,
   onFollow,
   onLike,
   onComments,
@@ -25,6 +27,8 @@ export function ConvictionPostCard({
   linkedMarket?: MarketCatalogItem;
   commentsOpen: boolean;
   creatorOpen: boolean;
+  followDisabled?: boolean;
+  likeDisabled?: boolean;
   onFollow: () => void;
   onLike: () => void;
   onComments: () => void;
@@ -106,14 +110,17 @@ export function ConvictionPostCard({
           accessibilityRole="button"
           accessibilityState={{
             selected: post.viewer_follows_author,
+            disabled: followDisabled,
+            busy: followDisabled,
           }}
+          disabled={followDisabled}
           onPress={onFollow}
           hitSlop={8}
           style={({ pressed }) => ({
             minHeight: 34,
             justifyContent: 'center',
             paddingHorizontal: theme.spacing.xs,
-            opacity: pressed ? 0.6 : 1,
+            opacity: followDisabled ? 0.5 : pressed ? 0.6 : 1,
           })}
         >
           <VadText
@@ -220,6 +227,7 @@ export function ConvictionPostCard({
           label="Like"
           count={Number(post.reaction_count)}
           active={post.viewer_liked}
+          disabled={likeDisabled}
           onPress={onLike}
         />
         <Action
@@ -239,11 +247,13 @@ function Action({
   label,
   count,
   active,
+  disabled = false,
   onPress,
 }: {
   label: string;
   count: number;
   active: boolean;
+  disabled?: boolean;
   onPress: () => void;
 }) {
   const theme = useVadTheme();
@@ -251,7 +261,8 @@ function Action({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ selected: active, disabled, busy: disabled }}
+      disabled={disabled}
       onPress={onPress}
       hitSlop={8}
       style={({ pressed }) => ({
@@ -259,7 +270,7 @@ function Action({
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing.xs,
-        opacity: pressed ? 0.6 : 1,
+        opacity: disabled ? 0.5 : pressed ? 0.6 : 1,
       })}
     >
       <VadText

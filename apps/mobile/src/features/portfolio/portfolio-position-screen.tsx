@@ -1,6 +1,8 @@
 import { useWindowDimensions, View } from 'react-native';
 
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { money, pct } from '@/features/markets/format';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -23,6 +25,28 @@ export function PortfolioPositionScreen({
       String(row.instrument_id) === instrumentId &&
       row.outcome_code === outcomeCode,
   );
+
+  if (data.loading) {
+    return (
+      <View style={{ gap: theme.spacing.md }}>
+        <VadSkeleton width="60%" height={30} />
+        <VadSkeleton height={144} radius={theme.radius.xl} />
+        <VadSkeleton height={58} />
+        <VadSkeleton height={58} />
+        <VadSkeleton height={76} />
+      </View>
+    );
+  }
+
+  if (!position && data.sectionErrors.positions) {
+    return (
+      <VadErrorState
+        title="Position could not be loaded"
+        message={data.sectionErrors.positions}
+        onRetry={() => void data.load()}
+      />
+    );
+  }
 
   if (!position) {
     return (

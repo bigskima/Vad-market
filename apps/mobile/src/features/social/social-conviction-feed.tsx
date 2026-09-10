@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
@@ -48,15 +48,21 @@ export function SocialConvictionFeed({
   const [body, setBody] = useState('');
   const [market, setMarket] = useState<MarketCatalogItem | null>(null);
   const [stance, setStance] = useState<'YES' | 'NO' | null>(null);
-  const [working, setWorking] = useState(false);
+  const [composerWorking, setComposerWorking] = useState(false);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
   const [comments, setComments] = useState<PostComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [commentRefreshError, setCommentRefreshError] = useState<string | null>(null);
   const [commentBody, setCommentBody] = useState('');
+  const [commentWorking, setCommentWorking] = useState(false);
   const [composerError, setComposerError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [commentSubmitError, setCommentSubmitError] = useState<string | null>(null);
+  const [pendingLikes, setPendingLikes] = useState<Set<string>>(() => new Set());
+  const [pendingFollows, setPendingFollows] = useState<Set<string>>(() => new Set());
+  const pendingLikeRef = useRef(new Set<string>());
+  const pendingFollowRef = useRef(new Set<string>());
 
   const load = useCallback(async () => {
     setFeedError(null);
@@ -105,9 +111,9 @@ export function SocialConvictionFeed({
   const selectedMarket = marketFilter ?? market;
 
   async function publish() {
-    if (!body.trim()) return;
+    if (!body.trim() || composerWorking) return;
 
-    setWorking(true);
+    setComposerWorking(true);
     setComposerError(null);
     try {
       await publishConvictionPost({
@@ -123,29 +129,42 @@ export function SocialConvictionFeed({
       setMarket(null);
       setStance(null);
       setComposerOpen(false);
+      // A new post changes ordering and may contain server-derived attribution,
+      // so the feed is intentionally refreshed after creation.
       await load();
     } catch (error) {
       setComposerError(
         error instanceof Error ? error.message : 'Please try again.',
       );
     } finally {
-      setWorking(false);
+      setComposerWorking(false);
     }
   }
 
   async function toggleLike(post: ConvictionPost) {
+    const postId = post.post_public_id;
+    if (pendingLikeRef.current.has(postId)) return;
+
+    pendingLikeRef.current.add(postId);
+    setPendingLikes((current) => {
+      const next = new Set(current);
+      next.add(postId);
+      return next;
+    });
+
     const wasLiked = post.viewer_liked;
     const previousCount = Number(post.reaction_count);
+    const optimisticLiked = !wasLiked;
 
     setPosts((current) =>
       current.map((item) =>
-        item.post_public_id === post.post_public_id
+        item.post_public_id === postId
           ? {
               ...item,
-              viewer_liked: !wasLiked,
+              viewer_liked: optimisticLiked,
               reaction_count: Math.max(
                 0,
-                previousCount + (wasLiked ? -1 : 1),
+                previousCount + (optimisticLiked ? 1 : 0) - (wasLiked ? 1 : 0),
               ),
             }
           : item,
@@ -155,12 +174,27 @@ export function SocialConvictionFeed({
     setActionError(null);
 
     try {
-      await togglePostLike(post.post_public_id);
-      void load();
+      const authoritativeLiked = await togglePostLike(postId);
+      const authoritativeCount = Math.max(
+        0,
+        previousCount + (authoritativeLiked ? 1 : 0) - (wasLiked ? 1 : 0),
+      );
+
+      setPosts((current) =>
+        current.map((item) =>
+          item.post_public_id === postId
+            ? {
+                ...item,
+                viewer_liked: authoritativeLiked,
+                reaction_count: authoritativeCount,
+              }
+            : item,
+        ),
+      );
     } catch (error) {
       setPosts((current) =>
         current.map((item) =>
-          item.post_public_id === post.post_public_id
+          item.post_public_id === postId
             ? {
                 ...item,
                 viewer_liked: wasLiked,
@@ -175,15 +209,32 @@ export function SocialConvictionFeed({
           ? error.message
           : 'The like could not be updated.',
       );
+    } finally {
+      pendingLikeRef.current.delete(postId);
+      setPendingLikes((current) => {
+        const next = new Set(current);
+        next.delete(postId);
+        return next;
+      });
     }
   }
 
   async function toggleFollow(post: ConvictionPost) {
+    const creatorId = post.author_user_id;
+    if (pendingFollowRef.current.has(creatorId)) return;
+
+    pendingFollowRef.current.add(creatorId);
+    setPendingFollows((current) => {
+      const next = new Set(current);
+      next.add(creatorId);
+      return next;
+    });
+
     const wasFollowing = post.viewer_follows_author;
 
     setPosts((current) =>
       current.map((item) =>
-        item.author_user_id === post.author_user_id
+        item.author_user_id === creatorId
           ? {
               ...item,
               viewer_follows_author: !wasFollowing,
@@ -195,12 +246,21 @@ export function SocialConvictionFeed({
     setActionError(null);
 
     try {
-      await toggleCreatorFollow(post.author_user_id);
-      void load();
+      const authoritativeFollowing = await toggleCreatorFollow(creatorId);
+      setPosts((current) =>
+        current.map((item) =>
+          item.author_user_id === creatorId
+            ? {
+                ...item,
+                viewer_follows_author: authoritativeFollowing,
+              }
+            : item,
+        ),
+      );
     } catch (error) {
       setPosts((current) =>
         current.map((item) =>
-          item.author_user_id === post.author_user_id
+          item.author_user_id === creatorId
             ? {
                 ...item,
                 viewer_follows_author: wasFollowing,
@@ -214,6 +274,13 @@ export function SocialConvictionFeed({
           ? error.message
           : 'The follow state could not be updated.',
       );
+    } finally {
+      pendingFollowRef.current.delete(creatorId);
+      setPendingFollows((current) => {
+        const next = new Set(current);
+        next.delete(creatorId);
+        return next;
+      });
     }
   }
 
@@ -222,6 +289,7 @@ export function SocialConvictionFeed({
     setComments([]);
     setCommentBody('');
     setCommentsError(null);
+    setCommentRefreshError(null);
     setCommentSubmitError(null);
     setCommentsLoading(true);
 
@@ -237,15 +305,15 @@ export function SocialConvictionFeed({
   }
 
   async function submitComment(post: ConvictionPost) {
-    if (!commentBody.trim()) return;
+    if (!commentBody.trim() || commentWorking) return;
 
-    setWorking(true);
+    const nextBody = commentBody.trim();
+    setCommentWorking(true);
     setCommentSubmitError(null);
+    setCommentRefreshError(null);
+
     try {
-      await addPostComment(
-        post.post_public_id,
-        commentBody.trim(),
-      );
+      await addPostComment(post.post_public_id, nextBody);
       setCommentBody('');
       setPosts((current) =>
         current.map((item) =>
@@ -257,14 +325,22 @@ export function SocialConvictionFeed({
             : item,
         ),
       );
-      setComments(await getPostComments(post.post_public_id));
-      void load();
+
+      try {
+        setComments(await getPostComments(post.post_public_id));
+      } catch (refreshError) {
+        setCommentRefreshError(
+          refreshError instanceof Error
+            ? `Your comment was posted, but the discussion could not refresh: ${refreshError.message}`
+            : 'Your comment was posted, but the discussion could not refresh.',
+        );
+      }
     } catch (error) {
       setCommentSubmitError(
         error instanceof Error ? error.message : 'Please try again.',
       );
     } finally {
-      setWorking(false);
+      setCommentWorking(false);
     }
   }
 
@@ -311,7 +387,7 @@ export function SocialConvictionFeed({
             selectedMarket={selectedMarket}
             body={body}
             stance={stance}
-            working={working}
+            working={composerWorking}
             onBodyChange={(value) => {
               setBody(value);
               setComposerError(null);
@@ -406,6 +482,8 @@ export function SocialConvictionFeed({
                 linkedMarket={linked}
                 commentsOpen={commentsOpen}
                 creatorOpen={false}
+                likeDisabled={pendingLikes.has(post.post_public_id)}
+                followDisabled={pendingFollows.has(post.author_user_id)}
                 onFollow={() => void toggleFollow(post)}
                 onLike={() => void toggleLike(post)}
                 onComments={() => void openComments(post)}
@@ -426,6 +504,7 @@ export function SocialConvictionFeed({
           setCommentsPostId(null);
           setComments([]);
           setCommentsError(null);
+          setCommentRefreshError(null);
           setCommentSubmitError(null);
           setCommentsLoading(false);
           setCommentBody('');
@@ -495,6 +574,14 @@ export function SocialConvictionFeed({
             </VadText>
           )}
 
+          {commentRefreshError ? (
+            <InlineError
+              title="Discussion refresh delayed"
+              message={commentRefreshError}
+              onDismiss={() => setCommentRefreshError(null)}
+            />
+          ) : null}
+
           {commentsPost && !commentsLoading && !commentsError ? (
             <View style={{ gap: theme.spacing.xs }}>
               {commentSubmitError ? (
@@ -516,7 +603,7 @@ export function SocialConvictionFeed({
               <VadButton
                 label="Send comment"
                 disabled={!commentBody.trim()}
-                loading={working}
+                loading={commentWorking}
                 onPress={() => void submitComment(commentsPost)}
               />
             </View>
@@ -526,7 +613,6 @@ export function SocialConvictionFeed({
     </View>
   );
 }
-
 
 function InlineError({
   title,

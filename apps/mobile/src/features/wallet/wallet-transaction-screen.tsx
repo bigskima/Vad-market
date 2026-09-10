@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { money } from '@/features/markets/format';
@@ -21,17 +22,24 @@ export function WalletTransactionScreen({
   const [intent, setIntent] = useState<PaymentIntentRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (background = false) => {
     if (background) setRefreshing(true);
+    setError(null);
 
     try {
       const rows = await getMyPaymentIntents(100);
       setIntent(
         rows.find((row) => row.intent_public_id === intentId) ?? null,
       );
-    } catch {
-      setIntent(null);
+    } catch (reason) {
+      // Keep the last valid transaction visible when a later refresh fails.
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Transaction status could not be refreshed.',
+      );
     } finally {
       if (background) setRefreshing(false);
       else setLoading(false);
@@ -54,6 +62,19 @@ export function WalletTransactionScreen({
     );
   }
 
+  if (!intent && error) {
+    return (
+      <VadErrorState
+        title="Transaction could not be loaded"
+        message={error}
+        onRetry={() => {
+          setLoading(true);
+          void load();
+        }}
+      />
+    );
+  }
+
   if (!intent) {
     return (
       <VadEmptyState
@@ -70,6 +91,14 @@ export function WalletTransactionScreen({
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
+      {error ? (
+        <VadErrorState
+          title="Transaction refresh failed"
+          message={error}
+          onRetry={() => void load(true)}
+        />
+      ) : null}
+
       <View style={{ gap: theme.spacing.sm }}>
         <View
           style={{
@@ -142,7 +171,7 @@ export function WalletTransactionScreen({
                 ? new Date(intent.settled_at).toLocaleString()
                 : 'Not settled yet'
             }
-            state={settled ? 'complete' : failed ? 'waiting' : 'waiting'}
+            state={settled ? 'complete' : 'waiting'}
           />
         </View>
       </View>
