@@ -18,14 +18,38 @@ const capabilityMap = {
   withdraw: "withdraw",
 } as const;
 
+const serviceKeyMap = {
+  create_post: "social_posting",
+  submit_market_proposal: "market_creation",
+  view_portfolio: "portfolio",
+  trade: "trading",
+  deposit: "deposits",
+  withdraw: "withdrawals",
+} as const;
+
 type DatabaseCapabilityKey = keyof typeof capabilityMap;
 type ClientCapabilityKey = (typeof capabilityMap)[DatabaseCapabilityKey];
+type ServiceKey = (typeof serviceKeyMap)[DatabaseCapabilityKey];
 
 interface CapabilityRule {
   capability_key: string;
   enabled: boolean;
   reason_code: string;
   version: number;
+}
+
+interface ServiceControlState {
+  serviceKey?: string;
+  enabled?: boolean;
+  reasonCode?: string | null;
+  message?: string | null;
+  scope?: "GLOBAL" | "USER" | "DEFAULT" | null;
+  resumesAt?: string | null;
+}
+
+interface ServiceControlSnapshot {
+  platform?: ServiceControlState;
+  services?: Partial<Record<ServiceKey, ServiceControlState>>;
 }
 
 function closedCapabilities() {
@@ -119,7 +143,7 @@ const authenticatedHandler = withSupabase(
       );
     }
 
-    const [rulesResult, jurisdictionAssetsResult] = await Promise.all([
+    const [rulesResult, jurisdictionAssetsResult, controlsResult] = await Promise.all([
       ctx.supabase
         .from("capability_rules")
         .select("capability_key,enabled,reason_code,version")
@@ -130,6 +154,7 @@ const authenticatedHandler = withSupabase(
         .select("asset_id")
         .eq("jurisdiction_id", jurisdiction.id)
         .eq("status", "ACTIVE"),
+      ctx.supabase.rpc("my_service_control_snapshot"),
     ]);
 
     if (rulesResult.error || jurisdictionAssetsResult.error) {
@@ -147,6 +172,21 @@ const authenticatedHandler = withSupabase(
       );
     }
 
+    if (controlsResult.error || !controlsResult.data) {
+      console.error("runtime-capabilities service control lookup failed", {
+        requestId,
+        controlsCode: controlsResult.error?.code,
+      });
+      return apiError(
+        requestId,
+        "SERVICE_CONTROL_UNAVAILABLE",
+        "VAD cannot confirm service availability right now.",
+        503,
+        true,
+      );
+    }
+
+    const controls = controlsResult.data as ServiceControlSnapshot;
     const eligibleAssetIds = jurisdictionAssetsResult.data.map((row) => row.asset_id);
     let activeAssetCodes: string[] = [];
 
@@ -177,6 +217,7 @@ const authenticatedHandler = withSupabase(
 
     const capabilities = closedCapabilities();
     const reasons: Partial<Record<ClientCapabilityKey, string>> = {};
+    const messages: Partial<Record<ClientCapabilityKey, string>> = {};
     const seen = new Set<ClientCapabilityKey>();
     const accountIsActive = account.status === "ACTIVE";
 
@@ -186,15 +227,27 @@ const authenticatedHandler = withSupabase(
       if (!clientKey || seen.has(clientKey)) continue;
 
       seen.add(clientKey);
-      capabilities[clientKey] = accountIsActive && rule.enabled;
+      const serviceKey = serviceKeyMap[databaseKey];
+      const serviceState = controls.services?.[serviceKey];
+      const serviceEnabled = serviceState?.enabled === true;
+
+      capabilities[clientKey] = accountIsActive && rule.enabled && serviceEnabled;
       if (!capabilities[clientKey]) {
-        reasons[clientKey] = accountIsActive
-          ? rule.reason_code
-          : "ACCOUNT_NOT_ACTIVE";
+        if (!accountIsActive) {
+          reasons[clientKey] = "ACCOUNT_NOT_ACTIVE";
+        } else if (!rule.enabled) {
+          reasons[clientKey] = rule.reason_code;
+        } else if (!serviceState) {
+          reasons[clientKey] = "SERVICE_CONTROL_UNAVAILABLE";
+        } else {
+          reasons[clientKey] = serviceState.reasonCode ?? "SERVICE_PAUSED";
+          if (serviceState.message) messages[clientKey] = serviceState.message;
+        }
       }
     }
 
-    for (const clientKey of Object.values(capabilityMap)) {
+    for (const databaseKey of Object.keys(capabilityMap) as DatabaseCapabilityKey[]) {
+      const clientKey = capabilityMap[databaseKey];
       if (!seen.has(clientKey)) reasons[clientKey] = "NO_ACTIVE_POLICY";
     }
 
@@ -205,10 +258,16 @@ const authenticatedHandler = withSupabase(
       reasons.trade = "NO_ACTIVE_ASSET";
       reasons.deposit = "NO_ACTIVE_ASSET";
       reasons.withdraw = "NO_ACTIVE_ASSET";
+      delete messages.trade;
+      delete messages.deposit;
+      delete messages.withdraw;
     }
 
+    const platform = controls.platform;
+    const platformPaused = platform?.enabled === false;
+
     return json({
-      version: 2,
+      version: 3,
       status: "ready",
       requestId,
       evaluatedAt: new Date().toISOString(),
@@ -216,9 +275,23 @@ const authenticatedHandler = withSupabase(
         countryCode: account.country_code,
         jurisdictionStatus: jurisdiction.status,
         activeAssetCodes,
+        platformStatus: platformPaused ? "MAINTENANCE" : "READY",
+        ...(platformPaused && platform?.reasonCode
+          ? { platformReasonCode: platform.reasonCode }
+          : {}),
+        ...(platformPaused && platform?.message
+          ? { platformMessage: platform.message }
+          : {}),
+        ...(platformPaused && platform?.scope
+          ? { platformPauseScope: platform.scope }
+          : {}),
+        ...(platformPaused
+          ? { platformResumesAt: platform?.resumesAt ?? null }
+          : {}),
       },
       capabilities,
       reasons,
+      messages,
     });
   },
 );
