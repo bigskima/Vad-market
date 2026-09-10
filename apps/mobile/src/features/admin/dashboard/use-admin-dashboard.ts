@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import {
+  hasAdminPermission,
+  hasAnyAdminPermission,
+  type AdminAccess,
+} from '@/services/admin-control-api';
+import {
   getAdminMarketQueue,
   getAdminOracleQueue,
   getAdminRuntimeSummary,
@@ -20,7 +25,7 @@ import {
   type ProviderReadinessRow,
 } from '@/services/provider-admin-api';
 
-export function useAdminDashboard() {
+export function useAdminDashboard(access: AdminAccess) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,44 +40,106 @@ export function useAdminDashboard() {
   const [providerChanges, setProviderChanges] = useState<ProviderChangeRequest[]>([]);
 
   const load = useCallback(async () => {
-    const results = await Promise.allSettled([
-      getAdminRuntimeSummary(),
-      getAdminOperationsSummary(),
-      getAdminMarketQueue(),
-      getAdminOracleQueue(),
-      getAdminKycQueue(12),
-      getAdminPaymentQueue(12),
-      getAdminProviderReadiness(),
-      getProviderChangeQueue(),
-    ]);
+    const tasks: Promise<void>[] = [];
+    let attempted = 0;
+    let failures = 0;
 
-    const failures = results.filter(
-      (result) => result.status === 'rejected',
-    ).length;
-
-    if (failures === results.length) {
-      setError(
-        'Operations data could not refresh. Existing control-plane data is preserved where available.',
-      );
-      setWarning(null);
-    } else {
-      setError(null);
-      setWarning(
-        failures > 0
-          ? 'Some operations data could not refresh. Successful queues were updated while previous data was preserved elsewhere.'
-          : null,
+    function queue<T>(
+      allowed: boolean,
+      request: () => Promise<T>,
+      apply: (value: T) => void,
+    ) {
+      if (!allowed) return;
+      attempted += 1;
+      tasks.push(
+        request()
+          .then(apply)
+          .catch(() => {
+            failures += 1;
+          }),
       );
     }
 
-    if (results[0].status === 'fulfilled') setRuntime(results[0].value);
-    if (results[1].status === 'fulfilled') setOperations(results[1].value);
-    if (results[2].status === 'fulfilled') setMarketQueue(results[2].value);
-    if (results[3].status === 'fulfilled') setOracleQueue(results[3].value);
-    if (results[4].status === 'fulfilled') setKycQueue(results[4].value);
-    if (results[5].status === 'fulfilled') setPaymentQueue(results[5].value);
-    if (results[6].status === 'fulfilled') setProviders(results[6].value);
-    if (results[7].status === 'fulfilled') setProviderChanges(results[7].value);
-  }, []);
+    queue(
+      hasAnyAdminPermission(access, [
+        'markets.manage',
+        'finance.read',
+        'oracle.review',
+      ]),
+      getAdminRuntimeSummary,
+      setRuntime,
+    );
+
+    queue(
+      hasAnyAdminPermission(access, [
+        'compliance.manage',
+        'finance.read',
+        'providers.manage',
+        'support.read',
+      ]),
+      getAdminOperationsSummary,
+      setOperations,
+    );
+
+    queue(
+      hasAdminPermission(access, 'markets.manage'),
+      getAdminMarketQueue,
+      setMarketQueue,
+    );
+
+    queue(
+      hasAdminPermission(access, 'oracle.review'),
+      getAdminOracleQueue,
+      setOracleQueue,
+    );
+
+    queue(
+      hasAnyAdminPermission(access, ['compliance.manage', 'support.read']),
+      () => getAdminKycQueue(30),
+      setKycQueue,
+    );
+
+    queue(
+      hasAnyAdminPermission(access, ['finance.read', 'providers.manage']),
+      () => getAdminPaymentQueue(30),
+      setPaymentQueue,
+    );
+
+    queue(
+      hasAnyAdminPermission(access, ['providers.manage', 'finance.read']),
+      getAdminProviderReadiness,
+      setProviders,
+    );
+
+    queue(
+      hasAdminPermission(access, 'providers.manage'),
+      getProviderChangeQueue,
+      setProviderChanges,
+    );
+
+    await Promise.all(tasks);
+
+    if (attempted === 0) {
+      setError(null);
+      setWarning(null);
+      return;
+    }
+
+    if (failures === attempted) {
+      setError(
+        'Your permitted operations data could not refresh. Existing control-plane data is preserved where available.',
+      );
+      setWarning(null);
+      return;
+    }
+
+    setError(null);
+    setWarning(
+      failures > 0
+        ? 'Some permitted operations data could not refresh. Successful queues were updated while previous data was preserved elsewhere.'
+        : null,
+    );
+  }, [access]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +166,7 @@ export function useAdminDashboard() {
   }, [load]);
 
   return {
+    access,
     loading,
     refreshing,
     error,
