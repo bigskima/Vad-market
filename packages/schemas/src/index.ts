@@ -18,13 +18,16 @@ export const apiErrorSchema = z
 
 export const runtimeCapabilitiesResponseSchema = z
   .object({
-    version: z.literal(1),
+    // v2 is live in Supabase. v1 remains accepted during staggered frontend/
+    // function deployments so a contract rollout cannot disable every action.
+    version: z.union([z.literal(1), z.literal(2)]),
     status: z.enum(["ready", "degraded"]),
     requestId: z.string().min(1),
     evaluatedAt: z.iso.datetime({ offset: true }),
     context: z
       .object({
         countryCode: z.string().regex(/^[A-Z]{2}$/),
+        jurisdictionStatus: z.string().min(1).optional(),
         activeAssetCodes: z.array(z.string().regex(/^[A-Z0-9]{2,12}$/)),
       })
       .strict(),
