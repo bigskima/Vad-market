@@ -26,7 +26,11 @@ export default function PortfolioRoute() {
   };
 
   return (
-    <ProductRoute active="Portfolio">
+    <ProductRoute
+      active="Portfolio"
+      requiredCapability="viewPortfolio"
+      capabilityTitle="Portfolio is not enabled yet"
+    >
       <PortfolioScreen
         positions={data.positions}
         orders={data.orders}
