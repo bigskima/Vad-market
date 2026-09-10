@@ -6,6 +6,7 @@ import { HomeScreen } from '@/features/home/home-screen';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { isSafeInternalRoute } from '@/services/home-content-api';
 import type { MarketCatalogItem } from '@/services/market-api';
 
 export default function HomeRoute() {
@@ -31,41 +32,34 @@ export default function HomeRoute() {
     router.push('/markets');
   };
 
+  const openPromotion = (targetPath: string) => {
+    if (!isSafeInternalRoute(targetPath)) return;
+    router.push(targetPath as never);
+  };
+
   const marketReadFailedWithoutData = Boolean(
     data.sectionErrors.markets && !data.markets.length,
   );
-  const walletReadFailedWithoutData = Boolean(
-    data.sectionErrors.wallet && !data.ngn,
-  );
-  const homeReadBlocked =
-    marketReadFailedWithoutData || walletReadFailedWithoutData;
 
   return (
     <ProductRoute active="Home" allowCreate>
-      {homeReadBlocked ? (
+      {marketReadFailedWithoutData ? (
         <View style={{ gap: theme.spacing.md }}>
-          {marketReadFailedWithoutData ? (
-            <VadErrorState
-              title="Market pulse could not be loaded"
-              message={data.sectionErrors.markets ?? 'Market data is unavailable.'}
-              onRetry={() => void data.load()}
-            />
-          ) : null}
-          {walletReadFailedWithoutData ? (
-            <VadErrorState
-              title="Wallet snapshot could not be loaded"
-              message={data.sectionErrors.wallet ?? 'Wallet data is unavailable.'}
-              onRetry={() => void data.load()}
-            />
-          ) : null}
+          <VadErrorState
+            title="Markets could not be loaded"
+            message={data.sectionErrors.markets ?? 'Market data is unavailable.'}
+            onRetry={() => void data.load()}
+          />
         </View>
       ) : (
         <HomeScreen
           markets={data.markets}
-          ngn={data.ngn}
+          promotions={data.homePromotions}
+          notices={data.publicNotices}
+          featuredMarkets={data.featuredMarkets}
           onOpenMarket={openMarket}
+          onOpenPromotion={openPromotion}
           onExploreMarkets={exploreMarkets}
-          onOpenWallet={() => router.push('/wallet')}
           onOpenCommunity={() => router.push('/community')}
         />
       )}
