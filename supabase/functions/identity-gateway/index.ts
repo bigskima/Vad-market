@@ -93,6 +93,23 @@ async function startKyc(req: Request) {
   if (!configured()) return json({ error: 'KYC_PROVIDER_NOT_CONFIGURED', provider: 'DIDIT' }, 503);
   const user = await requireUser(req);
   const { admin } = clients();
+
+  const { data: serviceState, error: serviceError } = await admin.rpc('internal_service_control_state', {
+    p_user_id: user.id,
+    p_service_key: 'kyc_start',
+  });
+  if (serviceError || !serviceState) {
+    console.error('KYC service-control lookup failed', { userId: user.id, code: serviceError?.code });
+    return json({ error: 'SERVICE_CONTROL_UNAVAILABLE', message: 'VAD cannot confirm identity verification availability right now.' }, 503);
+  }
+  if (serviceState.enabled !== true) {
+    return json({
+      error: serviceState.reasonCode ?? 'KYC_PAUSED',
+      message: serviceState.message ?? 'Identity verification is temporarily unavailable.',
+      resumesAt: serviceState.resumesAt ?? null,
+    }, 503);
+  }
+
   const { data: prepared, error: prepareError } = await admin.rpc('internal_prepare_kyc_case', { p_user_id: user.id });
   if (prepareError || !prepared) return json({ error: 'KYC_CASE_PREPARE_FAILED', message: prepareError?.message }, 409);
 
@@ -176,6 +193,8 @@ Deno.serve(async (req) => {
   try {
     const path = new URL(req.url).pathname.replace(/\/+$/, '');
     if (req.method === 'GET' && path.endsWith('/health')) return json({ provider: 'DIDIT', configured: configured(), apiVersion: 'v3' });
+    // Webhooks intentionally bypass pause controls: already-started verification
+    // events must keep reconciling even while new KYC sessions are paused.
     if (req.method === 'POST' && path.endsWith('/webhook')) return await handleWebhook(req);
     if (req.method === 'POST') return await startKyc(req);
     return json({ error: 'METHOD_NOT_ALLOWED' }, 405);
