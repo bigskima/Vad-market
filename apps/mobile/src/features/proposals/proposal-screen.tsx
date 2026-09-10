@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   Pressable,
   useWindowDimensions,
   View,
@@ -31,12 +30,15 @@ export function ProposalScreen({
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 860;
+  const compact = width < 380;
   const [view, setView] = useState<ProposalView>('new');
   const [step, setStep] = useState<ProposalStep>(0);
   const [question, setQuestion] = useState('');
   const [context, setContext] = useState('');
   const [category, setCategory] = useState('');
   const [working, setWorking] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submittedId, setSubmittedId] = useState<string | null>(null);
 
   const questionReady = question.trim().length >= 10;
   const looksLikeQuestion = question.trim().endsWith('?');
@@ -46,6 +48,8 @@ export function ProposalScreen({
     setContext('');
     setCategory('');
     setStep(0);
+    setSubmitError(null);
+    setSubmittedId(null);
   }
 
   function goNext() {
@@ -61,29 +65,81 @@ export function ProposalScreen({
     if (!canSubmitProposal || !questionReady) return;
 
     setWorking(true);
+    setSubmitError(null);
+
     try {
-      await submitMarketProposal({
+      const id = await submitMarketProposal({
         question: question.trim(),
         context: context.trim() || undefined,
         category: category.trim() || undefined,
       });
 
-      Alert.alert(
-        'Proposal submitted',
-        'Your question has entered governance review. It is not tradable until it passes the required checks.',
-      );
-
-      resetComposer();
-      setView('history');
+      setSubmittedId(id);
       await onReload();
     } catch (error) {
-      Alert.alert(
-        'Proposal not submitted',
+      setSubmitError(
         error instanceof Error ? error.message : 'Please try again.',
       );
     } finally {
       setWorking(false);
     }
+  }
+
+  if (submittedId) {
+    return (
+      <View style={{ gap: theme.spacing.xl }}>
+        <View
+          style={{
+            borderLeftWidth: 3,
+            borderLeftColor: theme.colors.yes,
+            backgroundColor: theme.colors.yesSoft,
+            padding: compact ? theme.spacing.lg : theme.spacing.xl,
+            gap: theme.spacing.md,
+          }}
+        >
+          <VadText variant="label" tone="yes">PROPOSAL SUBMITTED</VadText>
+          <VadText variant="title">Your question entered governance review.</VadText>
+          <VadText tone="secondary">
+            Submission does not make the market tradable. Governance still has
+            to review clarity, duplication and resolution requirements.
+          </VadText>
+
+          <View
+            style={{
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+              paddingTop: theme.spacing.md,
+              gap: 2,
+            }}
+          >
+            <VadText variant="caption" tone="tertiary">REFERENCE</VadText>
+            <VadText variant="bodyStrong" selectable>{submittedId}</VadText>
+          </View>
+        </View>
+
+        <View
+          style={{
+            flexDirection: compact ? 'column' : 'row',
+            gap: theme.spacing.sm,
+          }}
+        >
+          <VadButton
+            label="View proposal history"
+            onPress={() => {
+              setSubmittedId(null);
+              setView('history');
+            }}
+            style={{ flex: 1 }}
+          />
+          <VadButton
+            label="Start another proposal"
+            variant="secondary"
+            onPress={resetComposer}
+            style={{ flex: 1 }}
+          />
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -100,8 +156,8 @@ export function ProposalScreen({
           <VadText variant="label" tone="brand">CREATE MARKET</VadText>
           <VadText variant="title">Turn one clear question into a proposal.</VadText>
           <VadText tone="secondary">
-            The proposal enters governance first. Trading starts only after the
-            market has passed clarity, duplication and resolution checks.
+            Trading starts only after governance has reviewed the proposed
+            question and the resolution path.
           </VadText>
         </View>
 
@@ -127,7 +183,15 @@ export function ProposalScreen({
         </View>
       </View>
 
-      {view === 'new' ? (
+      {view === 'history' ? (
+        <ProposalHistory
+          proposals={proposals}
+          onStart={() => {
+            resetComposer();
+            setView('new');
+          }}
+        />
+      ) : (
         <View
           style={{
             flexDirection: wide ? 'row' : 'column',
@@ -151,22 +215,17 @@ export function ProposalScreen({
                 <VadInput
                   label="Market question"
                   value={question}
-                  onChangeText={setQuestion}
+                  onChangeText={(value) => {
+                    setQuestion(value);
+                    setSubmitError(null);
+                  }}
                   multiline
                   placeholder="Will … happen before …?"
                   hint={question.trim().length + ' characters'}
                 />
 
-                <View
-                  style={{
-                    borderTopWidth: 1,
-                    borderTopColor: theme.colors.border,
-                  }}
-                >
-                  <QualityRow
-                    label="Enough detail to review"
-                    ready={questionReady}
-                  />
+                <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+                  <QualityRow label="Enough detail to review" ready={questionReady} />
                   <QualityRow
                     label="Written as a question"
                     ready={looksLikeQuestion}
@@ -181,29 +240,31 @@ export function ProposalScreen({
                 <View style={{ gap: theme.spacing.xs }}>
                   <VadText variant="heading">Add useful context.</VadText>
                   <VadText variant="caption" tone="secondary">
-                    Context should help reviewers understand the subject without
-                    trying to predetermine the answer.
+                    Help reviewers understand the subject without trying to
+                    predetermine the answer.
                   </VadText>
                 </View>
 
                 <VadInput
                   label="Category · optional"
                   value={category}
-                  onChangeText={setCategory}
+                  onChangeText={(value) => {
+                    setCategory(value);
+                    setSubmitError(null);
+                  }}
                   placeholder="e.g. sports, business, technology"
                 />
 
                 <VadInput
                   label="Context · optional"
                   value={context}
-                  onChangeText={setContext}
+                  onChangeText={(value) => {
+                    setContext(value);
+                    setSubmitError(null);
+                  }}
                   multiline
                   placeholder="What should reviewers understand about this question?"
-                  hint={
-                    context.trim()
-                      ? context.trim().length + ' characters'
-                      : 'Optional'
-                  }
+                  hint={context.trim() ? context.trim().length + ' characters' : 'Optional'}
                 />
               </View>
             ) : null}
@@ -218,43 +279,36 @@ export function ProposalScreen({
                   </VadText>
                 </View>
 
-                <View
-                  style={{
-                    borderTopWidth: 1,
-                    borderTopColor: theme.colors.border,
-                  }}
-                >
+                <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
                   <ReviewRow label="Question" value={question.trim()} />
-                  <ReviewRow
-                    label="Category"
-                    value={category.trim() || 'Not specified'}
-                  />
-                  <ReviewRow
-                    label="Context"
-                    value={context.trim() || 'Not specified'}
-                  />
+                  <ReviewRow label="Category" value={category.trim() || 'Not specified'} />
+                  <ReviewRow label="Context" value={context.trim() || 'Not specified'} />
                 </View>
 
                 {!canSubmitProposal ? (
-                  <View
-                    style={{
-                      borderLeftWidth: 3,
-                      borderLeftColor: theme.colors.warning,
-                      borderRadius: theme.radius.md,
-                      backgroundColor: theme.colors.warningSoft,
-                      padding: theme.spacing.md,
-                    }}
-                  >
-                    <VadText variant="caption" tone="warning">
-                      Proposal creation is currently unavailable for this
-                      account under live platform policy.
-                    </VadText>
-                  </View>
+                  <InlineStatus
+                    tone="warning"
+                    title="Proposal unavailable"
+                    message="Proposal creation is currently unavailable for this account under live platform policy."
+                  />
+                ) : null}
+
+                {submitError ? (
+                  <InlineStatus
+                    tone="danger"
+                    title="Proposal not submitted"
+                    message={submitError}
+                  />
                 ) : null}
               </View>
             ) : null}
 
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <View
+              style={{
+                flexDirection: compact ? 'column' : 'row',
+                gap: theme.spacing.sm,
+              }}
+            >
               {step > 0 ? (
                 <VadButton
                   label="Back"
@@ -283,12 +337,7 @@ export function ProposalScreen({
             </View>
           </View>
 
-          <View
-            style={{
-              width: wide ? 300 : '100%',
-              gap: theme.spacing.md,
-            }}
-          >
+          <View style={{ width: wide ? 300 : '100%', gap: theme.spacing.md }}>
             <View style={{ gap: 2 }}>
               <VadText variant="label" tone="brand">PROPOSAL GUIDE</VadText>
               <VadText variant="caption" tone="secondary">
@@ -296,12 +345,7 @@ export function ProposalScreen({
               </VadText>
             </View>
 
-            <View
-              style={{
-                borderTopWidth: 1,
-                borderTopColor: theme.colors.border,
-              }}
-            >
+            <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
               <Guide
                 number="1"
                 title="Ask one resolvable question"
@@ -320,12 +364,80 @@ export function ProposalScreen({
             </View>
           </View>
         </View>
-      ) : (
-        <ProposalHistory
-          proposals={proposals}
-          onStart={() => setView('new')}
-        />
       )}
+    </View>
+  );
+}
+
+function ProposalHistory({
+  proposals,
+  onStart,
+}: {
+  proposals: ProposalRow[];
+  onStart: () => void;
+}) {
+  const theme = useVadTheme();
+
+  if (!proposals.length) {
+    return (
+      <VadEmptyState
+        title="No proposals yet"
+        body="Your submitted market ideas will appear here with their governance status."
+        actionLabel="Start a proposal"
+        onAction={onStart}
+      />
+    );
+  }
+
+  return (
+    <View style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: 2 }}>
+        <VadText variant="heading">Proposal history</VadText>
+        <VadText variant="caption" tone="secondary">
+          Governance status is backend-authoritative and may change after review.
+        </VadText>
+      </View>
+
+      <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+        {proposals.map((proposal) => (
+          <View
+            key={proposal.public_id}
+            style={{
+              minHeight: 92,
+              paddingVertical: theme.spacing.md,
+              gap: theme.spacing.sm,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: theme.spacing.md,
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+              }}
+            >
+              <VadText variant="bodyStrong" style={{ flex: 1 }} numberOfLines={3}>
+                {proposal.question}
+              </VadText>
+              <VadText variant="caption" tone={proposalStatusTone(proposal.status)}>
+                {proposal.status.replaceAll('_', ' ')}
+              </VadText>
+            </View>
+
+            <VadText variant="caption" tone="secondary">
+              {(proposal.category ?? 'General') + ' · ' + new Date(proposal.created_at).toLocaleDateString()}
+            </VadText>
+
+            {proposal.context ? (
+              <VadText variant="caption" tone="tertiary" numberOfLines={2}>
+                {proposal.context}
+              </VadText>
+            ) : null}
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -338,7 +450,6 @@ function Progress({ step }: { step: ProposalStep }) {
     <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
       {labels.map((label, index) => {
         const active = index <= step;
-
         return (
           <View key={label} style={{ flex: 1, gap: theme.spacing.xxs }}>
             <View
@@ -352,13 +463,7 @@ function Progress({ step }: { step: ProposalStep }) {
             />
             <VadText
               variant="caption"
-              tone={
-                index === step
-                  ? 'brand'
-                  : active
-                    ? 'primary'
-                    : 'tertiary'
-              }
+              tone={index === step ? 'brand' : active ? 'primary' : 'tertiary'}
             >
               {label}
             </VadText>
@@ -391,9 +496,7 @@ function ModeTab({
         alignItems: 'center',
         justifyContent: 'center',
         borderBottomWidth: 2,
-        borderBottomColor: selected
-          ? theme.colors.brandPrimary
-          : 'transparent',
+        borderBottomColor: selected ? theme.colors.brandPrimary : 'transparent',
         opacity: pressed ? 0.65 : 1,
       })}
     >
@@ -418,7 +521,7 @@ function QualityRow({
   return (
     <View
       style={{
-        minHeight: 54,
+        minHeight: 52,
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing.sm,
@@ -426,33 +529,11 @@ function QualityRow({
         borderBottomColor: theme.colors.border,
       }}
     >
-      <View
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: 13,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: ready
-            ? theme.colors.yesSoft
-            : theme.colors.surfaceRaised,
-        }}
-      >
-        <VadText
-          variant="caption"
-          tone={ready ? 'yes' : advisory ? 'tertiary' : 'secondary'}
-        >
-          {ready ? '✓' : '–'}
-        </VadText>
-      </View>
-
-      <VadText
-        variant="caption"
-        tone={ready ? 'primary' : 'secondary'}
-        style={{ flex: 1 }}
-      >
-        {label}
-        {advisory ? ' · recommended' : ''}
+      <VadText variant="label" tone={ready ? 'yes' : 'tertiary'}>
+        {ready ? 'PASS' : advisory ? 'CHECK' : 'WAIT'}
+      </VadText>
+      <VadText variant="caption" tone={ready ? 'primary' : 'secondary'} style={{ flex: 1 }}>
+        {label}{advisory ? ' · recommended' : ''}
       </VadText>
     </View>
   );
@@ -460,7 +541,6 @@ function QualityRow({
 
 function ReviewRow({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
-
   return (
     <View
       style={{
@@ -486,7 +566,6 @@ function Guide({
   body: string;
 }) {
   const theme = useVadTheme();
-
   return (
     <View
       style={{
@@ -500,11 +579,37 @@ function Guide({
       }}
     >
       <VadText variant="label" tone="brand">{number}</VadText>
-
       <View style={{ flex: 1, gap: 2 }}>
         <VadText variant="bodyStrong">{title}</VadText>
         <VadText variant="caption" tone="secondary">{body}</VadText>
       </View>
+    </View>
+  );
+}
+
+function InlineStatus({
+  tone,
+  title,
+  message,
+}: {
+  tone: 'warning' | 'danger';
+  title: string;
+  message: string;
+}) {
+  const theme = useVadTheme();
+  const danger = tone === 'danger';
+  return (
+    <View
+      style={{
+        borderLeftWidth: 3,
+        borderLeftColor: danger ? theme.colors.danger : theme.colors.warning,
+        backgroundColor: danger ? theme.colors.noSoft : theme.colors.warningSoft,
+        padding: theme.spacing.md,
+        gap: 2,
+      }}
+    >
+      <VadText variant="caption" tone={tone}>{title.toUpperCase()}</VadText>
+      <VadText variant="caption" tone="secondary">{message}</VadText>
     </View>
   );
 }
@@ -518,104 +623,18 @@ function proposalStatusTone(
     normalized.includes('APPROV') ||
     normalized.includes('ACTIVE') ||
     normalized.includes('LIVE')
-  ) {
-    return 'yes';
-  }
+  ) return 'yes';
 
   if (
     normalized.includes('REJECT') ||
     normalized.includes('FAIL') ||
     normalized.includes('CANCEL')
-  ) {
-    return 'danger';
-  }
+  ) return 'danger';
 
   if (
     normalized.includes('PENDING') ||
     normalized.includes('REVIEW')
-  ) {
-    return 'warning';
-  }
+  ) return 'warning';
 
   return 'brand';
-}
-
-function ProposalHistory({
-  proposals,
-  onStart,
-}: {
-  proposals: ProposalRow[];
-  onStart: () => void;
-}) {
-  const theme = useVadTheme();
-
-  if (!proposals.length) {
-    return (
-      <View style={{ gap: theme.spacing.md }}>
-        <VadEmptyState
-          title="No proposals yet"
-          body="Your submitted market ideas will appear here with their governance status."
-        />
-        <VadButton
-          label="Start a proposal"
-          fullWidth={false}
-          onPress={onStart}
-        />
-      </View>
-    );
-  }
-
-  return (
-    <View
-      style={{
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.border,
-      }}
-    >
-      {proposals.map((proposal) => (
-        <View
-          key={proposal.public_id}
-          style={{
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-            paddingVertical: theme.spacing.md,
-            gap: theme.spacing.sm,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: theme.spacing.sm,
-              alignItems: 'flex-start',
-            }}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <VadText variant="bodyStrong">{proposal.question}</VadText>
-              <VadText variant="caption" tone="tertiary">
-                {proposal.category ?? 'Uncategorised'} ·{' '}
-                {new Date(proposal.created_at).toLocaleDateString()}
-              </VadText>
-            </View>
-
-            <VadText
-              variant="caption"
-              tone={proposalStatusTone(proposal.status)}
-            >
-              {proposal.status.replaceAll('_', ' ')}
-            </VadText>
-          </View>
-
-          {proposal.context ? (
-            <VadText
-              variant="caption"
-              tone="secondary"
-              numberOfLines={2}
-            >
-              {proposal.context}
-            </VadText>
-          ) : null}
-        </View>
-      ))}
-    </View>
-  );
 }
