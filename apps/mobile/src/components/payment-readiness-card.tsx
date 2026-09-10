@@ -10,6 +10,7 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
+import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   createPaymentIntent,
@@ -28,9 +29,15 @@ type Readiness = {
 export function PaymentReadinessCard({
   initialMode = 'DEPOSIT',
   lockMode = false,
+  canOperate = true,
+  capabilityReason,
+  capabilityLoading = false,
 }: {
   initialMode?: Mode;
   lockMode?: boolean;
+  canOperate?: boolean;
+  capabilityReason?: string;
+  capabilityLoading?: boolean;
 }) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
@@ -60,11 +67,13 @@ export function PaymentReadinessCard({
   }, []);
 
   useEffect(() => {
+    if (!canOperate || capabilityLoading) return;
+
     const timer = setTimeout(() => {
       void load();
     }, 0);
     return () => clearTimeout(timer);
-  }, [load]);
+  }, [canOperate, capabilityLoading, load]);
 
   function clearReview() {
     setQuote(null);
@@ -85,7 +94,13 @@ export function PaymentReadinessCard({
 
   async function preview() {
     const value = Number(amount);
-    if (!Number.isFinite(value) || value <= 0) return;
+    if (
+      capabilityLoading ||
+      !canOperate ||
+      !Number.isFinite(value) ||
+      value <= 0 ||
+      working
+    ) return;
 
     setWorking(true);
     setActionError(null);
@@ -105,7 +120,12 @@ export function PaymentReadinessCard({
   }
 
   async function create() {
-    if (!quote?.enabled) return;
+    if (
+      capabilityLoading ||
+      !canOperate ||
+      !quote?.enabled ||
+      working
+    ) return;
 
     setWorking(true);
     setActionError(null);
@@ -134,6 +154,7 @@ export function PaymentReadinessCard({
   const validAmount = Number.isFinite(amountValue) && amountValue > 0;
   const stage = createdIntentId ? 3 : quote ? 2 : amount ? 1 : 0;
   const actionLabel = mode === 'DEPOSIT' ? 'deposit' : 'withdrawal';
+  const policyReady = canOperate && !capabilityLoading;
 
   if (createdIntentId) {
     return (
@@ -252,14 +273,32 @@ export function PaymentReadinessCard({
             : 'Move available funds out.'}
         </VadText>
         <VadText tone="secondary">
-          VAD checks the live route, identity policy, limits and fees before the
-          request can continue.
+          VAD checks live account policy, provider routing, identity requirements,
+          limits and fees before the request can continue.
         </VadText>
       </View>
 
       <PaymentProgress stage={stage} />
 
-      {readinessError ? (
+      {capabilityLoading ? (
+        <InlineStatus
+          tone="warning"
+          title="Checking account policy"
+          message={runtimeCapabilityReason('CAPABILITIES_LOADING')}
+        />
+      ) : !canOperate ? (
+        <InlineStatus
+          tone="warning"
+          title={
+            mode === 'DEPOSIT'
+              ? 'Deposits are not available'
+              : 'Withdrawals are not available'
+          }
+          message={runtimeCapabilityReason(capabilityReason)}
+        />
+      ) : null}
+
+      {policyReady && readinessError ? (
         <VadErrorState
           title="Payment readiness unavailable"
           message={readinessError}
@@ -295,26 +334,34 @@ export function PaymentReadinessCard({
           >
             <View style={{ flex: 1, gap: 2 }}>
               <VadText variant="caption" tone="secondary">
-                Payment route
+                Availability
               </VadText>
               <VadText variant="bodyStrong">
-                {readiness == null
-                  ? 'Checking readiness'
-                  : providerReady
-                    ? 'Ready for live checks'
-                    : 'Not configured'}
+                {capabilityLoading
+                  ? 'Checking account policy'
+                  : !canOperate
+                    ? 'Blocked by current launch policy'
+                    : readiness == null
+                      ? 'Checking payment route'
+                      : providerReady
+                        ? 'Ready for live checks'
+                        : 'Payment route not configured'}
               </VadText>
             </View>
 
             <VadText
               variant="caption"
-              tone={providerReady ? 'yes' : 'warning'}
+              tone={policyReady && providerReady ? 'yes' : 'warning'}
             >
-              {readiness == null
+              {capabilityLoading
                 ? 'CHECKING'
-                : providerReady
-                  ? 'READY'
-                  : 'ACTION REQUIRED'}
+                : !canOperate
+                  ? 'POLICY BLOCKED'
+                  : readiness == null
+                    ? 'CHECKING'
+                    : providerReady
+                      ? 'READY'
+                      : 'ACTION REQUIRED'}
             </VadText>
           </View>
 
@@ -325,25 +372,28 @@ export function PaymentReadinessCard({
               setAmount(value);
               clearReview();
             }}
+            editable={policyReady}
             keyboardType="decimal-pad"
             placeholder="Amount in NGN"
             returnKeyType="done"
             onSubmitEditing={() => {
-              if (validAmount) void preview();
+              if (policyReady && validAmount) void preview();
             }}
             hint={
-              validAmount
-                ? 'Amount entered: ₦' + amountValue.toLocaleString()
-                : 'Enter an amount greater than zero.'
+              policyReady
+                ? validAmount
+                  ? 'Amount entered: ₦' + amountValue.toLocaleString()
+                  : 'Enter an amount greater than zero.'
+                : 'Amount entry becomes available when live account policy allows this action.'
             }
             error={
-              amount.length > 0 && !validAmount
+              policyReady && amount.length > 0 && !validAmount
                 ? 'Enter a valid amount greater than zero.'
                 : undefined
             }
           />
 
-          {readiness && !providerReady ? (
+          {policyReady && readiness && !providerReady ? (
             <InlineStatus
               tone="warning"
               title="Payment route not ready"
@@ -362,8 +412,12 @@ export function PaymentReadinessCard({
           {!quote ? (
             <VadButton
               label="Check availability & fees"
-              loading={working}
-              disabled={!validAmount || readinessError != null}
+              loading={working || capabilityLoading}
+              disabled={
+                !policyReady ||
+                !validAmount ||
+                readinessError != null
+              }
               onPress={() => void preview()}
             />
           ) : null}
@@ -418,6 +472,7 @@ export function PaymentReadinessCard({
                       : 'Create withdrawal intent'
                   }
                   loading={working}
+                  disabled={!policyReady}
                   onPress={() => void create()}
                 />
               </>
