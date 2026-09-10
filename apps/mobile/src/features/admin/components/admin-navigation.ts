@@ -6,6 +6,7 @@ export type AdminHref =
   | '/admin/queue'
   | '/admin/search'
   | '/admin/governance'
+  | '/admin/revenue'
   | '/admin/payments'
   | '/admin/compliance'
   | '/admin/users'
@@ -69,8 +70,15 @@ export const adminNavigationGroups: AdminNavGroup[] = [
     label: 'Money',
     items: [
       {
+        label: 'VAD Revenue',
+        shortLabel: 'Revenue',
+        href: '/admin/revenue',
+        description: 'Ledger-backed VAD fee income by source',
+        permissions: ['finance.read'],
+      },
+      {
         label: 'Payments',
-        shortLabel: 'Money',
+        shortLabel: 'Payments',
         href: '/admin/payments',
         description: 'Payments, withdrawals and refunds',
         permissions: ['finance.read', 'payments.refund'],
