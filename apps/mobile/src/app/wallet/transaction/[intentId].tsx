@@ -10,7 +10,7 @@ export default function WalletTransactionRoute() {
     : params.intentId;
 
   return (
-    <ProductSubpage title="Transaction" maxWidth={680}>
+    <ProductSubpage title="Transaction" maxWidth={1020}>
       <WalletTransactionScreen intentId={intentId ?? ''} />
     </ProductSubpage>
   );
