@@ -6,7 +6,9 @@ import {
   type AdminAccess,
 } from '@/services/admin-control-api';
 import {
+  getAdminFeePolicyQueue,
   getAdminFinanceSummary,
+  type AdminFeeChangeRequest,
   type AdminFinanceSummary,
 } from '@/services/finance-admin-api';
 import {
@@ -37,6 +39,7 @@ export function useAdminDashboard(access: AdminAccess) {
   const [runtime, setRuntime] = useState<Record<string, number | string> | null>(null);
   const [operations, setOperations] = useState<OperationsSummary | null>(null);
   const [finance, setFinance] = useState<AdminFinanceSummary | null>(null);
+  const [feePolicyQueue, setFeePolicyQueue] = useState<AdminFeeChangeRequest[]>([]);
   const [marketQueue, setMarketQueue] = useState<Record<string, unknown>[]>([]);
   const [oracleQueue, setOracleQueue] = useState<Record<string, unknown>[]>([]);
   const [kycQueue, setKycQueue] = useState<KycQueueRow[]>([]);
@@ -90,6 +93,12 @@ export function useAdminDashboard(access: AdminAccess) {
       hasAdminPermission(access, 'finance.read'),
       getAdminFinanceSummary,
       setFinance,
+    );
+
+    queue(
+      hasAdminPermission(access, 'fees.propose'),
+      getAdminFeePolicyQueue,
+      setFeePolicyQueue,
     );
 
     queue(
@@ -185,6 +194,7 @@ export function useAdminDashboard(access: AdminAccess) {
     runtime,
     operations,
     finance,
+    feePolicyQueue,
     marketQueue,
     oracleQueue,
     kycQueue,

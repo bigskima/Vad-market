@@ -118,6 +118,17 @@ export function AdminWorkQueueScreen() {
         href: '/admin/payments' as const,
         createdAt: row.created_at,
       })),
+    ...(data.access.isSuperAdmin
+      ? data.feePolicyQueue.map((row) => ({
+          key: `fee-${row.requestPublicId}`,
+          domain: 'Money',
+          title: `${feePolicyLabel(row.policyName)} change`,
+          detail: `${row.proposerEmail ?? 'Finance operator'} · ${row.proposalReason}`,
+          status: 'PENDING APPROVAL',
+          href: '/admin/fees' as const,
+          createdAt: row.proposedAt,
+        }))
+      : []),
     ...data.providerChanges.map((row) => ({
       key: `provider-${row.request_public_id}`,
       domain: 'Infrastructure',
@@ -232,6 +243,13 @@ export function AdminWorkQueueScreen() {
       )}
     </View>
   );
+}
+
+function feePolicyLabel(value: string) {
+  if (value === 'trading_fee') return 'Trading fee';
+  if (value === 'settlement_fee') return 'Settlement fee';
+  if (value === 'payment_fees') return 'Payment fee';
+  return value.replaceAll('_', ' ');
 }
 
 function QueueMetric({ label, value }: { label: string; value: number }) {

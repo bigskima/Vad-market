@@ -1,0 +1,5 @@
+-- Phase 28 hardening marker.
+-- The final admin_decide_fee_policy_proposal definition in the primary Phase 28
+-- migration permits Super Admin to reject their own stale/pending proposal while
+-- still preventing self-approval. The production database has this hardening as
+-- a separate migration version, so this marker preserves migration history parity.

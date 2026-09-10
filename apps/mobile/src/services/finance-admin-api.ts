@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
+export type FeePolicyName = 'trading_fee' | 'settlement_fee' | 'payment_fees';
+
 export type AdminRevenueSource = {
   code: string;
   label: string;
@@ -41,6 +43,18 @@ export type AdminFinanceSummary = {
     payments: Record<string, unknown>;
   };
   generatedAt: string;
+};
+
+export type AdminFeeChangeRequest = {
+  requestPublicId: string;
+  policyName: FeePolicyName;
+  configuration: Record<string, unknown>;
+  proposalReason: string;
+  proposedBy: string;
+  proposerEmail: string | null;
+  proposedAt: string;
+  currentVersionIdAtProposal: number | null;
+  currentConfiguration: Record<string, unknown>;
 };
 
 const emptySummary: AdminFinanceSummary = {
@@ -112,6 +126,24 @@ function normalizeAsset(value: unknown): AdminFinanceAsset {
   };
 }
 
+function normalizeFeeRequest(value: unknown): AdminFeeChangeRequest {
+  const row = record(value);
+  return {
+    requestPublicId: String(row.request_public_id ?? ''),
+    policyName: String(row.policy_name ?? 'trading_fee') as FeePolicyName,
+    configuration: record(row.configuration),
+    proposalReason: String(row.proposal_reason ?? ''),
+    proposedBy: String(row.proposed_by ?? ''),
+    proposerEmail: row.proposer_email ? String(row.proposer_email) : null,
+    proposedAt: String(row.proposed_at ?? ''),
+    currentVersionIdAtProposal:
+      row.current_version_id_at_proposal == null
+        ? null
+        : Number(row.current_version_id_at_proposal),
+    currentConfiguration: record(row.current_configuration),
+  };
+}
+
 export async function getAdminFinanceSummary(): Promise<AdminFinanceSummary> {
   const { data, error } = await supabase.rpc('admin_finance_summary');
   if (error) throw new Error(error.message);
@@ -129,6 +161,54 @@ export async function getAdminFinanceSummary(): Promise<AdminFinanceSummary> {
     },
     generatedAt: String(raw.generatedAt ?? ''),
   };
+}
+
+export async function getAdminFeePolicyQueue(): Promise<AdminFeeChangeRequest[]> {
+  const { data, error } = await supabase.rpc('admin_fee_policy_queue');
+  if (error) throw new Error(error.message);
+  return Array.isArray(data) ? data.map(normalizeFeeRequest) : [];
+}
+
+export async function proposeAdminFeePolicy(input: {
+  policyName: FeePolicyName;
+  configuration: Record<string, unknown>;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_propose_fee_policy', {
+    p_policy_name: input.policyName,
+    p_configuration: input.configuration,
+    p_reason: input.reason.trim(),
+  });
+  if (error) throw new Error(error.message);
+  return String(data);
+}
+
+export async function setAdminFeePolicyImmediate(input: {
+  policyName: FeePolicyName;
+  configuration: Record<string, unknown>;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_fee_policy_immediate', {
+    p_policy_name: input.policyName,
+    p_configuration: input.configuration,
+    p_reason: input.reason.trim(),
+  });
+  if (error) throw new Error(error.message);
+  return Number(data);
+}
+
+export async function decideAdminFeePolicyProposal(input: {
+  requestPublicId: string;
+  decision: 'APPROVE' | 'REJECT';
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_decide_fee_policy_proposal', {
+    p_request_public_id: input.requestPublicId,
+    p_decision: input.decision,
+    p_reason: input.reason.trim(),
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
 }
 
 export function formatAdminAssetAmount(

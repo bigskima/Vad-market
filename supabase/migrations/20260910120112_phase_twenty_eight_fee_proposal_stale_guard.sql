@@ -1,0 +1,4 @@
+-- Phase 28 hardening marker.
+-- The final admin_decide_fee_policy_proposal definition in the preceding migration
+-- already includes the stale-policy guard used in production: approval is rejected
+-- if the active fee policy changed after the proposal was submitted.
