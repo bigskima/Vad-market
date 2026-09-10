@@ -1,10 +1,22 @@
 import type { AdminAccess } from '@/services/admin-control-api';
 import { hasAnyAdminPermission } from '@/services/admin-control-api';
 
+export type AdminHref =
+  | '/admin'
+  | '/admin/queue'
+  | '/admin/search'
+  | '/admin/governance'
+  | '/admin/payments'
+  | '/admin/compliance'
+  | '/admin/users'
+  | '/admin/content'
+  | '/admin/providers'
+  | '/admin/roles';
+
 export type AdminNavItem = {
   label: string;
   shortLabel: string;
-  href: string;
+  href: AdminHref;
   description: string;
   permissions: string[];
 };
@@ -143,14 +155,14 @@ export function getAdminPageMeta(pathname: string, access: AdminAccess) {
     nested ?? {
       label: 'VAD Operations',
       shortLabel: 'Operations',
-      href: '/admin',
+      href: '/admin' as const,
       description: 'Permission-scoped operational control plane',
       permissions: [],
     }
   );
 }
 
-export function isAdminItemSelected(pathname: string, href: string) {
+export function isAdminItemSelected(pathname: string, href: AdminHref) {
   if (href === '/admin') return pathname === '/admin';
   return pathname === href || pathname.startsWith(`${href}/`);
 }
