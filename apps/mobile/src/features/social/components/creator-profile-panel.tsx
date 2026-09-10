@@ -31,11 +31,11 @@ export function CreatorProfilePanel({
   return (
     <View style={{ gap: theme.spacing.lg }}>
       <View
+        accessibilityRole="tablist"
         style={{
           flexDirection: 'row',
-          padding: theme.spacing.xxs,
-          borderRadius: theme.radius.lg,
-          backgroundColor: theme.colors.surfaceRaised,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.border,
         }}
       >
         <Tab
@@ -62,9 +62,10 @@ export function CreatorProfilePanel({
             <View
               style={{
                 flex: 1.1,
-                borderRadius: theme.radius.xl,
-                backgroundColor: theme.colors.brandSoft,
-                padding: theme.spacing.xl,
+                borderTopWidth: 1,
+                borderBottomWidth: 1,
+                borderColor: theme.colors.brandPrimary,
+                paddingVertical: theme.spacing.lg,
                 gap: theme.spacing.sm,
               }}
             >
@@ -228,21 +229,9 @@ function PredictionHistory({
                 flexWrap: 'wrap',
               }}
             >
-              <View
-                style={{
-                  borderRadius: theme.radius.pill,
-                  backgroundColor:
-                    item.stance_outcome_code === 'YES'
-                      ? theme.colors.yesSoft
-                      : theme.colors.noSoft,
-                  paddingHorizontal: theme.spacing.sm,
-                  paddingVertical: theme.spacing.xxs,
-                }}
-              >
-                <VadText variant="caption" tone={stanceTone}>
-                  Called {item.stance_outcome_code}
-                </VadText>
-              </View>
+              <VadText variant="caption" tone={stanceTone}>
+                Called {item.stance_outcome_code}
+              </VadText>
 
               {item.resolved_outcome_code ? (
                 <VadText variant="caption" tone="secondary">
@@ -288,9 +277,11 @@ function Tab({
         minHeight: 44,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: theme.radius.md,
-        backgroundColor: selected ? theme.colors.surface : 'transparent',
-        opacity: pressed ? 0.7 : 1,
+        borderBottomWidth: 2,
+        borderBottomColor: selected
+          ? theme.colors.brandPrimary
+          : 'transparent',
+        opacity: pressed ? 0.65 : 1,
       })}
     >
       <VadText
