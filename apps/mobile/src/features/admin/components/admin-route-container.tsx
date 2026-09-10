@@ -1,22 +1,16 @@
 import type { PropsWithChildren } from 'react';
-import {
-  Pressable,
-  RefreshControl,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
 import { VadScreen } from '@/components/ui/vad-screen';
 import { VadText } from '@/components/ui/vad-text';
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useAdminResponsive } from './use-admin-responsive';
 
 export function AdminRouteContainer({ children }: PropsWithChildren) {
   const theme = useVadTheme();
   const data = useAdminData();
-  const { width } = useWindowDimensions();
-  const desktop = width >= 900;
-  const compact = width < 380;
+  const responsive = useAdminResponsive();
 
   return (
     <VadScreen
@@ -35,31 +29,30 @@ export function AdminRouteContainer({ children }: PropsWithChildren) {
       contentStyle={{
         alignSelf: 'center',
         width: '100%',
-        maxWidth: 1180,
-        paddingHorizontal: desktop
+        maxWidth: responsive.contentMaxWidth,
+        paddingHorizontal: responsive.desktop
           ? theme.spacing.xl
-          : compact
+          : responsive.mobile
             ? theme.spacing.md
             : theme.spacing.lg,
-        paddingTop: desktop
+        paddingTop: responsive.desktop
           ? theme.spacing.xl
-          : compact
-            ? theme.spacing.md
-            : theme.spacing.lg,
-        paddingBottom: theme.spacing.xxxl,
-        gap: desktop ? theme.spacing.xxl : theme.spacing.xl,
+          : theme.spacing.lg,
+        paddingBottom: responsive.desktop ? theme.spacing.xxxl : 112,
+        gap: responsive.desktop ? theme.spacing.xxl : theme.spacing.xl,
       }}
     >
       {data.warning ? (
         <View
           accessibilityRole="alert"
           style={{
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
+            borderWidth: 1,
             borderColor: theme.colors.warning,
-            paddingVertical: theme.spacing.md,
-            flexDirection: width >= 680 ? 'row' : 'column',
-            alignItems: width >= 680 ? 'center' : 'stretch',
+            borderRadius: theme.radius.lg,
+            backgroundColor: theme.colors.warningSoft,
+            padding: theme.spacing.md,
+            flexDirection: responsive.width >= 680 ? 'row' : 'column',
+            alignItems: responsive.width >= 680 ? 'center' : 'stretch',
             gap: theme.spacing.md,
           }}
         >
@@ -79,9 +72,10 @@ export function AdminRouteContainer({ children }: PropsWithChildren) {
             onPress={() => void data.refresh()}
             style={({ pressed }) => ({
               minHeight: 38,
-              alignSelf: width >= 680 ? 'center' : 'flex-start',
+              alignSelf: responsive.width >= 680 ? 'center' : 'flex-start',
               justifyContent: 'center',
               paddingHorizontal: theme.spacing.sm,
+              backgroundColor: theme.colors.surface,
               borderWidth: 1,
               borderColor: theme.colors.borderStrong,
               borderRadius: theme.radius.md,
