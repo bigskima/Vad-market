@@ -75,14 +75,15 @@ export function AdminPaymentsScreen() {
         <View
           style={{
             flex: wide ? 0.9 : undefined,
-            borderRadius: theme.radius.xl,
-            backgroundColor:
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor:
               failed > 0
-                ? theme.colors.noSoft
+                ? theme.colors.danger
                 : pending > 0
-                  ? theme.colors.warningSoft
-                  : theme.colors.yesSoft,
-            padding: theme.spacing.lg,
+                  ? theme.colors.warning
+                  : theme.colors.yes,
+            paddingVertical: theme.spacing.lg,
             gap: theme.spacing.md,
           }}
         >
