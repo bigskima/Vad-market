@@ -3,7 +3,7 @@ import { ProductSubpage } from '@/features/navigation/product-subpage';
 
 export default function AccountProfileScreen() {
   return (
-    <ProductSubpage title="Profile" maxWidth={900}>
+    <ProductSubpage title="Public profile" maxWidth={1040}>
       <ProfileEditorCard />
     </ProductSubpage>
   );
