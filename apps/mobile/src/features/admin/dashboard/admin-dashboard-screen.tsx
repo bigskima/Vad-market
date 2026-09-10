@@ -82,6 +82,9 @@ export function AdminDashboardScreen() {
     ? Number(data.operations?.paymentFailed ?? 0)
     : 0;
   const providerAttention = canProviders ? data.providerChanges.length : 0;
+  const feeProposalAttention = data.access.isSuperAdmin
+    ? data.feePolicyQueue.length
+    : 0;
 
   const attention =
     marketAttention +
@@ -89,7 +92,8 @@ export function AdminDashboardScreen() {
     kycAttention +
     paymentPending +
     paymentFailed +
-    providerAttention;
+    providerAttention +
+    feeProposalAttention;
 
   const openMarkets = runtimeNumber(data.runtime, 'openMarkets');
   const awaitingOracle = runtimeNumber(data.runtime, 'awaitingOracle');
@@ -196,6 +200,13 @@ export function AdminDashboardScreen() {
               tone={paymentProviders > 0 ? 'yes' : 'warning'}
             />
           ) : null}
+          {data.access.isSuperAdmin ? (
+            <AdminMetricCard
+              label="Fee proposals"
+              value={feeProposalAttention}
+              tone={feeProposalAttention > 0 ? 'warning' : 'yes'}
+            />
+          ) : null}
           {canProviders ? (
             <AdminMetricCard
               label="Configured providers"
@@ -234,6 +245,14 @@ export function AdminDashboardScreen() {
                 count={paymentFailed}
                 tone="danger"
                 href="/admin/payments"
+              />
+            ) : null}
+            {data.access.isSuperAdmin ? (
+              <AttentionRow
+                label="Fee proposals"
+                detail="Finance fee changes waiting for Super Admin approval."
+                count={feeProposalAttention}
+                href="/admin/fees"
               />
             ) : null}
             {canGovern ? (
