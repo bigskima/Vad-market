@@ -8,31 +8,38 @@ import { AdminWorkspaceNav } from '@/features/admin/components/admin-workspace-n
 import { useAuth } from '@/providers/auth-provider';
 import { AdminDataProvider } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
-import { getAdminRuntimeSummary } from '@/services/market-api';
+import {
+  getAdminAccess,
+  type AdminAccess,
+} from '@/services/admin-control-api';
 
-type AdminAccessState = {
+type AccessProbe = {
   userId: string;
-  allowed: boolean;
+  access: AdminAccess;
+};
+
+const noAccess: AdminAccess = {
+  roles: [],
+  permissions: [],
+  isSuperAdmin: false,
 };
 
 export default function AdminLayout() {
   const { isLoading, session } = useAuth();
   const theme = useVadTheme();
   const userId = session?.user.id ?? null;
-  const [access, setAccess] = useState<AdminAccessState | null>(null);
+  const [probe, setProbe] = useState<AccessProbe | null>(null);
 
   useEffect(() => {
     if (!userId) return;
 
     let ignore = false;
-    void getAdminRuntimeSummary()
-      .then((summary) => {
-        if (!ignore) {
-          setAccess({ userId, allowed: Boolean(summary) });
-        }
+    void getAdminAccess()
+      .then((access) => {
+        if (!ignore) setProbe({ userId, access });
       })
       .catch(() => {
-        if (!ignore) setAccess({ userId, allowed: false });
+        if (!ignore) setProbe({ userId, access: noAccess });
       });
 
     return () => {
@@ -40,10 +47,9 @@ export default function AdminLayout() {
     };
   }, [userId]);
 
-  const accessChecking = Boolean(userId && access?.userId !== userId);
-  const hasAdminAccess = Boolean(
-    userId && access?.userId === userId && access.allowed,
-  );
+  const accessChecking = Boolean(userId && probe?.userId !== userId);
+  const access = probe?.userId === userId ? probe.access : noAccess;
+  const hasAdminAccess = access.isSuperAdmin || access.roles.length > 0;
 
   if (isLoading || (session && accessChecking)) {
     return (
@@ -75,17 +81,16 @@ export default function AdminLayout() {
 
   if (!session) return <Redirect href="/" />;
 
-  // Database RPC permission checks remain authoritative. This client-side gate
-  // keeps a signed-in non-operator from seeing the Operations shell after
-  // typing an admin URL directly.
+  // Role discovery controls which Operations surfaces are presented. Every
+  // action RPC performs its own backend permission check as the final authority.
   if (!hasAdminAccess) return <Redirect href="/home" />;
 
   return (
-    <AdminDataProvider>
+    <AdminDataProvider access={access}>
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <AdminWorkspaceHeader
           title="VAD Operations"
-          subtitle="Governance & control"
+          subtitle={access.isSuperAdmin ? 'Super Admin control plane' : 'Role-scoped control plane'}
           backLabel="App"
           onBack={() => router.replace('/home')}
         />
