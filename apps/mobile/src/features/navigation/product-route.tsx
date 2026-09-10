@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import {
   RefreshControl,
   ScrollView,
-  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -12,6 +11,7 @@ import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -35,9 +35,8 @@ export function ProductRoute({
   capabilityTitle = 'This section is not available yet',
 }: Props) {
   const theme = useVadTheme();
-  const { width } = useWindowDimensions();
-  const desktop = width >= 900;
-  const compact = width < 380;
+  const density = useProductDensity();
+  const desktop = density.desktop;
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
@@ -51,9 +50,9 @@ export function ProductRoute({
           style={{
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
-            paddingTop: 18,
-            paddingHorizontal: theme.spacing.lg,
-            paddingBottom: theme.spacing.sm,
+            paddingTop: density.phone ? 8 : 18,
+            paddingHorizontal: density.horizontalPadding,
+            paddingBottom: density.phone ? 8 : theme.spacing.sm,
           }}
         >
           <View
@@ -63,13 +62,13 @@ export function ProductRoute({
               alignSelf: 'center',
               flexDirection: 'row',
               alignItems: 'center',
-              gap: theme.spacing.md,
+              gap: theme.spacing.sm,
             }}
           >
-            <VadSkeleton width={34} height={34} radius={17} />
-            <VadSkeleton width={72} height={18} />
+            <VadSkeleton width={density.phone ? 30 : 34} height={density.phone ? 30 : 34} radius={17} />
+            <VadSkeleton width={64} height={16} />
             <View style={{ flex: 1 }} />
-            <VadSkeleton width={38} height={38} radius={19} />
+            <VadSkeleton width={density.phone ? 36 : 38} height={density.phone ? 36 : 38} radius={19} />
           </View>
         </View>
 
@@ -79,28 +78,22 @@ export function ProductRoute({
             width: '100%',
             maxWidth: 1120,
             alignSelf: 'center',
-            paddingHorizontal: desktop
-              ? theme.spacing.xl
-              : compact
-                ? theme.spacing.md
-                : theme.spacing.lg,
-            paddingTop: desktop
-              ? theme.spacing.xl
-              : theme.spacing.lg,
-            gap: theme.spacing.lg,
+            paddingHorizontal: density.horizontalPadding,
+            paddingTop: density.pageTopPadding,
+            gap: density.compact ? theme.spacing.sm : theme.spacing.lg,
           }}
         >
-          <VadSkeleton width="38%" height={22} />
-          <VadSkeleton width="62%" height={32} />
-          <VadSkeleton height={126} radius={theme.radius.xl} />
-          <VadSkeleton height={82} radius={theme.radius.lg} />
-          <VadSkeleton height={82} radius={theme.radius.lg} />
+          <VadSkeleton width="38%" height={20} />
+          <VadSkeleton width="62%" height={28} />
+          <VadSkeleton height={density.compact ? 104 : 120} radius={theme.radius.lg} />
+          <VadSkeleton height={density.compact ? 64 : 76} radius={theme.radius.lg} />
+          <VadSkeleton height={density.compact ? 64 : 76} radius={theme.radius.lg} />
         </View>
 
         {!desktop ? (
           <View
             style={{
-              minHeight: 66,
+              minHeight: density.compact ? 54 : 58,
               borderTopWidth: 1,
               borderTopColor: theme.colors.border,
             }}
@@ -173,18 +166,10 @@ export function ProductRoute({
           alignSelf: 'center',
           width: '100%',
           maxWidth: 1120,
-          paddingHorizontal: desktop
-            ? theme.spacing.xl
-            : compact
-              ? theme.spacing.md
-              : theme.spacing.lg,
-          paddingTop: desktop
-            ? theme.spacing.xl
-            : compact
-              ? theme.spacing.md
-              : theme.spacing.lg,
-          paddingBottom: desktop ? theme.spacing.xxxl : 112,
-          gap: theme.spacing.lg,
+          paddingHorizontal: density.horizontalPadding,
+          paddingTop: density.pageTopPadding,
+          paddingBottom: desktop ? theme.spacing.xxxl : theme.spacing.xxl,
+          gap: density.compact ? theme.spacing.sm : theme.spacing.lg,
         }}
       >
         {data.error ? (
@@ -196,9 +181,9 @@ export function ProductRoute({
 
         {requiredLoading ? (
           <View style={{ gap: theme.spacing.md }}>
-            <VadSkeleton width="48%" height={28} />
-            <VadSkeleton height={110} radius={theme.radius.xl} />
-            <VadSkeleton height={64} />
+            <VadSkeleton width="48%" height={26} />
+            <VadSkeleton height={density.compact ? 92 : 106} radius={theme.radius.lg} />
+            <VadSkeleton height={56} />
           </View>
         ) : requiredCapability && !requiredAllowed ? (
           <VadEmptyState

@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
 
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 
 type Variant = 'surface' | 'raised' | 'muted' | 'outlined' | 'brand';
@@ -8,6 +9,7 @@ type Props = PropsWithChildren<ViewProps & { variant?: Variant; style?: StylePro
 
 export function VadCard({ variant = 'surface', style, children, ...props }: Props) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const backgroundColor =
     variant === 'raised'
       ? theme.colors.surfaceRaised
@@ -24,9 +26,9 @@ export function VadCard({ variant = 'surface', style, children, ...props }: Prop
         {
           backgroundColor: variant === 'outlined' ? 'transparent' : backgroundColor,
           borderColor: variant === 'brand' ? theme.colors.brandPrimary : theme.colors.border,
-          borderRadius: theme.radius.xl,
+          borderRadius: density.cardRadius,
           borderWidth: 1,
-          padding: theme.spacing.lg,
+          padding: density.cardPadding,
         },
         style,
       ]}

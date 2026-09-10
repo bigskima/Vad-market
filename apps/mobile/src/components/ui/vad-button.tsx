@@ -6,6 +6,7 @@ import {
   View,
 } from 'react-native';
 
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { VadText } from './vad-text';
 
@@ -32,14 +33,22 @@ export function VadButton({
   style,
   accessibilityState,
   accessibilityLabel,
+  hitSlop,
   leading,
   trailing,
   ...props
 }: Props) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const isDisabled = Boolean(disabled || loading);
-  const heights = { small: 40, default: 50, large: 56 } as const;
-  const paddings = { small: theme.spacing.md, default: theme.spacing.lg, large: theme.spacing.xl } as const;
+  const heights = {
+    small: density.smallControlHeight,
+    default: density.controlHeight,
+    large: density.largeControlHeight,
+  } as const;
+  const paddings = density.phone
+    ? { small: 12, default: 16, large: 20 }
+    : { small: theme.spacing.md, default: theme.spacing.lg, large: theme.spacing.xl };
 
   const backgroundColor =
     variant === 'primary'
@@ -77,13 +86,14 @@ export function VadButton({
         disabled: isDisabled,
         busy: loading || accessibilityState?.busy,
       }}
+      hitSlop={hitSlop ?? (size === 'small' ? 4 : undefined)}
       style={(state) => [
         {
           minHeight: heights[size],
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',
-          gap: theme.spacing.xs,
+          gap: density.phone ? 6 : theme.spacing.xs,
           paddingHorizontal: paddings[size],
           borderRadius: theme.radius.pill,
           borderWidth: variant === 'secondary' ? 1 : 0,
@@ -110,7 +120,9 @@ export function VadButton({
       )}
 
       <View style={{ minWidth: 0 }}>
-        <VadText variant="label" tone={tone}>{label}</VadText>
+        <VadText variant="label" tone={tone} numberOfLines={1}>
+          {label}
+        </VadText>
       </View>
 
       {!loading ? trailing ?? null : null}

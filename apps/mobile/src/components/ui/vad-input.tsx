@@ -6,6 +6,7 @@ import {
   type TextInputProps,
 } from 'react-native';
 
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { VadText } from './vad-text';
 
@@ -33,7 +34,10 @@ export function VadInput({
   ...props
 }: Props) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const [focused, setFocused] = useState(false);
+  const singleHeight = density.phone ? (density.compact ? 44 : 46) : 52;
+  const multiHeight = density.phone ? (density.compact ? 92 : 100) : 112;
 
   const borderColor = error
     ? theme.colors.danger
@@ -42,7 +46,7 @@ export function VadInput({
       : theme.colors.border;
 
   return (
-    <View style={{ gap: theme.spacing.xs }}>
+    <View style={{ gap: density.phone ? theme.spacing.xxs : theme.spacing.xs }}>
       {label ? (
         <VadText
           variant="label"
@@ -54,19 +58,19 @@ export function VadInput({
 
       <View
         style={{
-          minHeight: multiline ? 112 : 52,
+          minHeight: multiline ? multiHeight : singleHeight,
           flexDirection: 'row',
           alignItems: multiline ? 'flex-start' : 'center',
           borderWidth: focused ? 1.5 : 1,
           borderColor,
-          borderRadius: theme.radius.lg,
+          borderRadius: density.phone ? theme.radius.md : theme.radius.lg,
           backgroundColor: focused ? theme.colors.surfaceRaised : theme.colors.surface,
-          paddingHorizontal: theme.spacing.md,
+          paddingHorizontal: density.phone ? 12 : theme.spacing.md,
           opacity: editable ? 1 : 0.55,
         }}
       >
         {leading ? (
-          <View style={{ minHeight: 50, justifyContent: 'center', paddingRight: theme.spacing.sm }}>
+          <View style={{ minHeight: singleHeight, justifyContent: 'center', paddingRight: theme.spacing.sm }}>
             {leading}
           </View>
         ) : null}
@@ -91,22 +95,22 @@ export function VadInput({
           style={[
             {
               flex: 1,
-              minHeight: multiline ? 108 : 50,
+              minHeight: multiline ? multiHeight - 4 : singleHeight - 2,
               color: theme.colors.textPrimary,
-              paddingVertical: multiline ? theme.spacing.md : 0,
+              paddingVertical: multiline ? (density.phone ? 10 : theme.spacing.md) : 0,
               textAlignVertical: multiline ? 'top' : 'center',
-              fontSize: 16,
-              lineHeight: 22,
+              fontSize: density.phone ? 15 : 16,
+              lineHeight: density.phone ? 21 : 22,
               backgroundColor: 'transparent',
             },
             style,
-            // Preserve theme-aware plain text even when a screen passes its own text style.
+            // Plain input text always follows the active light/dark theme.
             { color: theme.colors.textPrimary },
           ]}
         />
 
         {trailing ? (
-          <View style={{ minHeight: 50, justifyContent: 'center', paddingLeft: theme.spacing.sm }}>
+          <View style={{ minHeight: singleHeight, justifyContent: 'center', paddingLeft: theme.spacing.sm }}>
             {trailing}
           </View>
         ) : null}

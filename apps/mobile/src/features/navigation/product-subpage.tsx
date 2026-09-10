@@ -1,12 +1,13 @@
 import { Redirect, router } from 'expo-router';
 import type { PropsWithChildren } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VadIconButton } from '@/components/ui/vad-icon-button';
 import { VadScreen } from '@/components/ui/vad-screen';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 
@@ -20,31 +21,28 @@ export function ProductSubpage({
 }>) {
   const theme = useVadTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const density = useProductDensity();
   const { isLoading, session } = useAuth();
-  const compact = width < 380;
-  const desktop = width >= 900;
+  const desktop = density.desktop;
   const headerWidth = Math.max(maxWidth, desktop ? 980 : 760);
-  const horizontalPadding = desktop
-    ? theme.spacing.xl
-    : compact
-      ? theme.spacing.md
-      : theme.spacing.lg;
+  const horizontalPadding = density.horizontalPadding;
+  const headerHeight = density.phone ? 48 : 56;
+  const backSize = density.phone ? 36 : 40;
 
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <View style={{ paddingTop: insets.top + theme.spacing.xs, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-          <View style={{ width: '100%', maxWidth: headerWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingBottom: theme.spacing.sm, minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-            <VadSkeleton width={42} height={42} radius={21} />
-            <VadSkeleton width={150} height={18} />
+        <View style={{ paddingTop: insets.top + (density.phone ? 4 : theme.spacing.xs), backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+          <View style={{ width: '100%', maxWidth: headerWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingBottom: density.phone ? 6 : theme.spacing.sm, minHeight: headerHeight, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+            <VadSkeleton width={backSize} height={backSize} radius={backSize / 2} />
+            <VadSkeleton width={140} height={17} />
           </View>
         </View>
-        <View style={{ width: '100%', maxWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingTop: desktop ? theme.spacing.xl : theme.spacing.lg, gap: theme.spacing.md }}>
-          <VadSkeleton width="48%" height={28} />
-          <VadSkeleton height={92} radius={theme.radius.lg} />
-          <VadSkeleton height={64} />
-          <VadSkeleton height={64} />
+        <View style={{ width: '100%', maxWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingTop: density.pageTopPadding, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
+          <VadSkeleton width="48%" height={26} />
+          <VadSkeleton height={density.compact ? 76 : 88} radius={theme.radius.lg} />
+          <VadSkeleton height={56} />
+          <VadSkeleton height={56} />
         </View>
       </View>
     );
@@ -54,13 +52,13 @@ export function ProductSubpage({
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ paddingTop: insets.top + theme.spacing.xs, borderBottomWidth: 1, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
-        <View style={{ width: '100%', maxWidth: headerWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingBottom: theme.spacing.sm, minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <VadIconButton icon="back" label="Go back" variant="plain" size={40} onPress={() => router.back()} />
+      <View style={{ paddingTop: insets.top + (density.phone ? 4 : theme.spacing.xs), borderBottomWidth: 1, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
+        <View style={{ width: '100%', maxWidth: headerWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingBottom: density.phone ? 6 : theme.spacing.sm, minHeight: headerHeight, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <VadIconButton icon="back" label="Go back" variant="plain" size={backSize} onPress={() => router.back()} />
           <View style={{ flex: 1, alignItems: desktop ? 'flex-start' : 'center' }}>
             <VadText variant={desktop ? 'heading' : 'bodyStrong'} numberOfLines={1}>{title}</VadText>
           </View>
-          <View style={{ width: 40 }} />
+          <View style={{ width: backSize }} />
         </View>
       </View>
 
@@ -75,9 +73,9 @@ export function ProductSubpage({
           width: '100%',
           maxWidth,
           paddingHorizontal: horizontalPadding,
-          paddingTop: desktop ? theme.spacing.xl : theme.spacing.lg,
-          paddingBottom: theme.spacing.xxxl,
-          gap: theme.spacing.lg,
+          paddingTop: density.pageTopPadding,
+          paddingBottom: density.phone ? theme.spacing.xxl : theme.spacing.xxxl,
+          gap: density.compact ? theme.spacing.sm : theme.spacing.lg,
         }}
       >
         {children}

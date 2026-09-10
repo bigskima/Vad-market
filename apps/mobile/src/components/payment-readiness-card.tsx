@@ -1,16 +1,16 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Pressable,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
+import { VadCard } from '@/components/ui/vad-card';
+import { VadChip } from '@/components/ui/vad-chip';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
+import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   createPaymentIntent,
@@ -26,6 +26,11 @@ type Readiness = {
   withdrawalConfigured?: boolean;
 };
 
+const PAYMENT_MODES = [
+  { value: 'DEPOSIT', label: 'Deposit' },
+  { value: 'WITHDRAWAL', label: 'Withdraw' },
+] as const;
+
 export function PaymentReadinessCard({
   initialMode = 'DEPOSIT',
   lockMode = false,
@@ -40,9 +45,8 @@ export function PaymentReadinessCard({
   capabilityLoading?: boolean;
 }) {
   const theme = useVadTheme();
-  const { width } = useWindowDimensions();
-  const split = width >= 820;
-  const compact = width < 380;
+  const density = useProductDensity();
+  const split = density.width >= 820;
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [readinessError, setReadinessError] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -158,53 +162,29 @@ export function PaymentReadinessCard({
 
   if (createdIntentId) {
     return (
-      <View style={{ gap: theme.spacing.xl }}>
-        <View
-          style={{
-            borderLeftWidth: 3,
-            borderLeftColor: theme.colors.yes,
-            backgroundColor: theme.colors.yesSoft,
-            padding: compact ? theme.spacing.lg : theme.spacing.xl,
-            gap: theme.spacing.md,
-          }}
-        >
-          <VadText variant="label" tone="yes">
-            {mode === 'DEPOSIT' ? 'DEPOSIT CREATED' : 'WITHDRAWAL CREATED'}
-          </VadText>
-          <VadText variant="title">Your payment intent is live.</VadText>
-          <VadText tone="secondary">
-            VAD created the {actionLabel} request. Provider and ledger state can
-            continue changing until the intent settles or fails.
-          </VadText>
-
-          <View
-            style={{
-              borderTopWidth: 1,
-              borderTopColor: theme.colors.border,
-              paddingTop: theme.spacing.md,
-              gap: 2,
-            }}
-          >
-            <VadText variant="caption" tone="tertiary">REFERENCE</VadText>
-            <VadText variant="bodyStrong" selectable>
-              {createdIntentId}
+      <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
+        <VadCard variant="raised" style={{ borderColor: theme.colors.yes, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
+          <VadChip label={mode === 'DEPOSIT' ? 'DEPOSIT CREATED' : 'WITHDRAWAL CREATED'} tone="yes" />
+          <View style={{ gap: 2 }}>
+            <VadText variant={density.compact ? 'heading' : 'title'}>Your payment request is live.</VadText>
+            <VadText variant="caption" tone="secondary">
+              Provider state may continue changing until this {actionLabel} settles or fails.
             </VadText>
           </View>
-        </View>
+          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 1 }}>
+            <VadText variant="caption" tone="tertiary">REFERENCE</VadText>
+            <VadText variant="bodyStrong" selectable>{createdIntentId}</VadText>
+          </View>
+        </VadCard>
 
-        <View
-          style={{
-            flexDirection: split ? 'row' : 'column',
-            gap: theme.spacing.sm,
-          }}
-        >
+        <View style={{ flexDirection: split ? 'row' : density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
           <VadButton
-            label="Open Wallet activity"
+            label="Wallet activity"
             onPress={() => router.push('/wallet/activity')}
             style={{ flex: 1 }}
           />
           <VadButton
-            label={'Create another ' + actionLabel}
+            label={`New ${actionLabel}`}
             variant="secondary"
             onPress={resetFlow}
             style={{ flex: 1 }}
@@ -212,69 +192,27 @@ export function PaymentReadinessCard({
         </View>
 
         <VadText variant="caption" tone="tertiary">
-          Creating an intent is not settlement. Wallet and ledger balances stay
-          authoritative.
+          Creating an intent is not settlement. Wallet and ledger balances remain authoritative.
         </VadText>
       </View>
     );
   }
 
   return (
-    <View style={{ gap: theme.spacing.xl }}>
+    <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
       {!lockMode ? (
-        <View
-          accessibilityRole="tablist"
-          style={{
-            flexDirection: 'row',
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-          }}
-        >
-          {(['DEPOSIT', 'WITHDRAWAL'] as const).map((item) => {
-            const selected = mode === item;
-
-            return (
-              <Pressable
-                key={item}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                onPress={() => switchMode(item)}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  minHeight: 46,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderBottomWidth: 2,
-                  borderBottomColor: selected
-                    ? theme.colors.brandPrimary
-                    : 'transparent',
-                  opacity: pressed ? 0.65 : 1,
-                })}
-              >
-                <VadText
-                  variant="label"
-                  tone={selected ? 'brand' : 'secondary'}
-                >
-                  {item === 'DEPOSIT' ? 'Deposit' : 'Withdraw'}
-                </VadText>
-              </Pressable>
-            );
-          })}
-        </View>
+        <VadSegmentedControl value={mode} options={PAYMENT_MODES} onChange={switchMode} />
       ) : null}
 
-      <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="label" tone="brand">
+      <View style={{ gap: 2 }}>
+        <VadText variant="caption" tone="brand">
           {mode === 'DEPOSIT' ? 'DEPOSIT NGN' : 'WITHDRAW NGN'}
         </VadText>
-        <VadText variant="title">
-          {mode === 'DEPOSIT'
-            ? 'Add funds to your wallet.'
-            : 'Move available funds out.'}
+        <VadText variant={density.compact ? 'heading' : 'title'}>
+          {mode === 'DEPOSIT' ? 'Add funds to your wallet.' : 'Move available funds out.'}
         </VadText>
-        <VadText tone="secondary">
-          VAD checks live account policy, provider routing, identity requirements,
-          limits and fees before the request can continue.
+        <VadText variant="caption" tone="secondary">
+          VAD checks account policy, provider routing, verification, limits and fees before continuing.
         </VadText>
       </View>
 
@@ -289,11 +227,7 @@ export function PaymentReadinessCard({
       ) : !canOperate ? (
         <InlineStatus
           tone="warning"
-          title={
-            mode === 'DEPOSIT'
-              ? 'Deposits are not available'
-              : 'Withdrawals are not available'
-          }
+          title={mode === 'DEPOSIT' ? 'Deposits are not available' : 'Withdrawals are not available'}
           message={runtimeCapabilityReason(capabilityReason)}
         />
       ) : null}
@@ -310,59 +244,29 @@ export function PaymentReadinessCard({
         style={{
           flexDirection: split && quote ? 'row' : 'column',
           alignItems: 'flex-start',
-          gap: theme.spacing.xl,
+          gap: density.compact ? theme.spacing.md : theme.spacing.lg,
         }}
       >
-        <View
-          style={{
-            width: '100%',
-            flex: split && quote ? 1 : undefined,
-            gap: theme.spacing.lg,
-          }}
-        >
-          <View
-            style={{
-              borderTopWidth: 1,
-              borderBottomWidth: 1,
-              borderColor: theme.colors.border,
-              paddingVertical: theme.spacing.md,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              gap: theme.spacing.md,
-              alignItems: 'center',
-            }}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <VadText variant="caption" tone="secondary">
-                Availability
-              </VadText>
-              <VadText variant="bodyStrong">
+        <VadCard variant="raised" style={{ width: '100%', flex: split && quote ? 1 : undefined, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+            <View style={{ flex: 1, gap: 1 }}>
+              <VadText variant="caption" tone="secondary">Payment route</VadText>
+              <VadText variant="bodyStrong" numberOfLines={1}>
                 {capabilityLoading
-                  ? 'Checking account policy'
+                  ? 'Checking policy'
                   : !canOperate
-                    ? 'Blocked by current launch policy'
+                    ? 'Blocked by policy'
                     : readiness == null
-                      ? 'Checking payment route'
+                      ? 'Checking provider'
                       : providerReady
                         ? 'Ready for live checks'
-                        : 'Payment route not configured'}
+                        : 'Not configured'}
               </VadText>
             </View>
-
-            <VadText
-              variant="caption"
+            <VadChip
+              label={capabilityLoading || readiness == null ? 'CHECKING' : policyReady && providerReady ? 'READY' : 'ACTION NEEDED'}
               tone={policyReady && providerReady ? 'yes' : 'warning'}
-            >
-              {capabilityLoading
-                ? 'CHECKING'
-                : !canOperate
-                  ? 'POLICY BLOCKED'
-                  : readiness == null
-                    ? 'CHECKING'
-                    : providerReady
-                      ? 'READY'
-                      : 'ACTION REQUIRED'}
-            </VadText>
+            />
           </View>
 
           <VadInput
@@ -382,9 +286,9 @@ export function PaymentReadinessCard({
             hint={
               policyReady
                 ? validAmount
-                  ? 'Amount entered: ₦' + amountValue.toLocaleString()
+                  ? '₦' + amountValue.toLocaleString()
                   : 'Enter an amount greater than zero.'
-                : 'Amount entry becomes available when live account policy allows this action.'
+                : 'Amount entry unlocks when policy allows this action.'
             }
             error={
               policyReady && amount.length > 0 && !validAmount
@@ -411,43 +315,30 @@ export function PaymentReadinessCard({
 
           {!quote ? (
             <VadButton
-              label="Check availability & fees"
+              label="Check fees & availability"
               loading={working || capabilityLoading}
-              disabled={
-                !policyReady ||
-                !validAmount ||
-                readinessError != null
-              }
+              disabled={!policyReady || !validAmount || readinessError != null}
               onPress={() => void preview()}
             />
           ) : null}
-        </View>
+        </VadCard>
 
         {quote ? (
-          <View
+          <VadCard
+            variant={quote.enabled ? 'brand' : 'raised'}
             style={{
               width: '100%',
               flex: split ? 1 : undefined,
-              borderTopWidth: 1,
-              borderBottomWidth: 1,
-              borderColor: quote.enabled
-                ? theme.colors.brandPrimary
-                : theme.colors.warning,
-              paddingVertical: theme.spacing.lg,
-              gap: theme.spacing.md,
+              borderColor: quote.enabled ? theme.colors.brandPrimary : theme.colors.warning,
+              gap: density.compact ? theme.spacing.sm : theme.spacing.md,
             }}
           >
             <View style={{ gap: 2 }}>
-              <VadText
-                variant="label"
-                tone={quote.enabled ? 'brand' : 'warning'}
-              >
+              <VadText variant="caption" tone={quote.enabled ? 'brand' : 'warning'}>
                 {quote.enabled ? 'PAYMENT REVIEW' : 'ACTION REQUIRED'}
               </VadText>
               <VadText variant="heading">
-                {quote.enabled
-                  ? 'Review the final amounts.'
-                  : 'This payment cannot continue yet.'}
+                {quote.enabled ? 'Review the final amounts.' : 'This payment cannot continue yet.'}
               </VadText>
             </View>
 
@@ -455,44 +346,33 @@ export function PaymentReadinessCard({
               <>
                 <MoneyRow label="Amount" value={'₦' + Number(quote.amount).toLocaleString()} />
                 <MoneyRow label="Fee" value={'₦' + Number(quote.feeAmount ?? 0).toLocaleString()} />
-                <MoneyRow
-                  label="Net amount"
-                  value={'₦' + Number(quote.netAmount ?? quote.amount).toLocaleString()}
-                  emphasized
-                />
-                <MoneyRow
-                  label="Provider"
-                  value={String(quote.providerCode ?? 'Configured route')}
-                />
+                <MoneyRow label="Net amount" value={'₦' + Number(quote.netAmount ?? quote.amount).toLocaleString()} emphasized />
+                <MoneyRow label="Provider" value={String(quote.providerCode ?? 'Configured route')} />
 
                 <VadButton
-                  label={
-                    mode === 'DEPOSIT'
-                      ? 'Create deposit intent'
-                      : 'Create withdrawal intent'
-                  }
+                  label={mode === 'DEPOSIT' ? 'Create deposit' : 'Create withdrawal'}
                   loading={working}
                   disabled={!policyReady}
                   onPress={() => void create()}
                 />
               </>
             ) : (
-              <VadText tone="secondary">{reasonText(quote)}</VadText>
+              <VadText variant="caption" tone="secondary">{reasonText(quote)}</VadText>
             )}
 
             <VadButton
               label="Edit amount"
               variant="ghost"
+              size="small"
               disabled={working}
               onPress={clearReview}
             />
-          </View>
+          </VadCard>
         ) : null}
       </View>
 
       <VadText variant="caption" tone="tertiary">
-        Creating an intent does not bypass ledger balance, KYC, capability or
-        provider checks. Those remain backend-authoritative.
+        Payment creation never bypasses ledger balance, KYC, capability or provider checks.
       </VadText>
     </View>
   );
@@ -500,33 +380,27 @@ export function PaymentReadinessCard({
 
 function PaymentProgress({ stage }: { stage: number }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const labels = ['Amount', 'Check', 'Confirm'];
 
   return (
-    <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
+    <View style={{ flexDirection: 'row', gap: density.compact ? 6 : theme.spacing.xs }}>
       {labels.map((label, index) => {
         const active = index <= Math.min(stage, 2);
 
         return (
-          <View key={label} style={{ flex: 1, gap: theme.spacing.xxs }}>
+          <View key={label} style={{ flex: 1, gap: 3 }}>
             <View
               style={{
-                height: 4,
+                height: density.compact ? 3 : 4,
                 borderRadius: theme.radius.pill,
-                backgroundColor: active
-                  ? theme.colors.brandPrimary
-                  : theme.colors.surfaceMuted,
+                backgroundColor: active ? theme.colors.brandPrimary : theme.colors.surfaceMuted,
               }}
             />
             <VadText
               variant="caption"
-              tone={
-                index === Math.min(stage, 2)
-                  ? 'brand'
-                  : active
-                    ? 'primary'
-                    : 'tertiary'
-              }
+              tone={index === Math.min(stage, 2) ? 'brand' : active ? 'primary' : 'tertiary'}
+              numberOfLines={1}
             >
               {label}
             </VadText>
@@ -537,67 +411,25 @@ function PaymentProgress({ stage }: { stage: number }) {
   );
 }
 
-function MoneyRow({
-  label,
-  value,
-  emphasized = false,
-}: {
-  label: string;
-  value: string;
-  emphasized?: boolean;
-}) {
+function MoneyRow({ label, value, emphasized = false }: { label: string; value: string; emphasized?: boolean }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
 
   return (
-    <View
-      style={{
-        minHeight: 44,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-      }}
-    >
-      <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>
-        {label}
-      </VadText>
-      <VadText
-        variant={emphasized ? 'heading' : 'bodyStrong'}
-        tone={emphasized ? 'brand' : 'primary'}
-      >
-        {value}
-      </VadText>
+    <View style={{ minHeight: density.compact ? 36 : 40, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+      <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>{label}</VadText>
+      <VadText variant={emphasized ? 'heading' : 'bodyStrong'} tone={emphasized ? 'brand' : 'primary'} numberOfLines={1}>{value}</VadText>
     </View>
   );
 }
 
-function InlineStatus({
-  tone,
-  title,
-  message,
-}: {
-  tone: 'warning' | 'danger';
-  title: string;
-  message: string;
-}) {
+function InlineStatus({ tone, title, message }: { tone: 'warning' | 'danger'; title: string; message: string }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const danger = tone === 'danger';
 
   return (
-    <View
-      style={{
-        borderLeftWidth: 3,
-        borderLeftColor: danger
-          ? theme.colors.danger
-          : theme.colors.warning,
-        backgroundColor: danger
-          ? theme.colors.noSoft
-          : theme.colors.warningSoft,
-        padding: theme.spacing.md,
-        gap: 2,
-      }}
-    >
+    <View style={{ borderLeftWidth: 3, borderLeftColor: danger ? theme.colors.danger : theme.colors.warning, backgroundColor: danger ? theme.colors.noSoft : theme.colors.warningSoft, padding: density.compact ? 10 : theme.spacing.md, gap: 2, borderRadius: theme.radius.sm }}>
       <VadText variant="caption" tone={tone}>{title.toUpperCase()}</VadText>
       <VadText variant="caption" tone="secondary">{message}</VadText>
     </View>
@@ -609,10 +441,7 @@ function reasonText(quote: PaymentQuote) {
     case 'NO_PAYMENT_PROVIDER':
       return 'No NGN payment provider has been configured yet.';
     case 'KYC_REQUIRED':
-      return (
-        String(quote.requiredKycLevel ?? 'Required') +
-        ' identity verification is needed before this action.'
-      );
+      return String(quote.requiredKycLevel ?? 'Required') + ' identity verification is needed before this action.';
     case 'CAPABILITY_DISABLED':
       return 'This money-movement capability is currently disabled by VAD policy.';
     case 'BELOW_MINIMUM':

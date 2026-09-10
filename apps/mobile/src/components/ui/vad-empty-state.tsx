@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { VadButton } from './vad-button';
 import { VadText } from './vad-text';
@@ -16,23 +17,24 @@ export function VadEmptyState({
   onAction?: () => void;
 }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
 
   return (
     <View
       style={{
-        minHeight: 124,
+        minHeight: density.compact ? 104 : density.phone ? 112 : 124,
         justifyContent: 'center',
         alignItems: 'flex-start',
-        gap: theme.spacing.xs,
+        gap: density.phone ? 6 : theme.spacing.xs,
         borderTopWidth: 1,
         borderBottomWidth: 1,
         borderColor: theme.colors.border,
-        paddingVertical: theme.spacing.lg,
+        paddingVertical: density.phone ? 14 : theme.spacing.lg,
       }}
     >
       <View
         style={{
-          width: 30,
+          width: 26,
           height: 3,
           borderRadius: theme.radius.pill,
           backgroundColor: theme.colors.brandPrimary,
@@ -49,7 +51,7 @@ export function VadEmptyState({
           label={actionLabel}
           variant="secondary"
           onPress={onAction}
-          style={{ marginTop: theme.spacing.xs }}
+          style={{ marginTop: theme.spacing.xxs }}
         />
       ) : null}
     </View>

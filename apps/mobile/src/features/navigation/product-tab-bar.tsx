@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 
 export type ProductTab =
@@ -32,6 +33,7 @@ export function ProductTabBar({
   onChange: (tab: ProductTab) => void;
 }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const insets = useSafeAreaInsets();
 
   return (
@@ -40,8 +42,8 @@ export function ProductTabBar({
         borderTopWidth: 1,
         borderTopColor: theme.colors.border,
         backgroundColor: theme.colors.surface,
-        paddingBottom: Math.max(insets.bottom, theme.spacing.xs),
-        paddingTop: theme.spacing.xs,
+        paddingBottom: Math.max(insets.bottom, 4),
+        paddingTop: 4,
       }}
     >
       <View
@@ -52,7 +54,7 @@ export function ProductTabBar({
           alignSelf: 'center',
           flexDirection: 'row',
           alignItems: 'stretch',
-          paddingHorizontal: theme.spacing.xs,
+          paddingHorizontal: 4,
         }}
       >
         {PRODUCT_TABS.map((tab) => {
@@ -67,31 +69,32 @@ export function ProductTabBar({
               onPress={() => onChange(tab.value)}
               style={({ pressed }) => ({
                 flex: 1,
-                minHeight: 58,
+                minHeight: density.compact ? 48 : 52,
                 alignItems: 'center',
                 justifyContent: 'center',
+                gap: 1,
                 opacity: pressed ? 0.68 : 1,
                 transform: [{ scale: pressed ? 0.97 : 1 }],
               })}
             >
               <View
                 style={{
-                  minWidth: 48,
-                  height: 32,
+                  minWidth: density.compact ? 38 : 42,
+                  height: density.compact ? 26 : 28,
                   borderRadius: theme.radius.pill,
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: selected ? theme.colors.brandSoft : 'transparent',
                 }}
               >
-                <VadIcon name={tab.icon} size={20} tone={selected ? 'brand' : 'tertiary'} />
+                <VadIcon name={tab.icon} size={density.compact ? 17 : 18} tone={selected ? 'brand' : 'tertiary'} />
               </View>
 
               <VadText
                 variant="caption"
                 tone={selected ? 'brand' : 'tertiary'}
                 numberOfLines={1}
-                style={{ fontWeight: selected ? '700' : '500' }}
+                style={{ fontWeight: selected ? '700' : '500', fontSize: density.compact ? 11 : 12 }}
               >
                 {tab.label}
               </VadText>

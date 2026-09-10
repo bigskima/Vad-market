@@ -2,9 +2,9 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
-import { VadIcon } from '@/components/ui/vad-icon';
 import { VadIconButton } from '@/components/ui/vad-icon-button';
 import { VadText } from '@/components/ui/vad-text';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { PRODUCT_TABS, type ProductTab } from './product-tab-bar';
 
@@ -30,13 +30,15 @@ export function ProductTopBar({
   onAccount: () => void;
 }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const insets = useSafeAreaInsets();
   const initial = email.trim().charAt(0).toUpperCase() || 'V';
+  const actionSize = density.phone ? 36 : 40;
 
   return (
     <View
       style={{
-        paddingTop: insets.top + theme.spacing.xs,
+        paddingTop: insets.top + (density.phone ? 4 : theme.spacing.xs),
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
         backgroundColor: theme.colors.surface,
@@ -47,20 +49,20 @@ export function ProductTopBar({
           width: '100%',
           maxWidth: 1180,
           alignSelf: 'center',
-          paddingHorizontal: theme.spacing.lg,
-          paddingBottom: theme.spacing.sm,
-          minHeight: 58,
+          paddingHorizontal: density.horizontalPadding,
+          paddingBottom: density.phone ? 8 : theme.spacing.sm,
+          minHeight: density.phone ? 50 : 58,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: theme.spacing.md,
+          gap: density.phone ? theme.spacing.sm : theme.spacing.md,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <VadLogo size={36} />
-          <View style={{ gap: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: density.phone ? 8 : theme.spacing.sm }}>
+          <VadLogo size={density.phone ? 32 : 36} />
+          <View style={{ gap: 0 }}>
             <VadText variant="label">VAD</VadText>
             {!showNavigation ? (
-              <VadText variant="caption" tone="secondary">{active}</VadText>
+              <VadText variant="caption" tone="secondary" numberOfLines={1}>{active}</VadText>
             ) : null}
           </View>
         </View>
@@ -85,7 +87,7 @@ export function ProductTopBar({
                   accessibilityState={{ selected }}
                   onPress={() => onNavigate(tab.value)}
                   style={({ pressed }) => ({
-                    minHeight: 40,
+                    minHeight: 38,
                     borderRadius: theme.radius.pill,
                     justifyContent: 'center',
                     paddingHorizontal: theme.spacing.md,
@@ -104,13 +106,13 @@ export function ProductTopBar({
           <View style={{ flex: 1 }} />
         )}
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: density.phone ? 6 : theme.spacing.xs }}>
           {canCreate ? (
             <VadIconButton
               icon="plus"
               label="Propose a market"
               variant="brand"
-              size={40}
+              size={actionSize}
               onPress={onCreate}
             />
           ) : null}
@@ -120,7 +122,7 @@ export function ProductTopBar({
               icon="operations"
               label="Open VAD operations"
               variant="tonal"
-              size={40}
+              size={actionSize}
               onPress={onAdmin}
             />
           ) : null}
@@ -129,10 +131,11 @@ export function ProductTopBar({
             accessibilityRole="button"
             accessibilityLabel="Open account"
             onPress={onAccount}
+            hitSlop={6}
             style={({ pressed }) => ({
-              width: 40,
-              height: 40,
-              borderRadius: 20,
+              width: actionSize,
+              height: actionSize,
+              borderRadius: actionSize / 2,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1,
