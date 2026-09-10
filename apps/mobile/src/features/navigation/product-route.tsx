@@ -30,6 +30,7 @@ export function ProductRoute({
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
+  const compact = width < 380;
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
@@ -73,7 +74,9 @@ export function ProductRoute({
             alignSelf: 'center',
             paddingHorizontal: desktop
               ? theme.spacing.xl
-              : theme.spacing.lg,
+              : compact
+                ? theme.spacing.md
+                : theme.spacing.lg,
             paddingTop: desktop
               ? theme.spacing.xl
               : theme.spacing.lg,
@@ -153,10 +156,14 @@ export function ProductRoute({
           maxWidth: 1120,
           paddingHorizontal: desktop
             ? theme.spacing.xl
-            : theme.spacing.lg,
+            : compact
+              ? theme.spacing.md
+              : theme.spacing.lg,
           paddingTop: desktop
             ? theme.spacing.xl
-            : theme.spacing.lg,
+            : compact
+              ? theme.spacing.md
+              : theme.spacing.lg,
           paddingBottom: desktop ? theme.spacing.xxxl : 112,
           gap: theme.spacing.lg,
         }}
