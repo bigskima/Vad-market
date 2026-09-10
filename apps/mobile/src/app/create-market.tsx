@@ -14,6 +14,7 @@ export default function CreateMarketRoute() {
     <ProductSubpage title="Propose a market" maxWidth={1040}>
       <ProposalScreen
         proposals={data.proposals}
+        activeAssetCodes={runtime.snapshot.context.activeAssetCodes}
         canSubmitProposal={runtime.snapshot.capabilities.submitMarketProposal}
         capabilityReason={capabilityReason}
         capabilityLoading={
