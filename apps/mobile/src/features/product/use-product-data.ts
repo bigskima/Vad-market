@@ -56,8 +56,18 @@ export function useProductData(enabled = true) {
     ]);
 
     const primary = results.slice(0, 5);
-    if (primary.every((result) => result.status === 'rejected')) {
-      setError('VAD could not load your markets and account data. Check your connection and try again.');
+    const primaryFailures = primary.filter(
+      (result) => result.status === 'rejected',
+    ).length;
+
+    if (primaryFailures === primary.length) {
+      setError(
+        'VAD could not refresh markets or account data. Your last successful data is still shown where available.',
+      );
+    } else if (primaryFailures > 0) {
+      setError(
+        'Some VAD data could not refresh. Successful sections were updated and your previous data was preserved elsewhere.',
+      );
     } else {
       setError(null);
     }
@@ -97,6 +107,7 @@ export function useProductData(enabled = true) {
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
+
     setRefreshing(true);
     try {
       await load();
