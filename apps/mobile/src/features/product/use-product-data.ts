@@ -53,6 +53,7 @@ export function useProductData(enabled = true) {
     string,
     number | string
   > | null>(null);
+  const [adminLoading, setAdminLoading] = useState(enabled);
 
   const reset = useCallback(() => {
     setMarkets([]);
@@ -61,18 +62,26 @@ export function useProductData(enabled = true) {
     setOrders([]);
     setProposals([]);
     setAdminSummary(null);
+    setAdminLoading(false);
     setSectionErrors(emptySectionErrors);
     setError(null);
   }, []);
 
   const probeAdmin = useCallback(async () => {
-    if (!enabled) return;
+    if (!enabled) {
+      setAdminSummary(null);
+      setAdminLoading(false);
+      return;
+    }
 
+    setAdminLoading(true);
     try {
       setAdminSummary(await getAdminRuntimeSummary());
     } catch {
       // The customer product must never fail because an admin-only probe did.
       setAdminSummary(null);
+    } finally {
+      setAdminLoading(false);
     }
   }, [enabled]);
 
@@ -173,6 +182,7 @@ export function useProductData(enabled = true) {
     orders,
     proposals,
     adminSummary,
+    adminLoading,
     ngn,
     load,
     refresh,
