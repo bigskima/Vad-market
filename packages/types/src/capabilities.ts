@@ -26,26 +26,33 @@ export type RuntimeCapabilityDecisions = Record<RuntimeCapabilityKey, boolean>;
 export interface RuntimeCapabilityContext {
   countryCode: CountryCode;
   activeAssetCodes: AssetCode[];
-  /** Present in the live v2 capability contract. Omitted by legacy v1 responses. */
+  /** Present in the live v2+ capability contract. Omitted by legacy v1 responses. */
   jurisdictionStatus?: string;
+  /** v3: emergency/service-control state. Maintenance is read-only, not a webhook/reconciliation shutdown. */
+  platformStatus?: "READY" | "MAINTENANCE";
+  platformReasonCode?: string;
+  platformMessage?: string;
+  platformPauseScope?: "GLOBAL" | "USER";
+  platformResumesAt?: IsoTimestamp | null;
 }
 
 /**
  * Server-authoritative runtime capability snapshot.
  *
- * Version 2 adds jurisdiction status to the response context. The client keeps
- * accepting version 1 during staggered deployments so a frontend release does
- * not accidentally fail every capability closed while environments converge.
+ * Version 2 added jurisdiction status. Version 3 adds canonical emergency
+ * service-control context and human-readable pause messages. Older contracts
+ * remain accepted during staggered deployments.
  *
  * A false decision is authoritative for the snapshot. Clients may explain it
- * using `reasons`, but must never locally promote a false value to true.
+ * using `reasons`/`messages`, but must never locally promote a false value to true.
  */
 export interface RuntimeCapabilitiesResponse {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   status: RuntimeCapabilityStatus;
   requestId: RequestId;
   evaluatedAt: IsoTimestamp;
   context: RuntimeCapabilityContext;
   capabilities: RuntimeCapabilityDecisions;
   reasons: Partial<Record<RuntimeCapabilityKey, string>>;
+  messages?: Partial<Record<RuntimeCapabilityKey, string>>;
 }
