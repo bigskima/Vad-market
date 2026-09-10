@@ -10,21 +10,23 @@ import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 
 const sections = [
-  { label: 'Overview', href: '/admin' },
-  { label: 'Governance', href: '/admin/governance' },
-  { label: 'Providers', href: '/admin/providers' },
-  { label: 'Compliance', href: '/admin/compliance' },
-  { label: 'Payments', href: '/admin/payments' },
+  { label: 'Overview', short: 'Overview', href: '/admin' },
+  { label: 'Governance', short: 'Governance', href: '/admin/governance' },
+  { label: 'Providers', short: 'Providers', href: '/admin/providers' },
+  { label: 'Compliance', short: 'KYC', href: '/admin/compliance' },
+  { label: 'Payments', short: 'Payments', href: '/admin/payments' },
 ] as const;
 
 export function AdminWorkspaceNav() {
   const theme = useVadTheme();
   const pathname = usePathname();
   const { width } = useWindowDimensions();
+  const desktop = width >= 900;
   const compact = width < 380;
 
   return (
     <View
+      accessibilityRole="tablist"
       style={{
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
@@ -42,10 +44,12 @@ export function AdminWorkspaceNav() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
-            paddingHorizontal: compact
-              ? theme.spacing.md
-              : theme.spacing.lg,
-            gap: theme.spacing.md,
+            paddingHorizontal: desktop
+              ? theme.spacing.xl
+              : compact
+                ? theme.spacing.md
+                : theme.spacing.lg,
+            gap: desktop ? theme.spacing.xl : theme.spacing.md,
           }}
         >
           {sections.map((section) => {
@@ -59,9 +63,12 @@ export function AdminWorkspaceNav() {
                 key={section.href}
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
+                accessibilityLabel={section.label + ' operations'}
                 onPress={() => router.replace(section.href)}
                 style={({ pressed }) => ({
-                  minHeight: 44,
+                  minHeight: desktop ? 50 : 46,
+                  minWidth: desktop ? 92 : undefined,
+                  alignItems: desktop ? 'center' : 'flex-start',
                   justifyContent: 'center',
                   borderBottomWidth: 2,
                   borderBottomColor: selected
@@ -71,10 +78,10 @@ export function AdminWorkspaceNav() {
                 })}
               >
                 <VadText
-                  variant="caption"
+                  variant={desktop ? 'label' : 'caption'}
                   tone={selected ? 'brand' : 'secondary'}
                 >
-                  {section.label}
+                  {compact ? section.short : section.label}
                 </VadText>
               </Pressable>
             );
