@@ -1,0 +1,61 @@
+import { supabase } from '@/lib/supabase';
+
+export type AdminServiceControlRow = {
+  service_key: string;
+  name: string;
+  description: string;
+  category: string;
+  user_scopable: boolean;
+  inherits_app_pause: boolean;
+  global_paused: boolean;
+  global_reason: string | null;
+  global_resumes_at: string | null;
+  active_user_pauses: number;
+};
+
+export type AdminUserServiceControlRow = {
+  service_key: string;
+  name: string;
+  category: string;
+  enabled: boolean;
+  reason_code: string | null;
+  message: string | null;
+  pause_scope: 'GLOBAL' | 'USER' | 'DEFAULT' | null;
+  resumes_at: string | null;
+};
+
+function fail(error: { message: string } | null) {
+  if (error) throw new Error(error.message);
+}
+
+export async function getAdminServiceControls() {
+  const { data, error } = await supabase.rpc('admin_service_control_catalog');
+  fail(error);
+  return (data ?? []) as AdminServiceControlRow[];
+}
+
+export async function getAdminUserServiceControls(userId: string) {
+  const { data, error } = await supabase.rpc('admin_user_service_controls', {
+    p_user_id: userId,
+  });
+  fail(error);
+  return (data ?? []) as AdminUserServiceControlRow[];
+}
+
+export async function setAdminServiceControl(input: {
+  serviceKey: string;
+  paused: boolean;
+  reason: string;
+  resumesAt?: string | null;
+  userId?: string | null;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_service_control', {
+    p_service_key: input.serviceKey,
+    p_paused: input.paused,
+    p_reason: input.reason.trim(),
+    p_resumes_at: input.paused ? input.resumesAt ?? null : null,
+    p_user_id: input.userId ?? null,
+  });
+  fail(error);
+  return (data ?? {}) as Record<string, unknown>;
+}

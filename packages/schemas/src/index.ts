@@ -16,11 +16,33 @@ export const apiErrorSchema = z
   })
   .strict();
 
+const runtimeCapabilityDecisionSchema = z
+  .object({
+    createPost: z.boolean(),
+    submitMarketProposal: z.boolean(),
+    viewPortfolio: z.boolean(),
+    trade: z.boolean(),
+    deposit: z.boolean(),
+    withdraw: z.boolean(),
+  })
+  .strict();
+
+const runtimeCapabilityReasonSchema = z
+  .object({
+    createPost: z.string().optional(),
+    submitMarketProposal: z.string().optional(),
+    viewPortfolio: z.string().optional(),
+    trade: z.string().optional(),
+    deposit: z.string().optional(),
+    withdraw: z.string().optional(),
+  })
+  .strict();
+
 export const runtimeCapabilitiesResponseSchema = z
   .object({
-    // v2 is live in Supabase. v1 remains accepted during staggered frontend/
-    // function deployments so a contract rollout cannot disable every action.
-    version: z.union([z.literal(1), z.literal(2)]),
+    // v3 adds canonical pause/resume state. v1/v2 remain accepted while
+    // clients and Edge Functions converge during a staggered deployment.
+    version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     status: z.enum(["ready", "degraded"]),
     requestId: z.string().min(1),
     evaluatedAt: z.iso.datetime({ offset: true }),
@@ -29,28 +51,16 @@ export const runtimeCapabilitiesResponseSchema = z
         countryCode: z.string().regex(/^[A-Z]{2}$/),
         jurisdictionStatus: z.string().min(1).optional(),
         activeAssetCodes: z.array(z.string().regex(/^[A-Z0-9]{2,12}$/)),
+        platformStatus: z.enum(["READY", "MAINTENANCE"]).optional(),
+        platformReasonCode: z.string().min(1).optional(),
+        platformMessage: z.string().min(1).optional(),
+        platformPauseScope: z.enum(["GLOBAL", "USER"]).optional(),
+        platformResumesAt: z.iso.datetime({ offset: true }).nullable().optional(),
       })
       .strict(),
-    capabilities: z
-      .object({
-        createPost: z.boolean(),
-        submitMarketProposal: z.boolean(),
-        viewPortfolio: z.boolean(),
-        trade: z.boolean(),
-        deposit: z.boolean(),
-        withdraw: z.boolean(),
-      })
-      .strict(),
-    reasons: z
-      .object({
-        createPost: z.string().optional(),
-        submitMarketProposal: z.string().optional(),
-        viewPortfolio: z.string().optional(),
-        trade: z.string().optional(),
-        deposit: z.string().optional(),
-        withdraw: z.string().optional(),
-      })
-      .strict(),
+    capabilities: runtimeCapabilityDecisionSchema,
+    reasons: runtimeCapabilityReasonSchema,
+    messages: runtimeCapabilityReasonSchema.optional(),
   })
   .strict();
 
