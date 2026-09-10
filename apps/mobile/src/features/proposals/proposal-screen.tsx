@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -55,17 +55,14 @@ export function ProposalScreen({
   const [question, setQuestion] = useState('');
   const [context, setContext] = useState('');
   const [category, setCategory] = useState('');
-  const [assetCode, setAssetCode] = useState(activeAssetCodes[0] ?? '');
+  const [preferredAssetCode, setPreferredAssetCode] = useState(activeAssetCodes[0] ?? '');
   const [working, setWorking] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [admission, setAdmission] = useState<MarketAdmissionResponse | null>(null);
 
-  useEffect(() => {
-    if (!assetCode || !activeAssetCodes.includes(assetCode)) {
-      setAssetCode(activeAssetCodes[0] ?? '');
-    }
-  }, [activeAssetCodes, assetCode]);
-
+  const assetCode = activeAssetCodes.includes(preferredAssetCode)
+    ? preferredAssetCode
+    : activeAssetCodes[0] ?? '';
   const questionReady = Boolean(question.trim());
   const looksLikeQuestion = question.trim().endsWith('?');
   const hasAsset = Boolean(assetCode) || activeAssetCodes.length === 0;
@@ -74,7 +71,7 @@ export function ProposalScreen({
     setQuestion('');
     setContext('');
     setCategory('');
-    setAssetCode(activeAssetCodes[0] ?? '');
+    setPreferredAssetCode(activeAssetCodes[0] ?? '');
     setStep(0);
     setSubmitError(null);
     setAdmission(null);
@@ -205,7 +202,7 @@ export function ProposalScreen({
                       value={assetCode}
                       options={activeAssetCodes.map((code) => ({ value: code, label: code }))}
                       onChange={(value) => {
-                        setAssetCode(value);
+                        setPreferredAssetCode(value);
                         setSubmitError(null);
                       }}
                     />
