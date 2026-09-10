@@ -79,7 +79,6 @@ export function ConvictionComposer({
                 borderLeftWidth: 3,
                 borderLeftColor: theme.colors.brandPrimary,
                 backgroundColor: theme.colors.brandSoft,
-                borderRadius: theme.radius.md,
                 padding: theme.spacing.md,
                 gap: 2,
               }}
@@ -243,14 +242,14 @@ function Stance({
         flex: 1,
         minHeight: 68,
         justifyContent: 'center',
-        borderWidth: 1.5,
+        borderWidth: 1,
         borderColor: selected ? color : theme.colors.border,
-        borderRadius: theme.radius.lg,
+        borderRadius: theme.radius.md,
         backgroundColor: selected
           ? positive
             ? theme.colors.yesSoft
             : theme.colors.noSoft
-          : theme.colors.surfaceRaised,
+          : 'transparent',
         paddingHorizontal: theme.spacing.md,
         opacity: pressed ? 0.7 : 1,
       })}

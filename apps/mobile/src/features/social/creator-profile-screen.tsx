@@ -31,6 +31,7 @@ export function CreatorProfileScreen({
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 820;
+  const compact = width < 380;
   const [profile, setProfile] = useState<CreatorPublicProfile | null>(null);
   const [reputation, setReputation] = useState<CreatorReputation | null>(null);
   const [predictions, setPredictions] = useState<CreatorPrediction[]>([]);
@@ -79,10 +80,10 @@ export function CreatorProfileScreen({
   if (loading) {
     return (
       <View style={{ gap: theme.spacing.md }}>
-        <VadSkeleton height={wide ? 220 : 172} radius={theme.radius.xl} />
-        <VadSkeleton width={92} height={92} radius={46} />
-        <VadSkeleton width="58%" height={30} />
-        <VadSkeleton height={130} />
+        <VadSkeleton height={wide ? 190 : 132} radius={theme.radius.lg} />
+        <VadSkeleton width={compact ? 72 : 84} height={compact ? 72 : 84} radius={42} />
+        <VadSkeleton width="58%" height={28} />
+        <VadSkeleton height={120} />
       </View>
     );
   }
@@ -100,21 +101,16 @@ export function CreatorProfileScreen({
   const name =
     profile?.displayName ?? profile?.handle ?? 'VAD creator';
   const banner = profileMediaUrl(profile?.bannerPath);
+  const avatarSize = compact ? 72 : 84;
 
   return (
     <View style={{ gap: theme.spacing.xxxl }}>
-      <View
-        style={{
-          borderRadius: theme.radius.xl,
-          overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          backgroundColor: theme.colors.surface,
-        }}
-      >
+      <View style={{ gap: theme.spacing.lg }}>
         <View
           style={{
-            height: wide ? 220 : 172,
+            height: wide ? 190 : 132,
+            overflow: 'hidden',
+            borderRadius: theme.radius.lg,
             backgroundColor: theme.colors.brandSoft,
           }}
         >
@@ -129,7 +125,7 @@ export function CreatorProfileScreen({
               style={{
                 flex: 1,
                 justifyContent: 'flex-end',
-                padding: theme.spacing.lg,
+                padding: theme.spacing.md,
               }}
             >
               <VadText variant="caption" tone="brand">
@@ -141,105 +137,64 @@ export function CreatorProfileScreen({
 
         <View
           style={{
-            paddingHorizontal: theme.spacing.lg,
-            paddingBottom: theme.spacing.lg,
+            flexDirection: wide ? 'row' : 'column',
             gap: theme.spacing.lg,
+            alignItems: wide ? 'flex-end' : 'flex-start',
           }}
         >
           <View
             style={{
-              marginTop: -50,
-              flexDirection: wide ? 'row' : 'column',
-              alignItems: wide ? 'flex-end' : 'flex-start',
-              justifyContent: 'space-between',
-              gap: theme.spacing.lg,
+              marginTop: wide ? -56 : -46,
+              borderWidth: 3,
+              borderColor: theme.colors.background,
+              borderRadius: theme.radius.pill,
             }}
           >
-            <View
-              style={{
-                borderWidth: 4,
-                borderColor: theme.colors.surface,
-                borderRadius: theme.radius.pill,
-              }}
-            >
-              <ProfileAvatar
-                path={profile?.avatarPath}
-                name={name}
-                size={96}
-              />
-            </View>
-
-            {wide ? (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  gap: theme.spacing.xl,
-                  paddingBottom: theme.spacing.xs,
-                }}
-              >
-                <ProfileStat
-                  label="Followers"
-                  value={String(reputation.followers)}
-                />
-                <ProfileStat
-                  label="Predictions"
-                  value={String(reputation.predictions)}
-                />
-                <ProfileStat
-                  label="Markets"
-                  value={String(reputation.originatedMarkets)}
-                />
-              </View>
-            ) : null}
+            <ProfileAvatar
+              path={profile?.avatarPath}
+              name={name}
+              size={avatarSize}
+            />
           </View>
 
-          <View
-            style={{
-              flexDirection: wide ? 'row' : 'column',
-              gap: theme.spacing.xl,
-              alignItems: wide ? 'flex-end' : 'stretch',
-            }}
-          >
-            <View style={{ flex: 1, gap: theme.spacing.xs }}>
-              <View style={{ gap: 2 }}>
-                <VadText variant="title">{name}</VadText>
-                {profile?.handle ? (
-                  <VadText tone="secondary">@{profile.handle}</VadText>
-                ) : null}
-              </View>
-
-              {profile?.bio ? (
-                <VadText tone="secondary">{profile.bio}</VadText>
-              ) : (
-                <VadText variant="caption" tone="secondary">
-                  Public conviction profile
-                </VadText>
-              )}
-            </View>
-
-            {!wide ? (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  gap: theme.spacing.xl,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <ProfileStat
-                  label="Followers"
-                  value={String(reputation.followers)}
-                />
-                <ProfileStat
-                  label="Predictions"
-                  value={String(reputation.predictions)}
-                />
-                <ProfileStat
-                  label="Markets"
-                  value={String(reputation.originatedMarkets)}
-                />
-              </View>
+          <View style={{ flex: 1, width: '100%', gap: theme.spacing.xs }}>
+            <VadText variant="title">{name}</VadText>
+            {profile?.handle ? (
+              <VadText tone="secondary">@{profile.handle}</VadText>
             ) : null}
+            {profile?.bio ? (
+              <VadText tone="secondary">{profile.bio}</VadText>
+            ) : (
+              <VadText variant="caption" tone="secondary">
+                Public conviction profile
+              </VadText>
+            )}
           </View>
+        </View>
+
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: theme.colors.border,
+            paddingVertical: theme.spacing.md,
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: compact ? theme.spacing.md : theme.spacing.xl,
+          }}
+        >
+          <ProfileStat
+            label="Followers"
+            value={String(reputation.followers)}
+          />
+          <ProfileStat
+            label="Predictions"
+            value={String(reputation.predictions)}
+          />
+          <ProfileStat
+            label="Markets"
+            value={String(reputation.originatedMarkets)}
+          />
         </View>
       </View>
 
@@ -252,7 +207,7 @@ export function CreatorProfileScreen({
       >
         <View
           style={{
-            width: wide ? 260 : '100%',
+            width: wide ? 250 : '100%',
             gap: theme.spacing.xs,
           }}
         >
@@ -283,7 +238,7 @@ function ProfileStat({
   value: string;
 }) {
   return (
-    <View style={{ minWidth: 76, gap: 2 }}>
+    <View style={{ minWidth: 76, flexGrow: 1, flexBasis: 90, gap: 2 }}>
       <VadText variant="bodyStrong">{value}</VadText>
       <VadText variant="caption" tone="secondary">{label}</VadText>
     </View>
