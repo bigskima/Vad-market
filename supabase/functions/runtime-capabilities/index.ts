@@ -282,7 +282,7 @@ const authenticatedHandler = withSupabase(
         ...(platformPaused && platform?.message
           ? { platformMessage: platform.message }
           : {}),
-        ...(platformPaused && platform?.scope
+        ...(platformPaused && (platform?.scope === "GLOBAL" || platform?.scope === "USER")
           ? { platformPauseScope: platform.scope }
           : {}),
         ...(platformPaused
