@@ -24,6 +24,7 @@ export default function MarketDetailRoute() {
   const market = data.markets.find(
     (item) => item.instrument_public_id === marketId,
   );
+  const tradeReason = runtime.snapshot.reasons.trade;
 
   const openMarket = (next: MarketCatalogItem) => {
     router.replace({
@@ -46,6 +47,10 @@ export default function MarketDetailRoute() {
           market={market}
           markets={data.markets}
           canTrade={runtime.snapshot.capabilities.trade}
+          tradeReason={tradeReason}
+          tradeCapabilityLoading={
+            runtime.isRefreshing && tradeReason === 'CAPABILITIES_LOADING'
+          }
           canCreatePost={runtime.snapshot.capabilities.createPost}
           onPlaced={data.load}
           onOpenMarket={openMarket}
