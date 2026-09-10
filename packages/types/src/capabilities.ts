@@ -26,16 +26,22 @@ export type RuntimeCapabilityDecisions = Record<RuntimeCapabilityKey, boolean>;
 export interface RuntimeCapabilityContext {
   countryCode: CountryCode;
   activeAssetCodes: AssetCode[];
+  /** Present in the live v2 capability contract. Omitted by legacy v1 responses. */
+  jurisdictionStatus?: string;
 }
 
 /**
- * Version 1 of the server-authoritative capability snapshot.
+ * Server-authoritative runtime capability snapshot.
  *
- * A false decision is authoritative for this snapshot. Clients may explain it
+ * Version 2 adds jurisdiction status to the response context. The client keeps
+ * accepting version 1 during staggered deployments so a frontend release does
+ * not accidentally fail every capability closed while environments converge.
+ *
+ * A false decision is authoritative for the snapshot. Clients may explain it
  * using `reasons`, but must never locally promote a false value to true.
  */
 export interface RuntimeCapabilitiesResponse {
-  version: 1;
+  version: 1 | 2;
   status: RuntimeCapabilityStatus;
   requestId: RequestId;
   evaluatedAt: IsoTimestamp;

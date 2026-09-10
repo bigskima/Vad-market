@@ -8,12 +8,23 @@ export default function CreateMarketRoute() {
   const { session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
+  const capabilityReason =
+    runtime.snapshot.reasons.submitMarketProposal;
 
   return (
     <ProductSubpage title="Propose a market">
       <ProposalScreen
         proposals={data.proposals}
-        canSubmitProposal={runtime.snapshot.capabilities.submitMarketProposal}
+        canSubmitProposal={
+          runtime.snapshot.capabilities.submitMarketProposal
+        }
+        capabilityReason={capabilityReason}
+        capabilityLoading={
+          runtime.isRefreshing &&
+          capabilityReason === 'CAPABILITIES_LOADING'
+        }
+        historyLoading={data.loading}
+        historyError={data.sectionErrors.proposals}
         onReload={data.load}
       />
     </ProductSubpage>

@@ -9,6 +9,7 @@ import {
 import { VadButton } from '@/components/ui/vad-button';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
+import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   placeOrder,
@@ -23,10 +24,14 @@ const SHARE_PRESETS = ['25', '50', '100', '250'] as const;
 export function TradingTicket({
   market,
   canTrade,
+  tradeReason,
+  capabilityLoading = false,
   onPlaced,
 }: {
   market: MarketCatalogItem;
   canTrade: boolean;
+  tradeReason?: string;
+  capabilityLoading?: boolean;
   onPlaced: () => Promise<void>;
 }) {
   const theme = useVadTheme();
@@ -45,6 +50,8 @@ export function TradingTicket({
   const [placeError, setPlaceError] = useState<string | null>(null);
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
 
+  const tradeReady = canTrade && !capabilityLoading;
+
   function clearReviewState() {
     setQuote(null);
     setQuoteError(null);
@@ -53,6 +60,7 @@ export function TradingTicket({
   }
 
   function chooseOutcome(next: 'YES' | 'NO') {
+    if (!tradeReady || working) return;
     setOutcome(next);
     setPrice(
       String(
@@ -67,11 +75,14 @@ export function TradingTicket({
   }
 
   function chooseQuantity(next: string) {
+    if (!tradeReady || working) return;
     setQuantity(next);
     clearReviewState();
   }
 
   async function preview() {
+    if (!tradeReady || working || !inputValid) return;
+
     setWorking(true);
     setQuoteError(null);
     setPlaceError(null);
@@ -100,7 +111,7 @@ export function TradingTicket({
   }
 
   async function execute() {
-    if (!quote) return;
+    if (!tradeReady || working || !quote) return;
 
     setWorking(true);
     setPlaceError(null);
@@ -190,6 +201,7 @@ export function TradingTicket({
             <VadButton
               label="Place another order"
               variant="secondary"
+              disabled={!tradeReady}
               onPress={() => setPlacedOrderId(null)}
               style={{ flex: 1 }}
             />
@@ -243,12 +255,30 @@ export function TradingTicket({
             </View>
           </View>
 
+          {capabilityLoading ? (
+            <InlineMessage
+              tone="warning"
+              title="Checking trading availability"
+              body={runtimeCapabilityReason('CAPABILITIES_LOADING')}
+            />
+          ) : !canTrade ? (
+            <InlineMessage
+              tone="warning"
+              title="Trading unavailable"
+              body={runtimeCapabilityReason(
+                tradeReason,
+                'Trading is not available for this account under the current VAD policy.',
+              )}
+            />
+          ) : null}
+
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
             <OutcomeChoice
               active={outcome === 'YES'}
               label="YES"
               value={pct(market.yes_price)}
               tone="yes"
+              disabled={!tradeReady || working}
               onPress={() => chooseOutcome('YES')}
             />
             <OutcomeChoice
@@ -256,6 +286,7 @@ export function TradingTicket({
               label="NO"
               value={pct(market.no_price)}
               tone="no"
+              disabled={!tradeReady || working}
               onPress={() => chooseOutcome('NO')}
             />
           </View>
@@ -275,7 +306,11 @@ export function TradingTicket({
                 <Pressable
                   key={option}
                   accessibilityRole="tab"
-                  accessibilityState={{ selected }}
+                  accessibilityState={{
+                    selected,
+                    disabled: !tradeReady || working,
+                  }}
+                  disabled={!tradeReady || working}
                   onPress={() => {
                     setSide(option);
                     clearReviewState();
@@ -289,7 +324,7 @@ export function TradingTicket({
                     borderBottomColor: selected
                       ? theme.colors.brandPrimary
                       : 'transparent',
-                    opacity: pressed ? 0.65 : 1,
+                    opacity: !tradeReady || working ? 0.5 : pressed ? 0.65 : 1,
                   })}
                 >
                   <VadText
@@ -312,8 +347,13 @@ export function TradingTicket({
             <View style={{ flex: 1 }}>
               <VadInput
                 label="Limit price"
-                hint="Probability price above 0 and up to 1."
+                hint={
+                  tradeReady
+                    ? 'Probability price above 0 and up to 1.'
+                    : 'Price entry becomes available when trading is enabled.'
+                }
                 value={price}
+                editable={tradeReady && !working}
                 onChangeText={(value) => {
                   setPrice(value);
                   clearReviewState();
@@ -321,6 +361,7 @@ export function TradingTicket({
                 keyboardType="decimal-pad"
                 placeholder="0.64"
                 error={
+                  tradeReady &&
                   price.length > 0 &&
                   (!Number.isFinite(priceValue) ||
                     priceValue <= 0 ||
@@ -334,8 +375,13 @@ export function TradingTicket({
             <View style={{ flex: 1 }}>
               <VadInput
                 label="Shares"
-                hint="Choose a preset or enter your own quantity."
+                hint={
+                  tradeReady
+                    ? 'Choose a preset or enter your own quantity.'
+                    : 'Share entry becomes available when trading is enabled.'
+                }
                 value={quantity}
+                editable={tradeReady && !working}
                 onChangeText={(value) => {
                   setQuantity(value);
                   clearReviewState();
@@ -343,6 +389,7 @@ export function TradingTicket({
                 keyboardType="decimal-pad"
                 placeholder="100"
                 error={
+                  tradeReady &&
                   quantity.length > 0 &&
                   (!Number.isFinite(quantityValue) || quantityValue <= 0)
                     ? 'Shares must be greater than 0.'
@@ -368,7 +415,11 @@ export function TradingTicket({
                 <Pressable
                   key={preset}
                   accessibilityRole="button"
-                  accessibilityState={{ selected }}
+                  accessibilityState={{
+                    selected,
+                    disabled: !tradeReady || working,
+                  }}
+                  disabled={!tradeReady || working}
                   onPress={() => chooseQuantity(preset)}
                   style={({ pressed }) => ({
                     minWidth: 48,
@@ -379,7 +430,7 @@ export function TradingTicket({
                     borderBottomColor: selected
                       ? theme.colors.brandPrimary
                       : 'transparent',
-                    opacity: pressed ? 0.65 : 1,
+                    opacity: !tradeReady || working ? 0.5 : pressed ? 0.65 : 1,
                   })}
                 >
                   <VadText
@@ -401,14 +452,6 @@ export function TradingTicket({
             <QuoteLine label="Order type" value="Limit" />
           </View>
 
-          {!canTrade ? (
-            <InlineMessage
-              tone="warning"
-              title="Trading unavailable"
-              body="Trading is not available for this account under the current platform policy."
-            />
-          ) : null}
-
           {quoteError ? (
             <InlineMessage
               tone="danger"
@@ -419,8 +462,8 @@ export function TradingTicket({
 
           <VadButton
             label={quote ? 'Refresh trade review' : 'Review trade'}
-            loading={working}
-            disabled={!canTrade || working || !inputValid}
+            loading={working || capabilityLoading}
+            disabled={!tradeReady || working || !inputValid}
             onPress={() => void preview()}
           />
         </View>
@@ -474,9 +517,18 @@ export function TradingTicket({
               />
             ) : null}
 
+            {!tradeReady ? (
+              <InlineMessage
+                tone="warning"
+                title="Order placement paused"
+                body={runtimeCapabilityReason(tradeReason)}
+              />
+            ) : null}
+
             <VadButton
               label="Place order"
               loading={working}
+              disabled={!tradeReady || working}
               onPress={() => void execute()}
             />
             <VadButton
@@ -500,12 +552,14 @@ function OutcomeChoice({
   label,
   value,
   tone,
+  disabled = false,
   onPress,
 }: {
   active: boolean;
   label: string;
   value: string;
   tone: 'yes' | 'no';
+  disabled?: boolean;
   onPress: () => void;
 }) {
   const theme = useVadTheme();
@@ -516,7 +570,8 @@ function OutcomeChoice({
   return (
     <Pressable
       accessibilityRole="radio"
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ selected: active, disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,
@@ -526,7 +581,7 @@ function OutcomeChoice({
         borderRadius: theme.radius.md,
         padding: theme.spacing.md,
         gap: 2,
-        opacity: pressed ? 0.72 : 1,
+        opacity: disabled ? 0.5 : pressed ? 0.72 : 1,
       })}
     >
       <VadText variant="caption" style={{ color }}>{label}</VadText>

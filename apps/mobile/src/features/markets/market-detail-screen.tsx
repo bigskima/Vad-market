@@ -22,6 +22,8 @@ export function MarketDetailScreen({
   market,
   markets,
   canTrade,
+  tradeReason,
+  tradeCapabilityLoading = false,
   canCreatePost,
   onPlaced,
   onOpenMarket,
@@ -29,6 +31,8 @@ export function MarketDetailScreen({
   market: MarketCatalogItem;
   markets: MarketCatalogItem[];
   canTrade: boolean;
+  tradeReason?: string;
+  tradeCapabilityLoading?: boolean;
   canCreatePost: boolean;
   onPlaced: () => Promise<void>;
   onOpenMarket: (market: MarketCatalogItem) => void;
@@ -88,6 +92,7 @@ export function MarketDetailScreen({
         <Overview
           market={market}
           canTrade={canTrade}
+          tradeCapabilityLoading={tradeCapabilityLoading}
           onTrade={() => setTab('Trade')}
           onDiscuss={() => setTab('Discussion')}
         />
@@ -97,6 +102,8 @@ export function MarketDetailScreen({
         <TradingTicket
           market={market}
           canTrade={canTrade}
+          tradeReason={tradeReason}
+          capabilityLoading={tradeCapabilityLoading}
           onPlaced={onPlaced}
         />
       ) : null}
@@ -118,11 +125,13 @@ export function MarketDetailScreen({
 function Overview({
   market,
   canTrade,
+  tradeCapabilityLoading,
   onTrade,
   onDiscuss,
 }: {
   market: MarketCatalogItem;
   canTrade: boolean;
+  tradeCapabilityLoading: boolean;
   onTrade: () => void;
   onDiscuss: () => void;
 }) {
@@ -170,7 +179,13 @@ function Overview({
           }}
         >
           <VadButton
-            label={canTrade ? 'Trade this market' : 'Check trade availability'}
+            label={
+              tradeCapabilityLoading
+                ? 'Checking trade availability'
+                : canTrade
+                  ? 'Trade this market'
+                  : 'View trade availability'
+            }
             onPress={onTrade}
             style={{ flex: 1 }}
           />

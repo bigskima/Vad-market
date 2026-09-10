@@ -26,7 +26,7 @@ export function unavailableCapabilities(
   ) as RuntimeCapabilitiesResponse['reasons'];
 
   return {
-    version: 1,
+    version: 2,
     status: 'degraded',
     requestId: 'local-fail-closed',
     evaluatedAt: new Date().toISOString(),

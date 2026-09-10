@@ -9,6 +9,7 @@ import {
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getProviderReadiness } from '@/services/payment-api';
 
@@ -21,7 +22,19 @@ type Readiness = {
   generatedAt?: string;
 };
 
-export function FundingOverview() {
+export function FundingOverview({
+  depositAllowed,
+  withdrawalAllowed,
+  depositReason,
+  withdrawalReason,
+  policyLoading = false,
+}: {
+  depositAllowed: boolean;
+  withdrawalAllowed: boolean;
+  depositReason?: string;
+  withdrawalReason?: string;
+  policyLoading?: boolean;
+}) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 760;
@@ -76,11 +89,20 @@ export function FundingOverview() {
   const depositReady = Boolean(readiness?.depositConfigured);
   const withdrawalReady = Boolean(readiness?.withdrawalConfigured);
   const kycReady = Boolean(readiness?.kycConfigured);
-  const readyCount = [depositReady, withdrawalReady, kycReady].filter(Boolean)
-    .length;
+  const providerReadyCount = [depositReady, withdrawalReady, kycReady].filter(
+    Boolean,
+  ).length;
 
   return (
     <View style={{ gap: theme.spacing.xxl }}>
+      {error ? (
+        <VadErrorState
+          title="Payment readiness refresh failed"
+          message={error}
+          onRetry={() => void load()}
+        />
+      ) : null}
+
       <View
         style={{
           flexDirection: wide ? 'row' : 'column',
@@ -89,18 +111,12 @@ export function FundingOverview() {
         }}
       >
         <View style={{ flex: 1, gap: theme.spacing.xs }}>
-          <VadText variant="label" tone="brand">PAYMENT READINESS</VadText>
-          <VadText variant="title">
-            {readyCount === 3
-              ? 'Wallet routes are ready.'
-              : readyCount > 0
-                ? 'Some wallet routes still need attention.'
-                : 'Wallet routes are not ready yet.'}
-          </VadText>
+          <VadText variant="label" tone="brand">FUNDING & WITHDRAWALS</VadText>
+          <VadText variant="title">Know what is ready before moving money.</VadText>
           <VadText tone="secondary">
-            Readiness tells you whether the external routes are available.
-            Identity, balance, limits and capability checks still happen live
-            when you start a payment.
+            Provider routing and account policy are separate checks. A provider
+            can be configured while deposits or withdrawals remain disabled by
+            the current VAD launch policy.
           </VadText>
         </View>
 
@@ -111,39 +127,72 @@ export function FundingOverview() {
             alignItems: wide ? 'flex-end' : 'flex-start',
           }}
         >
-          <VadText variant="caption" tone="secondary">READINESS</VadText>
+          <VadText variant="caption" tone="secondary">PROVIDER READINESS</VadText>
           <VadText
             variant="display"
-            tone={readyCount === 3 ? 'yes' : readyCount ? 'brand' : 'warning'}
+            tone={
+              providerReadyCount === 3
+                ? 'yes'
+                : providerReadyCount
+                  ? 'brand'
+                  : 'warning'
+            }
           >
-            {readyCount}/3
+            {providerReadyCount}/3
           </VadText>
           <VadText variant="caption" tone="tertiary">
-            checks currently available
+            external checks configured
           </VadText>
         </View>
       </View>
 
-      <View
-        style={{
-          borderTopWidth: 1,
-          borderBottomWidth: 1,
-          borderColor: theme.colors.border,
-        }}
-      >
-        <StatusFact label="Deposit route" ready={depositReady} />
-        <StatusFact label="Withdrawal route" ready={withdrawalReady} />
-        <StatusFact
-          label={(readiness?.kycProvider ?? 'Identity') + ' verification'}
-          ready={kycReady}
-        />
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadText variant="heading">External routes</VadText>
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: theme.colors.border,
+          }}
+        >
+          <StatusFact label="Deposit provider route" ready={depositReady} />
+          <StatusFact label="Withdrawal provider route" ready={withdrawalReady} />
+          <StatusFact
+            label={(readiness?.kycProvider ?? 'Identity') + ' verification'}
+            ready={kycReady}
+          />
+        </View>
+      </View>
+
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadText variant="heading">Account policy</VadText>
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: theme.colors.border,
+          }}
+        >
+          <PolicyFact
+            label="Deposits"
+            allowed={depositAllowed}
+            loading={policyLoading}
+            reason={depositReason}
+          />
+          <PolicyFact
+            label="Withdrawals"
+            allowed={withdrawalAllowed}
+            loading={policyLoading}
+            reason={withdrawalReason}
+          />
+        </View>
       </View>
 
       <View style={{ gap: theme.spacing.sm }}>
         <View style={{ gap: 2 }}>
           <VadText variant="heading">Money movement</VadText>
           <VadText variant="caption" tone="secondary">
-            Each action opens a dedicated reviewed flow.
+            Each action opens a dedicated reviewed flow and re-checks live policy.
           </VadText>
         </View>
 
@@ -155,14 +204,40 @@ export function FundingOverview() {
         >
           <ReadinessRow
             title="Deposit"
-            detail="Add NGN to your VAD wallet"
-            ready={depositReady}
+            detail={
+              depositAllowed
+                ? 'Add NGN to your VAD wallet'
+                : runtimeCapabilityReason(depositReason)
+            }
+            ready={depositReady && depositAllowed}
+            statusLabel={
+              policyLoading
+                ? 'CHECKING'
+                : !depositAllowed
+                  ? 'POLICY BLOCKED'
+                  : depositReady
+                    ? 'READY'
+                    : 'ROUTE NOT READY'
+            }
             onPress={() => router.push('/wallet/deposit')}
           />
           <ReadinessRow
             title="Withdrawal"
-            detail="Move available NGN out of VAD"
-            ready={withdrawalReady}
+            detail={
+              withdrawalAllowed
+                ? 'Move available NGN out of VAD'
+                : runtimeCapabilityReason(withdrawalReason)
+            }
+            ready={withdrawalReady && withdrawalAllowed}
+            statusLabel={
+              policyLoading
+                ? 'CHECKING'
+                : !withdrawalAllowed
+                  ? 'POLICY BLOCKED'
+                  : withdrawalReady
+                    ? 'READY'
+                    : 'ROUTE NOT READY'
+            }
             onPress={() => router.push('/wallet/withdraw')}
           />
           <ReadinessRow
@@ -187,7 +262,7 @@ export function FundingOverview() {
 
       {readiness?.generatedAt ? (
         <VadText variant="caption" tone="tertiary">
-          Readiness checked{' '}
+          Provider readiness checked{' '}
           {new Date(readiness.generatedAt).toLocaleString()}.
         </VadText>
       ) : null}
@@ -241,6 +316,52 @@ function StatusFact({
       <VadText variant="bodyStrong" style={{ flex: 1 }}>{label}</VadText>
       <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>
         {ready ? 'READY' : 'NOT READY'}
+      </VadText>
+    </View>
+  );
+}
+
+function PolicyFact({
+  label,
+  allowed,
+  loading,
+  reason,
+}: {
+  label: string;
+  allowed: boolean;
+  loading: boolean;
+  reason?: string;
+}) {
+  const theme = useVadTheme();
+
+  return (
+    <View
+      style={{
+        minHeight: 68,
+        paddingVertical: theme.spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+      }}
+    >
+      <View style={{ flex: 1, gap: 2 }}>
+        <VadText variant="bodyStrong">{label}</VadText>
+        <VadText variant="caption" tone="secondary">
+          {loading
+            ? runtimeCapabilityReason('CAPABILITIES_LOADING')
+            : allowed
+              ? 'Enabled for this account by current VAD policy.'
+              : runtimeCapabilityReason(reason)}
+        </VadText>
+      </View>
+
+      <VadText
+        variant="caption"
+        tone={loading ? 'warning' : allowed ? 'yes' : 'warning'}
+      >
+        {loading ? 'CHECKING' : allowed ? 'ENABLED' : 'NOT ENABLED'}
       </VadText>
     </View>
   );

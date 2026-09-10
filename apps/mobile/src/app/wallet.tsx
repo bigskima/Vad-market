@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { WalletScreen } from '@/features/wallet/wallet-screen';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -15,15 +16,27 @@ export default function WalletRoute() {
     });
   };
 
+  const walletReadFailedWithoutData = Boolean(
+    data.sectionErrors.wallet && !data.ngn,
+  );
+
   return (
     <ProductRoute active="Wallet">
-      <WalletScreen
-        ngn={data.ngn}
-        onDeposit={() => router.push('/wallet/deposit')}
-        onWithdraw={() => router.push('/wallet/withdraw')}
-        onActivity={() => router.push('/wallet/activity')}
-        onOpenTransaction={openTransaction}
-      />
+      {walletReadFailedWithoutData ? (
+        <VadErrorState
+          title="Wallet balance could not be loaded"
+          message={data.sectionErrors.wallet ?? 'Wallet data is unavailable.'}
+          onRetry={() => void data.load()}
+        />
+      ) : (
+        <WalletScreen
+          ngn={data.ngn}
+          onDeposit={() => router.push('/wallet/deposit')}
+          onWithdraw={() => router.push('/wallet/withdraw')}
+          onActivity={() => router.push('/wallet/activity')}
+          onOpenTransaction={openTransaction}
+        />
+      )}
     </ProductRoute>
   );
 }

@@ -1,3 +1,4 @@
+import type { RuntimeCapabilityKey } from '@vad/types';
 import { Redirect, router } from 'expo-router';
 import type { ReactNode } from 'react';
 import {
@@ -7,8 +8,10 @@ import {
   View,
 } from 'react-native';
 
+import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
+import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -20,12 +23,16 @@ type Props = {
   active: ProductTab;
   children: ReactNode;
   allowCreate?: boolean;
+  requiredCapability?: RuntimeCapabilityKey;
+  capabilityTitle?: string;
 };
 
 export function ProductRoute({
   active,
   children,
   allowCreate = false,
+  requiredCapability,
+  capabilityTitle = 'This section is not available yet',
 }: Props) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
@@ -120,6 +127,18 @@ export function ProductRoute({
     router.replace(route);
   };
 
+  const requiredAllowed = requiredCapability
+    ? runtime.snapshot.capabilities[requiredCapability]
+    : true;
+  const requiredReason = requiredCapability
+    ? runtime.snapshot.reasons[requiredCapability]
+    : undefined;
+  const requiredLoading = Boolean(
+    requiredCapability &&
+      runtime.isRefreshing &&
+      requiredReason === 'CAPABILITIES_LOADING',
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ProductTopBar
@@ -174,7 +193,23 @@ export function ProductRoute({
             onRetry={() => void data.load()}
           />
         ) : null}
-        {children}
+
+        {requiredLoading ? (
+          <View style={{ gap: theme.spacing.md }}>
+            <VadSkeleton width="48%" height={28} />
+            <VadSkeleton height={110} radius={theme.radius.xl} />
+            <VadSkeleton height={64} />
+          </View>
+        ) : requiredCapability && !requiredAllowed ? (
+          <VadEmptyState
+            title={capabilityTitle}
+            body={runtimeCapabilityReason(requiredReason)}
+            actionLabel="Refresh availability"
+            onAction={() => void runtime.refresh()}
+          />
+        ) : (
+          children
+        )}
       </ScrollView>
 
       {!desktop ? (
