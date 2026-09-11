@@ -30,6 +30,10 @@ import {
   type ProviderChangeRequest,
   type ProviderReadinessRow,
 } from '@/services/provider-admin-api';
+import {
+  getAdminServicePosture,
+  type AdminServicePostureRow,
+} from '@/services/service-control-admin-api';
 
 export function useAdminDashboard(access: AdminAccess) {
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,7 @@ export function useAdminDashboard(access: AdminAccess) {
   const [paymentQueue, setPaymentQueue] = useState<PaymentQueueRow[]>([]);
   const [providers, setProviders] = useState<ProviderReadinessRow[]>([]);
   const [providerChanges, setProviderChanges] = useState<ProviderChangeRequest[]>([]);
+  const [services, setServices] = useState<AdminServicePostureRow[]>([]);
 
   const load = useCallback(async () => {
     const tasks: Promise<void>[] = [];
@@ -67,6 +72,10 @@ export function useAdminDashboard(access: AdminAccess) {
           }),
       );
     }
+
+    // Every active admin can read platform availability. Mutation remains
+    // Super-Admin-only through admin_set_service_control on the backend.
+    queue(true, getAdminServicePosture, setServices);
 
     queue(
       hasAnyAdminPermission(access, [
@@ -201,6 +210,7 @@ export function useAdminDashboard(access: AdminAccess) {
     paymentQueue,
     providers,
     providerChanges,
+    services,
     load,
     refresh,
   };
