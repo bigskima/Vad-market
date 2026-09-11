@@ -1,3 +1,4 @@
+import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type FeePolicyName = 'trading_fee' | 'settlement_fee' | 'payment_fees';
@@ -144,9 +145,13 @@ function normalizeFeeRequest(value: unknown): AdminFeeChangeRequest {
   };
 }
 
+function financeError(error: unknown, fallback: string) {
+  return userFacingError(error, 'admin', fallback);
+}
+
 export async function getAdminFinanceSummary(): Promise<AdminFinanceSummary> {
   const { data, error } = await supabase.rpc('admin_finance_summary');
-  if (error) throw new Error(error.message);
+  if (error) throw financeError(error, 'We could not load the finance summary right now. Refresh and try again.');
 
   const raw = record(data);
   if (!Object.keys(raw).length) return emptySummary;
@@ -165,7 +170,7 @@ export async function getAdminFinanceSummary(): Promise<AdminFinanceSummary> {
 
 export async function getAdminFeePolicyQueue(): Promise<AdminFeeChangeRequest[]> {
   const { data, error } = await supabase.rpc('admin_fee_policy_queue');
-  if (error) throw new Error(error.message);
+  if (error) throw financeError(error, 'We could not load pending fee changes right now. Refresh and try again.');
   return Array.isArray(data) ? data.map(normalizeFeeRequest) : [];
 }
 
@@ -179,7 +184,7 @@ export async function proposeAdminFeePolicy(input: {
     p_configuration: input.configuration,
     p_reason: input.reason.trim(),
   });
-  if (error) throw new Error(error.message);
+  if (error) throw financeError(error, 'We could not submit this fee change right now. Please try again.');
   return String(data);
 }
 
@@ -193,7 +198,7 @@ export async function setAdminFeePolicyImmediate(input: {
     p_configuration: input.configuration,
     p_reason: input.reason.trim(),
   });
-  if (error) throw new Error(error.message);
+  if (error) throw financeError(error, 'We could not apply this fee change right now. Please try again.');
   return Number(data);
 }
 
@@ -207,7 +212,7 @@ export async function decideAdminFeePolicyProposal(input: {
     p_decision: input.decision,
     p_reason: input.reason.trim(),
   });
-  if (error) throw new Error(error.message);
+  if (error) throw financeError(error, 'We could not save this fee decision right now. Please try again.');
   return Boolean(data);
 }
 
