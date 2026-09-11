@@ -1,3 +1,4 @@
+import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type ConvictionPost = {
@@ -67,16 +68,79 @@ export type CreatorPrediction = {
   finalized_at: string | null;
 };
 
-function fail(error: { message: string } | null) { if (error) throw new Error(error.message); }
+function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback?: string) {
+  if (error) throw userFacingError(error, 'social', fallback);
+}
 
-export async function getConvictionFeed(limit = 30, offset = 0) { const { data, error } = await supabase.rpc('social_feed', { p_limit: limit, p_offset: offset }); fail(error); return (data ?? []) as ConvictionPost[]; }
-export async function publishConvictionPost(input: { body: string; postType?: 'ANALYSIS' | 'PREDICTION' | 'COMMENTARY'; instrumentPublicId?: string | null; stanceOutcomeCode?: 'YES' | 'NO' | null; confidence?: number | null }) { const { data, error } = await supabase.rpc('create_conviction_post', { p_body: input.body, p_post_type: input.postType ?? 'ANALYSIS', p_instrument_public_id: input.instrumentPublicId ?? null, p_stance_outcome_code: input.stanceOutcomeCode ?? null, p_confidence: input.confidence ?? null, p_media_path: null }); fail(error); return data as string; }
-export async function togglePostLike(postPublicId: string) { const { data, error } = await supabase.rpc('toggle_post_like', { p_post_public_id: postPublicId }); fail(error); return Boolean(data); }
-export async function toggleCreatorFollow(creatorUserId: string) { const { data, error } = await supabase.rpc('toggle_creator_follow', { p_creator_user_id: creatorUserId }); fail(error); return Boolean(data); }
-export async function addPostComment(postPublicId: string, body: string) { const { data, error } = await supabase.rpc('add_post_comment', { p_post_public_id: postPublicId, p_body: body }); fail(error); return data as string; }
-export async function addPostReply(postPublicId: string, parentCommentPublicId: string, body: string) { const { data, error } = await supabase.rpc('add_post_reply', { p_post_public_id: postPublicId, p_parent_comment_public_id: parentCommentPublicId, p_body: body }); fail(error); return data as string; }
-export async function getPostComments(postPublicId: string, limit = 50) { const { data, error } = await supabase.rpc('post_comments', { p_post_public_id: postPublicId, p_limit: limit }); fail(error); return (data ?? []) as PostComment[]; }
-export async function getCreatorReputation(creatorUserId: string) { const { data, error } = await supabase.rpc('creator_reputation', { p_creator_user_id: creatorUserId }); fail(error); return data as CreatorReputation; }
-export async function getCreatorPredictionHistory(creatorUserId: string, limit = 20, offset = 0) { const { data, error } = await supabase.rpc('creator_prediction_history', { p_creator_user_id: creatorUserId, p_limit: limit, p_offset: offset }); fail(error); return (data ?? []) as CreatorPrediction[]; }
-export async function getCreatorOriginatedMarkets(creatorUserId: string, limit = 20, offset = 0) { const { data, error } = await supabase.rpc('creator_originated_markets', { p_creator_user_id: creatorUserId, p_limit: limit, p_offset: offset }); fail(error); return (data ?? []) as Record<string, unknown>[]; }
-export async function getMarketCreatorAttribution(instrumentPublicId: string) { const { data, error } = await supabase.rpc('market_creator_attribution', { p_instrument_public_id: instrumentPublicId }); fail(error); return data as Record<string, unknown> | null; }
+export async function getConvictionFeed(limit = 30, offset = 0) {
+  const { data, error } = await supabase.rpc('social_feed', { p_limit: limit, p_offset: offset });
+  fail(error, 'We could not refresh the community feed right now. Please try again.');
+  return (data ?? []) as ConvictionPost[];
+}
+
+export async function publishConvictionPost(input: { body: string; postType?: 'ANALYSIS' | 'PREDICTION' | 'COMMENTARY'; instrumentPublicId?: string | null; stanceOutcomeCode?: 'YES' | 'NO' | null; confidence?: number | null }) {
+  const { data, error } = await supabase.rpc('create_conviction_post', {
+    p_body: input.body,
+    p_post_type: input.postType ?? 'ANALYSIS',
+    p_instrument_public_id: input.instrumentPublicId ?? null,
+    p_stance_outcome_code: input.stanceOutcomeCode ?? null,
+    p_confidence: input.confidence ?? null,
+    p_media_path: null,
+  });
+  fail(error, 'We could not publish your post right now. Please try again.');
+  return data as string;
+}
+
+export async function togglePostLike(postPublicId: string) {
+  const { data, error } = await supabase.rpc('toggle_post_like', { p_post_public_id: postPublicId });
+  fail(error, 'We could not update that reaction right now. Please try again.');
+  return Boolean(data);
+}
+
+export async function toggleCreatorFollow(creatorUserId: string) {
+  const { data, error } = await supabase.rpc('toggle_creator_follow', { p_creator_user_id: creatorUserId });
+  fail(error, 'We could not update this follow right now. Please try again.');
+  return Boolean(data);
+}
+
+export async function addPostComment(postPublicId: string, body: string) {
+  const { data, error } = await supabase.rpc('add_post_comment', { p_post_public_id: postPublicId, p_body: body });
+  fail(error, 'We could not post your comment right now. Please try again.');
+  return data as string;
+}
+
+export async function addPostReply(postPublicId: string, parentCommentPublicId: string, body: string) {
+  const { data, error } = await supabase.rpc('add_post_reply', { p_post_public_id: postPublicId, p_parent_comment_public_id: parentCommentPublicId, p_body: body });
+  fail(error, 'We could not post your reply right now. Please try again.');
+  return data as string;
+}
+
+export async function getPostComments(postPublicId: string, limit = 50) {
+  const { data, error } = await supabase.rpc('post_comments', { p_post_public_id: postPublicId, p_limit: limit });
+  fail(error, 'We could not load comments right now. Please try again.');
+  return (data ?? []) as PostComment[];
+}
+
+export async function getCreatorReputation(creatorUserId: string) {
+  const { data, error } = await supabase.rpc('creator_reputation', { p_creator_user_id: creatorUserId });
+  fail(error, 'We could not load this creator profile right now. Please try again.');
+  return data as CreatorReputation;
+}
+
+export async function getCreatorPredictionHistory(creatorUserId: string, limit = 20, offset = 0) {
+  const { data, error } = await supabase.rpc('creator_prediction_history', { p_creator_user_id: creatorUserId, p_limit: limit, p_offset: offset });
+  fail(error, 'We could not load this prediction history right now. Please try again.');
+  return (data ?? []) as CreatorPrediction[];
+}
+
+export async function getCreatorOriginatedMarkets(creatorUserId: string, limit = 20, offset = 0) {
+  const { data, error } = await supabase.rpc('creator_originated_markets', { p_creator_user_id: creatorUserId, p_limit: limit, p_offset: offset });
+  fail(error, 'We could not load this creator’s markets right now. Please try again.');
+  return (data ?? []) as Record<string, unknown>[];
+}
+
+export async function getMarketCreatorAttribution(instrumentPublicId: string) {
+  const { data, error } = await supabase.rpc('market_creator_attribution', { p_instrument_public_id: instrumentPublicId });
+  fail(error, 'We could not load the market creator details right now. Please try again.');
+  return data as Record<string, unknown> | null;
+}
