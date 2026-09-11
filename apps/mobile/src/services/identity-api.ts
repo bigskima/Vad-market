@@ -7,6 +7,7 @@ export type KycStatus = {
   status: 'NOT_STARTED' | 'CREATED' | 'PROVIDER_PENDING' | 'IN_REVIEW' | 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
   providerCode?: string;
   providerConfigured?: boolean;
+  kycStartAvailable?: boolean;
   createdAt?: string;
   updatedAt?: string;
   completedAt?: string | null;
