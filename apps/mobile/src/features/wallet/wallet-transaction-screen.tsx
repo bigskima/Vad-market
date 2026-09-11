@@ -8,7 +8,7 @@ import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
-import { money } from '@/features/markets/format';
+import { assetMoney } from '@/features/markets/format';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -86,13 +86,13 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
   const settled = Boolean(intent.settled_at);
   const failed = Boolean(intent.failure_code);
   const processing = !settled && !failed;
-  const statusTone = settled ? 'yes' : failed ? 'danger' : 'warning';
   const statusTitle = settled
     ? 'Payment settled'
     : failed
       ? 'Payment needs attention'
       : 'Payment is processing';
   const netDifference = Number(intent.amount) - Number(intent.net_amount);
+  const amount = (value: unknown) => assetMoney(value, intent.asset_code);
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.lg : theme.spacing.xl }}>
@@ -118,7 +118,7 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
             <VadChip label={intent.asset_code} />
           </View>
           <VadText variant={density.compact ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
-            {money(intent.amount)}
+            {amount(intent.amount)}
           </VadText>
           <VadText variant="caption" tone="secondary">
             {new Date(intent.created_at).toLocaleString()}
@@ -175,10 +175,10 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
               <VadText variant="caption" tone="secondary">Values returned by this payment intent.</VadText>
             </View>
             <View>
-              <Detail label="Gross amount" value={money(intent.amount)} />
-              <Detail label="Fee" value={money(intent.fee_amount)} />
-              <Detail label="Net amount" value={money(intent.net_amount)} emphasized />
-              <Detail label="Fee difference" value={money(netDifference)} />
+              <Detail label="Gross amount" value={amount(intent.amount)} />
+              <Detail label="Fee" value={amount(intent.fee_amount)} />
+              <Detail label="Net amount" value={amount(intent.net_amount)} emphasized />
+              <Detail label="Fee difference" value={amount(netDifference)} />
               <Detail label="Asset" value={intent.asset_code} />
             </View>
           </VadCard>
