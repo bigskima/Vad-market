@@ -1,14 +1,21 @@
 import { Redirect } from 'expo-router';
 import { View } from 'react-native';
 
-import { VadLogo } from '@/components/brand/vad-logo';
 import { AuthScreen } from '@/components/auth-screen';
+import { PasswordRecoveryScreen } from '@/components/auth/password-recovery-screen';
+import { PhoneVerificationScreen } from '@/components/auth/phone-verification-screen';
+import { VadLogo } from '@/components/brand/vad-logo';
 import { VadText } from '@/components/ui/vad-text';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 
 export default function IndexScreen() {
-  const { isLoading, session } = useAuth();
+  const {
+    isLoading,
+    session,
+    isPasswordRecovery,
+    verificationPromptPending,
+  } = useAuth();
   const theme = useVadTheme();
 
   if (isLoading) {
@@ -33,7 +40,11 @@ export default function IndexScreen() {
     );
   }
 
+  if (isPasswordRecovery) return <PasswordRecoveryScreen />;
   if (!session) return <AuthScreen />;
+  if (verificationPromptPending && !session.user.phone_confirmed_at) {
+    return <PhoneVerificationScreen />;
+  }
 
   return <Redirect href="/home" />;
 }
