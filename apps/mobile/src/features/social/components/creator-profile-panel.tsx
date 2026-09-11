@@ -45,7 +45,7 @@ export function CreatorProfilePanel({
             <VadCard variant="brand" style={{ flex: 1.15, gap: theme.spacing.sm }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
                 <VadText variant="caption" tone="brand">VAD TRACK RECORD</VadText>
-                <VadChip label={`${reputation.resolvedPredictions} resolved`} />
+                <VadChip label={`${reputation.resolvedPredictions} completed`} />
               </View>
               <VadText variant={density.compact ? 'title' : 'display'} tone="brand" numberOfLines={1} adjustsFontSizeToFit>
                 {reputation.evidenceWeightedReputation}%
@@ -56,7 +56,7 @@ export function CreatorProfilePanel({
             </VadCard>
 
             <VadCard variant="raised" style={{ flex: 0.85, gap: theme.spacing.sm }}>
-              <VadText variant="bodyStrong">Resolved performance</VadText>
+              <VadText variant="bodyStrong">Past results</VadText>
               <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
                 <SignalMetric
                   label="Accuracy"
@@ -64,9 +64,9 @@ export function CreatorProfilePanel({
                   detail={`${reputation.correctPredictions} correct`}
                 />
                 <SignalMetric
-                  label="Calibration"
+                  label="Confidence accuracy"
                   value={reputation.calibrationScore == null ? '—' : pct(reputation.calibrationScore)}
-                  detail={`${reputation.calibratedPredictions} scored`}
+                  detail={`${reputation.calibratedPredictions} measured`}
                 />
               </View>
             </VadCard>
@@ -74,7 +74,7 @@ export function CreatorProfilePanel({
 
           <VadCard variant="raised" style={{ gap: 0 }}>
             <VadText variant="bodyStrong" style={{ marginBottom: theme.spacing.xs }}>Creator activity</VadText>
-            <MetricRow label="Resolved predictions" value={String(reputation.resolvedPredictions)} />
+            <MetricRow label="Completed predictions" value={String(reputation.resolvedPredictions)} />
             <MetricRow label="Correct predictions" value={String(reputation.correctPredictions)} />
             <MetricRow label="Published posts" value={String(reputation.posts)} />
             <MetricRow label="Markets created" value={String(reputation.originatedMarkets)} />
@@ -82,9 +82,9 @@ export function CreatorProfilePanel({
 
           <VadCard variant="muted" style={{ gap: 2 }}>
             <VadText variant="caption" tone="brand">ABOUT THIS SCORE</VadText>
-            <VadText variant="bodyStrong">A track record is not a final verdict.</VadText>
+            <VadText variant="bodyStrong">A track record is not a guarantee.</VadText>
             <VadText variant="caption" tone="secondary">
-              Creator performance can help you evaluate someone’s past reasoning. Every market is still resolved using its own published rules and evidence.
+              Past performance can help you understand someone’s history. Every market is still decided using its own published rules and evidence.
             </VadText>
           </VadCard>
         </View>
@@ -120,7 +120,7 @@ function PredictionHistory({ predictions }: { predictions: CreatorPrediction[] }
         {predictions.slice(0, 20).map((item) => {
           const resolved = item.resolution_status === 'FINAL';
           const resultTone = item.correct === true ? 'yes' : item.correct === false ? 'no' : 'secondary';
-          const resultLabel = resolved ? item.correct ? 'Correct' : 'Missed' : 'Unresolved';
+          const resultLabel = resolved ? item.correct ? 'Correct' : 'Missed' : 'Waiting for result';
           const stanceTone = item.stance_outcome_code === 'YES' ? 'yes' : 'no';
 
           return (
