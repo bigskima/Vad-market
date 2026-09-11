@@ -8,6 +8,7 @@ import { HomePromotionCarousel } from '@/features/home/components/home-promotion
 import { MarketCard } from '@/features/markets/components/market-card';
 import { probability } from '@/features/markets/format';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
+import { TourTarget, useProductTour } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type {
@@ -35,6 +36,7 @@ export function HomeScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const { registerTarget } = useProductTour();
   const desktopMarketGrid = density.desktop;
 
   const active = markets.filter(
@@ -70,164 +72,176 @@ export function HomeScreen({
 
   return (
     <View style={{ gap: sectionGap }}>
-      <VadCard
-        variant="brand"
-        style={{
-          gap: density.compact ? theme.spacing.md : theme.spacing.lg,
-          padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-          borderColor: theme.colors.brandPrimary,
-        }}
-      >
-        <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
-          <VadText variant="caption" tone="brand">VAD MARKET</VadText>
-          <VadText variant={density.phone ? 'title' : 'display'}>
-            Price the outcome. Back your conviction.
-          </VadText>
-          <VadText tone="secondary" style={{ maxWidth: 650 }}>
-            Discover markets, compare current prices and take a position when you are ready.
-          </VadText>
-        </View>
-
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: density.compact ? 6 : theme.spacing.xs }}>
-          <VadChip label={`${active.length} live`} tone="yes" />
-          <VadChip label={`${categories.length} categories`} />
-          <VadChip label={`${traded} recently traded`} />
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onExploreMarkets()}
-          style={({ pressed }) => ({
-            minHeight: 44,
-            alignSelf: 'flex-start',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: theme.spacing.lg,
-            borderRadius: theme.radius.pill,
-            backgroundColor: theme.colors.brandPrimary,
-            opacity: pressed ? 0.78 : 1,
-          })}
+      <TourTarget id="home-overview">
+        <VadCard
+          variant="brand"
+          style={{
+            gap: density.compact ? theme.spacing.md : theme.spacing.lg,
+            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+            borderColor: theme.colors.brandPrimary,
+          }}
         >
-          <VadText variant="label" tone="inverse">Explore markets →</VadText>
-        </Pressable>
-      </VadCard>
+          <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
+            <VadText variant="caption" tone="brand">VAD MARKET</VadText>
+            <VadText variant={density.phone ? 'title' : 'display'}>
+              Price the outcome. Back your conviction.
+            </VadText>
+            <VadText tone="secondary" style={{ maxWidth: 650 }}>
+              Discover markets, compare current prices and take a position when you are ready.
+            </VadText>
+          </View>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: density.compact ? 6 : theme.spacing.xs }}>
+            <VadChip label={`${active.length} live`} tone="yes" />
+            <VadChip label={`${categories.length} categories`} />
+            <VadChip label={`${traded} recently traded`} />
+          </View>
+
+          <Pressable
+            ref={(node) => registerTarget('home-explore-markets', node)}
+            collapsable={false}
+            accessibilityRole="button"
+            onPress={() => onExploreMarkets()}
+            style={({ pressed }) => ({
+              minHeight: 44,
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: theme.spacing.lg,
+              borderRadius: theme.radius.pill,
+              backgroundColor: theme.colors.brandPrimary,
+              opacity: pressed ? 0.78 : 1,
+            })}
+          >
+            <VadText variant="label" tone="inverse">Explore markets →</VadText>
+          </Pressable>
+        </VadCard>
+      </TourTarget>
 
       <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
 
-      <View style={{ gap: density.compact ? 8 : theme.spacing.sm }}>
-        <VadSectionHeader
-          title="Featured markets"
-          subtitle="Markets worth a closer look."
-          actionLabel="All markets"
-          onAction={() => onExploreMarkets()}
-        />
+      <TourTarget id="home-featured-markets">
+        <View style={{ gap: density.compact ? 8 : theme.spacing.sm }}>
+          <VadSectionHeader
+            title="Featured markets"
+            subtitle="Markets worth a closer look."
+            actionLabel="All markets"
+            onAction={() => onExploreMarkets()}
+          />
 
-        {featuredLead ? (
-          <View style={{ gap: theme.spacing.sm }}>
-            <Spotlight market={featuredLead} onPress={() => onOpenMarket(featuredLead)} />
-            {featuredRail.length ? (
+          {featuredLead ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <Spotlight market={featuredLead} onPress={() => onOpenMarket(featuredLead)} />
+              {featuredRail.length ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
+                >
+                  {featuredRail.map((market) => (
+                    <View
+                      key={market.instrument_public_id}
+                      style={{ width: Math.min(density.width - (density.narrow ? 36 : 44), 316) }}
+                    >
+                      <MarketCard market={market} onPress={() => onOpenMarket(market)} />
+                    </View>
+                  ))}
+                </ScrollView>
+              ) : null}
+            </View>
+          ) : (
+            <VadCard
+              variant="raised"
+              style={{ minHeight: density.compact ? 98 : 112, justifyContent: 'center', gap: 5 }}
+            >
+              <VadText variant="bodyStrong">No featured markets yet.</VadText>
+              <VadText variant="caption" tone="secondary">
+                Featured markets will appear here when available.
+              </VadText>
+            </VadCard>
+          )}
+        </View>
+      </TourTarget>
+
+      <TourTarget id="home-categories">
+        <View style={{ gap: density.compact ? 8 : theme.spacing.sm }}>
+          <VadSectionHeader
+            title="Explore"
+            subtitle="Jump straight into a category."
+            actionLabel="All markets"
+            onAction={() => onExploreMarkets()}
+          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: density.compact ? 6 : theme.spacing.xs, paddingRight: theme.spacing.md }}
+          >
+            <VadChip label="All markets" selected tone="brand" onPress={() => onExploreMarkets()} />
+            {categories.map((category) => (
+              <VadChip key={category} label={category} onPress={() => onExploreMarkets(category)} />
+            ))}
+          </ScrollView>
+        </View>
+      </TourTarget>
+
+      <TourTarget id="home-trending">
+        <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
+          <VadSectionHeader
+            title="Trending now"
+            subtitle="Markets with the most recent activity."
+            actionLabel="See all"
+            onAction={() => onExploreMarkets()}
+          />
+          {trending.length ? (
+            desktopMarketGrid ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md, alignItems: 'stretch' }}>
+                {trending.map((market) => (
+                  <View key={market.instrument_public_id} style={{ flexGrow: 1, flexBasis: 320, minWidth: 0 }}>
+                    <MarketCard market={market} onPress={() => onOpenMarket(market)} />
+                  </View>
+                ))}
+              </View>
+            ) : (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
               >
-                {featuredRail.map((market) => (
-                  <View
-                    key={market.instrument_public_id}
-                    style={{ width: Math.min(density.width - (density.narrow ? 36 : 44), 316) }}
-                  >
+                {trending.map((market) => (
+                  <View key={market.instrument_public_id} style={{ width: Math.min(density.width - (density.narrow ? 36 : 44), 316) }}>
                     <MarketCard market={market} onPress={() => onOpenMarket(market)} />
                   </View>
                 ))}
               </ScrollView>
-            ) : null}
-          </View>
-        ) : (
-          <VadCard
-            variant="raised"
-            style={{ minHeight: density.compact ? 98 : 112, justifyContent: 'center', gap: 5 }}
-          >
-            <VadText variant="bodyStrong">No featured markets yet.</VadText>
-            <VadText variant="caption" tone="secondary">
-              Featured markets will appear here when available.
-            </VadText>
-          </VadCard>
-        )}
-      </View>
-
-      <View style={{ gap: density.compact ? 8 : theme.spacing.sm }}>
-        <VadSectionHeader
-          title="Explore"
-          subtitle="Jump straight into a category."
-          actionLabel="All markets"
-          onAction={() => onExploreMarkets()}
-        />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: density.compact ? 6 : theme.spacing.xs, paddingRight: theme.spacing.md }}
-        >
-          <VadChip label="All markets" selected tone="brand" onPress={() => onExploreMarkets()} />
-          {categories.map((category) => (
-            <VadChip key={category} label={category} onPress={() => onExploreMarkets(category)} />
-          ))}
-        </ScrollView>
-      </View>
-
-      <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-        <VadSectionHeader
-          title="Trending now"
-          subtitle="Markets with the most recent activity."
-          actionLabel="See all"
-          onAction={() => onExploreMarkets()}
-        />
-        {trending.length ? (
-          desktopMarketGrid ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md, alignItems: 'stretch' }}>
-              {trending.map((market) => (
-                <View key={market.instrument_public_id} style={{ flexGrow: 1, flexBasis: 320, minWidth: 0 }}>
-                  <MarketCard market={market} onPress={() => onOpenMarket(market)} />
-                </View>
-              ))}
-            </View>
+            )
           ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
-            >
-              {trending.map((market) => (
-                <View key={market.instrument_public_id} style={{ width: Math.min(density.width - (density.narrow ? 36 : 44), 316) }}>
-                  <MarketCard market={market} onPress={() => onOpenMarket(market)} />
-                </View>
-              ))}
-            </ScrollView>
-          )
-        ) : (
-          <VadCard variant="outlined" style={{ minHeight: 78, justifyContent: 'center' }}>
-            <VadText variant="caption" tone="tertiary">
-              Recent trading activity will appear here when available.
-            </VadText>
-          </VadCard>
-        )}
-      </View>
+            <VadCard variant="outlined" style={{ minHeight: 78, justifyContent: 'center' }}>
+              <VadText variant="caption" tone="tertiary">
+                Recent trading activity will appear here when available.
+              </VadText>
+            </VadCard>
+          )}
+        </View>
+      </TourTarget>
 
-      <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-        <VadSectionHeader
-          title="Community"
-          subtitle="See what other people are saying about the markets."
-          actionLabel="Open feed"
-          onAction={onOpenCommunity}
-        />
-        <SocialConvictionFeed
-          markets={markets}
-          canCreatePost={false}
-          showComposer={false}
-          maxPosts={3}
-          onOpenMarket={onOpenMarket}
-        />
-      </View>
+      <TourTarget id="home-community">
+        <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
+          <VadSectionHeader
+            title="Community"
+            subtitle="See what other people are saying about the markets."
+            actionLabel="Open feed"
+            onAction={onOpenCommunity}
+          />
+          <SocialConvictionFeed
+            markets={markets}
+            canCreatePost={false}
+            showComposer={false}
+            maxPosts={3}
+            onOpenMarket={onOpenMarket}
+          />
+        </View>
+      </TourTarget>
     </View>
   );
 }
