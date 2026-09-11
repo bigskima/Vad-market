@@ -33,7 +33,7 @@ export function CreatorProfilePanel({
       <VadSegmentedControl
         value={tab}
         options={[
-          { value: 'signal', label: 'Signal' },
+          { value: 'signal', label: 'Track record' },
           { value: 'predictions', label: `Predictions ${predictions.length}` },
         ] as const}
         onChange={setTab}
@@ -44,14 +44,14 @@ export function CreatorProfilePanel({
           <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
             <VadCard variant="brand" style={{ flex: 1.15, gap: theme.spacing.sm }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-                <VadText variant="caption" tone="brand">EVIDENCE-WEIGHTED REPUTATION</VadText>
+                <VadText variant="caption" tone="brand">VAD TRACK RECORD</VadText>
                 <VadChip label={`${reputation.resolvedPredictions} resolved`} />
               </View>
               <VadText variant={density.compact ? 'title' : 'display'} tone="brand" numberOfLines={1} adjustsFontSizeToFit>
                 {reputation.evidenceWeightedReputation}%
               </VadText>
               <VadText variant="caption" tone="secondary">
-                A descriptive score from the creator’s resolved prediction record. It never changes oracle authority.
+                A summary score based on this creator’s completed prediction history. Use it as context, not as a guarantee of future results.
               </VadText>
             </VadCard>
 
@@ -77,14 +77,14 @@ export function CreatorProfilePanel({
             <MetricRow label="Resolved predictions" value={String(reputation.resolvedPredictions)} />
             <MetricRow label="Correct predictions" value={String(reputation.correctPredictions)} />
             <MetricRow label="Published posts" value={String(reputation.posts)} />
-            <MetricRow label="Originated markets" value={String(reputation.originatedMarkets)} />
+            <MetricRow label="Markets created" value={String(reputation.originatedMarkets)} />
           </VadCard>
 
           <VadCard variant="muted" style={{ gap: 2 }}>
-            <VadText variant="caption" tone="brand">REPUTATION BOUNDARY</VadText>
-            <VadText variant="bodyStrong">Track record, not truth authority</VadText>
+            <VadText variant="caption" tone="brand">ABOUT THIS SCORE</VadText>
+            <VadText variant="bodyStrong">A track record is not a final verdict.</VadText>
             <VadText variant="caption" tone="secondary">
-              Creator reputation can help people evaluate reasoning. Oracle resolution, disputes and settlement remain independent backend processes.
+              Creator performance can help you evaluate someone’s past reasoning. Every market is still resolved using its own published rules and evidence.
             </VadText>
           </VadCard>
         </View>
@@ -113,7 +113,7 @@ function PredictionHistory({ predictions }: { predictions: CreatorPrediction[] }
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ gap: 2 }}>
         <VadText variant="heading">Prediction history</VadText>
-        <VadText variant="caption" tone="secondary">Published conviction paired with the resolution state available to VAD.</VadText>
+        <VadText variant="caption" tone="secondary">See this creator’s published calls and how completed markets turned out.</VadText>
       </View>
 
       <View style={{ flexDirection: grid ? 'row' : 'column', flexWrap: grid ? 'wrap' : 'nowrap', gap: theme.spacing.sm }}>
@@ -140,14 +140,14 @@ function PredictionHistory({ predictions }: { predictions: CreatorPrediction[] }
               <View style={{ flexDirection: 'row', gap: theme.spacing.xs, flexWrap: 'wrap', alignItems: 'center' }}>
                 <VadChip label={`Called ${item.stance_outcome_code}`} tone={stanceTone} />
                 {item.confidence != null ? <VadChip label={`Confidence ${pct(item.confidence)}`} /> : null}
-                {item.resolved_outcome_code ? <VadChip label={`Resolved ${item.resolved_outcome_code}`} tone={item.resolved_outcome_code === 'YES' ? 'yes' : 'no'} /> : null}
+                {item.resolved_outcome_code ? <VadChip label={`Result ${item.resolved_outcome_code}`} tone={item.resolved_outcome_code === 'YES' ? 'yes' : 'no'} /> : null}
               </View>
 
               {item.body ? <VadText variant="caption" tone="secondary" numberOfLines={3}>{item.body}</VadText> : null}
 
               {item.finalized_at ? (
                 <VadText variant="caption" tone="tertiary" style={{ marginTop: 'auto' }}>
-                  Finalized {new Date(item.finalized_at).toLocaleDateString()}
+                  Completed {new Date(item.finalized_at).toLocaleDateString()}
                 </VadText>
               ) : null}
             </VadCard>
