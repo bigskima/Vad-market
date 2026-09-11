@@ -33,7 +33,7 @@ export default function IndexScreen() {
         <View style={{ alignItems: 'center', gap: 2 }}>
           <VadText variant="heading">VAD</VadText>
           <VadText variant="caption" tone="secondary">
-            Preparing your workspace…
+            Getting things ready…
           </VadText>
         </View>
       </View>
