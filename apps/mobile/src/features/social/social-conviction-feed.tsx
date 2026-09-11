@@ -48,6 +48,7 @@ export function SocialConvictionFeed({
   const density = useProductDensity();
   const [posts, setPosts] = useState<ConvictionPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -71,16 +72,19 @@ export function SocialConvictionFeed({
   const pendingLikeRef = useRef(new Set<string>());
   const pendingFollowRef = useRef(new Set<string>());
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (background = false) => {
+    if (background) setRefreshing(true);
     setFeedError(null);
     try {
-      setPosts(await getConvictionFeed());
+      const limit = typeof maxPosts === 'number' && !marketFilter ? Math.max(1, Math.min(maxPosts, 30)) : 30;
+      setPosts(await getConvictionFeed(limit));
     } catch (error) {
       setFeedError(error instanceof Error ? error.message : 'Community activity could not be loaded.');
     } finally {
-      setPostsLoading(false);
+      if (background) setRefreshing(false);
+      else setPostsLoading(false);
     }
-  }, []);
+  }, [marketFilter, maxPosts]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
@@ -128,7 +132,7 @@ export function SocialConvictionFeed({
       setMarket(null);
       setStance(null);
       setComposerOpen(false);
-      await load();
+      await load(true);
     } catch (error) {
       setComposerError(error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -242,19 +246,26 @@ export function SocialConvictionFeed({
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-      {showComposer && canCreatePost ? (
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
+      {showComposer ? (
+        <View style={{ flexDirection: density.narrow ? 'column' : 'row', justifyContent: 'space-between', alignItems: density.narrow ? 'stretch' : 'center', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, gap: 1 }}>
             <VadText variant="bodyStrong">{marketFilter ? 'Market discussion' : 'Community feed'}</VadText>
             <VadText variant="caption" tone="secondary" numberOfLines={2}>
-              {marketFilter ? 'Add reasoning or publish a market prediction.' : 'Share analysis or attach a live market prediction.'}
+              {canCreatePost
+                ? marketFilter ? 'Add reasoning or publish a market prediction.' : 'Share analysis or attach a live market prediction.'
+                : 'Read creator reasoning and refresh for the latest published activity.'}
             </VadText>
           </View>
-          <VadButton label={composerOpen ? 'Close' : 'New post'} fullWidth={false} size="small" variant={composerOpen ? 'ghost' : 'secondary'} onPress={() => setComposerOpen((value) => !value)} />
+          <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
+            <VadButton label="Refresh" fullWidth={false} size="small" variant="ghost" loading={refreshing} disabled={composerWorking} onPress={() => void load(true)} />
+            {canCreatePost ? (
+              <VadButton label={composerOpen ? 'Close' : 'New post'} fullWidth={false} size="small" variant={composerOpen ? 'ghost' : 'secondary'} disabled={refreshing} onPress={() => setComposerOpen((value) => !value)} />
+            ) : null}
+          </View>
         </View>
       ) : null}
 
-      {showComposer && composerOpen ? (
+      {showComposer && composerOpen && canCreatePost ? (
         <View style={{ gap: theme.spacing.sm }}>
           <ConvictionComposer
             markets={markets}
@@ -273,7 +284,7 @@ export function SocialConvictionFeed({
       ) : null}
 
       {actionError ? <InlineError title="Community action not saved" message={actionError} onDismiss={() => setActionError(null)} /> : null}
-      {feedError && visiblePosts.length ? <VadErrorState title="Community refresh failed" message={feedError} onRetry={() => void load()} /> : null}
+      {feedError && visiblePosts.length ? <VadErrorState title="Community refresh failed" message={feedError} onRetry={() => void load(true)} /> : null}
 
       {postsLoading ? (
         <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
@@ -286,6 +297,8 @@ export function SocialConvictionFeed({
         <VadEmptyState
           title={marketFilter ? 'No discussion yet' : 'No creator posts yet'}
           body={marketFilter ? 'Be the first to add reasoning or a prediction to this market.' : 'The first conviction can start a discussion without creating a duplicate financial market.'}
+          actionLabel={showComposer && canCreatePost ? 'Create post' : undefined}
+          onAction={showComposer && canCreatePost ? () => setComposerOpen(true) : undefined}
         />
       ) : (
         <View style={{ gap: density.compact ? 8 : theme.spacing.md }}>
@@ -447,6 +460,7 @@ function CommentNode({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={`Reply to ${authorName}`}
               onPress={() => onReply(comment)}
               style={({ pressed }) => ({ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: theme.spacing.xs, opacity: pressed ? 0.6 : 1 })}
             >
@@ -457,6 +471,7 @@ function CommentNode({
             {replies.length ? (
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel={collapsed ? `Show ${replies.length} replies` : `Hide ${replies.length} replies`}
                 accessibilityState={{ expanded: !collapsed }}
                 onPress={() => onToggle(comment.comment_public_id)}
                 style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.xs, opacity: pressed ? 0.6 : 1 })}
@@ -493,7 +508,7 @@ function InlineError({ title, message, onDismiss }: { title: string; message: st
   const theme = useVadTheme();
   const density = useProductDensity();
   return (
-    <VadCard variant="raised" style={{ borderColor: theme.colors.danger, gap: 4 }}>
+    <VadCard accessibilityRole="alert" variant="raised" style={{ borderColor: theme.colors.danger, gap: 4 }}>
       <VadText variant="caption" tone="danger">{title.toUpperCase()}</VadText>
       <VadText variant="caption" tone="secondary">{message}</VadText>
       <VadButton label="Dismiss" variant="ghost" size="small" fullWidth={false} onPress={onDismiss} style={{ marginTop: density.compact ? 0 : 2 }} />
