@@ -13,6 +13,7 @@ export function ProductSidebar({
   isAdmin,
   canCreate,
   onNavigate,
+  onCommunity,
   onCreate,
   onAdmin,
 }: {
@@ -21,6 +22,7 @@ export function ProductSidebar({
   isAdmin: boolean;
   canCreate: boolean;
   onNavigate: (tab: ProductTab) => void;
+  onCommunity: () => void;
   onCreate: () => void;
   onAdmin: () => void;
 }) {
@@ -87,7 +89,8 @@ export function ProductSidebar({
 
       <Pressable
         accessibilityRole="button"
-        onPress={() => onNavigate('Markets')}
+        accessibilityLabel="Open community"
+        onPress={onCommunity}
         style={({ pressed }) => ({
           minHeight: 48,
           flexDirection: 'row',
@@ -95,11 +98,12 @@ export function ProductSidebar({
           gap: theme.spacing.sm,
           paddingHorizontal: theme.spacing.md,
           borderRadius: theme.radius.lg,
+          backgroundColor: pressed ? theme.colors.surfaceRaised : 'transparent',
           opacity: pressed ? 0.68 : 1,
         })}
       >
         <VadIcon name="community" size={19} tone="secondary" />
-        <VadText variant="bodyStrong" tone="secondary">Discover</VadText>
+        <VadText variant="bodyStrong" tone="secondary">Community</VadText>
       </Pressable>
 
       <View style={{ flex: 1 }} />
