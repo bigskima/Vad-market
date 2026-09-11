@@ -134,7 +134,7 @@ function Overview({
             <VadText variant="caption" tone="brand">MARKET OVERVIEW</VadText>
             <VadText variant="heading">Prices show what traders think. The rules decide the result.</VadText>
             <VadText variant="caption" tone="secondary">
-              YES and NO prices show how people are trading. The final result comes from the published market rules and accepted evidence, not from whichever side has the higher price.
+              YES and NO prices show how people are trading. The final result follows the published market rules and the evidence used to verify what happened, not whichever side has the higher price.
             </VadText>
           </View>
 
@@ -184,7 +184,7 @@ function Overview({
         <VadText variant="caption" tone="brand">HOW TO READ THE PRICE</VadText>
         <VadText variant="bodyStrong">A market price is not the final result.</VadText>
         <VadText variant="caption" tone="secondary">
-          For example, a 90% YES price means traders strongly favour YES. The final result can still be NO if the published rules and accepted evidence support NO.
+          For example, a 90% YES price means traders strongly favour YES. The final result can still be NO if the published rules and evidence support NO.
         </VadText>
       </VadCard>
     </View>
@@ -216,7 +216,7 @@ function Lifecycle({ market }: { market: MarketCatalogItem }) {
         <LifecycleStep
           number="2"
           title="Result"
-          body="The final outcome is checked against the market rules and accepted evidence."
+          body="The final outcome is checked against the market rules and supporting evidence."
           state={resolutionDone ? 'complete' : resolutionActive ? 'active' : 'waiting'}
         />
         <LifecycleStep
@@ -267,7 +267,7 @@ function Rules({ market }: { market: MarketCatalogItem }) {
     {
       number: '3',
       title: 'The result follows the rules',
-      body: 'The final result comes from the market’s published criteria and accepted evidence. Community posts and creator opinions do not decide the outcome.',
+      body: 'The final result comes from the market’s published criteria and supporting evidence. Community posts and creator opinions do not decide the outcome.',
     },
     {
       number: '4',
