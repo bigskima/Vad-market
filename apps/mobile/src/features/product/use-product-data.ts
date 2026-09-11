@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { userFacingErrorMessage, type UserErrorContext } from '@/lib/user-facing-error';
 import {
   getHomeExperience,
   type FeaturedMarketRow,
@@ -38,10 +39,11 @@ const emptySectionErrors: ProductSectionErrors = {
 
 function settledError(
   result: PromiseSettledResult<unknown>,
+  context: UserErrorContext,
   fallback: string,
 ) {
   if (result.status === 'fulfilled') return null;
-  return result.reason instanceof Error ? result.reason.message : fallback;
+  return userFacingErrorMessage(result.reason, context, fallback);
 }
 
 export function useProductData(enabled = true) {
@@ -100,9 +102,11 @@ export function useProductData(enabled = true) {
       setHomeExperienceError(null);
     } catch (reason) {
       setHomeExperienceError(
-        reason instanceof Error
-          ? reason.message
-          : 'We could not refresh the latest highlights right now. Please try again.',
+        userFacingErrorMessage(
+          reason,
+          'general',
+          'We could not refresh the latest highlights right now. Please try again.',
+        ),
       );
     }
   }, [enabled]);
@@ -119,11 +123,11 @@ export function useProductData(enabled = true) {
     ]);
 
     const nextSectionErrors: ProductSectionErrors = {
-      markets: settledError(results[0], 'We could not refresh markets right now.'),
-      wallet: settledError(results[1], 'We could not refresh wallet balances right now.'),
-      positions: settledError(results[2], 'We could not refresh your positions right now.'),
-      orders: settledError(results[3], 'We could not refresh your orders right now.'),
-      proposals: settledError(results[4], 'We could not refresh your market proposals right now.'),
+      markets: settledError(results[0], 'markets', 'We could not refresh markets right now.'),
+      wallet: settledError(results[1], 'payments', 'We could not refresh wallet balances right now.'),
+      positions: settledError(results[2], 'portfolio', 'We could not refresh your positions right now.'),
+      orders: settledError(results[3], 'portfolio', 'We could not refresh your orders right now.'),
+      proposals: settledError(results[4], 'proposal', 'We could not refresh your market proposals right now.'),
     };
 
     setSectionErrors(nextSectionErrors);
