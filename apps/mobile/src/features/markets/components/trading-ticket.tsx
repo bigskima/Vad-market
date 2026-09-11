@@ -96,7 +96,7 @@ export function TradingTicket({
       }));
     } catch (error) {
       setQuote(null);
-      setQuoteError(error instanceof Error ? error.message : 'The trade could not be quoted. Check the order details and try again.');
+      setQuoteError(error instanceof Error ? error.message : 'We could not prepare this trade. Check the order details and try again.');
     } finally {
       setWorking(false);
     }
@@ -113,7 +113,7 @@ export function TradingTicket({
       setQuote(null);
       await onPlaced();
     } catch (error) {
-      setPlaceError(error instanceof Error ? error.message : 'The order could not be placed. Please try again.');
+      setPlaceError(error instanceof Error ? error.message : 'We could not place this order. Please try again.');
     } finally {
       setWorking(false);
     }
@@ -144,7 +144,7 @@ export function TradingTicket({
           <View style={{ gap: 2 }}>
             <VadText variant="heading">Your order is live.</VadText>
             <VadText variant="caption" tone="secondary">
-              It may fill when compatible liquidity becomes available. Portfolio and ledger state remain authoritative.
+              It may fill when matching orders become available. You can track its progress from Portfolio.
             </VadText>
           </View>
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 1 }}>
@@ -177,7 +177,7 @@ export function TradingTicket({
         {capabilityLoading ? (
           <InlineMessage tone="warning" title="Checking trading availability" body={runtimeCapabilityReason('CAPABILITIES_LOADING')} />
         ) : !canTrade ? (
-          <InlineMessage tone="warning" title="Trading unavailable" body={runtimeCapabilityReason(tradeReason, 'Trading is not available for this account under the current VAD policy.')} />
+          <InlineMessage tone="warning" title="Trading unavailable" body={runtimeCapabilityReason(tradeReason, 'Trading is not available for your account right now.')} />
         ) : null}
 
         <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: 6 }}>
@@ -199,7 +199,7 @@ export function TradingTicket({
           <View style={{ flex: 1 }}>
             <VadInput
               label={`Limit price · ${market.asset_code}`}
-              hint={tradeReady ? (currentProbability == null ? 'No current trade price yet. Enter your own limit price above 0 and up to 1.' : 'Above 0 and up to 1 settlement unit per share.') : 'Available when trading is enabled.'}
+              hint={tradeReady ? (currentProbability == null ? 'No current trade price yet. Enter your own limit price above 0 and up to 1.' : 'Enter a price above 0 and up to 1 per share.') : 'Available when trading is enabled.'}
               value={price}
               editable={tradeReady && !working}
               onChangeText={(value) => { setPrice(value); clearReviewState(); }}
@@ -255,7 +255,7 @@ export function TradingTicket({
           <View style={{ gap: 1 }}>
             <VadText variant="caption" tone="brand">ORDER REVIEW · {market.asset_code}</VadText>
             <VadText variant="heading">Check before placing.</VadText>
-            <VadText variant="caption" tone="secondary">This backend quote is authoritative for this order attempt.</VadText>
+            <VadText variant="caption" tone="secondary">Review these figures carefully. They apply to this order if you place it now.</VadText>
           </View>
 
           <QuoteLine label="Notional" value={assetMoney(quote.notional, market.asset_code)} />
