@@ -21,7 +21,7 @@ type Props = {
 export function WelcomeScreen({ onContinue }: Props) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
-  const wide = width >= 860;
+  const wide = width >= 768;
   const compact = width < 380;
 
   function cycleTheme() {
