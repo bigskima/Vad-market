@@ -47,6 +47,7 @@ export function ConvictionPostCard({
   const authorName = post.author_display_name ?? post.author_handle ?? 'VAD creator';
   const stance = post.stance_outcome_code === 'YES' || post.stance_outcome_code === 'NO' ? post.stance_outcome_code : null;
   const postType = post.post_type.replaceAll('_', ' ');
+  const creatorNavigable = Boolean(post.author_handle);
   const bookmarkKey = `vad:bookmark:${post.post_public_id}`;
   const [bookmarked, setBookmarked] = useState(() => {
     try {
@@ -80,15 +81,23 @@ export function ConvictionPostCard({
     <VadCard variant="raised" style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md, overflow: 'hidden' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
         <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={'Open ' + authorName + ' profile'}
+          accessibilityRole={creatorNavigable ? 'button' : undefined}
+          accessibilityLabel={creatorNavigable ? `Open ${authorName} profile` : undefined}
+          disabled={!creatorNavigable}
           onPress={onOpenCreator}
           hitSlop={4}
+          style={({ pressed }) => ({ opacity: pressed && creatorNavigable ? 0.7 : 1 })}
         >
           <ProfileAvatar path={post.author_avatar_path} name={authorName} size={density.compact ? 38 : 42} />
         </Pressable>
 
-        <Pressable accessibilityRole="button" onPress={onOpenCreator} style={{ flex: 1, minWidth: 0, gap: 1 }}>
+        <Pressable
+          accessibilityRole={creatorNavigable ? 'button' : undefined}
+          accessibilityLabel={creatorNavigable ? `Open ${authorName} profile` : undefined}
+          disabled={!creatorNavigable}
+          onPress={onOpenCreator}
+          style={({ pressed }) => ({ flex: 1, minWidth: 0, gap: 1, opacity: pressed && creatorNavigable ? 0.7 : 1 })}
+        >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <VadText variant="bodyStrong" tone={creatorOpen ? 'brand' : 'primary'} numberOfLines={1}>
               {authorName}
@@ -98,12 +107,13 @@ export function ConvictionPostCard({
             </View>
           </View>
           <VadText variant="caption" tone="secondary" numberOfLines={1}>
-            @{post.author_handle ?? 'member'} · {new Date(post.created_at).toLocaleDateString()}
+            {post.author_handle ? `@${post.author_handle}` : 'Profile handle not set'} · {new Date(post.created_at).toLocaleDateString()}
           </VadText>
         </Pressable>
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={post.viewer_follows_author ? `Unfollow ${authorName}` : `Follow ${authorName}`}
           accessibilityState={{ selected: post.viewer_follows_author, disabled: followDisabled, busy: followDisabled }}
           disabled={followDisabled}
           onPress={onFollow}
@@ -151,7 +161,7 @@ export function ConvictionPostCard({
       {post.market_title ? (
         <Pressable
           accessibilityRole={linkedMarket ? 'button' : undefined}
-          accessibilityLabel={linkedMarket ? 'Open linked market' : undefined}
+          accessibilityLabel={linkedMarket ? `Open linked market: ${post.market_title}` : undefined}
           onPress={onOpenMarket}
           disabled={!linkedMarket}
           style={({ pressed }) => ({
@@ -166,7 +176,7 @@ export function ConvictionPostCard({
         >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'flex-start' }}>
             <View style={{ flex: 1, gap: 2 }}>
-              <VadText variant="caption" tone="tertiary">LINKED MARKET</VadText>
+              <VadText variant="caption" tone="tertiary">LINKED MARKET{post.asset_code ? ` · ${post.asset_code}` : ''}</VadText>
               <VadText variant="bodyStrong" numberOfLines={density.compact ? 2 : 3}>{post.market_title}</VadText>
             </View>
             {stance ? <VadChip label={stance} tone={stance === 'YES' ? 'yes' : 'no'} /> : null}
@@ -175,7 +185,7 @@ export function ConvictionPostCard({
           <MarketProbabilityBar yes={post.yes_price} no={post.no_price} />
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
-            <VadText variant="caption" tone="secondary">{linkedMarket ? 'Live probability' : 'Market reference'}</VadText>
+            <VadText variant="caption" tone="secondary">{linkedMarket ? 'Market signal' : 'Market reference'}</VadText>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
               <VadText variant="caption" tone={linkedMarket ? 'brand' : 'tertiary'}>{linkedMarket ? 'Open market' : 'Unavailable'}</VadText>
               {linkedMarket ? <VadIcon name="chevronRight" size={13} tone="brand" /> : null}
@@ -217,7 +227,7 @@ function Action({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={count != null ? `${label}, ${count}` : label}
       accessibilityState={{ selected: active, disabled, busy: disabled }}
       disabled={disabled}
       onPress={onPress}
