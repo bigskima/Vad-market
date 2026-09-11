@@ -6,6 +6,7 @@ import { PasswordRecoveryScreen } from '@/components/auth/password-recovery-scre
 import { PhoneVerificationScreen } from '@/components/auth/phone-verification-screen';
 import { VadLogo } from '@/components/brand/vad-logo';
 import { VadText } from '@/components/ui/vad-text';
+import { useAuthMethods } from '@/hooks/use-auth-methods';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 
@@ -16,6 +17,7 @@ export default function IndexScreen() {
     isPasswordRecovery,
     verificationPromptPending,
   } = useAuth();
+  const { methods } = useAuthMethods();
   const theme = useVadTheme();
 
   if (isLoading) {
@@ -42,7 +44,11 @@ export default function IndexScreen() {
 
   if (isPasswordRecovery) return <PasswordRecoveryScreen />;
   if (!session) return <AuthScreen />;
-  if (verificationPromptPending && !session.user.phone_confirmed_at) {
+  if (
+    methods.phoneVerification
+    && verificationPromptPending
+    && !session.user.phone_confirmed_at
+  ) {
     return <PhoneVerificationScreen />;
   }
 
