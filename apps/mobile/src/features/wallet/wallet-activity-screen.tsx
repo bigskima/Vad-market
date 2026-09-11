@@ -23,8 +23,8 @@ type ActivityFilter = 'all' | 'processing' | 'settled' | 'failed';
 const FILTERS = [
   { value: 'all', label: 'All' },
   { value: 'processing', label: 'Pending' },
-  { value: 'settled', label: 'Settled' },
-  { value: 'failed', label: 'Failed' },
+  { value: 'settled', label: 'Completed' },
+  { value: 'failed', label: 'Needs attention' },
 ] as const;
 
 export function WalletActivityScreen({
@@ -58,7 +58,7 @@ export function WalletActivityScreen({
       setError(
         reason instanceof Error
           ? reason.message
-          : 'Wallet activity could not be loaded.',
+          : 'We could not load wallet activity right now. Please try again.',
       );
     } finally {
       if (background) setRefreshing(false);
@@ -136,7 +136,7 @@ export function WalletActivityScreen({
           <VadText variant="caption" tone="brand">WALLET ACTIVITY</VadText>
           <VadText variant="title">Money movement</VadText>
           <VadText variant="caption" tone="secondary">
-            Deposits, withdrawals and their latest provider status, separated by asset.
+            Track deposits, withdrawals and their latest status, with each currency kept separate.
           </VadText>
         </View>
 
@@ -170,7 +170,7 @@ export function WalletActivityScreen({
         <>
           {error ? (
             <VadErrorState
-              title="Wallet activity refresh failed"
+              title="Could not refresh wallet activity"
               message={error}
               onRetry={() => void load(true)}
             />
@@ -189,14 +189,14 @@ export function WalletActivityScreen({
                 ))}
               </View>
             ) : (
-              <VadText variant="caption" tone="secondary">No money movement has been recorded yet.</VadText>
+              <VadText variant="caption" tone="secondary">No payment activity has been recorded yet.</VadText>
             )}
 
             <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
               <MiniStat label="All" value={counts.all} />
               <MiniStat label="Pending" value={counts.processing} tone={counts.processing ? 'warning' : 'primary'} />
-              <MiniStat label="Settled" value={counts.settled} tone={counts.settled ? 'yes' : 'primary'} />
-              <MiniStat label="Failed" value={counts.failed} tone={counts.failed ? 'danger' : 'primary'} />
+              <MiniStat label="Completed" value={counts.settled} tone={counts.settled ? 'yes' : 'primary'} />
+              <MiniStat label="Needs attention" value={counts.failed} tone={counts.failed ? 'danger' : 'primary'} />
             </View>
           </VadCard>
 
@@ -235,7 +235,7 @@ export function WalletActivityScreen({
           ) : (
             <VadEmptyState
               title={filter === 'all' ? 'No payment activity yet' : 'Nothing in this status'}
-              body={filter === 'all' ? 'Your deposit and withdrawal intents will appear here.' : 'Try another activity filter.'}
+              body={filter === 'all' ? 'Your deposits and withdrawals will appear here after you start them.' : 'Try another activity filter.'}
               actionLabel={filter !== 'all' ? 'Show all activity' : undefined}
               onAction={filter !== 'all' ? () => setFilter('all') : undefined}
             />
@@ -312,7 +312,7 @@ function DesktopActivityTable({
               <VadText variant="caption" tone="tertiary">{row.asset_code}</VadText>
             </TableCell>
             <TableCell flex={1}><VadText variant="bodyStrong">{assetMoney(row.amount, row.asset_code)}</VadText></TableCell>
-            <TableCell flex={1}><VadText variant="caption" tone={statusTone}>{row.status.replaceAll('_', ' ')}</VadText></TableCell>
+            <TableCell flex={1}><VadText variant="caption" tone={statusTone}>{paymentStatusLabel(row, classification)}</VadText></TableCell>
             <TableCell flex={1.2}><VadText variant="caption" tone="secondary">{new Date(row.created_at).toLocaleString()}</VadText></TableCell>
             <TableCell flex={1.7}><VadText variant="caption" tone="secondary" numberOfLines={1}>{row.intent_public_id}</VadText></TableCell>
           </Pressable>
@@ -335,9 +335,15 @@ function classify(row: PaymentIntentRow): Exclude<ActivityFilter, 'all'> {
   if (row.failure_code) return 'failed';
 
   const normalized = row.status.toUpperCase();
-  if (normalized === 'SETTLED' || normalized === 'COMPLETED') return 'settled';
-  if (normalized.includes('FAIL') || normalized.includes('REJECT') || normalized.includes('CANCEL')) return 'failed';
+  if (normalized === 'SETTLED' || normalized === 'COMPLETED' || normalized === 'SUCCESS' || normalized === 'SUCCEEDED') return 'settled';
+  if (normalized.includes('FAIL') || normalized.includes('REJECT') || normalized.includes('CANCEL') || normalized.includes('EXPIRE')) return 'failed';
   return 'processing';
+}
+
+function paymentStatusLabel(row: PaymentIntentRow, classification = classify(row)) {
+  if (classification === 'settled') return 'COMPLETED';
+  if (classification === 'failed') return 'NEEDS ATTENTION';
+  return 'PROCESSING';
 }
 
 function operationLabel(operation: PaymentIntentRow['operation']) {
