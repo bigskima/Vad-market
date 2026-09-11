@@ -17,7 +17,7 @@ import {
   type MarketCatalogItem,
   type TradeQuote,
 } from '@/services/market-api';
-import { money, pct } from '../format';
+import { assetMoney, pct } from '../format';
 
 const SHARE_PRESETS = ['25', '50', '100', '250'] as const;
 const SIDES = [
@@ -121,8 +121,12 @@ export function TradingTicket({
     Number.isFinite(quantityValue) && quantityValue > 0;
 
   const estimatedNotional = useMemo(
-    () => money((Number.isFinite(priceValue) ? priceValue : 0) * (Number.isFinite(quantityValue) ? quantityValue : 0)),
-    [priceValue, quantityValue],
+    () => assetMoney(
+      (Number.isFinite(priceValue) ? priceValue : 0) *
+        (Number.isFinite(quantityValue) ? quantityValue : 0),
+      market.asset_code,
+    ),
+    [market.asset_code, priceValue, quantityValue],
   );
 
   if (placedOrderId) {
@@ -154,7 +158,7 @@ export function TradingTicket({
       <VadCard variant="raised" style={{ width: '100%', flex: splitReview && quote ? 1.15 : undefined, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
           <View style={{ flex: 1, gap: 1 }}>
-            <VadText variant="caption" tone="brand">TRADE</VadText>
+            <VadText variant="caption" tone="brand">TRADE · {market.asset_code}</VadText>
             <VadText variant="heading">{side === 'BUY' ? 'Build a position' : 'Reduce a position'}</VadText>
           </View>
           <View style={{ alignItems: 'flex-end', gap: 0 }}>
@@ -169,7 +173,7 @@ export function TradingTicket({
           <InlineMessage tone="warning" title="Trading unavailable" body={runtimeCapabilityReason(tradeReason, 'Trading is not available for this account under the current VAD policy.')} />
         ) : null}
 
-        <View style={{ flexDirection: 'row', gap: 6 }}>
+        <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: 6 }}>
           <OutcomeChoice active={outcome === 'YES'} label="YES" value={pct(market.yes_price)} tone="yes" disabled={!tradeReady || working} onPress={() => chooseOutcome('YES')} />
           <OutcomeChoice active={outcome === 'NO'} label="NO" value={pct(market.no_price)} tone="no" disabled={!tradeReady || working} onPress={() => chooseOutcome('NO')} />
         </View>
@@ -187,8 +191,8 @@ export function TradingTicket({
         <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', gap: theme.spacing.sm }}>
           <View style={{ flex: 1 }}>
             <VadInput
-              label="Limit price"
-              hint={tradeReady ? 'Above 0 and up to 1.' : 'Available when trading is enabled.'}
+              label={`Limit price · ${market.asset_code}`}
+              hint={tradeReady ? 'Above 0 and up to 1 settlement unit per share.' : 'Available when trading is enabled.'}
               value={price}
               editable={tradeReady && !working}
               onChangeText={(value) => { setPrice(value); clearReviewState(); }}
@@ -226,7 +230,7 @@ export function TradingTicket({
 
         <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
           <MiniMetric label="Estimated" value={estimatedNotional} />
-          <MiniMetric label="Order" value="Limit" />
+          <MiniMetric label="Settlement" value={market.asset_code} />
         </View>
 
         {quoteError ? <InlineMessage tone="danger" title="Trade review unavailable" body={quoteError} /> : null}
@@ -242,20 +246,20 @@ export function TradingTicket({
       {quote ? (
         <VadCard variant="brand" style={{ width: '100%', flex: splitReview ? 0.85 : undefined, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
           <View style={{ gap: 1 }}>
-            <VadText variant="caption" tone="brand">ORDER REVIEW</VadText>
+            <VadText variant="caption" tone="brand">ORDER REVIEW · {market.asset_code}</VadText>
             <VadText variant="heading">Check before placing.</VadText>
             <VadText variant="caption" tone="secondary">This backend quote is authoritative for this order attempt.</VadText>
           </View>
 
-          <QuoteLine label="Notional" value={money(quote.notional)} />
-          <QuoteLine label="Maker fee" value={money(quote.makerFee)} />
-          <QuoteLine label="Taker fee" value={money(quote.takerFee)} />
+          <QuoteLine label="Notional" value={assetMoney(quote.notional, market.asset_code)} />
+          <QuoteLine label="Maker fee" value={assetMoney(quote.makerFee, market.asset_code)} />
+          <QuoteLine label="Taker fee" value={assetMoney(quote.takerFee, market.asset_code)} />
           {quote.side === 'BUY' ? (
-            <QuoteLine label="Maximum cash reserved" value={money(quote.maximumCashReservation)} />
+            <QuoteLine label="Maximum cash reserved" value={assetMoney(quote.maximumCashReservation, market.asset_code)} />
           ) : (
             <QuoteLine label="Shares available" value={String(quote.availableSharesToSell)} />
           )}
-          <QuoteLine label="Gross settlement if correct" value={money(quote.potentialGrossSettlement)} />
+          <QuoteLine label="Gross settlement if correct" value={assetMoney(quote.potentialGrossSettlement, market.asset_code)} />
 
           {placeError ? <InlineMessage tone="danger" title="Order not placed" body={placeError} /> : null}
           {!tradeReady ? <InlineMessage tone="warning" title="Order placement paused" body={runtimeCapabilityReason(tradeReason)} /> : null}
@@ -278,6 +282,7 @@ function OutcomeChoice({ active, label, value, tone, disabled = false, onPress }
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected: active, disabled }}
+      accessibilityLabel={`${label} outcome at ${value}`}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
