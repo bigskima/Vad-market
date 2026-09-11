@@ -1,15 +1,15 @@
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Image,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Image, View } from 'react-native';
 
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { VadButton } from '@/components/ui/vad-button';
+import { VadCard } from '@/components/ui/vad-card';
+import { VadChip } from '@/components/ui/vad-chip';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getCreatorPublicProfileByUsername,
@@ -25,39 +25,34 @@ import {
 } from '@/services/social-api';
 import { CreatorProfilePanel } from './components/creator-profile-panel';
 
-export function CreatorProfileScreen({
-  username,
-}: {
-  username: string;
-}) {
+export function CreatorProfileScreen({ username }: { username: string }) {
   const theme = useVadTheme();
-  const { width } = useWindowDimensions();
-  const wide = width >= 820;
-  const compact = width < 380;
+  const density = useProductDensity();
+  const wide = density.width >= 820;
   const [profile, setProfile] = useState<CreatorPublicProfile | null>(null);
   const [reputation, setReputation] = useState<CreatorReputation | null>(null);
   const [predictions, setPredictions] = useState<CreatorPrediction[]>([]);
   const [following, setFollowing] = useState(false);
   const [followWorking, setFollowWorking] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [followError, setFollowError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (background = false) => {
     if (!username.trim()) {
       setError('Creator profile is unavailable.');
       setLoading(false);
       return;
     }
 
+    if (background) setRefreshing(true);
     setError(null);
     setFollowError(null);
 
     try {
       const nextProfile = await getCreatorPublicProfileByUsername(username);
-      if (!nextProfile) {
-        throw new Error('No active VAD profile exists for this username.');
-      }
+      if (!nextProfile) throw new Error('No active VAD profile exists for this username.');
 
       const [nextReputation, nextPredictions] = await Promise.all([
         getCreatorReputation(nextProfile.userId),
@@ -69,21 +64,15 @@ export function CreatorProfileScreen({
       setReputation(nextReputation);
       setPredictions(nextPredictions);
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : 'Creator profile is unavailable.',
-      );
+      setError(reason instanceof Error ? reason.message : 'Creator profile is unavailable.');
     } finally {
-      setLoading(false);
+      if (background) setRefreshing(false);
+      else setLoading(false);
     }
   }, [username]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void load();
-    }, 0);
-
+    const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
   }, [load]);
 
@@ -121,15 +110,15 @@ export function CreatorProfileScreen({
   if (loading) {
     return (
       <View style={{ gap: theme.spacing.md }}>
-        <VadSkeleton height={wide ? 190 : 132} radius={theme.radius.lg} />
-        <VadSkeleton width={compact ? 72 : 84} height={compact ? 72 : 84} radius={42} />
+        <VadSkeleton height={wide ? 190 : 132} radius={density.cardRadius} />
+        <VadSkeleton width={density.compact ? 72 : 84} height={density.compact ? 72 : 84} radius={42} />
         <VadSkeleton width="58%" height={28} />
-        <VadSkeleton height={120} />
+        <VadSkeleton height={120} radius={density.cardRadius} />
       </View>
     );
   }
 
-  if (error || !profile || !reputation) {
+  if ((error && !profile) || !profile || !reputation) {
     return (
       <VadErrorState
         title="Creator profile unavailable"
@@ -144,154 +133,100 @@ export function CreatorProfileScreen({
 
   const name = profile.displayName ?? profile.handle ?? 'VAD creator';
   const banner = profileMediaUrl(profile.bannerPath);
-  const avatarSize = compact ? 72 : 84;
+  const avatarSize = density.compact ? 72 : 84;
 
   return (
-    <View style={{ gap: theme.spacing.xxxl }}>
-      <View style={{ gap: theme.spacing.lg }}>
-        <View
-          style={{
-            height: wide ? 190 : 132,
-            overflow: 'hidden',
-            borderRadius: theme.radius.lg,
-            backgroundColor: theme.colors.brandSoft,
-          }}
-        >
+    <View style={{ gap: density.sectionGap }}>
+      {error ? <VadErrorState title="Creator refresh failed" message={error} onRetry={() => void load(true)} /> : null}
+
+      <VadCard style={{ padding: 0, overflow: 'hidden' }}>
+        <View style={{ height: wide ? 190 : density.compact ? 108 : 132, backgroundColor: theme.colors.brandSoft }}>
           {banner ? (
-            <Image
-              source={{ uri: banner }}
-              resizeMode="cover"
-              style={{ width: '100%', height: '100%' }}
-            />
+            <Image source={{ uri: banner }} accessibilityLabel={`${name} profile banner`} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
           ) : (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: 'flex-end',
-                padding: theme.spacing.md,
-              }}
-            >
-              <VadText variant="caption" tone="brand">
-                CREATOR PROFILE
-              </VadText>
+            <View style={{ flex: 1, justifyContent: 'flex-end', padding: density.cardPadding, gap: 2 }}>
+              <VadText variant="caption" tone="brand">CREATOR PROFILE</VadText>
+              <VadText variant="caption" tone="secondary">Public conviction and resolved track record.</VadText>
             </View>
           )}
         </View>
 
-        <View
-          style={{
-            flexDirection: wide ? 'row' : 'column',
-            gap: theme.spacing.lg,
-            alignItems: wide ? 'flex-end' : 'flex-start',
-          }}
-        >
-          <View
-            style={{
-              marginTop: wide ? -56 : -46,
-              borderWidth: 3,
-              borderColor: theme.colors.background,
-              borderRadius: theme.radius.pill,
-            }}
-          >
-            <ProfileAvatar
-              path={profile.avatarPath}
-              name={name}
-              size={avatarSize}
-            />
+        <View style={{ padding: density.cardPadding, gap: theme.spacing.md }}>
+          <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md, alignItems: wide ? 'flex-end' : 'stretch' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: theme.spacing.md, flex: 1, minWidth: 0 }}>
+              <View style={{ marginTop: wide ? -64 : -52, borderWidth: 3, borderColor: theme.colors.surface, borderRadius: theme.radius.pill }}>
+                <ProfileAvatar path={profile.avatarPath} name={name} size={avatarSize} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
+                  <VadText variant="title" numberOfLines={1}>{name}</VadText>
+                  {profile.isSelf ? <VadChip label="YOU" tone="brand" /> : null}
+                </View>
+                <VadText variant="caption" tone="secondary" numberOfLines={1}>@{profile.handle}</VadText>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.xs }}>
+              <VadButton label="Refresh" variant="ghost" size="small" fullWidth={!wide && density.narrow} loading={refreshing} disabled={followWorking} onPress={() => void load(true)} />
+              {profile.isSelf ? (
+                <VadButton label="Edit profile" variant="secondary" size="small" fullWidth={!wide && density.narrow} onPress={() => router.push('/account/profile')} />
+              ) : (
+                <VadButton
+                  label={following ? 'Following' : 'Follow'}
+                  variant={following ? 'secondary' : 'primary'}
+                  size="small"
+                  fullWidth={!wide && density.narrow}
+                  loading={followWorking}
+                  accessibilityState={{ selected: following }}
+                  onPress={() => void toggleFollow()}
+                  style={wide ? { minWidth: 124 } : undefined}
+                />
+              )}
+            </View>
           </View>
 
-          <View style={{ flex: 1, width: '100%', gap: theme.spacing.xs }}>
-            <VadText variant="title">{name}</VadText>
-            <VadText tone="secondary">@{profile.handle}</VadText>
-            {profile.bio ? (
-              <VadText tone="secondary">{profile.bio}</VadText>
-            ) : (
-              <VadText variant="caption" tone="secondary">
-                Public conviction profile
-              </VadText>
-            )}
+          <VadText tone="secondary">
+            {profile.bio || 'This creator has not added a public bio yet.'}
+          </VadText>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+            <ProfileStat label="Followers" value={String(reputation.followers)} />
+            <ProfileStat label="Following" value={String(reputation.following)} />
+            <ProfileStat label="Predictions" value={String(reputation.predictions)} />
+            <ProfileStat label="Markets" value={String(reputation.originatedMarkets)} />
           </View>
-
-          {!profile.isSelf ? (
-            <VadButton
-              label={following ? 'Following' : 'Follow'}
-              variant={following ? 'secondary' : 'primary'}
-              fullWidth={!wide}
-              loading={followWorking}
-              accessibilityState={{ selected: following }}
-              onPress={() => void toggleFollow()}
-              style={wide ? { minWidth: 124 } : { width: '100%' }}
-            />
-          ) : null}
         </View>
+      </VadCard>
 
-        {followError ? (
-          <VadErrorState
-            title="Follow not updated"
-            message={followError}
-            onRetry={() => void toggleFollow()}
-          />
-        ) : null}
+      {followError ? (
+        <VadErrorState title="Follow not updated" message={followError} onRetry={() => void toggleFollow()} />
+      ) : null}
 
-        <View
-          style={{
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor: theme.colors.border,
-            paddingVertical: theme.spacing.md,
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: compact ? theme.spacing.md : theme.spacing.xl,
-          }}
-        >
-          <ProfileStat label="Followers" value={String(reputation.followers)} />
-          <ProfileStat label="Following" value={String(reputation.following)} />
-          <ProfileStat label="Predictions" value={String(reputation.predictions)} />
-          <ProfileStat label="Markets" value={String(reputation.originatedMarkets)} />
-        </View>
-      </View>
-
-      <View
-        style={{
-          flexDirection: wide ? 'row' : 'column',
-          gap: theme.spacing.xl,
-          alignItems: 'flex-start',
-        }}
-      >
-        <View
-          style={{
-            width: wide ? 250 : '100%',
-            gap: theme.spacing.xs,
-          }}
-        >
-          <VadText variant="label" tone="brand">CREATOR SIGNAL</VadText>
+      <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.lg, alignItems: 'flex-start' }}>
+        <VadCard variant="muted" style={{ width: wide ? 280 : '100%', gap: theme.spacing.xs }}>
+          <VadText variant="caption" tone="brand">CREATOR SIGNAL</VadText>
           <VadText variant="heading">Track record, not authority.</VadText>
           <VadText variant="caption" tone="secondary">
-            Reputation describes published conviction and resolved predictions.
-            It never controls oracle truth or settlement.
+            Reputation describes published conviction and resolved predictions. It never controls oracle truth, disputes or settlement.
           </VadText>
-        </View>
+          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, marginTop: theme.spacing.xs, paddingTop: theme.spacing.sm, gap: 2 }}>
+            <VadText variant="caption" tone="tertiary">GENERATED</VadText>
+            <VadText variant="caption" tone="secondary">{new Date(reputation.generatedAt).toLocaleString()}</VadText>
+          </View>
+        </VadCard>
 
-        <View style={{ flex: 1, width: '100%' }}>
-          <CreatorProfilePanel
-            reputation={reputation}
-            predictions={predictions}
-          />
+        <View style={{ flex: 1, width: '100%', minWidth: 0 }}>
+          <CreatorProfilePanel reputation={reputation} predictions={predictions} />
         </View>
       </View>
     </View>
   );
 }
 
-function ProfileStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function ProfileStat({ label, value }: { label: string; value: string }) {
+  const theme = useVadTheme();
   return (
-    <View style={{ minWidth: 76, flexGrow: 1, flexBasis: 90, gap: 2 }}>
+    <View style={{ minWidth: 84, flexGrow: 1, flexBasis: 96, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceRaised, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs, gap: 1 }}>
       <VadText variant="bodyStrong">{value}</VadText>
       <VadText variant="caption" tone="secondary">{label}</VadText>
     </View>
