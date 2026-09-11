@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { Image, Pressable, Share, View } from 'react-native';
+import { Pressable, Share, View } from 'react-native';
 
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
+import { VadMediaContainer } from '@/components/ui/vad-media-container';
 import { VadText } from '@/components/ui/vad-text';
 import { MarketProbabilityBar } from '@/features/markets/components/market-probability-bar';
 import { pct } from '@/features/markets/format';
@@ -55,6 +56,7 @@ export function ConvictionPostCard({
     }
   });
   const remoteMedia = post.media_path && /^https?:\/\//i.test(post.media_path) ? post.media_path : null;
+  const mediaType = post.post_type === 'SHORT_VIDEO' ? 'video' as const : 'image' as const;
 
   function toggleBookmark() {
     const next = !bookmarked;
@@ -136,14 +138,9 @@ export function ConvictionPostCard({
       </View>
 
       {remoteMedia ? (
-        <View style={{ overflow: 'hidden', borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted }}>
-          <Image
-            source={{ uri: remoteMedia }}
-            accessibilityLabel="Conviction post media"
-            resizeMode="cover"
-            style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: theme.colors.surfaceMuted }}
-          />
-        </View>
+        <VadMediaContainer
+          items={[{ uri: remoteMedia, type: mediaType, alt: 'Conviction post media' }]}
+        />
       ) : post.media_path ? (
         <View style={{ minHeight: 96, justifyContent: 'center', alignItems: 'center', gap: theme.spacing.xs, borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted }}>
           <VadIcon name="activity" size={24} tone="tertiary" />
