@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VadLogo } from '@/components/brand/vad-logo';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
+import { useProductTour } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { ProductTab } from './product-tab-bar';
@@ -36,6 +37,7 @@ export function ProductTopBar({
   const theme = useVadTheme();
   const density = useProductDensity();
   const insets = useSafeAreaInsets();
+  const { registerTarget } = useProductTour();
   const initial = email.trim().charAt(0).toUpperCase() || 'V';
   const roomy = density.width >= 1024;
 
@@ -77,6 +79,8 @@ export function ProductTopBar({
         )}
 
         <Pressable
+          ref={(node) => registerTarget('global-search', node)}
+          collapsable={false}
           accessibilityRole="search"
           accessibilityLabel="Search markets"
           onPress={onSearch}
