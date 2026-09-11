@@ -179,8 +179,6 @@ end;
 $$;
 revoke all on function private.validate_oracle_resolution_scope(jsonb,timestamptz,timestamptz) from public,anon,authenticated;
 
--- Add a guarded public wrapper only for authenticated admin inspection; the result
--- contains readiness metadata, never credentials or secret values.
 create or replace function public.admin_validate_oracle_resolution_scope(
   p_scope jsonb,
   p_closes_at timestamptz default null,
@@ -202,9 +200,6 @@ $$;
 revoke all on function public.admin_validate_oracle_resolution_scope(jsonb,timestamptz,timestamptz) from public,anon;
 grant execute on function public.admin_validate_oracle_resolution_scope(jsonb,timestamptz,timestamptz) to authenticated;
 
--- Extend the existing market-admission gate. Even if an LLM requests AUTO_PUBLISH,
--- the database downgrades it to REVIEW unless the resolver contract is deterministic
--- and enough governed providers are actually ready.
 create or replace function public.internal_apply_market_admission_result(
   p_proposal_public_id uuid,
   p_user_id uuid,
@@ -286,12 +281,8 @@ $$;
 revoke all on function public.internal_apply_market_admission_result(uuid,uuid,text,bigint,bigint,jsonb,text) from public,anon,authenticated;
 grant execute on function public.internal_apply_market_admission_result(uuid,uuid,text,bigint,bigint,jsonb,text) to service_role;
 
--- Prompt v2 makes the same contract explicit to the model. The DB validator above
--- remains authoritative even if the model ignores these instructions.
-update ai.prompt_versions
-set status='RETIRED'
-where capability_key='MARKET_ADMISSION' and status='ACTIVE';
-
+-- ai.prompt_versions is intentionally append-only. Multiple active historical rows
+-- are safe because runtime selection always takes the highest active version.
 insert into ai.prompt_versions(capability_key,version,system_prompt,output_schema,status)
 values(
   'MARKET_ADMISSION',
