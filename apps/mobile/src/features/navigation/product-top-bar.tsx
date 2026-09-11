@@ -37,6 +37,7 @@ export function ProductTopBar({
   const density = useProductDensity();
   const insets = useSafeAreaInsets();
   const initial = email.trim().charAt(0).toUpperCase() || 'V';
+  const roomy = density.width >= 1024;
 
   return (
     <View
@@ -59,17 +60,19 @@ export function ProductTopBar({
         }}
       >
         {density.phone ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, minWidth: 88 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, minWidth: density.narrow ? 72 : 88 }}>
             <VadLogo size={34} />
-            <View style={{ gap: 0 }}>
-              <VadText variant="label">VAD</VadText>
-              <VadText variant="caption" tone="tertiary" numberOfLines={1}>{active}</VadText>
-            </View>
+            {!density.narrow ? (
+              <View style={{ gap: 0 }}>
+                <VadText variant="label">VAD</VadText>
+                <VadText variant="caption" tone="tertiary" numberOfLines={1}>{active}</VadText>
+              </View>
+            ) : null}
           </View>
         ) : (
-          <View style={{ minWidth: 152, gap: 1 }}>
-            <VadText variant="caption" tone="tertiary">VAD MARKET</VadText>
-            <VadText variant="heading">{active}</VadText>
+          <View style={{ minWidth: roomy ? 152 : 116, gap: 1 }}>
+            {roomy ? <VadText variant="caption" tone="tertiary">VAD MARKET</VadText> : null}
+            <VadText variant="heading" numberOfLines={1}>{active}</VadText>
           </View>
         )}
 
@@ -78,13 +81,15 @@ export function ProductTopBar({
           accessibilityLabel="Search markets"
           onPress={onSearch}
           style={({ pressed }) => ({
-            flex: density.phone ? 1 : undefined,
-            width: density.phone ? undefined : Math.min(420, Math.max(260, density.width * 0.29)),
+            flex: density.phone || !roomy ? 1 : undefined,
+            width: density.phone || !roomy ? undefined : Math.min(420, Math.max(280, density.width * 0.29)),
+            minWidth: density.phone ? 44 : 180,
+            maxWidth: density.phone ? undefined : 420,
             minHeight: 44,
             flexDirection: 'row',
             alignItems: 'center',
             gap: theme.spacing.sm,
-            paddingHorizontal: theme.spacing.md,
+            paddingHorizontal: density.narrow ? theme.spacing.sm : theme.spacing.md,
             borderRadius: theme.radius.pill,
             borderWidth: 1,
             borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
@@ -95,24 +100,24 @@ export function ProductTopBar({
           <VadIcon name="search" size={18} tone="tertiary" />
           {!density.narrow ? (
             <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ flex: 1 }}>
-              Search markets, topics…
+              {density.phone ? 'Search' : 'Search markets, topics…'}
             </VadText>
           ) : null}
-          {!density.phone ? (
+          {roomy ? (
             <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
               <VadText variant="caption" tone="tertiary">/</VadText>
             </View>
           ) : null}
         </Pressable>
 
-        {!density.phone ? <View style={{ flex: 1 }} /> : null}
+        {roomy ? <View style={{ flex: 1 }} /> : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
-          {canCreate && !density.phone ? (
+          {canCreate && roomy ? (
             <HeaderAction label="Create" icon="plus" brand onPress={onCreate} />
           ) : null}
 
-          {isAdmin && !density.phone ? (
+          {isAdmin && roomy ? (
             <HeaderAction label="Operations" icon="operations" onPress={onAdmin} />
           ) : null}
 
