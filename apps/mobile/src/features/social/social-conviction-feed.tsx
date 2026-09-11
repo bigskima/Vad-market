@@ -263,7 +263,11 @@ export function SocialConvictionFeed({
                 onFollow={() => void toggleFollow(post)}
                 onLike={() => void toggleLike(post)}
                 onComments={() => void openComments(post)}
-                onOpenCreator={() => router.push('/creator/' + post.author_user_id)}
+                onOpenCreator={() => {
+                  if (post.author_handle) {
+                    router.push('/creator/' + encodeURIComponent(post.author_handle));
+                  }
+                }}
                 onOpenMarket={() => linked && onOpenMarket(linked)}
               />
             );
