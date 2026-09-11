@@ -19,7 +19,9 @@ import { hasAdminPermission } from '@/services/admin-control-api';
 import {
   decideProviderStatusRequest,
   requestProviderStatus,
+  runOracleProviderHealth,
   setProviderSafetyStatus,
+  type OracleHealthResult,
   type ProviderChangeRequest,
   type ProviderReadinessRow,
 } from '@/services/provider-admin-api';
@@ -40,6 +42,7 @@ export function AdminProvidersScreen() {
   const wide = width >= 860;
   const data = useAdminData();
   const canManage = hasAdminPermission(data.access, 'providers.manage');
+  const canCheckOracle = canManage || hasAdminPermission(data.access, 'oracle.review');
   const [tab, setTab] = useState('readiness');
   const [selectedProvider, setSelectedProvider] = useState<ProviderReadinessRow | null>(null);
   const [targetStatus, setTargetStatus] = useState<ProviderStatus | null>(null);
@@ -47,6 +50,8 @@ export function AdminProvidersScreen() {
   const [decision, setDecision] = useState<Decision | null>(null);
   const [reason, setReason] = useState('');
   const [working, setWorking] = useState(false);
+  const [healthChecking, setHealthChecking] = useState(false);
+  const [healthResults, setHealthResults] = useState<OracleHealthResult[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
@@ -78,6 +83,7 @@ export function AdminProvidersScreen() {
   ).length;
   const readinessRatio =
     data.providers.length > 0 ? ready / data.providers.length : 0;
+  const healthyOracle = healthResults.filter((result) => result.health === 'HEALTHY').length;
 
   function openProvider(row: ProviderReadinessRow) {
     if (!canManage) return;
@@ -95,6 +101,25 @@ export function AdminProvidersScreen() {
     setReason('');
     setActionError(null);
     setActionMessage(null);
+  }
+
+  async function checkOracleProviders() {
+    if (!canCheckOracle) return;
+    setHealthChecking(true);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      const response = await runOracleProviderHealth();
+      const results = response.providers ?? [];
+      setHealthResults(results);
+      const healthy = results.filter((result) => result.health === 'HEALTHY').length;
+      setActionMessage(`Oracle provider check completed: ${healthy}/${results.length} healthy.`);
+      await data.refresh();
+    } catch (value) {
+      setActionError(value instanceof Error ? value.message : 'Oracle provider health could not be checked.');
+    } finally {
+      setHealthChecking(false);
+    }
   }
 
   async function submitStatusRequest() {
@@ -205,6 +230,17 @@ export function AdminProvidersScreen() {
           <VadText tone="secondary">
             Provider admins can request status changes, independently approve another operator&apos;s request, or immediately downgrade a provider for safety. Reactivation and other risk-increasing changes require independent approval.
           </VadText>
+          {canCheckOracle ? (
+            <VadButton
+              label="Check oracle providers"
+              variant="secondary"
+              size="small"
+              fullWidth={false}
+              loading={healthChecking}
+              onPress={() => void checkOracleProviders()}
+              style={{ alignSelf: 'flex-start', marginTop: theme.spacing.sm }}
+            />
+          ) : null}
         </View>
 
         <View
@@ -293,6 +329,50 @@ export function AdminProvidersScreen() {
             fullWidth={false}
             onPress={() => setActionMessage(null)}
           />
+        </View>
+      ) : null}
+
+      {actionError && !selectedProvider && !selectedChange ? (
+        <VadErrorState title="Provider check failed" message={actionError} />
+      ) : null}
+
+      {healthResults.length ? (
+        <View style={{ gap: theme.spacing.sm }}>
+          <VadText variant="heading">Latest oracle check</VadText>
+          <VadText variant="caption" tone="secondary">
+            {healthyOracle}/{healthResults.length} providers responded successfully. A successful check confirms credentials and connectivity; activation still follows independent approval.
+          </VadText>
+          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+            {healthResults.map((result) => (
+              <View
+                key={result.provider}
+                style={{
+                  minHeight: 58,
+                  paddingVertical: theme.spacing.sm,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: theme.spacing.md,
+                  borderBottomWidth: 1,
+                  borderBottomColor: theme.colors.border,
+                }}
+              >
+                <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                  <VadText variant="bodyStrong">{result.provider}</VadText>
+                  <VadText variant="caption" tone="secondary">
+                    {result.configured ? 'Credentials available' : 'Credentials unavailable'}
+                    {typeof result.latencyMs === 'number' ? ` · ${result.latencyMs} ms` : ''}
+                  </VadText>
+                </View>
+                <VadText
+                  variant="caption"
+                  tone={result.health === 'HEALTHY' ? 'yes' : result.health === 'DEGRADED' ? 'warning' : 'danger'}
+                >
+                  {result.health}
+                </VadText>
+              </View>
+            ))}
+          </View>
         </View>
       ) : null}
 
