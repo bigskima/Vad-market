@@ -21,16 +21,17 @@ export function MarketCard({
   const isOpen = market.status === 'OPEN' || market.status === 'ACTIVE';
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
+  const statusLabel = marketStatusLabel(market.status);
 
   const closesLabel = market.closes_at
     ? new Date(market.closes_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-    : 'By policy';
+    : 'Time unavailable';
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Settlement ${market.asset_code}. ${isOpen ? 'Live market' : market.status}.`}
+      accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${statusLabel}.`}
       accessibilityHint="Opens market details, discussion, rules and trading when available."
       style={({ pressed }) => ({
         minHeight: density.compact ? 164 : density.phone ? 176 : 196,
@@ -48,7 +49,7 @@ export function MarketCard({
       <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
-            {isOpen ? <VadChip label="LIVE" tone="yes" /> : <VadChip label={market.status.replaceAll('_', ' ')} />}
+            <VadChip label={statusLabel.toUpperCase()} tone={isOpen ? 'yes' : 'neutral'} />
             <VadChip label={market.asset_code} tone="brand" />
             {!density.compact ? <VadText variant="caption" tone="secondary" numberOfLines={1}>{market.category ?? 'General'}</VadText> : null}
           </View>
@@ -77,6 +78,17 @@ export function MarketCard({
       </View>
     </Pressable>
   );
+}
+
+function marketStatusLabel(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized === 'OPEN' || normalized === 'ACTIVE') return 'Live';
+  if (normalized === 'CLOSED') return 'Closed';
+  if (normalized === 'RESOLVING') return 'Result pending';
+  if (normalized === 'RESOLVED') return 'Result confirmed';
+  if (normalized === 'SETTLED') return 'Completed';
+  if (normalized === 'VOID') return 'Cancelled';
+  return 'Unavailable';
 }
 
 function PriceTile({ label, value, positive }: { label: string; value: string; positive: boolean }) {
