@@ -125,7 +125,7 @@ export function MarketsScreen({
       ) : !markets.length ? (
         <VadEmptyState
           title="No live markets yet"
-          body="Approved canonical markets will appear here automatically once governance activates them."
+          body="Markets will appear here as soon as they are published and available to trade."
         />
       ) : (
         <VadEmptyState
