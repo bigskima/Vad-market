@@ -156,7 +156,7 @@ export function useAdminDashboard(access: AdminAccess) {
 
     if (failures === attempted) {
       setError(
-        'Your permitted operations data could not refresh. Existing control-plane data is preserved where available.',
+        'We could not refresh your operations data. Previously loaded information is still shown where available.',
       );
       setWarning(null);
       return;
@@ -165,7 +165,7 @@ export function useAdminDashboard(access: AdminAccess) {
     setError(null);
     setWarning(
       failures > 0
-        ? 'Some permitted operations data could not refresh. Successful queues were updated while previous data was preserved elsewhere.'
+        ? 'Some operations data could not refresh. Updated sections are shown, and previous information is kept where needed.'
         : null,
     );
   }, [access]);
