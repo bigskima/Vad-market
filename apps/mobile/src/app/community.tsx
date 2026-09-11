@@ -1,11 +1,14 @@
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
+import { VadCard } from '@/components/ui/vad-card';
+import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -17,9 +20,9 @@ export default function CommunityRoute() {
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
   const theme = useVadTheme();
+  const density = useProductDensity();
   const createPostReason = runtime.snapshot.reasons.createPost;
-  const createPostLoading =
-    runtime.isRefreshing && createPostReason === 'CAPABILITIES_LOADING';
+  const createPostLoading = runtime.isRefreshing && createPostReason === 'CAPABILITIES_LOADING';
   const canCreatePost = runtime.snapshot.capabilities.createPost;
 
   const openMarket = (market: MarketCatalogItem) => {
@@ -30,24 +33,34 @@ export default function CommunityRoute() {
   };
 
   return (
-    <ProductSubpage title="Community" maxWidth={1040}>
-      <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="label" tone="brand">COMMUNITY</VadText>
-        <VadText variant="title">Conviction with a public track record.</VadText>
-        <VadText tone="secondary">
-          Share reasoning, attach a live market when relevant and inspect the
-          creator behind a prediction without turning reputation into oracle
-          authority.
+    <ProductSubpage title="Community" maxWidth={800}>
+      <VadSectionHeader
+        title="Community"
+        subtitle="Share market reasoning, follow creators and discuss live questions while keeping social reputation separate from resolution authority."
+      />
+
+      <VadCard
+        variant="brand"
+        style={{
+          padding: density.phone ? theme.spacing.md : theme.spacing.lg,
+          gap: theme.spacing.xs,
+        }}
+      >
+        <VadText variant="caption" tone="brand">PUBLIC CONVICTION</VadText>
+        <VadText variant={density.phone ? 'heading' : 'title'}>Reason in public. Build a track record.</VadText>
+        <VadText variant="caption" tone="secondary">
+          Predictions can reference active VAD markets, but creator reputation never determines the final oracle outcome.
         </VadText>
-      </View>
+      </VadCard>
 
       {createPostLoading ? (
         <View
           style={{
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
+            borderWidth: 1,
             borderColor: theme.colors.border,
-            paddingVertical: theme.spacing.md,
+            borderRadius: theme.radius.xl,
+            backgroundColor: theme.colors.surfaceRaised,
+            padding: theme.spacing.md,
             gap: theme.spacing.xs,
           }}
         >
@@ -56,18 +69,18 @@ export default function CommunityRoute() {
         </View>
       ) : !canCreatePost ? (
         <View
+          accessibilityRole="alert"
           style={{
             borderLeftWidth: 3,
             borderLeftColor: theme.colors.warning,
+            borderRadius: theme.radius.lg,
             backgroundColor: theme.colors.warningSoft,
             padding: theme.spacing.md,
             gap: 2,
           }}
         >
           <VadText variant="caption" tone="warning">POSTING UNAVAILABLE</VadText>
-          <VadText variant="caption" tone="secondary">
-            {runtimeCapabilityReason(createPostReason)}
-          </VadText>
+          <VadText variant="caption" tone="secondary">{runtimeCapabilityReason(createPostReason)}</VadText>
         </View>
       ) : null}
 
