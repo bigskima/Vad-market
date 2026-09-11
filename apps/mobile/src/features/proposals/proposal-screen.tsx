@@ -111,7 +111,7 @@ export function ProposalScreen({
       setAdmission(result);
       await onReload();
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Please try again.');
+      setSubmitError(error instanceof Error ? error.message : 'We could not submit this proposal right now. Please try again.');
     } finally {
       setWorking(false);
     }
@@ -138,7 +138,7 @@ export function ProposalScreen({
           <VadText variant="caption" tone="brand">CREATE MARKET</VadText>
           <VadText variant={density.compact ? 'heading' : 'title'}>Propose one clear outcome.</VadText>
           <VadText variant="caption" tone="secondary">
-            VAD runs automated intelligence, canonical duplicate checks and deterministic safety rules first. Only exceptions need human review.
+            VAD checks clarity, duplicates, resolution criteria and eligibility before a market can be published. Some proposals may need additional review.
           </VadText>
         </View>
 
@@ -172,7 +172,7 @@ export function ProposalScreen({
                 <View style={{ gap: 2 }}>
                   <VadText variant="heading">What should the market ask?</VadText>
                   <VadText variant="caption" tone="secondary">
-                    State one objective YES/NO outcome with enough timing and criteria for an independent resolver.
+                    State one objective YES/NO outcome with enough timing and criteria for the result to be checked independently.
                   </VadText>
                 </View>
 
@@ -185,7 +185,7 @@ export function ProposalScreen({
                   }}
                   multiline
                   placeholder="Will … happen before …?"
-                  hint={`${question.trim().length} characters · live policy performs the final validation`}
+                  hint={`${question.trim().length} characters · VAD will check clarity and eligibility before submission`}
                 />
 
                 <View style={{ gap: 6 }}>
@@ -198,15 +198,15 @@ export function ProposalScreen({
             {step === 1 ? (
               <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
                 <View style={{ gap: 2 }}>
-                  <VadText variant="heading">Give VAD the resolution context.</VadText>
+                  <VadText variant="heading">Add the resolution details.</VadText>
                   <VadText variant="caption" tone="secondary">
-                    Add facts that make the market objectively resolvable. The intelligence layer will not invent missing dates, criteria or sources.
+                    Include the facts needed to decide the outcome clearly, such as the deadline, measurable criteria and credible evidence source.
                   </VadText>
                 </View>
 
                 {activeAssetCodes.length > 0 ? (
                   <View style={{ gap: 6 }}>
-                    <VadText variant="caption" tone="tertiary">SETTLEMENT ASSET</VadText>
+                    <VadText variant="caption" tone="tertiary">SETTLEMENT CURRENCY</VadText>
                     <VadSegmentedControl
                       value={assetCode}
                       options={activeAssetCodes.map((code) => ({ value: code, label: code }))}
@@ -216,11 +216,11 @@ export function ProposalScreen({
                       }}
                     />
                     <VadText variant="caption" tone="secondary">
-                      Settlement values stay isolated by asset. VAD never combines NGN and USDC balances or exposure.
+                      Each market settles in one currency. NGN and USDC balances are always kept separate.
                     </VadText>
                   </View>
                 ) : (
-                  <InlineStatus tone="warning" title="No settlement asset" message="No settlement asset is currently available for your account location. You cannot submit until live policy exposes at least one settlement asset." />
+                  <InlineStatus tone="warning" title="Settlement unavailable" message="No supported settlement currency is available for your account location right now. Please try again later." />
                 )}
 
                 <VadInput
@@ -234,7 +234,7 @@ export function ProposalScreen({
                 />
 
                 <VadInput
-                  label="Resolution context"
+                  label="Resolution details"
                   value={context}
                   onChangeText={(value) => {
                     setContext(value);
@@ -242,7 +242,7 @@ export function ProposalScreen({
                   }}
                   multiline
                   placeholder="Include the event, deadline, measurable YES condition and credible evidence source where known."
-                  hint={context.trim() ? `${context.trim().length} characters` : 'Strongly recommended for automatic admission'}
+                  hint={context.trim() ? `${context.trim().length} characters` : 'Recommended for a faster and clearer review'}
                 />
               </View>
             ) : null}
@@ -250,9 +250,9 @@ export function ProposalScreen({
             {step === 2 ? (
               <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
                 <View style={{ gap: 2 }}>
-                  <VadText variant="heading">Ready for automated admission.</VadText>
+                  <VadText variant="heading">Ready to submit.</VadText>
                   <VadText variant="caption" tone="secondary">
-                    AI intelligence assists with normalization and risk analysis, but server-side rules remain the publication authority.
+                    VAD will check this proposal for clarity, duplicates, resolvability and eligibility before deciding the next step.
                   </VadText>
                 </View>
 
@@ -260,7 +260,7 @@ export function ProposalScreen({
                   <ReviewRow label="Question" value={question.trim()} />
                   <ReviewRow label="Settlement" value={assetCode || 'Unavailable'} />
                   <ReviewRow label="Category" value={category.trim() || 'Not specified'} />
-                  <ReviewRow label="Resolution context" value={context.trim() || 'Not specified'} />
+                  <ReviewRow label="Resolution details" value={context.trim() || 'Not specified'} />
                 </View>
 
                 {capabilityLoading ? (
@@ -269,10 +269,10 @@ export function ProposalScreen({
                   <InlineStatus
                     tone="warning"
                     title="Proposal unavailable"
-                    message={runtimeCapabilityReason(capabilityReason, 'Proposal creation is currently unavailable for this account under live platform policy.')}
+                    message={runtimeCapabilityReason(capabilityReason, 'Market proposals are not available for your account right now.')}
                   />
                 ) : !hasAsset ? (
-                  <InlineStatus tone="warning" title="Settlement unavailable" message="Select an active settlement asset before submitting." />
+                  <InlineStatus tone="warning" title="Settlement unavailable" message="Select an available settlement currency before submitting." />
                 ) : null}
 
                 {submitError ? (
@@ -292,7 +292,7 @@ export function ProposalScreen({
                 />
               ) : (
                 <VadButton
-                  label="Run admission checks"
+                  label="Submit proposal"
                   loading={working || capabilityLoading}
                   disabled={capabilityLoading || !canSubmitProposal || !questionReady || !hasAsset}
                   onPress={() => void submit()}
@@ -304,13 +304,13 @@ export function ProposalScreen({
 
           <VadCard variant="muted" style={{ width: wide ? 310 : '100%', gap: theme.spacing.sm }}>
             <View style={{ gap: 1 }}>
-              <VadText variant="caption" tone="brand">INTELLIGENT ADMISSION</VadText>
-              <VadText variant="bodyStrong">How VAD handles scale</VadText>
+              <VadText variant="caption" tone="brand">BEFORE A MARKET GOES LIVE</VadText>
+              <VadText variant="bodyStrong">How proposals are reviewed</VadText>
             </View>
-            <Guide number="1" title="Structure" body="Deterministic checks require a valid market shape, timing, jurisdiction and settlement asset." />
-            <Guide number="2" title="Intelligence" body="Configured AI models assess clarity, objectivity, duplicate risk, manipulation risk and resolvability." />
-            <Guide number="3" title="Authority" body="Only proposals that pass both layers can publish automatically. Ambiguous or risky cases go to people." />
-            <Guide number="4" title="Provider-neutral" body="VAD selects enabled AI models by capability and priority, with failover instead of depending on one vendor." />
+            <Guide number="1" title="Clear question" body="The market needs one objective outcome with a clear time frame." />
+            <Guide number="2" title="Resolution details" body="There must be enough information and evidence to decide YES or NO fairly." />
+            <Guide number="3" title="Duplicate check" body="If the same market already exists, VAD links the proposal to the existing market instead of creating another one." />
+            <Guide number="4" title="Review outcome" body="Clear proposals may publish quickly. Others may need more details or an additional review first." />
           </VadCard>
         </View>
       )}
@@ -339,37 +339,37 @@ function AdmissionOutcome({
   const title = live
     ? 'Market is live.'
     : merged
-      ? 'Matched an existing market.'
+      ? 'A matching market already exists.'
       : clarification
         ? 'A few details are needed.'
-        : 'Sent to the exception queue.';
+        : 'Submitted for review.';
   const body = live
-    ? 'The proposal passed deterministic validation and the active intelligence thresholds. It is now tradable.'
+    ? 'Your proposal met VAD’s market requirements and is now available for trading.'
     : merged
-      ? 'VAD detected the same canonical event and avoided creating a duplicate market.'
+      ? 'VAD found an existing market for the same outcome, so a duplicate was not created.'
       : clarification
-        ? 'VAD will not publish an unclear market. Revise the same draft below; your question and context are preserved.'
-        : 'Automated checks did not have enough confidence to publish safely, so a human review is required.';
+        ? 'Add the requested details to make the outcome easier to resolve. Your current draft has been preserved.'
+        : 'This proposal needs an additional review before it can be published.';
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
       <VadCard variant="raised" accessibilityRole="summary" style={{ borderColor: live || merged ? theme.colors.yes : clarification ? theme.colors.warning : theme.colors.borderStrong, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-        <VadChip label={result.lane.replaceAll('_', ' ')} tone={chipTone} />
+        <VadChip label={proposalStatusLabel(result.lane)} tone={chipTone} />
         <View style={{ gap: 2 }}>
           <VadText variant={density.compact ? 'heading' : 'title'}>{title}</VadText>
           <VadText variant="caption" tone="secondary">{body}</VadText>
         </View>
 
         <View style={{ gap: 5, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm }}>
-          <VadText variant="caption" tone="tertiary">WHY</VadText>
-          <VadText variant="caption" tone="secondary">{result.reason}</VadText>
-          <VadText variant="caption" tone="tertiary">REFERENCE</VadText>
+          <VadText variant="caption" tone="tertiary">WHAT HAPPENED</VadText>
+          <VadText variant="caption" tone="secondary">{proposalDecisionCopy(result.lane)}</VadText>
+          <VadText variant="caption" tone="tertiary">PROPOSAL REFERENCE</VadText>
           <VadText variant="bodyStrong" selectable>{response.proposalId}</VadText>
         </View>
 
         {result.clarificationQuestions?.length ? (
           <View style={{ gap: 5 }}>
-            <VadText variant="caption" tone="tertiary">CLARIFY BEFORE RESUBMITTING</VadText>
+            <VadText variant="caption" tone="tertiary">DETAILS TO ADD</VadText>
             {result.clarificationQuestions.map((item, index) => (
               <VadText key={`${item}-${index}`} variant="caption" tone="secondary">{`${index + 1}. ${item}`}</VadText>
             ))}
@@ -413,15 +413,17 @@ function ProposalHistory({ proposals, loading, error, onRetry, onStart }: { prop
   }
 
   if (!proposals.length) {
-    return <VadEmptyState title="No proposals yet" body="Your submitted market ideas will appear here with their automated-admission or review status." actionLabel="Start a proposal" onAction={onStart} />;
+    return <VadEmptyState title="No proposals yet" body="Your submitted market ideas will appear here with their publication or review status." actionLabel="Start a proposal" onAction={onStart} />;
   }
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-      {error ? <VadErrorState title="Proposal history refresh failed" message={error} onRetry={onRetry} /> : null}
+      {error ? <VadErrorState title="Could not refresh proposal history" message={error} onRetry={onRetry} /> : null}
       <View style={{ gap: 1 }}>
         <VadText variant="heading">Proposal history</VadText>
-        <VadText variant="caption" tone="secondary">Most clear markets can be processed automatically; only exceptions wait for a reviewer.</VadText>
+        <VadText variant="caption" tone="secondary">
+          See whether each idea was published, matched an existing market, needs more details, or is still being reviewed.
+        </VadText>
       </View>
 
       <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
@@ -431,12 +433,12 @@ function ProposalHistory({ proposals, loading, error, onRetry, onStart }: { prop
             <VadCard key={proposal.public_id} variant="raised" style={{ gap: 6 }}>
               <View style={{ flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <VadText variant="bodyStrong" style={{ flex: 1 }} numberOfLines={3}>{proposal.question}</VadText>
-                <VadChip label={displayStatus.replaceAll('_', ' ')} tone={proposalStatusChipTone(displayStatus)} />
+                <VadChip label={proposalStatusLabel(displayStatus)} tone={proposalStatusChipTone(displayStatus)} />
               </View>
               <VadText variant="caption" tone="secondary">
                 {(proposal.category ?? 'General') + ' · ' + new Date(proposal.created_at).toLocaleDateString()}
               </VadText>
-              {proposal.decision_reason ? <VadText variant="caption" tone="secondary">{proposal.decision_reason}</VadText> : null}
+              <VadText variant="caption" tone="secondary">{proposalDecisionCopy(displayStatus)}</VadText>
               {proposal.clarification_questions?.length ? (
                 <VadText variant="caption" tone="warning" numberOfLines={3}>{proposal.clarification_questions.join(' · ')}</VadText>
               ) : null}
@@ -460,7 +462,7 @@ function ProposalHistory({ proposals, loading, error, onRetry, onStart }: { prop
 function Progress({ step }: { step: ProposalStep }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const labels = ['Question', 'Context', 'Review'];
+  const labels = ['Question', 'Details', 'Review'];
 
   return (
     <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 3, now: step + 1 }} style={{ flexDirection: 'row', gap: density.compact ? 6 : theme.spacing.xs }}>
@@ -481,8 +483,8 @@ function QualityRow({ label, ready, advisory = false }: { label: string; ready: 
   const theme = useVadTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, minHeight: 34 }}>
-      <VadChip label={ready ? 'PASS' : advisory ? 'CHECK' : 'WAIT'} tone={ready ? 'yes' : 'neutral'} />
-      <VadText variant="caption" tone={ready ? 'primary' : 'secondary'} style={{ flex: 1 }}>{label}{advisory ? ' · recommended' : ''}</VadText>
+      <VadChip label={ready ? 'READY' : advisory ? 'RECOMMENDED' : 'NEEDED'} tone={ready ? 'yes' : 'neutral'} />
+      <VadText variant="caption" tone={ready ? 'primary' : 'secondary'} style={{ flex: 1 }}>{label}</VadText>
     </View>
   );
 }
@@ -523,6 +525,40 @@ function InlineStatus({ tone, title, message }: { tone: 'warning' | 'danger'; ti
       <VadText variant="caption" tone="secondary">{message}</VadText>
     </View>
   );
+}
+
+function proposalStatusLabel(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized.includes('AUTO_PUBLISHED') || normalized.includes('PUBLISHED') || normalized.includes('ACTIVE') || normalized.includes('LIVE')) return 'PUBLISHED';
+  if (normalized.includes('MERGED')) return 'MATCHED';
+  if (normalized.includes('CLARIFICATION')) return 'NEEDS DETAILS';
+  if (normalized.includes('REVIEW') || normalized.includes('PENDING')) return 'IN REVIEW';
+  if (normalized.includes('REJECT') || normalized.includes('FAIL')) return 'NOT PUBLISHED';
+  if (normalized.includes('CANCEL')) return 'CANCELLED';
+  return 'SUBMITTED';
+}
+
+function proposalDecisionCopy(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized.includes('AUTO_PUBLISHED') || normalized.includes('PUBLISHED') || normalized.includes('ACTIVE') || normalized.includes('LIVE')) {
+    return 'This proposal met the requirements to become a live market.';
+  }
+  if (normalized.includes('MERGED')) {
+    return 'A matching market already exists, so a duplicate was not created.';
+  }
+  if (normalized.includes('CLARIFICATION')) {
+    return 'More detail is needed before this proposal can move forward.';
+  }
+  if (normalized.includes('REVIEW') || normalized.includes('PENDING')) {
+    return 'This proposal is waiting for an additional review.';
+  }
+  if (normalized.includes('REJECT') || normalized.includes('FAIL')) {
+    return 'This proposal did not meet the requirements to be published.';
+  }
+  if (normalized.includes('CANCEL')) {
+    return 'This proposal was cancelled.';
+  }
+  return 'This proposal has been submitted.';
 }
 
 function proposalStatusChipTone(status: string): 'brand' | 'yes' | 'warning' | 'no' {
