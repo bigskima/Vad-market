@@ -1,3 +1,4 @@
+import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type AiProviderAdapter =
@@ -22,13 +23,13 @@ export type AiProviderModelRow = {
   cost_policy: Record<string, unknown> | null;
 };
 
-function fail(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback: string) {
+  if (error) throw userFacingError(error, 'admin', fallback);
 }
 
 export async function getAdminAiProviderCatalog() {
   const { data, error } = await supabase.rpc('admin_ai_provider_catalog');
-  fail(error);
+  fail(error, 'We could not load AI service settings right now. Refresh and try again.');
   return (data ?? []) as AiProviderModelRow[];
 }
 
@@ -56,6 +57,6 @@ export async function upsertAdminAiProviderModel(input: {
     p_cost_policy: input.costPolicy ?? {},
     p_api_version: input.apiVersion?.trim() || null,
   });
-  fail(error);
+  fail(error, 'We could not save these AI service settings right now. Please try again.');
   return Number(data);
 }
