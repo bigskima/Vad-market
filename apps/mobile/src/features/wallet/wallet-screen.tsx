@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
@@ -10,20 +10,20 @@ import { VadMetricTile } from '@/components/ui/vad-metric-tile';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
-import { money } from '@/features/markets/format';
+import { assetMoney } from '@/features/markets/format';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getMyPaymentIntents, type PaymentIntentRow } from '@/services/payment-api';
 import type { WalletRow } from '@/services/market-api';
 
 export function WalletScreen({
-  ngn,
+  wallets,
   onDeposit,
   onWithdraw,
   onActivity,
   onOpenTransaction,
 }: {
-  ngn?: WalletRow;
+  wallets: WalletRow[];
   onDeposit: () => void;
   onWithdraw: () => void;
   onActivity: () => void;
@@ -51,16 +51,22 @@ export function WalletScreen({
     return () => clearTimeout(timer);
   }, [load]);
 
-  const available = Number(ngn?.available ?? 0);
-  const reserved = Number(ngn?.reserved ?? 0);
-  const pending = Number(ngn?.withdrawal_pending ?? 0);
+  const orderedWallets = useMemo(
+    () => [...wallets].sort((a, b) => assetRank(a.asset_code) - assetRank(b.asset_code)),
+    [wallets],
+  );
+  const primary = orderedWallets.find((row) => row.asset_code === 'NGN') ?? orderedWallets[0];
+  const available = Number(primary?.available ?? 0);
+  const reserved = Number(primary?.reserved ?? 0);
+  const pending = Number(primary?.withdrawal_pending ?? 0);
   const total = available + reserved + pending;
+  const primaryCode = primary?.asset_code ?? 'NGN';
 
   return (
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Wallet"
-        subtitle="Your spendable, reserved and pending NGN balances stay separated so every money movement is easy to understand."
+        subtitle="Available, reserved and pending balances stay separated by asset so NGN and USDC never get mixed together."
         actionLabel="Activity"
         onAction={onActivity}
       />
@@ -74,9 +80,9 @@ export function WalletScreen({
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
           <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-            <VadText variant="caption" tone="brand">TOTAL NGN BALANCE</VadText>
+            <VadText variant="caption" tone="brand">{primaryCode} BALANCE</VadText>
             <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
-              {money(total)}
+              {assetMoney(total, primaryCode)}
             </VadText>
             <VadText variant="caption" tone="secondary">Available + reserved + withdrawal pending</VadText>
           </View>
@@ -97,15 +103,34 @@ export function WalletScreen({
         </View>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-          <VadMetricTile label="Available" value={money(available)} detail="Ready to use" tone="yes" />
-          <VadMetricTile label="Reserved" value={money(reserved)} detail="Committed to orders" />
-          <VadMetricTile label="Pending" value={money(pending)} detail="Withdrawal processing" tone="brand" />
+          <VadMetricTile label="Available" value={assetMoney(available, primaryCode)} detail="Ready to use" tone="yes" />
+          <VadMetricTile label="Reserved" value={assetMoney(reserved, primaryCode)} detail="Committed to orders" />
+          <VadMetricTile label="Pending" value={assetMoney(pending, primaryCode)} detail="Withdrawal processing" tone="brand" />
         </View>
       </VadCard>
 
+      {orderedWallets.length ? (
+        <View style={{ gap: theme.spacing.sm }}>
+          <VadSectionHeader
+            title="Asset balances"
+            subtitle="Each balance is tracked independently by the ledger."
+          />
+          <View style={{ flexDirection: density.width >= 720 ? 'row' : 'column', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {orderedWallets.map((wallet) => (
+              <AssetBalanceCard key={wallet.asset_code} wallet={wallet} />
+            ))}
+          </View>
+        </View>
+      ) : (
+        <VadEmptyState
+          title="No wallet balances yet"
+          body="Asset balances will appear here when your ledger accounts are available."
+        />
+      )}
+
       <View style={{ flexDirection: 'row', gap: density.phone ? 8 : theme.spacing.sm }}>
         <WalletAction label="Deposit" detail="Add NGN" icon="arrowDown" tone="yes" onPress={onDeposit} />
-        <WalletAction label="Withdraw" detail="Move funds out" icon="arrowUp" tone="brand" onPress={onWithdraw} />
+        <WalletAction label="Withdraw" detail="Move NGN out" icon="arrowUp" tone="brand" onPress={onWithdraw} />
         <WalletAction label="Activity" detail="Payment history" icon="activity" tone="primary" onPress={onActivity} />
       </View>
 
@@ -157,6 +182,50 @@ export function WalletScreen({
   );
 }
 
+function AssetBalanceCard({ wallet }: { wallet: WalletRow }) {
+  const theme = useVadTheme();
+  const density = useProductDensity();
+  const available = Number(wallet.available ?? 0);
+  const reserved = Number(wallet.reserved ?? 0);
+  const pending = Number(wallet.withdrawal_pending ?? 0);
+  const total = available + reserved + pending;
+
+  return (
+    <VadCard
+      variant="raised"
+      style={{
+        flexGrow: 1,
+        flexBasis: density.width >= 720 ? 260 : undefined,
+        minWidth: 0,
+        gap: theme.spacing.sm,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+          <VadText variant="caption" tone="tertiary">{wallet.asset_code}</VadText>
+          <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(total, wallet.asset_code)}</VadText>
+        </View>
+        <VadChip label={wallet.asset_code === 'NGN' ? 'Cash rail' : wallet.asset_code === 'USDC' ? 'Stablecoin' : 'Asset'} tone={wallet.asset_code === 'USDC' ? 'brand' : 'neutral'} />
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+        <AssetFact label="Available" value={assetMoney(available, wallet.asset_code)} tone="yes" />
+        <AssetFact label="Reserved" value={assetMoney(reserved, wallet.asset_code)} />
+        <AssetFact label="Pending" value={assetMoney(pending, wallet.asset_code)} />
+      </View>
+    </VadCard>
+  );
+}
+
+function AssetFact({ label, value, tone = 'primary' }: { label: string; value: string; tone?: 'primary' | 'yes' }) {
+  return (
+    <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+      <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
+      <VadText variant="caption" tone={tone} numberOfLines={1} adjustsFontSizeToFit>{value}</VadText>
+    </View>
+  );
+}
+
 export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPress?: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -201,7 +270,7 @@ export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPr
           <VadText variant="caption" tone="tertiary">{new Date(intent.created_at).toLocaleString()}</VadText>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '46%' }}>
-          <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{money(intent.amount)}</VadText>
+          <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(intent.amount, intent.asset_code)}</VadText>
           <VadChip
             label={intent.status.replaceAll('_', ' ')}
             tone={intent.status === 'SUCCEEDED' || intent.status === 'COMPLETED' ? 'yes' : 'neutral'}
@@ -260,4 +329,10 @@ function WalletAction({
       </View>
     </Pressable>
   );
+}
+
+function assetRank(code: string) {
+  if (code === 'NGN') return 0;
+  if (code === 'USDC') return 1;
+  return 10;
 }
