@@ -6,7 +6,7 @@ import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { HomePromotionCarousel } from '@/features/home/components/home-promotion-carousel';
 import { MarketCard } from '@/features/markets/components/market-card';
-import { pct } from '@/features/markets/format';
+import { probability } from '@/features/markets/format';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -235,10 +235,13 @@ export function HomeScreen({
 function Spotlight({ market, onPress }: { market: MarketCatalogItem; onPress: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const yes = probability(market.yes_price);
+  const no = probability(market.no_price);
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open featured market: ${market.title}`}
+      accessibilityLabel={`Open featured market: ${market.title}. YES ${yes}, NO ${no}. Settlement ${market.asset_code}.`}
       onPress={onPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.86 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}
     >
@@ -267,8 +270,8 @@ function Spotlight({ market, onPress }: { market: MarketCatalogItem; onPress: ()
           {market.title}
         </VadText>
         <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-          <Signal label="YES" value={pct(market.yes_price)} />
-          <Signal label="NO" value={pct(market.no_price)} />
+          <Signal label="YES" value={yes} />
+          <Signal label="NO" value={no} />
         </View>
       </View>
     </Pressable>
