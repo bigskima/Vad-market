@@ -6,7 +6,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
-import { pct } from '../format';
+import { probability } from '../format';
 import { MarketProbabilityBar } from './market-probability-bar';
 
 export function MarketCard({
@@ -19,8 +19,8 @@ export function MarketCard({
   const theme = useVadTheme();
   const density = useProductDensity();
   const isOpen = market.status === 'OPEN' || market.status === 'ACTIVE';
-  const yes = pct(market.yes_price);
-  const no = pct(market.no_price);
+  const yes = probability(market.yes_price);
+  const no = probability(market.no_price);
 
   const closesLabel = market.closes_at
     ? new Date(market.closes_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
