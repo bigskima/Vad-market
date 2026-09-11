@@ -1,3 +1,4 @@
+import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type AdminRole = {
@@ -83,8 +84,8 @@ export type AdminMarketPublicationRow = {
   featured_at: string | null;
 };
 
-function fail(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback = 'This admin request could not be completed. Please try again.') {
+  if (error) throw userFacingError(error, 'admin', fallback);
 }
 
 export function hasAdminPermission(access: AdminAccess, permission: string) {
@@ -97,7 +98,7 @@ export function hasAnyAdminPermission(access: AdminAccess, permissions: string[]
 
 export async function getAdminAccess() {
   const { data, error } = await supabase.rpc('admin_my_access');
-  fail(error);
+  fail(error, 'We could not confirm your admin access. Refresh and try again.');
 
   const raw = (data ?? {}) as Partial<AdminAccess>;
   return {
@@ -112,7 +113,7 @@ export async function getAdminUsers(limit = 100, search?: string) {
     p_limit: limit,
     p_search: search?.trim() || null,
   });
-  fail(error);
+  fail(error, 'We could not load users right now. Refresh and try again.');
   return (data ?? []) as AdminUserRow[];
 }
 
@@ -126,7 +127,7 @@ export async function setAdminUserStatus(input: {
     p_status: input.status,
     p_reason: input.reason.trim(),
   });
-  fail(error);
+  fail(error, 'We could not update this user right now. Please try again.');
   return Boolean(data);
 }
 
@@ -138,7 +139,7 @@ export async function getAdminContent(
     p_limit: limit,
     p_status: status ?? null,
   });
-  fail(error);
+  fail(error, 'We could not load moderation content right now. Refresh and try again.');
   return (data ?? []) as AdminContentRow[];
 }
 
@@ -154,7 +155,7 @@ export async function setAdminContentStatus(input: {
     p_status: input.status,
     p_reason: input.reason.trim(),
   });
-  fail(error);
+  fail(error, 'We could not update this content right now. Please try again.');
   return Boolean(data);
 }
 
@@ -163,7 +164,7 @@ export async function requestAdminRefund(intentPublicId: string, reason: string)
     p_intent_public_id: intentPublicId,
     p_reason: reason.trim(),
   });
-  fail(error);
+  fail(error, 'We could not submit this refund request right now. Please try again.');
   return String(data);
 }
 
@@ -172,7 +173,7 @@ export async function closeAdminMarket(instrumentPublicId: string, reason: strin
     p_instrument_public_id: instrumentPublicId,
     p_reason: reason.trim() || null,
   });
-  fail(error);
+  fail(error, 'We could not close this market right now. Please try again.');
   return Boolean(data);
 }
 
@@ -186,7 +187,7 @@ export async function createAdminProvisionalResolution(input: {
     p_outcome_code: input.outcomeCode.toUpperCase(),
     p_evidence: input.evidence ?? {},
   });
-  fail(error);
+  fail(error, 'We could not save this provisional resolution right now. Please try again.');
   return Number(data);
 }
 
@@ -198,7 +199,7 @@ export async function finalizeAdminResolution(
     p_resolution_id: resolutionId,
     p_evidence: evidence ?? {},
   });
-  fail(error);
+  fail(error, 'We could not finalize this resolution right now. Please try again.');
   return Boolean(data);
 }
 
@@ -210,7 +211,7 @@ export async function finalizeAdminVoid(
     p_resolution_id: resolutionId,
     p_evidence: evidence ?? {},
   });
-  fail(error);
+  fail(error, 'We could not finalize this void right now. Please try again.');
   return Boolean(data);
 }
 
@@ -218,19 +219,19 @@ export async function settleAdminMarket(instrumentPublicId: string) {
   const { data, error } = await supabase.rpc('admin_settle_market', {
     p_instrument_public_id: instrumentPublicId,
   });
-  fail(error);
+  fail(error, 'We could not settle this market right now. Please try again.');
   return String(data);
 }
 
 export async function getAdminRoleCatalog() {
   const { data, error } = await supabase.rpc('admin_role_catalog');
-  fail(error);
+  fail(error, 'We could not load admin roles right now. Refresh and try again.');
   return (data ?? []) as AdminRoleCatalogRow[];
 }
 
 export async function getAdminRolePermissionMatrix() {
   const { data, error } = await supabase.rpc('admin_role_permission_matrix');
-  fail(error);
+  fail(error, 'We could not load role permissions right now. Refresh and try again.');
   return (data ?? []) as AdminRolePermissionRow[];
 }
 
@@ -238,7 +239,7 @@ export async function getAdminRoleAssignments(search?: string) {
   const { data, error } = await supabase.rpc('admin_role_assignments', {
     p_search: search?.trim() || null,
   });
-  fail(error);
+  fail(error, 'We could not load role assignments right now. Refresh and try again.');
   return (data ?? []) as AdminRoleAssignmentRow[];
 }
 
@@ -254,7 +255,7 @@ export async function assignAdminRole(input: {
     p_reason: input.reason.trim(),
     p_expires_at: input.expiresAt ?? null,
   });
-  fail(error);
+  fail(error, 'We could not assign this role right now. Please try again.');
   return Number(data);
 }
 
@@ -263,13 +264,13 @@ export async function revokeAdminRole(assignmentId: number, reason: string) {
     p_assignment_id: assignmentId,
     p_reason: reason.trim(),
   });
-  fail(error);
+  fail(error, 'We could not revoke this role right now. Please try again.');
   return Boolean(data);
 }
 
 export async function getAdminMarketApprovalOptions() {
   const { data, error } = await supabase.rpc('admin_market_approval_options');
-  fail(error);
+  fail(error, 'We could not load market approval options right now. Refresh and try again.');
   const raw = (data ?? {}) as Partial<AdminMarketApprovalOptions>;
   return {
     templates: Array.isArray(raw.templates) ? raw.templates : [],
@@ -288,7 +289,7 @@ export async function decideAdminMarketProposal(input: {
     p_decision: input.decision,
     p_reason: input.reason.trim(),
   });
-  fail(error);
+  fail(error, 'We could not save this proposal decision right now. Please try again.');
   return Boolean(data);
 }
 
@@ -326,13 +327,13 @@ export async function approveAdminMarketProposal(input: {
     p_min_order_notional: input.minOrderNotional,
     p_pricing_precision: input.pricingPrecision,
   });
-  fail(error);
+  fail(error, 'We could not approve this market proposal right now. Please try again.');
   return (data ?? {}) as Record<string, unknown>;
 }
 
 export async function getAdminMarketPublicationQueue() {
   const { data, error } = await supabase.rpc('admin_market_publication_queue');
-  fail(error);
+  fail(error, 'We could not load the publication queue right now. Refresh and try again.');
   return (data ?? []) as AdminMarketPublicationRow[];
 }
 
@@ -346,7 +347,7 @@ export async function publishAdminMarket(input: {
     p_feature_rank: input.featureRank ?? 100,
     p_reason: input.reason.trim(),
   });
-  fail(error);
+  fail(error, 'We could not publish this market right now. Please try again.');
   return Boolean(data);
 }
 
@@ -362,6 +363,6 @@ export async function setAdminMarketFeatured(input: {
     p_rank: input.featureRank ?? 100,
     p_reason: input.reason.trim(),
   });
-  fail(error);
+  fail(error, 'We could not update this market feature setting right now. Please try again.');
   return Boolean(data);
 }
