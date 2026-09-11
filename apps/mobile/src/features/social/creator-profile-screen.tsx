@@ -10,6 +10,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getCreatorPublicProfileByUsername,
@@ -52,7 +53,7 @@ export function CreatorProfileScreen({ username }: { username: string }) {
 
     try {
       const nextProfile = await getCreatorPublicProfileByUsername(username);
-      if (!nextProfile) throw new Error('No active VAD profile exists for this username.');
+      if (!nextProfile) throw new Error('Creator profile unavailable.');
 
       const [nextReputation, nextPredictions] = await Promise.all([
         getCreatorReputation(nextProfile.userId),
@@ -64,7 +65,7 @@ export function CreatorProfileScreen({ username }: { username: string }) {
       setReputation(nextReputation);
       setPredictions(nextPredictions);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Creator profile is unavailable.');
+      setError(userFacingErrorMessage(reason, 'social', 'We could not load this creator right now. Please try again.'));
     } finally {
       if (background) setRefreshing(false);
       else setLoading(false);
@@ -101,7 +102,7 @@ export function CreatorProfileScreen({ username }: { username: string }) {
     } catch (reason) {
       setFollowing(wasFollowing);
       setReputation((current) => current ? { ...current, followers: previousFollowers } : current);
-      setFollowError(reason instanceof Error ? reason.message : 'We could not update this follow right now. Please try again.');
+      setFollowError(userFacingErrorMessage(reason, 'social', 'We could not update this follow right now. Please try again.'));
     } finally {
       setFollowWorking(false);
     }
