@@ -65,7 +65,7 @@ const POLICY_DEFINITIONS: PolicyDefinition[] = [
   {
     name: 'payment_fees',
     label: 'Payment fees',
-    description: 'Provider-neutral fees for deposit and withdrawal flows.',
+    description: 'Fees for eligible deposit and withdrawal flows.',
     fields: [
       {
         key: 'deposit_rate_bps',
@@ -184,7 +184,7 @@ export function AdminFeeControlsScreen() {
           reason,
         });
         setMessage(
-          `Fee policy version ${version} is active now. The Super Admin approval workflow was bypassed, but server validation and audit logging were not.`,
+          `Fee policy version ${version} is active now. The change was applied directly by Super Admin and recorded for audit.`,
         );
       } else {
         const requestId = await proposeAdminFeePolicy({
@@ -252,7 +252,7 @@ export function AdminFeeControlsScreen() {
         </VadText>
         <VadText tone="secondary">
           {isSuperAdmin
-            ? 'Super Admin can activate a valid fee change immediately. Every direct change still creates an immutable policy version and an audit record.'
+            ? 'Super Admin can activate a valid fee change immediately. Every direct change creates a new policy version and an audit record.'
             : 'Finance operators can prepare fee changes, but they cannot activate them. A Super Admin must review and approve each proposal.'}
         </VadText>
       </View>
@@ -272,17 +272,17 @@ export function AdminFeeControlsScreen() {
         <VadText variant="caption" tone={isSuperAdmin ? 'warning' : 'brand'}>
           {isSuperAdmin
             ? 'SUPER ADMIN DIRECT AUTHORITY'
-            : 'DUAL-CONTROL GOVERNANCE'}
+            : 'APPROVAL REQUIRED'}
         </VadText>
         <VadText variant="bodyStrong">
           {isSuperAdmin
-            ? 'Immediate means no second approval—not no controls.'
+            ? 'Immediate changes do not require a second approval.'
             : 'Your proposal cannot change the live fee by itself.'}
         </VadText>
         <VadText variant="caption" tone="secondary">
           {isSuperAdmin
-            ? 'The server still validates fee ranges, records the reason, preserves the previous version, and audits who made the change.'
-            : 'The current policy remains active until Super Admin approval. If the live policy changes before approval, the stale proposal is blocked from overwriting it.'}
+            ? 'The change is still validated, the reason is recorded, and the previous version remains available for audit.'
+            : 'The current policy stays active until Super Admin approval. If the active policy changes first, an outdated proposal cannot overwrite it.'}
         </VadText>
       </VadCard>
 
@@ -292,7 +292,7 @@ export function AdminFeeControlsScreen() {
           style={{ gap: theme.spacing.sm, borderColor: theme.colors.yes }}
         >
           <VadText variant="caption" tone="yes">
-            FEE GOVERNANCE UPDATED
+            FEE SETTINGS UPDATED
           </VadText>
           <VadText variant="caption" tone="secondary">
             {message}
@@ -311,8 +311,7 @@ export function AdminFeeControlsScreen() {
         <View style={{ gap: 2 }}>
           <VadText variant="heading">Current fee policy</VadText>
           <VadText variant="caption" tone="secondary">
-            Percentages below are live policy configuration, not revenue already
-            earned.
+            These are the active fee percentages. They are not revenue already earned.
           </VadText>
         </View>
 
@@ -339,7 +338,7 @@ export function AdminFeeControlsScreen() {
         title={isSuperAdmin ? 'Pending fee proposals' : 'My pending fee proposals'}
         description={
           isSuperAdmin
-            ? 'Review finance-team proposals. Approval creates a new immutable active policy version.'
+            ? 'Review finance-team proposals. Approval creates a new active policy version.'
             : 'These proposals are waiting for Super Admin review and are not active.'
         }
         count={queue.length}
@@ -423,8 +422,7 @@ export function AdminFeeControlsScreen() {
             />
 
             <VadText variant="caption" tone="tertiary">
-              Existing fixed minimum/maximum policy values are preserved by this
-              rate editor. Fee percentages must remain between 0% and 100%.
+              Existing fixed minimum and maximum values are preserved. Fee percentages must remain between 0% and 100%.
             </VadText>
 
             {actionError ? (
@@ -474,12 +472,10 @@ export function AdminFeeControlsScreen() {
 
             <VadCard variant="outlined" style={{ gap: 2 }}>
               <VadText variant="caption" tone="warning">
-                SERVER REVIEW PROTECTIONS
+                REVIEW PROTECTIONS
               </VadText>
               <VadText variant="caption" tone="secondary">
-                Approval is rejected if this proposal is stale or if the reviewer
-                is also the proposer. A Super Admin can reject an obsolete own
-                proposal and use the explicit immediate-update path instead.
+                Approval is blocked if this proposal is outdated or if the reviewer is also the proposer. A Super Admin can reject an obsolete own proposal and apply a fresh change directly instead.
               </VadText>
             </VadCard>
 
