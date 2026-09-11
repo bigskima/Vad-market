@@ -13,6 +13,7 @@ import { Modal, View, useWindowDimensions } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadText } from '@/components/ui/vad-text';
+import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { VAD_PRODUCT_TOUR, VAD_TOUR_VERSION } from './tour-catalog';
 import { readTourProgress, writeTourProgress } from './tour-storage';
@@ -49,11 +50,13 @@ const TourContext = createContext<TourContextValue | null>(null);
 export function ProductTourProvider({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const { height: windowHeight } = useWindowDimensions();
+  const { session } = useAuth();
+  const userId = session?.user.id ?? null;
   const [progress, setProgress] = useState<TourProgress>({
     ...DEFAULT_TOUR_PROGRESS,
     tourVersion: VAD_TOUR_VERSION,
   });
-  const [progressReady, setProgressReady] = useState(false);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<TourTargetRect | null>(null);
@@ -62,6 +65,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const scrollControllerRef = useRef<ScrollController | null>(null);
   const autoStartedRef = useRef(false);
 
+  const progressReady = Boolean(userId && loadedUserId === userId);
   const currentStep = active ? (VAD_PRODUCT_TOUR[stepIndex] ?? null) : null;
 
   const registerTarget = useCallback((targetId: string, node: TargetNode | null) => {
@@ -74,37 +78,57 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   }, []);
 
   const beginTour = useCallback((manual = false) => {
+    if (!userId) return;
     autoStartedRef.current = true;
     const nextProgress: TourProgress = {
       ...progress,
-      status: manual ? progress.status : progress.status,
       tourVersion: VAD_TOUR_VERSION,
       lastStartedAt: new Date().toISOString(),
     };
 
     setProgress(nextProgress);
-    void writeTourProgress(nextProgress);
+    void writeTourProgress(userId, nextProgress);
     setStepIndex(0);
     setSpotlight(null);
     setShowReminderChoices(false);
     setActive(true);
     if (pathname !== '/home') router.replace('/home');
-  }, [pathname, progress]);
+    void manual;
+  }, [pathname, progress, userId]);
 
   useEffect(() => {
+    autoStartedRef.current = false;
     let mounted = true;
-    void readTourProgress().then((stored) => {
+
+    if (!userId) {
+      const timer = setTimeout(() => {
+        if (!mounted) return;
+        setActive(false);
+        setSpotlight(null);
+        setProgress({ ...DEFAULT_TOUR_PROGRESS, tourVersion: VAD_TOUR_VERSION });
+        setLoadedUserId(null);
+      }, 0);
+      return () => {
+        mounted = false;
+        clearTimeout(timer);
+      };
+    }
+
+    void readTourProgress(userId).then((stored) => {
       if (!mounted) return;
+      setActive(false);
+      setSpotlight(null);
       setProgress(stored);
-      setProgressReady(true);
+      setLoadedUserId(userId);
     });
+
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
-    if (!progressReady || active || pathname !== '/home' || autoStartedRef.current) return;
+    if (!userId || !progressReady || active || pathname !== '/home' || autoStartedRef.current) return;
     const due =
       progress.status === 'NEW' ||
       (progress.status === 'REMIND' &&
@@ -114,7 +138,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
 
     const timer = setTimeout(() => beginTour(false), 1100);
     return () => clearTimeout(timer);
-  }, [active, beginTour, pathname, progress, progressReady]);
+  }, [active, beginTour, pathname, progress, progressReady, userId]);
 
   const revealStep = useCallback(() => {
     if (!currentStep) return;
@@ -177,6 +201,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   }, [active, currentStep, pathname, revealStep]);
 
   const completeTour = useCallback(() => {
+    if (!userId) return;
     const nextProgress: TourProgress = {
       status: 'COMPLETED',
       tourVersion: VAD_TOUR_VERSION,
@@ -185,11 +210,11 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       lastStartedAt: progress.lastStartedAt ?? new Date().toISOString(),
     };
     setProgress(nextProgress);
-    void writeTourProgress(nextProgress);
+    void writeTourProgress(userId, nextProgress);
     setActive(false);
     setSpotlight(null);
     setShowReminderChoices(false);
-  }, [progress.lastStartedAt]);
+  }, [progress.lastStartedAt, userId]);
 
   const moveNext = useCallback(() => {
     if (stepIndex >= VAD_PRODUCT_TOUR.length - 1) {
@@ -209,6 +234,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   }, [stepIndex]);
 
   const postpone = useCallback((milliseconds: number | null) => {
+    if (!userId) return;
     const nextProgress: TourProgress = {
       ...progress,
       status: milliseconds === null ? 'DISMISSED' : 'REMIND',
@@ -218,11 +244,11 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
         : new Date(Date.now() + milliseconds).toISOString(),
     };
     setProgress(nextProgress);
-    void writeTourProgress(nextProgress);
+    void writeTourProgress(userId, nextProgress);
     setActive(false);
     setSpotlight(null);
     setShowReminderChoices(false);
-  }, [progress]);
+  }, [progress, userId]);
 
   const value = useMemo<TourContextValue>(() => ({
     active,
