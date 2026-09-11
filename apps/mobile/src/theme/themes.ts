@@ -1,4 +1,4 @@
-import { radius, spacing, typography, type VadThemeMode } from './tokens';
+import { breakpoints, motion, radius, spacing, typography, type VadThemeMode } from './tokens';
 
 export const brand = {
   primary: '#5B5BF7',
@@ -35,7 +35,7 @@ export const darkColors = {
   noSoft: '#451E27',
   warningSoft: '#463717',
   infoSoft: '#142E4E',
-  overlay: 'rgba(0,0,0,0.60)',
+  overlay: 'rgba(0,0,0,0.68)',
 } as const;
 
 export const lightColors = {
@@ -56,7 +56,31 @@ export const lightColors = {
   noSoft: '#FDE8EB',
   warningSoft: '#FFF4D8',
   infoSoft: '#E6F2FF',
-  overlay: 'rgba(15,18,32,0.35)',
+  overlay: 'rgba(15,18,32,0.42)',
+} as const;
+
+const shadows = {
+  subtle: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  card: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 4,
+  },
+  floating: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 34,
+    elevation: 8,
+  },
 } as const;
 
 export function makeVadTheme(mode: VadThemeMode) {
@@ -66,6 +90,9 @@ export function makeVadTheme(mode: VadThemeMode) {
     spacing,
     radius,
     typography,
+    breakpoints,
+    motion,
+    shadows,
   };
 }
 
