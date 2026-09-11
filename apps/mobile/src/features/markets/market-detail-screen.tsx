@@ -58,7 +58,7 @@ export function MarketDetailScreen({
               ? 'Build or reduce your position.'
               : tab === 'Discussion'
                 ? 'See what the community thinks about this market.'
-                : 'Understand how this market closes, resolves and pays out.'}
+                : 'See how the result is decided and how payouts work.'}
         </VadText>
       </View>
 
@@ -132,9 +132,9 @@ function Overview({
         <VadCard style={{ flex: 1.1, gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="caption" tone="brand">MARKET OVERVIEW</VadText>
-            <VadText variant="heading">Prices show conviction. Rules decide the result.</VadText>
+            <VadText variant="heading">Prices show what traders think. The rules decide the result.</VadText>
             <VadText variant="caption" tone="secondary">
-              YES and NO prices reflect how participants are trading. The final result is decided from the market rules and accepted evidence, not by whichever side has the higher price.
+              YES and NO prices show how people are trading. The final result comes from the published market rules and accepted evidence, not from whichever side has the higher price.
             </VadText>
           </View>
 
@@ -184,7 +184,7 @@ function Overview({
         <VadText variant="caption" tone="brand">HOW TO READ THE PRICE</VadText>
         <VadText variant="bodyStrong">A market price is not the final result.</VadText>
         <VadText variant="caption" tone="secondary">
-          For example, a 90% YES price means participants are strongly pricing YES. The market can still resolve NO if the accepted evidence and published rules support NO.
+          For example, a 90% YES price means traders strongly favour YES. The final result can still be NO if the published rules and accepted evidence support NO.
         </VadText>
       </VadCard>
     </View>
@@ -204,7 +204,7 @@ function Lifecycle({ market }: { market: MarketCatalogItem }) {
     <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
       <View style={{ gap: 2 }}>
         <VadText variant="bodyStrong">What happens next</VadText>
-        <VadText variant="caption" tone="secondary">Trading closes first, then the result is confirmed before eligible positions are paid out.</VadText>
+        <VadText variant="caption" tone="secondary">Trading closes first, then the result is confirmed before eligible winning positions are paid.</VadText>
       </View>
       <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', gap: theme.spacing.xs }}>
         <LifecycleStep
@@ -222,7 +222,7 @@ function Lifecycle({ market }: { market: MarketCatalogItem }) {
         <LifecycleStep
           number="3"
           title="Payout"
-          body={`Eligible positions are settled in ${market.asset_code} after the result becomes final.`}
+          body={`Eligible winning positions are paid in ${market.asset_code} after the result becomes final.`}
           state={settlementDone ? 'complete' : 'waiting'}
         />
       </View>
@@ -262,17 +262,17 @@ function Rules({ market }: { market: MarketCatalogItem }) {
     {
       number: '2',
       title: 'Price does not decide the outcome',
-      body: 'YES and NO prices show participant conviction. They do not decide the final result.',
+      body: 'YES and NO prices show what traders currently think. They do not decide the final result.',
     },
     {
       number: '3',
       title: 'The result follows the rules',
-      body: 'The final result is determined from the market’s published criteria and accepted evidence. Community posts and creator opinions do not decide the outcome.',
+      body: 'The final result comes from the market’s published criteria and accepted evidence. Community posts and creator opinions do not decide the outcome.',
     },
     {
       number: '4',
       title: 'Payouts use this market’s currency',
-      body: `Eligible positions are settled in ${market.asset_code}. Values from another currency are not mixed into this market.`,
+      body: `Eligible winning positions are paid in ${market.asset_code}. Values from another currency are not mixed into this market.`,
     },
   ];
 
