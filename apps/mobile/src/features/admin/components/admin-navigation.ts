@@ -14,6 +14,7 @@ export type AdminHref =
   | '/admin/users'
   | '/admin/content'
   | '/admin/home-content'
+  | '/admin/policies'
   | '/admin/providers'
   | '/admin/ai'
   | '/admin/roles'
@@ -135,6 +136,13 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         href: '/admin/home-content',
         description: 'Promotional banners and public awareness notices',
         permissions: ['content.moderate'],
+      },
+      {
+        label: 'Policies & Consent',
+        shortLabel: 'Policies',
+        href: '/admin/policies',
+        description: 'Write, preview and publish user terms and privacy documents',
+        permissions: ['policies.manage'],
       },
     ],
   },
