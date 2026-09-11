@@ -11,13 +11,24 @@ export function useAuthMethods() {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    setMethods(await getPublicAuthMethods());
+    const next = await getPublicAuthMethods();
+    setMethods(next);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let active = true;
+
+    void getPublicAuthMethods().then((next) => {
+      if (!active) return;
+      setMethods(next);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return { methods, loading, refresh };
 }
