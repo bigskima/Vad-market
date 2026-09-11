@@ -170,23 +170,23 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
                   <VadText variant="label" tone="brand">VAD MARKET</VadText>
                   <VadText variant="display">
                     {view === 'forgot'
-                      ? 'Get back to your conviction.'
+                      ? 'Get back to your account.'
                       : mode === 'signIn'
                         ? 'Welcome back.'
                         : 'Back outcomes you understand.'}
                   </VadText>
                   <VadText tone="secondary" style={{ maxWidth: 520 }}>
                     {view === 'forgot'
-                      ? 'Reset access securely without touching your markets, wallet, positions or public track record.'
+                      ? 'Reset your password without affecting your wallet, positions or account activity.'
                       : mode === 'signIn'
-                        ? 'Return to live markets, positions, wallet activity and the VAD community from one account.'
-                        : 'Create one account for markets, trading, wallet activity and your public conviction history.'}
+                        ? 'Sign in to return to your markets, positions, wallet and community.'
+                        : 'Create one account for markets, trading, your wallet and your public track record.'}
                   </VadText>
                 </View>
 
                 {wide ? (
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-                    {['Live probability', 'Unified wallet', 'Public track record'].map((item) => (
+                    {['Live market prices', 'Your wallet', 'Public track record'].map((item) => (
                       <View key={item} style={{ minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, paddingHorizontal: theme.spacing.md, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>
                         <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.brandPrimary }} />
                         <VadText variant="caption" tone="secondary">{item}</VadText>
@@ -276,7 +276,9 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
                     <View style={{ gap: theme.spacing.xs }}>
                       <VadText variant="heading">{mode === 'signIn' ? 'Sign in to VAD' : 'Create your VAD account'}</VadText>
                       <VadText variant="caption" tone="secondary">
-                        {mode === 'signIn' ? 'Use your account details or a connected provider.' : 'Start with your identity details. Phone verification follows as a separate security step.'}
+                        {mode === 'signIn'
+                          ? 'Use your email and password, or continue with Google or Apple.'
+                          : 'Create your account now. You can verify your phone next for extra security.'}
                       </VadText>
                     </View>
 
@@ -368,7 +370,7 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
                 )}
 
                 <VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>
-                  By continuing, you agree to VAD&apos;s applicable platform and market rules.
+                  By continuing, you agree to VAD&apos;s terms and market rules.
                 </VadText>
               </VadCard>
             </View>
