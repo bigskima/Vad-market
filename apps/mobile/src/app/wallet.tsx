@@ -17,7 +17,7 @@ export default function WalletRoute() {
   };
 
   const walletReadFailedWithoutData = Boolean(
-    data.sectionErrors.wallet && !data.ngn,
+    data.sectionErrors.wallet && !data.wallet.length,
   );
 
   return (
@@ -30,7 +30,7 @@ export default function WalletRoute() {
         />
       ) : (
         <WalletScreen
-          ngn={data.ngn}
+          wallets={data.wallet}
           onDeposit={() => router.push('/wallet/deposit')}
           onWithdraw={() => router.push('/wallet/withdraw')}
           onActivity={() => router.push('/wallet/activity')}

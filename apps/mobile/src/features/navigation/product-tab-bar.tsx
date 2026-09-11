@@ -38,13 +38,16 @@ export function ProductTabBar({
 
   return (
     <View
-      style={{
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
-        paddingBottom: Math.max(insets.bottom, 4),
-        paddingTop: 4,
-      }}
+      style={[
+        theme.shadows.floating,
+        {
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+          backgroundColor: theme.colors.surface,
+          paddingBottom: Math.max(insets.bottom, 5),
+          paddingTop: 4,
+        },
+      ]}
     >
       <View
         accessibilityRole="tablist"
@@ -69,35 +72,51 @@ export function ProductTabBar({
               onPress={() => onChange(tab.value)}
               style={({ pressed }) => ({
                 flex: 1,
-                minHeight: density.compact ? 48 : 52,
+                minHeight: density.compact ? 54 : 58,
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 1,
-                opacity: pressed ? 0.68 : 1,
-                transform: [{ scale: pressed ? 0.97 : 1 }],
+                gap: 2,
+                opacity: pressed ? 0.7 : 1,
+                transform: [{ translateY: selected ? -1 : 0 }, { scale: pressed ? 0.96 : 1 }],
               })}
             >
               <View
                 style={{
-                  minWidth: density.compact ? 38 : 42,
-                  height: density.compact ? 26 : 28,
+                  minWidth: density.compact ? 40 : 44,
+                  height: 30,
                   borderRadius: theme.radius.pill,
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: selected ? theme.colors.brandSoft : 'transparent',
+                  borderWidth: selected ? 1 : 0,
+                  borderColor: selected ? theme.colors.brandPrimary : 'transparent',
                 }}
               >
-                <VadIcon name={tab.icon} size={density.compact ? 17 : 18} tone={selected ? 'brand' : 'tertiary'} />
+                <VadIcon name={tab.icon} size={density.compact ? 18 : 19} tone={selected ? 'brand' : 'tertiary'} />
               </View>
 
               <VadText
                 variant="caption"
                 tone={selected ? 'brand' : 'tertiary'}
                 numberOfLines={1}
-                style={{ fontWeight: selected ? '700' : '500', fontSize: density.compact ? 11 : 12 }}
+                style={{ fontWeight: selected ? '800' : '500', fontSize: density.compact ? 10 : 11 }}
               >
                 {tab.label}
               </VadText>
+
+              {selected ? (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    bottom: 1,
+                    width: 18,
+                    height: 2,
+                    borderRadius: 1,
+                    backgroundColor: theme.colors.brandPrimary,
+                  }}
+                />
+              ) : null}
             </Pressable>
           );
         })}

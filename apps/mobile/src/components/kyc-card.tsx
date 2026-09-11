@@ -33,8 +33,11 @@ export function KycCard() {
     if (background) setRefreshing(true);
     setError(null);
     try {
-      setStatus(await getMyKycStatus());
+      const next = await getMyKycStatus();
+      setStatus(next);
       setLastCheckedAt(new Date());
+      setActionError(null);
+      if (next.status === 'VERIFIED') setActionMessage(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Verification status could not be loaded.');
     } finally {
@@ -58,7 +61,7 @@ export function KycCard() {
   }, [load]);
 
   async function start() {
-    if (!status.providerConfigured) return;
+    if (!status.providerConfigured || working) return;
     setWorking(true);
     setActionError(null);
     setActionMessage(null);
@@ -90,9 +93,14 @@ export function KycCard() {
 
   const verified = status.status === 'VERIFIED';
   const inProgress = ['CREATED', 'PROVIDER_PENDING', 'IN_REVIEW'].includes(status.status);
-  const failed = ['FAILED', 'REJECTED'].some((value) => status.status.toUpperCase().includes(value));
-  const statusTone = verified ? 'yes' : failed ? 'danger' : inProgress ? 'warning' : status.providerConfigured ? 'brand' : 'secondary';
+  const retryNeeded = ['REJECTED', 'EXPIRED', 'CANCELLED'].includes(status.status);
+  const statusTone = verified ? 'yes' : retryNeeded ? 'warning' : inProgress ? 'warning' : status.providerConfigured ? 'brand' : 'secondary';
   const statusLabel = verified ? 'VERIFIED' : !status.providerConfigured ? 'SETUP PENDING' : status.status.replaceAll('_', ' ');
+  const startLabel = inProgress
+    ? 'Continue verification'
+    : retryNeeded
+      ? 'Restart verification'
+      : 'Start verification';
 
   return (
     <View style={{ gap: density.sectionGap }}>
@@ -102,27 +110,28 @@ export function KycCard() {
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="caption" tone="brand">IDENTITY VERIFICATION</VadText>
           <VadText variant="heading">
-            {verified ? 'Identity verified' : inProgress ? 'Verification in progress' : failed ? 'Verification needs attention' : 'Verify when required'}
+            {verified ? 'Identity verified' : inProgress ? 'Verification in progress' : retryNeeded ? 'Verification needs attention' : 'Verify when required'}
           </VadText>
           <VadText variant="caption" tone="secondary">Provider-hosted identity checks. VAD stores the resulting status, not raw identity documents here.</VadText>
         </View>
-        <VadButton label="Refresh" variant="secondary" size="small" fullWidth={density.width < 520} loading={refreshing} onPress={() => void load(true)} />
+        <VadButton label="Refresh" variant="secondary" size="small" fullWidth={density.width < 520} loading={refreshing} disabled={working} onPress={() => void load(true)} />
       </View>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
-        <VadCard style={{ flex: 1.05, borderColor: verified ? theme.colors.yes : failed ? theme.colors.danger : inProgress ? theme.colors.warning : theme.colors.brandPrimary, gap: theme.spacing.sm }}>
+        <VadCard accessibilityRole="summary" style={{ flex: 1.05, borderColor: verified ? theme.colors.yes : retryNeeded || inProgress ? theme.colors.warning : theme.colors.brandPrimary, gap: theme.spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 2 }}>
               <VadText variant="caption" tone={statusTone}>CURRENT STATUS</VadText>
               <VadText variant="heading" numberOfLines={2}>{statusLabel}</VadText>
             </View>
-            <VadChip label={verified ? 'Complete' : inProgress ? 'In progress' : failed ? 'Action needed' : 'Available'} tone={verified ? 'yes' : inProgress || failed ? 'warning' : 'brand'} />
+            <VadChip label={verified ? 'Complete' : inProgress ? 'In progress' : retryNeeded ? 'Action needed' : 'Available'} tone={verified ? 'yes' : inProgress || retryNeeded ? 'warning' : 'brand'} />
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
             <Fact label="Provider" value={status.providerCode ?? 'Selected'} />
             <Fact label="Level" value={status.verificationLevel ?? 'STANDARD'} />
             <Fact label="Route" value={status.providerConfigured ? 'Ready' : 'Not ready'} tone={status.providerConfigured ? 'yes' : 'warning'} />
+            {status.expiresAt ? <Fact label="Expires" value={new Date(status.expiresAt).toLocaleDateString()} tone={retryNeeded ? 'warning' : 'primary'} /> : null}
           </View>
 
           {lastCheckedAt ? <VadText variant="caption" tone="tertiary">Checked {lastCheckedAt.toLocaleString()}</VadText> : null}
@@ -131,19 +140,20 @@ export function KycCard() {
         <VadCard variant="raised" style={{ flex: 0.95, gap: theme.spacing.xs }}>
           <VadText variant="bodyStrong">Verification progress</VadText>
           <VerificationStep number="1" label="Start" state={verified || inProgress ? 'complete' : status.providerConfigured ? 'active' : 'blocked'} />
-          <VerificationStep number="2" label="Provider review" state={verified ? 'complete' : failed ? 'blocked' : inProgress ? 'active' : 'waiting'} />
-          <VerificationStep number="3" label="Result" state={verified ? 'complete' : failed ? 'blocked' : 'waiting'} />
+          <VerificationStep number="2" label="Provider review" state={verified ? 'complete' : retryNeeded ? 'blocked' : inProgress ? 'active' : 'waiting'} />
+          <VerificationStep number="3" label="Result" state={verified ? 'complete' : retryNeeded ? 'blocked' : 'waiting'} />
         </VadCard>
       </View>
 
       {!status.providerConfigured && !verified ? <InlineStatus tone="warning" title="Verification route unavailable" message={`${status.providerCode ?? 'The selected provider'} is selected, but its active runtime route is not currently available.`} /> : null}
+      {retryNeeded ? <InlineStatus tone="warning" title="Verification can be retried" message={`The last verification ended as ${status.status.replaceAll('_', ' ').toLowerCase()}. Start again when you are ready; backend policy will decide whether the new session can proceed.`} /> : null}
       {actionMessage ? <InlineStatus tone="yes" title="Verification opened" message={actionMessage} /> : null}
       {actionError ? <InlineStatus tone="danger" title="Verification unavailable" message={actionError} /> : null}
 
       {!verified ? (
         <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
-          <VadButton label={inProgress ? 'Continue verification' : failed ? 'Try verification again' : 'Start verification'} loading={working} disabled={!status.providerConfigured} onPress={() => void start()} style={{ flex: 1 }} />
-          {(inProgress || failed) ? <VadButton label="Refresh now" variant="secondary" loading={refreshing} disabled={working} onPress={() => void load(true)} style={{ flex: 1 }} /> : null}
+          <VadButton label={startLabel} loading={working} disabled={!status.providerConfigured || refreshing} onPress={() => void start()} style={{ flex: 1 }} />
+          {(inProgress || retryNeeded) ? <VadButton label="Refresh now" variant="secondary" loading={refreshing} disabled={working} onPress={() => void load(true)} style={{ flex: 1 }} /> : null}
         </View>
       ) : null}
 
@@ -184,7 +194,7 @@ function InlineStatus({ tone, title, message }: { tone: 'yes' | 'warning' | 'dan
   const borderColor = tone === 'yes' ? theme.colors.yes : tone === 'warning' ? theme.colors.warning : theme.colors.danger;
   const backgroundColor = tone === 'yes' ? theme.colors.yesSoft : tone === 'warning' ? theme.colors.warningSoft : theme.colors.noSoft;
   return (
-    <VadCard style={{ borderColor, backgroundColor, gap: 2 }}>
+    <VadCard accessibilityRole="alert" style={{ borderColor, backgroundColor, gap: 2 }}>
       <VadText variant="caption" tone={tone}>{title.toUpperCase()}</VadText>
       <VadText variant="caption" tone="secondary">{message}</VadText>
     </VadCard>

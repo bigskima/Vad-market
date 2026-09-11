@@ -1,12 +1,14 @@
 import type { RuntimeCapabilityKey } from '@vad/types';
 import { Redirect, router } from 'expo-router';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
   View,
 } from 'react-native';
 
+import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -17,6 +19,9 @@ import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { ProductAnnouncementBar } from './product-announcement-bar';
+import { ProductRightRail } from './product-right-rail';
+import { ProductSidebar } from './product-sidebar';
 import { ProductTabBar, type ProductTab } from './product-tab-bar';
 import { ProductTopBar } from './product-top-bar';
 
@@ -37,10 +42,10 @@ export function ProductRoute({
 }: Props) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const desktop = density.desktop;
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
+  const [noticesOpen, setNoticesOpen] = useState(false);
 
   if (!isLoading && !session) return <Redirect href="/" />;
 
@@ -49,56 +54,70 @@ export function ProductRoute({
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <View
           style={{
+            minHeight: density.phone ? 56 : 64,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
-            paddingTop: density.phone ? 8 : 18,
+            backgroundColor: theme.colors.surface,
             paddingHorizontal: density.horizontalPadding,
-            paddingBottom: density.phone ? 8 : theme.spacing.sm,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.spacing.sm,
           }}
         >
+          <VadSkeleton width={density.phone ? 34 : 142} height={density.phone ? 34 : 22} radius={17} />
+          <VadSkeleton width={density.phone ? '46%' : 320} height={44} radius={22} />
+          <View style={{ flex: 1 }} />
+          <VadSkeleton width={44} height={44} radius={22} />
+        </View>
+
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          {density.desktop ? (
+            <View
+              style={{
+                width: 232,
+                borderRightWidth: 1,
+                borderRightColor: theme.colors.border,
+                backgroundColor: theme.colors.surface,
+                padding: theme.spacing.md,
+                gap: theme.spacing.sm,
+              }}
+            >
+              <VadSkeleton width={120} height={36} />
+              <VadSkeleton height={48} radius={theme.radius.lg} />
+              <VadSkeleton height={48} radius={theme.radius.lg} />
+              <VadSkeleton height={48} radius={theme.radius.lg} />
+              <VadSkeleton height={48} radius={theme.radius.lg} />
+            </View>
+          ) : null}
+
           <View
             style={{
+              flex: 1,
               width: '100%',
-              maxWidth: 1180,
+              maxWidth: density.wide ? 840 : 800,
               alignSelf: 'center',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: theme.spacing.sm,
+              paddingHorizontal: density.horizontalPadding,
+              paddingTop: density.pageTopPadding,
+              gap: density.compact ? theme.spacing.sm : theme.spacing.lg,
             }}
           >
-            <VadSkeleton width={density.phone ? 30 : 34} height={density.phone ? 30 : 34} radius={17} />
-            <VadSkeleton width={64} height={16} />
-            <View style={{ flex: 1 }} />
-            <VadSkeleton width={density.phone ? 36 : 38} height={density.phone ? 36 : 38} radius={19} />
+            <VadSkeleton width="38%" height={20} />
+            <VadSkeleton width="68%" height={30} />
+            <VadSkeleton height={density.compact ? 104 : 132} radius={theme.radius.xl} />
+            <VadSkeleton height={density.compact ? 74 : 92} radius={theme.radius.xl} />
+            <VadSkeleton height={density.compact ? 74 : 92} radius={theme.radius.xl} />
           </View>
+
+          {density.wide ? (
+            <View style={{ width: 292, padding: theme.spacing.lg, gap: theme.spacing.md }}>
+              <VadSkeleton height={180} radius={theme.radius.xl} />
+              <VadSkeleton height={126} radius={theme.radius.xl} />
+            </View>
+          ) : null}
         </View>
 
-        <View
-          style={{
-            flex: 1,
-            width: '100%',
-            maxWidth: 1120,
-            alignSelf: 'center',
-            paddingHorizontal: density.horizontalPadding,
-            paddingTop: density.pageTopPadding,
-            gap: density.compact ? theme.spacing.sm : theme.spacing.lg,
-          }}
-        >
-          <VadSkeleton width="38%" height={20} />
-          <VadSkeleton width="62%" height={28} />
-          <VadSkeleton height={density.compact ? 104 : 120} radius={theme.radius.lg} />
-          <VadSkeleton height={density.compact ? 64 : 76} radius={theme.radius.lg} />
-          <VadSkeleton height={density.compact ? 64 : 76} radius={theme.radius.lg} />
-        </View>
-
-        {!desktop ? (
-          <View
-            style={{
-              minHeight: density.compact ? 54 : 58,
-              borderTopWidth: 1,
-              borderTopColor: theme.colors.border,
-            }}
-          />
+        {density.phone ? (
+          <View style={{ minHeight: 60, borderTopWidth: 1, borderTopColor: theme.colors.border }} />
         ) : null}
       </View>
     );
@@ -146,98 +165,160 @@ export function ProductRoute({
       ? 'New actions are temporarily paused for this account. Read-only areas remain available.'
       : 'VAD is temporarily read-only while maintenance is in progress.');
   const resumesAt = runtime.snapshot.context.platformResumesAt;
+  const publicNotice = data.publicNotices[0] ?? null;
+  const noticeCount = data.publicNotices.length + (maintenance ? 1 : 0);
+  const email = session.user.email ?? session.user.phone ?? 'VAD member';
+  const canCreate = Boolean(
+    allowCreate && runtime.snapshot.capabilities.submitMarketProposal,
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ProductTopBar
         active={active}
-        email={session.user.email ?? session.user.phone ?? 'VAD member'}
+        email={email}
         isAdmin={Boolean(data.adminSummary)}
-        canCreate={
-          allowCreate &&
-          runtime.snapshot.capabilities.submitMarketProposal
-        }
-        showNavigation={desktop}
-        onNavigate={navigate}
+        canCreate={canCreate}
         onCreate={() => router.push('/create-market')}
         onAdmin={() => router.push('/admin')}
         onAccount={() => router.replace('/account')}
+        onSearch={() => router.push('/markets')}
+        onNotices={() => setNoticesOpen(true)}
+        noticeCount={noticeCount}
       />
 
-      <ScrollView
-        style={{ flex: 1 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        contentInsetAdjustmentBehavior="automatic"
-        refreshControl={
-          <RefreshControl
-            refreshing={data.refreshing}
-            onRefresh={data.refresh}
-            tintColor={theme.colors.brandPrimary}
-            colors={[theme.colors.brandPrimary]}
-          />
-        }
-        contentContainerStyle={{
-          alignSelf: 'center',
-          width: '100%',
-          maxWidth: 1120,
-          paddingHorizontal: density.horizontalPadding,
-          paddingTop: density.pageTopPadding,
-          paddingBottom: desktop ? theme.spacing.xxxl : theme.spacing.xxl,
-          gap: density.compact ? theme.spacing.sm : theme.spacing.lg,
-        }}
-      >
-        {data.error ? (
-          <VadErrorState
-            message={data.error}
-            onRetry={() => void data.load()}
+      <ProductAnnouncementBar notice={publicNotice} />
+
+      <View style={{ flex: 1, flexDirection: 'row', minHeight: 0 }}>
+        {density.desktop ? (
+          <ProductSidebar
+            active={active}
+            email={email}
+            isAdmin={Boolean(data.adminSummary)}
+            canCreate={canCreate}
+            onNavigate={navigate}
+            onCommunity={() => router.push('/community')}
+            onCreate={() => router.push('/create-market')}
+            onAdmin={() => router.push('/admin')}
           />
         ) : null}
 
-        {maintenance ? (
-          <View
-            accessibilityRole="alert"
-            style={{
-              borderWidth: 1,
-              borderColor: theme.colors.warning,
-              borderRadius: theme.radius.lg,
-              backgroundColor: theme.colors.warningSoft,
-              paddingHorizontal: theme.spacing.md,
-              paddingVertical: density.compact ? theme.spacing.sm : theme.spacing.md,
-              gap: 3,
+        <View style={{ flex: 1, minWidth: 0, backgroundColor: theme.colors.background }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentInsetAdjustmentBehavior="automatic"
+            refreshControl={
+              <RefreshControl
+                refreshing={data.refreshing}
+                onRefresh={data.refresh}
+                tintColor={theme.colors.brandPrimary}
+                colors={[theme.colors.brandPrimary]}
+              />
+            }
+            contentContainerStyle={{
+              alignSelf: 'center',
+              width: '100%',
+              maxWidth: density.desktop ? 820 : 760,
+              paddingHorizontal: density.horizontalPadding,
+              paddingTop: density.pageTopPadding,
+              paddingBottom: density.contentBottomPadding,
+              gap: density.compact ? theme.spacing.sm : theme.spacing.lg,
             }}
           >
-            <VadText variant="caption" tone="warning">{maintenanceLabel}</VadText>
-            <VadText variant="caption" tone="secondary">{maintenanceMessage}</VadText>
-            {resumesAt ? (
-              <VadText variant="caption" tone="tertiary">
-                Scheduled to resume {new Date(resumesAt).toLocaleString()}.
-              </VadText>
+            {data.error ? (
+              <VadErrorState
+                message={data.error}
+                onRetry={() => void data.load()}
+              />
             ) : null}
-          </View>
-        ) : null}
 
-        {requiredLoading ? (
-          <View style={{ gap: theme.spacing.md }}>
-            <VadSkeleton width="48%" height={26} />
-            <VadSkeleton height={density.compact ? 92 : 106} radius={theme.radius.lg} />
-            <VadSkeleton height={56} />
-          </View>
-        ) : requiredCapability && !requiredAllowed ? (
-          <VadEmptyState
-            title={capabilityTitle}
-            body={requiredMessage ?? runtimeCapabilityReason(requiredReason)}
-            actionLabel="Refresh availability"
-            onAction={() => void runtime.refresh()}
+            {maintenance ? (
+              <View
+                accessibilityRole="alert"
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.colors.warning,
+                  borderRadius: theme.radius.xl,
+                  backgroundColor: theme.colors.warningSoft,
+                  paddingHorizontal: theme.spacing.md,
+                  paddingVertical: density.compact ? theme.spacing.sm : theme.spacing.md,
+                  gap: 3,
+                }}
+              >
+                <VadText variant="caption" tone="warning">{maintenanceLabel}</VadText>
+                <VadText variant="caption" tone="secondary">{maintenanceMessage}</VadText>
+                {resumesAt ? (
+                  <VadText variant="caption" tone="tertiary">
+                    Scheduled to resume {new Date(resumesAt).toLocaleString()}.
+                  </VadText>
+                ) : null}
+              </View>
+            ) : null}
+
+            {requiredLoading ? (
+              <View style={{ gap: theme.spacing.md }}>
+                <VadSkeleton width="48%" height={26} />
+                <VadSkeleton height={density.compact ? 92 : 106} radius={theme.radius.lg} />
+                <VadSkeleton height={56} />
+              </View>
+            ) : requiredCapability && !requiredAllowed ? (
+              <VadEmptyState
+                title={capabilityTitle}
+                body={requiredMessage ?? runtimeCapabilityReason(requiredReason)}
+                actionLabel="Refresh availability"
+                onAction={() => void runtime.refresh()}
+              />
+            ) : (
+              children
+            )}
+          </ScrollView>
+        </View>
+
+        {density.wide ? (
+          <ProductRightRail
+            markets={data.markets}
+            notice={publicNotice}
+            onOpenMarkets={() => router.push('/markets')}
+            onOpenWallet={() => router.push('/wallet')}
+            onOpenCommunity={() => router.push('/community')}
           />
-        ) : (
-          children
-        )}
-      </ScrollView>
+        ) : null}
+      </View>
 
-      {!desktop ? (
+      {density.phone ? (
         <ProductTabBar active={active} onChange={navigate} />
       ) : null}
+
+      <VadBottomSheet
+        visible={noticesOpen}
+        title="VAD updates"
+        onClose={() => setNoticesOpen(false)}
+      >
+        <View style={{ gap: theme.spacing.md }}>
+          {maintenance ? (
+            <View style={{ gap: 4, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+              <VadText variant="caption" tone="warning">{maintenanceLabel}</VadText>
+              <VadText variant="bodyStrong">{maintenanceMessage}</VadText>
+              {resumesAt ? (
+                <VadText variant="caption" tone="tertiary">Scheduled to resume {new Date(resumesAt).toLocaleString()}.</VadText>
+              ) : null}
+            </View>
+          ) : null}
+
+          {data.publicNotices.length ? data.publicNotices.map((notice) => (
+            <View key={notice.public_id} style={{ gap: 4, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+              <VadText variant="caption" tone={notice.tone === 'WARNING' ? 'warning' : 'yes'}>
+                {notice.tone === 'WARNING' ? 'SERVICE NOTICE' : 'PLATFORM UPDATE'}
+              </VadText>
+              <VadText>{notice.message}</VadText>
+            </View>
+          )) : maintenance ? null : (
+            <VadText tone="secondary">There are no active service notices right now.</VadText>
+          )}
+        </View>
+      </VadBottomSheet>
     </View>
   );
 }

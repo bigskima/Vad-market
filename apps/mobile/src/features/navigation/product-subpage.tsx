@@ -9,7 +9,9 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
+import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { ProductAnnouncementBar } from './product-announcement-bar';
 
 export function ProductSubpage({
   title,
@@ -23,17 +25,23 @@ export function ProductSubpage({
   const insets = useSafeAreaInsets();
   const density = useProductDensity();
   const { isLoading, session } = useAuth();
+  const data = useProductDataContext();
   const desktop = density.desktop;
   const headerWidth = Math.max(maxWidth, desktop ? 980 : 760);
   const horizontalPadding = density.horizontalPadding;
-  const headerHeight = density.phone ? 48 : 56;
-  const backSize = density.phone ? 36 : 40;
+  const headerHeight = density.phone ? 52 : 60;
+  const backSize = 44;
 
-  if (isLoading) {
+  function goBack() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/home');
+  }
+
+  if (isLoading || data.loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <View style={{ paddingTop: insets.top + (density.phone ? 4 : theme.spacing.xs), backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-          <View style={{ width: '100%', maxWidth: headerWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingBottom: density.phone ? 6 : theme.spacing.sm, minHeight: headerHeight, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+        <View style={{ paddingTop: insets.top + (density.phone ? 2 : theme.spacing.xs), backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+          <View style={{ width: '100%', maxWidth: headerWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingBottom: density.phone ? 4 : theme.spacing.sm, minHeight: headerHeight, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
             <VadSkeleton width={backSize} height={backSize} radius={backSize / 2} />
             <VadSkeleton width={140} height={17} />
           </View>
@@ -52,15 +60,29 @@ export function ProductSubpage({
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ paddingTop: insets.top + (density.phone ? 4 : theme.spacing.xs), borderBottomWidth: 1, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
-        <View style={{ width: '100%', maxWidth: headerWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingBottom: density.phone ? 6 : theme.spacing.sm, minHeight: headerHeight, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <VadIconButton icon="back" label="Go back" variant="plain" size={backSize} onPress={() => router.back()} />
-          <View style={{ flex: 1, alignItems: desktop ? 'flex-start' : 'center' }}>
+      <View
+        style={[
+          theme.shadows.subtle,
+          {
+            paddingTop: insets.top + (density.phone ? 2 : theme.spacing.xs),
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
+            zIndex: 20,
+          },
+        ]}
+      >
+        <View style={{ width: '100%', maxWidth: headerWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingBottom: density.phone ? 4 : theme.spacing.sm, minHeight: headerHeight, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <VadIconButton icon="back" label="Go back" variant="plain" size={backSize} onPress={goBack} />
+          <View style={{ flex: 1, alignItems: desktop ? 'flex-start' : 'center', minWidth: 0 }}>
+            {desktop ? <VadText variant="caption" tone="tertiary">VAD</VadText> : null}
             <VadText variant={desktop ? 'heading' : 'bodyStrong'} numberOfLines={1}>{title}</VadText>
           </View>
           <View style={{ width: backSize }} />
         </View>
       </View>
+
+      <ProductAnnouncementBar notice={data.publicNotices[0] ?? null} />
 
       <VadScreen
         scrollProps={{

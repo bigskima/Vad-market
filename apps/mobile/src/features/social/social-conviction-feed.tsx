@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
@@ -8,6 +8,7 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadIcon } from '@/components/ui/vad-icon';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
@@ -16,6 +17,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import {
   addPostComment,
+  addPostReply,
   getConvictionFeed,
   getPostComments,
   publishConvictionPost,
@@ -46,6 +48,7 @@ export function SocialConvictionFeed({
   const density = useProductDensity();
   const [posts, setPosts] = useState<ConvictionPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -59,6 +62,8 @@ export function SocialConvictionFeed({
   const [commentRefreshError, setCommentRefreshError] = useState<string | null>(null);
   const [commentBody, setCommentBody] = useState('');
   const [commentWorking, setCommentWorking] = useState(false);
+  const [replyTo, setReplyTo] = useState<PostComment | null>(null);
+  const [collapsedThreads, setCollapsedThreads] = useState<Set<string>>(() => new Set());
   const [composerError, setComposerError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [commentSubmitError, setCommentSubmitError] = useState<string | null>(null);
@@ -67,16 +72,19 @@ export function SocialConvictionFeed({
   const pendingLikeRef = useRef(new Set<string>());
   const pendingFollowRef = useRef(new Set<string>());
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (background = false) => {
+    if (background) setRefreshing(true);
     setFeedError(null);
     try {
-      setPosts(await getConvictionFeed());
+      const limit = typeof maxPosts === 'number' && !marketFilter ? Math.max(1, Math.min(maxPosts, 30)) : 30;
+      setPosts(await getConvictionFeed(limit));
     } catch (error) {
       setFeedError(error instanceof Error ? error.message : 'Community activity could not be loaded.');
     } finally {
-      setPostsLoading(false);
+      if (background) setRefreshing(false);
+      else setPostsLoading(false);
     }
-  }, []);
+  }, [marketFilter, maxPosts]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
@@ -93,6 +101,22 @@ export function SocialConvictionFeed({
   );
   const selectedMarket = marketFilter ?? market;
 
+  const commentIds = useMemo(() => new Set(comments.map((comment) => comment.comment_public_id)), [comments]);
+  const rootComments = useMemo(
+    () => comments.filter((comment) => !comment.parent_comment_public_id || !commentIds.has(comment.parent_comment_public_id)),
+    [commentIds, comments],
+  );
+  const childrenByParent = useMemo(() => {
+    const grouped = new Map<string, PostComment[]>();
+    for (const comment of comments) {
+      if (!comment.parent_comment_public_id) continue;
+      const items = grouped.get(comment.parent_comment_public_id) ?? [];
+      items.push(comment);
+      grouped.set(comment.parent_comment_public_id, items);
+    }
+    return grouped;
+  }, [comments]);
+
   async function publish() {
     if (!body.trim() || composerWorking) return;
     setComposerWorking(true);
@@ -108,7 +132,7 @@ export function SocialConvictionFeed({
       setMarket(null);
       setStance(null);
       setComposerOpen(false);
-      await load();
+      await load(true);
     } catch (error) {
       setComposerError(error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -159,16 +183,22 @@ export function SocialConvictionFeed({
     }
   }
 
+  async function refreshComments(postPublicId: string) {
+    setComments(await getPostComments(postPublicId));
+  }
+
   async function openComments(post: ConvictionPost) {
     setCommentsPostId(post.post_public_id);
     setComments([]);
     setCommentBody('');
+    setReplyTo(null);
+    setCollapsedThreads(new Set());
     setCommentsError(null);
     setCommentRefreshError(null);
     setCommentSubmitError(null);
     setCommentsLoading(true);
     try {
-      setComments(await getPostComments(post.post_public_id));
+      await refreshComments(post.post_public_id);
     } catch (error) {
       setCommentsError(error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -183,11 +213,16 @@ export function SocialConvictionFeed({
     setCommentSubmitError(null);
     setCommentRefreshError(null);
     try {
-      await addPostComment(post.post_public_id, nextBody);
+      if (replyTo) {
+        await addPostReply(post.post_public_id, replyTo.comment_public_id, nextBody);
+      } else {
+        await addPostComment(post.post_public_id, nextBody);
+      }
       setCommentBody('');
+      setReplyTo(null);
       setPosts((current) => current.map((item) => item.post_public_id === post.post_public_id ? { ...item, comment_count: Number(item.comment_count) + 1 } : item));
       try {
-        setComments(await getPostComments(post.post_public_id));
+        await refreshComments(post.post_public_id);
       } catch (refreshError) {
         setCommentRefreshError(refreshError instanceof Error ? `Your comment was posted, but the discussion could not refresh: ${refreshError.message}` : 'Your comment was posted, but the discussion could not refresh.');
       }
@@ -198,23 +233,39 @@ export function SocialConvictionFeed({
     }
   }
 
+  function toggleThread(commentId: string) {
+    setCollapsedThreads((current) => {
+      const next = new Set(current);
+      if (next.has(commentId)) next.delete(commentId);
+      else next.add(commentId);
+      return next;
+    });
+  }
+
   const commentsPost = posts.find((post) => post.post_public_id === commentsPostId) ?? null;
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-      {showComposer && canCreatePost ? (
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
+      {showComposer ? (
+        <View style={{ flexDirection: density.narrow ? 'column' : 'row', justifyContent: 'space-between', alignItems: density.narrow ? 'stretch' : 'center', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, gap: 1 }}>
             <VadText variant="bodyStrong">{marketFilter ? 'Market discussion' : 'Community feed'}</VadText>
             <VadText variant="caption" tone="secondary" numberOfLines={2}>
-              {marketFilter ? 'Add reasoning or publish a market prediction.' : 'Share analysis or attach a live market prediction.'}
+              {canCreatePost
+                ? marketFilter ? 'Add reasoning or publish a market prediction.' : 'Share analysis or attach a live market prediction.'
+                : 'Read creator reasoning and refresh for the latest published activity.'}
             </VadText>
           </View>
-          <VadButton label={composerOpen ? 'Close' : 'New post'} fullWidth={false} size="small" variant={composerOpen ? 'ghost' : 'secondary'} onPress={() => setComposerOpen((value) => !value)} />
+          <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
+            <VadButton label="Refresh" fullWidth={false} size="small" variant="ghost" loading={refreshing} disabled={composerWorking} onPress={() => void load(true)} />
+            {canCreatePost ? (
+              <VadButton label={composerOpen ? 'Close' : 'New post'} fullWidth={false} size="small" variant={composerOpen ? 'ghost' : 'secondary'} disabled={refreshing} onPress={() => setComposerOpen((value) => !value)} />
+            ) : null}
+          </View>
         </View>
       ) : null}
 
-      {showComposer && composerOpen ? (
+      {showComposer && composerOpen && canCreatePost ? (
         <View style={{ gap: theme.spacing.sm }}>
           <ConvictionComposer
             markets={markets}
@@ -233,12 +284,12 @@ export function SocialConvictionFeed({
       ) : null}
 
       {actionError ? <InlineError title="Community action not saved" message={actionError} onDismiss={() => setActionError(null)} /> : null}
-      {feedError && visiblePosts.length ? <VadErrorState title="Community refresh failed" message={feedError} onRetry={() => void load()} /> : null}
+      {feedError && visiblePosts.length ? <VadErrorState title="Community refresh failed" message={feedError} onRetry={() => void load(true)} /> : null}
 
       {postsLoading ? (
         <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
-          <VadSkeleton height={density.compact ? 108 : 122} radius={theme.radius.lg} />
-          <VadSkeleton height={density.compact ? 132 : 150} radius={theme.radius.lg} />
+          <VadSkeleton height={density.compact ? 128 : 148} radius={theme.radius.xl} />
+          <VadSkeleton height={density.compact ? 152 : 176} radius={theme.radius.xl} />
         </View>
       ) : feedError && !visiblePosts.length ? (
         <VadErrorState title="Community unavailable" message={feedError} onRetry={() => { setPostsLoading(true); void load(); }} />
@@ -246,9 +297,11 @@ export function SocialConvictionFeed({
         <VadEmptyState
           title={marketFilter ? 'No discussion yet' : 'No creator posts yet'}
           body={marketFilter ? 'Be the first to add reasoning or a prediction to this market.' : 'The first conviction can start a discussion without creating a duplicate financial market.'}
+          actionLabel={showComposer && canCreatePost ? 'Create post' : undefined}
+          onAction={showComposer && canCreatePost ? () => setComposerOpen(true) : undefined}
         />
       ) : (
-        <View style={{ gap: density.compact ? 7 : theme.spacing.sm }}>
+        <View style={{ gap: density.compact ? 8 : theme.spacing.md }}>
           {visiblePosts.map((post) => {
             const linked = post.instrument_public_id ? markets.find((item) => item.instrument_public_id === post.instrument_public_id) : undefined;
             return (
@@ -264,9 +317,7 @@ export function SocialConvictionFeed({
                 onLike={() => void toggleLike(post)}
                 onComments={() => void openComments(post)}
                 onOpenCreator={() => {
-                  if (post.author_handle) {
-                    router.push('/creator/' + encodeURIComponent(post.author_handle));
-                  }
+                  if (post.author_handle) router.push('/creator/' + encodeURIComponent(post.author_handle));
                 }}
                 onOpenMarket={() => linked && onOpenMarket(linked)}
               />
@@ -277,7 +328,7 @@ export function SocialConvictionFeed({
 
       <VadBottomSheet
         visible={Boolean(commentsPost)}
-        title="Discussion"
+        title={commentsPost ? `Discussion · ${Number(commentsPost.comment_count)}` : 'Discussion'}
         onClose={() => {
           setCommentsPostId(null);
           setComments([]);
@@ -286,46 +337,169 @@ export function SocialConvictionFeed({
           setCommentSubmitError(null);
           setCommentsLoading(false);
           setCommentBody('');
+          setReplyTo(null);
+          setCollapsedThreads(new Set());
         }}
       >
-        <ScrollView
-          style={{ maxHeight: density.short ? 320 : 380 }}
-          contentContainerStyle={{ gap: density.compact ? 8 : theme.spacing.sm }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {commentsLoading ? (
-            <View style={{ gap: 6 }}><VadSkeleton height={52} /><VadSkeleton height={52} /></View>
-          ) : commentsError ? (
-            <VadErrorState title="Discussion unavailable" message={commentsError} onRetry={() => commentsPost && void openComments(commentsPost)} />
-          ) : comments.length ? (
-            comments.map((comment) => {
-              const authorName = comment.author_display_name ?? comment.author_handle ?? 'VAD member';
-              return (
-                <View key={comment.comment_public_id} style={{ flexDirection: 'row', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: density.compact ? 8 : theme.spacing.sm }}>
-                  <ProfileAvatar path={comment.author_avatar_path} name={authorName} size={density.compact ? 30 : 34} />
-                  <View style={{ flex: 1, gap: 1 }}>
-                    <VadText variant="label">{authorName}</VadText>
-                    <VadText variant="body">{comment.body}</VadText>
-                    <VadText variant="caption" tone="secondary">{new Date(comment.created_at).toLocaleString()}</VadText>
-                  </View>
-                </View>
-              );
-            })
-          ) : (
-            <VadText tone="secondary">No comments yet. Add to the discussion.</VadText>
-          )}
+        <View style={{ gap: theme.spacing.md }}>
+          <ScrollView
+            style={{ maxHeight: density.short ? 300 : 390 }}
+            contentContainerStyle={{ gap: density.compact ? 8 : theme.spacing.sm, paddingBottom: 4 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {commentsLoading ? (
+              <View style={{ gap: 8 }}><VadSkeleton height={76} radius={theme.radius.lg} /><VadSkeleton height={76} radius={theme.radius.lg} /></View>
+            ) : commentsError ? (
+              <VadErrorState title="Discussion unavailable" message={commentsError} onRetry={() => commentsPost && void openComments(commentsPost)} />
+            ) : rootComments.length ? (
+              rootComments.map((comment) => (
+                <CommentNode
+                  key={comment.comment_public_id}
+                  comment={comment}
+                  childrenByParent={childrenByParent}
+                  collapsedThreads={collapsedThreads}
+                  depth={0}
+                  onReply={(target) => {
+                    setReplyTo(target);
+                    setCommentBody('');
+                    setCommentSubmitError(null);
+                  }}
+                  onToggle={toggleThread}
+                />
+              ))
+            ) : (
+              <VadCard variant="outlined" style={{ minHeight: 84, justifyContent: 'center', alignItems: 'center' }}>
+                <VadText tone="secondary">No comments yet. Start the discussion.</VadText>
+              </VadCard>
+            )}
 
-          {commentRefreshError ? <InlineError title="Discussion refresh delayed" message={commentRefreshError} onDismiss={() => setCommentRefreshError(null)} /> : null}
+            {commentRefreshError ? <InlineError title="Discussion refresh delayed" message={commentRefreshError} onDismiss={() => setCommentRefreshError(null)} /> : null}
+          </ScrollView>
 
           {commentsPost && !commentsLoading && !commentsError ? (
-            <View style={{ gap: 6 }}>
-              {commentSubmitError ? <InlineError title="Comment not posted" message={commentSubmitError} onDismiss={() => setCommentSubmitError(null)} /> : null}
-              <VadInput value={commentBody} onChangeText={(value) => { setCommentBody(value); setCommentSubmitError(null); }} placeholder="Add to the discussion…" />
-              <VadButton label="Send comment" disabled={!commentBody.trim()} loading={commentWorking} onPress={() => void submitComment(commentsPost)} />
+            <View style={{ gap: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md }}>
+              {replyTo ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderRadius: theme.radius.lg, backgroundColor: theme.colors.brandSoft, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs }}>
+                  <VadIcon name="reply" size={16} tone="brand" />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <VadText variant="caption" tone="brand">Replying to {replyTo.author_display_name ?? replyTo.author_handle ?? 'VAD member'}</VadText>
+                    <VadText variant="caption" tone="secondary" numberOfLines={1}>{replyTo.body}</VadText>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel reply"
+                    onPress={() => setReplyTo(null)}
+                    style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
+                  >
+                    <VadIcon name="close" size={15} tone="secondary" />
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {commentSubmitError ? <InlineError title={replyTo ? 'Reply not posted' : 'Comment not posted'} message={commentSubmitError} onDismiss={() => setCommentSubmitError(null)} /> : null}
+              <VadInput
+                label={replyTo ? 'Write a reply' : 'Add to the discussion'}
+                floatingLabel
+                value={commentBody}
+                onChangeText={(value) => { setCommentBody(value); setCommentSubmitError(null); }}
+                placeholder={replyTo ? 'Reply with context…' : 'Share a useful thought…'}
+                multiline
+              />
+              <VadButton
+                label={replyTo ? 'Send reply' : 'Send comment'}
+                disabled={!commentBody.trim()}
+                loading={commentWorking}
+                onPress={() => void submitComment(commentsPost)}
+              />
             </View>
           ) : null}
-        </ScrollView>
+        </View>
       </VadBottomSheet>
+    </View>
+  );
+}
+
+function CommentNode({
+  comment,
+  childrenByParent,
+  collapsedThreads,
+  depth,
+  onReply,
+  onToggle,
+}: {
+  comment: PostComment;
+  childrenByParent: Map<string, PostComment[]>;
+  collapsedThreads: Set<string>;
+  depth: number;
+  onReply: (comment: PostComment) => void;
+  onToggle: (commentId: string) => void;
+}) {
+  const theme = useVadTheme();
+  const density = useProductDensity();
+  const authorName = comment.author_display_name ?? comment.author_handle ?? 'VAD member';
+  const replies = childrenByParent.get(comment.comment_public_id) ?? [];
+  const collapsed = collapsedThreads.has(comment.comment_public_id);
+  const visualDepth = Math.min(depth, 3);
+
+  return (
+    <View style={{ marginLeft: visualDepth * (density.compact ? 10 : 18) }}>
+      <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+        {depth > 0 ? (
+          <View style={{ width: 2, borderRadius: 1, backgroundColor: theme.colors.borderStrong, marginRight: density.compact ? 1 : 3 }} />
+        ) : null}
+        <ProfileAvatar path={comment.author_avatar_path} name={authorName} size={depth > 0 ? 30 : 36} />
+        <View style={{ flex: 1, minWidth: 0, gap: theme.spacing.xs }}>
+          <View style={{ borderRadius: theme.radius.lg, backgroundColor: depth > 0 ? theme.colors.surfaceRaised : theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.sm, gap: 3 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+              <VadText variant="label" numberOfLines={1} style={{ flex: 1 }}>{authorName}</VadText>
+              <VadText variant="caption" tone="tertiary">{new Date(comment.created_at).toLocaleDateString()}</VadText>
+            </View>
+            <VadText variant="body">{comment.body}</VadText>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Reply to ${authorName}`}
+              onPress={() => onReply(comment)}
+              style={({ pressed }) => ({ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: theme.spacing.xs, opacity: pressed ? 0.6 : 1 })}
+            >
+              <VadIcon name="reply" size={14} tone="tertiary" />
+              <VadText variant="caption" tone="brand">Reply</VadText>
+            </Pressable>
+
+            {replies.length ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={collapsed ? `Show ${replies.length} replies` : `Hide ${replies.length} replies`}
+                accessibilityState={{ expanded: !collapsed }}
+                onPress={() => onToggle(comment.comment_public_id)}
+                style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.xs, opacity: pressed ? 0.6 : 1 })}
+              >
+                <VadText variant="caption" tone="secondary">
+                  {collapsed ? `Show ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}` : 'Hide replies'}
+                </VadText>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      </View>
+
+      {!collapsed && replies.length ? (
+        <View style={{ gap: theme.spacing.xs, marginTop: theme.spacing.xs }}>
+          {replies.map((reply) => (
+            <CommentNode
+              key={reply.comment_public_id}
+              comment={reply}
+              childrenByParent={childrenByParent}
+              collapsedThreads={collapsedThreads}
+              depth={depth + 1}
+              onReply={onReply}
+              onToggle={onToggle}
+            />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -334,7 +508,7 @@ function InlineError({ title, message, onDismiss }: { title: string; message: st
   const theme = useVadTheme();
   const density = useProductDensity();
   return (
-    <VadCard variant="raised" style={{ borderColor: theme.colors.danger, gap: 4 }}>
+    <VadCard accessibilityRole="alert" variant="raised" style={{ borderColor: theme.colors.danger, gap: 4 }}>
       <VadText variant="caption" tone="danger">{title.toUpperCase()}</VadText>
       <VadText variant="caption" tone="secondary">{message}</VadText>
       <VadButton label="Dismiss" variant="ghost" size="small" fullWidth={false} onPress={onDismiss} style={{ marginTop: density.compact ? 0 : 2 }} />

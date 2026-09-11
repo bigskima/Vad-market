@@ -17,13 +17,19 @@ import {
   type MarketCatalogItem,
   type TradeQuote,
 } from '@/services/market-api';
-import { money, pct } from '../format';
+import { assetMoney, probability } from '../format';
 
 const SHARE_PRESETS = ['25', '50', '100', '250'] as const;
 const SIDES = [
   { value: 'BUY', label: 'Buy' },
   { value: 'SELL', label: 'Sell' },
 ] as const;
+
+function priceInput(value: number | string | null) {
+  if (value == null || value === '') return '';
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? String(numeric) : '';
+}
 
 export function TradingTicket({
   market,
@@ -43,7 +49,7 @@ export function TradingTicket({
   const splitReview = density.width >= 860;
   const [outcome, setOutcome] = useState<'YES' | 'NO'>('YES');
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
-  const [price, setPrice] = useState(String(Number(market.yes_price ?? 0.5)));
+  const [price, setPrice] = useState(() => priceInput(market.yes_price));
   const [quantity, setQuantity] = useState('100');
   const [quote, setQuote] = useState<TradeQuote | null>(null);
   const [working, setWorking] = useState(false);
@@ -63,7 +69,7 @@ export function TradingTicket({
   function chooseOutcome(next: 'YES' | 'NO') {
     if (!tradeReady || working) return;
     setOutcome(next);
-    setPrice(String(Number(next === 'YES' ? market.yes_price ?? 0.5 : market.no_price ?? 0.5)));
+    setPrice(priceInput(next === 'YES' ? market.yes_price : market.no_price));
     clearReviewState();
   }
 
@@ -117,12 +123,17 @@ export function TradingTicket({
   const priceValue = Number(price);
   const quantityValue = Number(quantity);
   const inputValid =
+    price.trim().length > 0 &&
     Number.isFinite(priceValue) && priceValue > 0 && priceValue <= 1 &&
     Number.isFinite(quantityValue) && quantityValue > 0;
 
   const estimatedNotional = useMemo(
-    () => money((Number.isFinite(priceValue) ? priceValue : 0) * (Number.isFinite(quantityValue) ? quantityValue : 0)),
-    [priceValue, quantityValue],
+    () => assetMoney(
+      (Number.isFinite(priceValue) ? priceValue : 0) *
+        (Number.isFinite(quantityValue) ? quantityValue : 0),
+      market.asset_code,
+    ),
+    [market.asset_code, priceValue, quantityValue],
   );
 
   if (placedOrderId) {
@@ -154,12 +165,12 @@ export function TradingTicket({
       <VadCard variant="raised" style={{ width: '100%', flex: splitReview && quote ? 1.15 : undefined, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
           <View style={{ flex: 1, gap: 1 }}>
-            <VadText variant="caption" tone="brand">TRADE</VadText>
+            <VadText variant="caption" tone="brand">TRADE · {market.asset_code}</VadText>
             <VadText variant="heading">{side === 'BUY' ? 'Build a position' : 'Reduce a position'}</VadText>
           </View>
           <View style={{ alignItems: 'flex-end', gap: 0 }}>
             <VadText variant="caption" tone="secondary">{outcome} signal</VadText>
-            <VadText variant="heading" tone={outcome === 'YES' ? 'yes' : 'no'}>{pct(currentProbability)}</VadText>
+            <VadText variant="heading" tone={currentProbability == null ? 'tertiary' : outcome === 'YES' ? 'yes' : 'no'}>{probability(currentProbability)}</VadText>
           </View>
         </View>
 
@@ -169,9 +180,9 @@ export function TradingTicket({
           <InlineMessage tone="warning" title="Trading unavailable" body={runtimeCapabilityReason(tradeReason, 'Trading is not available for this account under the current VAD policy.')} />
         ) : null}
 
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          <OutcomeChoice active={outcome === 'YES'} label="YES" value={pct(market.yes_price)} tone="yes" disabled={!tradeReady || working} onPress={() => chooseOutcome('YES')} />
-          <OutcomeChoice active={outcome === 'NO'} label="NO" value={pct(market.no_price)} tone="no" disabled={!tradeReady || working} onPress={() => chooseOutcome('NO')} />
+        <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: 6 }}>
+          <OutcomeChoice active={outcome === 'YES'} label="YES" value={probability(market.yes_price)} tone="yes" available={market.yes_price != null} disabled={!tradeReady || working} onPress={() => chooseOutcome('YES')} />
+          <OutcomeChoice active={outcome === 'NO'} label="NO" value={probability(market.no_price)} tone="no" available={market.no_price != null} disabled={!tradeReady || working} onPress={() => chooseOutcome('NO')} />
         </View>
 
         <VadSegmentedControl
@@ -187,8 +198,8 @@ export function TradingTicket({
         <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', gap: theme.spacing.sm }}>
           <View style={{ flex: 1 }}>
             <VadInput
-              label="Limit price"
-              hint={tradeReady ? 'Above 0 and up to 1.' : 'Available when trading is enabled.'}
+              label={`Limit price · ${market.asset_code}`}
+              hint={tradeReady ? (currentProbability == null ? 'No current trade price yet. Enter your own limit price above 0 and up to 1.' : 'Above 0 and up to 1 settlement unit per share.') : 'Available when trading is enabled.'}
               value={price}
               editable={tradeReady && !working}
               onChangeText={(value) => { setPrice(value); clearReviewState(); }}
@@ -225,8 +236,8 @@ export function TradingTicket({
         </View>
 
         <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-          <MiniMetric label="Estimated" value={estimatedNotional} />
-          <MiniMetric label="Order" value="Limit" />
+          <MiniMetric label="Estimated" value={inputValid ? estimatedNotional : '—'} />
+          <MiniMetric label="Settlement" value={market.asset_code} />
         </View>
 
         {quoteError ? <InlineMessage tone="danger" title="Trade review unavailable" body={quoteError} /> : null}
@@ -242,20 +253,20 @@ export function TradingTicket({
       {quote ? (
         <VadCard variant="brand" style={{ width: '100%', flex: splitReview ? 0.85 : undefined, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
           <View style={{ gap: 1 }}>
-            <VadText variant="caption" tone="brand">ORDER REVIEW</VadText>
+            <VadText variant="caption" tone="brand">ORDER REVIEW · {market.asset_code}</VadText>
             <VadText variant="heading">Check before placing.</VadText>
             <VadText variant="caption" tone="secondary">This backend quote is authoritative for this order attempt.</VadText>
           </View>
 
-          <QuoteLine label="Notional" value={money(quote.notional)} />
-          <QuoteLine label="Maker fee" value={money(quote.makerFee)} />
-          <QuoteLine label="Taker fee" value={money(quote.takerFee)} />
+          <QuoteLine label="Notional" value={assetMoney(quote.notional, market.asset_code)} />
+          <QuoteLine label="Maker fee" value={assetMoney(quote.makerFee, market.asset_code)} />
+          <QuoteLine label="Taker fee" value={assetMoney(quote.takerFee, market.asset_code)} />
           {quote.side === 'BUY' ? (
-            <QuoteLine label="Maximum cash reserved" value={money(quote.maximumCashReservation)} />
+            <QuoteLine label="Maximum cash reserved" value={assetMoney(quote.maximumCashReservation, market.asset_code)} />
           ) : (
             <QuoteLine label="Shares available" value={String(quote.availableSharesToSell)} />
           )}
-          <QuoteLine label="Gross settlement if correct" value={money(quote.potentialGrossSettlement)} />
+          <QuoteLine label="Gross settlement if correct" value={assetMoney(quote.potentialGrossSettlement, market.asset_code)} />
 
           {placeError ? <InlineMessage tone="danger" title="Order not placed" body={placeError} /> : null}
           {!tradeReady ? <InlineMessage tone="warning" title="Order placement paused" body={runtimeCapabilityReason(tradeReason)} /> : null}
@@ -268,7 +279,7 @@ export function TradingTicket({
   );
 }
 
-function OutcomeChoice({ active, label, value, tone, disabled = false, onPress }: { active: boolean; label: string; value: string; tone: 'yes' | 'no'; disabled?: boolean; onPress: () => void }) {
+function OutcomeChoice({ active, label, value, tone, available, disabled = false, onPress }: { active: boolean; label: string; value: string; tone: 'yes' | 'no'; available: boolean; disabled?: boolean; onPress: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const color = tone === 'yes' ? theme.colors.yes : theme.colors.no;
@@ -278,6 +289,7 @@ function OutcomeChoice({ active, label, value, tone, disabled = false, onPress }
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected: active, disabled }}
+      accessibilityLabel={`${label} outcome at ${available ? value : 'no current price'}`}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
@@ -293,8 +305,8 @@ function OutcomeChoice({ active, label, value, tone, disabled = false, onPress }
         opacity: disabled ? 0.5 : pressed ? 0.72 : 1,
       })}
     >
-      <VadText variant="caption" tone={tone}>{label}</VadText>
-      <VadText variant={density.compact ? 'bodyStrong' : 'heading'} tone={tone}>{value}</VadText>
+      <VadText variant="caption" tone={available ? tone : 'tertiary'}>{label}</VadText>
+      <VadText variant={density.compact ? 'bodyStrong' : 'heading'} tone={available ? tone : 'tertiary'}>{value}</VadText>
     </Pressable>
   );
 }
@@ -324,7 +336,7 @@ function InlineMessage({ tone, title, body }: { tone: 'warning' | 'danger'; titl
   const density = useProductDensity();
   const danger = tone === 'danger';
   return (
-    <View style={{ borderLeftWidth: 3, borderLeftColor: danger ? theme.colors.danger : theme.colors.warning, backgroundColor: danger ? theme.colors.noSoft : theme.colors.warningSoft, padding: density.compact ? 9 : 11, gap: 2, borderRadius: theme.radius.sm }}>
+    <View accessibilityRole="alert" style={{ borderLeftWidth: 3, borderLeftColor: danger ? theme.colors.danger : theme.colors.warning, backgroundColor: danger ? theme.colors.noSoft : theme.colors.warningSoft, padding: density.compact ? 9 : 11, gap: 2, borderRadius: theme.radius.sm }}>
       <VadText variant="caption" tone={tone}>{title.toUpperCase()}</VadText>
       <VadText variant="caption" tone="secondary">{body}</VadText>
     </View>

@@ -10,8 +10,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useVadTheme } from '@/providers/theme-provider';
+import { VadIcon } from './vad-icon';
 import { VadText } from './vad-text';
+import { useVadTheme } from '@/providers/theme-provider';
 
 export function VadBottomSheet({
   visible,
@@ -26,7 +27,7 @@ export function VadBottomSheet({
 }) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
-  const dialog = width >= 760;
+  const dialog = width >= 768;
   const compact = width < 380;
 
   return (
@@ -34,6 +35,7 @@ export function VadBottomSheet({
       visible={visible}
       transparent
       animationType={dialog ? 'fade' : 'slide'}
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
@@ -46,7 +48,7 @@ export function VadBottomSheet({
             justifyContent: dialog ? 'center' : 'flex-end',
             alignItems: dialog ? 'center' : 'stretch',
             backgroundColor: theme.colors.overlay,
-            padding: dialog ? theme.spacing.lg : 0,
+            padding: dialog ? theme.spacing.xl : 0,
           }}
         >
           <Pressable
@@ -58,26 +60,24 @@ export function VadBottomSheet({
 
           <SafeAreaView
             edges={dialog ? [] : ['bottom']}
-            style={{
-              width: '100%',
-              maxWidth: dialog ? 660 : undefined,
-              maxHeight: dialog ? '82%' : '88%',
-              backgroundColor: theme.colors.surface,
-              borderRadius: dialog ? theme.radius.xl : 0,
-              borderTopLeftRadius: theme.radius.xl,
-              borderTopRightRadius: theme.radius.xl,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              overflow: 'hidden',
-            }}
+            style={[
+              dialog ? theme.shadows.floating : theme.shadows.card,
+              {
+                width: '100%',
+                maxWidth: dialog ? 680 : undefined,
+                maxHeight: dialog ? '84%' : '90%',
+                backgroundColor: theme.colors.surface,
+                borderRadius: dialog ? theme.radius.xxl : 0,
+                borderTopLeftRadius: theme.radius.xxl,
+                borderTopRightRadius: theme.radius.xxl,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                overflow: 'hidden',
+              },
+            ]}
           >
             {!dialog ? (
-              <View
-                style={{
-                  alignItems: 'center',
-                  paddingTop: theme.spacing.xs,
-                }}
-              >
+              <View style={{ alignItems: 'center', paddingTop: theme.spacing.xs }}>
                 <View
                   style={{
                     width: 44,
@@ -91,17 +91,16 @@ export function VadBottomSheet({
 
             <View
               style={{
-                minHeight: 58,
+                minHeight: 64,
                 flexDirection: 'row',
                 alignItems: 'center',
                 paddingHorizontal: compact ? theme.spacing.md : theme.spacing.lg,
-                paddingTop: theme.spacing.md,
-                paddingBottom: theme.spacing.sm,
+                paddingVertical: theme.spacing.sm,
                 borderBottomWidth: 1,
                 borderBottomColor: theme.colors.border,
               }}
             >
-              <VadText variant="heading" style={{ flex: 1 }}>
+              <VadText variant="heading" style={{ flex: 1 }} numberOfLines={2}>
                 {title}
               </VadText>
 
@@ -109,15 +108,19 @@ export function VadBottomSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Close"
                 onPress={onClose}
-                hitSlop={8}
+                hitSlop={4}
                 style={({ pressed }) => ({
-                  minHeight: 36,
+                  width: 44,
+                  height: 44,
+                  alignItems: 'center',
                   justifyContent: 'center',
-                  paddingHorizontal: theme.spacing.sm,
-                  opacity: pressed ? 0.55 : 1,
+                  borderRadius: 22,
+                  backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surfaceRaised,
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
                 })}
               >
-                <VadText variant="caption" tone="brand">Close</VadText>
+                <VadIcon name="close" size={17} tone="secondary" />
               </Pressable>
             </View>
 
