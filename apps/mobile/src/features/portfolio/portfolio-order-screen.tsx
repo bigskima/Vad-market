@@ -38,7 +38,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   }
 
   if (!order && data.sectionErrors.orders) return <VadErrorState title="Order could not be loaded" message={data.sectionErrors.orders} onRetry={() => void data.load()} />;
-  if (!order) return <VadEmptyState title="Order unavailable" body="This order is no longer in your current open-order list. It may have filled, been cancelled or otherwise left the open queue." />;
+  if (!order) return <VadEmptyState title="Order unavailable" body="This order is no longer open. It may have filled, been cancelled or completed." />;
 
   const currentOrder = order;
   const quantity = Number(currentOrder.quantity);
@@ -61,7 +61,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
       await data.load();
       onCancelled?.();
     } catch (error) {
-      setCancelError(error instanceof Error ? error.message : 'Please try again.');
+      setCancelError(error instanceof Error ? error.message : 'We could not cancel this order right now. Please try again.');
     } finally {
       setCancelling(false);
     }
@@ -74,10 +74,10 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
           <VadChip label={`${currentOrder.side} order`} tone="brand" />
           <VadChip label={currentOrder.outcome_code} tone={yes ? 'yes' : 'no'} />
           <VadChip label={currentOrder.asset_code} />
-          <VadChip label={currentOrder.status.replaceAll('_', ' ')} />
+          <VadChip label={orderStatusLabel(currentOrder.status)} />
         </View>
         <VadText variant="heading">{currentOrder.market_title}</VadText>
-        <VadText variant="caption" tone="secondary">Created {new Date(currentOrder.created_at).toLocaleString()}. Cancelling only affects quantity that is still open.</VadText>
+        <VadText variant="caption" tone="secondary">Created {new Date(currentOrder.created_at).toLocaleString()}. Cancelling only affects shares that have not filled yet.</VadText>
       </View>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
@@ -86,7 +86,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
           <VadText variant="display" numberOfLines={1} adjustsFontSizeToFit>{amount(limitPrice)}</VadText>
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <Snapshot label="Original shares" value={quantity.toLocaleString()} />
-            <Snapshot label="Original notional" value={amount(originalNotional)} />
+            <Snapshot label="Original value" value={amount(originalNotional)} />
           </View>
         </VadCard>
 
@@ -113,24 +113,24 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
           <VadText variant="bodyStrong">Order details</VadText>
           <Detail label="Market" value={currentOrder.market_title} />
           <Detail label="Outcome" value={currentOrder.outcome_code} />
-          <Detail label="Settlement asset" value={currentOrder.asset_code} />
+          <Detail label="Currency" value={currentOrder.asset_code} />
           <Detail label="Reference" value={String(currentOrder.order_id)} selectable />
           <Detail label="Side" value={currentOrder.side} />
           <Detail label="Limit price" value={amount(limitPrice)} />
           <Detail label="Quantity" value={quantity.toLocaleString()} />
           <Detail label="Filled" value={filled.toLocaleString()} />
           <Detail label="Remaining" value={remaining.toLocaleString()} />
-          <Detail label="Open notional" value={amount(remainingNotional)} />
-          <Detail label="Status" value={currentOrder.status.replaceAll('_', ' ')} />
+          <Detail label="Remaining value" value={amount(remainingNotional)} />
+          <Detail label="Status" value={orderStatusLabel(currentOrder.status)} />
         </VadCard>
 
         <VadCard variant="raised" style={{ flex: 0.9, width: '100%', gap: theme.spacing.sm }}>
-          <VadText variant="bodyStrong">Remaining exposure</VadText>
+          <VadText variant="bodyStrong">Remaining order</VadText>
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
             <ContextFact label="Open shares" value={remaining.toLocaleString()} />
-            <ContextFact label="Open notional" value={amount(remainingNotional)} />
+            <ContextFact label="Remaining value" value={amount(remainingNotional)} />
           </View>
-          <VadText variant="caption" tone="secondary">Existing fills are never reversed when you cancel the still-open part of an order.</VadText>
+          <VadText variant="caption" tone="secondary">Shares that already filled will not be affected if you cancel the remaining part of this order.</VadText>
           <VadButton
             label="Open market"
             variant="secondary"
@@ -143,11 +143,11 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
       <VadBottomSheet visible={confirmOpen} title="Cancel remaining order?" onClose={() => { if (!cancelling) setConfirmOpen(false); }}>
         <View style={{ gap: theme.spacing.md }}>
           <VadText variant="bodyStrong">{remaining.toLocaleString()} shares are still open.</VadText>
-          <VadText variant="caption" tone="secondary">Filled quantity stays filled. Only the remaining open quantity will be removed from the order book.</VadText>
+          <VadText variant="caption" tone="secondary">Filled shares stay filled. Only the remaining open shares will be cancelled.</VadText>
           {cancelError ? <VadCard style={{ borderColor: theme.colors.danger, backgroundColor: theme.colors.noSoft }}><VadText variant="caption" tone="danger">{cancelError}</VadText></VadCard> : null}
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
             <ContextFact label="Remaining" value={remaining.toLocaleString()} />
-            <ContextFact label="Notional" value={amount(remainingNotional)} />
+            <ContextFact label="Value" value={amount(remainingNotional)} />
           </View>
           <VadButton label="Cancel remaining" variant="danger" loading={cancelling} onPress={() => void cancel()} />
           <VadButton label="Keep order" variant="secondary" disabled={cancelling} onPress={() => setConfirmOpen(false)} />
@@ -155,6 +155,15 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
       </VadBottomSheet>
     </View>
   );
+}
+
+function orderStatusLabel(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized.includes('OPEN') || normalized.includes('PARTIAL')) return normalized.includes('PARTIAL') ? 'PARTIALLY FILLED' : 'OPEN';
+  if (normalized.includes('FILLED') || normalized.includes('COMPLETE')) return 'FILLED';
+  if (normalized.includes('CANCEL')) return 'CANCELLED';
+  if (normalized.includes('REJECT') || normalized.includes('FAIL')) return 'NEEDS ATTENTION';
+  return 'IN PROGRESS';
 }
 
 function Snapshot({ label, value }: { label: string; value: string }) {
