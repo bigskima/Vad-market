@@ -36,7 +36,7 @@ export default function CommunityRoute() {
     <ProductSubpage title="Community" maxWidth={800}>
       <VadSectionHeader
         title="Community"
-        subtitle="Share market reasoning, follow creators and discuss live questions while keeping social reputation separate from resolution authority."
+        subtitle="Share your view, follow other creators and discuss the markets you care about."
       />
 
       <VadCard
@@ -46,10 +46,10 @@ export default function CommunityRoute() {
           gap: theme.spacing.xs,
         }}
       >
-        <VadText variant="caption" tone="brand">PUBLIC CONVICTION</VadText>
-        <VadText variant={density.phone ? 'heading' : 'title'}>Reason in public. Build a track record.</VadText>
+        <VadText variant="caption" tone="brand">VAD COMMUNITY</VadText>
+        <VadText variant={density.phone ? 'heading' : 'title'}>Share your reasoning. Build a track record.</VadText>
         <VadText variant="caption" tone="secondary">
-          Predictions can reference active VAD markets, but creator reputation never determines the final oracle outcome.
+          Link your predictions to live markets and see how your calls perform over time. Every market still follows its own published rules.
         </VadText>
       </VadCard>
 
