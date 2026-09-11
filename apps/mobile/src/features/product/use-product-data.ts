@@ -85,7 +85,6 @@ export function useProductData(enabled = true) {
     try {
       setAdminSummary(await getAdminRuntimeSummary());
     } catch {
-      // The customer product must never fail because an admin-only probe did.
       setAdminSummary(null);
     }
   }, [enabled]);
@@ -103,7 +102,7 @@ export function useProductData(enabled = true) {
       setHomeExperienceError(
         reason instanceof Error
           ? reason.message
-          : 'Home highlights could not be refreshed.',
+          : 'We could not refresh the latest highlights right now. Please try again.',
       );
     }
   }, [enabled]);
@@ -120,11 +119,11 @@ export function useProductData(enabled = true) {
     ]);
 
     const nextSectionErrors: ProductSectionErrors = {
-      markets: settledError(results[0], 'Markets could not be refreshed.'),
-      wallet: settledError(results[1], 'Wallet balances could not be refreshed.'),
-      positions: settledError(results[2], 'Positions could not be refreshed.'),
-      orders: settledError(results[3], 'Orders could not be refreshed.'),
-      proposals: settledError(results[4], 'Market proposals could not be refreshed.'),
+      markets: settledError(results[0], 'We could not refresh markets right now.'),
+      wallet: settledError(results[1], 'We could not refresh wallet balances right now.'),
+      positions: settledError(results[2], 'We could not refresh your positions right now.'),
+      orders: settledError(results[3], 'We could not refresh your orders right now.'),
+      proposals: settledError(results[4], 'We could not refresh your market proposals right now.'),
     };
 
     setSectionErrors(nextSectionErrors);
@@ -132,11 +131,11 @@ export function useProductData(enabled = true) {
     const failures = Object.values(nextSectionErrors).filter(Boolean).length;
     if (failures === results.length) {
       setError(
-        'VAD could not refresh markets or account data. Your last successful data is still shown where available.',
+        'We could not refresh your VAD information right now. Your last available information is still shown where possible.',
       );
     } else if (failures > 0) {
       setError(
-        'Some VAD data could not refresh. Successful sections were updated and your previous data was preserved elsewhere.',
+        'Some information could not refresh right now. Everything that updated successfully is still available.',
       );
     } else {
       setError(null);
@@ -162,9 +161,6 @@ export function useProductData(enabled = true) {
 
       setLoading(true);
 
-      // Customer-critical reads determine the loading shell. Optional home
-      // merchandising and the admin probe stay independent so they can never
-      // hold normal product navigation behind a secondary read.
       void probeAdmin();
       void probeHomeExperience();
       void load().finally(() => {
