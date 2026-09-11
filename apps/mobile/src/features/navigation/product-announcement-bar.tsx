@@ -14,7 +14,7 @@ import type { PublicNotice } from '@/services/home-content-api';
 
 export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | null }) {
   const theme = useVadTheme();
-  const translateX = useRef(new Animated.Value(0)).current;
+  const [translateX] = useState(() => new Animated.Value(0));
   const running = useRef<Animated.CompositeAnimation | null>(null);
   const currentX = useRef(0);
   const [dismissedId, setDismissedId] = useState<string | null>(null);
