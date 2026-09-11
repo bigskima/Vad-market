@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { View, type DimensionValue } from 'react-native';
 
@@ -9,7 +10,7 @@ import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
-import { money, pct } from '@/features/markets/format';
+import { assetMoney, pct } from '@/features/markets/format';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -48,6 +49,8 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   const progressWidth = `${Math.round(fillPercent * 100)}%` as DimensionValue;
   const originalNotional = limitPrice * quantity;
   const remainingNotional = limitPrice * remaining;
+  const yes = currentOrder.outcome_code === 'YES';
+  const amount = (value: unknown) => assetMoney(value, currentOrder.asset_code);
 
   async function cancel() {
     setCancelling(true);
@@ -69,19 +72,21 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
       <View style={{ gap: theme.spacing.xs }}>
         <View style={{ flexDirection: 'row', gap: theme.spacing.xs, alignItems: 'center', flexWrap: 'wrap' }}>
           <VadChip label={`${currentOrder.side} order`} tone="brand" />
+          <VadChip label={currentOrder.outcome_code} tone={yes ? 'yes' : 'no'} />
+          <VadChip label={currentOrder.asset_code} />
           <VadChip label={currentOrder.status.replaceAll('_', ' ')} />
         </View>
-        <VadText variant="heading">Open order</VadText>
+        <VadText variant="heading">{currentOrder.market_title}</VadText>
         <VadText variant="caption" tone="secondary">Created {new Date(currentOrder.created_at).toLocaleString()}. Cancelling only affects quantity that is still open.</VadText>
       </View>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
-        <VadCard style={{ flex: 1.1, borderColor: theme.colors.brandPrimary, gap: theme.spacing.sm }}>
-          <VadText variant="caption" tone="brand">LIMIT PRICE</VadText>
-          <VadText variant="display" numberOfLines={1} adjustsFontSizeToFit>{money(limitPrice)}</VadText>
+        <VadCard style={{ flex: 1.1, borderColor: yes ? theme.colors.yes : theme.colors.no, gap: theme.spacing.sm }}>
+          <VadText variant="caption" tone={yes ? 'yes' : 'no'}>LIMIT PRICE · {currentOrder.asset_code}</VadText>
+          <VadText variant="display" numberOfLines={1} adjustsFontSizeToFit>{amount(limitPrice)}</VadText>
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <Snapshot label="Original shares" value={quantity.toLocaleString()} />
-            <Snapshot label="Original notional" value={money(originalNotional)} />
+            <Snapshot label="Original notional" value={amount(originalNotional)} />
           </View>
         </VadCard>
 
@@ -106,13 +111,16 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: theme.spacing.md }}>
         <VadCard style={{ flex: 1.1, width: '100%', gap: theme.spacing.xs }}>
           <VadText variant="bodyStrong">Order details</VadText>
+          <Detail label="Market" value={currentOrder.market_title} />
+          <Detail label="Outcome" value={currentOrder.outcome_code} />
+          <Detail label="Settlement asset" value={currentOrder.asset_code} />
           <Detail label="Reference" value={String(currentOrder.order_id)} selectable />
           <Detail label="Side" value={currentOrder.side} />
-          <Detail label="Limit price" value={money(limitPrice)} />
+          <Detail label="Limit price" value={amount(limitPrice)} />
           <Detail label="Quantity" value={quantity.toLocaleString()} />
           <Detail label="Filled" value={filled.toLocaleString()} />
           <Detail label="Remaining" value={remaining.toLocaleString()} />
-          <Detail label="Open notional" value={money(remainingNotional)} />
+          <Detail label="Open notional" value={amount(remainingNotional)} />
           <Detail label="Status" value={currentOrder.status.replaceAll('_', ' ')} />
         </VadCard>
 
@@ -120,9 +128,14 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
           <VadText variant="bodyStrong">Remaining exposure</VadText>
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
             <ContextFact label="Open shares" value={remaining.toLocaleString()} />
-            <ContextFact label="Open notional" value={money(remainingNotional)} />
+            <ContextFact label="Open notional" value={amount(remainingNotional)} />
           </View>
           <VadText variant="caption" tone="secondary">Existing fills are never reversed when you cancel the still-open part of an order.</VadText>
+          <VadButton
+            label="Open market"
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/market/[marketId]', params: { marketId: currentOrder.instrument_public_id } })}
+          />
           <VadButton label="Cancel remaining" variant="danger" loading={cancelling} disabled={remaining <= 0} onPress={() => { setCancelError(null); setConfirmOpen(true); }} />
         </VadCard>
       </View>
@@ -134,7 +147,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
           {cancelError ? <VadCard style={{ borderColor: theme.colors.danger, backgroundColor: theme.colors.noSoft }}><VadText variant="caption" tone="danger">{cancelError}</VadText></VadCard> : null}
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
             <ContextFact label="Remaining" value={remaining.toLocaleString()} />
-            <ContextFact label="Notional" value={money(remainingNotional)} />
+            <ContextFact label="Notional" value={amount(remainingNotional)} />
           </View>
           <VadButton label="Cancel remaining" variant="danger" loading={cancelling} onPress={() => void cancel()} />
           <VadButton label="Keep order" variant="secondary" disabled={cancelling} onPress={() => setConfirmOpen(false)} />
