@@ -1,4 +1,4 @@
-import type { AuthError, Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import * as ExpoLinking from 'expo-linking';
 import {
   createContext,
@@ -12,6 +12,7 @@ import {
 import { Linking as NativeLinking, Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 
 interface AuthActionResult {
   ok: boolean;
@@ -46,32 +47,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const PHONE_PROMPT_KEY = 'vad:phone-verification-pending';
 
-function authMessage(error: AuthError | Error | null, mode: 'signIn' | 'signUp') {
-  const message = error?.message?.toLowerCase() ?? '';
-
-  if (message.includes('invalid login credentials')) {
-    return 'The email or password is incorrect. Check both fields and try again.';
-  }
-  if (message.includes('email not confirmed')) {
-    return 'Confirm your email address before signing in.';
-  }
-  if (message.includes('user already registered') || message.includes('already been registered')) {
-    return 'An account already exists for this email. Sign in instead.';
-  }
-  if (message.includes('password') && (message.includes('weak') || message.includes('characters'))) {
-    return error?.message ?? 'Choose a stronger password and try again.';
-  }
-  if (message.includes('rate limit') || message.includes('too many requests')) {
-    return 'Too many attempts. Wait a moment, then try again.';
-  }
-  if (message.includes('network') || message.includes('fetch')) {
-    return 'VAD could not reach the sign-in service. Check your connection and try again.';
-  }
-
-  if (error?.message) return error.message;
-  return mode === 'signIn'
-    ? 'Unable to sign in right now. Please try again.'
-    : 'Unable to create your account right now. Please try again.';
+function authMessage(error: unknown, mode: 'signIn' | 'signUp') {
+  return userFacingErrorMessage(error, mode === 'signIn' ? 'signIn' : 'signUp');
 }
 
 function getRedirectUrl() {
@@ -221,8 +198,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (result.session && !result.recovery) requestPhonePrompt(result.session);
         clearWebAuthUrl();
       } catch {
-        // Invalid or expired callbacks leave the user in the normal auth flow
-        // instead of crashing application boot.
+        // Invalid or expired callbacks return the user to the normal sign-in flow.
       }
     };
 
@@ -259,17 +235,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
           if (error) return { ok: false, message: authMessage(error, 'signIn') };
           if (!data.session) {
-            return { ok: false, message: 'Sign in completed without a session. Please try again.' };
+            return { ok: false, message: 'We could not finish signing you in. Please try again.' };
           }
 
           setSession(data.session);
           requestPhonePrompt(data.session);
           return { ok: true };
         } catch (error) {
-          return {
-            ok: false,
-            message: authMessage(error instanceof Error ? error : null, 'signIn'),
-          };
+          return { ok: false, message: authMessage(error, 'signIn') };
         }
       },
       async signUp({ displayName, email, password }) {
@@ -296,10 +269,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
             message: 'Account created. Check your email to confirm your VAD account, then sign in.',
           };
         } catch (error) {
-          return {
-            ok: false,
-            message: authMessage(error instanceof Error ? error : null, 'signUp'),
-          };
+          return { ok: false, message: authMessage(error, 'signUp') };
         }
       },
       async signInWithProvider(provider) {
@@ -318,12 +288,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
           if (error) {
             persistPhonePrompt(false);
             setVerificationPromptPending(false);
-            return { ok: false, message: error.message };
+            return {
+              ok: false,
+              message: userFacingErrorMessage(error, 'authentication', 'Social sign in could not start. Please try again.'),
+            };
           }
           if (native) {
-            if (!data.url) throw new Error(`${provider} sign in did not return an authorization URL.`);
+            if (!data.url) throw new Error('Authorization could not be started.');
             const supported = await NativeLinking.canOpenURL(data.url);
-            if (!supported) throw new Error(`${provider} sign in cannot be opened on this device.`);
+            if (!supported) throw new Error('Authorization could not be opened on this device.');
             await NativeLinking.openURL(data.url);
           }
           return { ok: true };
@@ -332,7 +305,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           setVerificationPromptPending(false);
           return {
             ok: false,
-            message: error instanceof Error ? error.message : 'Social sign in could not start.',
+            message: userFacingErrorMessage(error, 'authentication', 'Social sign in could not start. Please try again.'),
           };
         }
       },
@@ -343,7 +316,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
             email.trim().toLowerCase(),
             { redirectTo },
           );
-          if (error) return { ok: false, message: error.message };
+          if (error) {
+            return {
+              ok: false,
+              message: userFacingErrorMessage(error, 'password', 'We could not send a password reset email right now. Please try again.'),
+            };
+          }
           return {
             ok: true,
             message: 'Password reset instructions have been sent. Open the link in your email to continue securely.',
@@ -351,20 +329,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
         } catch (error) {
           return {
             ok: false,
-            message: error instanceof Error ? error.message : 'Password reset could not be requested.',
+            message: userFacingErrorMessage(error, 'password', 'We could not send a password reset email right now. Please try again.'),
           };
         }
       },
       async updatePassword(password) {
         try {
           const { error } = await supabase.auth.updateUser({ password });
-          if (error) return { ok: false, message: error.message };
+          if (error) {
+            return {
+              ok: false,
+              message: userFacingErrorMessage(error, 'password', 'Your password could not be updated. Please try again.'),
+            };
+          }
           setIsPasswordRecovery(false);
           return { ok: true, message: 'Your password has been updated.' };
         } catch (error) {
           return {
             ok: false,
-            message: error instanceof Error ? error.message : 'Your password could not be updated.',
+            message: userFacingErrorMessage(error, 'password', 'Your password could not be updated. Please try again.'),
           };
         }
       },
@@ -375,13 +358,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
             return { ok: false, message: 'Enter an international phone number including the country code.' };
           }
           const { error } = await supabase.auth.updateUser({ phone: normalized });
-          if (error) return { ok: false, message: error.message };
+          if (error) {
+            return { ok: false, message: userFacingErrorMessage(error, 'phoneVerification') };
+          }
           return { ok: true, message: 'Verification code sent.' };
         } catch (error) {
-          return {
-            ok: false,
-            message: error instanceof Error ? error.message : 'The verification code could not be sent.',
-          };
+          return { ok: false, message: userFacingErrorMessage(error, 'phoneVerification') };
         }
       },
       async verifyPhoneOtp(phone, token) {
@@ -392,16 +374,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
             token,
             type: 'phone_change',
           });
-          if (error) return { ok: false, message: error.message };
+          if (error) return { ok: false, message: userFacingErrorMessage(error, 'phoneVerification') };
           if (data.session) setSession(data.session);
           persistPhonePrompt(false);
           setVerificationPromptPending(false);
           return { ok: true, message: 'Phone number verified.' };
         } catch (error) {
-          return {
-            ok: false,
-            message: error instanceof Error ? error.message : 'The verification code could not be confirmed.',
-          };
+          return { ok: false, message: userFacingErrorMessage(error, 'phoneVerification') };
         }
       },
       dismissPhoneVerification() {
