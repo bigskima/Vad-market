@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
 import { VadText } from '@/components/ui/vad-text';
+import { ProductTourProvider } from '@/features/tour/tour-provider';
 import { supabaseConfiguration } from '@/lib/supabase';
 import { AuthProvider } from '@/providers/auth-provider';
 import { ProductDataProvider } from '@/providers/product-data-provider';
@@ -96,7 +97,9 @@ export default function RootLayout() {
         {supabaseConfiguration.ready ? (
           <AuthProvider>
             <ProductDataProvider>
-              <ThemedNavigation />
+              <ProductTourProvider>
+                <ThemedNavigation />
+              </ProductTourProvider>
             </ProductDataProvider>
           </AuthProvider>
         ) : (
