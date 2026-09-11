@@ -21,7 +21,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
         <VadChip label={market.category ?? 'General'} tone="brand" />
-        <VadChip label={live ? 'LIVE' : market.status.replaceAll('_', ' ')} tone={live ? 'yes' : 'neutral'} />
+        <VadChip label={marketStatusLabel(market.status)} tone={live ? 'yes' : 'neutral'} />
         <VadChip label={market.asset_code} />
       </View>
 
@@ -35,19 +35,37 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <MarketProbabilityBar yes={market.yes_price} no={market.no_price} />
         <VadText variant="caption" tone="tertiary">
           {hasPrice
-            ? 'Prices show current trading conviction. Resolution remains independent of market popularity.'
-            : 'No authoritative trade price is available yet. VAD will not invent a probability while price discovery is still forming.'}
+            ? 'Prices show current trading conviction. The published market rules determine the final result.'
+            : 'No trade price is available yet. A probability will appear after price discovery begins.'}
         </VadText>
       </VadCard>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-        <MetaChip label="Settlement" value={market.asset_code} />
-        <MetaChip label="Closes" value={market.closes_at ? new Date(market.closes_at).toLocaleString() : 'By market policy'} />
-        <MetaChip label="Type" value={market.market_type.replaceAll('_', ' ')} />
-        <MetaChip label="Last trade" value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : 'No fills yet'} />
+        <MetaChip label="Currency" value={market.asset_code} />
+        <MetaChip label="Closes" value={market.closes_at ? new Date(market.closes_at).toLocaleString() : 'Closing time unavailable'} />
+        <MetaChip label="Type" value={friendlyEnum(market.market_type)} />
+        <MetaChip label="Last trade" value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : 'No trades yet'} />
       </View>
     </View>
   );
+}
+
+function marketStatusLabel(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized === 'OPEN' || normalized === 'ACTIVE') return 'LIVE';
+  if (normalized === 'CLOSED') return 'CLOSED';
+  if (normalized === 'RESOLVING') return 'RESULT PENDING';
+  if (normalized === 'RESOLVED') return 'RESULT CONFIRMED';
+  if (normalized === 'SETTLED') return 'COMPLETED';
+  if (normalized === 'VOID') return 'CANCELLED';
+  return 'UNAVAILABLE';
+}
+
+function friendlyEnum(value: string) {
+  return value
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function SignalTile({ label, value, positive, available }: { label: string; value: string; positive: boolean; available: boolean }) {
