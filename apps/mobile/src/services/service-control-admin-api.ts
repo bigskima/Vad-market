@@ -13,6 +13,16 @@ export type AdminServiceControlRow = {
   active_user_pauses: number;
 };
 
+export type AdminServicePostureRow = {
+  service_key: string;
+  name: string;
+  category: string;
+  enabled: boolean;
+  globally_paused: boolean;
+  reason: string | null;
+  resumes_at: string | null;
+};
+
 export type AdminUserServiceControlRow = {
   service_key: string;
   name: string;
@@ -32,6 +42,12 @@ export async function getAdminServiceControls() {
   const { data, error } = await supabase.rpc('admin_service_control_catalog');
   fail(error);
   return (data ?? []) as AdminServiceControlRow[];
+}
+
+export async function getAdminServicePosture() {
+  const { data, error } = await supabase.rpc('admin_service_posture');
+  fail(error);
+  return (data ?? []) as AdminServicePostureRow[];
 }
 
 export async function getAdminUserServiceControls(userId: string) {

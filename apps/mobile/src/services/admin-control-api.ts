@@ -43,6 +43,13 @@ export type AdminRoleCatalogRow = {
   assigned_count: number;
 };
 
+export type AdminRolePermissionRow = {
+  role_code: string;
+  role_name: string;
+  permission_code: string | null;
+  permission_description: string | null;
+};
+
 export type AdminRoleAssignmentRow = {
   assignment_id: number;
   user_id: string;
@@ -219,6 +226,12 @@ export async function getAdminRoleCatalog() {
   const { data, error } = await supabase.rpc('admin_role_catalog');
   fail(error);
   return (data ?? []) as AdminRoleCatalogRow[];
+}
+
+export async function getAdminRolePermissionMatrix() {
+  const { data, error } = await supabase.rpc('admin_role_permission_matrix');
+  fail(error);
+  return (data ?? []) as AdminRolePermissionRow[];
 }
 
 export async function getAdminRoleAssignments(search?: string) {

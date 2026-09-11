@@ -5,7 +5,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { VadIcon, type VadIconName } from './vad-icon';
 import { VadText } from './vad-text';
 
-type Tone = 'neutral' | 'brand' | 'yes' | 'no' | 'warning';
+type Tone = 'neutral' | 'brand' | 'yes' | 'no' | 'warning' | 'danger';
 
 export function VadChip({
   label,
@@ -53,6 +53,12 @@ export function VadChip({
       border: theme.colors.warning,
       text: 'warning',
       icon: 'secondary',
+    },
+    danger: {
+      background: theme.colors.noSoft,
+      border: theme.colors.no,
+      text: 'danger',
+      icon: 'no',
     },
   } as const;
   const colors = palette[tone];
