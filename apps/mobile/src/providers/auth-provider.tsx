@@ -21,15 +21,27 @@ interface SignUpInput {
   password: string;
 }
 
+type SocialProvider = 'google' | 'apple';
+
 interface AuthContextValue {
   isLoading: boolean;
   session: Session | null;
+  isPasswordRecovery: boolean;
+  verificationPromptPending: boolean;
   signIn(email: string, password: string): Promise<AuthActionResult>;
   signUp(input: SignUpInput): Promise<AuthActionResult>;
+  signInWithProvider(provider: SocialProvider): Promise<AuthActionResult>;
+  requestPasswordReset(email: string): Promise<AuthActionResult>;
+  updatePassword(password: string): Promise<AuthActionResult>;
+  requestPhoneVerification(phone: string): Promise<AuthActionResult>;
+  verifyPhoneOtp(phone: string, token: string): Promise<AuthActionResult>;
+  dismissPhoneVerification(): void;
+  dismissPasswordRecovery(): void;
   signOut(): Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const PHONE_PROMPT_KEY = 'vad:phone-verification-pending';
 
 function authMessage(error: AuthError | Error | null, mode: 'signIn' | 'signUp') {
   const message = error?.message?.toLowerCase() ?? '';
@@ -59,9 +71,43 @@ function authMessage(error: AuthError | Error | null, mode: 'signIn' | 'signUp')
     : 'Unable to create your account right now. Please try again.';
 }
 
+function getRedirectUrl() {
+  const location = (globalThis as { location?: { origin?: string } }).location;
+  return location?.origin ? `${location.origin}/` : undefined;
+}
+
+function readPhonePrompt() {
+  try {
+    return globalThis.localStorage?.getItem(PHONE_PROMPT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function persistPhonePrompt(value: boolean) {
+  try {
+    if (value) globalThis.localStorage?.setItem(PHONE_PROMPT_KEY, '1');
+    else globalThis.localStorage?.removeItem(PHONE_PROMPT_KEY);
+  } catch {
+    // In-memory state still keeps the flow usable for this session.
+  }
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [verificationPromptPending, setVerificationPromptPending] = useState(readPhonePrompt);
+
+  function requestPhonePrompt(nextSession?: Session | null) {
+    if (nextSession?.user.phone_confirmed_at) {
+      persistPhonePrompt(false);
+      setVerificationPromptPending(false);
+      return;
+    }
+    persistPhonePrompt(true);
+    setVerificationPromptPending(true);
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -69,15 +115,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
     void supabase.auth.getSession().then(({ data }) => {
       if (!isMounted) return;
       setSession(data.session);
+      if (data.session?.user.phone_confirmed_at) {
+        persistPhonePrompt(false);
+        setVerificationPromptPending(false);
+      } else if (data.session && readPhonePrompt()) {
+        setVerificationPromptPending(true);
+      }
       setIsLoading(false);
     }).catch(() => {
       if (isMounted) setIsLoading(false);
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
+      (event, nextSession) => {
         if (!isMounted) return;
         setSession(nextSession);
+        if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
+        if (nextSession?.user.phone_confirmed_at) {
+          persistPhonePrompt(false);
+          setVerificationPromptPending(false);
+        } else if (nextSession && readPhonePrompt()) {
+          setVerificationPromptPending(true);
+        }
         setIsLoading(false);
       },
     );
@@ -92,6 +151,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => ({
       isLoading,
       session,
+      isPasswordRecovery,
+      verificationPromptPending,
       async signIn(email, password) {
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
@@ -105,6 +166,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           }
 
           setSession(data.session);
+          requestPhonePrompt(data.session);
           return { ok: true };
         } catch (error) {
           return {
@@ -125,8 +187,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
           if (error) return { ok: false, message: authMessage(error, 'signUp') };
 
+          persistPhonePrompt(true);
           if (data.session) {
             setSession(data.session);
+            requestPhonePrompt(data.session);
             return { ok: true };
           }
 
@@ -141,12 +205,114 @@ export function AuthProvider({ children }: PropsWithChildren) {
           };
         }
       },
+      async signInWithProvider(provider) {
+        try {
+          persistPhonePrompt(true);
+          setVerificationPromptPending(true);
+          const redirectTo = getRedirectUrl();
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider,
+            options: redirectTo ? { redirectTo } : undefined,
+          });
+          if (error) {
+            persistPhonePrompt(false);
+            setVerificationPromptPending(false);
+            return { ok: false, message: error.message };
+          }
+          return { ok: true };
+        } catch (error) {
+          persistPhonePrompt(false);
+          setVerificationPromptPending(false);
+          return {
+            ok: false,
+            message: error instanceof Error ? error.message : 'Social sign in could not start.',
+          };
+        }
+      },
+      async requestPasswordReset(email) {
+        try {
+          const redirectTo = getRedirectUrl();
+          const { error } = await supabase.auth.resetPasswordForEmail(
+            email.trim().toLowerCase(),
+            redirectTo ? { redirectTo } : undefined,
+          );
+          if (error) return { ok: false, message: error.message };
+          return {
+            ok: true,
+            message: 'Password reset instructions have been sent. Open the link in your email to continue securely.',
+          };
+        } catch (error) {
+          return {
+            ok: false,
+            message: error instanceof Error ? error.message : 'Password reset could not be requested.',
+          };
+        }
+      },
+      async updatePassword(password) {
+        try {
+          const { error } = await supabase.auth.updateUser({ password });
+          if (error) return { ok: false, message: error.message };
+          setIsPasswordRecovery(false);
+          return { ok: true, message: 'Your password has been updated.' };
+        } catch (error) {
+          return {
+            ok: false,
+            message: error instanceof Error ? error.message : 'Your password could not be updated.',
+          };
+        }
+      },
+      async requestPhoneVerification(phone) {
+        try {
+          const normalized = phone.replace(/[\s()-]/g, '');
+          if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
+            return { ok: false, message: 'Enter an international phone number including the country code.' };
+          }
+          const { error } = await supabase.auth.updateUser({ phone: normalized });
+          if (error) return { ok: false, message: error.message };
+          return { ok: true, message: 'Verification code sent.' };
+        } catch (error) {
+          return {
+            ok: false,
+            message: error instanceof Error ? error.message : 'The verification code could not be sent.',
+          };
+        }
+      },
+      async verifyPhoneOtp(phone, token) {
+        try {
+          const normalized = phone.replace(/[\s()-]/g, '');
+          const { data, error } = await supabase.auth.verifyOtp({
+            phone: normalized,
+            token,
+            type: 'phone_change',
+          });
+          if (error) return { ok: false, message: error.message };
+          if (data.session) setSession(data.session);
+          persistPhonePrompt(false);
+          setVerificationPromptPending(false);
+          return { ok: true, message: 'Phone number verified.' };
+        } catch (error) {
+          return {
+            ok: false,
+            message: error instanceof Error ? error.message : 'The verification code could not be confirmed.',
+          };
+        }
+      },
+      dismissPhoneVerification() {
+        persistPhonePrompt(false);
+        setVerificationPromptPending(false);
+      },
+      dismissPasswordRecovery() {
+        setIsPasswordRecovery(false);
+      },
       async signOut() {
+        persistPhonePrompt(false);
+        setVerificationPromptPending(false);
+        setIsPasswordRecovery(false);
         await supabase.auth.signOut({ scope: 'local' });
         setSession(null);
       },
     }),
-    [isLoading, session],
+    [isLoading, isPasswordRecovery, session, verificationPromptPending],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
