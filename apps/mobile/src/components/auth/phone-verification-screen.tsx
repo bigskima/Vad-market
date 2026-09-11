@@ -67,7 +67,7 @@ export function PhoneVerificationScreen() {
     const result = await requestPhoneVerification(phone);
     setWorking(false);
     if (!result.ok) {
-      setError(result.message ?? 'Verification code could not be sent.');
+      setError(result.message ?? 'We could not send a verification code right now. Please try again.');
       return;
     }
     setSentTo(phone);
@@ -84,7 +84,7 @@ export function PhoneVerificationScreen() {
     const result = await verifyPhoneOtp(sentTo, otp);
     setWorking(false);
     if (!result.ok) {
-      setError(result.message ?? 'The verification code could not be confirmed.');
+      setError(result.message ?? 'We could not confirm that code. Check it and try again.');
       return;
     }
     setMessage(result.message ?? 'Phone number verified.');
@@ -118,17 +118,17 @@ export function PhoneVerificationScreen() {
               <VadText variant="heading">VAD</VadText>
             </View>
             <View style={{ gap: theme.spacing.sm }}>
-              <VadText variant="caption" tone="brand">ONE MORE SECURITY LAYER</VadText>
+              <VadText variant="caption" tone="brand">ACCOUNT SECURITY</VadText>
               <VadText variant="display">Verify your phone.</VadText>
               <VadText tone="secondary">
-                Add an international number so VAD can confirm sensitive account actions with a second contact channel.
+                Add an international phone number so VAD can use it as an extra security check for sensitive account actions.
               </VadText>
             </View>
             {wide ? (
               <VadCard variant="brand" style={{ gap: theme.spacing.sm }}>
                 <VadText variant="bodyStrong">Your account stays the same</VadText>
                 <VadText variant="caption" tone="secondary">
-                  Phone verification is attached to your existing Supabase Auth user. It does not create another profile or wallet.
+                  Verifying your phone adds another way to protect your existing VAD account. It does not create another profile or wallet.
                 </VadText>
               </VadCard>
             ) : null}
@@ -138,7 +138,7 @@ export function PhoneVerificationScreen() {
             <View style={{ gap: 4 }}>
               <VadText variant="heading">{sentTo ? 'Enter your code' : 'Your phone number'}</VadText>
               <VadText variant="caption" tone="secondary">
-                {sentTo ? `We sent a six-digit code to ${sentTo}.` : 'We detected a likely country code from your device locale. You can change it.'}
+                {sentTo ? `We sent a six-digit code to ${sentTo}.` : 'We selected a likely country code from your device settings. You can change it.'}
               </VadText>
             </View>
 
