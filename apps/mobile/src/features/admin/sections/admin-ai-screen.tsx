@@ -99,10 +99,10 @@ export function AdminAiScreen() {
     <View style={{ gap: theme.spacing.xxl }}>
       <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.xl, alignItems: wide ? 'flex-end' : 'stretch' }}>
         <View style={{ flex: 1, gap: theme.spacing.xs }}>
-          <VadText variant="label" tone="brand">AI CONTROL PLANE</VadText>
-          <VadText variant="title">Intelligence without provider lock-in.</VadText>
+          <VadText variant="label" tone="brand">AI SERVICES</VadText>
+          <VadText variant="title">Configure AI for market review.</VadText>
           <VadText tone="secondary">
-            VAD routes market-admission intelligence by capability and priority. Models can fail over across providers, while deterministic database rules remain the authority that permits publication.
+            VAD can use multiple AI providers for market-proposal review. Models are selected by capability and priority, with another eligible model available when one cannot complete a request. Publication rules remain separate from AI review.
           </VadText>
         </View>
         <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.sm }}>
@@ -142,7 +142,7 @@ export function AdminAiScreen() {
           <View style={{ flex: 1, gap: 3 }}>
             <VadText variant="bodyStrong">Market admission routing</VadText>
             <VadText variant="caption" tone="secondary">
-              A provider is considered only when its integration and model are active or degraded, it advertises MARKET_ADMISSION, and its configured protocol endpoint is usable. Lower priority numbers run first; failures fall through to the next eligible model.
+              A provider is considered when its integration and model are active or degraded, it supports MARKET_ADMISSION, and its configured endpoint is usable. Lower priority numbers run first; if one model cannot complete the request, the next eligible model can be used.
             </VadText>
           </View>
           <VadChip label={active.length ? `${active.length} ROUTABLE` : 'NO ACTIVE MODEL'} tone={active.length ? 'yes' : 'warning'} />
@@ -156,7 +156,7 @@ export function AdminAiScreen() {
         <VadEmptyState
           title="No AI model configured"
           body={isSuperAdmin
-            ? 'Configure any supported protocol adapter and model. Until a real provider is activated, market admission fails closed to the human-review queue.'
+            ? 'Configure a supported provider protocol and model. Until a provider is activated, proposals that need AI review are sent for manual review instead.'
             : 'No AI model has been configured for market admission yet. A Super Admin must configure one before it can be activated.'}
           actionLabel={isSuperAdmin ? 'Configure first model' : undefined}
           onAction={isSuperAdmin ? () => setShowConfigure(true) : undefined}
@@ -165,7 +165,7 @@ export function AdminAiScreen() {
         <View style={{ gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="heading">Configured models</VadText>
-            <VadText variant="caption" tone="secondary">Provider identity is configuration, not application logic.</VadText>
+            <VadText variant="caption" tone="secondary">Review the providers and models available for market admission.</VadText>
           </View>
           {models.map((row) => (
             <AiModelRow key={row.ai_provider_id} row={row} />
@@ -174,9 +174,9 @@ export function AdminAiScreen() {
       )}
 
       <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
-        <VadText variant="bodyStrong">Credential boundary</VadText>
+        <VadText variant="bodyStrong">Credential security</VadText>
         <VadText variant="caption" tone="secondary">
-          The admin app stores only a Supabase Edge Function secret reference such as VAD_AI_PRIMARY_API_KEY. It never stores or displays the API-key value. AI credential references are restricted to the VAD_AI_ namespace so a configured provider cannot request internal Supabase runtime secrets.
+          This screen stores only an Edge Function secret reference such as VAD_AI_PRIMARY_API_KEY. It never stores or displays the API-key value. AI credential references are restricted to the VAD_AI_ namespace so provider configuration cannot reference unrelated secrets.
         </VadText>
       </VadCard>
 
@@ -192,7 +192,7 @@ export function AdminAiScreen() {
           try {
             const modelId = await upsertAdminAiProviderModel(input);
             setShowConfigure(false);
-            setMessage(`AI model ${modelId} is configured for MARKET_ADMISSION. Activate the provider through Provider status controls only after its referenced Edge Function secret exists.`);
+            setMessage(`AI model ${modelId} is configured for MARKET_ADMISSION. Activate the provider through Provider status controls after its referenced Edge Function secret is available.`);
             await load();
             await data.refresh();
           } catch (reason) {
@@ -282,9 +282,9 @@ function ConfigureAiSheet({
     <VadBottomSheet visible={visible} title="Configure AI model" onClose={onClose}>
       <View style={{ gap: theme.spacing.lg }}>
         <View style={{ gap: 2 }}>
-          <VadText variant="bodyStrong">Provider-neutral model registration</VadText>
+          <VadText variant="bodyStrong">AI model setup</VadText>
           <VadText variant="caption" tone="secondary">
-            Choose the API protocol this model speaks. The provider brand itself is not hardcoded into market-admission logic.
+            Choose the API protocol used by this provider and enter the model connection details.
           </VadText>
         </View>
 
@@ -323,16 +323,16 @@ function ConfigureAiSheet({
           })}
         </View>
 
-        <VadInput label="HTTPS endpoint" value={endpoint} onChangeText={setEndpoint} autoCapitalize="none" autoCorrect={false} placeholder="https://…/{model}" hint="Use {model} where the model code belongs in the URL. The endpoint is configuration, not a vendor-specific code path." />
+        <VadInput label="HTTPS endpoint" value={endpoint} onChangeText={setEndpoint} autoCapitalize="none" autoCorrect={false} placeholder="https://…/{model}" hint="Use {model} where the model code belongs in the URL." />
         <VadInput label="Model code" value={modelCode} onChangeText={setModelCode} autoCapitalize="none" autoCorrect={false} placeholder="model-name-or-id" />
         {adapter === 'ANTHROPIC_MESSAGES' ? <VadInput label="API version header" value={apiVersion} onChangeText={setApiVersion} autoCapitalize="none" placeholder="Provider API version" /> : null}
-        <VadInput label="Edge Function secret reference" value={secretReference} onChangeText={(value) => setSecretReference(value.toUpperCase())} autoCapitalize="characters" autoCorrect={false} placeholder="VAD_AI_PRIMARY_API_KEY" hint="Reference only. The API-key value belongs in Supabase Edge Function secrets and is never stored here." error={secretReference.length > 0 && !secretReady ? 'Use only the VAD_AI_ secret namespace.' : undefined} />
+        <VadInput label="Edge Function secret reference" value={secretReference} onChangeText={(value) => setSecretReference(value.toUpperCase())} autoCapitalize="characters" autoCorrect={false} placeholder="VAD_AI_PRIMARY_API_KEY" hint="Reference only. The API-key value belongs in Edge Function secrets and is never stored here." error={secretReference.length > 0 && !secretReady ? 'Use only the VAD_AI_ secret namespace.' : undefined} />
         <VadInput label="Priority" value={priority} onChangeText={setPriority} keyboardType="number-pad" placeholder="100" hint="Lower number = attempted earlier. Another configured model is used automatically when this one fails." />
 
         <View style={{ borderLeftWidth: 3, borderLeftColor: theme.colors.warning, backgroundColor: theme.colors.warningSoft, padding: theme.spacing.md, gap: 2 }}>
           <VadText variant="caption" tone="warning">ACTIVATION IS SEPARATE</VadText>
           <VadText variant="caption" tone="secondary">
-            This saves the provider/model configuration but does not make a new provider routable. Use Provider status controls afterward; normal provider activation still requires its existing independent approval path.
+            Saving this model does not make the provider active. Use Provider status controls afterward; provider activation still follows its normal approval process.
           </VadText>
         </View>
 
