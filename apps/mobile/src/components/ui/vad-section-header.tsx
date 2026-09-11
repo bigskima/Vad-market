@@ -49,11 +49,14 @@ export function VadSectionHeader({
         (actionLabel && onAction ? (
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={actionLabel}
             onPress={onAction}
-            hitSlop={8}
+            hitSlop={4}
             style={({ pressed }) => ({
-              minHeight: 34,
+              minHeight: 44,
               justifyContent: 'center',
+              paddingHorizontal: theme.spacing.xs,
+              borderRadius: theme.radius.pill,
               opacity: pressed ? 0.6 : 1,
             })}
           >
