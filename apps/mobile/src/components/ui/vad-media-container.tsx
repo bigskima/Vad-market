@@ -110,9 +110,6 @@ export function VadMediaContainer({
                 <VadIcon name="activity" size={27} color="#FFFFFF" />
               </View>
               <VadText variant="bodyStrong" tone="inverse">Video attachment</VadText>
-              <VadText variant="caption" tone="inverse" style={{ textAlign: 'center', opacity: 0.72 }}>
-                Native video playback will use the media player when a video renderer is attached to this shared container.
-              </VadText>
             </View>
           ) : selected ? (
             <Image
@@ -169,7 +166,7 @@ function MediaTile({
       ) : (
         <>
           {loading ? (
-            <View style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' }}>
               <ActivityIndicator color={theme.colors.brandPrimary} />
             </View>
           ) : null}
@@ -189,7 +186,10 @@ function MediaTile({
           pointerEvents="none"
           style={{
             position: 'absolute',
-            inset: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: 'rgba(0,0,0,0.58)',
