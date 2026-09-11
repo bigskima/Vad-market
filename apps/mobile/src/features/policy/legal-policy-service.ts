@@ -1,4 +1,4 @@
-import Storage from 'expo-sqlite/kv-store';
+import { getProductLocalItem, setProductLocalItem } from '@/services/product-local-storage';
 
 export type LegalDocumentKey = 'TERMS' | 'PRIVACY';
 export type LegalDocumentStatus = 'DRAFT' | 'PUBLISHED';
@@ -117,7 +117,7 @@ This draft is provided to complete the product experience while the final publis
 
 export async function getPolicyWorkspace(): Promise<LegalDocument[]> {
   try {
-    const stored = await Storage.getItem(WORKSPACE_KEY);
+    const stored = await getProductLocalItem(WORKSPACE_KEY);
     if (!stored) return DEFAULT_LEGAL_DOCUMENTS.map((document) => ({ ...document }));
     const parsed = JSON.parse(stored) as LegalDocument[];
     return Array.isArray(parsed) && parsed.length
@@ -129,7 +129,7 @@ export async function getPolicyWorkspace(): Promise<LegalDocument[]> {
 }
 
 export async function savePolicyPreviewDraft(documents: LegalDocument[]) {
-  await Storage.setItem(WORKSPACE_KEY, JSON.stringify(documents));
+  await setProductLocalItem(WORKSPACE_KEY, JSON.stringify(documents));
 }
 
 export async function getPolicyGateState(userId: string | null | undefined): Promise<PolicyGateState> {
@@ -161,12 +161,12 @@ export async function getPolicyGateState(userId: string | null | undefined): Pro
 
 export async function recordPreviewAcceptance(userId: string, documents: LegalDocument[]) {
   const versions = Object.fromEntries(documents.map((document) => [document.key, document.version]));
-  await Storage.setItem(`${ACCEPTANCE_PREFIX}.${userId}`, JSON.stringify(versions));
+  await setProductLocalItem(`${ACCEPTANCE_PREFIX}.${userId}`, JSON.stringify(versions));
 }
 
 async function readLocalAcceptance(userId: string): Promise<Record<string, string>> {
   try {
-    const stored = await Storage.getItem(`${ACCEPTANCE_PREFIX}.${userId}`);
+    const stored = await getProductLocalItem(`${ACCEPTANCE_PREFIX}.${userId}`);
     return stored ? JSON.parse(stored) as Record<string, string> : {};
   } catch {
     return {};
