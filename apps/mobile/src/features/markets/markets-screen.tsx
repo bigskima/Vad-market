@@ -3,7 +3,9 @@ import { useWindowDimensions, View } from 'react-native';
 
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketCard } from './components/market-card';
@@ -22,8 +24,12 @@ export function MarketsScreen({
   initialCategory?: string;
 }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const { width } = useWindowDimensions();
-  const columns = width >= 1120 ? 3 : width >= 760 ? 2 : 1;
+  // The product shell already reserves desktop space for the sidebar/right rail.
+  // Do not derive a three-column market grid from the full browser width or the
+  // cards become compressed inside the capped centre feed.
+  const columns = width >= 920 ? 2 : 1;
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(() =>
     initialCategory && markets.some((market) => market.category === initialCategory)
@@ -59,17 +65,19 @@ export function MarketsScreen({
   const live = markets.filter((market) => market.status === 'OPEN' || market.status === 'ACTIVE').length;
   const recentlyTraded = markets.filter((market) => market.last_trade_at).length;
   const visibleLive = orderedMarkets.filter((market) => market.status === 'OPEN' || market.status === 'ACTIVE').length;
-  const cardWidth = columns === 3 ? '32.2%' : columns === 2 ? '49.2%' : '100%';
+  const cardWidth = columns === 2 ? '48.9%' : '100%';
 
   return (
-    <View style={{ gap: theme.spacing.xxl }}>
-      <View style={{ gap: theme.spacing.sm }}>
-        <VadText variant="caption" tone="brand">DISCOVER</VadText>
-        <VadText variant="title">{category === 'All' ? 'Markets' : category + ' markets'}</VadText>
+    <View style={{ gap: density.sectionGap }}>
+      <View style={{ gap: theme.spacing.md }}>
+        <VadSectionHeader
+          title={category === 'All' ? 'Explore markets' : `${category} markets`}
+          subtitle="Search live questions, compare market probabilities and open a position from one focused catalogue."
+        />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
           <VadChip label={`${live} live`} tone="yes" />
-          <VadChip label={`${recentlyTraded} traded`} />
-          <VadChip label={`${categories.length} categories`} />
+          <VadChip label={`${recentlyTraded} recently traded`} />
+          <VadChip label={`${categories.length} categories`} tone="brand" />
         </View>
       </View>
 
@@ -84,13 +92,30 @@ export function MarketsScreen({
         resultCount={orderedMarkets.length}
       />
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md, alignItems: 'center' }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          gap: theme.spacing.md,
+          alignItems: 'center',
+          paddingTop: theme.spacing.xs,
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+        }}
+      >
         <VadText variant="bodyStrong">{orderedMarkets.length} shown</VadText>
-        <VadText variant="caption" tone="tertiary">{visibleLive} currently live</VadText>
+        <VadText variant="caption" tone={visibleLive ? 'yes' : 'tertiary'}>{visibleLive} live now</VadText>
       </View>
 
       {orderedMarkets.length ? (
-        <View style={{ flexDirection: columns > 1 ? 'row' : 'column', flexWrap: columns > 1 ? 'wrap' : 'nowrap', gap: theme.spacing.md, alignItems: 'stretch' }}>
+        <View
+          style={{
+            flexDirection: columns > 1 ? 'row' : 'column',
+            flexWrap: columns > 1 ? 'wrap' : 'nowrap',
+            gap: theme.spacing.md,
+            alignItems: 'stretch',
+          }}
+        >
           {orderedMarkets.map((market) => (
             <View key={market.instrument_public_id} style={{ width: cardWidth }}>
               <MarketCard market={market} onPress={() => onOpenMarket(market)} />
@@ -98,7 +123,10 @@ export function MarketsScreen({
           ))}
         </View>
       ) : !markets.length ? (
-        <VadEmptyState title="No live markets yet" body="Approved canonical markets will appear here automatically once governance activates them." />
+        <VadEmptyState
+          title="No live markets yet"
+          body="Approved canonical markets will appear here automatically once governance activates them."
+        />
       ) : (
         <VadEmptyState
           title="No matching markets"
