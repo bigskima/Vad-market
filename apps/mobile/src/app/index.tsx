@@ -7,6 +7,7 @@ import { PhoneVerificationScreen } from '@/components/auth/phone-verification-sc
 import { VadLogo } from '@/components/brand/vad-logo';
 import { VadText } from '@/components/ui/vad-text';
 import { useAuthMethods } from '@/hooks/use-auth-methods';
+import { usePolicyGate } from '@/hooks/use-policy-gate';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 
@@ -18,9 +19,14 @@ export default function IndexScreen() {
     verificationPromptPending,
   } = useAuth();
   const { methods, loading: authMethodsLoading } = useAuthMethods();
+  const policyGate = usePolicyGate(session?.user.id);
   const theme = useVadTheme();
 
-  if (isLoading || (Boolean(session) && authMethodsLoading)) {
+  if (
+    isLoading ||
+    (Boolean(session) && authMethodsLoading) ||
+    (Boolean(session) && policyGate.loading)
+  ) {
     return (
       <View
         style={{
@@ -50,6 +56,9 @@ export default function IndexScreen() {
     && !session.user.phone_confirmed_at
   ) {
     return <PhoneVerificationScreen />;
+  }
+  if (policyGate.enforcementReady && policyGate.requiresAcceptance) {
+    return <Redirect href="/policy-consent" />;
   }
 
   return <Redirect href="/home" />;
