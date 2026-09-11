@@ -142,7 +142,7 @@ export function PaymentReadinessCard({
       setActionError(
         error instanceof Error
           ? error.message
-          : 'We could not create this payment request. Please try again.',
+          : 'We could not start this payment. Please try again.',
       );
     } finally {
       setWorking(false);
@@ -164,11 +164,13 @@ export function PaymentReadinessCard({
     return (
       <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
         <VadCard variant="raised" style={{ borderColor: theme.colors.yes, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-          <VadChip label={mode === 'DEPOSIT' ? 'DEPOSIT CREATED' : 'WITHDRAWAL CREATED'} tone="yes" />
+          <VadChip label={mode === 'DEPOSIT' ? 'DEPOSIT STARTED' : 'WITHDRAWAL STARTED'} tone="yes" />
           <View style={{ gap: 2 }}>
-            <VadText variant={density.compact ? 'heading' : 'title'}>Your payment request is active.</VadText>
+            <VadText variant={density.compact ? 'heading' : 'title'}>
+              {mode === 'DEPOSIT' ? 'Your deposit is in progress.' : 'Your withdrawal is in progress.'}
+            </VadText>
             <VadText variant="caption" tone="secondary">
-              We will keep updating this {actionLabel} until it is completed or needs your attention.
+              We&apos;ll keep the status updated here and in your wallet activity.
             </VadText>
           </View>
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 1 }}>
@@ -192,7 +194,7 @@ export function PaymentReadinessCard({
         </View>
 
         <VadText variant="caption" tone="tertiary">
-          Your wallet balance updates after the payment has been confirmed and completed.
+          Your wallet balance updates after the payment is completed.
         </VadText>
       </View>
     );
@@ -212,7 +214,7 @@ export function PaymentReadinessCard({
           {mode === 'DEPOSIT' ? 'Add funds to your wallet.' : 'Move available funds out.'}
         </VadText>
         <VadText variant="caption" tone="secondary">
-          VAD checks your account, identity status, limits and fees before continuing.
+          We&apos;ll show any fees and requirements before you continue.
         </VadText>
       </View>
 
@@ -234,7 +236,7 @@ export function PaymentReadinessCard({
 
       {accountReady && readinessError ? (
         <VadErrorState
-          title="Payment availability unavailable"
+          title="Payment unavailable"
           message={readinessError}
           onRetry={() => void load()}
         />
@@ -250,16 +252,16 @@ export function PaymentReadinessCard({
         <VadCard variant="raised" style={{ width: '100%', flex: split && quote ? 1 : undefined, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 1 }}>
-              <VadText variant="caption" tone="secondary">Payment availability</VadText>
+              <VadText variant="caption" tone="secondary">Can you continue?</VadText>
               <VadText variant="bodyStrong" numberOfLines={1}>
                 {capabilityLoading
                   ? 'Checking your account'
                   : !canOperate
-                    ? 'Unavailable for your account'
+                    ? 'Not available for your account'
                     : readiness == null
                       ? 'Checking availability'
                       : paymentAvailable
-                        ? 'Available'
+                        ? 'Yes, this is available'
                         : 'Temporarily unavailable'}
               </VadText>
             </View>
@@ -288,7 +290,7 @@ export function PaymentReadinessCard({
                 ? validAmount
                   ? '₦' + amountValue.toLocaleString()
                   : 'Enter an amount greater than zero.'
-                : 'Amount entry will be available when this action is available for your account.'
+                : 'You can enter an amount when this action becomes available.'
             }
             error={
               accountReady && amount.length > 0 && !validAmount
@@ -308,14 +310,14 @@ export function PaymentReadinessCard({
           {actionError ? (
             <InlineStatus
               tone="danger"
-              title={quote ? 'Payment not created' : 'Payment review unavailable'}
+              title={quote ? 'Payment not started' : 'Could not review payment'}
               message={actionError}
             />
           ) : null}
 
           {!quote ? (
             <VadButton
-              label="Check fees & availability"
+              label={mode === 'DEPOSIT' ? 'Review deposit' : 'Review withdrawal'}
               loading={working || capabilityLoading}
               disabled={!accountReady || !validAmount || readinessError != null}
               onPress={() => void preview()}
@@ -338,7 +340,7 @@ export function PaymentReadinessCard({
                 {quote.enabled ? 'PAYMENT REVIEW' : 'ACTION REQUIRED'}
               </VadText>
               <VadText variant="heading">
-                {quote.enabled ? 'Review the final amounts.' : 'This payment cannot continue yet.'}
+                {quote.enabled ? 'Check the amounts before you continue.' : 'This payment cannot continue yet.'}
               </VadText>
             </View>
 
@@ -346,10 +348,10 @@ export function PaymentReadinessCard({
               <>
                 <MoneyRow label="Amount" value={'₦' + Number(quote.amount).toLocaleString()} />
                 <MoneyRow label="Fee" value={'₦' + Number(quote.feeAmount ?? 0).toLocaleString()} />
-                <MoneyRow label="Net amount" value={'₦' + Number(quote.netAmount ?? quote.amount).toLocaleString()} emphasized />
+                <MoneyRow label="You receive" value={'₦' + Number(quote.netAmount ?? quote.amount).toLocaleString()} emphasized />
 
                 <VadButton
-                  label={mode === 'DEPOSIT' ? 'Create deposit' : 'Create withdrawal'}
+                  label={mode === 'DEPOSIT' ? 'Start deposit' : 'Confirm withdrawal'}
                   loading={working}
                   disabled={!accountReady}
                   onPress={() => void create()}
@@ -371,7 +373,7 @@ export function PaymentReadinessCard({
       </View>
 
       <VadText variant="caption" tone="tertiary">
-        Every payment is checked for available balance, identity requirements, account access, fees and limits before it is processed.
+        Your balance, verification, fees and limits are checked before a payment starts.
       </VadText>
     </View>
   );
@@ -380,7 +382,7 @@ export function PaymentReadinessCard({
 function PaymentProgress({ stage }: { stage: number }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const labels = ['Amount', 'Check', 'Confirm'];
+  const labels = ['Amount', 'Review', 'Confirm'];
 
   return (
     <View style={{ flexDirection: 'row', gap: density.compact ? 6 : theme.spacing.xs }}>
@@ -440,7 +442,7 @@ function reasonText(quote: PaymentQuote) {
     case 'NO_PAYMENT_PROVIDER':
       return 'This payment service is temporarily unavailable. Please try again later.';
     case 'KYC_REQUIRED':
-      return `${String(quote.requiredKycLevel ?? 'Additional')} identity verification is required before you can continue.`;
+      return 'Complete the required identity verification before you can continue.';
     case 'CAPABILITY_DISABLED':
       return 'This payment action is not available for your account right now.';
     case 'BELOW_MINIMUM':
@@ -448,6 +450,6 @@ function reasonText(quote: PaymentQuote) {
     case 'ABOVE_MAXIMUM':
       return 'Maximum amount is ₦' + Number(quote.maximum ?? 0).toLocaleString() + '.';
     default:
-      return 'This payment cannot continue right now. Please review your account requirements or try again later.';
+      return 'This payment cannot continue right now. Check your account or try again later.';
   }
 }
