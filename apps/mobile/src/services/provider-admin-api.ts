@@ -1,3 +1,4 @@
+import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type ProviderReadinessRow = {
@@ -56,25 +57,25 @@ export type OracleRuntimeResponse = {
   results?: Array<Record<string, unknown>>;
 };
 
-function fail(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback = 'This provider request could not be completed. Please try again.') {
+  if (error) throw userFacingError(error, 'admin', fallback);
 }
 
 export async function getAdminProviderReadiness() {
   const { data, error } = await supabase.rpc('admin_provider_readiness');
-  fail(error);
+  fail(error, 'We could not load provider status right now. Refresh and try again.');
   return (data ?? []) as ProviderReadinessRow[];
 }
 
 export async function getProviderChangeQueue() {
   const { data, error } = await supabase.rpc('admin_provider_change_queue');
-  fail(error);
+  fail(error, 'We could not load pending provider changes right now. Refresh and try again.');
   return (data ?? []) as ProviderChangeRequest[];
 }
 
 export async function getOracleProviderResources() {
   const { data, error } = await supabase.rpc('admin_oracle_provider_resources');
-  fail(error);
+  fail(error, 'We could not load oracle resources right now. Refresh and try again.');
   return (data ?? []) as OracleProviderResource[];
 }
 
@@ -88,7 +89,7 @@ export async function validateOracleResolutionScope(input: {
     p_closes_at: input.closesAt ?? null,
     p_resolves_after: input.resolvesAfter ?? null,
   });
-  fail(error);
+  fail(error, 'We could not validate this resolution setup right now. Please try again.');
   return (data ?? {}) as Record<string, unknown>;
 }
 
@@ -99,8 +100,8 @@ export async function runOracleProviderHealth(providerCodes?: string[]) {
       ...(providerCodes?.length ? { providerCodes } : {}),
     },
   });
-  fail(error);
-  if (!data?.ok) throw new Error('Oracle provider health check did not complete.');
+  fail(error, 'We could not complete the oracle health check right now. Please try again.');
+  if (!data?.ok) throw new Error('The oracle health check did not complete. Please try again.');
   return data;
 }
 
@@ -117,8 +118,8 @@ export async function processOracleQueue(input?: {
       ...(input?.providerCodes?.length ? { providerCodes: input.providerCodes } : {}),
     },
   });
-  fail(error);
-  if (!data?.ok) throw new Error('Oracle queue processing did not complete.');
+  fail(error, 'We could not process the oracle queue right now. Please try again.');
+  if (!data?.ok) throw new Error('The oracle queue did not complete. Please try again.');
   return data;
 }
 
@@ -136,7 +137,7 @@ export async function bindOracleEventResource(input: {
     p_external_key: input.externalKey,
     p_metadata: input.metadata ?? {},
   });
-  fail(error);
+  fail(error, 'We could not link this event resource right now. Please try again.');
   return Number(data);
 }
 
@@ -158,7 +159,7 @@ export async function upsertOracleProviderResource(input: {
     p_status: input.status ?? 'ACTIVE',
     p_metadata: input.metadata ?? {},
   });
-  fail(error);
+  fail(error, 'We could not save this oracle resource right now. Please try again.');
   return Number(data);
 }
 
@@ -180,7 +181,7 @@ export async function registerProvider(input: {
     p_priority: input.priority ?? 100,
     p_secret_reference: input.secretReference ?? null,
   });
-  fail(error);
+  fail(error, 'We could not register this provider right now. Please try again.');
   return Number(data);
 }
 
@@ -206,7 +207,7 @@ export async function upsertProviderRoute(input: {
     p_max_amount: input.maxAmount ?? null,
     p_enabled: input.enabled ?? false,
   });
-  fail(error);
+  fail(error, 'We could not save this provider route right now. Please try again.');
   return Number(data);
 }
 
@@ -222,7 +223,7 @@ export async function requestProviderStatus(input: {
     p_requested_status: input.requestedStatus,
     p_reason: input.reason,
   });
-  fail(error);
+  fail(error, 'We could not submit this provider status change right now. Please try again.');
   return data as string;
 }
 
@@ -236,7 +237,7 @@ export async function decideProviderStatusRequest(
     p_decision: decision,
     p_decision_reason: decisionReason,
   });
-  fail(error);
+  fail(error, 'We could not save this provider decision right now. Please try again.');
 }
 
 // Safety-only direct action. ACTIVE/DEGRADED transitions are intentionally rejected server-side.
@@ -250,5 +251,5 @@ export async function setProviderSafetyStatus(
     p_environment: environment,
     p_status: status,
   });
-  fail(error);
+  fail(error, 'We could not update this provider safety status right now. Please try again.');
 }

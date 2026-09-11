@@ -53,12 +53,12 @@ export function MarketDetailScreen({
         <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
         <VadText variant="caption" tone="tertiary">
           {tab === 'Overview'
-            ? 'Market context and lifecycle.'
+            ? 'Market details, timing and current stage.'
             : tab === 'Trade'
-              ? 'Build or reduce a position using a server-quoted order.'
+              ? 'Build or reduce your position.'
               : tab === 'Discussion'
-                ? 'Public reasoning is social context, never oracle authority.'
-                : 'Resolution and settlement boundaries for this market.'}
+                ? 'See what the community thinks about this market.'
+                : 'See how the result is decided and how payouts work.'}
         </VadText>
       </View>
 
@@ -132,16 +132,16 @@ function Overview({
         <VadCard style={{ flex: 1.1, gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="caption" tone="brand">MARKET OVERVIEW</VadText>
-            <VadText variant="heading">Price conviction. Resolve independently.</VadText>
+            <VadText variant="heading">Prices show what traders think. The rules decide the result.</VadText>
             <VadText variant="caption" tone="secondary">
-              Participants price YES and NO through orders. The final outcome still comes from the approved resolution process, not from whichever side traded higher.
+              YES and NO prices show how people are trading. The final result follows the published market rules and the evidence used to verify what happened, not whichever side has the higher price.
             </VadText>
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <StatePill label="Trading" value={open ? 'Open' : closed ? 'Closed' : market.status.replaceAll('_', ' ')} tone={open ? 'yes' : 'secondary'} />
-            <StatePill label="Settlement" value={market.asset_code} tone="brand" />
-            <StatePill label="Market type" value={market.market_type.replaceAll('_', ' ')} />
+            <StatePill label="Trading" value={open ? 'Open' : closed ? 'Closed' : marketStatusLabel(market.status)} tone={open ? 'yes' : 'secondary'} />
+            <StatePill label="Currency" value={market.asset_code} tone="brand" />
+            <StatePill label="Market type" value={friendlyEnum(market.market_type)} />
           </View>
 
           {!density.phone ? (
@@ -171,20 +171,20 @@ function Overview({
         <VadCard variant="raised" style={{ flex: 0.9, gap: theme.spacing.xs }}>
           <VadText variant="bodyStrong">Market details</VadText>
           <Fact label="Category" value={market.category ?? 'General'} />
-          <Fact label="Settlement" value={market.asset_code} />
-          <Fact label="Type" value={market.market_type.replaceAll('_', ' ')} />
-          <Fact label="Closes" value={market.closes_at ? new Date(market.closes_at).toLocaleString() : 'By market policy'} />
-          <Fact label="Last trade" value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : 'No fills yet'} />
+          <Fact label="Currency" value={market.asset_code} />
+          <Fact label="Type" value={friendlyEnum(market.market_type)} />
+          <Fact label="Closes" value={market.closes_at ? new Date(market.closes_at).toLocaleString() : 'Closing time not available'} />
+          <Fact label="Last trade" value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : 'No trades yet'} />
         </VadCard>
       </View>
 
       <Lifecycle market={market} />
 
       <VadCard variant="brand" style={{ gap: theme.spacing.xs }}>
-        <VadText variant="caption" tone="brand">IMPORTANT BOUNDARY</VadText>
-        <VadText variant="bodyStrong">Trading signal ≠ oracle truth</VadText>
+        <VadText variant="caption" tone="brand">HOW TO READ THE PRICE</VadText>
+        <VadText variant="bodyStrong">A market price is not the final result.</VadText>
         <VadText variant="caption" tone="secondary">
-          A 90% YES price means participants are strongly pricing YES. It does not grant YES any authority over the evidence used to resolve the event.
+          For example, a 90% YES price means traders strongly favour YES. The final result can still be NO if the published rules and evidence support NO.
         </VadText>
       </VadCard>
     </View>
@@ -203,26 +203,26 @@ function Lifecycle({ market }: { market: MarketCatalogItem }) {
   return (
     <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
       <View style={{ gap: 2 }}>
-        <VadText variant="bodyStrong">Market lifecycle</VadText>
-        <VadText variant="caption" tone="secondary">The stages remain separate so trading activity cannot become settlement authority.</VadText>
+        <VadText variant="bodyStrong">What happens next</VadText>
+        <VadText variant="caption" tone="secondary">Trading closes first, then the result is confirmed before eligible winning positions are paid.</VadText>
       </View>
       <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', gap: theme.spacing.xs }}>
         <LifecycleStep
           number="1"
           title="Trading"
-          body={market.closes_at ? `Orders are scheduled to close ${new Date(market.closes_at).toLocaleString()}.` : 'Trading closes according to the approved market policy.'}
+          body={market.closes_at ? `Trading is scheduled to close ${new Date(market.closes_at).toLocaleString()}.` : 'Trading closes at the time shown for this market.'}
           state={tradeDone ? 'complete' : 'active'}
         />
         <LifecycleStep
           number="2"
-          title="Resolution"
-          body="Approved evidence and oracle policy determine the outcome."
+          title="Result"
+          body="The final outcome is checked against the market rules and supporting evidence."
           state={resolutionDone ? 'complete' : resolutionActive ? 'active' : 'waiting'}
         />
         <LifecycleStep
           number="3"
-          title="Settlement"
-          body={`Eligible positions settle in ${market.asset_code} only after the resolution becomes final.`}
+          title="Payout"
+          body={`Eligible winning positions are paid in ${market.asset_code} after the result becomes final.`}
           state={settlementDone ? 'complete' : 'waiting'}
         />
       </View>
@@ -254,25 +254,25 @@ function Rules({ market }: { market: MarketCatalogItem }) {
   const rules = [
     {
       number: '1',
-      title: 'Trading has a boundary',
+      title: 'Trading closes at a defined time',
       body: market.closes_at
-        ? `Trading is scheduled to close on ${new Date(market.closes_at).toLocaleString()}. Orders after the live trading window are governed by backend policy.`
-        : 'The closing time and order eligibility follow the approved market policy.',
+        ? `Trading is scheduled to close on ${new Date(market.closes_at).toLocaleString()}. Orders can only be placed while the market is open.`
+        : 'Orders can only be placed while this market is open.',
     },
     {
       number: '2',
-      title: 'Price does not decide truth',
-      body: 'YES and NO prices represent participant conviction. They do not vote an outcome into existence.',
+      title: 'Price does not decide the outcome',
+      body: 'YES and NO prices show what traders currently think. They do not decide the final result.',
     },
     {
       number: '3',
-      title: 'Resolution uses approved evidence',
-      body: 'The final result comes from the market’s approved oracle and resolution process. Social posts and creator reputation remain descriptive only.',
+      title: 'The result follows the rules',
+      body: 'The final result comes from the market’s published criteria and supporting evidence. Community posts and creator opinions do not decide the outcome.',
     },
     {
       number: '4',
-      title: 'Settlement follows the ledger',
-      body: `Eligible positions and payouts settle in ${market.asset_code}. VAD does not mix this market’s settlement value with another asset.`,
+      title: 'Payouts use this market’s currency',
+      body: `Eligible winning positions are paid in ${market.asset_code}. Values from another currency are not mixed into this market.`,
     },
   ];
 
@@ -280,8 +280,8 @@ function Rules({ market }: { market: MarketCatalogItem }) {
     <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
       <View style={{ gap: 2 }}>
         <VadText variant="caption" tone="brand">MARKET RULES</VadText>
-        <VadText variant="heading">Resolution & settlement</VadText>
-        <VadText variant="caption" tone="secondary">The core operating boundaries to understand before taking a position.</VadText>
+        <VadText variant="heading">How this market works</VadText>
+        <VadText variant="caption" tone="secondary">What to understand before taking a position.</VadText>
       </View>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', flexWrap: wide ? 'wrap' : 'nowrap', gap: theme.spacing.sm }}>
@@ -295,11 +295,29 @@ function Rules({ market }: { market: MarketCatalogItem }) {
       </View>
 
       <VadCard variant="brand" style={{ gap: 2 }}>
-        <VadText variant="bodyStrong">Trading → Resolution → Settlement</VadText>
-        <VadText variant="caption" tone="secondary">These stages are deliberately separated. Market popularity, creator reputation and discussion activity never replace the approved resolution path.</VadText>
+        <VadText variant="bodyStrong">Trading → Result → Payout</VadText>
+        <VadText variant="caption" tone="secondary">Market popularity and community discussion can inform your view, but the published market rules determine the final result.</VadText>
       </VadCard>
     </View>
   );
+}
+
+function friendlyEnum(value: string) {
+  return value
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function marketStatusLabel(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized === 'OPEN' || normalized === 'ACTIVE') return 'Open';
+  if (normalized === 'RESOLVING') return 'Result pending';
+  if (normalized === 'RESOLVED') return 'Result confirmed';
+  if (normalized === 'SETTLED') return 'Completed';
+  if (normalized === 'VOID') return 'Cancelled';
+  if (normalized === 'CLOSED') return 'Closed';
+  return 'Unavailable';
 }
 
 function StatePill({ label, value, tone = 'secondary' }: { label: string; value: string; tone?: 'secondary' | 'yes' | 'brand' }) {

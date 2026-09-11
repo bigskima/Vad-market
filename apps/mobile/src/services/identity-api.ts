@@ -1,3 +1,4 @@
+import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type KycStatus = {
@@ -14,22 +15,23 @@ export type KycStatus = {
 
 export async function getMyKycStatus() {
   const { data, error } = await supabase.rpc('my_kyc_status');
-  if (error) throw new Error(error.message);
+  if (error) throw userFacingError(error, 'identityVerification', 'We could not load your verification status. Please try again.');
   return data as KycStatus;
 }
 
 export async function startDiditKyc() {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError || !sessionData.session?.access_token) throw new Error('Your session is not available. Please sign in again.');
+  if (sessionError || !sessionData.session?.access_token) {
+    throw new Error('Your session has expired. Sign in again to continue.');
+  }
 
   const { data, error } = await supabase.functions.invoke('identity-gateway', {
     method: 'POST',
     headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
   });
-  if (error) throw new Error(error.message);
+  if (error) throw userFacingError(error, 'identityVerification');
   if (!data?.verificationUrl) {
-    if (data?.error === 'KYC_PROVIDER_NOT_CONFIGURED') throw new Error('Didit is selected for verification, but its Supabase secrets are not configured yet.');
-    throw new Error(data?.error ?? 'Could not start identity verification.');
+    throw userFacingError(data?.error ?? data?.message, 'identityVerification');
   }
   return data as { provider: 'DIDIT'; casePublicId: string; status: string; verificationUrl: string };
 }

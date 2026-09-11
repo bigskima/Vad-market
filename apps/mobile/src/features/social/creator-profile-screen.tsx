@@ -10,6 +10,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getCreatorPublicProfileByUsername,
@@ -52,7 +53,7 @@ export function CreatorProfileScreen({ username }: { username: string }) {
 
     try {
       const nextProfile = await getCreatorPublicProfileByUsername(username);
-      if (!nextProfile) throw new Error('No active VAD profile exists for this username.');
+      if (!nextProfile) throw new Error('Creator profile unavailable.');
 
       const [nextReputation, nextPredictions] = await Promise.all([
         getCreatorReputation(nextProfile.userId),
@@ -64,7 +65,7 @@ export function CreatorProfileScreen({ username }: { username: string }) {
       setReputation(nextReputation);
       setPredictions(nextPredictions);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Creator profile is unavailable.');
+      setError(userFacingErrorMessage(reason, 'social', 'We could not load this creator right now. Please try again.'));
     } finally {
       if (background) setRefreshing(false);
       else setLoading(false);
@@ -92,16 +93,16 @@ export function CreatorProfileScreen({ username }: { username: string }) {
     } : current);
 
     try {
-      const authoritativeFollowing = await toggleCreatorFollow(profile.userId);
-      setFollowing(authoritativeFollowing);
+      const updatedFollowing = await toggleCreatorFollow(profile.userId);
+      setFollowing(updatedFollowing);
       setReputation((current) => current ? {
         ...current,
-        followers: Math.max(0, previousFollowers + (authoritativeFollowing ? 1 : 0) - (wasFollowing ? 1 : 0)),
+        followers: Math.max(0, previousFollowers + (updatedFollowing ? 1 : 0) - (wasFollowing ? 1 : 0)),
       } : current);
     } catch (reason) {
       setFollowing(wasFollowing);
       setReputation((current) => current ? { ...current, followers: previousFollowers } : current);
-      setFollowError(reason instanceof Error ? reason.message : 'Follow state could not be updated.');
+      setFollowError(userFacingErrorMessage(reason, 'social', 'We could not update this follow right now. Please try again.'));
     } finally {
       setFollowWorking(false);
     }
@@ -137,7 +138,7 @@ export function CreatorProfileScreen({ username }: { username: string }) {
 
   return (
     <View style={{ gap: density.sectionGap }}>
-      {error ? <VadErrorState title="Creator refresh failed" message={error} onRetry={() => void load(true)} /> : null}
+      {error ? <VadErrorState title="Could not refresh creator" message={error} onRetry={() => void load(true)} /> : null}
 
       <VadCard style={{ padding: 0, overflow: 'hidden' }}>
         <View style={{ height: wide ? 190 : density.compact ? 108 : 132, backgroundColor: theme.colors.brandSoft }}>
@@ -146,7 +147,7 @@ export function CreatorProfileScreen({ username }: { username: string }) {
           ) : (
             <View style={{ flex: 1, justifyContent: 'flex-end', padding: density.cardPadding, gap: 2 }}>
               <VadText variant="caption" tone="brand">CREATOR PROFILE</VadText>
-              <VadText variant="caption" tone="secondary">Public conviction and resolved track record.</VadText>
+              <VadText variant="caption" tone="secondary">Public predictions and completed track record.</VadText>
             </View>
           )}
         </View>
@@ -204,13 +205,13 @@ export function CreatorProfileScreen({ username }: { username: string }) {
 
       <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.lg, alignItems: 'flex-start' }}>
         <VadCard variant="muted" style={{ width: wide ? 280 : '100%', gap: theme.spacing.xs }}>
-          <VadText variant="caption" tone="brand">CREATOR SIGNAL</VadText>
-          <VadText variant="heading">Track record, not authority.</VadText>
+          <VadText variant="caption" tone="brand">ABOUT THIS TRACK RECORD</VadText>
+          <VadText variant="heading">Past performance is context, not certainty.</VadText>
           <VadText variant="caption" tone="secondary">
-            Reputation describes published conviction and resolved predictions. It never controls oracle truth, disputes or settlement.
+            This profile summarizes published predictions and completed outcomes. Every market is still decided by its own rules and evidence.
           </VadText>
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, marginTop: theme.spacing.xs, paddingTop: theme.spacing.sm, gap: 2 }}>
-            <VadText variant="caption" tone="tertiary">GENERATED</VadText>
+            <VadText variant="caption" tone="tertiary">LAST UPDATED</VadText>
             <VadText variant="caption" tone="secondary">{new Date(reputation.generatedAt).toLocaleString()}</VadText>
           </View>
         </VadCard>

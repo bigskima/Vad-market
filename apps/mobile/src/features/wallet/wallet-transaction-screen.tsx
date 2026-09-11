@@ -36,7 +36,7 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
       setError(
         reason instanceof Error
           ? reason.message
-          : 'Transaction status could not be refreshed.',
+          : 'We could not refresh this transaction right now. Please try again.',
       );
     } finally {
       if (background) setRefreshing(false);
@@ -77,17 +77,17 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
     return (
       <VadEmptyState
         title="Transaction unavailable"
-        body="This payment record could not be found in your recent wallet activity."
+        body="This payment could not be found in your recent wallet activity."
       />
     );
   }
 
   const incoming = intent.operation === 'DEPOSIT';
   const settled = Boolean(intent.settled_at);
-  const failed = Boolean(intent.failure_code);
+  const failed = Boolean(intent.failure_code) || paymentStatusKind(intent.status) === 'failed';
   const processing = !settled && !failed;
   const statusTitle = settled
-    ? 'Payment settled'
+    ? 'Payment completed'
     : failed
       ? 'Payment needs attention'
       : 'Payment is processing';
@@ -98,7 +98,7 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
     <View style={{ gap: density.compact ? theme.spacing.lg : theme.spacing.xl }}>
       {error ? (
         <VadErrorState
-          title="Transaction refresh failed"
+          title="Could not refresh transaction"
           message={error}
           onRetry={() => void load(true)}
         />
@@ -148,16 +148,16 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
         }}
       >
         <VadChip
-          label={intent.status.replaceAll('_', ' ')}
+          label={paymentStatusLabel(intent.status, settled, failed)}
           tone={settled ? 'yes' : failed ? 'no' : 'warning'}
         />
         <VadText variant="heading">{statusTitle}</VadText>
         <VadText variant="caption" tone="secondary">
           {settled
-            ? 'The provider flow reached settlement. Your ledger balance remains the final source of truth.'
+            ? 'This payment has been completed and your wallet reflects its final status.'
             : failed
-              ? 'The payment route reported an issue. Review the failure detail below before retrying.'
-              : 'The request exists and is waiting for the external payment route to reach a final state.'}
+              ? 'This payment did not complete successfully. You can refresh the status or start a new request when appropriate.'
+              : 'Your payment request is still being processed. You can leave this screen and check again later.'}
         </VadText>
       </VadCard>
 
@@ -172,27 +172,26 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
           <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
             <View style={{ gap: 1 }}>
               <VadText variant="heading">Amount breakdown</VadText>
-              <VadText variant="caption" tone="secondary">Values returned by this payment intent.</VadText>
+              <VadText variant="caption" tone="secondary">A summary of the amounts for this payment.</VadText>
             </View>
             <View>
               <Detail label="Gross amount" value={amount(intent.amount)} />
               <Detail label="Fee" value={amount(intent.fee_amount)} />
               <Detail label="Net amount" value={amount(intent.net_amount)} emphasized />
               <Detail label="Fee difference" value={amount(netDifference)} />
-              <Detail label="Asset" value={intent.asset_code} />
+              <Detail label="Currency" value={intent.asset_code} />
             </View>
           </VadCard>
 
           <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
             <View style={{ gap: 1 }}>
-              <VadText variant="heading">Transaction record</VadText>
-              <VadText variant="caption" tone="secondary">Keep this reference when investigating an issue.</VadText>
+              <VadText variant="heading">Transaction details</VadText>
+              <VadText variant="caption" tone="secondary">Keep this reference if you need help with this payment.</VadText>
             </View>
             <View>
               <Detail label="Reference" value={intent.intent_public_id} selectable />
-              <Detail label="Payment route" value={intent.provider_configured ? 'Configured' : 'Not configured'} />
               <Detail label="Created" value={new Date(intent.created_at).toLocaleString()} />
-              <Detail label="Settled" value={intent.settled_at ? new Date(intent.settled_at).toLocaleString() : 'Not settled yet'} />
+              <Detail label="Completed" value={intent.settled_at ? new Date(intent.settled_at).toLocaleString() : 'Not completed yet'} />
             </View>
           </VadCard>
         </View>
@@ -201,29 +200,29 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
           <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
             <View style={{ gap: 1 }}>
               <VadText variant="heading">Payment progress</VadText>
-              <VadText variant="caption" tone="secondary">External payment status, not a replacement for ledger state.</VadText>
+              <VadText variant="caption" tone="secondary">Follow the current progress of this payment request.</VadText>
             </View>
             <View>
-              <StatusStep label="Intent created" detail={new Date(intent.created_at).toLocaleString()} state="complete" />
+              <StatusStep label="Request created" detail={new Date(intent.created_at).toLocaleString()} state="complete" />
               <StatusStep
-                label="Provider processing"
-                detail={failed ? 'Provider processing ended with an issue.' : settled ? 'Provider processing completed.' : 'Waiting for the payment route to complete.'}
+                label="Processing"
+                detail={failed ? 'Processing ended with an issue.' : settled ? 'Processing completed.' : 'Your payment is still being processed.'}
                 state={failed ? 'failed' : settled ? 'complete' : 'active'}
               />
               <StatusStep
-                label="Settlement"
-                detail={intent.settled_at ? new Date(intent.settled_at).toLocaleString() : failed ? 'Not settled because this intent did not complete.' : 'Waiting for a final provider state.'}
+                label="Completed"
+                detail={intent.settled_at ? new Date(intent.settled_at).toLocaleString() : failed ? 'This payment was not completed.' : 'Waiting for the payment to finish.'}
                 state={settled ? 'complete' : failed ? 'failed' : 'waiting'}
               />
             </View>
           </VadCard>
 
-          {intent.failure_code ? (
+          {failed ? (
             <VadCard variant="raised" style={{ borderColor: theme.colors.danger, gap: 4 }}>
               <VadText variant="caption" tone="danger">PAYMENT ISSUE</VadText>
-              <VadText variant="bodyStrong">{intent.failure_code.replaceAll('_', ' ')}</VadText>
+              <VadText variant="bodyStrong">This payment could not be completed.</VadText>
               <VadText variant="caption" tone="secondary">
-                Refresh after the underlying issue is resolved. A retry is not successful until a new authoritative state appears.
+                Refresh the status first. If the issue continues, start a new request or contact support with the transaction reference.
               </VadText>
             </VadCard>
           ) : processing ? (
@@ -236,7 +235,7 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
       </View>
 
       <VadText variant="caption" tone="tertiary">
-        Payment intent state explains the external flow. Ledger balances remain authoritative for available, reserved and settled funds.
+        Your wallet balance is the final record of funds available to use or withdraw.
       </VadText>
     </View>
   );
@@ -246,6 +245,21 @@ function operationLabel(operation: PaymentIntentRow['operation']) {
   if (operation === 'DEPOSIT') return 'Deposit';
   if (operation === 'WITHDRAWAL') return 'Withdrawal';
   return 'Refund';
+}
+
+function paymentStatusKind(status: string): 'processing' | 'settled' | 'failed' {
+  const normalized = status.toUpperCase();
+  if (normalized === 'SETTLED' || normalized === 'COMPLETED' || normalized === 'SUCCESS') return 'settled';
+  if (normalized.includes('FAIL') || normalized.includes('REJECT') || normalized.includes('CANCEL') || normalized.includes('EXPIRE')) return 'failed';
+  return 'processing';
+}
+
+function paymentStatusLabel(status: string, settled: boolean, failed: boolean) {
+  if (settled) return 'COMPLETED';
+  if (failed) return 'NEEDS ATTENTION';
+  const normalized = status.toUpperCase();
+  if (normalized.includes('PENDING') || normalized.includes('PROCESS') || normalized.includes('CREATED') || normalized.includes('INIT')) return 'PROCESSING';
+  return 'IN PROGRESS';
 }
 
 function StatusStep({ label, detail, state }: { label: string; detail: string; state: 'complete' | 'active' | 'waiting' | 'failed' }) {

@@ -224,7 +224,7 @@ export function AdminServiceControlsScreen() {
           <VadText variant="label" tone="warning">SUPER ADMIN · IMMEDIATE CONTROL</VadText>
           <VadText variant="title">Pause & resume VAD services.</VadText>
           <VadText tone="secondary">
-            Emergency switches take effect immediately. They do not create a policy proposal and do not require maker-checker approval. Every change is audited.
+            Emergency switches take effect immediately. They do not create a policy proposal or require a second approval. Every change is audited.
           </VadText>
         </View>
         <VadButton
@@ -556,7 +556,7 @@ export function AdminServiceControlsScreen() {
                 }}
                 keyboardType="decimal-pad"
                 placeholder="Leave blank for manual resume"
-                hint="When the time expires, the backend treats the pause as resumed automatically."
+                hint="When the time expires, this pause ends automatically."
               />
             ) : null}
 

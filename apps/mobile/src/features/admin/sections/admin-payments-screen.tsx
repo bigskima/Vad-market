@@ -93,7 +93,7 @@ export function AdminPaymentsScreen() {
       setSelected(null);
       setReason('');
       setSuccessMessage(
-        `Refund request ${refundIntentId} was created. Provider processing and ledger settlement remain authoritative.`,
+        `Refund request ${refundIntentId} was created. Its status will update as the refund is processed.`,
       );
       await data.refresh();
     } catch (reasonValue) {
@@ -124,11 +124,9 @@ export function AdminPaymentsScreen() {
           }}
         >
           <VadText variant="label" tone="brand">PAYMENT OPERATIONS</VadText>
-          <VadText variant="title">Money movement without ledger ambiguity.</VadText>
+          <VadText variant="title">Track money movement clearly.</VadText>
           <VadText tone="secondary">
-            Payment intents explain external provider flow. Wallet and ledger
-            balances remain the source of truth for financial state, while
-            recognized VAD revenue is tracked separately.
+            Review deposits, withdrawals and refunds alongside their provider status. Wallet balances remain the final financial record, while recognized VAD revenue is tracked separately.
           </VadText>
         </View>
 
@@ -163,7 +161,7 @@ export function AdminPaymentsScreen() {
           >
             <HealthFact label="Pending" value={String(pending)} tone={pending ? 'warning' : 'primary'} />
             <HealthFact label="Failed" value={String(failed)} tone={failed ? 'danger' : 'primary'} />
-            <HealthFact label="Settled visible" value={String(settledVisible)} tone={settledVisible ? 'yes' : 'primary'} />
+            <HealthFact label="Completed visible" value={String(settledVisible)} tone={settledVisible ? 'yes' : 'primary'} />
           </View>
 
           <VadText variant="caption" tone="tertiary">
@@ -182,7 +180,7 @@ export function AdminPaymentsScreen() {
             gap: theme.spacing.xs,
           }}
         >
-          <VadText variant="caption" tone="yes">REFUND WORKFLOW CREATED</VadText>
+          <VadText variant="caption" tone="yes">REFUND REQUEST CREATED</VadText>
           <VadText variant="caption" tone="secondary">{successMessage}</VadText>
           <VadButton
             label="Dismiss"
@@ -225,11 +223,11 @@ export function AdminPaymentsScreen() {
       </View>
 
       <OperationsSection
-        title="Payment intent queue"
+        title="Payment queue"
         description={
           canRefund
-            ? 'Settled deposits can enter an audited refund workflow. Other intents remain review-only.'
-            : 'Current provider-facing intents visible to this operations role.'
+            ? 'Completed deposits can enter an audited refund workflow. Other payments remain review-only.'
+            : 'Current payments available to this operations role.'
         }
         count={visibleTotal}
       >
@@ -247,9 +245,9 @@ export function AdminPaymentsScreen() {
                 meta={
                   `${new Date(row.created_at).toLocaleString()} · ` +
                   `quoted fee ${money(row.fee_amount)}` +
-                  (row.failure_code ? ` · ${row.failure_code.replaceAll('_', ' ')}` : '')
+                  (row.failure_code ? ' · Needs investigation' : '')
                 }
-                status={row.status}
+                status={paymentStatusLabel(row)}
                 ready={row.status === 'SETTLED' || Boolean(row.settled_at)}
                 actionLabel={refundEligible ? 'Refund' : undefined}
                 onPress={refundEligible ? () => openRefund(row) : undefined}
@@ -260,8 +258,7 @@ export function AdminPaymentsScreen() {
           <View style={{ paddingVertical: theme.spacing.lg }}>
             <VadText variant="bodyStrong">No payment work is waiting.</VadText>
             <VadText variant="caption" tone="secondary">
-              New provider-facing intents will appear here when visible to this
-              operator role.
+              New payments will appear here when they are available to this operations role.
             </VadText>
           </View>
         )}
@@ -278,26 +275,26 @@ export function AdminPaymentsScreen() {
         }}
       >
         <Boundary
-          title="Payment intent"
-          body="Tracks provider-facing lifecycle, quoted fees, failure state and settlement timestamp."
+          title="Payment status"
+          body="Tracks the payment lifecycle, quoted fees and completion state."
         />
         <Boundary
           title="VAD revenue"
-          body="Counts recognized fee income from posted ledger activity. A quoted or pending payment fee is not revenue yet."
+          body="Counts recognized fee income after it is posted. A quoted or pending payment fee is not revenue yet."
         />
         <Boundary
           title="Platform balance"
-          body="Available, reserved, collateral, pending and clearing balances remain separate from VAD revenue."
+          body="Available, committed, collateral, pending and clearing balances remain separate from VAD revenue."
         />
         <Boundary
-          title="Refund workflow"
-          body="Creates a linked REFUND intent. It does not falsely mark money returned before provider processing completes."
+          title="Refund request"
+          body="Creates a linked refund request. It does not show money as returned before the refund completes."
         />
       </View>
 
       <VadBottomSheet
         visible={Boolean(selected)}
-        title="Start refund workflow?"
+        title="Start refund request?"
         onClose={() => {
           if (!working) setSelected(null);
         }}
@@ -305,7 +302,7 @@ export function AdminPaymentsScreen() {
         {selected ? (
           <View style={{ gap: theme.spacing.lg }}>
             <View style={{ gap: theme.spacing.xs }}>
-              <VadText variant="label" tone="brand">SETTLED DEPOSIT</VadText>
+              <VadText variant="label" tone="brand">COMPLETED DEPOSIT</VadText>
               <VadText variant="title">{money(selected.amount)}</VadText>
               <VadText variant="caption" tone="secondary">
                 {selected.asset_code} · {selected.provider_code ?? 'Provider'}
@@ -324,11 +321,9 @@ export function AdminPaymentsScreen() {
                 gap: 2,
               }}
             >
-              <VadText variant="caption" tone="warning">REFUND IS A WORKFLOW</VadText>
+              <VadText variant="caption" tone="warning">REFUND REQUEST</VadText>
               <VadText variant="caption" tone="secondary">
-                This creates an auditable REFUND intent linked to the original
-                deposit. It does not directly edit the ledger or claim that the
-                provider has already returned the money.
+                This creates a refund linked to the original deposit. The payment remains unchanged until the refund is successfully processed.
               </VadText>
             </View>
 
@@ -339,7 +334,7 @@ export function AdminPaymentsScreen() {
                 setReason(value);
                 setActionError(null);
               }}
-              placeholder="Why should this settled deposit be refunded?"
+              placeholder="Why should this completed deposit be refunded?"
               multiline
               error={
                 reason.length > 0 && reason.trim().length < 3
@@ -379,6 +374,12 @@ function isRefundEligible(row: PaymentQueueRow) {
     row.operation.toUpperCase() === 'DEPOSIT' &&
     (row.status.toUpperCase() === 'SETTLED' || Boolean(row.settled_at))
   );
+}
+
+function paymentStatusLabel(row: PaymentQueueRow) {
+  if (row.settled_at || ['SETTLED', 'COMPLETED', 'SUCCESS', 'SUCCEEDED'].includes(row.status.toUpperCase())) return 'COMPLETED';
+  if (row.failure_code || ['FAILED', 'REJECTED', 'CANCELLED', 'EXPIRED'].some((value) => row.status.toUpperCase().includes(value))) return 'NEEDS ATTENTION';
+  return 'PROCESSING';
 }
 
 function humanOperation(value: string) {

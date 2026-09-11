@@ -78,7 +78,7 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
   const backgroundColor = warning ? theme.colors.warningSoft : theme.colors.yesSoft;
   const borderColor = warning ? theme.colors.warning : theme.colors.yes;
   const textTone = warning ? 'warning' : 'yes';
-  const repeated = `VAD STATUS  •  ${notice.message}     •     `;
+  const repeated = `VAD UPDATE  •  ${notice.message}     •     `;
 
   return (
     <View

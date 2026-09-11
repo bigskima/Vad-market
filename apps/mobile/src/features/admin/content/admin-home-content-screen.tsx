@@ -97,7 +97,7 @@ export function AdminHomeContentScreen() {
         <VadButton label="Refresh" variant="secondary" size="small" fullWidth={false} loading={refreshing} onPress={() => void load(true)} />
       </View>
 
-      {error ? <VadErrorState title="Home content refresh failed" message={error} onRetry={() => void load(true)} /> : null}
+      {error ? <VadErrorState title="Could not refresh home content" message={error} onRetry={() => void load(true)} /> : null}
 
       {message ? (
         <View style={{ borderLeftWidth: 3, borderLeftColor: theme.colors.yes, backgroundColor: theme.colors.yesSoft, padding: theme.spacing.md, borderRadius: theme.radius.md, gap: 2 }}>
@@ -224,12 +224,12 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
             <VadCard variant="muted" style={{ minHeight: 82, justifyContent: 'center' }}><VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>No banner image selected</VadText></VadCard>
           )}
           <VadButton label={imageUrl ? 'Replace image' : 'Choose image'} variant="secondary" size="small" loading={uploading} onPress={() => void chooseImage()} />
-          <VadInput label="Admin label (optional)" value={title} onChangeText={setTitle} placeholder="Internal label for this image banner" />
+          <VadInput label="Admin label (optional)" value={title} onChangeText={setTitle} placeholder="Label for this image banner" />
         </View>
       ) : (
         <><VadInput label="Banner title" value={title} onChangeText={setTitle} placeholder="Short promotional headline" /><VadInput label="Supporting text (optional)" value={body} onChangeText={setBody} placeholder="One short supporting line" /></>
       )}
-      <VadInput label="Destination route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Any valid internal VAD route can be used." />
+      <VadInput label="Destination" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Choose where this banner should open, for example /markets." />
       <VadInput label="Sort order" value={sortOrder} onChangeText={(value) => setSortOrder(value.replace(/\D/g, ''))} keyboardType="number-pad" hint="Lower numbers appear earlier in the carousel." />
       {error ? <VadErrorState title="Promotion not saved" message={error} /> : null}
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>

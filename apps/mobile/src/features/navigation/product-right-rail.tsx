@@ -31,7 +31,7 @@ export function ProductRightRail({
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="bodyStrong">Market pulse</VadText>
-            <VadText variant="caption" tone="tertiary">Live platform activity</VadText>
+            <VadText variant="caption" tone="tertiary">What&apos;s happening now</VadText>
           </View>
           <VadIcon name="activity" size={20} tone="brand" />
         </View>
@@ -47,15 +47,15 @@ export function ProductRightRail({
 
       {notice ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.xs }}>
-          <VadText variant="caption" tone="brand">VAD STATUS</VadText>
-          <VadText variant="bodyStrong">{notice.tone === 'WARNING' ? 'Service notice' : 'Platform update'}</VadText>
+          <VadText variant="caption" tone="brand">VAD UPDATE</VadText>
+          <VadText variant="bodyStrong">{notice.tone === 'WARNING' ? 'Service notice' : 'Latest update'}</VadText>
           <VadText variant="caption" tone="secondary">{notice.message}</VadText>
         </VadCard>
       ) : null}
 
       <VadCard style={{ gap: theme.spacing.xs }}>
         <VadText variant="bodyStrong">Quick access</VadText>
-        <VadText variant="caption" tone="tertiary">Jump to the workflow you need.</VadText>
+        <VadText variant="caption" tone="tertiary">Go straight to what you need.</VadText>
         <View style={{ marginTop: theme.spacing.xs, gap: theme.spacing.xxs }}>
           <RailLink label="Wallet" icon="wallet" onPress={onOpenWallet} />
           <RailLink label="Community" icon="community" onPress={onOpenCommunity} />
@@ -63,7 +63,7 @@ export function ProductRightRail({
       </VadCard>
 
       <VadText variant="caption" tone="tertiary" style={{ paddingHorizontal: theme.spacing.xs }}>
-        Prices reflect participant conviction. Settlement follows the market resolution rules.
+        Prices show what traders currently think. Each market is decided by its published rules.
       </VadText>
     </View>
   );

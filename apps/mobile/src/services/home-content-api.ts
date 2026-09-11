@@ -1,3 +1,4 @@
+import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type HomePromotion = {
@@ -40,8 +41,8 @@ export type HomeExperience = {
   featuredMarkets: FeaturedMarketRow[];
 };
 
-function fail(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback?: string) {
+  if (error) throw userFacingError(error, 'admin', fallback);
 }
 
 function isInsideLiveWindow(row: { starts_at: string | null; ends_at: string | null }) {
@@ -99,7 +100,7 @@ export async function getHomeExperience(): Promise<HomeExperience> {
     (result) => result.status === 'rejected' || Boolean(result.value?.error),
   );
   if (failed && !promotions.length && !notices.length && !featuredMarkets.length) {
-    throw new Error('Home highlights could not be refreshed.');
+    throw new Error('We could not refresh the latest highlights right now. Please try again.');
   }
 
   return { promotions, notices, featuredMarkets };
@@ -111,7 +112,7 @@ export async function listAdminHomePromotions() {
     .select('*')
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
-  fail(error);
+  fail(error, 'We could not load home promotions right now. Please try again.');
   return (data ?? []) as HomePromotion[];
 }
 
@@ -121,7 +122,7 @@ export async function listAdminPublicNotices() {
     .select('*')
     .order('priority', { ascending: true })
     .order('created_at', { ascending: false });
-  fail(error);
+  fail(error, 'We could not load public notices right now. Please try again.');
   return (data ?? []) as PublicNotice[];
 }
 
@@ -136,7 +137,7 @@ export async function upsertAdminHomePromotion(input: {
   sortOrder?: number;
 }) {
   if (!isSafeInternalRoute(input.targetPath)) {
-    throw new Error('Destination must be an internal VAD route beginning with /.');
+    throw new Error('Enter a valid destination inside VAD, for example /markets.');
   }
   const { data, error } = await supabase.rpc('admin_upsert_home_promotion', {
     p_public_id: input.publicId ?? null,
@@ -148,7 +149,7 @@ export async function upsertAdminHomePromotion(input: {
     p_status: input.status,
     p_sort_order: input.sortOrder ?? 100,
   });
-  fail(error);
+  fail(error, 'We could not save this promotion right now. Please try again.');
   return String(data);
 }
 
@@ -166,7 +167,7 @@ export async function upsertAdminPublicNotice(input: {
     p_status: input.status,
     p_priority: input.priority ?? 100,
   });
-  fail(error);
+  fail(error, 'We could not save this public notice right now. Please try again.');
   return String(data);
 }
 
@@ -180,7 +181,7 @@ export async function deleteAdminPublicNotice(publicId: string, reason: string) 
     p_public_id: publicId,
     p_reason: cleanReason,
   });
-  fail(error);
+  fail(error, 'We could not delete this public notice right now. Please try again.');
   return Boolean(data);
 }
 
@@ -195,6 +196,6 @@ export async function uploadHomePromotionImage(
     contentType: mimeType,
     upsert: false,
   });
-  fail(error);
+  fail(error, 'We could not upload that promotion image right now. Please try again.');
   return supabase.storage.from('home-promotions').getPublicUrl(path).data.publicUrl;
 }

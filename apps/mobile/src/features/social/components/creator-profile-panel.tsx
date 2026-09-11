@@ -33,7 +33,7 @@ export function CreatorProfilePanel({
       <VadSegmentedControl
         value={tab}
         options={[
-          { value: 'signal', label: 'Signal' },
+          { value: 'signal', label: 'Track record' },
           { value: 'predictions', label: `Predictions ${predictions.length}` },
         ] as const}
         onChange={setTab}
@@ -44,19 +44,19 @@ export function CreatorProfilePanel({
           <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
             <VadCard variant="brand" style={{ flex: 1.15, gap: theme.spacing.sm }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-                <VadText variant="caption" tone="brand">EVIDENCE-WEIGHTED REPUTATION</VadText>
-                <VadChip label={`${reputation.resolvedPredictions} resolved`} />
+                <VadText variant="caption" tone="brand">VAD TRACK RECORD</VadText>
+                <VadChip label={`${reputation.resolvedPredictions} completed`} />
               </View>
               <VadText variant={density.compact ? 'title' : 'display'} tone="brand" numberOfLines={1} adjustsFontSizeToFit>
                 {reputation.evidenceWeightedReputation}%
               </VadText>
               <VadText variant="caption" tone="secondary">
-                A descriptive score from the creator’s resolved prediction record. It never changes oracle authority.
+                A summary score based on this creator’s completed prediction history. Use it as context, not as a guarantee of future results.
               </VadText>
             </VadCard>
 
             <VadCard variant="raised" style={{ flex: 0.85, gap: theme.spacing.sm }}>
-              <VadText variant="bodyStrong">Resolved performance</VadText>
+              <VadText variant="bodyStrong">Past results</VadText>
               <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
                 <SignalMetric
                   label="Accuracy"
@@ -64,9 +64,9 @@ export function CreatorProfilePanel({
                   detail={`${reputation.correctPredictions} correct`}
                 />
                 <SignalMetric
-                  label="Calibration"
+                  label="Confidence accuracy"
                   value={reputation.calibrationScore == null ? '—' : pct(reputation.calibrationScore)}
-                  detail={`${reputation.calibratedPredictions} scored`}
+                  detail={`${reputation.calibratedPredictions} measured`}
                 />
               </View>
             </VadCard>
@@ -74,17 +74,17 @@ export function CreatorProfilePanel({
 
           <VadCard variant="raised" style={{ gap: 0 }}>
             <VadText variant="bodyStrong" style={{ marginBottom: theme.spacing.xs }}>Creator activity</VadText>
-            <MetricRow label="Resolved predictions" value={String(reputation.resolvedPredictions)} />
+            <MetricRow label="Completed predictions" value={String(reputation.resolvedPredictions)} />
             <MetricRow label="Correct predictions" value={String(reputation.correctPredictions)} />
             <MetricRow label="Published posts" value={String(reputation.posts)} />
-            <MetricRow label="Originated markets" value={String(reputation.originatedMarkets)} />
+            <MetricRow label="Markets created" value={String(reputation.originatedMarkets)} />
           </VadCard>
 
           <VadCard variant="muted" style={{ gap: 2 }}>
-            <VadText variant="caption" tone="brand">REPUTATION BOUNDARY</VadText>
-            <VadText variant="bodyStrong">Track record, not truth authority</VadText>
+            <VadText variant="caption" tone="brand">ABOUT THIS SCORE</VadText>
+            <VadText variant="bodyStrong">A track record is not a guarantee.</VadText>
             <VadText variant="caption" tone="secondary">
-              Creator reputation can help people evaluate reasoning. Oracle resolution, disputes and settlement remain independent backend processes.
+              Past performance can help you understand someone’s history. Every market is still decided using its own published rules and evidence.
             </VadText>
           </VadCard>
         </View>
@@ -113,14 +113,14 @@ function PredictionHistory({ predictions }: { predictions: CreatorPrediction[] }
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ gap: 2 }}>
         <VadText variant="heading">Prediction history</VadText>
-        <VadText variant="caption" tone="secondary">Published conviction paired with the resolution state available to VAD.</VadText>
+        <VadText variant="caption" tone="secondary">See this creator’s published calls and how completed markets turned out.</VadText>
       </View>
 
       <View style={{ flexDirection: grid ? 'row' : 'column', flexWrap: grid ? 'wrap' : 'nowrap', gap: theme.spacing.sm }}>
         {predictions.slice(0, 20).map((item) => {
           const resolved = item.resolution_status === 'FINAL';
           const resultTone = item.correct === true ? 'yes' : item.correct === false ? 'no' : 'secondary';
-          const resultLabel = resolved ? item.correct ? 'Correct' : 'Missed' : 'Unresolved';
+          const resultLabel = resolved ? item.correct ? 'Correct' : 'Missed' : 'Waiting for result';
           const stanceTone = item.stance_outcome_code === 'YES' ? 'yes' : 'no';
 
           return (
@@ -140,14 +140,14 @@ function PredictionHistory({ predictions }: { predictions: CreatorPrediction[] }
               <View style={{ flexDirection: 'row', gap: theme.spacing.xs, flexWrap: 'wrap', alignItems: 'center' }}>
                 <VadChip label={`Called ${item.stance_outcome_code}`} tone={stanceTone} />
                 {item.confidence != null ? <VadChip label={`Confidence ${pct(item.confidence)}`} /> : null}
-                {item.resolved_outcome_code ? <VadChip label={`Resolved ${item.resolved_outcome_code}`} tone={item.resolved_outcome_code === 'YES' ? 'yes' : 'no'} /> : null}
+                {item.resolved_outcome_code ? <VadChip label={`Result ${item.resolved_outcome_code}`} tone={item.resolved_outcome_code === 'YES' ? 'yes' : 'no'} /> : null}
               </View>
 
               {item.body ? <VadText variant="caption" tone="secondary" numberOfLines={3}>{item.body}</VadText> : null}
 
               {item.finalized_at ? (
                 <VadText variant="caption" tone="tertiary" style={{ marginTop: 'auto' }}>
-                  Finalized {new Date(item.finalized_at).toLocaleDateString()}
+                  Completed {new Date(item.finalized_at).toLocaleDateString()}
                 </VadText>
               ) : null}
             </VadCard>

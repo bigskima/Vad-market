@@ -8,8 +8,8 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
-import { useProductDensity } from '@/hooks/use-product-density';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getProviderReadiness } from '@/services/payment-api';
 
@@ -47,7 +47,7 @@ export function FundingOverview({
     try {
       setReadiness(await getProviderReadiness());
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Payment readiness could not be loaded.');
+      setError(reason instanceof Error ? reason.message : 'We could not check funding availability right now. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -69,42 +69,48 @@ export function FundingOverview({
   }
 
   if (error && !readiness) {
-    return <VadErrorState title="Payment readiness unavailable" message={error} onRetry={() => { setLoading(true); void load(); }} />;
+    return <VadErrorState title="Funding unavailable" message={error} onRetry={() => { setLoading(true); void load(); }} />;
   }
 
   const depositReady = Boolean(readiness?.depositConfigured);
   const withdrawalReady = Boolean(readiness?.withdrawalConfigured);
   const kycReady = Boolean(readiness?.kycConfigured);
-  const providerReadyCount = [depositReady, withdrawalReady, kycReady].filter(Boolean).length;
+  const availableCount = [depositReady, withdrawalReady, kycReady].filter(Boolean).length;
+  const overallStatus = availableCount === 3
+    ? 'Ready'
+    : availableCount > 0
+      ? 'Some features unavailable'
+      : 'Temporarily unavailable';
 
   return (
     <View style={{ gap: density.sectionGap }}>
-      {error ? <VadErrorState title="Payment readiness refresh failed" message={error} onRetry={() => void load()} /> : null}
+      {error ? <VadErrorState title="Could not refresh funding" message={error} onRetry={() => void load()} /> : null}
 
       <VadCard variant="brand" style={{ gap: theme.spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-            <VadText variant="caption" tone="brand">FUNDING & WITHDRAWALS</VadText>
-            <VadText variant="heading">Money movement readiness</VadText>
-            <VadText variant="caption" tone="secondary">Provider setup and account policy are checked separately before money moves.</VadText>
+            <VadText variant="caption" tone="brand">YOUR MONEY</VadText>
+            <VadText variant="heading">Funding & withdrawals</VadText>
+            <VadText variant="caption" tone="secondary">
+              Check what you can do with your VAD wallet right now.
+            </VadText>
           </View>
-          <View style={{ alignItems: 'flex-end', gap: 2 }}>
-            <VadText variant="display" tone={providerReadyCount === 3 ? 'yes' : providerReadyCount ? 'brand' : 'warning'}>{providerReadyCount}/3</VadText>
-            <VadText variant="caption" tone="tertiary">routes ready</VadText>
+          <View style={{ alignItems: 'flex-end', gap: 2, maxWidth: 150 }}>
+            <VadText variant="bodyStrong" tone={availableCount === 3 ? 'yes' : availableCount ? 'brand' : 'warning'}>{overallStatus}</VadText>
           </View>
         </View>
       </VadCard>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
         <VadCard variant="raised" style={{ flex: 1, gap: theme.spacing.xs }}>
-          <VadText variant="bodyStrong">External routes</VadText>
-          <StatusFact label="Deposit provider" ready={depositReady} />
-          <StatusFact label="Withdrawal provider" ready={withdrawalReady} />
-          <StatusFact label={`${readiness?.kycProvider ?? 'Identity'} verification`} ready={kycReady} />
+          <VadText variant="bodyStrong">Available features</VadText>
+          <StatusFact label="Deposits" ready={depositReady} />
+          <StatusFact label="Withdrawals" ready={withdrawalReady} />
+          <StatusFact label="Identity verification" ready={kycReady} />
         </VadCard>
 
         <VadCard variant="raised" style={{ flex: 1, gap: theme.spacing.xs }}>
-          <VadText variant="bodyStrong">Account policy</VadText>
+          <VadText variant="bodyStrong">For your account</VadText>
           <PolicyFact label="Deposits" allowed={depositAllowed} loading={policyLoading} reason={depositReason} />
           <PolicyFact label="Withdrawals" allowed={withdrawalAllowed} loading={policyLoading} reason={withdrawalReason} />
         </VadCard>
@@ -112,17 +118,47 @@ export function FundingOverview({
 
       <VadCard style={{ gap: theme.spacing.xs }}>
         <View style={{ gap: 2, marginBottom: theme.spacing.xs }}>
-          <VadText variant="bodyStrong">Money movement</VadText>
-          <VadText variant="caption" tone="secondary">Each action opens its dedicated reviewed flow and checks live policy again.</VadText>
+          <VadText variant="bodyStrong">Deposit or withdraw</VadText>
+          <VadText variant="caption" tone="secondary">Choose what you want to do. We&apos;ll check the details before you continue.</VadText>
         </View>
-        <ReadinessRow title="Deposit NGN" detail={depositAllowed ? 'Add funds to your VAD wallet' : runtimeCapabilityReason(depositReason)} ready={depositReady && depositAllowed} statusLabel={policyLoading ? 'CHECKING' : !depositAllowed ? 'BLOCKED' : depositReady ? 'READY' : 'ROUTE OFF'} icon="arrowDown" onPress={() => router.push('/wallet/deposit')} />
-        <ReadinessRow title="Withdraw NGN" detail={withdrawalAllowed ? 'Move available funds out' : runtimeCapabilityReason(withdrawalReason)} ready={withdrawalReady && withdrawalAllowed} statusLabel={policyLoading ? 'CHECKING' : !withdrawalAllowed ? 'BLOCKED' : withdrawalReady ? 'READY' : 'ROUTE OFF'} icon="arrowUp" onPress={() => router.push('/wallet/withdraw')} />
-        <ReadinessRow title="Identity verification" detail={readiness?.kycProvider ? `${readiness.kycProvider} verification status` : 'Verification route'} ready={kycReady} statusLabel={kycReady ? 'READY' : 'CHECK'} icon="account" onPress={() => router.push('/account/verification')} />
-        <ReadinessRow title="Payment activity" detail="Deposits, withdrawals and current states" ready statusLabel="OPEN" icon="activity" onPress={() => router.push('/wallet/activity')} />
+        <ReadinessRow
+          title="Deposit NGN"
+          detail={depositAllowed ? 'Add funds to your VAD wallet' : runtimeCapabilityReason(depositReason)}
+          ready={depositReady && depositAllowed}
+          statusLabel={policyLoading ? 'CHECKING' : !depositAllowed ? 'UNAVAILABLE' : depositReady ? 'READY' : 'UNAVAILABLE'}
+          icon="arrowDown"
+          onPress={() => router.push('/wallet/deposit')}
+        />
+        <ReadinessRow
+          title="Withdraw NGN"
+          detail={withdrawalAllowed ? 'Move available funds out of your VAD wallet' : runtimeCapabilityReason(withdrawalReason)}
+          ready={withdrawalReady && withdrawalAllowed}
+          statusLabel={policyLoading ? 'CHECKING' : !withdrawalAllowed ? 'UNAVAILABLE' : withdrawalReady ? 'READY' : 'UNAVAILABLE'}
+          icon="arrowUp"
+          onPress={() => router.push('/wallet/withdraw')}
+        />
+        <ReadinessRow
+          title="Identity verification"
+          detail="Verify your identity when required"
+          ready={kycReady}
+          statusLabel={kycReady ? 'READY' : 'UNAVAILABLE'}
+          icon="account"
+          onPress={() => router.push('/account/verification')}
+        />
+        <ReadinessRow
+          title="Payment activity"
+          detail="See your deposits, withdrawals and their status"
+          ready
+          statusLabel="OPEN"
+          icon="activity"
+          onPress={() => router.push('/wallet/activity')}
+        />
       </VadCard>
 
       <VadCard variant="raised" style={{ gap: 2 }}>
-        <VadText variant="caption" tone="secondary">Provider readiness never bypasses identity, balance, fee, limit or capability policy. Those checks remain backend-authoritative.</VadText>
+        <VadText variant="caption" tone="secondary">
+          Before a transfer starts, VAD checks your available balance, verification, fees and limits.
+        </VadText>
         {readiness?.generatedAt ? <VadText variant="caption" tone="tertiary">Checked {new Date(readiness.generatedAt).toLocaleString()}</VadText> : null}
       </VadCard>
     </View>
@@ -137,7 +173,7 @@ function StatusFact({ label, ready }: { label: string; ready: boolean }) {
         <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>{ready ? '✓' : '!'}</VadText>
       </View>
       <VadText variant="caption" style={{ flex: 1 }}>{label}</VadText>
-      <VadChip label={ready ? 'Ready' : 'Not ready'} tone={ready ? 'yes' : 'warning'} />
+      <VadChip label={ready ? 'Available' : 'Unavailable'} tone={ready ? 'yes' : 'warning'} />
     </View>
   );
 }
@@ -148,9 +184,11 @@ function PolicyFact({ label, allowed, loading, reason }: { label: string; allowe
     <View style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
       <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
         <VadText variant="caption">{label}</VadText>
-        <VadText variant="caption" tone="secondary" numberOfLines={2}>{loading ? runtimeCapabilityReason('CAPABILITIES_LOADING') : allowed ? 'Enabled by current account policy.' : runtimeCapabilityReason(reason)}</VadText>
+        <VadText variant="caption" tone="secondary" numberOfLines={2}>
+          {loading ? runtimeCapabilityReason('CAPABILITIES_LOADING') : allowed ? 'Available for your account.' : runtimeCapabilityReason(reason)}
+        </VadText>
       </View>
-      <VadChip label={loading ? 'Checking' : allowed ? 'Enabled' : 'Blocked'} tone={allowed && !loading ? 'yes' : 'warning'} />
+      <VadChip label={loading ? 'Checking' : allowed ? 'Available' : 'Unavailable'} tone={allowed && !loading ? 'yes' : 'warning'} />
     </View>
   );
 }

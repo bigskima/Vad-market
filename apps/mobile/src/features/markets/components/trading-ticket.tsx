@@ -96,7 +96,7 @@ export function TradingTicket({
       }));
     } catch (error) {
       setQuote(null);
-      setQuoteError(error instanceof Error ? error.message : 'The trade could not be quoted. Check the order details and try again.');
+      setQuoteError(error instanceof Error ? error.message : 'We could not prepare this trade. Check the order details and try again.');
     } finally {
       setWorking(false);
     }
@@ -113,7 +113,7 @@ export function TradingTicket({
       setQuote(null);
       await onPlaced();
     } catch (error) {
-      setPlaceError(error instanceof Error ? error.message : 'The order could not be placed. Please try again.');
+      setPlaceError(error instanceof Error ? error.message : 'We could not place this order. Please try again.');
     } finally {
       setWorking(false);
     }
@@ -144,7 +144,7 @@ export function TradingTicket({
           <View style={{ gap: 2 }}>
             <VadText variant="heading">Your order is live.</VadText>
             <VadText variant="caption" tone="secondary">
-              It may fill when compatible liquidity becomes available. Portfolio and ledger state remain authoritative.
+              It may fill when matching orders become available. You can track its progress from Portfolio.
             </VadText>
           </View>
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 1 }}>
@@ -169,7 +169,7 @@ export function TradingTicket({
             <VadText variant="heading">{side === 'BUY' ? 'Build a position' : 'Reduce a position'}</VadText>
           </View>
           <View style={{ alignItems: 'flex-end', gap: 0 }}>
-            <VadText variant="caption" tone="secondary">{outcome} signal</VadText>
+            <VadText variant="caption" tone="secondary">{outcome} price</VadText>
             <VadText variant="heading" tone={currentProbability == null ? 'tertiary' : outcome === 'YES' ? 'yes' : 'no'}>{probability(currentProbability)}</VadText>
           </View>
         </View>
@@ -177,7 +177,7 @@ export function TradingTicket({
         {capabilityLoading ? (
           <InlineMessage tone="warning" title="Checking trading availability" body={runtimeCapabilityReason('CAPABILITIES_LOADING')} />
         ) : !canTrade ? (
-          <InlineMessage tone="warning" title="Trading unavailable" body={runtimeCapabilityReason(tradeReason, 'Trading is not available for this account under the current VAD policy.')} />
+          <InlineMessage tone="warning" title="Trading unavailable" body={runtimeCapabilityReason(tradeReason, 'Trading is not available for your account right now.')} />
         ) : null}
 
         <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: 6 }}>
@@ -198,8 +198,8 @@ export function TradingTicket({
         <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', gap: theme.spacing.sm }}>
           <View style={{ flex: 1 }}>
             <VadInput
-              label={`Limit price · ${market.asset_code}`}
-              hint={tradeReady ? (currentProbability == null ? 'No current trade price yet. Enter your own limit price above 0 and up to 1.' : 'Above 0 and up to 1 settlement unit per share.') : 'Available when trading is enabled.'}
+              label={`Price per share · ${market.asset_code}`}
+              hint={tradeReady ? (currentProbability == null ? 'There is no current trade price yet. Enter the price you are willing to trade at, above 0 and up to 1.' : 'Enter the price you are willing to trade at, above 0 and up to 1 per share.') : 'Available when trading is enabled.'}
               value={price}
               editable={tradeReady && !working}
               onChangeText={(value) => { setPrice(value); clearReviewState(); }}
@@ -236,8 +236,8 @@ export function TradingTicket({
         </View>
 
         <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-          <MiniMetric label="Estimated" value={inputValid ? estimatedNotional : '—'} />
-          <MiniMetric label="Settlement" value={market.asset_code} />
+          <MiniMetric label="Estimated order value" value={inputValid ? estimatedNotional : '—'} />
+          <MiniMetric label="Currency" value={market.asset_code} />
         </View>
 
         {quoteError ? <InlineMessage tone="danger" title="Trade review unavailable" body={quoteError} /> : null}
@@ -255,21 +255,21 @@ export function TradingTicket({
           <View style={{ gap: 1 }}>
             <VadText variant="caption" tone="brand">ORDER REVIEW · {market.asset_code}</VadText>
             <VadText variant="heading">Check before placing.</VadText>
-            <VadText variant="caption" tone="secondary">This backend quote is authoritative for this order attempt.</VadText>
+            <VadText variant="caption" tone="secondary">Review these figures carefully. They apply to this order if you place it now.</VadText>
           </View>
 
-          <QuoteLine label="Notional" value={assetMoney(quote.notional, market.asset_code)} />
-          <QuoteLine label="Maker fee" value={assetMoney(quote.makerFee, market.asset_code)} />
-          <QuoteLine label="Taker fee" value={assetMoney(quote.takerFee, market.asset_code)} />
+          <QuoteLine label="Order value" value={assetMoney(quote.notional, market.asset_code)} />
+          <QuoteLine label="Fee if matched later" value={assetMoney(quote.makerFee, market.asset_code)} />
+          <QuoteLine label="Fee if matched immediately" value={assetMoney(quote.takerFee, market.asset_code)} />
           {quote.side === 'BUY' ? (
-            <QuoteLine label="Maximum cash reserved" value={assetMoney(quote.maximumCashReservation, market.asset_code)} />
+            <QuoteLine label="Maximum amount held" value={assetMoney(quote.maximumCashReservation, market.asset_code)} />
           ) : (
             <QuoteLine label="Shares available" value={String(quote.availableSharesToSell)} />
           )}
-          <QuoteLine label="Gross settlement if correct" value={assetMoney(quote.potentialGrossSettlement, market.asset_code)} />
+          <QuoteLine label="Payout before fees if correct" value={assetMoney(quote.potentialGrossSettlement, market.asset_code)} />
 
           {placeError ? <InlineMessage tone="danger" title="Order not placed" body={placeError} /> : null}
-          {!tradeReady ? <InlineMessage tone="warning" title="Order placement paused" body={runtimeCapabilityReason(tradeReason)} /> : null}
+          {!tradeReady ? <InlineMessage tone="warning" title="Trading unavailable" body={runtimeCapabilityReason(tradeReason)} /> : null}
 
           <VadButton label="Place order" loading={working} disabled={!tradeReady || working} onPress={() => void execute()} />
           <VadButton label="Edit order" variant="ghost" size="small" disabled={working} onPress={() => { setQuote(null); setPlaceError(null); }} />

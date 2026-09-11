@@ -10,6 +10,7 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { pickProfileImage } from '@/lib/profile-image-picker';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getMyProfile,
@@ -44,7 +45,7 @@ export function ProfileEditorCard() {
       setHandle(next.handle ?? '');
       setBio(next.bio ?? '');
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Please try again.');
+      setLoadError(userFacingErrorMessage(error, 'profile', 'We could not load your profile right now. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -63,9 +64,9 @@ export function ProfileEditorCard() {
       await updateMyProfile({ displayName, handle, bio });
       await load();
       setEditing(false);
-      setSuccessMessage('Your public VAD identity has been updated.');
+      setSuccessMessage('Your public profile has been updated.');
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Please try again.');
+      setActionError(userFacingErrorMessage(error, 'profile', 'We could not save your profile right now. Please try again.'));
     } finally {
       setWorking(false);
     }
@@ -82,7 +83,7 @@ export function ProfileEditorCard() {
       await load();
       setSuccessMessage(kind === 'avatar' ? 'Profile photo updated.' : 'Profile banner updated.');
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Please try another image.');
+      setActionError(userFacingErrorMessage(error, 'profile', 'We could not update this image. Please try another image or try again later.'));
     } finally {
       setWorking(false);
     }
@@ -121,7 +122,7 @@ export function ProfileEditorCard() {
 
   return (
     <View style={{ gap: density.sectionGap }}>
-      {loadError ? <VadErrorState title="Profile refresh failed" message={loadError} onRetry={() => void load()} /> : null}
+      {loadError ? <VadErrorState title="Could not refresh profile" message={loadError} onRetry={() => void load()} /> : null}
 
       <VadCard style={{ padding: 0, overflow: 'hidden' }}>
         <Pressable
@@ -168,7 +169,7 @@ export function ProfileEditorCard() {
 
           {!editing ? (
             <VadText variant="caption" tone="secondary" numberOfLines={3}>
-              {profile?.bio || 'Add a short bio so people understand the perspective behind your convictions.'}
+              {profile?.bio || 'Add a short bio so people know more about you and your perspective.'}
             </VadText>
           ) : null}
         </View>
@@ -188,18 +189,18 @@ export function ProfileEditorCard() {
       </VadCard>
 
       {successMessage ? <InlineStatus tone="yes" title="Saved" message={successMessage} onDismiss={() => setSuccessMessage(null)} /> : null}
-      {actionError ? <InlineStatus tone="danger" title="Update failed" message={actionError} onDismiss={() => setActionError(null)} /> : null}
+      {actionError ? <InlineStatus tone="danger" title="Could not save changes" message={actionError} onDismiss={() => setActionError(null)} /> : null}
 
       {editing ? (
         <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: theme.spacing.md }}>
           <VadCard style={{ flex: 1.2, width: '100%', gap: theme.spacing.md }}>
             <View style={{ gap: 2 }}>
-              <VadText variant="caption" tone="brand">PUBLIC IDENTITY</VadText>
+              <VadText variant="caption" tone="brand">PUBLIC PROFILE</VadText>
               <VadText variant="heading">Edit your profile</VadText>
             </View>
             <VadInput label="Display name" value={displayName} onChangeText={(value) => { setDisplayName(value); setActionError(null); }} placeholder="Your public name" returnKeyType="next" />
-            <VadInput label="Handle" value={handle} onChangeText={(value) => { setHandle(value.replace(/\s/g, '')); setActionError(null); }} placeholder="yourhandle" autoCapitalize="none" autoCorrect={false} hint="With or without @. Spaces are removed." error={handle.trim().length > 0 && !handleReady ? 'Use at least 2 characters.' : undefined} />
-            <VadInput label="Bio" value={bio} onChangeText={(value) => { setBio(value); setActionError(null); }} placeholder="Your perspective in a few words" multiline hint={bio.trim() ? `${bio.trim().length} characters` : 'Optional'} />
+            <VadInput label="Username" value={handle} onChangeText={(value) => { setHandle(value.replace(/\s/g, '')); setActionError(null); }} placeholder="yourusername" autoCapitalize="none" autoCorrect={false} hint="You can include @. Spaces are removed." error={handle.trim().length > 0 && !handleReady ? 'Use at least 2 characters.' : undefined} />
+            <VadInput label="Bio" value={bio} onChangeText={(value) => { setBio(value); setActionError(null); }} placeholder="Tell people a little about yourself" multiline hint={bio.trim() ? `${bio.trim().length} characters` : 'Optional'} />
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
               <VadButton label="Cancel" variant="secondary" onPress={cancelEdit} style={{ flex: 1 }} />
               <VadButton label="Save" loading={working} disabled={!identityReady} onPress={() => void save()} style={{ flex: 1 }} />
@@ -209,7 +210,7 @@ export function ProfileEditorCard() {
           <VadCard variant="raised" style={{ flex: 0.8, width: '100%', gap: theme.spacing.xs }}>
             <VadText variant="bodyStrong">Profile checklist</VadText>
             <ChecklistRow label="Display name" complete={Boolean(displayName.trim())} />
-            <ChecklistRow label="Handle" complete={handleReady} />
+            <ChecklistRow label="Username" complete={handleReady} />
             <ChecklistRow label="Bio" complete={Boolean(bio.trim())} optional />
             <ChecklistRow label="Photo" complete={Boolean(profile?.avatar_path)} optional />
             <ChecklistRow label="Banner" complete={Boolean(profile?.banner_path)} optional />
@@ -217,9 +218,9 @@ export function ProfileEditorCard() {
         </View>
       ) : (
         <VadCard variant="raised" style={{ gap: 0 }}>
-          <VadText variant="bodyStrong" style={{ marginBottom: theme.spacing.xs }}>Profile media</VadText>
-          <MediaAction label="Profile photo" detail={profile?.avatar_path ? 'Replace current avatar' : 'Add creator avatar'} actionLabel={profile?.avatar_path ? 'Change' : 'Add'} onPress={() => void choose('avatar')} disabled={working} />
-          <MediaAction label="Banner" detail={profile?.banner_path ? 'Replace public header' : 'Add public header'} actionLabel={profile?.banner_path ? 'Change' : 'Add'} onPress={() => void choose('banner')} disabled={working} />
+          <VadText variant="bodyStrong" style={{ marginBottom: theme.spacing.xs }}>Profile images</VadText>
+          <MediaAction label="Profile photo" detail={profile?.avatar_path ? 'Replace your current photo' : 'Add a profile photo'} actionLabel={profile?.avatar_path ? 'Change' : 'Add'} onPress={() => void choose('avatar')} disabled={working} />
+          <MediaAction label="Banner" detail={profile?.banner_path ? 'Replace your current banner' : 'Add a profile banner'} actionLabel={profile?.banner_path ? 'Change' : 'Add'} onPress={() => void choose('banner')} disabled={working} />
         </VadCard>
       )}
     </View>
@@ -232,7 +233,7 @@ function ChecklistRow({ label, complete, optional = false }: { label: string; co
     <View style={{ minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
       <VadText variant="caption" tone={complete ? 'yes' : 'tertiary'}>{complete ? '✓' : '–'}</VadText>
       <VadText variant="caption" style={{ flex: 1 }}>{label}</VadText>
-      <VadText variant="caption" tone={complete ? 'yes' : 'tertiary'}>{complete ? 'SET' : optional ? 'OPTIONAL' : 'NEEDED'}</VadText>
+      <VadText variant="caption" tone={complete ? 'yes' : 'tertiary'}>{complete ? 'DONE' : optional ? 'OPTIONAL' : 'NEEDED'}</VadText>
     </View>
   );
 }

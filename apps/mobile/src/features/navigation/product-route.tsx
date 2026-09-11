@@ -146,9 +146,6 @@ export function ProductRoute({
   const requiredReason = requiredCapability
     ? runtime.snapshot.reasons[requiredCapability]
     : undefined;
-  const requiredMessage = requiredCapability
-    ? runtime.snapshot.messages?.[requiredCapability]
-    : undefined;
   const requiredLoading = Boolean(
     requiredCapability &&
       runtime.isRefreshing &&
@@ -157,13 +154,13 @@ export function ProductRoute({
   const maintenance = runtime.snapshot.context.platformStatus === 'MAINTENANCE';
   const maintenanceLabel =
     runtime.snapshot.context.platformPauseScope === 'USER'
-      ? 'ACCOUNT ACTIONS PAUSED'
-      : 'VAD MAINTENANCE MODE';
+      ? 'ACCOUNT NOTICE'
+      : 'VAD MAINTENANCE';
   const maintenanceMessage =
     runtime.snapshot.context.platformMessage ??
     (runtime.snapshot.context.platformPauseScope === 'USER'
-      ? 'New actions are temporarily paused for this account. Read-only areas remain available.'
-      : 'VAD is temporarily read-only while maintenance is in progress.');
+      ? 'Some actions are temporarily unavailable for your account. You can still view your existing information.'
+      : 'Some actions are temporarily unavailable while we carry out maintenance.');
   const resumesAt = runtime.snapshot.context.platformResumesAt;
   const publicNotice = data.publicNotices[0] ?? null;
   const noticeCount = data.publicNotices.length + (maintenance ? 1 : 0);
@@ -266,8 +263,8 @@ export function ProductRoute({
             ) : requiredCapability && !requiredAllowed ? (
               <VadEmptyState
                 title={capabilityTitle}
-                body={requiredMessage ?? runtimeCapabilityReason(requiredReason)}
-                actionLabel="Refresh availability"
+                body={runtimeCapabilityReason(requiredReason)}
+                actionLabel="Try again"
                 onAction={() => void runtime.refresh()}
               />
             ) : (
@@ -310,7 +307,7 @@ export function ProductRoute({
           {data.publicNotices.length ? data.publicNotices.map((notice) => (
             <View key={notice.public_id} style={{ gap: 4, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
               <VadText variant="caption" tone={notice.tone === 'WARNING' ? 'warning' : 'yes'}>
-                {notice.tone === 'WARNING' ? 'SERVICE NOTICE' : 'PLATFORM UPDATE'}
+                {notice.tone === 'WARNING' ? 'SERVICE NOTICE' : 'VAD UPDATE'}
               </VadText>
               <VadText>{notice.message}</VadText>
             </View>

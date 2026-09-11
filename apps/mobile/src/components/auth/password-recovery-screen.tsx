@@ -62,10 +62,10 @@ export function PasswordRecoveryScreen() {
 
           <VadCard variant="floating" style={{ gap: theme.spacing.lg }}>
             <View style={{ gap: theme.spacing.xs }}>
-              <VadText variant="caption" tone="brand">SECURE RECOVERY</VadText>
+              <VadText variant="caption" tone="brand">PASSWORD RESET</VadText>
               <VadText variant="title">Choose a new password</VadText>
               <VadText variant="caption" tone="secondary">
-                Your reset link has been validated. Choose a strong password for this account.
+                You can now choose a new password for your VAD account.
               </VadText>
             </View>
 
@@ -124,7 +124,7 @@ export function PasswordRecoveryScreen() {
             ) : null}
 
             <VadButton label="Update password" loading={working} disabled={!valid} onPress={() => void submit()} />
-            <VadButton label="Cancel recovery" variant="ghost" disabled={working} onPress={dismissPasswordRecovery} />
+            <VadButton label="Cancel" variant="ghost" disabled={working} onPress={dismissPasswordRecovery} />
           </VadCard>
         </View>
       </View>

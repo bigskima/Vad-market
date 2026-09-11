@@ -40,7 +40,7 @@ function ThemedNavigation() {
   );
 }
 
-function DeploymentConfigurationScreen() {
+function ServiceUnavailableScreen() {
   const theme = useVadTheme();
 
   return (
@@ -73,38 +73,16 @@ function DeploymentConfigurationScreen() {
 
         <View style={{ gap: theme.spacing.sm }}>
           <VadText variant="label" tone="brand">
-            DEPLOYMENT CONFIGURATION
+            SERVICE UNAVAILABLE
           </VadText>
-          <VadText variant="title">VAD cannot start yet.</VadText>
+          <VadText variant="title">VAD cannot start right now.</VadText>
           <VadText tone="secondary">
-            This deployment was built without the public Supabase configuration
-            required by the app. Add the missing variables to the hosting
-            project and redeploy.
+            We are unable to connect to the services needed to open VAD. Please try again shortly. If the problem continues, contact VAD support.
           </VadText>
-        </View>
-
-        <View
-          style={{
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor: theme.colors.border,
-            paddingVertical: theme.spacing.md,
-            gap: theme.spacing.sm,
-          }}
-        >
-          <VadText variant="caption" tone="secondary">
-            MISSING BUILD VARIABLES
-          </VadText>
-          {supabaseConfiguration.missing.map((name) => (
-            <VadText key={name} variant="bodyStrong" selectable>
-              {name}
-            </VadText>
-          ))}
         </View>
 
         <VadText variant="caption" tone="tertiary">
-          These are public frontend connection values. Never place a Supabase
-          service-role key or provider secret in an EXPO_PUBLIC variable.
+          Your account information has not been changed.
         </VadText>
       </View>
     </View>
@@ -122,7 +100,7 @@ export default function RootLayout() {
             </ProductDataProvider>
           </AuthProvider>
         ) : (
-          <DeploymentConfigurationScreen />
+          <ServiceUnavailableScreen />
         )}
       </VadThemeProvider>
     </SafeAreaProvider>

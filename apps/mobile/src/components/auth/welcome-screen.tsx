@@ -21,7 +21,7 @@ type Props = {
 export function WelcomeScreen({ onContinue }: Props) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
-  const wide = width >= 860;
+  const wide = width >= 768;
   const compact = width < 380;
 
   function cycleTheme() {
@@ -102,14 +102,14 @@ export function WelcomeScreen({ onContinue }: Props) {
               </View>
               <VadText variant="display">Price the outcome. Back your conviction.</VadText>
               <VadText tone="secondary" style={{ maxWidth: 560 }}>
-                Explore live probabilities, read the rules behind every market and take a position when your research sees something the crowd does not.
+                Explore live probabilities, understand how each market is decided and take a position when your research sees something the crowd does not.
               </VadText>
             </View>
 
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
-              <TrustPoint value="Live" label="Probability" />
-              <TrustPoint value="Auditable" label="Ledger" />
-              <TrustPoint value="Governed" label="Resolution" />
+              <TrustPoint value="Live" label="Market prices" />
+              <TrustPoint value="Clear" label="Market rules" />
+              <TrustPoint value="Public" label="Track records" />
             </View>
 
             {wide ? (
@@ -131,9 +131,9 @@ export function WelcomeScreen({ onContinue }: Props) {
           >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md, alignItems: 'flex-start' }}>
               <View style={{ flex: 1, gap: theme.spacing.xs }}>
-                <VadText variant="caption" tone="brand">LIVE MARKET PREVIEW</VadText>
+                <VadText variant="caption" tone="brand">MARKET PREVIEW</VadText>
                 <VadText variant="heading">Will the event resolve YES?</VadText>
-                <VadText variant="caption" tone="secondary">Example probability surface</VadText>
+                <VadText variant="caption" tone="secondary">Example market probability</VadText>
               </View>
               <View style={{ minWidth: 82, alignItems: 'flex-end' }}>
                 <VadText variant="display" tone="brand">64%</VadText>
@@ -151,7 +151,7 @@ export function WelcomeScreen({ onContinue }: Props) {
 
             <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md }}>
               <VadText variant="caption" tone="secondary">
-                Market price shows participant conviction. Final settlement follows the independent resolution rules attached to the market.
+                Market prices show participant conviction. The final result follows the published rules for that market.
               </VadText>
             </View>
           </VadCard>
@@ -165,7 +165,7 @@ export function WelcomeScreen({ onContinue }: Props) {
         ) : null}
 
         <VadText variant="caption" tone="tertiary" style={{ textAlign: wide ? 'left' : 'center' }}>
-          Market access and money movement remain subject to live jurisdiction, identity and platform policy. English is the current launch language.
+          Some features may require identity verification and may not be available in every location. English is the current launch language.
         </VadText>
       </ScrollView>
     </SafeAreaView>

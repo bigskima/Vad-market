@@ -150,8 +150,7 @@ export function AdminWorkQueueScreen() {
         <VadText variant="label" tone="brand">COMMAND</VadText>
         <VadText variant="title">Work Queue</VadText>
         <VadText tone="secondary">
-          One operational inbox for the action items visible to your current role.
-          Actions still execute inside their domain-specific, backend-authorized workflows.
+          One inbox for the action items available to your current role. Open an item to review or act in the appropriate workspace.
         </VadText>
       </View>
 
@@ -237,7 +236,7 @@ export function AdminWorkQueueScreen() {
         <VadCard variant="outlined" style={{ gap: theme.spacing.sm }}>
           <VadText variant="heading">No action items</VadText>
           <VadText tone="secondary">
-            There are no open queue items across the operational domains available to this role.
+            There are no open action items in the areas available to this role.
           </VadText>
         </VadCard>
       )}

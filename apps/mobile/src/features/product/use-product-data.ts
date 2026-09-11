@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { userFacingErrorMessage, type UserErrorContext } from '@/lib/user-facing-error';
 import {
   getHomeExperience,
   type FeaturedMarketRow,
@@ -38,10 +39,11 @@ const emptySectionErrors: ProductSectionErrors = {
 
 function settledError(
   result: PromiseSettledResult<unknown>,
+  context: UserErrorContext,
   fallback: string,
 ) {
   if (result.status === 'fulfilled') return null;
-  return result.reason instanceof Error ? result.reason.message : fallback;
+  return userFacingErrorMessage(result.reason, context, fallback);
 }
 
 export function useProductData(enabled = true) {
@@ -85,7 +87,6 @@ export function useProductData(enabled = true) {
     try {
       setAdminSummary(await getAdminRuntimeSummary());
     } catch {
-      // The customer product must never fail because an admin-only probe did.
       setAdminSummary(null);
     }
   }, [enabled]);
@@ -101,9 +102,11 @@ export function useProductData(enabled = true) {
       setHomeExperienceError(null);
     } catch (reason) {
       setHomeExperienceError(
-        reason instanceof Error
-          ? reason.message
-          : 'Home highlights could not be refreshed.',
+        userFacingErrorMessage(
+          reason,
+          'general',
+          'We could not refresh the latest highlights right now. Please try again.',
+        ),
       );
     }
   }, [enabled]);
@@ -120,11 +123,11 @@ export function useProductData(enabled = true) {
     ]);
 
     const nextSectionErrors: ProductSectionErrors = {
-      markets: settledError(results[0], 'Markets could not be refreshed.'),
-      wallet: settledError(results[1], 'Wallet balances could not be refreshed.'),
-      positions: settledError(results[2], 'Positions could not be refreshed.'),
-      orders: settledError(results[3], 'Orders could not be refreshed.'),
-      proposals: settledError(results[4], 'Market proposals could not be refreshed.'),
+      markets: settledError(results[0], 'markets', 'We could not refresh markets right now.'),
+      wallet: settledError(results[1], 'payments', 'We could not refresh wallet balances right now.'),
+      positions: settledError(results[2], 'portfolio', 'We could not refresh your positions right now.'),
+      orders: settledError(results[3], 'portfolio', 'We could not refresh your orders right now.'),
+      proposals: settledError(results[4], 'proposal', 'We could not refresh your market proposals right now.'),
     };
 
     setSectionErrors(nextSectionErrors);
@@ -132,11 +135,11 @@ export function useProductData(enabled = true) {
     const failures = Object.values(nextSectionErrors).filter(Boolean).length;
     if (failures === results.length) {
       setError(
-        'VAD could not refresh markets or account data. Your last successful data is still shown where available.',
+        'We could not refresh your VAD information right now. Your last available information is still shown where possible.',
       );
     } else if (failures > 0) {
       setError(
-        'Some VAD data could not refresh. Successful sections were updated and your previous data was preserved elsewhere.',
+        'Some information could not refresh right now. Everything that updated successfully is still available.',
       );
     } else {
       setError(null);
@@ -162,9 +165,6 @@ export function useProductData(enabled = true) {
 
       setLoading(true);
 
-      // Customer-critical reads determine the loading shell. Optional home
-      // merchandising and the admin probe stay independent so they can never
-      // hold normal product navigation behind a secondary read.
       void probeAdmin();
       void probeHomeExperience();
       void load().finally(() => {

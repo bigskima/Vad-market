@@ -129,9 +129,9 @@ export function AdminDashboardScreen() {
           <VadText variant="label" tone="brand">COMMAND CENTRE</VadText>
           <VadText variant="title">Run VAD from what needs action.</VadText>
           <VadText tone="secondary">
-            Live operational signals are grouped by consequence: markets,
-            money, trust and infrastructure. Every action remains protected by
-            the same backend permission and audit boundaries.
+            Live operational signals are grouped by markets, money, trust and
+            infrastructure. Your role determines which areas and actions are
+            available to you.
           </VadText>
         </View>
 
@@ -195,8 +195,8 @@ export function AdminDashboardScreen() {
               <VadText variant="heading">{roleLabel}</VadText>
               <VadText variant="caption" tone="secondary">
                 {data.access.isSuperAdmin
-                  ? 'Full VAD control-plane authority. Service controls and role administration remain Super Admin protected.'
-                  : `${data.access.permissions.length} backend permission${data.access.permissions.length === 1 ? '' : 's'} assigned. Only matching operational areas and actions are available.`}
+                  ? 'Full VAD administrative access. Service controls and role management remain restricted to Super Admin.'
+                  : `${data.access.permissions.length} permission${data.access.permissions.length === 1 ? '' : 's'} assigned. Only matching operational areas and actions are available.`}
               </VadText>
             </View>
             {data.access.isSuperAdmin ? (
@@ -239,7 +239,7 @@ export function AdminDashboardScreen() {
         <View style={{ gap: 2 }}>
           <VadText variant="heading">Platform status</VadText>
           <VadText variant="caption" tone="secondary">
-            Explicit product signals from the backend runtime and operations summaries.
+            Current market, payment, provider and operations indicators.
           </VadText>
         </View>
 
@@ -322,7 +322,7 @@ export function AdminDashboardScreen() {
             {canPayments && paymentFailed > 0 ? (
               <AttentionRow
                 label="Failed payments"
-                detail="Payment intents failed and may require provider or support review."
+                detail="Failed payments may require provider or support review."
                 count={paymentFailed}
                 tone="danger"
                 href="/admin/payments"
@@ -355,7 +355,7 @@ export function AdminDashboardScreen() {
             {canPayments ? (
               <AttentionRow
                 label="Payments pending"
-                detail="Provider-pending money movement visible to finance operations."
+                detail="Payments waiting for provider confirmation."
                 count={paymentPending}
                 href="/admin/payments"
               />
@@ -371,7 +371,7 @@ export function AdminDashboardScreen() {
             {canProviders ? (
               <AttentionRow
                 label="Provider approvals"
-                detail="Maker-checker provider changes waiting for a checker."
+                detail="Provider changes waiting for approval."
                 count={providerAttention}
                 href="/admin/providers"
               />

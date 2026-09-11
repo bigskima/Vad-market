@@ -20,11 +20,11 @@ export function MarketProbabilityBar({ yes, no }: { yes: number | string | null;
 
   if (yesRaw == null && noRaw == null) {
     return (
-      <View accessibilityRole="summary" accessibilityLabel="Market probability is still forming" style={{ gap: theme.spacing.xs }}>
+      <View accessibilityRole="summary" accessibilityLabel="No market price is available yet" style={{ gap: theme.spacing.xs }}>
         <View style={{ height: 8, borderRadius: theme.radius.pill, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }} />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
           <VadText variant="caption" tone="tertiary">YES —</VadText>
-          <VadText variant="caption" tone="tertiary">Price forming</VadText>
+          <VadText variant="caption" tone="tertiary">No price yet</VadText>
           <VadText variant="caption" tone="tertiary">NO —</VadText>
         </View>
       </View>

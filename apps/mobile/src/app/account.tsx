@@ -32,7 +32,7 @@ export default function AccountScreen() {
       <View style={{ gap: density.sectionGap }}>
         <VadSectionHeader
           title="Account"
-          subtitle="Manage your public identity, verification, funding readiness and how VAD appears on this device."
+          subtitle="Manage your profile, verification, funding and appearance settings."
         />
 
         <View
@@ -72,7 +72,7 @@ export default function AccountScreen() {
                 <VadText variant="title" tone="brand">{initial}</VadText>
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <VadText variant="caption" tone="brand">VAD IDENTITY</VadText>
+                <VadText variant="caption" tone="brand">YOUR ACCOUNT</VadText>
                 <VadText variant="heading" numberOfLines={2}>{displayName || 'Your VAD account'}</VadText>
                 <VadText variant="caption" tone="secondary" numberOfLines={2}>{email}</VadText>
               </View>
@@ -88,10 +88,10 @@ export default function AccountScreen() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
                 <VadIcon name="operations" size={16} tone="brand" />
-                <VadText variant="caption" tone="brand">POLICY-GOVERNED ACCESS</VadText>
+                <VadText variant="caption" tone="brand">ACCOUNT ACCESS</VadText>
               </View>
               <VadText variant="caption" tone="secondary">
-                Trading and money movement follow your live account, jurisdiction and verification status.
+                Some features may require identity verification and may not be available in every location.
               </VadText>
             </View>
 
@@ -99,7 +99,7 @@ export default function AccountScreen() {
           </VadCard>
 
           <View style={{ flex: 1, width: sideBySide ? undefined : '100%', gap: density.sectionGap }}>
-            <SettingGroup title="Identity" subtitle="How you appear on VAD and the status of your verification.">
+            <SettingGroup title="Identity" subtitle="Manage how you appear on VAD and your verification status.">
               <AccountRow
                 icon="account"
                 title="Public profile"
@@ -109,16 +109,16 @@ export default function AccountScreen() {
               <AccountRow
                 icon="operations"
                 title="Identity verification"
-                subtitle="KYC status, provider and next verification step"
+                subtitle="Verification status and next step"
                 onPress={() => router.push('/account/verification')}
               />
             </SettingGroup>
 
-            <SettingGroup title="Money & experience" subtitle="Funding controls and local product preferences.">
+            <SettingGroup title="Money & experience" subtitle="Manage funding access and how VAD looks on this device.">
               <AccountRow
                 icon="wallet"
                 title="Funding & withdrawals"
-                subtitle="Readiness, limits, fees and transaction access"
+                subtitle="Availability, limits, fees and payment activity"
                 onPress={() => router.push('/account/funding')}
               />
               <AccountRow

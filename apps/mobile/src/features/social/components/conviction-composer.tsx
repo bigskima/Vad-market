@@ -2,10 +2,9 @@ import { Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
-import { VadChip } from '@/components/ui/vad-chip';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
-import { pct } from '@/features/markets/format';
+import { probability } from '@/features/markets/format';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
@@ -40,9 +39,9 @@ export function ConvictionComposer({
   return (
     <VadCard variant="raised" style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
       <View style={{ gap: 1 }}>
-        <VadText variant="caption" tone="brand">NEW CONVICTION</VadText>
-        <VadText variant="heading">Share the reasoning first.</VadText>
-        <VadText variant="caption" tone="secondary">Attach a market only when the post is directly about that question.</VadText>
+        <VadText variant="caption" tone="brand">NEW POST</VadText>
+        <VadText variant="heading">Share your reasoning.</VadText>
+        <VadText variant="caption" tone="secondary">Attach a market when your post is directly about that question.</VadText>
       </View>
 
       <VadInput
@@ -88,7 +87,7 @@ export function ConvictionComposer({
                     >
                       <View style={{ flex: 1, gap: 1 }}>
                         <VadText variant="caption" tone={selected ? 'brand' : 'primary'} numberOfLines={2}>{item.title}</VadText>
-                        <VadText variant="caption" tone="tertiary">YES {pct(item.yes_price)} · NO {pct(item.no_price)}</VadText>
+                        <VadText variant="caption" tone="tertiary">YES {probability(item.yes_price)} · NO {probability(item.no_price)}</VadText>
                       </View>
                       <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: selected ? theme.colors.brandPrimary : theme.colors.borderStrong, alignItems: 'center', justifyContent: 'center' }}>
                         {selected ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.brandPrimary }} /> : null}
@@ -103,16 +102,16 @@ export function ConvictionComposer({
 
         {selectedMarket ? (
           <View style={{ width: wide ? 230 : '100%', gap: 6 }}>
-            <VadText variant="label" tone="secondary">Your stance · optional</VadText>
+            <VadText variant="label" tone="secondary">Your prediction · optional</VadText>
             <View style={{ flexDirection: 'row', gap: 6 }}>
-              <Stance label="YES" value={pct(selectedMarket.yes_price)} selected={stance === 'YES'} positive onPress={() => onStanceChange('YES')} />
-              <Stance label="NO" value={pct(selectedMarket.no_price)} selected={stance === 'NO'} positive={false} onPress={() => onStanceChange('NO')} />
+              <Stance label="YES" value={probability(selectedMarket.yes_price)} selected={stance === 'YES'} positive onPress={() => onStanceChange('YES')} />
+              <Stance label="NO" value={probability(selectedMarket.no_price)} selected={stance === 'NO'} positive={false} onPress={() => onStanceChange('NO')} />
             </View>
           </View>
         ) : null}
       </View>
 
-      <VadButton label="Publish conviction" loading={working} disabled={!body.trim()} onPress={onPublish} />
+      <VadButton label="Publish post" loading={working} disabled={!body.trim()} onPress={onPublish} />
     </VadCard>
   );
 }

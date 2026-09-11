@@ -65,7 +65,7 @@ export function PaymentReadinessCard({
       setReadinessError(
         error instanceof Error
           ? error.message
-          : 'Payment readiness could not be loaded.',
+          : 'We could not check payment availability right now. Please try again.',
       );
     }
   }, []);
@@ -116,7 +116,7 @@ export function PaymentReadinessCard({
       setActionError(
         error instanceof Error
           ? error.message
-          : 'The payment review could not be prepared.',
+          : 'We could not prepare this payment. Please try again.',
       );
     } finally {
       setWorking(false);
@@ -142,14 +142,14 @@ export function PaymentReadinessCard({
       setActionError(
         error instanceof Error
           ? error.message
-          : 'The payment intent could not be created.',
+          : 'We could not start this payment. Please try again.',
       );
     } finally {
       setWorking(false);
     }
   }
 
-  const providerReady =
+  const paymentAvailable =
     mode === 'DEPOSIT'
       ? readiness?.depositConfigured
       : readiness?.withdrawalConfigured;
@@ -158,17 +158,19 @@ export function PaymentReadinessCard({
   const validAmount = Number.isFinite(amountValue) && amountValue > 0;
   const stage = createdIntentId ? 3 : quote ? 2 : amount ? 1 : 0;
   const actionLabel = mode === 'DEPOSIT' ? 'deposit' : 'withdrawal';
-  const policyReady = canOperate && !capabilityLoading;
+  const accountReady = canOperate && !capabilityLoading;
 
   if (createdIntentId) {
     return (
       <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
         <VadCard variant="raised" style={{ borderColor: theme.colors.yes, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-          <VadChip label={mode === 'DEPOSIT' ? 'DEPOSIT CREATED' : 'WITHDRAWAL CREATED'} tone="yes" />
+          <VadChip label={mode === 'DEPOSIT' ? 'DEPOSIT STARTED' : 'WITHDRAWAL STARTED'} tone="yes" />
           <View style={{ gap: 2 }}>
-            <VadText variant={density.compact ? 'heading' : 'title'}>Your payment request is live.</VadText>
+            <VadText variant={density.compact ? 'heading' : 'title'}>
+              {mode === 'DEPOSIT' ? 'Your deposit is in progress.' : 'Your withdrawal is in progress.'}
+            </VadText>
             <VadText variant="caption" tone="secondary">
-              Provider state may continue changing until this {actionLabel} settles or fails.
+              We&apos;ll keep the status updated here and in your wallet activity.
             </VadText>
           </View>
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 1 }}>
@@ -192,7 +194,7 @@ export function PaymentReadinessCard({
         </View>
 
         <VadText variant="caption" tone="tertiary">
-          Creating an intent is not settlement. Wallet and ledger balances remain authoritative.
+          Your wallet balance updates after the payment is completed.
         </VadText>
       </View>
     );
@@ -212,7 +214,7 @@ export function PaymentReadinessCard({
           {mode === 'DEPOSIT' ? 'Add funds to your wallet.' : 'Move available funds out.'}
         </VadText>
         <VadText variant="caption" tone="secondary">
-          VAD checks account policy, provider routing, verification, limits and fees before continuing.
+          We&apos;ll show any fees and requirements before you continue.
         </VadText>
       </View>
 
@@ -221,7 +223,7 @@ export function PaymentReadinessCard({
       {capabilityLoading ? (
         <InlineStatus
           tone="warning"
-          title="Checking account policy"
+          title="Checking availability"
           message={runtimeCapabilityReason('CAPABILITIES_LOADING')}
         />
       ) : !canOperate ? (
@@ -232,9 +234,9 @@ export function PaymentReadinessCard({
         />
       ) : null}
 
-      {policyReady && readinessError ? (
+      {accountReady && readinessError ? (
         <VadErrorState
-          title="Payment readiness unavailable"
+          title="Payment unavailable"
           message={readinessError}
           onRetry={() => void load()}
         />
@@ -250,22 +252,22 @@ export function PaymentReadinessCard({
         <VadCard variant="raised" style={{ width: '100%', flex: split && quote ? 1 : undefined, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 1 }}>
-              <VadText variant="caption" tone="secondary">Payment route</VadText>
+              <VadText variant="caption" tone="secondary">Can you continue?</VadText>
               <VadText variant="bodyStrong" numberOfLines={1}>
                 {capabilityLoading
-                  ? 'Checking policy'
+                  ? 'Checking your account'
                   : !canOperate
-                    ? 'Blocked by policy'
+                    ? 'Not available for your account'
                     : readiness == null
-                      ? 'Checking provider'
-                      : providerReady
-                        ? 'Ready for live checks'
-                        : 'Not configured'}
+                      ? 'Checking availability'
+                      : paymentAvailable
+                        ? 'Yes, this is available'
+                        : 'Temporarily unavailable'}
               </VadText>
             </View>
             <VadChip
-              label={capabilityLoading || readiness == null ? 'CHECKING' : policyReady && providerReady ? 'READY' : 'ACTION NEEDED'}
-              tone={policyReady && providerReady ? 'yes' : 'warning'}
+              label={capabilityLoading || readiness == null ? 'CHECKING' : accountReady && paymentAvailable ? 'READY' : 'UNAVAILABLE'}
+              tone={accountReady && paymentAvailable ? 'yes' : 'warning'}
             />
           </View>
 
@@ -276,48 +278,48 @@ export function PaymentReadinessCard({
               setAmount(value);
               clearReview();
             }}
-            editable={policyReady}
+            editable={accountReady}
             keyboardType="decimal-pad"
             placeholder="Amount in NGN"
             returnKeyType="done"
             onSubmitEditing={() => {
-              if (policyReady && validAmount) void preview();
+              if (accountReady && validAmount) void preview();
             }}
             hint={
-              policyReady
+              accountReady
                 ? validAmount
                   ? '₦' + amountValue.toLocaleString()
                   : 'Enter an amount greater than zero.'
-                : 'Amount entry unlocks when policy allows this action.'
+                : 'You can enter an amount when this action becomes available.'
             }
             error={
-              policyReady && amount.length > 0 && !validAmount
+              accountReady && amount.length > 0 && !validAmount
                 ? 'Enter a valid amount greater than zero.'
                 : undefined
             }
           />
 
-          {policyReady && readiness && !providerReady ? (
+          {accountReady && readiness && !paymentAvailable ? (
             <InlineStatus
               tone="warning"
-              title="Payment route not ready"
-              message="The backend will not allow this action until an active provider route is available."
+              title="Payment temporarily unavailable"
+              message={`We cannot start this ${actionLabel} right now. Please try again later.`}
             />
           ) : null}
 
           {actionError ? (
             <InlineStatus
               tone="danger"
-              title={quote ? 'Payment not created' : 'Payment review unavailable'}
+              title={quote ? 'Payment not started' : 'Could not review payment'}
               message={actionError}
             />
           ) : null}
 
           {!quote ? (
             <VadButton
-              label="Check fees & availability"
+              label={mode === 'DEPOSIT' ? 'Review deposit' : 'Review withdrawal'}
               loading={working || capabilityLoading}
-              disabled={!policyReady || !validAmount || readinessError != null}
+              disabled={!accountReady || !validAmount || readinessError != null}
               onPress={() => void preview()}
             />
           ) : null}
@@ -338,7 +340,7 @@ export function PaymentReadinessCard({
                 {quote.enabled ? 'PAYMENT REVIEW' : 'ACTION REQUIRED'}
               </VadText>
               <VadText variant="heading">
-                {quote.enabled ? 'Review the final amounts.' : 'This payment cannot continue yet.'}
+                {quote.enabled ? 'Check the amounts before you continue.' : 'This payment cannot continue yet.'}
               </VadText>
             </View>
 
@@ -346,13 +348,12 @@ export function PaymentReadinessCard({
               <>
                 <MoneyRow label="Amount" value={'₦' + Number(quote.amount).toLocaleString()} />
                 <MoneyRow label="Fee" value={'₦' + Number(quote.feeAmount ?? 0).toLocaleString()} />
-                <MoneyRow label="Net amount" value={'₦' + Number(quote.netAmount ?? quote.amount).toLocaleString()} emphasized />
-                <MoneyRow label="Provider" value={String(quote.providerCode ?? 'Configured route')} />
+                <MoneyRow label="You receive" value={'₦' + Number(quote.netAmount ?? quote.amount).toLocaleString()} emphasized />
 
                 <VadButton
-                  label={mode === 'DEPOSIT' ? 'Create deposit' : 'Create withdrawal'}
+                  label={mode === 'DEPOSIT' ? 'Start deposit' : 'Confirm withdrawal'}
                   loading={working}
-                  disabled={!policyReady}
+                  disabled={!accountReady}
                   onPress={() => void create()}
                 />
               </>
@@ -372,7 +373,7 @@ export function PaymentReadinessCard({
       </View>
 
       <VadText variant="caption" tone="tertiary">
-        Payment creation never bypasses ledger balance, KYC, capability or provider checks.
+        Your balance, verification, fees and limits are checked before a payment starts.
       </VadText>
     </View>
   );
@@ -381,7 +382,7 @@ export function PaymentReadinessCard({
 function PaymentProgress({ stage }: { stage: number }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const labels = ['Amount', 'Check', 'Confirm'];
+  const labels = ['Amount', 'Review', 'Confirm'];
 
   return (
     <View style={{ flexDirection: 'row', gap: density.compact ? 6 : theme.spacing.xs }}>
@@ -429,7 +430,7 @@ function InlineStatus({ tone, title, message }: { tone: 'warning' | 'danger'; ti
   const danger = tone === 'danger';
 
   return (
-    <View style={{ borderLeftWidth: 3, borderLeftColor: danger ? theme.colors.danger : theme.colors.warning, backgroundColor: danger ? theme.colors.noSoft : theme.colors.warningSoft, padding: density.compact ? 10 : theme.spacing.md, gap: 2, borderRadius: theme.radius.sm }}>
+    <View accessibilityRole="alert" style={{ borderLeftWidth: 3, borderLeftColor: danger ? theme.colors.danger : theme.colors.warning, backgroundColor: danger ? theme.colors.noSoft : theme.colors.warningSoft, padding: density.compact ? 10 : theme.spacing.md, gap: 2, borderRadius: theme.radius.sm }}>
       <VadText variant="caption" tone={tone}>{title.toUpperCase()}</VadText>
       <VadText variant="caption" tone="secondary">{message}</VadText>
     </View>
@@ -439,16 +440,16 @@ function InlineStatus({ tone, title, message }: { tone: 'warning' | 'danger'; ti
 function reasonText(quote: PaymentQuote) {
   switch (quote.reason) {
     case 'NO_PAYMENT_PROVIDER':
-      return 'No NGN payment provider has been configured yet.';
+      return 'This payment service is temporarily unavailable. Please try again later.';
     case 'KYC_REQUIRED':
-      return String(quote.requiredKycLevel ?? 'Required') + ' identity verification is needed before this action.';
+      return 'Complete the required identity verification before you can continue.';
     case 'CAPABILITY_DISABLED':
-      return 'This money-movement capability is currently disabled by VAD policy.';
+      return 'This payment action is not available for your account right now.';
     case 'BELOW_MINIMUM':
       return 'Minimum amount is ₦' + Number(quote.minimum ?? 0).toLocaleString() + '.';
     case 'ABOVE_MAXIMUM':
       return 'Maximum amount is ₦' + Number(quote.maximum ?? 0).toLocaleString() + '.';
     default:
-      return quote.reason ?? 'This action is not available yet.';
+      return 'This payment cannot continue right now. Check your account or try again later.';
   }
 }

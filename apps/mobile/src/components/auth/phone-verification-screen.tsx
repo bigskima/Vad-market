@@ -38,7 +38,7 @@ function inferCallingCode() {
 export function PhoneVerificationScreen() {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
-  const wide = width >= 860;
+  const wide = width >= 768;
   const {
     requestPhoneVerification,
     verifyPhoneOtp,
@@ -67,7 +67,7 @@ export function PhoneVerificationScreen() {
     const result = await requestPhoneVerification(phone);
     setWorking(false);
     if (!result.ok) {
-      setError(result.message ?? 'Verification code could not be sent.');
+      setError(result.message ?? 'We could not send a verification code right now. Please try again.');
       return;
     }
     setSentTo(phone);
@@ -84,7 +84,7 @@ export function PhoneVerificationScreen() {
     const result = await verifyPhoneOtp(sentTo, otp);
     setWorking(false);
     if (!result.ok) {
-      setError(result.message ?? 'The verification code could not be confirmed.');
+      setError(result.message ?? 'We could not confirm that code. Check it and try again.');
       return;
     }
     setMessage(result.message ?? 'Phone number verified.');
@@ -118,17 +118,17 @@ export function PhoneVerificationScreen() {
               <VadText variant="heading">VAD</VadText>
             </View>
             <View style={{ gap: theme.spacing.sm }}>
-              <VadText variant="caption" tone="brand">ONE MORE SECURITY LAYER</VadText>
+              <VadText variant="caption" tone="brand">SECURE YOUR ACCOUNT</VadText>
               <VadText variant="display">Verify your phone.</VadText>
               <VadText tone="secondary">
-                Add an international number so VAD can confirm sensitive account actions with a second contact channel.
+                Add your phone number for an extra security check when you make important account changes.
               </VadText>
             </View>
             {wide ? (
               <VadCard variant="brand" style={{ gap: theme.spacing.sm }}>
-                <VadText variant="bodyStrong">Your account stays the same</VadText>
+                <VadText variant="bodyStrong">One account, extra protection</VadText>
                 <VadText variant="caption" tone="secondary">
-                  Phone verification is attached to your existing Supabase Auth user. It does not create another profile or wallet.
+                  Phone verification adds another layer of security to your existing VAD account. It does not create another profile or wallet.
                 </VadText>
               </VadCard>
             ) : null}
@@ -138,7 +138,7 @@ export function PhoneVerificationScreen() {
             <View style={{ gap: 4 }}>
               <VadText variant="heading">{sentTo ? 'Enter your code' : 'Your phone number'}</VadText>
               <VadText variant="caption" tone="secondary">
-                {sentTo ? `We sent a six-digit code to ${sentTo}.` : 'We detected a likely country code from your device locale. You can change it.'}
+                {sentTo ? `We sent a six-digit code to ${sentTo}.` : 'We suggested a country code for you. You can change it.'}
               </VadText>
             </View>
 
@@ -217,10 +217,19 @@ export function PhoneVerificationScreen() {
 
                 <VadButton label="Verify phone" loading={working} disabled={otp.length !== 6} onPress={() => void confirmCode()} />
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
-                  <Pressable accessibilityRole="button" onPress={() => { setSentTo(null); setError(null); setMessage(null); }} hitSlop={8}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => { setSentTo(null); setError(null); setMessage(null); }}
+                    style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.xs, opacity: pressed ? 0.6 : 1 })}
+                  >
                     <VadText variant="caption" tone="brand">Change number</VadText>
                   </Pressable>
-                  <Pressable accessibilityRole="button" disabled={working} onPress={() => void sendCode()} hitSlop={8}>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={working}
+                    onPress={() => void sendCode()}
+                    style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.xs, opacity: working ? 0.5 : pressed ? 0.6 : 1 })}
+                  >
                     <VadText variant="caption" tone="brand">Send again</VadText>
                   </Pressable>
                 </View>

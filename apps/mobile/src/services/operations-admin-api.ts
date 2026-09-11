@@ -1,3 +1,4 @@
+import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type KycQueueRow = {
@@ -39,24 +40,24 @@ export type OperationsSummary = {
   generatedAt: string;
 };
 
-function fail(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback: string) {
+  if (error) throw userFacingError(error, 'admin', fallback);
 }
 
 export async function getAdminOperationsSummary() {
   const { data, error } = await supabase.rpc('admin_operations_summary');
-  fail(error);
+  fail(error, 'We could not load the operations summary right now. Refresh and try again.');
   return data as OperationsSummary;
 }
 
 export async function getAdminKycQueue(limit = 100) {
   const { data, error } = await supabase.rpc('admin_kyc_queue', { p_limit: limit });
-  fail(error);
+  fail(error, 'We could not load the verification queue right now. Refresh and try again.');
   return (data ?? []) as KycQueueRow[];
 }
 
 export async function getAdminPaymentQueue(limit = 100) {
   const { data, error } = await supabase.rpc('admin_payment_queue', { p_limit: limit });
-  fail(error);
+  fail(error, 'We could not load the payment queue right now. Refresh and try again.');
   return (data ?? []) as PaymentQueueRow[];
 }

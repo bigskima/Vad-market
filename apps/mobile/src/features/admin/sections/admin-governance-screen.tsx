@@ -167,7 +167,7 @@ export function AdminGovernanceScreen() {
           <VadText variant="label" tone="brand">GOVERNANCE</VadText>
           <VadText variant="title">Markets & resolution.</VadText>
           <VadText tone="secondary">
-            Review, approve, return or reject market proposals and resolve oracle cases. Backend canonicalization, permissions, dispute windows and settlement boundaries remain authoritative.
+            Review market proposals and resolve oracle cases. Market configuration, reviewer permissions, dispute windows and settlement remain separate controlled steps.
           </VadText>
         </View>
 
@@ -230,7 +230,7 @@ export function AdminGovernanceScreen() {
           title="Market review"
           description={
             total
-              ? 'Open a proposal to approve it with explicit canonical configuration, request clarification, or reject it.'
+              ? 'Open a proposal to approve its market settings, request clarification, or reject it.'
               : 'No governance work is waiting.'
           }
           count={data.marketQueue.length}
@@ -264,7 +264,7 @@ export function AdminGovernanceScreen() {
       ) : canReviewOracle ? (
         <OperationsSection
           title="Oracle queue"
-          description="Create provisional outcomes and finalize eligible resolutions. Backend policy validates the outcome, dispute window and independent reviewer requirement."
+          description="Create provisional outcomes and finalize eligible resolutions. The outcome, dispute window and independent-review requirements are checked before finalization."
           count={data.oracleQueue.length}
         >
           {data.oracleQueue.length ? (
@@ -298,7 +298,7 @@ export function AdminGovernanceScreen() {
           )}
         </OperationsSection>
       ) : (
-        <EmptyText>No governance surface is assigned to this role.</EmptyText>
+        <EmptyText>No governance workspace is assigned to this role.</EmptyText>
       )}
 
       <AdminMarketProposalReview
@@ -357,7 +357,7 @@ export function AdminGovernanceScreen() {
                 placeholder="e.g. YES or NO"
                 autoCapitalize="characters"
                 autoCorrect={false}
-                hint="The backend validates this against the actual outcomes configured for the event."
+                hint="The outcome must match one of the outcomes configured for this event."
               />
             )}
 
@@ -386,9 +386,9 @@ export function AdminGovernanceScreen() {
                   gap: 2,
                 }}
               >
-                <VadText variant="caption" tone="brand">MAKER-CHECKER</VadText>
+                <VadText variant="caption" tone="brand">INDEPENDENT REVIEW</VadText>
                 <VadText variant="caption" tone="secondary">
-                  A different oracle reviewer must finalize the provisional result, and the configured dispute window must have ended. The server enforces both conditions.
+                  A different oracle reviewer must finalize the provisional result, and the configured dispute window must have ended.
                 </VadText>
               </View>
             ) : null}

@@ -72,7 +72,7 @@ export function MarketsScreen({
       <View style={{ gap: theme.spacing.md }}>
         <VadSectionHeader
           title={category === 'All' ? 'Explore markets' : `${category} markets`}
-          subtitle="Search live questions, compare market probabilities and open a position from one focused catalogue."
+          subtitle="Search live questions, compare probabilities and find a market to trade."
         />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
           <VadChip label={`${live} live`} tone="yes" />
@@ -125,7 +125,7 @@ export function MarketsScreen({
       ) : !markets.length ? (
         <VadEmptyState
           title="No live markets yet"
-          body="Approved canonical markets will appear here automatically once governance activates them."
+          body="Markets will appear here as soon as they are published and available to trade."
         />
       ) : (
         <VadEmptyState

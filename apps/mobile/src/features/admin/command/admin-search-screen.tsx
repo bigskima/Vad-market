@@ -110,8 +110,7 @@ export function AdminSearchScreen() {
         <VadText variant="label" tone="brand">COMMAND</VadText>
         <VadText variant="title">Operations Search</VadText>
         <VadText tone="secondary">
-          Search only the operations data already available to your current role.
-          Restricted domains are excluded before results are presented.
+          Search the operations areas and records available to your current role. You will only see information your role can access.
         </VadText>
       </View>
 

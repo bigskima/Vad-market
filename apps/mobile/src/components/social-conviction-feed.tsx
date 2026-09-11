@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { palette } from '@/constants/palette';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import type { MarketCatalogItem } from '@/services/market-api';
 import {
   addPostComment,
@@ -62,16 +63,16 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: P
       setBody(''); setSelectedMarket(null); setStance(null); setComposerOpen(false);
       await load();
     } catch (error) {
-      Alert.alert('Post not published', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert('Post not published', userFacingErrorMessage(error, 'social', 'We could not publish this post right now. Please try again.'));
     } finally { setWorking(false); }
   }
 
   async function like(post: ConvictionPost) {
-    try { await togglePostLike(post.post_public_id); await load(); } catch (error) { Alert.alert('Could not react', error instanceof Error ? error.message : 'Please try again.'); }
+    try { await togglePostLike(post.post_public_id); await load(); } catch (error) { Alert.alert('Could not update reaction', userFacingErrorMessage(error, 'social', 'We could not update your reaction right now. Please try again.')); }
   }
 
   async function follow(post: ConvictionPost) {
-    try { await toggleCreatorFollow(post.author_user_id); await load(); } catch (error) { Alert.alert('Could not update follow', error instanceof Error ? error.message : 'Please try again.'); }
+    try { await toggleCreatorFollow(post.author_user_id); await load(); } catch (error) { Alert.alert('Could not update follow', userFacingErrorMessage(error, 'social', 'We could not update this follow right now. Please try again.')); }
   }
 
   async function openCreator(post: ConvictionPost) {
@@ -88,7 +89,7 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: P
       setCreatorReputation(reputation);
       setCreatorPredictions(history);
     } catch (error) {
-      Alert.alert('Creator profile unavailable', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert('Creator profile unavailable', userFacingErrorMessage(error, 'social', 'We could not load this creator right now. Please try again.'));
     } finally { setWorking(false); }
   }
 
@@ -101,7 +102,7 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: P
       setCommentsPostId(post.post_public_id);
       setCommentBody('');
     } catch (error) {
-      Alert.alert('Comments unavailable', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert('Comments unavailable', userFacingErrorMessage(error, 'social', 'We could not load comments right now. Please try again.'));
     }
   }
 
@@ -114,22 +115,22 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: P
       setComments(await getPostComments(post.post_public_id));
       await load();
     } catch (error) {
-      Alert.alert('Comment not posted', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert('Comment not posted', userFacingErrorMessage(error, 'social', 'We could not post your comment right now. Please try again.'));
     } finally { setWorking(false); }
   }
 
   return <View style={s.root}>
-    <View style={s.heading}><View><Text style={s.title}>Conviction feed</Text><Text style={s.muted}>Ideas, arguments and market-linked predictions.</Text></View>{canCreatePost ? <Pressable style={s.composeButton} onPress={() => setComposerOpen((v) => !v)}><Text style={s.composeText}>{composerOpen ? 'Close' : 'Post'}</Text></Pressable> : null}</View>
+    <View style={s.heading}><View><Text style={s.title}>Community feed</Text><Text style={s.muted}>Ideas, reasoning and market predictions.</Text></View>{canCreatePost ? <Pressable style={s.composeButton} onPress={() => setComposerOpen((v) => !v)}><Text style={s.composeText}>{composerOpen ? 'Close' : 'Post'}</Text></Pressable> : null}</View>
 
     {composerOpen && <View style={s.composer}>
       <TextInput value={body} onChangeText={setBody} multiline placeholder="What do you believe, and why?" placeholderTextColor={palette.textMuted} style={s.input} />
       <Text style={s.label}>Attach a live market (optional)</Text>
       <View style={s.chips}>{markets.slice(0, 6).map((m) => <Pressable key={m.instrument_public_id} style={[s.chip, selectedMarket?.instrument_public_id === m.instrument_public_id && s.chipActive]} onPress={() => { setSelectedMarket(selectedMarket?.instrument_public_id === m.instrument_public_id ? null : m); setStance(null); }}><Text numberOfLines={1} style={[s.chipText, selectedMarket?.instrument_public_id === m.instrument_public_id && s.chipTextActive]}>{m.title}</Text></Pressable>)}</View>
       {selectedMarket && <View style={s.stanceRow}><Pressable style={[s.stance,s.stanceYes,stance==='YES'&&s.stanceSelected]} onPress={() => setStance('YES')}><Text style={s.stanceText}>YES {pct(selectedMarket.yes_price)}</Text></Pressable><Pressable style={[s.stance,s.stanceNo,stance==='NO'&&s.stanceSelected]} onPress={() => setStance('NO')}><Text style={s.stanceText}>NO {pct(selectedMarket.no_price)}</Text></Pressable></View>}
-      <Pressable disabled={working || body.trim().length < 1} style={[s.publish,(working || body.trim().length < 1)&&s.disabled]} onPress={() => void publish()}><Text style={s.publishText}>{working ? 'Publishing…' : 'Publish conviction'}</Text></Pressable>
+      <Pressable disabled={working || body.trim().length < 1} style={[s.publish,(working || body.trim().length < 1)&&s.disabled]} onPress={() => void publish()}><Text style={s.publishText}>{working ? 'Publishing…' : 'Publish'}</Text></Pressable>
     </View>}
 
-    {!posts.length ? <View style={s.empty}><Text style={s.muted}>No creator posts yet. The first conviction post can start the discussion without creating a duplicate financial market.</Text></View> : posts.map((post) => {
+    {!posts.length ? <View style={s.empty}><Text style={s.muted}>No posts yet. Be the first to share a view and start the conversation.</Text></View> : posts.map((post) => {
       const market = post.instrument_public_id ? markets.find((m) => m.instrument_public_id === post.instrument_public_id) : undefined;
       const creatorOpen = creatorUserId === post.author_user_id && creatorReputation;
       const commentsOpen = commentsPostId === post.post_public_id;
@@ -137,18 +138,18 @@ export function SocialConvictionFeed({ markets, canCreatePost, onOpenMarket }: P
         <View style={s.authorRow}><Pressable style={s.avatar} onPress={() => void openCreator(post)}><Text style={s.avatarText}>{(post.author_display_name ?? post.author_handle ?? 'V').slice(0,1).toUpperCase()}</Text></Pressable><Pressable style={s.authorText} onPress={() => void openCreator(post)}><Text style={s.author}>{post.author_display_name ?? post.author_handle ?? 'VAD creator'}</Text><Text style={s.muted}>@{post.author_handle ?? 'member'} · {new Date(post.created_at).toLocaleString()}</Text></Pressable><Pressable onPress={() => void follow(post)}><Text style={s.follow}>{post.viewer_follows_author ? 'Following' : 'Follow'}</Text></Pressable></View>
 
         {creatorOpen && <View style={s.reputationCard}>
-          <View style={s.metricRow}><Metric label="Reputation" value={`${creatorReputation.evidenceWeightedReputation}%`} /><Metric label="Followers" value={String(creatorReputation.followers)} /><Metric label="Markets" value={String(creatorReputation.originatedMarkets)} /></View>
-          <View style={s.metricRow}><Metric label="Resolved" value={String(creatorReputation.resolvedPredictions)} /><Metric label="Accuracy" value={creatorReputation.accuracy == null ? '—' : pct(creatorReputation.accuracy)} /><Metric label="Calibration" value={creatorReputation.calibrationScore == null ? '—' : pct(creatorReputation.calibrationScore)} /></View>
-          <Text style={s.method}>Evidence-weighted reputation uses a transparent 50% prior until enough resolved predictions exist. It does not affect market resolution.</Text>
-          {creatorPredictions.length > 0 && <View style={s.history}>{creatorPredictions.map((prediction) => <View key={prediction.post_public_id} style={s.historyRow}><Text style={s.historyTitle} numberOfLines={2}>{prediction.market_title}</Text><Text style={prediction.correct === true ? s.correct : prediction.correct === false ? s.incorrect : s.muted}>{prediction.stance_outcome_code}{prediction.resolution_status === 'FINAL' ? ` → ${prediction.resolved_outcome_code} · ${prediction.correct ? 'Correct' : 'Missed'}` : ' · unresolved'}</Text></View>)}</View>}
+          <View style={s.metricRow}><Metric label="Track record" value={`${creatorReputation.evidenceWeightedReputation}%`} /><Metric label="Followers" value={String(creatorReputation.followers)} /><Metric label="Markets" value={String(creatorReputation.originatedMarkets)} /></View>
+          <View style={s.metricRow}><Metric label="Completed" value={String(creatorReputation.resolvedPredictions)} /><Metric label="Accuracy" value={creatorReputation.accuracy == null ? '—' : pct(creatorReputation.accuracy)} /><Metric label="Confidence" value={creatorReputation.calibrationScore == null ? '—' : pct(creatorReputation.calibrationScore)} /></View>
+          <Text style={s.method}>This score summarizes past completed predictions. It can provide context, but it is not a guarantee of future results.</Text>
+          {creatorPredictions.length > 0 && <View style={s.history}>{creatorPredictions.map((prediction) => <View key={prediction.post_public_id} style={s.historyRow}><Text style={s.historyTitle} numberOfLines={2}>{prediction.market_title}</Text><Text style={prediction.correct === true ? s.correct : prediction.correct === false ? s.incorrect : s.muted}>{prediction.stance_outcome_code}{prediction.resolution_status === 'FINAL' ? ` → ${prediction.resolved_outcome_code} · ${prediction.correct ? 'Correct' : 'Missed'}` : ' · waiting for result'}</Text></View>)}</View>}
         </View>}
 
         <Text style={s.body}>{post.body}</Text>
-        {post.market_title && <Pressable style={s.marketCard} onPress={() => market && onOpenMarket(market)}><Text style={s.marketTitle}>{post.market_title}</Text><View style={s.marketRow}><Text style={s.yes}>YES {pct(post.yes_price)}</Text><Text style={s.no}>NO {pct(post.no_price)}</Text>{post.stance_outcome_code ? <Text style={s.stanceBadge}>Creator: {post.stance_outcome_code}</Text> : null}</View></Pressable>}
+        {post.market_title && <Pressable style={s.marketCard} onPress={() => market && onOpenMarket(market)}><Text style={s.marketTitle}>{post.market_title}</Text><View style={s.marketRow}><Text style={s.yes}>YES {pct(post.yes_price)}</Text><Text style={s.no}>NO {pct(post.no_price)}</Text>{post.stance_outcome_code ? <Text style={s.stanceBadge}>Prediction: {post.stance_outcome_code}</Text> : null}</View></Pressable>}
         <View style={s.actions}><Pressable onPress={() => void like(post)}><Text style={[s.action,post.viewer_liked&&s.actionActive]}>♥ {Number(post.reaction_count)}</Text></Pressable><Pressable onPress={() => void openComments(post)}><Text style={[s.action,commentsOpen&&s.actionActive]}>Comments {Number(post.comment_count)}</Text></Pressable>{post.confidence != null ? <Text style={s.action}>Confidence {pct(post.confidence)}</Text> : null}</View>
 
         {commentsOpen && <View style={s.commentsBox}>
-          {comments.length ? comments.map((comment) => <View key={comment.comment_public_id} style={s.comment}><Text style={s.commentAuthor}>{comment.author_display_name ?? comment.author_handle ?? 'VAD member'}</Text><Text style={s.commentBody}>{comment.body}</Text><Text style={s.muted}>{new Date(comment.created_at).toLocaleString()}</Text></View>) : <Text style={s.muted}>No comments yet. Add context without leaving the post.</Text>}
+          {comments.length ? comments.map((comment) => <View key={comment.comment_public_id} style={s.comment}><Text style={s.commentAuthor}>{comment.author_display_name ?? comment.author_handle ?? 'VAD member'}</Text><Text style={s.commentBody}>{comment.body}</Text><Text style={s.muted}>{new Date(comment.created_at).toLocaleString()}</Text></View>) : <Text style={s.muted}>No comments yet. Start the conversation.</Text>}
           <View style={s.commentComposer}><TextInput value={commentBody} onChangeText={setCommentBody} placeholder="Add to the discussion…" placeholderTextColor={palette.textMuted} style={s.commentInput} /><Pressable disabled={working || !commentBody.trim()} style={[s.commentButton,(working || !commentBody.trim())&&s.disabled]} onPress={() => void submitComment(post)}><Text style={s.commentButtonText}>Send</Text></Pressable></View>
         </View>}
       </View>;

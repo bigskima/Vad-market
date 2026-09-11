@@ -13,6 +13,7 @@ import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import {
@@ -79,7 +80,7 @@ export function SocialConvictionFeed({
       const limit = typeof maxPosts === 'number' && !marketFilter ? Math.max(1, Math.min(maxPosts, 30)) : 30;
       setPosts(await getConvictionFeed(limit));
     } catch (error) {
-      setFeedError(error instanceof Error ? error.message : 'Community activity could not be loaded.');
+      setFeedError(userFacingErrorMessage(error, 'social', 'We could not load the community right now. Please try again.'));
     } finally {
       if (background) setRefreshing(false);
       else setPostsLoading(false);
@@ -134,7 +135,7 @@ export function SocialConvictionFeed({
       setComposerOpen(false);
       await load(true);
     } catch (error) {
-      setComposerError(error instanceof Error ? error.message : 'Please try again.');
+      setComposerError(userFacingErrorMessage(error, 'social', 'We could not publish this post right now. Please try again.'));
     } finally {
       setComposerWorking(false);
     }
@@ -156,7 +157,7 @@ export function SocialConvictionFeed({
       setPosts((current) => current.map((item) => item.post_public_id === postId ? { ...item, viewer_liked: authoritativeLiked, reaction_count: authoritativeCount } : item));
     } catch (error) {
       setPosts((current) => current.map((item) => item.post_public_id === postId ? { ...item, viewer_liked: wasLiked, reaction_count: previousCount } : item));
-      setActionError(error instanceof Error ? error.message : 'The like could not be updated.');
+      setActionError(userFacingErrorMessage(error, 'social', 'We could not update your reaction right now. Please try again.'));
     } finally {
       pendingLikeRef.current.delete(postId);
       setPendingLikes((current) => { const next = new Set(current); next.delete(postId); return next; });
@@ -176,7 +177,7 @@ export function SocialConvictionFeed({
       setPosts((current) => current.map((item) => item.author_user_id === creatorId ? { ...item, viewer_follows_author: authoritativeFollowing } : item));
     } catch (error) {
       setPosts((current) => current.map((item) => item.author_user_id === creatorId ? { ...item, viewer_follows_author: wasFollowing } : item));
-      setActionError(error instanceof Error ? error.message : 'The follow state could not be updated.');
+      setActionError(userFacingErrorMessage(error, 'social', 'We could not update this follow right now. Please try again.'));
     } finally {
       pendingFollowRef.current.delete(creatorId);
       setPendingFollows((current) => { const next = new Set(current); next.delete(creatorId); return next; });
@@ -200,7 +201,7 @@ export function SocialConvictionFeed({
     try {
       await refreshComments(post.post_public_id);
     } catch (error) {
-      setCommentsError(error instanceof Error ? error.message : 'Please try again.');
+      setCommentsError(userFacingErrorMessage(error, 'social', 'We could not load this discussion right now. Please try again.'));
     } finally {
       setCommentsLoading(false);
     }
@@ -223,11 +224,11 @@ export function SocialConvictionFeed({
       setPosts((current) => current.map((item) => item.post_public_id === post.post_public_id ? { ...item, comment_count: Number(item.comment_count) + 1 } : item));
       try {
         await refreshComments(post.post_public_id);
-      } catch (refreshError) {
-        setCommentRefreshError(refreshError instanceof Error ? `Your comment was posted, but the discussion could not refresh: ${refreshError.message}` : 'Your comment was posted, but the discussion could not refresh.');
+      } catch {
+        setCommentRefreshError('Your comment was posted, but the latest discussion could not be loaded. Try refreshing again.');
       }
     } catch (error) {
-      setCommentSubmitError(error instanceof Error ? error.message : 'Please try again.');
+      setCommentSubmitError(userFacingErrorMessage(error, 'social', 'We could not post your comment right now. Please try again.'));
     } finally {
       setCommentWorking(false);
     }
@@ -252,8 +253,8 @@ export function SocialConvictionFeed({
             <VadText variant="bodyStrong">{marketFilter ? 'Market discussion' : 'Community feed'}</VadText>
             <VadText variant="caption" tone="secondary" numberOfLines={2}>
               {canCreatePost
-                ? marketFilter ? 'Add reasoning or publish a market prediction.' : 'Share analysis or attach a live market prediction.'
-                : 'Read creator reasoning and refresh for the latest published activity.'}
+                ? marketFilter ? 'Share your reasoning or prediction for this market.' : 'Share your analysis or a prediction about a live market.'
+                : 'Read what other people are saying about the markets.'}
             </VadText>
           </View>
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
@@ -283,8 +284,8 @@ export function SocialConvictionFeed({
         </View>
       ) : null}
 
-      {actionError ? <InlineError title="Community action not saved" message={actionError} onDismiss={() => setActionError(null)} /> : null}
-      {feedError && visiblePosts.length ? <VadErrorState title="Community refresh failed" message={feedError} onRetry={() => void load(true)} /> : null}
+      {actionError ? <InlineError title="Could not save that action" message={actionError} onDismiss={() => setActionError(null)} /> : null}
+      {feedError && visiblePosts.length ? <VadErrorState title="Could not refresh community" message={feedError} onRetry={() => void load(true)} /> : null}
 
       {postsLoading ? (
         <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
@@ -295,8 +296,8 @@ export function SocialConvictionFeed({
         <VadErrorState title="Community unavailable" message={feedError} onRetry={() => { setPostsLoading(true); void load(); }} />
       ) : !visiblePosts.length ? (
         <VadEmptyState
-          title={marketFilter ? 'No discussion yet' : 'No creator posts yet'}
-          body={marketFilter ? 'Be the first to add reasoning or a prediction to this market.' : 'The first conviction can start a discussion without creating a duplicate financial market.'}
+          title={marketFilter ? 'No discussion yet' : 'No posts yet'}
+          body={marketFilter ? 'Be the first to share a view or prediction about this market.' : 'Be the first to share a view and start the conversation.'}
           actionLabel={showComposer && canCreatePost ? 'Create post' : undefined}
           onAction={showComposer && canCreatePost ? () => setComposerOpen(true) : undefined}
         />
@@ -373,7 +374,7 @@ export function SocialConvictionFeed({
               </VadCard>
             )}
 
-            {commentRefreshError ? <InlineError title="Discussion refresh delayed" message={commentRefreshError} onDismiss={() => setCommentRefreshError(null)} /> : null}
+            {commentRefreshError ? <InlineError title="Could not refresh discussion" message={commentRefreshError} onDismiss={() => setCommentRefreshError(null)} /> : null}
           </ScrollView>
 
           {commentsPost && !commentsLoading && !commentsError ? (

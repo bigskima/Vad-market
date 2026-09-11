@@ -1,5 +1,7 @@
-import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
+import { Platform } from 'react-native';
+
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 
 export type PickedProfileImage = { bytes: ArrayBuffer; mimeType: string; previewUri: string };
 
@@ -27,7 +29,9 @@ async function pickWeb(): Promise<PickedProfileImage | null> {
         const file = input.files?.[0];
         if (!file) return resolve(null);
         resolve({ bytes: await file.arrayBuffer(), mimeType: file.type || 'image/jpeg', previewUri: URL.createObjectURL(file) });
-      } catch (error) { reject(error); }
+      } catch (error) {
+        reject(new Error(userFacingErrorMessage(error, 'profile', 'We could not open that image. Please choose another image and try again.')));
+      }
     };
     input.click();
   });
@@ -36,12 +40,20 @@ async function pickWeb(): Promise<PickedProfileImage | null> {
 export async function pickProfileImage(): Promise<PickedProfileImage | null> {
   if (Platform.OS === 'web') return pickWeb();
   const picker = requireOptionalNativeModule<NativePicker>('ExponentImagePicker');
-  if (!picker?.launchImageLibraryAsync) throw new Error('Photo selection is unavailable in this native build. Rebuild VAD with the Expo image-picker module enabled.');
+  if (!picker?.launchImageLibraryAsync) {
+    throw new Error('Photo selection is not available on this device right now.');
+  }
   const permission = await picker.requestMediaLibraryPermissionsAsync?.(false);
-  if (permission && permission.granted === false && permission.status !== 'granted') throw new Error('Photo-library permission is required to choose a profile image.');
-  const result = await picker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.9, base64: true, allowsMultipleSelection: false });
-  const asset = result.assets?.[0];
-  if (result.canceled || !asset) return null;
-  if (!asset.base64) throw new Error('The selected image could not be prepared for upload.');
-  return { bytes: decodeBase64(asset.base64), mimeType: asset.mimeType || 'image/jpeg', previewUri: asset.uri || '' };
+  if (permission && permission.granted === false && permission.status !== 'granted') {
+    throw new Error('Allow photo access to choose a profile image.');
+  }
+  try {
+    const result = await picker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.9, base64: true, allowsMultipleSelection: false });
+    const asset = result.assets?.[0];
+    if (result.canceled || !asset) return null;
+    if (!asset.base64) throw new Error('The selected image could not be prepared for upload.');
+    return { bytes: decodeBase64(asset.base64), mimeType: asset.mimeType || 'image/jpeg', previewUri: asset.uri || '' };
+  } catch (error) {
+    throw new Error(userFacingErrorMessage(error, 'profile', 'We could not open that image. Please choose another image and try again.'));
+  }
 }

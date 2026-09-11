@@ -40,7 +40,7 @@ export function WalletScreen({
     try {
       setIntents(await getMyPaymentIntents(6));
     } catch (error) {
-      setActivityError(error instanceof Error ? error.message : 'Wallet activity could not be loaded.');
+      setActivityError(error instanceof Error ? error.message : 'We could not load wallet activity right now. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ export function WalletScreen({
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Wallet"
-        subtitle="Available, reserved and pending balances stay separated by asset so NGN and USDC never get mixed together."
+        subtitle="See your available, committed and pending balances for each currency. NGN and USDC are always kept separate."
         actionLabel="Activity"
         onAction={onActivity}
       />
@@ -84,7 +84,7 @@ export function WalletScreen({
             <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
               {assetMoney(total, primaryCode)}
             </VadText>
-            <VadText variant="caption" tone="secondary">Available + reserved + withdrawal pending</VadText>
+            <VadText variant="caption" tone="secondary">Available + committed + withdrawal pending</VadText>
           </View>
           <View
             style={{
@@ -104,7 +104,7 @@ export function WalletScreen({
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
           <VadMetricTile label="Available" value={assetMoney(available, primaryCode)} detail="Ready to use" tone="yes" />
-          <VadMetricTile label="Reserved" value={assetMoney(reserved, primaryCode)} detail="Committed to orders" />
+          <VadMetricTile label="Committed" value={assetMoney(reserved, primaryCode)} detail="Held for open orders" />
           <VadMetricTile label="Pending" value={assetMoney(pending, primaryCode)} detail="Withdrawal processing" tone="brand" />
         </View>
       </VadCard>
@@ -112,8 +112,8 @@ export function WalletScreen({
       {orderedWallets.length ? (
         <View style={{ gap: theme.spacing.sm }}>
           <VadSectionHeader
-            title="Asset balances"
-            subtitle="Each balance is tracked independently by the ledger."
+            title="Currency balances"
+            subtitle="Each currency balance is tracked separately."
           />
           <View style={{ flexDirection: density.width >= 720 ? 'row' : 'column', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             {orderedWallets.map((wallet) => (
@@ -124,7 +124,7 @@ export function WalletScreen({
       ) : (
         <VadEmptyState
           title="No wallet balances yet"
-          body="Asset balances will appear here when your ledger accounts are available."
+          body="Your balances will appear here when funds become available in your account."
         />
       )}
 
@@ -159,7 +159,7 @@ export function WalletScreen({
         ) : (
           <>
             {activityError ? (
-              <VadErrorState title="Wallet activity refresh failed" message={activityError} onRetry={() => void load()} />
+              <VadErrorState title="Could not refresh wallet activity" message={activityError} onRetry={() => void load()} />
             ) : null}
             {intents.length ? (
               <View style={{ gap: density.compact ? 7 : theme.spacing.sm }}>
@@ -170,7 +170,7 @@ export function WalletScreen({
             ) : (
               <VadEmptyState
                 title="No payment activity yet"
-                body="Deposits and withdrawals will appear here when payment intents are created."
+                body="Your deposits and withdrawals will appear here after you start them."
                 actionLabel="Deposit NGN"
                 onAction={onDeposit}
               />
@@ -205,12 +205,12 @@ function AssetBalanceCard({ wallet }: { wallet: WalletRow }) {
           <VadText variant="caption" tone="tertiary">{wallet.asset_code}</VadText>
           <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(total, wallet.asset_code)}</VadText>
         </View>
-        <VadChip label={wallet.asset_code === 'NGN' ? 'Cash rail' : wallet.asset_code === 'USDC' ? 'Stablecoin' : 'Asset'} tone={wallet.asset_code === 'USDC' ? 'brand' : 'neutral'} />
+        <VadChip label={wallet.asset_code === 'NGN' ? 'Naira' : wallet.asset_code === 'USDC' ? 'USDC' : 'Currency'} tone={wallet.asset_code === 'USDC' ? 'brand' : 'neutral'} />
       </View>
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
         <AssetFact label="Available" value={assetMoney(available, wallet.asset_code)} tone="yes" />
-        <AssetFact label="Reserved" value={assetMoney(reserved, wallet.asset_code)} />
+        <AssetFact label="Committed" value={assetMoney(reserved, wallet.asset_code)} />
         <AssetFact label="Pending" value={assetMoney(pending, wallet.asset_code)} />
       </View>
     </VadCard>
@@ -232,6 +232,7 @@ export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPr
   const incoming = intent.operation === 'DEPOSIT';
   const label = incoming ? 'Deposit' : intent.operation === 'WITHDRAWAL' ? 'Withdrawal' : 'Refund';
   const icon: VadIconName = incoming ? 'arrowDown' : 'arrowUp';
+  const status = paymentStatus(intent);
 
   return (
     <Pressable
@@ -271,14 +272,21 @@ export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPr
         </View>
         <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '46%' }}>
           <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(intent.amount, intent.asset_code)}</VadText>
-          <VadChip
-            label={intent.status.replaceAll('_', ' ')}
-            tone={intent.status === 'SUCCEEDED' || intent.status === 'COMPLETED' ? 'yes' : 'neutral'}
-          />
+          <VadChip label={status.label} tone={status.tone} />
         </View>
       </VadCard>
     </Pressable>
   );
+}
+
+function paymentStatus(intent: PaymentIntentRow): { label: string; tone: 'yes' | 'warning' | 'no' | 'neutral' } {
+  if (intent.settled_at) return { label: 'COMPLETED', tone: 'yes' };
+  if (intent.failure_code) return { label: 'NEEDS ATTENTION', tone: 'no' };
+  const normalized = intent.status.toUpperCase();
+  if (normalized === 'SUCCEEDED' || normalized === 'COMPLETED' || normalized === 'SETTLED' || normalized === 'SUCCESS') return { label: 'COMPLETED', tone: 'yes' };
+  if (normalized.includes('FAIL') || normalized.includes('REJECT') || normalized.includes('CANCEL') || normalized.includes('EXPIRE')) return { label: 'NEEDS ATTENTION', tone: 'no' };
+  if (normalized.includes('PENDING') || normalized.includes('PROCESS') || normalized.includes('CREATED') || normalized.includes('INIT')) return { label: 'PROCESSING', tone: 'warning' };
+  return { label: 'IN PROGRESS', tone: 'neutral' };
 }
 
 function WalletAction({

@@ -56,9 +56,8 @@ export function AdminWorkspaceHeader({
           accessibilityRole="button"
           accessibilityLabel={'Back to ' + backLabel}
           onPress={onBack}
-          hitSlop={8}
           style={({ pressed }) => ({
-            minHeight: 40,
+            minHeight: 44,
             flexDirection: 'row',
             alignItems: 'center',
             gap: theme.spacing.xs,
@@ -113,9 +112,8 @@ export function AdminWorkspaceHeader({
           <Pressable
             accessibilityRole="button"
             onPress={onAction}
-            hitSlop={8}
             style={({ pressed }) => ({
-              minHeight: 38,
+              minHeight: 44,
               justifyContent: 'center',
               paddingLeft: theme.spacing.sm,
               opacity: pressed ? 0.6 : 1,

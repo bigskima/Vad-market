@@ -25,16 +25,15 @@ const actions: {
   label: string;
   phase: string;
 }[] = [
-  { key: 'deposit', label: 'Deposit NGN', phase: 'Phase 2' },
-  { key: 'submitMarketProposal', label: 'Propose a market', phase: 'Phase 3' },
-  { key: 'trade', label: 'Take a position', phase: 'Phase 4' },
+  { key: 'deposit', label: 'Deposit NGN', phase: 'Wallet' },
+  { key: 'submitMarketProposal', label: 'Propose a market', phase: 'Markets' },
+  { key: 'trade', label: 'Take a position', phase: 'Trading' },
 ];
 
 function explainReason(reason?: string) {
-  if (!reason) return 'Backend policy has not enabled this action.';
-  if (reason.startsWith('PHASE_')) return `Planned for ${reason.slice(6, 7)} of the build.`;
-  if (reason === 'ACCOUNT_NOT_ACTIVE') return 'Your account is not currently active.';
-  return 'Unavailable until backend policy confirms access.';
+  if (reason === 'ACCOUNT_NOT_ACTIVE') return 'This feature requires an active VAD account.';
+  if (reason === 'PLATFORM_MAINTENANCE') return 'This feature is temporarily unavailable while we make improvements.';
+  return 'This feature is not available for your account right now.';
 }
 
 export function FoundationHome({
@@ -74,26 +73,25 @@ export function FoundationHome({
           <View style={styles.liveRow}>
             <View style={[styles.dot, !isConnected && styles.dotWarning]} />
             <Text style={styles.liveText}>
-              {isConnected ? 'BACKEND POLICY CONNECTED' : 'FAIL-CLOSED MODE'}
+              {isConnected ? 'VAD IS READY' : 'SOME FEATURES ARE UNAVAILABLE'}
             </Text>
           </View>
-          <Text style={styles.eyebrow}>OPEN CONVICTION</Text>
+          <Text style={styles.eyebrow}>VAD MARKET</Text>
           <Text style={styles.title}>Markets begin with a better question.</Text>
           <Text style={styles.subtitle}>
-            VAD is laying the identity, policy, audit, provider, asset, and ledger
-            foundations before financial activity is switched on.
+            Explore markets, manage your wallet and take positions as features become available for your account.
           </Text>
         </View>
 
         <View style={styles.contextGrid}>
           <ContextItem label="Launch market" value="Nigeria" />
-          <ContextItem label="Settlement asset" value={snapshot.context.activeAssetCodes.includes('NGN') ? 'NGN · Active' : 'Policy pending'} />
-          <ContextItem label="Build state" value="Phase 1" />
+          <ContextItem label="Currency" value={snapshot.context.activeAssetCodes.includes('NGN') ? 'NGN · Available' : 'Checking availability'} />
+          <ContextItem label="Account" value={isConnected ? 'Ready' : 'Limited'} />
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionEyebrow}>WHAT COMES NEXT</Text>
-          <Text style={styles.sectionTitle}>Capability controlled. Never guessed.</Text>
+          <Text style={styles.sectionEyebrow}>YOUR ACCESS</Text>
+          <Text style={styles.sectionTitle}>What you can do right now.</Text>
         </View>
 
         <View style={styles.actionList}>
@@ -105,12 +103,12 @@ export function FoundationHome({
                   <Text style={styles.actionPhase}>{action.phase}</Text>
                   <Text style={styles.actionLabel}>{action.label}</Text>
                   <Text style={styles.actionReason}>
-                    {enabled ? 'Enabled by current backend policy.' : explainReason(snapshot.reasons[action.key])}
+                    {enabled ? 'Available for your account.' : explainReason(snapshot.reasons[action.key])}
                   </Text>
                 </View>
                 <View style={[styles.statusBadge, enabled && styles.statusBadgeEnabled]}>
                   <Text style={[styles.statusText, enabled && styles.statusTextEnabled]}>
-                    {enabled ? 'AVAILABLE' : 'LOCKED'}
+                    {enabled ? 'AVAILABLE' : 'UNAVAILABLE'}
                   </Text>
                 </View>
               </View>
@@ -121,20 +119,18 @@ export function FoundationHome({
         <View style={styles.truthCard}>
           <Text style={styles.truthIndex}>01</Text>
           <View style={styles.truthCopy}>
-            <Text style={styles.truthLabel}>CONTROLLED TRUTH</Text>
-            <Text style={styles.truthTitle}>The client does not make the rules.</Text>
+            <Text style={styles.truthLabel}>HOW VAD WORKS</Text>
+            <Text style={styles.truthTitle}>Clear rules for every market.</Text>
             <Text style={styles.truthBody}>
-              Eligibility, assets, fees, balances, market state, oracle resolution,
-              and settlement are decisions made and audited by the backend.
+              Each market shows its trading status, currency and rules so you can understand what happens before you take a position.
             </Text>
           </View>
         </View>
 
         <View style={styles.footer}>
           {isRefreshing ? <ActivityIndicator color={palette.signal} /> : null}
-          <Text style={styles.footerText}>Request {snapshot.requestId}</Text>
           <Text style={styles.footerText}>
-            Evaluated {new Date(snapshot.evaluatedAt).toLocaleTimeString()}
+            Updated {new Date(snapshot.evaluatedAt).toLocaleTimeString()}
           </Text>
         </View>
       </ScrollView>

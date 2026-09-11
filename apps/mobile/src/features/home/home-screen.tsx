@@ -84,7 +84,7 @@ export function HomeScreen({
             Price the outcome. Back your conviction.
           </VadText>
           <VadText tone="secondary" style={{ maxWidth: 650 }}>
-            Discover markets, inspect live probabilities and move from research to a position without losing context.
+            Discover markets, compare current prices and take a position when you are ready.
           </VadText>
         </View>
 
@@ -118,7 +118,7 @@ export function HomeScreen({
       <View style={{ gap: density.compact ? 8 : theme.spacing.sm }}>
         <VadSectionHeader
           title="Featured markets"
-          subtitle="Markets selected by VAD for visibility."
+          subtitle="Markets worth a closer look."
           actionLabel="All markets"
           onAction={() => onExploreMarkets()}
         />
@@ -148,9 +148,9 @@ export function HomeScreen({
             variant="raised"
             style={{ minHeight: density.compact ? 98 : 112, justifyContent: 'center', gap: 5 }}
           >
-            <VadText variant="bodyStrong">Markets are forming.</VadText>
+            <VadText variant="bodyStrong">No featured markets yet.</VadText>
             <VadText variant="caption" tone="secondary">
-              Published markets will appear here as soon as they go live.
+              Featured markets will appear here when available.
             </VadText>
           </VadCard>
         )}
@@ -178,7 +178,7 @@ export function HomeScreen({
       <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
         <VadSectionHeader
           title="Trending now"
-          subtitle="Markets with the freshest activity."
+          subtitle="Markets with the most recent activity."
           actionLabel="See all"
           onAction={() => onExploreMarkets()}
         />
@@ -207,7 +207,7 @@ export function HomeScreen({
         ) : (
           <VadCard variant="outlined" style={{ minHeight: 78, justifyContent: 'center' }}>
             <VadText variant="caption" tone="tertiary">
-              Trading activity will appear here once markets begin filling.
+              Recent trading activity will appear here when available.
             </VadText>
           </VadCard>
         )}
@@ -216,7 +216,7 @@ export function HomeScreen({
       <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
         <VadSectionHeader
           title="Community"
-          subtitle="Reasoning from people watching the same markets."
+          subtitle="See what other people are saying about the markets."
           actionLabel="Open feed"
           onAction={onOpenCommunity}
         />
@@ -241,7 +241,7 @@ function Spotlight({ market, onPress }: { market: MarketCatalogItem; onPress: ()
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open featured market: ${market.title}. YES ${yes}, NO ${no}. Settlement ${market.asset_code}.`}
+      accessibilityLabel={`Open featured market: ${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}.`}
       onPress={onPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.86 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}
     >
