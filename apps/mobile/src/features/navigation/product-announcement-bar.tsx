@@ -16,6 +16,7 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
   const theme = useVadTheme();
   const translateX = useRef(new Animated.Value(0)).current;
   const running = useRef<Animated.CompositeAnimation | null>(null);
+  const currentX = useRef(0);
   const [dismissedId, setDismissedId] = useState<string | null>(null);
   const [contentWidth, setContentWidth] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -23,23 +24,52 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
   const visible = Boolean(notice && dismissedId !== notice.public_id);
 
   useEffect(() => {
+    let cancelled = false;
     running.current?.stop();
-    translateX.setValue(0);
 
-    if (!visible || paused || !contentWidth) return;
+    if (!visible || !contentWidth) {
+      currentX.current = 0;
+      translateX.setValue(0);
+      return;
+    }
 
-    const animation = Animated.loop(
-      Animated.timing(translateX, {
+    if (paused) {
+      translateX.stopAnimation((value) => {
+        currentX.current = value;
+      });
+      return;
+    }
+
+    const animate = () => {
+      if (cancelled) return;
+      const start = currentX.current <= -contentWidth + 1 ? 0 : currentX.current;
+      const remaining = Math.max(1, contentWidth + start);
+      translateX.setValue(start);
+
+      const animation = Animated.timing(translateX, {
         toValue: -contentWidth,
-        duration: Math.max(12000, contentWidth * 38),
+        duration: Math.max(450, remaining * 38),
         easing: Easing.linear,
         useNativeDriver: Platform.OS !== 'web',
-      }),
-    );
-    running.current = animation;
-    animation.start();
+      });
+      running.current = animation;
+      animation.start(({ finished }) => {
+        if (!finished || cancelled) return;
+        currentX.current = 0;
+        translateX.setValue(0);
+        animate();
+      });
+    };
 
-    return () => animation.stop();
+    animate();
+
+    return () => {
+      cancelled = true;
+      running.current?.stop();
+      translateX.stopAnimation((value) => {
+        currentX.current = value;
+      });
+    };
   }, [contentWidth, paused, translateX, visible]);
 
   if (!notice || !visible) return null;
@@ -54,7 +84,7 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
     <View
       accessibilityRole="alert"
       style={{
-        minHeight: 42,
+        minHeight: 44,
         flexDirection: 'row',
         alignItems: 'center',
         overflow: 'hidden',
@@ -65,12 +95,12 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Pause announcement"
+        accessibilityLabel={paused ? 'Resume announcement' : 'Pause announcement'}
         onHoverIn={() => setPaused(true)}
         onHoverOut={() => setPaused(false)}
         onPressIn={() => setPaused(true)}
         onPressOut={() => setPaused(false)}
-        style={{ flex: 1, minHeight: 42, justifyContent: 'center', overflow: 'hidden' }}
+        style={{ flex: 1, minHeight: 44, justifyContent: 'center', overflow: 'hidden' }}
       >
         <Animated.View
           style={{
@@ -101,7 +131,7 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
         onPress={() => setDismissedId(notice.public_id)}
         style={({ pressed }) => ({
           width: 44,
-          height: 42,
+          height: 44,
           alignItems: 'center',
           justifyContent: 'center',
           borderLeftWidth: 1,
