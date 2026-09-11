@@ -6,27 +6,29 @@ import {
 } from 'react-native';
 
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { VadButton } from '@/components/ui/vad-button';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
-  getCreatorPublicProfile,
+  getCreatorPublicProfileByUsername,
   profileMediaUrl,
   type CreatorPublicProfile,
 } from '@/services/profile-api';
 import {
   getCreatorPredictionHistory,
   getCreatorReputation,
+  toggleCreatorFollow,
   type CreatorPrediction,
   type CreatorReputation,
 } from '@/services/social-api';
 import { CreatorProfilePanel } from './components/creator-profile-panel';
 
 export function CreatorProfileScreen({
-  creatorUserId,
+  username,
 }: {
-  creatorUserId: string;
+  username: string;
 }) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
@@ -35,27 +37,35 @@ export function CreatorProfileScreen({
   const [profile, setProfile] = useState<CreatorPublicProfile | null>(null);
   const [reputation, setReputation] = useState<CreatorReputation | null>(null);
   const [predictions, setPredictions] = useState<CreatorPrediction[]>([]);
+  const [following, setFollowing] = useState(false);
+  const [followWorking, setFollowWorking] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [followError, setFollowError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!creatorUserId) {
+    if (!username.trim()) {
       setError('Creator profile is unavailable.');
       setLoading(false);
       return;
     }
 
     setError(null);
+    setFollowError(null);
 
     try {
-      const [nextProfile, nextReputation, nextPredictions] =
-        await Promise.all([
-          getCreatorPublicProfile(creatorUserId),
-          getCreatorReputation(creatorUserId),
-          getCreatorPredictionHistory(creatorUserId, 20),
-        ]);
+      const nextProfile = await getCreatorPublicProfileByUsername(username);
+      if (!nextProfile) {
+        throw new Error('No active VAD profile exists for this username.');
+      }
+
+      const [nextReputation, nextPredictions] = await Promise.all([
+        getCreatorReputation(nextProfile.userId),
+        getCreatorPredictionHistory(nextProfile.userId, 20),
+      ]);
 
       setProfile(nextProfile);
+      setFollowing(nextProfile.viewerFollows);
       setReputation(nextReputation);
       setPredictions(nextPredictions);
     } catch (reason) {
@@ -67,7 +77,7 @@ export function CreatorProfileScreen({
     } finally {
       setLoading(false);
     }
-  }, [creatorUserId]);
+  }, [username]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -76,6 +86,37 @@ export function CreatorProfileScreen({
 
     return () => clearTimeout(timer);
   }, [load]);
+
+  async function toggleFollow() {
+    if (!profile || profile.isSelf || followWorking) return;
+
+    const wasFollowing = following;
+    const previousFollowers = reputation?.followers ?? 0;
+    const optimisticFollowing = !wasFollowing;
+
+    setFollowWorking(true);
+    setFollowError(null);
+    setFollowing(optimisticFollowing);
+    setReputation((current) => current ? {
+      ...current,
+      followers: Math.max(0, previousFollowers + (optimisticFollowing ? 1 : 0) - (wasFollowing ? 1 : 0)),
+    } : current);
+
+    try {
+      const authoritativeFollowing = await toggleCreatorFollow(profile.userId);
+      setFollowing(authoritativeFollowing);
+      setReputation((current) => current ? {
+        ...current,
+        followers: Math.max(0, previousFollowers + (authoritativeFollowing ? 1 : 0) - (wasFollowing ? 1 : 0)),
+      } : current);
+    } catch (reason) {
+      setFollowing(wasFollowing);
+      setReputation((current) => current ? { ...current, followers: previousFollowers } : current);
+      setFollowError(reason instanceof Error ? reason.message : 'Follow state could not be updated.');
+    } finally {
+      setFollowWorking(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -88,19 +129,21 @@ export function CreatorProfileScreen({
     );
   }
 
-  if (error || !reputation) {
+  if (error || !profile || !reputation) {
     return (
       <VadErrorState
         title="Creator profile unavailable"
         message={error ?? 'This creator could not be loaded.'}
-        onRetry={() => void load()}
+        onRetry={() => {
+          setLoading(true);
+          void load();
+        }}
       />
     );
   }
 
-  const name =
-    profile?.displayName ?? profile?.handle ?? 'VAD creator';
-  const banner = profileMediaUrl(profile?.bannerPath);
+  const name = profile.displayName ?? profile.handle ?? 'VAD creator';
+  const banner = profileMediaUrl(profile.bannerPath);
   const avatarSize = compact ? 72 : 84;
 
   return (
@@ -151,7 +194,7 @@ export function CreatorProfileScreen({
             }}
           >
             <ProfileAvatar
-              path={profile?.avatarPath}
+              path={profile.avatarPath}
               name={name}
               size={avatarSize}
             />
@@ -159,10 +202,8 @@ export function CreatorProfileScreen({
 
           <View style={{ flex: 1, width: '100%', gap: theme.spacing.xs }}>
             <VadText variant="title">{name}</VadText>
-            {profile?.handle ? (
-              <VadText tone="secondary">@{profile.handle}</VadText>
-            ) : null}
-            {profile?.bio ? (
+            <VadText tone="secondary">@{profile.handle}</VadText>
+            {profile.bio ? (
               <VadText tone="secondary">{profile.bio}</VadText>
             ) : (
               <VadText variant="caption" tone="secondary">
@@ -170,7 +211,27 @@ export function CreatorProfileScreen({
               </VadText>
             )}
           </View>
+
+          {!profile.isSelf ? (
+            <VadButton
+              label={following ? 'Following' : 'Follow'}
+              variant={following ? 'secondary' : 'primary'}
+              fullWidth={!wide}
+              loading={followWorking}
+              accessibilityState={{ selected: following }}
+              onPress={() => void toggleFollow()}
+              style={wide ? { minWidth: 124 } : { width: '100%' }}
+            />
+          ) : null}
         </View>
+
+        {followError ? (
+          <VadErrorState
+            title="Follow not updated"
+            message={followError}
+            onRetry={() => void toggleFollow()}
+          />
+        ) : null}
 
         <View
           style={{
@@ -183,18 +244,10 @@ export function CreatorProfileScreen({
             gap: compact ? theme.spacing.md : theme.spacing.xl,
           }}
         >
-          <ProfileStat
-            label="Followers"
-            value={String(reputation.followers)}
-          />
-          <ProfileStat
-            label="Predictions"
-            value={String(reputation.predictions)}
-          />
-          <ProfileStat
-            label="Markets"
-            value={String(reputation.originatedMarkets)}
-          />
+          <ProfileStat label="Followers" value={String(reputation.followers)} />
+          <ProfileStat label="Following" value={String(reputation.following)} />
+          <ProfileStat label="Predictions" value={String(reputation.predictions)} />
+          <ProfileStat label="Markets" value={String(reputation.originatedMarkets)} />
         </View>
       </View>
 
