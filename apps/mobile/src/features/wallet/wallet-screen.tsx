@@ -11,6 +11,7 @@ import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getMyPaymentIntents, type PaymentIntentRow } from '@/services/payment-api';
@@ -71,43 +72,45 @@ export function WalletScreen({
         onAction={onActivity}
       />
 
-      <VadCard
-        variant="brand"
-        style={{
-          gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-          padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-        }}
-      >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
-          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-            <VadText variant="caption" tone="brand">{primaryCode} BALANCE</VadText>
-            <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
-              {assetMoney(total, primaryCode)}
-            </VadText>
-            <VadText variant="caption" tone="secondary">Available + committed + withdrawal pending</VadText>
+      <TourTarget id="wallet-balance">
+        <VadCard
+          variant="brand"
+          style={{
+            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
+            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+          }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <VadText variant="caption" tone="brand">{primaryCode} BALANCE</VadText>
+              <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
+                {assetMoney(total, primaryCode)}
+              </VadText>
+              <VadText variant="caption" tone="secondary">Available + committed + withdrawal pending</VadText>
+            </View>
+            <View
+              style={{
+                width: density.phone ? 48 : 56,
+                height: density.phone ? 48 : 56,
+                borderRadius: 28,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.colors.surface,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+              }}
+            >
+              <VadIcon name="wallet" size={density.phone ? 22 : 26} tone="brand" />
+            </View>
           </View>
-          <View
-            style={{
-              width: density.phone ? 48 : 56,
-              height: density.phone ? 48 : 56,
-              borderRadius: 28,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: theme.colors.surface,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-            }}
-          >
-            <VadIcon name="wallet" size={density.phone ? 22 : 26} tone="brand" />
-          </View>
-        </View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-          <VadMetricTile label="Available" value={assetMoney(available, primaryCode)} detail="Ready to use" tone="yes" />
-          <VadMetricTile label="Committed" value={assetMoney(reserved, primaryCode)} detail="Held for open orders" />
-          <VadMetricTile label="Pending" value={assetMoney(pending, primaryCode)} detail="Withdrawal processing" tone="brand" />
-        </View>
-      </VadCard>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            <VadMetricTile label="Available" value={assetMoney(available, primaryCode)} detail="Ready to use" tone="yes" />
+            <VadMetricTile label="Committed" value={assetMoney(reserved, primaryCode)} detail="Held for open orders" />
+            <VadMetricTile label="Pending" value={assetMoney(pending, primaryCode)} detail="Withdrawal processing" tone="brand" />
+          </View>
+        </VadCard>
+      </TourTarget>
 
       {orderedWallets.length ? (
         <View style={{ gap: theme.spacing.sm }}>
@@ -128,56 +131,60 @@ export function WalletScreen({
         />
       )}
 
-      <View style={{ flexDirection: 'row', gap: density.phone ? 8 : theme.spacing.sm }}>
-        <WalletAction label="Deposit" detail="Add NGN" icon="arrowDown" tone="yes" onPress={onDeposit} />
-        <WalletAction label="Withdraw" detail="Move NGN out" icon="arrowUp" tone="brand" onPress={onWithdraw} />
-        <WalletAction label="Activity" detail="Payment history" icon="activity" tone="primary" onPress={onActivity} />
-      </View>
+      <TourTarget id="wallet-actions">
+        <View style={{ flexDirection: 'row', gap: density.phone ? 8 : theme.spacing.sm }}>
+          <WalletAction label="Deposit" detail="Add NGN" icon="arrowDown" tone="yes" onPress={onDeposit} />
+          <WalletAction label="Withdraw" detail="Move NGN out" icon="arrowUp" tone="brand" onPress={onWithdraw} />
+          <WalletAction label="Activity" detail="Payment history" icon="activity" tone="primary" onPress={onActivity} />
+        </View>
+      </TourTarget>
 
-      <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
-        <VadSectionHeader
-          title="Recent activity"
-          subtitle="Latest deposits, withdrawals and refunds."
-          actionLabel="See all"
-          onAction={onActivity}
-        />
-
-        {loading ? (
-          <View style={{ gap: theme.spacing.sm }}>
-            <VadSkeleton height={density.compact ? 68 : 76} radius={theme.radius.xl} />
-            <VadSkeleton height={density.compact ? 68 : 76} radius={theme.radius.xl} />
-          </View>
-        ) : activityError && !intents.length ? (
-          <VadErrorState
-            title="Wallet activity unavailable"
-            message={activityError}
-            onRetry={() => {
-              setLoading(true);
-              void load();
-            }}
+      <TourTarget id="wallet-activity">
+        <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
+          <VadSectionHeader
+            title="Recent activity"
+            subtitle="Latest deposits, withdrawals and refunds."
+            actionLabel="See all"
+            onAction={onActivity}
           />
-        ) : (
-          <>
-            {activityError ? (
-              <VadErrorState title="Could not refresh wallet activity" message={activityError} onRetry={() => void load()} />
-            ) : null}
-            {intents.length ? (
-              <View style={{ gap: density.compact ? 7 : theme.spacing.sm }}>
-                {intents.map((intent) => (
-                  <PaymentRow key={intent.intent_public_id} intent={intent} onPress={() => onOpenTransaction(intent)} />
-                ))}
-              </View>
-            ) : (
-              <VadEmptyState
-                title="No payment activity yet"
-                body="Your deposits and withdrawals will appear here after you start them."
-                actionLabel="Deposit NGN"
-                onAction={onDeposit}
-              />
-            )}
-          </>
-        )}
-      </View>
+
+          {loading ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <VadSkeleton height={density.compact ? 68 : 76} radius={theme.radius.xl} />
+              <VadSkeleton height={density.compact ? 68 : 76} radius={theme.radius.xl} />
+            </View>
+          ) : activityError && !intents.length ? (
+            <VadErrorState
+              title="Wallet activity unavailable"
+              message={activityError}
+              onRetry={() => {
+                setLoading(true);
+                void load();
+              }}
+            />
+          ) : (
+            <>
+              {activityError ? (
+                <VadErrorState title="Could not refresh wallet activity" message={activityError} onRetry={() => void load()} />
+              ) : null}
+              {intents.length ? (
+                <View style={{ gap: density.compact ? 7 : theme.spacing.sm }}>
+                  {intents.map((intent) => (
+                    <PaymentRow key={intent.intent_public_id} intent={intent} onPress={() => onOpenTransaction(intent)} />
+                  ))}
+                </View>
+              ) : (
+                <VadEmptyState
+                  title="No payment activity yet"
+                  body="Your deposits and withdrawals will appear here after you start them."
+                  actionLabel="Deposit NGN"
+                  onAction={onDeposit}
+                />
+              )}
+            </>
+          )}
+        </View>
+      </TourTarget>
     </View>
   );
 }
