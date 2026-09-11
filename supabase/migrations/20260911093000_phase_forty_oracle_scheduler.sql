@@ -3,6 +3,8 @@
 -- External network calls stay in Edge Functions. Postgres only schedules a small
 -- authenticated bridge through pg_net. The scheduler credential is generated in
 -- Vault at migration time and is never embedded in source control or cron SQL.
+-- The environment-specific project URL must be provisioned in Vault as
+-- `vad_project_url`; it is deliberately not source-controlled.
 
 create extension if not exists pg_net;
 
@@ -49,24 +51,25 @@ revoke all on function public.internal_validate_oracle_scheduler_secret(text) fr
 grant execute on function public.internal_validate_oracle_scheduler_secret(text) to service_role;
 
 -- Health checks validate configured credentials and connectivity without activating
--- a disabled provider. Provider status transitions remain maker/checker governed.
+-- a disabled provider. The SELECT returns zero rows until vad_project_url is set,
+-- so a fresh environment cannot accidentally call another project's functions.
 select cron.schedule(
   'vad-oracle-provider-health',
   '*/15 * * * *',
   $job$
   select net.http_post(
-    url:='https://kixxqfqntfzlprapqkem.supabase.co/functions/v1/oracle-scheduler',
+    url:=project_url.decrypted_secret||'/functions/v1/oracle-scheduler',
     headers:=jsonb_build_object(
       'Content-Type','application/json',
-      'x-vad-scheduler-secret',(
-        select decrypted_secret
-        from vault.decrypted_secrets
-        where name='vad_oracle_scheduler_secret'
-      )
+      'x-vad-scheduler-secret',scheduler_secret.decrypted_secret
     ),
     body:=jsonb_build_object('action','health'),
     timeout_milliseconds:=30000
-  ) as request_id;
+  ) as request_id
+  from vault.decrypted_secrets project_url
+  cross join vault.decrypted_secrets scheduler_secret
+  where project_url.name='vad_project_url'
+    and scheduler_secret.name='vad_oracle_scheduler_secret';
   $job$
 );
 
@@ -77,17 +80,17 @@ select cron.schedule(
   '* * * * *',
   $job$
   select net.http_post(
-    url:='https://kixxqfqntfzlprapqkem.supabase.co/functions/v1/oracle-scheduler',
+    url:=project_url.decrypted_secret||'/functions/v1/oracle-scheduler',
     headers:=jsonb_build_object(
       'Content-Type','application/json',
-      'x-vad-scheduler-secret',(
-        select decrypted_secret
-        from vault.decrypted_secrets
-        where name='vad_oracle_scheduler_secret'
-      )
+      'x-vad-scheduler-secret',scheduler_secret.decrypted_secret
     ),
     body:=jsonb_build_object('action','process','limit',25),
     timeout_milliseconds:=30000
-  ) as request_id;
+  ) as request_id
+  from vault.decrypted_secrets project_url
+  cross join vault.decrypted_secrets scheduler_secret
+  where project_url.name='vad_project_url'
+    and scheduler_secret.name='vad_oracle_scheduler_secret';
   $job$
 );
