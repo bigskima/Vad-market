@@ -16,9 +16,9 @@ export function runtimeCapabilityReason(
     case 'NO_ACTIVE_POLICY':
       return 'This action is not available for your account right now.';
     case 'NO_ACTIVE_ASSET':
-      return 'No supported settlement currency is available for your account location right now.';
+      return 'No supported currency is available in your location right now.';
     case 'PLATFORM_MAINTENANCE':
-      return 'VAD is temporarily unavailable for new actions while maintenance is in progress.';
+      return 'VAD is temporarily unavailable for new actions while we make improvements.';
     case 'ACCOUNT_ACTIONS_PAUSED':
       return 'New actions are temporarily unavailable for this account.';
     case 'SERVICE_PAUSED':
@@ -26,11 +26,11 @@ export function runtimeCapabilityReason(
     case 'ACCOUNT_SERVICE_PAUSED':
       return 'This feature is temporarily unavailable for your account.';
     case 'PHASE_2_NOT_ENABLED':
-      return 'Money movement is not available for your account yet.';
+      return 'Deposits and withdrawals are not available for your account yet.';
     case 'PHASE_3_NOT_ENABLED':
-      return 'Market proposals are not available for your account yet.';
+      return 'Market creation is not available for your account yet.';
     case 'PHASE_4_NOT_ENABLED':
-      return 'Trading and portfolio access are not available for your account yet.';
+      return 'Trading is not available for your account yet.';
     default:
       return fallback;
   }
