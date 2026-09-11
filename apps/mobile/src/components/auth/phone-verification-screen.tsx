@@ -38,7 +38,7 @@ function inferCallingCode() {
 export function PhoneVerificationScreen() {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
-  const wide = width >= 860;
+  const wide = width >= 768;
   const {
     requestPhoneVerification,
     verifyPhoneOtp,
@@ -217,10 +217,19 @@ export function PhoneVerificationScreen() {
 
                 <VadButton label="Verify phone" loading={working} disabled={otp.length !== 6} onPress={() => void confirmCode()} />
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
-                  <Pressable accessibilityRole="button" onPress={() => { setSentTo(null); setError(null); setMessage(null); }} hitSlop={8}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => { setSentTo(null); setError(null); setMessage(null); }}
+                    style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.xs, opacity: pressed ? 0.6 : 1 })}
+                  >
                     <VadText variant="caption" tone="brand">Change number</VadText>
                   </Pressable>
-                  <Pressable accessibilityRole="button" disabled={working} onPress={() => void sendCode()} hitSlop={8}>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={working}
+                    onPress={() => void sendCode()}
+                    style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.xs, opacity: working ? 0.5 : pressed ? 0.6 : 1 })}
+                  >
                     <VadText variant="caption" tone="brand">Send again</VadText>
                   </Pressable>
                 </View>
