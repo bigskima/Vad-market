@@ -1,15 +1,16 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductTourProvider } from '@/features/tour/tour-provider';
+import { usePolicyGate } from '@/hooks/use-policy-gate';
 import { supabaseConfiguration } from '@/lib/supabase';
-import { AuthProvider } from '@/providers/auth-provider';
+import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { ProductDataProvider } from '@/providers/product-data-provider';
 import {
   VadThemeProvider,
@@ -39,6 +40,28 @@ function ThemedNavigation() {
       />
     </>
   );
+}
+
+function PolicyConsentBoundary({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const { isLoading, isPasswordRecovery, session } = useAuth();
+  const policyGate = usePolicyGate(session?.user.id);
+  const policyRoute = pathname === '/policy-consent';
+  const authRoute = pathname === '/';
+
+  if (
+    !isLoading
+    && session
+    && !isPasswordRecovery
+    && policyGate.enforcementReady
+    && policyGate.requiresAcceptance
+    && !policyRoute
+    && !authRoute
+  ) {
+    return <Redirect href="/policy-consent" />;
+  }
+
+  return children;
 }
 
 function ServiceUnavailableScreen() {
@@ -96,11 +119,13 @@ export default function RootLayout() {
       <VadThemeProvider>
         {supabaseConfiguration.ready ? (
           <AuthProvider>
-            <ProductDataProvider>
-              <ProductTourProvider>
-                <ThemedNavigation />
-              </ProductTourProvider>
-            </ProductDataProvider>
+            <PolicyConsentBoundary>
+              <ProductDataProvider>
+                <ProductTourProvider>
+                  <ThemedNavigation />
+                </ProductTourProvider>
+              </ProductDataProvider>
+            </PolicyConsentBoundary>
           </AuthProvider>
         ) : (
           <ServiceUnavailableScreen />
