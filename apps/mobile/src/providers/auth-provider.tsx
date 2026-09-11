@@ -1,4 +1,5 @@
 import type { AuthError, Session } from '@supabase/supabase-js';
+import * as ExpoLinking from 'expo-linking';
 import {
   createContext,
   type PropsWithChildren,
@@ -7,6 +8,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { Linking as NativeLinking, Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 
@@ -72,8 +74,66 @@ function authMessage(error: AuthError | Error | null, mode: 'signIn' | 'signUp')
 }
 
 function getRedirectUrl() {
-  const location = (globalThis as { location?: { origin?: string } }).location;
-  return location?.origin ? `${location.origin}/` : undefined;
+  if (Platform.OS === 'web') {
+    const location = (globalThis as { location?: { origin?: string } }).location;
+    if (location?.origin) return `${location.origin}/`;
+  }
+  return ExpoLinking.createURL('/');
+}
+
+function authParams(url: string) {
+  const [beforeHash, hash = ''] = url.split('#');
+  const query = beforeHash.includes('?') ? beforeHash.slice(beforeHash.indexOf('?') + 1) : '';
+  const merged = new URLSearchParams(query);
+  const hashParams = new URLSearchParams(hash);
+  hashParams.forEach((value, key) => {
+    if (!merged.has(key)) merged.set(key, value);
+  });
+  return merged;
+}
+
+function currentWebUrl() {
+  if (Platform.OS !== 'web') return null;
+  const location = (globalThis as { location?: { href?: string } }).location;
+  return location?.href ?? null;
+}
+
+function clearWebAuthUrl() {
+  if (Platform.OS !== 'web') return;
+  const browser = globalThis as {
+    location?: { pathname?: string; search?: string };
+    history?: { replaceState?: (data: unknown, unused: string, url?: string | URL | null) => void };
+  };
+  const pathname = browser.location?.pathname ?? '/';
+  const search = browser.location?.search ?? '';
+  browser.history?.replaceState?.(null, '', `${pathname}${search}`);
+}
+
+async function consumeAuthRedirect(url: string) {
+  const params = authParams(url);
+  const providerError = params.get('error_description') ?? params.get('error');
+  if (providerError) throw new Error(decodeURIComponent(providerError.replace(/\+/g, ' ')));
+
+  const recovery = params.get('type') === 'recovery';
+  const code = params.get('code');
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+    return { session: data.session, recovery };
+  }
+
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (accessToken && refreshToken) {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) throw error;
+    return { session: data.session, recovery };
+  }
+
+  return null;
 }
 
 function readPhonePrompt() {
@@ -147,6 +207,36 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    const handleUrl = async (url: string | null) => {
+      if (!url) return;
+      try {
+        const result = await consumeAuthRedirect(url);
+        if (!active || !result) return;
+        if (result.session) setSession(result.session);
+        if (result.recovery) setIsPasswordRecovery(true);
+        if (result.session && !result.recovery) requestPhonePrompt(result.session);
+        clearWebAuthUrl();
+      } catch {
+        // The auth form will surface provider-start errors. Invalid/expired
+        // callbacks simply leave the user signed out instead of crashing boot.
+      }
+    };
+
+    void handleUrl(currentWebUrl());
+    void NativeLinking.getInitialURL().then(handleUrl);
+    const subscription = NativeLinking.addEventListener('url', ({ url }) => {
+      void handleUrl(url);
+    });
+
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       isLoading,
@@ -210,14 +300,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
           persistPhonePrompt(true);
           setVerificationPromptPending(true);
           const redirectTo = getRedirectUrl();
-          const { error } = await supabase.auth.signInWithOAuth({
+          const native = Platform.OS !== 'web';
+          const { data, error } = await supabase.auth.signInWithOAuth({
             provider,
-            options: redirectTo ? { redirectTo } : undefined,
+            options: {
+              redirectTo,
+              skipBrowserRedirect: native,
+            },
           });
           if (error) {
             persistPhonePrompt(false);
             setVerificationPromptPending(false);
             return { ok: false, message: error.message };
+          }
+          if (native) {
+            if (!data.url) throw new Error(`${provider} sign in did not return an authorization URL.`);
+            const supported = await NativeLinking.canOpenURL(data.url);
+            if (!supported) throw new Error(`${provider} sign in cannot be opened on this device.`);
+            await NativeLinking.openURL(data.url);
           }
           return { ok: true };
         } catch (error) {
@@ -234,7 +334,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           const redirectTo = getRedirectUrl();
           const { error } = await supabase.auth.resetPasswordForEmail(
             email.trim().toLowerCase(),
-            redirectTo ? { redirectTo } : undefined,
+            { redirectTo },
           );
           if (error) return { ok: false, message: error.message };
           return {
