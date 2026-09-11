@@ -1,5 +1,7 @@
+import { router } from 'expo-router';
 import { View, type DimensionValue } from 'react-native';
 
+import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
@@ -98,6 +100,11 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
             <ContextFact label="Cost weight" value={pct(portfolioWeight)} />
           </View>
           <VadText variant="caption" tone="secondary">Filled trades change shares and cost basis. Resolution and settlement remain server-authoritative.</VadText>
+          <VadButton
+            label="Open market"
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/market/[marketId]', params: { marketId: position.instrument_id } })}
+          />
         </VadCard>
       </View>
     </View>
