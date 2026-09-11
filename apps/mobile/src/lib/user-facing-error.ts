@@ -189,7 +189,7 @@ export function userFacingErrorMessage(
   }
 
   if (hasAny(raw, ['no active asset', 'asset not active', 'unsupported asset', 'unsupported currency'])) {
-    return 'This settlement currency is not available for your account right now.';
+    return 'This currency is not available for your account right now.';
   }
 
   if (
