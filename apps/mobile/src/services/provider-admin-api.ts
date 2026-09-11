@@ -37,6 +37,22 @@ export type OracleProviderResource = {
   updated_at: string;
 };
 
+export type OraclePolicyRow = {
+  public_id: string;
+  name: string;
+  capability_code: string;
+  version: number;
+  status: 'DRAFT' | 'ACTIVE' | 'RETIRED' | string;
+  source_hierarchy: Array<Record<string, unknown> | string>;
+  consensus_rule: Record<string, unknown>;
+  void_rule: Record<string, unknown>;
+  dispute_window_seconds: number;
+  effective_at: string;
+  created_by: string | null;
+  approved_by: string | null;
+  created_at: string;
+};
+
 export type OracleHealthResult = {
   provider: string;
   providerStatus: string;
@@ -77,6 +93,20 @@ export async function getOracleProviderResources() {
   const { data, error } = await supabase.rpc('admin_oracle_provider_resources');
   fail(error, 'We could not load oracle resources right now. Refresh and try again.');
   return (data ?? []) as OracleProviderResource[];
+}
+
+export async function getOraclePolicyCatalog() {
+  const { data, error } = await supabase.rpc('admin_oracle_policy_catalog');
+  fail(error, 'We could not load oracle policies right now. Refresh and try again.');
+  return (data ?? []) as OraclePolicyRow[];
+}
+
+export async function approveOraclePolicy(policyPublicId: string) {
+  const { data, error } = await supabase.rpc('admin_approve_oracle_policy', {
+    p_policy_public_id: policyPublicId,
+  });
+  fail(error, 'We could not approve this oracle policy right now. Please try again.');
+  return Boolean(data);
 }
 
 export async function validateOracleResolutionScope(input: {

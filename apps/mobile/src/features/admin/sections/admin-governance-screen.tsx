@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
@@ -22,6 +22,11 @@ import {
   finalizeAdminVoid,
   hasAdminPermission,
 } from '@/services/admin-control-api';
+import {
+  approveOraclePolicy,
+  getOraclePolicyCatalog,
+  type OraclePolicyRow,
+} from '@/services/provider-admin-api';
 
 type OracleRow = Record<string, unknown>;
 type ProposalRow = Record<string, unknown>;
@@ -45,6 +50,27 @@ export function AdminGovernanceScreen() {
   const [working, setWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [policies, setPolicies] = useState<OraclePolicyRow[]>([]);
+  const [policiesLoading, setPoliciesLoading] = useState(canReviewOracle);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+  const [policyWorkingId, setPolicyWorkingId] = useState<string | null>(null);
+
+  const loadPolicies = useCallback(async () => {
+    if (!canReviewOracle) return;
+    setPolicyError(null);
+    try {
+      setPolicies(await getOraclePolicyCatalog());
+    } catch (value) {
+      setPolicyError(value instanceof Error ? value.message : 'Oracle policies could not be loaded.');
+    } finally {
+      setPoliciesLoading(false);
+    }
+  }, [canReviewOracle]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => void loadPolicies(), 0);
+    return () => clearTimeout(timer);
+  }, [loadPolicies]);
 
   const tabs = useMemo(() => {
     const next: { key: string; label: string; count: number }[] = [];
@@ -61,9 +87,14 @@ export function AdminGovernanceScreen() {
         label: 'Oracle',
         count: data.oracleQueue.length,
       });
+      next.push({
+        key: 'policies',
+        label: 'Policies',
+        count: policies.filter((policy) => policy.status === 'DRAFT').length,
+      });
     }
     return next;
-  }, [canManageMarkets, canReviewOracle, data.marketQueue.length, data.oracleQueue.length]);
+  }, [canManageMarkets, canReviewOracle, data.marketQueue.length, data.oracleQueue.length, policies]);
 
   if (data.loading) {
     return (
@@ -151,6 +182,21 @@ export function AdminGovernanceScreen() {
     }
   }
 
+  async function approvePolicy(policy: OraclePolicyRow) {
+    setPolicyWorkingId(policy.public_id);
+    setPolicyError(null);
+    setActionMessage(null);
+    try {
+      await approveOraclePolicy(policy.public_id);
+      setActionMessage(`${policy.name} version ${policy.version} is now active.`);
+      await Promise.all([loadPolicies(), data.refresh()]);
+    } catch (value) {
+      setPolicyError(value instanceof Error ? value.message : 'Oracle policy approval could not be completed.');
+    } finally {
+      setPolicyWorkingId(null);
+    }
+  }
+
   const activeDisputes = Number(selectedOracle?.active_disputes ?? 0);
   const selectedResolutionId = Number(selectedOracle?.resolution_id ?? 0);
 
@@ -167,7 +213,7 @@ export function AdminGovernanceScreen() {
           <VadText variant="label" tone="brand">GOVERNANCE</VadText>
           <VadText variant="title">Markets & resolution.</VadText>
           <VadText tone="secondary">
-            Review market proposals and resolve oracle cases. Market configuration, reviewer permissions, dispute windows and settlement remain separate controlled steps.
+            Review market proposals, manage approved resolution policy versions and resolve oracle cases. Reviewer permissions, dispute windows and settlement remain separate controlled steps.
           </VadText>
         </View>
 
@@ -261,7 +307,7 @@ export function AdminGovernanceScreen() {
             <EmptyText>No market proposals need review.</EmptyText>
           )}
         </OperationsSection>
-      ) : canReviewOracle ? (
+      ) : tab === 'oracle' && canReviewOracle ? (
         <OperationsSection
           title="Oracle queue"
           description="Create provisional outcomes and finalize eligible resolutions. The outcome, dispute window and independent-review requirements are checked before finalization."
@@ -295,6 +341,43 @@ export function AdminGovernanceScreen() {
             })
           ) : (
             <EmptyText>No oracle cases need attention.</EmptyText>
+          )}
+        </OperationsSection>
+      ) : tab === 'policies' && canReviewOracle ? (
+        <OperationsSection
+          title="Oracle policies"
+          description="Policy versions define approved sources, consensus requirements, dispute windows and void behavior. Draft activation requires an independent reviewer."
+          count={policies.length}
+        >
+          {policiesLoading ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <VadSkeleton height={72} />
+              <VadSkeleton height={72} />
+            </View>
+          ) : policyError ? (
+            <VadErrorState title="Oracle policies unavailable" message={policyError} onRetry={() => void loadPolicies()} />
+          ) : policies.length ? (
+            policies.map((policy) => {
+              const providerCodes = policy.source_hierarchy
+                .map((entry) => typeof entry === 'string' ? entry : String(entry.provider_code ?? entry.providerCode ?? ''))
+                .filter(Boolean)
+                .join(' + ');
+              const quorum = Number(policy.consensus_rule.min_agreeing_providers ?? policy.consensus_rule.quorum ?? 0);
+              return (
+                <OperationsRow
+                  key={policy.public_id}
+                  title={`${policy.name} · v${policy.version}`}
+                  detail={`${providerCodes || 'Source hierarchy not specified'} · quorum ${quorum || '—'} · dispute ${Math.round(policy.dispute_window_seconds / 60)} min`}
+                  meta={policy.status === 'DRAFT' ? 'Prepared for independent approval' : `Effective ${new Date(policy.effective_at).toLocaleString()}`}
+                  status={policy.status}
+                  ready={policy.status === 'ACTIVE'}
+                  actionLabel={policy.status === 'DRAFT' ? 'Approve' : undefined}
+                  onPress={policy.status === 'DRAFT' && policyWorkingId !== policy.public_id ? () => void approvePolicy(policy) : undefined}
+                />
+              );
+            })
+          ) : (
+            <EmptyText>No oracle policies are configured.</EmptyText>
           )}
         </OperationsSection>
       ) : (

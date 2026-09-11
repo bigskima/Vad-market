@@ -35,6 +35,42 @@ export type AdminUserServiceControlRow = {
   resumes_at: string | null;
 };
 
+export type AdminLaunchReadinessGateStatus =
+  | 'READY'
+  | 'WARNING'
+  | 'PAUSED'
+  | 'BLOCKED';
+
+export type AdminLaunchReadinessGate = {
+  key: string;
+  category: string;
+  title: string;
+  status: AdminLaunchReadinessGateStatus;
+  detail: string;
+  count?: number;
+  mappedProvidersPerPair?: number;
+  readyProvidersPerPair?: number;
+  readyProviders?: number;
+  closeScheduler?: boolean;
+  consensusScheduler?: boolean;
+  enabledServices?: number;
+};
+
+export type AdminLaunchReadiness = {
+  generatedAt: string;
+  releaseState:
+    | 'LIVE_READY'
+    | 'MARKET_LIFECYCLE_READY'
+    | 'PLATFORM_READY_MARKET_BLOCKED'
+    | 'HARDENING_REQUIRED';
+  platformReady: boolean;
+  marketLifecycleReady: boolean;
+  realMoneyReady: boolean;
+  blockerCount: number;
+  warningCount: number;
+  gates: AdminLaunchReadinessGate[];
+};
+
 function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback: string) {
   if (error) throw userFacingError(error, 'admin', fallback);
 }
@@ -49,6 +85,12 @@ export async function getAdminServicePosture() {
   const { data, error } = await supabase.rpc('admin_service_posture');
   fail(error, 'We could not load service status right now. Refresh and try again.');
   return (data ?? []) as AdminServicePostureRow[];
+}
+
+export async function getAdminLaunchReadiness() {
+  const { data, error } = await supabase.rpc('admin_launch_readiness');
+  fail(error, 'We could not load launch readiness right now. Refresh and try again.');
+  return (data ?? null) as AdminLaunchReadiness | null;
 }
 
 export async function getAdminUserServiceControls(userId: string) {
