@@ -5,7 +5,6 @@ import { VadChip } from '@/components/ui/vad-chip';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { HomePromotionCarousel } from '@/features/home/components/home-promotion-carousel';
-import { HomePublicNotice } from '@/features/home/components/home-public-notice';
 import { MarketCard } from '@/features/markets/components/market-card';
 import { pct } from '@/features/markets/format';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
@@ -14,14 +13,12 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type {
   FeaturedMarketRow,
   HomePromotion,
-  PublicNotice,
 } from '@/services/home-content-api';
 import type { MarketCatalogItem } from '@/services/market-api';
 
 export function HomeScreen({
   markets,
   promotions,
-  notices,
   featuredMarkets,
   onOpenMarket,
   onOpenPromotion,
@@ -30,7 +27,6 @@ export function HomeScreen({
 }: {
   markets: MarketCatalogItem[];
   promotions: HomePromotion[];
-  notices: PublicNotice[];
   featuredMarkets: FeaturedMarketRow[];
   onOpenMarket: (market: MarketCatalogItem) => void;
   onOpenPromotion: (targetPath: string) => void;
@@ -39,7 +35,7 @@ export function HomeScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const desktopMarketGrid = density.width >= 960;
+  const desktopMarketGrid = density.desktop;
 
   const active = markets.filter(
     (market) => market.status === 'OPEN' || market.status === 'ACTIVE',
@@ -50,8 +46,7 @@ export function HomeScreen({
   const curated = featuredMarkets
     .map((featured) =>
       markets.find(
-        (market) =>
-          market.instrument_public_id === featured.instrument_public_id,
+        (market) => market.instrument_public_id === featured.instrument_public_id,
       ),
     )
     .filter((market): market is MarketCatalogItem => Boolean(market));
@@ -66,39 +61,59 @@ export function HomeScreen({
     .filter(
       (market) =>
         !curated.some(
-          (featured) =>
-            featured.instrument_public_id === market.instrument_public_id,
+          (featured) => featured.instrument_public_id === market.instrument_public_id,
         ),
     )
     .slice(0, 5);
   const sectionGap = density.compact ? theme.spacing.lg : theme.spacing.xl;
+  const traded = markets.filter((market) => Boolean(market.last_trade_at)).length;
 
   return (
     <View style={{ gap: sectionGap }}>
-      <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
-        <VadText variant="caption" tone="brand">VAD MARKET</VadText>
-        <VadText variant="title">Price the outcome. Back your conviction.</VadText>
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: density.compact ? 6 : theme.spacing.xs,
-          }}
-        >
+      <VadCard
+        variant="brand"
+        style={{
+          gap: density.compact ? theme.spacing.md : theme.spacing.lg,
+          padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+          borderColor: theme.colors.brandPrimary,
+        }}
+      >
+        <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
+          <VadText variant="caption" tone="brand">VAD MARKET</VadText>
+          <VadText variant={density.phone ? 'title' : 'display'}>
+            Price the outcome. Back your conviction.
+          </VadText>
+          <VadText tone="secondary" style={{ maxWidth: 650 }}>
+            Discover markets, inspect live probabilities and move from research to a position without losing context.
+          </VadText>
+        </View>
+
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: density.compact ? 6 : theme.spacing.xs }}>
           <VadChip label={`${active.length} live`} tone="yes" />
           <VadChip label={`${categories.length} categories`} />
-          <VadChip
-            label={`${markets.filter((market) => market.last_trade_at).length} recently traded`}
-          />
+          <VadChip label={`${traded} recently traded`} />
         </View>
-      </View>
 
-      <HomePublicNotice notice={notices[0]} />
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => onExploreMarkets()}
+          style={({ pressed }) => ({
+            minHeight: 44,
+            alignSelf: 'flex-start',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: theme.spacing.lg,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.brandPrimary,
+            opacity: pressed ? 0.78 : 1,
+          })}
+        >
+          <VadText variant="label" tone="inverse">Explore markets →</VadText>
+        </Pressable>
+      </VadCard>
 
-      <HomePromotionCarousel
-        promotions={promotions}
-        onOpen={onOpenPromotion}
-      />
+      <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
 
       <View style={{ gap: density.compact ? 8 : theme.spacing.sm }}>
         <VadSectionHeader
@@ -110,33 +125,19 @@ export function HomeScreen({
 
         {featuredLead ? (
           <View style={{ gap: theme.spacing.sm }}>
-            <Spotlight
-              market={featuredLead}
-              onPress={() => onOpenMarket(featuredLead)}
-            />
+            <Spotlight market={featuredLead} onPress={() => onOpenMarket(featuredLead)} />
             {featuredRail.length ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
-                  gap: theme.spacing.sm,
-                  paddingRight: theme.spacing.md,
-                }}
+                contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
               >
                 {featuredRail.map((market) => (
                   <View
                     key={market.instrument_public_id}
-                    style={{
-                      width: Math.min(
-                        density.width - (density.narrow ? 36 : 44),
-                        316,
-                      ),
-                    }}
+                    style={{ width: Math.min(density.width - (density.narrow ? 36 : 44), 316) }}
                   >
-                    <MarketCard
-                      market={market}
-                      onPress={() => onOpenMarket(market)}
-                    />
+                    <MarketCard market={market} onPress={() => onOpenMarket(market)} />
                   </View>
                 ))}
               </ScrollView>
@@ -145,11 +146,7 @@ export function HomeScreen({
         ) : (
           <VadCard
             variant="raised"
-            style={{
-              minHeight: density.compact ? 86 : 98,
-              justifyContent: 'center',
-              gap: 3,
-            }}
+            style={{ minHeight: density.compact ? 98 : 112, justifyContent: 'center', gap: 5 }}
           >
             <VadText variant="bodyStrong">Markets are forming.</VadText>
             <VadText variant="caption" tone="secondary">
@@ -169,30 +166,16 @@ export function HomeScreen({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            gap: density.compact ? 6 : theme.spacing.xs,
-            paddingRight: theme.spacing.md,
-          }}
+          contentContainerStyle={{ gap: density.compact ? 6 : theme.spacing.xs, paddingRight: theme.spacing.md }}
         >
-          <VadChip
-            label="All markets"
-            selected
-            tone="brand"
-            onPress={() => onExploreMarkets()}
-          />
+          <VadChip label="All markets" selected tone="brand" onPress={() => onExploreMarkets()} />
           {categories.map((category) => (
-            <VadChip
-              key={category}
-              label={category}
-              onPress={() => onExploreMarkets(category)}
-            />
+            <VadChip key={category} label={category} onPress={() => onExploreMarkets(category)} />
           ))}
         </ScrollView>
       </View>
 
-      <View
-        style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}
-      >
+      <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
         <VadSectionHeader
           title="Trending now"
           subtitle="Markets with the freshest activity."
@@ -201,23 +184,10 @@ export function HomeScreen({
         />
         {trending.length ? (
           desktopMarketGrid ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: theme.spacing.md,
-                alignItems: 'stretch',
-              }}
-            >
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md, alignItems: 'stretch' }}>
               {trending.map((market) => (
-                <View
-                  key={market.instrument_public_id}
-                  style={{ flexGrow: 1, flexBasis: 360, minWidth: 0 }}
-                >
-                  <MarketCard
-                    market={market}
-                    onPress={() => onOpenMarket(market)}
-                  />
+                <View key={market.instrument_public_id} style={{ flexGrow: 1, flexBasis: 320, minWidth: 0 }}>
+                  <MarketCard market={market} onPress={() => onOpenMarket(market)} />
                 </View>
               ))}
             </View>
@@ -225,39 +195,25 @@ export function HomeScreen({
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{
-                gap: theme.spacing.sm,
-                paddingRight: theme.spacing.md,
-              }}
+              contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
             >
               {trending.map((market) => (
-                <View
-                  key={market.instrument_public_id}
-                  style={{
-                    width: Math.min(
-                      density.width - (density.narrow ? 36 : 44),
-                      316,
-                    ),
-                  }}
-                >
-                  <MarketCard
-                    market={market}
-                    onPress={() => onOpenMarket(market)}
-                  />
+                <View key={market.instrument_public_id} style={{ width: Math.min(density.width - (density.narrow ? 36 : 44), 316) }}>
+                  <MarketCard market={market} onPress={() => onOpenMarket(market)} />
                 </View>
               ))}
             </ScrollView>
           )
         ) : (
-          <VadText variant="caption" tone="tertiary">
-            Trading activity will appear here once markets begin filling.
-          </VadText>
+          <VadCard variant="outlined" style={{ minHeight: 78, justifyContent: 'center' }}>
+            <VadText variant="caption" tone="tertiary">
+              Trading activity will appear here once markets begin filling.
+            </VadText>
+          </VadCard>
         )}
       </View>
 
-      <View
-        style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}
-      >
+      <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
         <VadSectionHeader
           title="Community"
           subtitle="Reasoning from people watching the same markets."
@@ -276,13 +232,7 @@ export function HomeScreen({
   );
 }
 
-function Spotlight({
-  market,
-  onPress,
-}: {
-  market: MarketCatalogItem;
-  onPress: () => void;
-}) {
+function Spotlight({ market, onPress }: { market: MarketCatalogItem; onPress: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   return (
@@ -290,39 +240,30 @@ function Spotlight({
       accessibilityRole="button"
       accessibilityLabel={`Open featured market: ${market.title}`}
       onPress={onPress}
-      style={({ pressed }) => ({
-        opacity: pressed ? 0.86 : 1,
-        transform: [{ scale: pressed ? 0.992 : 1 }],
-      })}
+      style={({ pressed }) => ({ opacity: pressed ? 0.86 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}
     >
       <View
-        style={{
-          minHeight: density.compact ? 112 : density.phone ? 124 : 154,
-          borderRadius: density.cardRadius,
-          backgroundColor: theme.colors.brandPrimary,
-          padding: density.cardPadding,
-          gap: density.compact ? 8 : theme.spacing.sm,
-          justifyContent: 'space-between',
-        }}
-      >
-        <View
-          style={{
-            flexDirection: 'row',
+        style={[
+          theme.shadows.card,
+          {
+            minHeight: density.compact ? 126 : density.phone ? 140 : 168,
+            borderRadius: density.cardRadius,
+            backgroundColor: theme.colors.brandPrimary,
+            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+            gap: density.compact ? 8 : theme.spacing.sm,
             justifyContent: 'space-between',
-            gap: theme.spacing.sm,
-            alignItems: 'center',
-          }}
-        >
+            overflow: 'hidden',
+          },
+        ]}
+      >
+        <View style={{ position: 'absolute', width: 180, height: 180, borderRadius: 90, right: -70, top: -90, backgroundColor: theme.colors.brandAccent, opacity: 0.45 }} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
           <VadText variant="caption" tone="inverse">FEATURED</VadText>
           <VadText variant="caption" tone="inverse" numberOfLines={1}>
             {market.category ?? 'General'} · {market.asset_code}
           </VadText>
         </View>
-        <VadText
-          variant="heading"
-          tone="inverse"
-          numberOfLines={density.compact ? 2 : 3}
-        >
+        <VadText variant="heading" tone="inverse" numberOfLines={density.compact ? 2 : 3}>
           {market.title}
         </VadText>
         <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
@@ -339,12 +280,7 @@ function Signal({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ flex: 1, gap: 0 }}>
       <VadText variant="caption" tone="inverse">{label}</VadText>
-      <VadText
-        variant={density.compact ? 'heading' : 'title'}
-        tone="inverse"
-      >
-        {value}
-      </VadText>
+      <VadText variant={density.compact ? 'heading' : 'title'} tone="inverse">{value}</VadText>
     </View>
   );
 }
