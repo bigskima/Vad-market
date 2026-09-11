@@ -47,7 +47,7 @@ export function PortfolioScreen({
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Portfolio"
-        subtitle="Filled positions and pending orders stay separated by settlement asset so NGN and USDC exposure never get added together."
+        subtitle="Track your positions and open orders by currency. NGN and USDC values are always kept separate."
       />
 
       <VadCard
@@ -59,11 +59,11 @@ export function PortfolioScreen({
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
           <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-            <VadText variant="caption" tone="brand">PORTFOLIO EXPOSURE</VadText>
+            <VadText variant="caption" tone="brand">YOUR PORTFOLIO</VadText>
             <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
               {positions.length} {positions.length === 1 ? 'position' : 'positions'}
             </VadText>
-            <VadText variant="caption" tone="secondary">Across {Math.max(exposure.length, 1)} settlement {exposure.length === 1 ? 'asset' : 'assets'}</VadText>
+            <VadText variant="caption" tone="secondary">Across {Math.max(exposure.length, 1)} {exposure.length === 1 ? 'currency' : 'currencies'}</VadText>
           </View>
           <View
             style={{
@@ -84,14 +84,14 @@ export function PortfolioScreen({
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
           <VadMetricTile label="Positions" value={String(positions.length)} detail="Filled holdings" tone="brand" />
           <VadMetricTile label="Shares held" value={Number(totalShares).toLocaleString()} detail="Across outcomes" />
-          <VadMetricTile label="Open orders" value={String(orders.length)} detail="Awaiting liquidity" />
-          <VadMetricTile label="Assets" value={String(exposure.length)} detail="Settlement ledgers" />
+          <VadMetricTile label="Open orders" value={String(orders.length)} detail="Waiting to fill" />
+          <VadMetricTile label="Currencies" value={String(exposure.length)} detail="Kept separate" />
         </View>
       </VadCard>
 
       {exposure.length ? (
         <View style={{ gap: theme.spacing.sm }}>
-          <VadSectionHeader title="Exposure by asset" subtitle="Values are never combined across currencies." />
+          <VadSectionHeader title="Portfolio by currency" subtitle="Values are shown separately for each currency." />
           <View style={{ flexDirection: density.width >= 720 ? 'row' : 'column', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             {exposure.map((item) => (
               <AssetExposureCard key={item.assetCode} exposure={item} />
@@ -128,7 +128,7 @@ export function PortfolioScreen({
         ) : (
           <VadEmptyState
             title="No positions yet"
-            body="When an order fills, your YES or NO holdings will appear here with cost basis and average entry price."
+            body="When an order fills, your YES or NO holdings will appear here with your cost and average entry price."
           />
         )
       ) : orders.length ? (
@@ -149,7 +149,7 @@ export function PortfolioScreen({
       ) : (
         <VadEmptyState
           title="No open orders"
-          body="Orders waiting for compatible liquidity will appear here with their live fill progress."
+          body="Orders that are still waiting to fill will appear here with their progress."
         />
       )}
     </View>
@@ -172,11 +172,11 @@ function AssetExposureCard({ exposure }: { exposure: AssetExposure }) {
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <VadText variant="heading">{exposure.assetCode}</VadText>
-        <VadChip label={`${exposure.positions} pos · ${exposure.orders} open`} tone="brand" />
+        <VadChip label={`${exposure.positions} positions · ${exposure.orders} open`} tone="brand" />
       </View>
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-        <ExposureFact label="Cost basis" value={assetMoney(exposure.deployed, exposure.assetCode)} />
-        <ExposureFact label="Open notional" value={assetMoney(exposure.openNotional, exposure.assetCode)} />
+        <ExposureFact label="Position cost" value={assetMoney(exposure.deployed, exposure.assetCode)} />
+        <ExposureFact label="Open order value" value={assetMoney(exposure.openNotional, exposure.assetCode)} />
       </View>
     </VadCard>
   );
@@ -210,7 +210,7 @@ function PositionCard({ position, onPress }: { position: PositionRow; onPress: (
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
             <VadText variant="bodyStrong" numberOfLines={3}>{position.market_title}</VadText>
-            <VadText variant="caption" tone="tertiary">{position.asset_code} · {position.status.replaceAll('_', ' ')}</VadText>
+            <VadText variant="caption" tone="tertiary">{position.asset_code} · {positionStatusLabel(position.status)}</VadText>
           </View>
           <VadChip label={position.outcome_code} tone={yes ? 'yes' : 'no'} />
         </View>
@@ -218,7 +218,7 @@ function PositionCard({ position, onPress }: { position: PositionRow; onPress: (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
           <MiniMetric label="Shares" value={Number(position.quantity).toLocaleString()} />
           <MiniMetric label="Average" value={pct(position.average_price)} />
-          <MiniMetric label="Cost basis" value={assetMoney(position.total_cost_basis, position.asset_code)} />
+          <MiniMetric label="Cost" value={assetMoney(position.total_cost_basis, position.asset_code)} />
         </View>
 
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
@@ -255,7 +255,7 @@ function OrderCard({ order, onPress }: { order: OrderRow; onPress: () => void })
           </View>
           <View style={{ alignItems: 'flex-end', gap: 4 }}>
             <VadChip label={order.outcome_code} tone={outcomeYes ? 'yes' : 'no'} />
-            <VadChip label={order.status.replaceAll('_', ' ')} tone="brand" />
+            <VadChip label={orderStatusLabel(order.status)} tone="brand" />
           </View>
         </View>
 
@@ -288,6 +288,23 @@ function OrderCard({ order, onPress }: { order: OrderRow; onPress: () => void })
       </VadCard>
     </Pressable>
   );
+}
+
+function orderStatusLabel(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized.includes('OPEN') || normalized.includes('PARTIAL')) return normalized.includes('PARTIAL') ? 'PARTIALLY FILLED' : 'OPEN';
+  if (normalized.includes('FILLED') || normalized.includes('COMPLETE')) return 'FILLED';
+  if (normalized.includes('CANCEL')) return 'CANCELLED';
+  if (normalized.includes('REJECT') || normalized.includes('FAIL')) return 'NEEDS ATTENTION';
+  return 'IN PROGRESS';
+}
+
+function positionStatusLabel(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized.includes('OPEN') || normalized.includes('ACTIVE')) return 'ACTIVE';
+  if (normalized.includes('SETTLE') || normalized.includes('CLOSE') || normalized.includes('RESOLVE')) return 'COMPLETED';
+  if (normalized.includes('VOID') || normalized.includes('CANCEL')) return 'CLOSED';
+  return 'ACTIVE';
 }
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
