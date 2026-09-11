@@ -5,9 +5,8 @@
 -- Super Admin authority, and makes missing human redundancy visible in launch
 -- readiness instead of discovering it during an incident.
 
-insert into admin.roles(id,code,name,description,is_system)
+insert into admin.roles(code,name,description,is_system)
 select
-  coalesce((select max(r.id) from admin.roles r),0)+1,
   'PROVIDER_ADMIN',
   'Provider Admin',
   'Manage external provider routing and status changes under independent maker/checker approval.',
