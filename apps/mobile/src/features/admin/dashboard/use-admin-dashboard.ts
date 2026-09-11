@@ -31,7 +31,9 @@ import {
   type ProviderReadinessRow,
 } from '@/services/provider-admin-api';
 import {
+  getAdminLaunchReadiness,
   getAdminServicePosture,
+  type AdminLaunchReadiness,
   type AdminServicePostureRow,
 } from '@/services/service-control-admin-api';
 
@@ -51,6 +53,7 @@ export function useAdminDashboard(access: AdminAccess) {
   const [providers, setProviders] = useState<ProviderReadinessRow[]>([]);
   const [providerChanges, setProviderChanges] = useState<ProviderChangeRequest[]>([]);
   const [services, setServices] = useState<AdminServicePostureRow[]>([]);
+  const [launchReadiness, setLaunchReadiness] = useState<AdminLaunchReadiness | null>(null);
 
   const load = useCallback(async () => {
     const tasks: Promise<void>[] = [];
@@ -73,9 +76,10 @@ export function useAdminDashboard(access: AdminAccess) {
       );
     }
 
-    // Every active admin can read platform availability. Mutation remains
-    // Super-Admin-only through admin_set_service_control on the backend.
+    // Every active admin can read platform availability and release gates.
+    // Mutation remains permission-bound in the backend.
     queue(true, getAdminServicePosture, setServices);
+    queue(true, getAdminLaunchReadiness, setLaunchReadiness);
 
     queue(
       hasAnyAdminPermission(access, [
@@ -211,6 +215,7 @@ export function useAdminDashboard(access: AdminAccess) {
     providers,
     providerChanges,
     services,
+    launchReadiness,
     load,
     refresh,
   };
