@@ -32,6 +32,11 @@ export function ProductSubpage({
   const headerHeight = density.phone ? 52 : 60;
   const backSize = 44;
 
+  function goBack() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/home');
+  }
+
   if (isLoading || data.loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -68,7 +73,7 @@ export function ProductSubpage({
         ]}
       >
         <View style={{ width: '100%', maxWidth: headerWidth, alignSelf: 'center', paddingHorizontal: horizontalPadding, paddingBottom: density.phone ? 4 : theme.spacing.sm, minHeight: headerHeight, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <VadIconButton icon="back" label="Go back" variant="plain" size={backSize} onPress={() => router.back()} />
+          <VadIconButton icon="back" label="Go back" variant="plain" size={backSize} onPress={goBack} />
           <View style={{ flex: 1, alignItems: desktop ? 'flex-start' : 'center', minWidth: 0 }}>
             {desktop ? <VadText variant="caption" tone="tertiary">VAD</VadText> : null}
             <VadText variant={desktop ? 'heading' : 'bodyStrong'} numberOfLines={1}>{title}</VadText>
