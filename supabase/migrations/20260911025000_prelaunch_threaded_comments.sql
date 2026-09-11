@@ -12,9 +12,9 @@ security definer
 set search_path=''
 as $$
 declare
-  post_id bigint;
-  parent_id bigint;
-  comment_id uuid;
+  v_post_id bigint;
+  v_parent_id bigint;
+  v_comment_id uuid;
 begin
   perform private.require_active_account();
 
@@ -22,30 +22,30 @@ begin
     raise exception 'Comment must be 1-2000 characters' using errcode='22023';
   end if;
 
-  select id into post_id
-  from social.posts
-  where public_id = p_post_public_id
-    and status = 'PUBLISHED';
+  select sp.id into v_post_id
+  from social.posts sp
+  where sp.public_id = p_post_public_id
+    and sp.status = 'PUBLISHED';
 
-  if post_id is null then
+  if v_post_id is null then
     raise exception 'Post not found' using errcode='P0002';
   end if;
 
-  select id into parent_id
-  from social.comments
-  where public_id = p_parent_comment_public_id
-    and post_id = post_id
-    and status = 'PUBLISHED';
+  select c.id into v_parent_id
+  from social.comments c
+  where c.public_id = p_parent_comment_public_id
+    and c.post_id = v_post_id
+    and c.status = 'PUBLISHED';
 
-  if parent_id is null then
+  if v_parent_id is null then
     raise exception 'Parent comment not found' using errcode='P0002';
   end if;
 
   insert into social.comments(post_id, author_user_id, parent_comment_id, body)
-  values(post_id, auth.uid(), parent_id, trim(p_body))
-  returning public_id into comment_id;
+  values(v_post_id, auth.uid(), v_parent_id, trim(p_body))
+  returning public_id into v_comment_id;
 
-  return comment_id;
+  return v_comment_id;
 end;
 $$;
 
