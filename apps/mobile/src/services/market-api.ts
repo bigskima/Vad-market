@@ -46,6 +46,7 @@ export type PositionRow = {
   event_id: string;
   market_title: string;
   outcome_code: string;
+  asset_code: string;
   quantity: number | string;
   total_cost_basis: number | string;
   average_price: number | string;
@@ -55,12 +56,16 @@ export type PositionRow = {
 export type OrderRow = {
   order_id: string;
   market_id: number;
+  instrument_public_id: string;
+  market_title: string;
   outcome_id: number;
+  outcome_code: string;
   side: string;
   limit_price: number | string;
   quantity: number | string;
   filled_quantity: number | string;
   remaining_quantity: number | string;
+  asset_code: string;
   status: string;
   created_at: string;
 };
