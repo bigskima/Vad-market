@@ -12,6 +12,9 @@ import { AdminMetricCard } from '@/features/admin/dashboard/admin-metric-card';
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAnyAdminPermission } from '@/services/admin-control-api';
+import type {
+  AdminLaunchReadinessGateStatus,
+} from '@/services/service-control-admin-api';
 
 function runtimeNumber(
   runtime: Record<string, number | string> | null,
@@ -20,6 +23,26 @@ function runtimeNumber(
   const value = runtime?.[key];
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function releaseStateLabel(value: string) {
+  if (value === 'LIVE_READY') return 'LIVE READY';
+  if (value === 'MARKET_LIFECYCLE_READY') return 'MARKETS READY';
+  if (value === 'PLATFORM_READY_MARKET_BLOCKED') return 'PLATFORM READY';
+  return 'HARDENING';
+}
+
+function releaseStateTone(value: string): 'yes' | 'warning' | 'danger' | 'brand' {
+  if (value === 'LIVE_READY' || value === 'MARKET_LIFECYCLE_READY') return 'yes';
+  if (value === 'PLATFORM_READY_MARKET_BLOCKED') return 'warning';
+  return 'danger';
+}
+
+function gateTone(status: AdminLaunchReadinessGateStatus): 'yes' | 'warning' | 'danger' | 'neutral' {
+  if (status === 'READY') return 'yes';
+  if (status === 'BLOCKED') return 'danger';
+  if (status === 'PAUSED') return 'neutral';
+  return 'warning';
 }
 
 export function AdminDashboardScreen() {
@@ -61,7 +84,8 @@ export function AdminDashboardScreen() {
     !data.operations &&
     !data.marketQueue.length &&
     !data.oracleQueue.length &&
-    !data.services.length
+    !data.services.length &&
+    !data.launchReadiness
   ) {
     return (
       <VadErrorState
@@ -115,6 +139,8 @@ export function AdminDashboardScreen() {
   const roleLabel = data.access.isSuperAdmin
     ? 'Super Admin'
     : data.access.roles.map((role) => role.name).join(' · ') || 'Scoped admin';
+  const releaseGates = data.launchReadiness?.gates ?? [];
+  const releaseExceptions = releaseGates.filter((gate) => gate.status !== 'READY');
 
   return (
     <View style={{ gap: theme.spacing.xxxl }}>
@@ -168,6 +194,87 @@ export function AdminDashboardScreen() {
 
       {data.warning ? (
         <VadErrorState title="Some operations data is stale" message={data.warning} onRetry={() => void data.refresh()} />
+      ) : null}
+
+      {data.launchReadiness ? (
+        <VadCard
+          variant="raised"
+          style={{
+            gap: theme.spacing.lg,
+            borderColor:
+              data.launchReadiness.blockerCount > 0
+                ? theme.colors.danger
+                : data.launchReadiness.warningCount > 0
+                  ? theme.colors.warning
+                  : theme.colors.yes,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: responsive.tablet ? 'row' : 'column',
+              justifyContent: 'space-between',
+              alignItems: responsive.tablet ? 'center' : 'flex-start',
+              gap: theme.spacing.md,
+            }}
+          >
+            <View style={{ flex: 1, gap: 3 }}>
+              <VadText variant="caption" tone="brand">PRODUCTION READINESS</VadText>
+              <VadText variant="heading">Release gates are measured from live platform state.</VadText>
+              <VadText variant="caption" tone="secondary">
+                This does not activate providers or money movement. It shows what is ready, paused or still blocking a production market lifecycle.
+              </VadText>
+            </View>
+            <VadChip
+              label={releaseStateLabel(data.launchReadiness.releaseState)}
+              tone={releaseStateTone(data.launchReadiness.releaseState)}
+            />
+          </View>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            <AdminMetricCard
+              label="Blockers"
+              value={data.launchReadiness.blockerCount}
+              tone={data.launchReadiness.blockerCount ? 'no' : 'yes'}
+            />
+            <AdminMetricCard
+              label="Warnings"
+              value={data.launchReadiness.warningCount}
+              tone={data.launchReadiness.warningCount ? 'warning' : 'yes'}
+            />
+            <AdminMetricCard
+              label="Real-money launch"
+              value={data.launchReadiness.realMoneyReady ? 'Ready' : 'Not ready'}
+              tone={data.launchReadiness.realMoneyReady ? 'yes' : 'warning'}
+            />
+          </View>
+
+          {releaseExceptions.length ? (
+            <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+              {releaseExceptions.slice(0, 6).map((gate) => (
+                <View
+                  key={gate.key}
+                  style={{
+                    minHeight: 64,
+                    paddingVertical: theme.spacing.sm,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: theme.spacing.md,
+                    borderBottomWidth: 1,
+                    borderBottomColor: theme.colors.border,
+                  }}
+                >
+                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                    <VadText variant="bodyStrong">{gate.title}</VadText>
+                    <VadText variant="caption" tone="secondary">{gate.detail}</VadText>
+                  </View>
+                  <VadChip label={gate.status} tone={gateTone(gate.status)} />
+                </View>
+              ))}
+            </View>
+          ) : (
+            <VadText variant="bodyStrong" tone="yes">All measured release gates are ready.</VadText>
+          )}
+        </VadCard>
       ) : null}
 
       <View
