@@ -7,6 +7,7 @@ export const spacing = {
   xl: 24,
   xxl: 32,
   xxxl: 40,
+  huge: 56,
 } as const;
 
 export const radius = {
@@ -14,21 +15,36 @@ export const radius = {
   md: 12,
   lg: 16,
   xl: 20,
+  xxl: 28,
   pill: 999,
+} as const;
+
+export const breakpoints = {
+  sm: 480,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+  xxl: 1536,
+} as const;
+
+export const motion = {
+  fast: 140,
+  standard: 220,
+  slow: 360,
 } as const;
 
 export const typography = {
   display: {
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 36,
+    lineHeight: 42,
     fontWeight: '800' as const,
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
   },
   title: {
-    fontSize: 25,
-    lineHeight: 31,
+    fontSize: 26,
+    lineHeight: 32,
     fontWeight: '800' as const,
-    letterSpacing: -0.25,
+    letterSpacing: -0.35,
   },
   heading: {
     fontSize: 19,
