@@ -138,7 +138,7 @@ export function ProposalScreen({
           <VadText variant="caption" tone="brand">CREATE MARKET</VadText>
           <VadText variant={density.compact ? 'heading' : 'title'}>Propose one clear outcome.</VadText>
           <VadText variant="caption" tone="secondary">
-            VAD checks clarity, duplicates, resolution criteria and eligibility before a market can be published. Some proposals may need additional review.
+            VAD checks that your question is clear, is not already available, and can be decided fairly before it goes live. Some proposals may need an extra review.
           </VadText>
         </View>
 
@@ -172,7 +172,7 @@ export function ProposalScreen({
                 <View style={{ gap: 2 }}>
                   <VadText variant="heading">What should the market ask?</VadText>
                   <VadText variant="caption" tone="secondary">
-                    State one objective YES/NO outcome with enough timing and criteria for the result to be checked independently.
+                    Write one clear YES/NO question. Include a deadline or condition that makes the final result easy to check.
                   </VadText>
                 </View>
 
@@ -185,7 +185,7 @@ export function ProposalScreen({
                   }}
                   multiline
                   placeholder="Will … happen before …?"
-                  hint={`${question.trim().length} characters · VAD will check clarity and eligibility before submission`}
+                  hint={`${question.trim().length} characters · VAD will check your question before submission`}
                 />
 
                 <View style={{ gap: 6 }}>
@@ -198,15 +198,15 @@ export function ProposalScreen({
             {step === 1 ? (
               <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
                 <View style={{ gap: 2 }}>
-                  <VadText variant="heading">Add the resolution details.</VadText>
+                  <VadText variant="heading">Explain how the result should be decided.</VadText>
                   <VadText variant="caption" tone="secondary">
-                    Include the facts needed to decide the outcome clearly, such as the deadline, measurable criteria and credible evidence source.
+                    Add the deadline, the exact YES condition and the source that can confirm what happened.
                   </VadText>
                 </View>
 
                 {activeAssetCodes.length > 0 ? (
                   <View style={{ gap: 6 }}>
-                    <VadText variant="caption" tone="tertiary">SETTLEMENT CURRENCY</VadText>
+                    <VadText variant="caption" tone="tertiary">MARKET CURRENCY</VadText>
                     <VadSegmentedControl
                       value={assetCode}
                       options={activeAssetCodes.map((code) => ({ value: code, label: code }))}
@@ -216,11 +216,11 @@ export function ProposalScreen({
                       }}
                     />
                     <VadText variant="caption" tone="secondary">
-                      Each market settles in one currency. NGN and USDC balances are always kept separate.
+                      This is the currency used for trading and payouts. NGN and USDC balances stay separate.
                     </VadText>
                   </View>
                 ) : (
-                  <InlineStatus tone="warning" title="Settlement unavailable" message="No supported settlement currency is available for your account location right now. Please try again later." />
+                  <InlineStatus tone="warning" title="Currency unavailable" message="No supported currency is available in your location right now. Please try again later." />
                 )}
 
                 <VadInput
@@ -234,15 +234,15 @@ export function ProposalScreen({
                 />
 
                 <VadInput
-                  label="Resolution details"
+                  label="How will the result be decided?"
                   value={context}
                   onChangeText={(value) => {
                     setContext(value);
                     setSubmitError(null);
                   }}
                   multiline
-                  placeholder="Include the event, deadline, measurable YES condition and credible evidence source where known."
-                  hint={context.trim() ? `${context.trim().length} characters` : 'Recommended for a faster and clearer review'}
+                  placeholder="Add the deadline, exact YES condition and a trusted source that can confirm the result."
+                  hint={context.trim() ? `${context.trim().length} characters` : 'Adding these details can make the review faster and clearer'}
                 />
               </View>
             ) : null}
@@ -252,15 +252,15 @@ export function ProposalScreen({
                 <View style={{ gap: 2 }}>
                   <VadText variant="heading">Ready to submit.</VadText>
                   <VadText variant="caption" tone="secondary">
-                    VAD will check this proposal for clarity, duplicates, resolvability and eligibility before deciding the next step.
+                    VAD will check whether the question is clear, already exists, and has enough information to decide the result fairly.
                   </VadText>
                 </View>
 
                 <View>
                   <ReviewRow label="Question" value={question.trim()} />
-                  <ReviewRow label="Settlement" value={assetCode || 'Unavailable'} />
+                  <ReviewRow label="Currency" value={assetCode || 'Unavailable'} />
                   <ReviewRow label="Category" value={category.trim() || 'Not specified'} />
-                  <ReviewRow label="Resolution details" value={context.trim() || 'Not specified'} />
+                  <ReviewRow label="How the result will be decided" value={context.trim() || 'Not specified'} />
                 </View>
 
                 {capabilityLoading ? (
@@ -272,7 +272,7 @@ export function ProposalScreen({
                     message={runtimeCapabilityReason(capabilityReason, 'Market proposals are not available for your account right now.')}
                   />
                 ) : !hasAsset ? (
-                  <InlineStatus tone="warning" title="Settlement unavailable" message="Select an available settlement currency before submitting." />
+                  <InlineStatus tone="warning" title="Currency unavailable" message="Select an available currency before submitting." />
                 ) : null}
 
                 {submitError ? (
@@ -305,12 +305,12 @@ export function ProposalScreen({
           <VadCard variant="muted" style={{ width: wide ? 310 : '100%', gap: theme.spacing.sm }}>
             <View style={{ gap: 1 }}>
               <VadText variant="caption" tone="brand">BEFORE A MARKET GOES LIVE</VadText>
-              <VadText variant="bodyStrong">How proposals are reviewed</VadText>
+              <VadText variant="bodyStrong">What VAD checks</VadText>
             </View>
-            <Guide number="1" title="Clear question" body="The market needs one objective outcome with a clear time frame." />
-            <Guide number="2" title="Resolution details" body="There must be enough information and evidence to decide YES or NO fairly." />
-            <Guide number="3" title="Duplicate check" body="If the same market already exists, VAD links the proposal to the existing market instead of creating another one." />
-            <Guide number="4" title="Review outcome" body="Clear proposals may publish quickly. Others may need more details or an additional review first." />
+            <Guide number="1" title="Clear question" body="The market needs one clear outcome and a clear time frame." />
+            <Guide number="2" title="Clear result" body="There must be enough information and evidence to decide YES or NO fairly." />
+            <Guide number="3" title="Existing market" body="If the same market already exists, VAD links you to it instead of creating a duplicate." />
+            <Guide number="4" title="Final review" body="Clear proposals may publish quickly. Others may need more details or an extra review first." />
           </VadCard>
         </View>
       )}
@@ -344,12 +344,12 @@ function AdmissionOutcome({
         ? 'A few details are needed.'
         : 'Submitted for review.';
   const body = live
-    ? 'Your proposal met VAD’s market requirements and is now available for trading.'
+    ? 'Your proposal passed the checks and is now available for trading.'
     : merged
       ? 'VAD found an existing market for the same outcome, so a duplicate was not created.'
       : clarification
-        ? 'Add the requested details to make the outcome easier to resolve. Your current draft has been preserved.'
-        : 'This proposal needs an additional review before it can be published.';
+        ? 'Add the requested details to make the final result clear. Your current draft has been preserved.'
+        : 'This proposal needs an extra review before it can be published.';
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
@@ -541,7 +541,7 @@ function proposalStatusLabel(status: string) {
 function proposalDecisionCopy(status: string) {
   const normalized = status.toUpperCase();
   if (normalized.includes('AUTO_PUBLISHED') || normalized.includes('PUBLISHED') || normalized.includes('ACTIVE') || normalized.includes('LIVE')) {
-    return 'This proposal met the requirements to become a live market.';
+    return 'This proposal passed the checks and became a live market.';
   }
   if (normalized.includes('MERGED')) {
     return 'A matching market already exists, so a duplicate was not created.';
@@ -550,10 +550,10 @@ function proposalDecisionCopy(status: string) {
     return 'More detail is needed before this proposal can move forward.';
   }
   if (normalized.includes('REVIEW') || normalized.includes('PENDING')) {
-    return 'This proposal is waiting for an additional review.';
+    return 'This proposal is waiting for an extra review.';
   }
   if (normalized.includes('REJECT') || normalized.includes('FAIL')) {
-    return 'This proposal did not meet the requirements to be published.';
+    return 'This proposal was not approved for publishing.';
   }
   if (normalized.includes('CANCEL')) {
     return 'This proposal was cancelled.';
