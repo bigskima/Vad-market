@@ -72,6 +72,26 @@ export function AdminRolesScreen() {
     [roles],
   );
 
+  const dualControl = useMemo(() => {
+    const providerOperators = new Set<string>();
+    const oracleReviewers = new Set<string>();
+
+    assignments.forEach((row) => {
+      if (row.role_code === 'SUPER_ADMIN' || row.role_code === 'PROVIDER_ADMIN') {
+        providerOperators.add(row.user_id);
+      }
+      if (row.role_code === 'SUPER_ADMIN' || row.role_code === 'ORACLE_REVIEWER') {
+        oracleReviewers.add(row.user_id);
+      }
+    });
+
+    return {
+      providerOperators: providerOperators.size,
+      oracleReviewers: oracleReviewers.size,
+      ready: providerOperators.size >= 2 && oracleReviewers.size >= 2,
+    };
+  }, [assignments]);
+
   const filteredAssignments = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return assignments;
@@ -162,6 +182,56 @@ export function AdminRolesScreen() {
       ) : null}
       {error ? <VadErrorState title="Some role data is stale" message={error} onRetry={() => void load(true)} /> : null}
 
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: dualControl.ready ? theme.colors.yes : theme.colors.warning,
+          backgroundColor: dualControl.ready ? theme.colors.yesSoft : theme.colors.warningSoft,
+          padding: theme.spacing.lg,
+          gap: theme.spacing.md,
+        }}
+      >
+        <View style={{ gap: 3 }}>
+          <VadText variant="caption" tone={dualControl.ready ? 'yes' : 'warning'}>PRODUCTION DUAL CONTROL</VadText>
+          <VadText variant="heading">Independent approval coverage</VadText>
+          <VadText variant="caption" tone="secondary">
+            Production provider activation and Oracle fallback must not depend on one administrator. Use a second trusted VAD account instead of sharing Super Admin access.
+          </VadText>
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
+          <View style={{ minWidth: 150, flexGrow: 1, gap: 2 }}>
+            <VadText variant="heading" tone={dualControl.providerOperators >= 2 ? 'yes' : 'warning'}>{dualControl.providerOperators}/2</VadText>
+            <VadText variant="caption" tone="secondary">Provider approvers</VadText>
+          </View>
+          <View style={{ minWidth: 150, flexGrow: 1, gap: 2 }}>
+            <VadText variant="heading" tone={dualControl.oracleReviewers >= 2 ? 'yes' : 'warning'}>{dualControl.oracleReviewers}/2</VadText>
+            <VadText variant="caption" tone="secondary">Oracle reviewers</VadText>
+          </View>
+        </View>
+        {!dualControl.ready ? (
+          <>
+            <VadText variant="caption" tone="secondary">
+              Assign both Provider Admin and Oracle Reviewer to the same second trusted operator, or distribute those roles across separate trusted operators.
+            </VadText>
+            <VadButton
+              label="Assign launch reviewer"
+              size="small"
+              fullWidth={false}
+              onPress={() => {
+                setSelectedUser(null);
+                setSelectedRole(null);
+                setReason('Production dual-control coverage');
+                setActionError(null);
+                setAssignOpen(true);
+              }}
+              style={{ alignSelf: 'flex-start' }}
+            />
+          </>
+        ) : (
+          <VadText variant="bodyStrong" tone="yes">Independent provider and Oracle review coverage is ready.</VadText>
+        )}
+      </View>
+
       <OperationsSection title="Role catalogue" description="Super Admin is intentionally excluded from ordinary assignment." count={roles.length}>
         {roles.map((role) => (
           <OperationsRow
@@ -195,7 +265,9 @@ export function AdminRolesScreen() {
 
       <VadBottomSheet visible={assignOpen} title="Assign operational role" onClose={() => { if (!working) setAssignOpen(false); }}>
         <View style={{ gap: theme.spacing.lg }}>
-          <VadText variant="caption" tone="secondary">Choose a user and a scoped role. Super Admin elevation remains outside this ordinary workflow.</VadText>
+          <VadText variant="caption" tone="secondary">
+            Choose a user and a scoped role. For launch dual control, give a second trusted operator Provider Admin and Oracle Reviewer access. Super Admin elevation remains outside this ordinary workflow.
+          </VadText>
           <View style={{ gap: theme.spacing.sm }}>
             <VadText variant="bodyStrong">User</VadText>
             {users.slice(0, 30).map((user) => (
