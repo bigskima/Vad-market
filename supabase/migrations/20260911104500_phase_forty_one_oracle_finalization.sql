@@ -5,10 +5,9 @@
 -- function does not execute settlement; it only advances a closed instrument to
 -- SETTLEMENT_PENDING. Settlement stays behind its independent service/finance gate.
 
--- A system-authored DRAFT is a valid maker/checker workflow: the system is the
--- maker and an authorized human reviewer is the checker. Active system-authored
--- policy versions therefore require a human approver rather than remaining
--- permanently unapprovable.
+-- System-authored policy drafts use the system as maker and an authorized human as
+-- checker. Drafts may also be retired without approval when a newer immutable
+-- version supersedes them.
 alter table oracle.policies
   drop constraint if exists oracle_policy_dual_control;
 
@@ -17,14 +16,14 @@ alter table oracle.policies
     (
       created_by is null
       and (
-        (status='DRAFT' and approved_by is null)
+        (status in ('DRAFT','RETIRED') and approved_by is null)
         or (status in ('ACTIVE','RETIRED') and approved_by is not null)
       )
     )
     or (
       created_by is not null
       and approved_by is null
-      and status='DRAFT'
+      and status in ('DRAFT','RETIRED')
     )
     or (
       created_by is not null
@@ -33,15 +32,90 @@ alter table oracle.policies
     )
   );
 
--- Configure the launch policy draft to use automated finalization only after its
--- dispute window. Existing ACTIVE policy versions are never mutated in place.
-update oracle.policies
-set consensus_rule = consensus_rule || jsonb_build_object(
-  'finalization_mode','AUTO_AFTER_DISPUTE_WINDOW'
+-- Oracle policy facts are immutable. Approval is DRAFT -> ACTIVE; supersession is
+-- DRAFT -> RETIRED. Neither transition may change the policy facts themselves.
+create or replace function oracle.guard_policy_mutation()
+returns trigger
+language plpgsql
+set search_path=''
+as $$
+begin
+  if tg_op='DELETE' then
+    raise exception 'Oracle policies cannot be deleted' using errcode='55000';
+  end if;
+
+  if old.status<>'DRAFT' then
+    raise exception 'Activated or retired oracle policies are immutable' using errcode='55000';
+  end if;
+
+  if row(
+    new.id,new.public_id,new.name,new.capability_id,new.version,
+    new.source_hierarchy,new.consensus_rule,new.close_rule,
+    new.postponement_rule,new.cancellation_rule,new.void_rule,
+    new.dispute_window_seconds,new.effective_at,new.created_by,new.created_at
+  ) is distinct from row(
+    old.id,old.public_id,old.name,old.capability_id,old.version,
+    old.source_hierarchy,old.consensus_rule,old.close_rule,
+    old.postponement_rule,old.cancellation_rule,old.void_rule,
+    old.dispute_window_seconds,old.effective_at,old.created_by,old.created_at
+  ) then
+    raise exception 'Oracle policy facts cannot change after draft creation' using errcode='55000';
+  end if;
+
+  if new.status='ACTIVE' then
+    if new.approved_by is null
+       or (old.created_by is not null and new.approved_by=old.created_by) then
+      raise exception 'A different authorized reviewer must approve the oracle policy' using errcode='23514';
+    end if;
+    return new;
+  end if;
+
+  if new.status='RETIRED' then
+    if new.approved_by is distinct from old.approved_by then
+      raise exception 'Retiring a draft cannot add or replace an approver' using errcode='23514';
+    end if;
+    return new;
+  end if;
+
+  raise exception 'The permitted oracle policy transitions are DRAFT to ACTIVE or DRAFT to RETIRED' using errcode='23514';
+end;
+$$;
+
+-- The original launch draft is immutable, so introduce the automatic-finalization
+-- rule as a new policy version instead of mutating version 1.
+insert into oracle.policies(
+  name,capability_id,version,source_hierarchy,consensus_rule,close_rule,
+  postponement_rule,cancellation_rule,void_rule,dispute_window_seconds,
+  status,effective_at,created_by,approved_by
 )
+select
+  p.name,
+  p.capability_id,
+  2,
+  p.source_hierarchy,
+  p.consensus_rule||jsonb_build_object('finalization_mode','AUTO_AFTER_DISPUTE_WINDOW'),
+  p.close_rule,
+  p.postponement_rule,
+  p.cancellation_rule,
+  p.void_rule,
+  p.dispute_window_seconds,
+  'DRAFT',
+  statement_timestamp(),
+  null,
+  null
+from oracle.policies p
+where p.name='VAD Crypto Threshold Launch Policy'
+  and p.version=1
+  and not exists(
+    select 1 from oracle.policies existing
+    where existing.name=p.name and existing.version=2
+  );
+
+update oracle.policies
+set status='RETIRED'
 where name='VAD Crypto Threshold Launch Policy'
-  and status='DRAFT'
-  and approved_by is null;
+  and version=1
+  and status='DRAFT';
 
 create or replace function oracle.finalize_due_automatic_resolutions(p_limit integer default 100)
 returns integer
@@ -100,8 +174,6 @@ begin
     for update of r skip locked
     limit p_limit
   loop
-    -- Automatic finalization is restricted to the deterministic provider-quorum
-    -- evidence created by oracle.evaluate_event_consensus().
     if coalesce(v_row.consensus_evidence->>'algorithm','')<>'PROVIDER_QUORUM_V2' then
       continue;
     end if;
@@ -187,10 +259,7 @@ begin
       'ORACLE_RESOLUTION',
       v_row.resolution_id::text,
       'Verified provider quorum remained undisputed through the policy dispute window',
-      jsonb_build_object(
-        'status','FINAL',
-        'outcome_code',v_row.outcome_code
-      ),
+      jsonb_build_object('status','FINAL','outcome_code',v_row.outcome_code),
       jsonb_build_object(
         'event_public_id',v_row.event_public_id,
         'policy_public_id',v_row.policy_public_id,
@@ -220,6 +289,33 @@ insert into audit.records(
 )
 select
   'SYSTEM',
+  'ORACLE_POLICY_SUPERSEDED',
+  'ORACLE_POLICY',
+  retired.public_id::text,
+  'Superseded immutable launch policy draft with automatic-finalization version',
+  jsonb_build_object(
+    'retired_version',retired.version,
+    'replacement_version',replacement.version,
+    'replacement_policy_id',replacement.public_id
+  )
+from oracle.policies retired
+join oracle.policies replacement
+  on replacement.name=retired.name and replacement.version=2
+where retired.name='VAD Crypto Threshold Launch Policy'
+  and retired.version=1
+  and retired.status='RETIRED'
+  and not exists(
+    select 1 from audit.records a
+    where a.action='ORACLE_POLICY_SUPERSEDED'
+      and a.resource_type='ORACLE_POLICY'
+      and a.resource_id=retired.public_id::text
+  );
+
+insert into audit.records(
+  actor_type,action,resource_type,resource_id,reason,metadata
+)
+select
+  'SYSTEM',
   'ORACLE_AUTO_FINALIZATION_CONFIGURED',
   'ORACLE_POLICY',
   p.public_id::text,
@@ -232,6 +328,7 @@ select
   )
 from oracle.policies p
 where p.name='VAD Crypto Threshold Launch Policy'
+  and p.version=2
   and p.status='DRAFT'
   and not exists(
     select 1 from audit.records a
