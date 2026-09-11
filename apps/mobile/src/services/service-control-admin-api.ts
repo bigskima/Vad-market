@@ -1,3 +1,4 @@
+import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type AdminServiceControlRow = {
@@ -34,19 +35,19 @@ export type AdminUserServiceControlRow = {
   resumes_at: string | null;
 };
 
-function fail(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback: string) {
+  if (error) throw userFacingError(error, 'admin', fallback);
 }
 
 export async function getAdminServiceControls() {
   const { data, error } = await supabase.rpc('admin_service_control_catalog');
-  fail(error);
+  fail(error, 'We could not load service controls right now. Refresh and try again.');
   return (data ?? []) as AdminServiceControlRow[];
 }
 
 export async function getAdminServicePosture() {
   const { data, error } = await supabase.rpc('admin_service_posture');
-  fail(error);
+  fail(error, 'We could not load service status right now. Refresh and try again.');
   return (data ?? []) as AdminServicePostureRow[];
 }
 
@@ -54,7 +55,7 @@ export async function getAdminUserServiceControls(userId: string) {
   const { data, error } = await supabase.rpc('admin_user_service_controls', {
     p_user_id: userId,
   });
-  fail(error);
+  fail(error, 'We could not load this user’s service access right now. Refresh and try again.');
   return (data ?? []) as AdminUserServiceControlRow[];
 }
 
@@ -72,6 +73,6 @@ export async function setAdminServiceControl(input: {
     p_resumes_at: input.paused ? input.resumesAt ?? null : null,
     p_user_id: input.userId ?? null,
   });
-  fail(error);
+  fail(error, 'We could not update this service setting right now. Please try again.');
   return (data ?? {}) as Record<string, unknown>;
 }
