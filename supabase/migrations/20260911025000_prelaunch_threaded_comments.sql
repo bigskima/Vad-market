@@ -53,8 +53,8 @@ revoke all on function public.add_post_reply(uuid,uuid,text) from public,anon;
 grant execute on function public.add_post_reply(uuid,uuid,text) to authenticated;
 
 -- PostgreSQL requires a drop/recreate when a TABLE-returning function gains a
--- column. The argument signature is unchanged and the new parent id is appended,
--- so existing clients consuming the original fields continue to work.
+-- column. Preserve every existing return field (including avatar_path) and append
+-- the parent public id so older clients keep the same field contract.
 drop function if exists public.post_comments(uuid,integer);
 
 create function public.post_comments(
@@ -66,6 +66,7 @@ returns table(
   author_user_id uuid,
   author_handle text,
   author_display_name text,
+  author_avatar_path text,
   body text,
   created_at timestamptz,
   parent_comment_public_id uuid
@@ -79,6 +80,7 @@ as $$
     c.author_user_id,
     p.handle,
     p.display_name,
+    p.avatar_path,
     c.body,
     c.created_at,
     parent.public_id
