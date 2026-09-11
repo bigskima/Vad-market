@@ -44,6 +44,17 @@ function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
 
+function isInsideLiveWindow(row: { starts_at: string | null; ends_at: string | null }) {
+  const now = Date.now();
+  const startsAt = row.starts_at ? Date.parse(row.starts_at) : null;
+  const endsAt = row.ends_at ? Date.parse(row.ends_at) : null;
+
+  return (
+    (startsAt == null || Number.isNaN(startsAt) || startsAt <= now) &&
+    (endsAt == null || Number.isNaN(endsAt) || endsAt > now)
+  );
+}
+
 export function isSafeInternalRoute(path: string) {
   const value = path.trim();
   return value === '/' || (value.startsWith('/') && !value.startsWith('//'));
@@ -54,14 +65,15 @@ export async function getHomeExperience(): Promise<HomeExperience> {
     supabase
       .from('home_promotions')
       .select('*')
+      .eq('status', 'PUBLISHED')
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false }),
     supabase
       .from('public_notices')
       .select('*')
+      .eq('status', 'PUBLISHED')
       .order('priority', { ascending: true })
-      .order('created_at', { ascending: false })
-      .limit(1),
+      .order('created_at', { ascending: false }),
     supabase
       .from('market_featured')
       .select('*')
@@ -72,11 +84,11 @@ export async function getHomeExperience(): Promise<HomeExperience> {
 
   const promotions =
     promotionsResult.status === 'fulfilled' && !promotionsResult.value.error
-      ? ((promotionsResult.value.data ?? []) as HomePromotion[])
+      ? ((promotionsResult.value.data ?? []) as HomePromotion[]).filter(isInsideLiveWindow)
       : [];
   const notices =
     noticesResult.status === 'fulfilled' && !noticesResult.value.error
-      ? ((noticesResult.value.data ?? []) as PublicNotice[])
+      ? ((noticesResult.value.data ?? []) as PublicNotice[]).filter(isInsideLiveWindow).slice(0, 1)
       : [];
   const featuredMarkets =
     featuredResult.status === 'fulfilled' && !featuredResult.value.error
@@ -156,6 +168,20 @@ export async function upsertAdminPublicNotice(input: {
   });
   fail(error);
   return String(data);
+}
+
+export async function deleteAdminPublicNotice(publicId: string, reason: string) {
+  const cleanReason = reason.trim();
+  if (cleanReason.length < 3) {
+    throw new Error('Enter a reason before deleting this public notice.');
+  }
+
+  const { data, error } = await supabase.rpc('admin_delete_public_notice', {
+    p_public_id: publicId,
+    p_reason: cleanReason,
+  });
+  fail(error);
+  return Boolean(data);
 }
 
 export async function uploadHomePromotionImage(
