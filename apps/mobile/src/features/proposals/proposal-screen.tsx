@@ -65,7 +65,7 @@ export function ProposalScreen({
     : activeAssetCodes[0] ?? '';
   const questionReady = Boolean(question.trim());
   const looksLikeQuestion = question.trim().endsWith('?');
-  const hasAsset = Boolean(assetCode) || activeAssetCodes.length === 0;
+  const hasAsset = Boolean(assetCode);
 
   function resetComposer() {
     setQuestion('');
@@ -77,8 +77,16 @@ export function ProposalScreen({
     setAdmission(null);
   }
 
+  function reviseProposal() {
+    setAdmission(null);
+    setView('new');
+    setStep(1);
+    setSubmitError(null);
+  }
+
   function goNext() {
     if (step === 0 && !questionReady) return;
+    if (step === 1 && !hasAsset) return;
     if (step < 2) setStep((step + 1) as ProposalStep);
   }
 
@@ -97,7 +105,7 @@ export function ProposalScreen({
         question: question.trim(),
         context: context.trim() || undefined,
         category: category.trim() || undefined,
-        assetCode: assetCode || undefined,
+        assetCode,
       });
 
       setAdmission(result);
@@ -113,6 +121,7 @@ export function ProposalScreen({
     return (
       <AdmissionOutcome
         response={admission}
+        onRevise={reviseProposal}
         onHistory={() => {
           setAdmission(null);
           setView('history');
@@ -206,9 +215,12 @@ export function ProposalScreen({
                         setSubmitError(null);
                       }}
                     />
+                    <VadText variant="caption" tone="secondary">
+                      Settlement values stay isolated by asset. VAD never combines NGN and USDC balances or exposure.
+                    </VadText>
                   </View>
                 ) : (
-                  <InlineStatus tone="warning" title="No settlement asset" message="No settlement asset is currently available for your account location." />
+                  <InlineStatus tone="warning" title="No settlement asset" message="No settlement asset is currently available for your account location. You cannot submit until live policy exposes at least one settlement asset." />
                 )}
 
                 <VadInput
@@ -270,9 +282,14 @@ export function ProposalScreen({
             ) : null}
 
             <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
-              {step > 0 ? <VadButton label="Back" variant="secondary" onPress={goBack} style={{ flex: 1 }} /> : null}
+              {step > 0 ? <VadButton label="Back" variant="secondary" disabled={working} onPress={goBack} style={{ flex: 1 }} /> : null}
               {step < 2 ? (
-                <VadButton label="Continue" disabled={step === 0 && !questionReady} onPress={goNext} style={{ flex: 1 }} />
+                <VadButton
+                  label="Continue"
+                  disabled={(step === 0 && !questionReady) || (step === 1 && !hasAsset)}
+                  onPress={goNext}
+                  style={{ flex: 1 }}
+                />
               ) : (
                 <VadButton
                   label="Run admission checks"
@@ -303,10 +320,12 @@ export function ProposalScreen({
 
 function AdmissionOutcome({
   response,
+  onRevise,
   onHistory,
   onCreateAnother,
 }: {
   response: MarketAdmissionResponse;
+  onRevise: () => void;
   onHistory: () => void;
   onCreateAnother: () => void;
 }) {
@@ -329,12 +348,12 @@ function AdmissionOutcome({
     : merged
       ? 'VAD detected the same canonical event and avoided creating a duplicate market.'
       : clarification
-        ? 'VAD will not publish an unclear market. Update the missing details and submit a clearer proposal.'
+        ? 'VAD will not publish an unclear market. Revise the same draft below; your question and context are preserved.'
         : 'Automated checks did not have enough confidence to publish safely, so a human review is required.';
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-      <VadCard variant="raised" style={{ borderColor: live || merged ? theme.colors.yes : clarification ? theme.colors.warning : theme.colors.borderStrong, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
+      <VadCard variant="raised" accessibilityRole="summary" style={{ borderColor: live || merged ? theme.colors.yes : clarification ? theme.colors.warning : theme.colors.borderStrong, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
         <VadChip label={result.lane.replaceAll('_', ' ')} tone={chipTone} />
         <View style={{ gap: 2 }}>
           <VadText variant={density.compact ? 'heading' : 'title'}>{title}</VadText>
@@ -357,7 +376,9 @@ function AdmissionOutcome({
           </View>
         ) : null}
 
-        {result.instrumentId ? (
+        {clarification ? (
+          <VadButton label="Revise this proposal" onPress={onRevise} />
+        ) : result.instrumentId ? (
           <VadButton
             label={live ? 'Open live market' : 'Open existing market'}
             onPress={() => router.push({ pathname: '/market/[marketId]', params: { marketId: result.instrumentId! } })}
@@ -366,7 +387,7 @@ function AdmissionOutcome({
       </VadCard>
 
       <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
-        <VadButton label="Proposal history" onPress={onHistory} style={{ flex: 1 }} />
+        <VadButton label="Proposal history" variant={clarification ? 'secondary' : 'primary'} onPress={onHistory} style={{ flex: 1 }} />
         <VadButton label="Create another" variant="secondary" onPress={onCreateAnother} style={{ flex: 1 }} />
       </View>
     </View>
@@ -442,7 +463,7 @@ function Progress({ step }: { step: ProposalStep }) {
   const labels = ['Question', 'Context', 'Review'];
 
   return (
-    <View style={{ flexDirection: 'row', gap: density.compact ? 6 : theme.spacing.xs }}>
+    <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 3, now: step + 1 }} style={{ flexDirection: 'row', gap: density.compact ? 6 : theme.spacing.xs }}>
       {labels.map((label, index) => {
         const active = index <= step;
         return (
@@ -497,7 +518,7 @@ function InlineStatus({ tone, title, message }: { tone: 'warning' | 'danger'; ti
   const density = useProductDensity();
   const danger = tone === 'danger';
   return (
-    <View style={{ borderLeftWidth: 3, borderLeftColor: danger ? theme.colors.danger : theme.colors.warning, backgroundColor: danger ? theme.colors.noSoft : theme.colors.warningSoft, padding: density.compact ? 10 : theme.spacing.md, gap: 2, borderRadius: theme.radius.sm }}>
+    <View accessibilityRole="alert" style={{ borderLeftWidth: 3, borderLeftColor: danger ? theme.colors.danger : theme.colors.warning, backgroundColor: danger ? theme.colors.noSoft : theme.colors.warningSoft, padding: density.compact ? 10 : theme.spacing.md, gap: 2, borderRadius: theme.radius.sm }}>
       <VadText variant="caption" tone={tone}>{title.toUpperCase()}</VadText>
       <VadText variant="caption" tone="secondary">{message}</VadText>
     </View>
