@@ -197,6 +197,7 @@ export function ProductRoute({
             isAdmin={Boolean(data.adminSummary)}
             canCreate={canCreate}
             onNavigate={navigate}
+            onCommunity={() => router.push('/community')}
             onCreate={() => router.push('/create-market')}
             onAdmin={() => router.push('/admin')}
           />
