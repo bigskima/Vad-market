@@ -17,10 +17,10 @@ export default function IndexScreen() {
     isPasswordRecovery,
     verificationPromptPending,
   } = useAuth();
-  const { methods } = useAuthMethods();
+  const { methods, loading: authMethodsLoading } = useAuthMethods();
   const theme = useVadTheme();
 
-  if (isLoading) {
+  if (isLoading || (Boolean(session) && authMethodsLoading)) {
     return (
       <View
         style={{
