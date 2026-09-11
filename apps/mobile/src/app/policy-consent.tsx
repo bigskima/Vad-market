@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { VadLogo } from '@/components/brand/vad-logo';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
-import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import {
   DEFAULT_LEGAL_DOCUMENTS,
@@ -158,7 +157,7 @@ export default function PolicyConsentRoute() {
                           borderColor: agreed ? theme.colors.brandPrimary : theme.colors.borderStrong,
                         }}
                       >
-                        {agreed ? <VadIcon name="check" size={15} tone="inverse" /> : null}
+                        {agreed ? <VadText variant="label" tone="inverse">✓</VadText> : null}
                       </View>
                       <VadText variant="caption" style={{ flex: 1 }}>I have read and agree to this document</VadText>
                     </Pressable>
