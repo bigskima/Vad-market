@@ -28,7 +28,7 @@ type ProviderStatus = 'ACTIVE' | 'DISABLED' | 'DEGRADED' | 'UNAVAILABLE';
 type Decision = 'APPROVE' | 'REJECT';
 
 const statusOptions: { value: ProviderStatus; title: string; detail: string }[] = [
-  { value: 'ACTIVE', title: 'Active', detail: 'Return the provider to normal routing after checker approval.' },
+  { value: 'ACTIVE', title: 'Active', detail: 'Return the provider to normal routing after independent approval.' },
   { value: 'DEGRADED', title: 'Degraded', detail: 'Keep the provider available while signaling reduced operational confidence.' },
   { value: 'DISABLED', title: 'Disabled', detail: 'Stop normal routing to this provider.' },
   { value: 'UNAVAILABLE', title: 'Unavailable', detail: 'Mark the provider as currently unavailable for selection.' },
@@ -112,7 +112,7 @@ export function AdminProvidersScreen() {
       setSelectedProvider(null);
       setTargetStatus(null);
       setReason('');
-      setActionMessage(`Provider status request ${requestId} is waiting for an independent checker.`);
+      setActionMessage(`Provider status request ${requestId} is waiting for an independent approver.`);
       setTab('changes');
       await data.refresh();
     } catch (reasonValue) {
@@ -203,9 +203,7 @@ export function AdminProvidersScreen() {
           <VadText variant="label" tone="brand">PROVIDER CONTROL</VadText>
           <VadText variant="title">External routes at a glance.</VadText>
           <VadText tone="secondary">
-            Provider admins can request governed status changes, independently
-            approve another operator&apos;s request, or immediately downgrade a
-            provider for safety. Backend maker-checker rules remain authoritative.
+            Provider admins can request status changes, independently approve another operator&apos;s request, or immediately downgrade a provider for safety. Reactivation and other risk-increasing changes require independent approval.
           </VadText>
         </View>
 
@@ -271,7 +269,7 @@ export function AdminProvidersScreen() {
           </View>
 
           <VadText variant="caption" tone="tertiary">
-            Based on the provider readiness rows returned to this operator role.
+            Based on the provider status information available to your role.
           </VadText>
         </View>
       </View>
@@ -383,7 +381,7 @@ export function AdminProvidersScreen() {
       ) : (
         <OperationsSection
           title="Pending approvals"
-          description="Governed provider status changes awaiting a different checker."
+          description="Provider status changes waiting for an independent approver."
           count={data.providerChanges.length}
         >
           {data.providerChanges.length ? (
@@ -413,10 +411,9 @@ export function AdminProvidersScreen() {
           gap: 2,
         }}
       >
-        <VadText variant="bodyStrong">Maker-checker boundary</VadText>
+        <VadText variant="bodyStrong">Independent approval</VadText>
         <VadText variant="caption" tone="secondary">
-          Active or degraded transitions require a request and a different
-          checker. Immediate actions are restricted to safety downgrades only.
+          Active or degraded transitions require a request approved by another operator. Immediate actions are restricted to safety downgrades only.
         </VadText>
       </View>
 
@@ -505,7 +502,7 @@ export function AdminProvidersScreen() {
               >
                 <VadText variant="bodyStrong">Emergency safety action</VadText>
                 <VadText variant="caption" tone="secondary">
-                  Safety downgrades can be applied immediately. Reactivation still requires maker-checker approval.
+                  Safety downgrades can be applied immediately. Reactivation still requires independent approval.
                 </VadText>
                 <VadButton
                   label={`Apply ${targetStatus.toLowerCase()} now`}
@@ -574,9 +571,9 @@ export function AdminProvidersScreen() {
                 gap: 2,
               }}
             >
-              <VadText variant="caption" tone="brand">INDEPENDENT CHECKER</VadText>
+              <VadText variant="caption" tone="brand">INDEPENDENT APPROVAL</VadText>
               <VadText variant="caption" tone="secondary">
-                The operator who requested this change cannot approve it. The backend enforces that separation.
+                The operator who requested this change cannot approve the same request.
               </VadText>
             </View>
 
