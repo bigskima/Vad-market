@@ -1,9 +1,6 @@
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Pressable,
-  View,
-} from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -12,7 +9,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
-import { money } from '@/features/markets/format';
+import { assetMoney } from '@/features/markets/format';
 import { PaymentRow } from '@/features/wallet/wallet-screen';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -89,16 +86,19 @@ export function WalletActivityScreen({
     return next;
   }, [rows]);
 
-  const totals = useMemo(() => {
-    return rows.reduce(
-      (summary, row) => {
-        const amount = Number(row.amount ?? 0);
-        if (row.operation === 'DEPOSIT') summary.deposits += amount;
-        if (row.operation === 'WITHDRAWAL') summary.withdrawals += amount;
-        return summary;
-      },
-      { deposits: 0, withdrawals: 0 },
-    );
+  const totalsByAsset = useMemo(() => {
+    const totals = new Map<string, { deposits: number; withdrawals: number }>();
+
+    rows.forEach((row) => {
+      const asset = row.asset_code || 'NGN';
+      const current = totals.get(asset) ?? { deposits: 0, withdrawals: 0 };
+      const amount = Number(row.amount ?? 0);
+      if (row.operation === 'DEPOSIT') current.deposits += amount;
+      if (row.operation === 'WITHDRAWAL') current.withdrawals += amount;
+      totals.set(asset, current);
+    });
+
+    return [...totals.entries()].sort(([a], [b]) => assetRank(a) - assetRank(b));
   }, [rows]);
 
   const visibleRows = useMemo(
@@ -136,7 +136,7 @@ export function WalletActivityScreen({
           <VadText variant="caption" tone="brand">WALLET ACTIVITY</VadText>
           <VadText variant="title">Money movement</VadText>
           <VadText variant="caption" tone="secondary">
-            Deposits, withdrawals and their latest provider status.
+            Deposits, withdrawals and their latest provider status, separated by asset.
           </VadText>
         </View>
 
@@ -177,10 +177,21 @@ export function WalletActivityScreen({
           ) : null}
 
           <VadCard variant="raised" style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-              <Summary label="Deposited" value={money(totals.deposits)} tone={totals.deposits ? 'yes' : 'primary'} />
-              <Summary label="Withdrawn" value={money(totals.withdrawals)} tone={totals.withdrawals ? 'brand' : 'primary'} />
-            </View>
+            {totalsByAsset.length ? (
+              <View style={{ flexDirection: density.width >= 680 ? 'row' : 'column', gap: theme.spacing.sm }}>
+                {totalsByAsset.map(([asset, totals]) => (
+                  <AssetSummary
+                    key={asset}
+                    asset={asset}
+                    deposits={totals.deposits}
+                    withdrawals={totals.withdrawals}
+                  />
+                ))}
+              </View>
+            ) : (
+              <VadText variant="caption" tone="secondary">No money movement has been recorded yet.</VadText>
+            )}
+
             <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
               <MiniStat label="All" value={counts.all} />
               <MiniStat label="Pending" value={counts.processing} tone={counts.processing ? 'warning' : 'primary'} />
@@ -235,6 +246,28 @@ export function WalletActivityScreen({
   );
 }
 
+function AssetSummary({
+  asset,
+  deposits,
+  withdrawals,
+}: {
+  asset: string;
+  deposits: number;
+  withdrawals: number;
+}) {
+  const theme = useVadTheme();
+
+  return (
+    <View style={{ flex: 1, minWidth: 0, gap: theme.spacing.xs, padding: theme.spacing.sm, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface }}>
+      <VadText variant="caption" tone="brand">{asset}</VadText>
+      <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+        <Summary label="Deposited" value={assetMoney(deposits, asset)} tone={deposits ? 'yes' : 'primary'} />
+        <Summary label="Withdrawn" value={assetMoney(withdrawals, asset)} tone={withdrawals ? 'brand' : 'primary'} />
+      </View>
+    </View>
+  );
+}
+
 function DesktopActivityTable({
   rows,
   onOpenTransaction,
@@ -278,7 +311,7 @@ function DesktopActivityTable({
               <VadText variant="bodyStrong">{operationLabel(row.operation)}</VadText>
               <VadText variant="caption" tone="tertiary">{row.asset_code}</VadText>
             </TableCell>
-            <TableCell flex={1}><VadText variant="bodyStrong">{money(row.amount)}</VadText></TableCell>
+            <TableCell flex={1}><VadText variant="bodyStrong">{assetMoney(row.amount, row.asset_code)}</VadText></TableCell>
             <TableCell flex={1}><VadText variant="caption" tone={statusTone}>{row.status.replaceAll('_', ' ')}</VadText></TableCell>
             <TableCell flex={1.2}><VadText variant="caption" tone="secondary">{new Date(row.created_at).toLocaleString()}</VadText></TableCell>
             <TableCell flex={1.7}><VadText variant="caption" tone="secondary" numberOfLines={1}>{row.intent_public_id}</VadText></TableCell>
@@ -347,4 +380,10 @@ function MiniStat({ label, value, tone = 'primary' }: { label: string; value: nu
       <VadText variant="caption" tone="secondary">{label}</VadText>
     </View>
   );
+}
+
+function assetRank(code: string) {
+  if (code === 'NGN') return 0;
+  if (code === 'USDC') return 1;
+  return 10;
 }
