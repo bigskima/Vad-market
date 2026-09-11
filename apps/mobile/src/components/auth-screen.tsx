@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { AuthFormScreen } from '@/components/auth/auth-form-screen';
+import { CompactAuthFormScreen } from '@/components/auth/compact-auth-form-screen';
 import { WelcomeScreen, type AuthMode } from '@/components/auth/welcome-screen';
 
 export function AuthScreen() {
@@ -10,5 +10,5 @@ export function AuthScreen() {
     return <WelcomeScreen onContinue={setMode} />;
   }
 
-  return <AuthFormScreen initialMode={mode} onBack={() => setMode(null)} />;
+  return <CompactAuthFormScreen initialMode={mode} onBack={() => setMode(null)} />;
 }
