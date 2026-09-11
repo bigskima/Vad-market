@@ -117,7 +117,7 @@ export function KycCard() {
             {verified ? 'Identity verified' : inProgress ? 'Verification in progress' : retryNeeded ? 'Verification needs attention' : 'Verify your identity'}
           </VadText>
           <VadText variant="caption" tone="secondary">
-            Complete a secure identity check when required to protect your account and unlock eligible features.
+            Complete a secure identity check when required to protect your account and use features that need verification.
           </VadText>
         </View>
         <VadButton label="Refresh" variant="secondary" size="small" fullWidth={density.width < 520} loading={refreshing} disabled={working} onPress={() => void load(true)} />
