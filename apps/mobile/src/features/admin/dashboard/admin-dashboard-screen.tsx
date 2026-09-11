@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
+import { VadChip } from '@/components/ui/vad-chip';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
@@ -59,7 +60,8 @@ export function AdminDashboardScreen() {
     !data.runtime &&
     !data.operations &&
     !data.marketQueue.length &&
-    !data.oracleQueue.length
+    !data.oracleQueue.length &&
+    !data.services.length
   ) {
     return (
       <VadErrorState
@@ -103,6 +105,16 @@ export function AdminDashboardScreen() {
   const oracleProviders = runtimeNumber(data.runtime, 'oracleProviders');
   const paymentProviders = runtimeNumber(data.runtime, 'paymentProviders');
   const configuredProviders = data.providers.filter((row) => row.configured).length;
+
+  const kyc = data.services.find((service) => service.service_key === 'kyc_start');
+  const moneyKeys = new Set(['trading', 'deposits', 'withdrawals', 'settlement']);
+  const moneyServices = data.services.filter((service) => moneyKeys.has(service.service_key));
+  const moneyPaused = moneyServices.length === 4 && moneyServices.every((service) => !service.enabled);
+  const nonMoneyServices = data.services.filter((service) => !moneyKeys.has(service.service_key));
+  const enabledNonMoney = nonMoneyServices.filter((service) => service.enabled).length;
+  const roleLabel = data.access.isSuperAdmin
+    ? 'Super Admin'
+    : data.access.roles.map((role) => role.name).join(' · ') || 'Scoped admin';
 
   return (
     <View style={{ gap: theme.spacing.xxxl }}>
@@ -150,6 +162,75 @@ export function AdminDashboardScreen() {
             <VadText variant="caption" tone="secondary">
               Open the unified queue →
             </VadText>
+          </VadCard>
+        </Pressable>
+      </View>
+
+      {data.warning ? (
+        <VadErrorState title="Some operations data is stale" message={data.warning} onRetry={() => void data.refresh()} />
+      ) : null}
+
+      <View
+        style={{
+          flexDirection: responsive.desktop ? 'row' : 'column',
+          alignItems: 'stretch',
+          gap: theme.spacing.md,
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={data.access.isSuperAdmin ? 'Open roles and access' : 'View current operational authority'}
+          onPress={data.access.isSuperAdmin ? () => router.push('/admin/roles') : undefined}
+          style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.68 : 1 })}
+        >
+          <VadCard variant="raised" style={{ gap: theme.spacing.md, height: '100%' }}>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'space-between', alignItems: 'center' }}>
+              <VadText variant="caption" tone="brand">OPERATIONAL AUTHORITY</VadText>
+              <VadChip
+                label={data.access.isSuperAdmin ? 'FULL ACCESS' : 'SCOPED ACCESS'}
+                tone={data.access.isSuperAdmin ? 'yes' : 'brand'}
+              />
+            </View>
+            <View style={{ gap: 3 }}>
+              <VadText variant="heading">{roleLabel}</VadText>
+              <VadText variant="caption" tone="secondary">
+                {data.access.isSuperAdmin
+                  ? 'Full VAD control-plane authority. Service controls and role administration remain Super Admin protected.'
+                  : `${data.access.permissions.length} backend permission${data.access.permissions.length === 1 ? '' : 's'} assigned. Only matching operational areas and actions are available.`}
+              </VadText>
+            </View>
+            {data.access.isSuperAdmin ? (
+              <VadText variant="caption" tone="brand">Manage roles & access →</VadText>
+            ) : null}
+          </VadCard>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={data.access.isSuperAdmin ? 'Open service controls' : 'View launch service posture'}
+          onPress={data.access.isSuperAdmin ? () => router.push('/admin/service-controls') : undefined}
+          style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.68 : 1 })}
+        >
+          <VadCard variant="raised" style={{ gap: theme.spacing.md, height: '100%' }}>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'space-between', alignItems: 'center' }}>
+              <VadText variant="caption" tone="brand">LAUNCH POSTURE</VadText>
+              <VadChip label={moneyPaused ? 'MONEY PAUSED' : 'CHECK MONEY'} tone={moneyPaused ? 'warning' : 'danger'} />
+            </View>
+            <ServiceStatusRow label="KYC / identity verification" enabled={Boolean(kyc?.enabled)} />
+            <ServiceStatusRow
+              label="Non-money services"
+              enabled={nonMoneyServices.length > 0 && enabledNonMoney === nonMoneyServices.length}
+              detail={nonMoneyServices.length ? `${enabledNonMoney}/${nonMoneyServices.length} available` : 'Status unavailable'}
+            />
+            <ServiceStatusRow
+              label="Trading & money movement"
+              enabled={!moneyPaused}
+              paused={moneyPaused}
+              detail={moneyPaused ? 'Intentionally disabled for launch' : 'At least one money service is available'}
+            />
+            {data.access.isSuperAdmin ? (
+              <VadText variant="caption" tone="brand">Open service controls →</VadText>
+            ) : null}
           </VadCard>
         </Pressable>
       </View>
@@ -328,6 +409,40 @@ export function AdminDashboardScreen() {
           ) : null}
         </View>
       </View>
+    </View>
+  );
+}
+
+function ServiceStatusRow({
+  label,
+  enabled,
+  paused = false,
+  detail,
+}: {
+  label: string;
+  enabled: boolean;
+  paused?: boolean;
+  detail?: string;
+}) {
+  const theme = useVadTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        paddingVertical: theme.spacing.xs,
+      }}
+    >
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <VadText variant="bodyStrong">{label}</VadText>
+        {detail ? <VadText variant="caption" tone="secondary">{detail}</VadText> : null}
+      </View>
+      <VadChip
+        label={paused ? 'PAUSED' : enabled ? 'ACTIVE' : 'UNAVAILABLE'}
+        tone={paused ? 'warning' : enabled ? 'yes' : 'danger'}
+      />
     </View>
   );
 }
