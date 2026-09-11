@@ -64,12 +64,21 @@ Deno.serve(async (req) => {
 
     const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
     if (!response.ok || payload.ok !== true) {
+      const upstreamError = typeof payload.error === 'string'
+        ? payload.error
+        : 'ORACLE_RUNTIME_FAILED';
       console.error('oracle-scheduler upstream failure', {
         action,
         status: response.status,
-        error: payload.error ?? 'ORACLE_RUNTIME_FAILED',
+        error: upstreamError,
       });
-      return json({ ok: false, action, error: 'ORACLE_RUNTIME_FAILED' }, 502);
+      return json({
+        ok: false,
+        action,
+        error: 'ORACLE_RUNTIME_FAILED',
+        upstreamStatus: response.status,
+        upstreamError,
+      }, 502);
     }
 
     console.log('oracle-scheduler completed', {
