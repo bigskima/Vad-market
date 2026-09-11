@@ -32,7 +32,7 @@ export default function AccountScreen() {
       <View style={{ gap: density.sectionGap }}>
         <VadSectionHeader
           title="Account"
-          subtitle="Manage your profile, identity verification, funding access and appearance settings."
+          subtitle="Manage your profile, verification, funding and appearance settings."
         />
 
         <View
@@ -91,7 +91,7 @@ export default function AccountScreen() {
                 <VadText variant="caption" tone="brand">ACCOUNT ACCESS</VadText>
               </View>
               <VadText variant="caption" tone="secondary">
-                Trading and money movement can depend on your location, verification status and account eligibility.
+                Some features may require identity verification and may not be available in every location.
               </VadText>
             </View>
 
