@@ -72,7 +72,7 @@ export function ConvictionPostCard({
 
   async function sharePost() {
     await Share.share({
-      title: post.market_title ?? 'VAD conviction',
+      title: post.market_title ?? 'VAD post',
       message: `${post.body}${post.market_title ? `\n\nMarket: ${post.market_title}` : ''}`,
     });
   }
@@ -107,7 +107,7 @@ export function ConvictionPostCard({
             </View>
           </View>
           <VadText variant="caption" tone="secondary" numberOfLines={1}>
-            {post.author_handle ? `@${post.author_handle}` : 'Profile handle not set'} · {new Date(post.created_at).toLocaleDateString()}
+            {post.author_handle ? `@${post.author_handle}` : 'Username not set'} · {new Date(post.created_at).toLocaleDateString()}
           </VadText>
         </Pressable>
 
@@ -149,7 +149,7 @@ export function ConvictionPostCard({
 
       {remoteMedia ? (
         <VadMediaContainer
-          items={[{ uri: remoteMedia, type: mediaType, alt: 'Conviction post media' }]}
+          items={[{ uri: remoteMedia, type: mediaType, alt: 'Community post media' }]}
         />
       ) : post.media_path ? (
         <View style={{ minHeight: 96, justifyContent: 'center', alignItems: 'center', gap: theme.spacing.xs, borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted }}>
@@ -185,7 +185,7 @@ export function ConvictionPostCard({
           <MarketProbabilityBar yes={post.yes_price} no={post.no_price} />
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
-            <VadText variant="caption" tone="secondary">{linkedMarket ? 'Market signal' : 'Market reference'}</VadText>
+            <VadText variant="caption" tone="secondary">{linkedMarket ? 'Current market price' : 'Market'}</VadText>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
               <VadText variant="caption" tone={linkedMarket ? 'brand' : 'tertiary'}>{linkedMarket ? 'Open market' : 'Unavailable'}</VadText>
               {linkedMarket ? <VadIcon name="chevronRight" size={13} tone="brand" /> : null}
