@@ -35,8 +35,8 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <MarketProbabilityBar yes={market.yes_price} no={market.no_price} />
         <VadText variant="caption" tone="tertiary">
           {hasPrice
-            ? 'Prices show current trading conviction. The published market rules determine the final result.'
-            : 'No trade price is available yet. A probability will appear after price discovery begins.'}
+            ? 'Prices show where traders currently stand. The market rules determine the final result.'
+            : 'No trade price is available yet. Probabilities will appear after trading begins.'}
         </VadText>
       </VadCard>
 
