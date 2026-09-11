@@ -71,7 +71,7 @@ export function AdminRouteContainer({ children }: PropsWithChildren) {
             disabled={data.refreshing}
             onPress={() => void data.refresh()}
             style={({ pressed }) => ({
-              minHeight: 38,
+              minHeight: 44,
               alignSelf: responsive.width >= 680 ? 'center' : 'flex-start',
               justifyContent: 'center',
               paddingHorizontal: theme.spacing.sm,
