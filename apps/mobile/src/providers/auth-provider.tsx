@@ -3,6 +3,7 @@ import * as ExpoLinking from 'expo-linking';
 import {
   createContext,
   type PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -159,7 +160,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [verificationPromptPending, setVerificationPromptPending] = useState(readPhonePrompt);
 
-  function requestPhonePrompt(nextSession?: Session | null) {
+  const requestPhonePrompt = useCallback((nextSession?: Session | null) => {
     if (nextSession?.user.phone_confirmed_at) {
       persistPhonePrompt(false);
       setVerificationPromptPending(false);
@@ -167,7 +168,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
     persistPhonePrompt(true);
     setVerificationPromptPending(true);
-  }
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -220,12 +221,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (result.session && !result.recovery) requestPhonePrompt(result.session);
         clearWebAuthUrl();
       } catch {
-        // The auth form will surface provider-start errors. Invalid/expired
-        // callbacks simply leave the user signed out instead of crashing boot.
+        // Invalid or expired callbacks leave the user in the normal auth flow
+        // instead of crashing application boot.
       }
     };
 
-    void handleUrl(currentWebUrl());
+    if (Platform.OS === 'web') {
+      void handleUrl(currentWebUrl());
+      return () => {
+        active = false;
+      };
+    }
+
     void NativeLinking.getInitialURL().then(handleUrl);
     const subscription = NativeLinking.addEventListener('url', ({ url }) => {
       void handleUrl(url);
@@ -235,7 +242,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       active = false;
       subscription.remove();
     };
-  }, []);
+  }, [requestPhonePrompt]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -412,7 +419,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setSession(null);
       },
     }),
-    [isLoading, isPasswordRecovery, session, verificationPromptPending],
+    [isLoading, isPasswordRecovery, requestPhonePrompt, session, verificationPromptPending],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
