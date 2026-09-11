@@ -94,7 +94,7 @@ function ProposalReviewForm({
           setError(
             value instanceof Error
               ? value.message
-              : 'Market approval configuration could not be loaded.',
+              : 'Market approval options could not be loaded.',
           );
         }
       })
@@ -188,7 +188,7 @@ function ProposalReviewForm({
         !resolvedAssetCode
       ) {
         throw new Error(
-          'Template, oracle policy, jurisdiction and asset are required.',
+          'Template, oracle policy, jurisdiction and currency are required.',
         );
       }
       if (!title.trim() || !category.trim()) {
@@ -213,14 +213,14 @@ function ProposalReviewForm({
       const minimum = Number(minNotional);
       const pricingPrecision = Number(precision);
       if (!Number.isFinite(minimum) || minimum <= 0) {
-        throw new Error('Minimum order notional must be positive.');
+        throw new Error('Minimum order value must be positive.');
       }
       if (
         !Number.isInteger(pricingPrecision) ||
         pricingPrecision < 0 ||
         pricingPrecision > 10
       ) {
-        throw new Error('Pricing precision must be an integer from 0 to 10.');
+        throw new Error('Price precision must be a whole number from 0 to 10.');
       }
 
       const result = await approveAdminMarketProposal({
@@ -230,10 +230,10 @@ function ProposalReviewForm({
         description,
         category,
         normalizedParameters: parseObject(
-          'Normalized parameters',
+          'Event parameters',
           normalizedParameters,
         ),
-        resolutionScope: parseObject('Resolution scope', resolutionScope),
+        resolutionScope: parseObject('Resolution rules', resolutionScope),
         opensAt: new Date(opensAt).toISOString(),
         closesAt: new Date(closesAt).toISOString(),
         resolvesAfter: new Date(resolvesAfter).toISOString(),
@@ -246,8 +246,8 @@ function ProposalReviewForm({
 
       await onCompleted(
         Boolean(result.merged_existing)
-          ? 'Proposal merged into the matching canonical event.'
-          : 'Proposal approved and canonical market configuration created.',
+          ? 'A matching market already exists, so the proposal was linked to it.'
+          : 'Proposal approved and market configuration created.',
       );
       onClose();
     } catch (value) {
@@ -324,9 +324,7 @@ function ProposalReviewForm({
                   ORACLE POLICY REQUIRED
                 </VadText>
                 <VadText variant="caption" tone="secondary">
-                  There is currently no active oracle policy. Approval is
-                  intentionally blocked rather than inventing a resolution
-                  policy.
+                  There is currently no active oracle policy. Approval is blocked until a valid resolution policy is available.
                 </VadText>
               </View>
             ) : null}
@@ -380,12 +378,12 @@ function ProposalReviewForm({
             </ChoiceSection>
 
             {jurisdiction ? (
-              <ChoiceSection title="Settlement asset">
+              <ChoiceSection title="Market currency">
                 {jurisdiction.assets.map((asset) => (
                   <Choice
                     key={asset}
                     label={asset}
-                    detail="Enabled for this jurisdiction"
+                    detail="Available for this jurisdiction"
                     selected={resolvedAssetCode === asset}
                     onPress={() => setAssetCode(asset)}
                   />
@@ -418,27 +416,27 @@ function ProposalReviewForm({
               autoCapitalize="none"
             />
             <VadInput
-              label="Normalized parameters (JSON)"
+              label="Event parameters (JSON)"
               value={normalizedParameters}
               onChangeText={setNormalizedParameters}
               placeholder='{"competition":"...","event":"..."}'
               multiline
               autoCapitalize="none"
-              hint="Canonical event parameters. No defaults are fabricated."
+              hint="Structured event details used to identify matching markets."
             />
             <VadInput
-              label="Resolution scope (JSON)"
+              label="Resolution rules (JSON)"
               value={resolutionScope}
               onChangeText={setResolutionScope}
               placeholder='{"source":"...","criterion":"..."}'
               multiline
               autoCapitalize="none"
-              hint="Exact scope used to resolve this event."
+              hint="The exact source and criteria used to decide this event."
             />
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
               <View style={{ flex: 1 }}>
                 <VadInput
-                  label="Minimum order"
+                  label="Minimum order value"
                   value={minNotional}
                   onChangeText={setMinNotional}
                   keyboardType="decimal-pad"
@@ -516,7 +514,7 @@ function DecisionChoice({
       accessibilityState={{ selected }}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 40,
+        minHeight: 44,
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: selected
