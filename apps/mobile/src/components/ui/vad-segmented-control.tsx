@@ -44,12 +44,13 @@ export function VadSegmentedControl<T extends string>({
             key={option.value}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
+            accessibilityLabel={option.label}
             onPress={() => onChange(option.value)}
             hitSlop={2}
             style={({ pressed }) => ({
               flex: fullWidth ? 1 : undefined,
-              minHeight: density.compact ? 32 : density.phone ? 34 : 38,
-              minWidth: fullWidth ? 0 : 84,
+              minHeight: 44,
+              minWidth: fullWidth ? 0 : 88,
               alignItems: 'center',
               justifyContent: 'center',
               paddingHorizontal: density.phone ? 10 : theme.spacing.md,
@@ -58,6 +59,7 @@ export function VadSegmentedControl<T extends string>({
               borderWidth: selected ? 1 : 0,
               borderColor: selected ? theme.colors.borderStrong : 'transparent',
               opacity: pressed ? 0.7 : 1,
+              transform: [{ scale: pressed ? 0.985 : 1 }],
             })}
           >
             <VadText
