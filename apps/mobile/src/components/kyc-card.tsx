@@ -39,7 +39,7 @@ export function KycCard() {
       setActionError(null);
       if (next.status === 'VERIFIED') setActionMessage(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Verification status could not be loaded.');
+      setError(reason instanceof Error ? reason.message : 'We could not load your verification status. Please try again.');
     } finally {
       if (background) setRefreshing(false);
       else setLoading(false);
@@ -67,11 +67,13 @@ export function KycCard() {
     setActionMessage(null);
     try {
       const session = await startDiditKyc();
-      if (!(await Linking.canOpenURL(session.verificationUrl))) throw new Error('The verification link could not be opened on this device.');
+      if (!(await Linking.canOpenURL(session.verificationUrl))) {
+        throw new Error('The verification page could not be opened on this device.');
+      }
       await Linking.openURL(session.verificationUrl);
-      setActionMessage('Verification opened. VAD will refresh your status when you return.');
+      setActionMessage('Verification opened. Your status will refresh when you return to VAD.');
     } catch (reason) {
-      setActionError(reason instanceof Error ? reason.message : 'Please try again.');
+      setActionError(reason instanceof Error ? reason.message : 'Identity verification is temporarily unavailable. Please try again.');
     } finally {
       setWorking(false);
     }
@@ -88,14 +90,18 @@ export function KycCard() {
   }
 
   if (error && !lastCheckedAt) {
-    return <VadErrorState title="Verification status unavailable" message={error} onRetry={() => { setLoading(true); void load(); }} />;
+    return <VadErrorState title="Verification unavailable" message={error} onRetry={() => { setLoading(true); void load(); }} />;
   }
 
   const verified = status.status === 'VERIFIED';
   const inProgress = ['CREATED', 'PROVIDER_PENDING', 'IN_REVIEW'].includes(status.status);
   const retryNeeded = ['REJECTED', 'EXPIRED', 'CANCELLED'].includes(status.status);
   const statusTone = verified ? 'yes' : retryNeeded ? 'warning' : inProgress ? 'warning' : status.providerConfigured ? 'brand' : 'secondary';
-  const statusLabel = verified ? 'VERIFIED' : !status.providerConfigured ? 'SETUP PENDING' : status.status.replaceAll('_', ' ');
+  const statusLabel = verified
+    ? 'VERIFIED'
+    : !status.providerConfigured
+      ? 'TEMPORARILY UNAVAILABLE'
+      : status.status.replaceAll('_', ' ');
   const startLabel = inProgress
     ? 'Continue verification'
     : retryNeeded
@@ -104,15 +110,17 @@ export function KycCard() {
 
   return (
     <View style={{ gap: density.sectionGap }}>
-      {error ? <VadErrorState title="Verification refresh failed" message={error} onRetry={() => void load(true)} /> : null}
+      {error ? <VadErrorState title="Could not refresh verification" message={error} onRetry={() => void load(true)} /> : null}
 
       <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', alignItems: density.width >= 620 ? 'center' : 'stretch', gap: theme.spacing.sm }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="caption" tone="brand">IDENTITY VERIFICATION</VadText>
           <VadText variant="heading">
-            {verified ? 'Identity verified' : inProgress ? 'Verification in progress' : retryNeeded ? 'Verification needs attention' : 'Verify when required'}
+            {verified ? 'Identity verified' : inProgress ? 'Verification in progress' : retryNeeded ? 'Verification needs attention' : 'Verify your identity'}
           </VadText>
-          <VadText variant="caption" tone="secondary">Provider-hosted identity checks. VAD stores the resulting status, not raw identity documents here.</VadText>
+          <VadText variant="caption" tone="secondary">
+            Complete a secure identity check when required to protect your account and access eligible features.
+          </VadText>
         </View>
         <VadButton label="Refresh" variant="secondary" size="small" fullWidth={density.width < 520} loading={refreshing} disabled={working} onPress={() => void load(true)} />
       </View>
@@ -124,13 +132,12 @@ export function KycCard() {
               <VadText variant="caption" tone={statusTone}>CURRENT STATUS</VadText>
               <VadText variant="heading" numberOfLines={2}>{statusLabel}</VadText>
             </View>
-            <VadChip label={verified ? 'Complete' : inProgress ? 'In progress' : retryNeeded ? 'Action needed' : 'Available'} tone={verified ? 'yes' : inProgress || retryNeeded ? 'warning' : 'brand'} />
+            <VadChip label={verified ? 'Complete' : inProgress ? 'In progress' : retryNeeded ? 'Action needed' : status.providerConfigured ? 'Available' : 'Unavailable'} tone={verified ? 'yes' : inProgress || retryNeeded || !status.providerConfigured ? 'warning' : 'brand'} />
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <Fact label="Provider" value={status.providerCode ?? 'Selected'} />
-            <Fact label="Level" value={status.verificationLevel ?? 'STANDARD'} />
-            <Fact label="Route" value={status.providerConfigured ? 'Ready' : 'Not ready'} tone={status.providerConfigured ? 'yes' : 'warning'} />
+            <Fact label="Verification level" value={status.verificationLevel ?? 'STANDARD'} />
+            <Fact label="Availability" value={status.providerConfigured ? 'Ready to start' : 'Try again later'} tone={status.providerConfigured ? 'yes' : 'warning'} />
             {status.expiresAt ? <Fact label="Expires" value={new Date(status.expiresAt).toLocaleDateString()} tone={retryNeeded ? 'warning' : 'primary'} /> : null}
           </View>
 
@@ -140,13 +147,25 @@ export function KycCard() {
         <VadCard variant="raised" style={{ flex: 0.95, gap: theme.spacing.xs }}>
           <VadText variant="bodyStrong">Verification progress</VadText>
           <VerificationStep number="1" label="Start" state={verified || inProgress ? 'complete' : status.providerConfigured ? 'active' : 'blocked'} />
-          <VerificationStep number="2" label="Provider review" state={verified ? 'complete' : retryNeeded ? 'blocked' : inProgress ? 'active' : 'waiting'} />
+          <VerificationStep number="2" label="Identity review" state={verified ? 'complete' : retryNeeded ? 'blocked' : inProgress ? 'active' : 'waiting'} />
           <VerificationStep number="3" label="Result" state={verified ? 'complete' : retryNeeded ? 'blocked' : 'waiting'} />
         </VadCard>
       </View>
 
-      {!status.providerConfigured && !verified ? <InlineStatus tone="warning" title="Verification route unavailable" message={`${status.providerCode ?? 'The selected provider'} is selected, but its active runtime route is not currently available.`} /> : null}
-      {retryNeeded ? <InlineStatus tone="warning" title="Verification can be retried" message={`The last verification ended as ${status.status.replaceAll('_', ' ').toLowerCase()}. Start again when you are ready; backend policy will decide whether the new session can proceed.`} /> : null}
+      {!status.providerConfigured && !verified ? (
+        <InlineStatus
+          tone="warning"
+          title="Verification temporarily unavailable"
+          message="Identity verification cannot be started right now. Please try again later."
+        />
+      ) : null}
+      {retryNeeded ? (
+        <InlineStatus
+          tone="warning"
+          title="Verification can be retried"
+          message="Your previous verification was not completed successfully. You can start a new verification when you are ready."
+        />
+      ) : null}
       {actionMessage ? <InlineStatus tone="yes" title="Verification opened" message={actionMessage} /> : null}
       {actionError ? <InlineStatus tone="danger" title="Verification unavailable" message={actionError} /> : null}
 
@@ -158,8 +177,10 @@ export function KycCard() {
       ) : null}
 
       <VadCard variant="raised" style={{ gap: 2 }}>
-        <VadText variant="bodyStrong">Privacy boundary</VadText>
-        <VadText variant="caption" tone="secondary">Identity capture stays with the configured verification provider. VAD uses the provider reference and final verification state for backend policy checks.</VadText>
+        <VadText variant="bodyStrong">Your privacy</VadText>
+        <VadText variant="caption" tone="secondary">
+          Your identity check is handled securely by our verification partner. VAD only uses the verification result and reference needed to protect your account.
+        </VadText>
       </VadCard>
     </View>
   );
@@ -184,7 +205,7 @@ function VerificationStep({ number, label, state }: { number: string; label: str
         <VadText variant="caption" tone={tone}>{state === 'complete' ? '✓' : number}</VadText>
       </View>
       <VadText variant="caption" style={{ flex: 1 }}>{label}</VadText>
-      <VadText variant="caption" tone={tone}>{state === 'complete' ? 'DONE' : state === 'active' ? 'ACTIVE' : state === 'blocked' ? 'BLOCKED' : 'WAITING'}</VadText>
+      <VadText variant="caption" tone={tone}>{state === 'complete' ? 'DONE' : state === 'active' ? 'ACTIVE' : state === 'blocked' ? 'UNAVAILABLE' : 'WAITING'}</VadText>
     </View>
   );
 }
