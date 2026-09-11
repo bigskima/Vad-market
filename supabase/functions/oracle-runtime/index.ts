@@ -1,3 +1,5 @@
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
+
 import {
   eligibleProviders,
   parseResolverSpec,
@@ -46,17 +48,13 @@ function safeError(error: unknown) {
   return { code: 'ORACLE_RUNTIME_FAILED', message: 'Oracle runtime failed', status: 500 };
 }
 
-async function providerCatalog(admin: ReturnType<typeof import('@supabase/supabase-js')['createClient']>) {
+async function providerCatalog(admin: SupabaseClient) {
   const { data, error } = await admin.rpc('internal_oracle_provider_catalog');
   if (error) throw new OracleRuntimeError('PROVIDER_CATALOG_FAILED', 'Could not load oracle provider catalog', 500);
   return (Array.isArray(data) ? data : []) as OracleProvider[];
 }
 
-async function dueEvents(
-  admin: ReturnType<typeof import('@supabase/supabase-js')['createClient']>,
-  eventPublicId: string | null,
-  limit: number,
-) {
+async function dueEvents(admin: SupabaseClient, eventPublicId: string | null, limit: number) {
   const { data, error } = await admin.rpc('internal_oracle_due_events', {
     p_event_public_id: eventPublicId,
     p_limit: limit,
@@ -66,7 +64,7 @@ async function dueEvents(
 }
 
 async function recordHealth(
-  admin: ReturnType<typeof import('@supabase/supabase-js')['createClient']>,
+  admin: SupabaseClient,
   provider: OracleProvider,
   healthStatus: 'HEALTHY' | 'DEGRADED' | 'UNAVAILABLE' | 'UNKNOWN',
   configured: boolean,
@@ -85,7 +83,7 @@ async function recordHealth(
 }
 
 async function recordAttempt(
-  admin: ReturnType<typeof import('@supabase/supabase-js')['createClient']>,
+  admin: SupabaseClient,
   input: {
     eventId: number;
     provider: OracleProvider;
@@ -116,7 +114,7 @@ async function recordAttempt(
 }
 
 async function recordObservation(
-  admin: ReturnType<typeof import('@supabase/supabase-js')['createClient']>,
+  admin: SupabaseClient,
   event: DueOracleEvent,
   provider: OracleProvider,
   resolverType: string,
@@ -163,11 +161,7 @@ function providerFailureHealth(error: unknown, configured: boolean) {
   return null;
 }
 
-async function runHealth(
-  admin: ReturnType<typeof import('@supabase/supabase-js')['createClient']>,
-  providers: OracleProvider[],
-  filter: Set<string> | null,
-) {
+async function runHealth(admin: SupabaseClient, providers: OracleProvider[], filter: Set<string> | null) {
   const selected = providers.filter((provider) => !filter || filter.has(provider.code.toUpperCase()));
   const results: JsonRecord[] = [];
   for (const provider of selected) {
@@ -180,13 +174,7 @@ async function runHealth(
         credential_present: credentialPresent,
         checked_by: 'oracle-runtime',
       });
-      results.push({
-        provider: provider.code,
-        providerStatus: provider.status,
-        health: 'HEALTHY',
-        configured: true,
-        latencyMs: probe.latencyMs,
-      });
+      results.push({ provider: provider.code, providerStatus: provider.status, health: 'HEALTHY', configured: true, latencyMs: probe.latencyMs });
     } catch (error) {
       const safe = safeError(error);
       const failure = providerFailureHealth(error, credentialPresent);
@@ -196,20 +184,14 @@ async function runHealth(
         checked_by: 'oracle-runtime',
         failure_code: safe.code,
       });
-      results.push({
-        provider: provider.code,
-        providerStatus: provider.status,
-        health,
-        configured,
-        failureCode: safe.code,
-      });
+      results.push({ provider: provider.code, providerStatus: provider.status, health, configured, failureCode: safe.code });
     }
   }
   return results;
 }
 
 async function processEvent(
-  admin: ReturnType<typeof import('@supabase/supabase-js')['createClient']>,
+  admin: SupabaseClient,
   event: DueOracleEvent,
   providers: OracleProvider[],
   providerFilter: Set<string> | null,
