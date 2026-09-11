@@ -8,6 +8,7 @@ import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductRoute } from '@/features/navigation/product-route';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -32,7 +33,7 @@ export default function AccountScreen() {
       <View style={{ gap: density.sectionGap }}>
         <VadSectionHeader
           title="Account"
-          subtitle="Manage your profile, verification, funding and appearance settings."
+          subtitle="Manage your profile, verification, funding, guidance and appearance settings."
         />
 
         <View
@@ -107,6 +108,7 @@ export default function AccountScreen() {
                 onPress={() => router.push('/account/profile')}
               />
               <AccountRow
+                tourTarget="account-verification"
                 icon="operations"
                 title="Identity verification"
                 subtitle="Verification status and next step"
@@ -116,6 +118,7 @@ export default function AccountScreen() {
 
             <SettingGroup title="Money & experience" subtitle="Manage funding access and how VAD looks on this device.">
               <AccountRow
+                tourTarget="account-funding"
                 icon="wallet"
                 title="Funding & withdrawals"
                 subtitle="Availability, limits, fees and payment activity"
@@ -128,6 +131,23 @@ export default function AccountScreen() {
                 onPress={() => router.push('/account/appearance')}
               />
             </SettingGroup>
+
+            <TourTarget id="account-guidance">
+              <SettingGroup title="Guidance & legal" subtitle="Learn VAD at your own pace and revisit important documents whenever you need them.">
+                <AccountRow
+                  icon="activity"
+                  title="Take the VAD tour"
+                  subtitle="Walk through the app again with on-screen guidance"
+                  onPress={() => router.push('/account/app-tour')}
+                />
+                <AccountRow
+                  icon="operations"
+                  title="Policies & privacy"
+                  subtitle="Read VAD terms, privacy information and important notices"
+                  onPress={() => router.push('/account/policies')}
+                />
+              </SettingGroup>
+            </TourTarget>
           </View>
         </View>
       </View>
@@ -154,6 +174,25 @@ function SettingGroup({
 }
 
 function AccountRow({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  tourTarget,
+}: {
+  icon: VadIconName;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  tourTarget?: string;
+}) {
+  const content = (
+    <AccountRowContent icon={icon} title={title} subtitle={subtitle} onPress={onPress} />
+  );
+  return tourTarget ? <TourTarget id={tourTarget}>{content}</TourTarget> : content;
+}
+
+function AccountRowContent({
   icon,
   title,
   subtitle,
