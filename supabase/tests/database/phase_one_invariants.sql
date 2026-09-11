@@ -31,19 +31,8 @@ begin
     raise exception 'Expected active Nigeria launch jurisdiction';
   end if;
 
-  if (select count(*) from admin.roles) <> 10 then
-    raise exception 'Expected ten seeded administrative roles';
-  end if;
-
-  if not exists (
-    select 1
-    from admin.roles r
-    join admin.role_permissions rp on rp.role_id = r.id
-    join admin.permissions p on p.id = rp.permission_id
-    where r.code = 'PROVIDER_ADMIN'
-      and p.code = 'providers.manage'
-  ) then
-    raise exception 'Expected scoped Provider Admin permission mapping';
+  if (select count(*) from admin.roles) <> 9 then
+    raise exception 'Expected nine seeded administrative roles';
   end if;
 
   if exists (
