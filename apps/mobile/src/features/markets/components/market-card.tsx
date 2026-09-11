@@ -70,7 +70,7 @@ export function MarketCard({
       </View>
 
       <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: density.compact ? 7 : theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
-        <VadText variant="caption" tone="tertiary" numberOfLines={1}>{market.last_trade_at ? 'Recently traded' : 'Price forming'}</VadText>
+        <VadText variant="caption" tone="tertiary" numberOfLines={1}>{market.last_trade_at ? 'Recently traded' : 'No trades yet'}</VadText>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
           <VadText variant="label" tone="brand">View</VadText>
           <VadIcon name="chevronRight" size={15} tone="brand" />
