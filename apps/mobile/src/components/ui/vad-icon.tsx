@@ -10,6 +10,11 @@ export type VadIconName =
   | 'account'
   | 'plus'
   | 'search'
+  | 'bell'
+  | 'close'
+  | 'bookmark'
+  | 'share'
+  | 'reply'
   | 'operations'
   | 'back'
   | 'chevronRight'
@@ -44,9 +49,9 @@ export function VadIcon({
   const ink = color ?? tones[tone];
   const line = Math.max(1.5, size * 0.085);
 
-  if (name === 'plus') {
+  if (name === 'plus' || name === 'close') {
     return (
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', transform: name === 'close' ? [{ rotate: '45deg' }] : undefined }}>
         <View style={{ position: 'absolute', width: size * 0.56, height: line, borderRadius: line, backgroundColor: ink }} />
         <View style={{ position: 'absolute', width: line, height: size * 0.56, borderRadius: line, backgroundColor: ink }} />
       </View>
@@ -58,6 +63,42 @@ export function VadIcon({
       <View style={{ width: size, height: size }}>
         <View style={{ position: 'absolute', width: size * 0.58, height: size * 0.58, borderWidth: line, borderColor: ink, borderRadius: size, left: size * 0.08, top: size * 0.08 }} />
         <View style={{ position: 'absolute', width: size * 0.34, height: line, borderRadius: line, backgroundColor: ink, right: size * 0.03, bottom: size * 0.18, transform: [{ rotate: '45deg' }] }} />
+      </View>
+    );
+  }
+
+  if (name === 'bell') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center' }}>
+        <View style={{ marginTop: size * 0.12, width: size * 0.62, height: size * 0.58, borderWidth: line, borderColor: ink, borderTopLeftRadius: size, borderTopRightRadius: size, borderBottomWidth: line, borderBottomLeftRadius: size * 0.16, borderBottomRightRadius: size * 0.16 }} />
+        <View style={{ marginTop: size * 0.06, width: size * 0.18, height: line, borderRadius: line, backgroundColor: ink }} />
+      </View>
+    );
+  }
+
+  if (name === 'bookmark') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center' }}>
+        <View style={{ width: size * 0.56, height: size * 0.76, borderWidth: line, borderColor: ink, borderRadius: size * 0.08, borderBottomLeftRadius: size * 0.18, borderBottomRightRadius: size * 0.18, marginTop: size * 0.08 }} />
+      </View>
+    );
+  }
+
+  if (name === 'share') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.62, height: size * 0.5, borderWidth: line, borderColor: ink, borderRadius: size * 0.12, marginTop: size * 0.18 }} />
+        <View style={{ position: 'absolute', width: line, height: size * 0.48, backgroundColor: ink, top: size * 0.08 }} />
+        <View style={{ position: 'absolute', width: size * 0.26, height: size * 0.26, borderLeftWidth: line, borderTopWidth: line, borderColor: ink, top: size * 0.08, transform: [{ rotate: '45deg' }] }} />
+      </View>
+    );
+  }
+
+  if (name === 'reply') {
+    return (
+      <View style={{ width: size, height: size, justifyContent: 'center' }}>
+        <View style={{ width: size * 0.62, height: size * 0.42, borderTopWidth: line, borderLeftWidth: line, borderColor: ink, borderTopLeftRadius: size * 0.3, alignSelf: 'flex-end', marginTop: size * 0.12 }} />
+        <View style={{ position: 'absolute', left: size * 0.08, top: size * 0.26, width: size * 0.28, height: size * 0.28, borderLeftWidth: line, borderBottomWidth: line, borderColor: ink, transform: [{ rotate: '45deg' }] }} />
       </View>
     );
   }
