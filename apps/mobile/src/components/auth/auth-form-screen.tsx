@@ -26,7 +26,7 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
   const { signIn, signUp, signInWithProvider, requestPasswordReset } = useAuth();
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
-  const wide = width >= 860;
+  const wide = width >= 768;
   const compact = width < 380;
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [view, setView] = useState<AuthView>('credentials');
@@ -349,8 +349,7 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
                       <Pressable
                         accessibilityRole="button"
                         onPress={() => { setView('forgot'); resetMessages(); }}
-                        hitSlop={8}
-                        style={({ pressed }) => ({ alignSelf: 'flex-end', minHeight: 32, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
+                        style={({ pressed }) => ({ alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.xs, opacity: pressed ? 0.6 : 1 })}
                       >
                         <VadText variant="caption" tone="brand">Forgot password?</VadText>
                       </Pressable>
