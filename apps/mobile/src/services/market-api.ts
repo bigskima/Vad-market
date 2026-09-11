@@ -1,3 +1,4 @@
+import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type MarketCatalogItem = {
@@ -118,37 +119,41 @@ export type MarketAdmissionResponse = {
   };
 };
 
-function assertNoError(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+function assertNoError(
+  error: { message: string; code?: string; details?: string; hint?: string } | null,
+  context: 'markets' | 'trading' | 'portfolio' | 'proposal' = 'markets',
+  fallback?: string,
+) {
+  if (error) throw userFacingError(error, context, fallback);
 }
 
 export async function listMarkets() {
   const { data, error } = await supabase.from('market_catalog').select('*').order('updated_at', { ascending: false });
-  assertNoError(error);
+  assertNoError(error, 'markets');
   return (data ?? []) as MarketCatalogItem[];
 }
 
 export async function getWalletSummary() {
   const { data, error } = await supabase.rpc('my_wallet_summary');
-  assertNoError(error);
+  assertNoError(error, 'portfolio', 'We could not load your wallet balances right now. Please try again.');
   return (data ?? []) as WalletRow[];
 }
 
 export async function getPositions() {
   const { data, error } = await supabase.rpc('my_positions');
-  assertNoError(error);
+  assertNoError(error, 'portfolio');
   return (data ?? []) as PositionRow[];
 }
 
 export async function getOpenOrders() {
   const { data, error } = await supabase.rpc('my_open_orders');
-  assertNoError(error);
+  assertNoError(error, 'portfolio', 'We could not load your open orders right now. Please try again.');
   return (data ?? []) as OrderRow[];
 }
 
 export async function getMyProposals() {
   const { data, error } = await supabase.rpc('my_market_proposals');
-  assertNoError(error);
+  assertNoError(error, 'proposal', 'We could not load your market proposals right now. Please try again.');
   return (data ?? []) as ProposalRow[];
 }
 
@@ -160,7 +165,7 @@ export async function quoteTrade(input: { instrumentPublicId: string; outcomeCod
     p_price: input.price,
     p_quantity: input.quantity,
   });
-  assertNoError(error);
+  assertNoError(error, 'trading', 'We could not prepare this trade right now. Please try again.');
   return data as TradeQuote;
 }
 
@@ -174,13 +179,13 @@ export async function placeOrder(quote: TradeQuote) {
     p_quantity: quote.quantity,
     p_idempotency_key: idempotencyKey,
   });
-  assertNoError(error);
+  assertNoError(error, 'trading');
   return data as string;
 }
 
 export async function cancelOrder(orderPublicId: string) {
   const { data, error } = await supabase.rpc('cancel_order', { p_order_public_id: orderPublicId });
-  assertNoError(error);
+  assertNoError(error, 'trading', 'We could not cancel this order right now. Please try again.');
   return Boolean(data);
 }
 
@@ -199,10 +204,10 @@ export async function submitMarketProposal(input: {
     },
   });
 
-  if (error) throw new Error(error.message);
+  if (error) throw userFacingError(error, 'proposal');
   const payload = data as Partial<MarketAdmissionResponse> & { error?: string; message?: string };
   if (payload.error || !payload.admission) {
-    throw new Error(payload.message || payload.error || 'VAD could not evaluate this proposal right now.');
+    throw userFacingError(payload.message ?? payload.error, 'proposal');
   }
   return payload as MarketAdmissionResponse;
 }
