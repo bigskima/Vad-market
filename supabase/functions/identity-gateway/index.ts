@@ -15,8 +15,14 @@ function env(name: string) {
   return Deno.env.get(name)?.trim() || null;
 }
 
+function diditApiKey() {
+  // Keep the original canonical secret name for compatibility, while accepting
+  // the VAD launch alias supplied in the project secrets.
+  return env('DIDIT_API_KEY') ?? env('DIDIT_API');
+}
+
 function configured() {
-  return Boolean(env('DIDIT_API_KEY') && env('DIDIT_WEBHOOK_SECRET') && env('DIDIT_WORKFLOW_ID'));
+  return Boolean(diditApiKey() && env('DIDIT_WEBHOOK_SECRET') && env('DIDIT_WORKFLOW_ID'));
 }
 
 function sortedCanonical(value: unknown): unknown {
@@ -79,6 +85,16 @@ function clients() {
   };
 }
 
+async function syncProviderConfigured(admin: ReturnType<typeof createClient>, ready: boolean) {
+  const { error } = await admin.rpc('internal_set_provider_configured', {
+    p_provider_code: 'DIDIT',
+    p_configured: ready,
+  });
+  if (error) {
+    console.error('Didit provider readiness sync failed', { code: error.code });
+  }
+}
+
 async function requireUser(req: Request) {
   const authHeader = req.headers.get('authorization');
   const token = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
@@ -90,9 +106,11 @@ async function requireUser(req: Request) {
 }
 
 async function startKyc(req: Request) {
-  if (!configured()) return json({ error: 'KYC_PROVIDER_NOT_CONFIGURED', provider: 'DIDIT' }, 503);
+  const ready = configured();
+  if (!ready) return json({ error: 'KYC_PROVIDER_NOT_CONFIGURED', provider: 'DIDIT' }, 503);
   const user = await requireUser(req);
   const { admin } = clients();
+  await syncProviderConfigured(admin, true);
 
   const { data: serviceState, error: serviceError } = await admin.rpc('internal_service_control_state', {
     p_user_id: user.id,
@@ -126,7 +144,7 @@ async function startKyc(req: Request) {
 
   const response = await fetch('https://verification.didit.me/v3/session/', {
     method: 'POST',
-    headers: { 'x-api-key': env('DIDIT_API_KEY')!, 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: { 'x-api-key': diditApiKey()!, 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(body),
   });
   const payload = await response.json().catch(() => ({}));
@@ -192,7 +210,12 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const path = new URL(req.url).pathname.replace(/\/+$/, '');
-    if (req.method === 'GET' && path.endsWith('/health')) return json({ provider: 'DIDIT', configured: configured(), apiVersion: 'v3' });
+    if (req.method === 'GET' && path.endsWith('/health')) {
+      const ready = configured();
+      const { admin } = clients();
+      await syncProviderConfigured(admin, ready);
+      return json({ provider: 'DIDIT', configured: ready, apiVersion: 'v3' });
+    }
     // Webhooks intentionally bypass pause controls: already-started verification
     // events must keep reconciling even while new KYC sessions are paused.
     if (req.method === 'POST' && path.endsWith('/webhook')) return await handleWebhook(req);
