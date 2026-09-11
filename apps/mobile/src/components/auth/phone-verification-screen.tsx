@@ -118,17 +118,17 @@ export function PhoneVerificationScreen() {
               <VadText variant="heading">VAD</VadText>
             </View>
             <View style={{ gap: theme.spacing.sm }}>
-              <VadText variant="caption" tone="brand">ACCOUNT SECURITY</VadText>
+              <VadText variant="caption" tone="brand">SECURE YOUR ACCOUNT</VadText>
               <VadText variant="display">Verify your phone.</VadText>
               <VadText tone="secondary">
-                Add an international phone number so VAD can use it as an extra security check for sensitive account actions.
+                Add your phone number for an extra security check when you make important account changes.
               </VadText>
             </View>
             {wide ? (
               <VadCard variant="brand" style={{ gap: theme.spacing.sm }}>
-                <VadText variant="bodyStrong">Your account stays the same</VadText>
+                <VadText variant="bodyStrong">One account, extra protection</VadText>
                 <VadText variant="caption" tone="secondary">
-                  Verifying your phone adds another way to protect your existing VAD account. It does not create another profile or wallet.
+                  Phone verification adds another layer of security to your existing VAD account. It does not create another profile or wallet.
                 </VadText>
               </VadCard>
             ) : null}
@@ -138,7 +138,7 @@ export function PhoneVerificationScreen() {
             <View style={{ gap: 4 }}>
               <VadText variant="heading">{sentTo ? 'Enter your code' : 'Your phone number'}</VadText>
               <VadText variant="caption" tone="secondary">
-                {sentTo ? `We sent a six-digit code to ${sentTo}.` : 'We selected a likely country code from your device settings. You can change it.'}
+                {sentTo ? `We sent a six-digit code to ${sentTo}.` : 'We suggested a country code for you. You can change it.'}
               </VadText>
             </View>
 
