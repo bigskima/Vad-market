@@ -165,7 +165,7 @@ export function WelcomeScreen({ onContinue }: Props) {
         ) : null}
 
         <VadText variant="caption" tone="tertiary" style={{ textAlign: wide ? 'left' : 'center' }}>
-          Market access and money movement can depend on your location, identity verification and account eligibility. English is the current launch language.
+          Some features may require identity verification and may not be available in every location. English is the current launch language.
         </VadText>
       </ScrollView>
     </SafeAreaView>
