@@ -10,6 +10,7 @@ import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney, pct } from '@/features/markets/format';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { OrderRow, PositionRow } from '@/services/market-api';
@@ -50,44 +51,46 @@ export function PortfolioScreen({
         subtitle="Track your positions and open orders by currency. NGN and USDC values are always kept separate."
       />
 
-      <VadCard
-        variant="brand"
-        style={{
-          gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-          padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-        }}
-      >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
-          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-            <VadText variant="caption" tone="brand">YOUR PORTFOLIO</VadText>
-            <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
-              {positions.length} {positions.length === 1 ? 'position' : 'positions'}
-            </VadText>
-            <VadText variant="caption" tone="secondary">Across {Math.max(exposure.length, 1)} {exposure.length === 1 ? 'currency' : 'currencies'}</VadText>
+      <TourTarget id="portfolio-summary">
+        <VadCard
+          variant="brand"
+          style={{
+            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
+            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+          }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <VadText variant="caption" tone="brand">YOUR PORTFOLIO</VadText>
+              <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
+                {positions.length} {positions.length === 1 ? 'position' : 'positions'}
+              </VadText>
+              <VadText variant="caption" tone="secondary">Across {Math.max(exposure.length, 1)} {exposure.length === 1 ? 'currency' : 'currencies'}</VadText>
+            </View>
+            <View
+              style={{
+                width: density.phone ? 48 : 56,
+                height: density.phone ? 48 : 56,
+                borderRadius: 28,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.colors.surface,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+              }}
+            >
+              <VadIcon name="portfolio" size={density.phone ? 22 : 26} tone="brand" />
+            </View>
           </View>
-          <View
-            style={{
-              width: density.phone ? 48 : 56,
-              height: density.phone ? 48 : 56,
-              borderRadius: 28,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: theme.colors.surface,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-            }}
-          >
-            <VadIcon name="portfolio" size={density.phone ? 22 : 26} tone="brand" />
-          </View>
-        </View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-          <VadMetricTile label="Positions" value={String(positions.length)} detail="Your holdings" tone="brand" />
-          <VadMetricTile label="Shares held" value={Number(totalShares).toLocaleString()} detail="Across outcomes" />
-          <VadMetricTile label="Open orders" value={String(orders.length)} detail="Waiting to fill" />
-          <VadMetricTile label="Currencies" value={String(exposure.length)} detail="Shown separately" />
-        </View>
-      </VadCard>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            <VadMetricTile label="Positions" value={String(positions.length)} detail="Your holdings" tone="brand" />
+            <VadMetricTile label="Shares held" value={Number(totalShares).toLocaleString()} detail="Across outcomes" />
+            <VadMetricTile label="Open orders" value={String(orders.length)} detail="Waiting to fill" />
+            <VadMetricTile label="Currencies" value={String(exposure.length)} detail="Shown separately" />
+          </View>
+        </VadCard>
+      </TourTarget>
 
       {exposure.length ? (
         <View style={{ gap: theme.spacing.sm }}>
@@ -100,14 +103,16 @@ export function PortfolioScreen({
         </View>
       ) : null}
 
-      <VadSegmentedControl
-        value={tab}
-        options={[
-          { value: 'positions', label: `Positions ${positions.length}` },
-          { value: 'orders', label: `Open orders ${orders.length}` },
-        ] as const}
-        onChange={setTab}
-      />
+      <TourTarget id="portfolio-switcher">
+        <VadSegmentedControl
+          value={tab}
+          options={[
+            { value: 'positions', label: `Positions ${positions.length}` },
+            { value: 'orders', label: `Open orders ${orders.length}` },
+          ] as const}
+          onChange={setTab}
+        />
+      </TourTarget>
 
       {tab === 'positions' ? (
         positions.length ? (
