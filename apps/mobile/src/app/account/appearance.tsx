@@ -9,9 +9,9 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { VadThemePreference } from '@/theme/tokens';
 
 const options: { value: VadThemePreference; title: string; subtitle: string; glyph: string }[] = [
-  { value: 'system', title: 'System', subtitle: 'Follow this device automatically.', glyph: '◐' },
-  { value: 'light', title: 'Light', subtitle: 'Bright surfaces with dark text.', glyph: '☀' },
-  { value: 'dark', title: 'Dark', subtitle: 'Low-light surfaces with bright text.', glyph: '☾' },
+  { value: 'system', title: 'System', subtitle: 'Match your device setting automatically.', glyph: '◐' },
+  { value: 'light', title: 'Light', subtitle: 'Use the light theme all the time.', glyph: '☀' },
+  { value: 'dark', title: 'Dark', subtitle: 'Use the dark theme all the time.', glyph: '☾' },
 ];
 
 export default function AppearanceScreen() {
@@ -26,8 +26,8 @@ export default function AppearanceScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
               <VadText variant="caption" tone="brand">APPEARANCE</VadText>
-              <VadText variant="heading">Theme on this device</VadText>
-              <VadText variant="caption" tone="secondary">System follows your device. Light and Dark stay fixed until you change them.</VadText>
+              <VadText variant="heading">Choose how VAD looks</VadText>
+              <VadText variant="caption" tone="secondary">Use your device setting, or keep VAD in Light or Dark mode.</VadText>
             </View>
             <VadChip label={theme.mode === 'dark' ? 'Dark' : 'Light'} tone="brand" />
           </View>
@@ -35,7 +35,7 @@ export default function AppearanceScreen() {
 
         <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: theme.spacing.md }}>
           <VadCard style={{ flex: 1, width: '100%', gap: theme.spacing.sm }}>
-            <VadText variant="bodyStrong">Theme preference</VadText>
+            <VadText variant="bodyStrong">Theme</VadText>
             <View accessibilityRole="radiogroup" style={{ gap: theme.spacing.xs }}>
               {options.map((option) => {
                 const selected = theme.preference === option.value;
@@ -79,10 +79,10 @@ export default function AppearanceScreen() {
           <VadCard variant="raised" style={{ width: wide ? 340 : '100%', gap: theme.spacing.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
               <View style={{ flex: 1, gap: 1 }}>
-                <VadText variant="bodyStrong">Live preview</VadText>
-                <VadText variant="caption" tone="secondary">Plain text must remain readable in either mode.</VadText>
+                <VadText variant="bodyStrong">Preview</VadText>
+                <VadText variant="caption" tone="secondary">See how VAD looks with your current choice.</VadText>
               </View>
-              <VadChip label={theme.preference === 'system' ? 'System' : 'Fixed'} />
+              <VadChip label={theme.preference === 'system' ? 'System' : theme.mode === 'dark' ? 'Dark' : 'Light'} />
             </View>
 
             <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, overflow: 'hidden', backgroundColor: theme.colors.surface }}>
@@ -95,9 +95,9 @@ export default function AppearanceScreen() {
               </View>
 
               <View style={{ padding: theme.spacing.sm, gap: theme.spacing.xs }}>
-                <VadText variant="caption" tone="brand">THEME-SAFE COPY</VadText>
-                <VadText variant="bodyStrong">Readable in every mode</VadText>
-                <VadText variant="caption" tone="secondary">Primary and secondary text resolve from active theme tokens rather than fixed black or white values.</VadText>
+                <VadText variant="caption" tone="brand">PREVIEW</VadText>
+                <VadText variant="bodyStrong">Clear and comfortable to read</VadText>
+                <VadText variant="caption" tone="secondary">This preview changes instantly when you choose a different theme.</VadText>
                 <View style={{ minHeight: 38, borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandPrimary, alignItems: 'center', justifyContent: 'center' }}>
                   <VadText variant="label" tone="inverse">Primary action</VadText>
                 </View>
@@ -108,9 +108,9 @@ export default function AppearanceScreen() {
             </View>
 
             <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
-              <Swatch label="Background" value={theme.colors.background} />
-              <Swatch label="Surface" value={theme.colors.surface} />
-              <Swatch label="Brand" value={theme.colors.brandPrimary} />
+              <Swatch label="Page" value={theme.colors.background} />
+              <Swatch label="Cards" value={theme.colors.surface} />
+              <Swatch label="Accent" value={theme.colors.brandPrimary} />
             </View>
           </VadCard>
         </View>
