@@ -53,12 +53,12 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
           <VadChip label={positionStatusLabel(position.status)} />
         </View>
         <VadText variant="heading">{position.market_title}</VadText>
-        <VadText variant="caption" tone="secondary">This view shows your shares, average entry and recorded cost. Profit or loss appears only when reliable market pricing is available.</VadText>
+        <VadText variant="caption" tone="secondary">This view shows your shares, average entry price and amount invested. Profit or loss appears when reliable market pricing is available.</VadText>
       </View>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
         <VadCard style={{ flex: 1.1, borderColor: yes ? theme.colors.yes : theme.colors.no, gap: theme.spacing.sm }}>
-          <VadText variant="caption" tone={yes ? 'yes' : 'no'}>COST BASIS · {position.asset_code}</VadText>
+          <VadText variant="caption" tone={yes ? 'yes' : 'no'}>AMOUNT INVESTED · {position.asset_code}</VadText>
           <VadText variant="display" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(costBasis, position.asset_code)}</VadText>
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <Snapshot label="Shares" value={shares.toLocaleString()} />
@@ -69,10 +69,10 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
         <VadCard variant="raised" style={{ flex: 0.9, gap: theme.spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 1 }}>
-              <VadText variant="caption" tone="secondary">{position.asset_code} PORTFOLIO WEIGHT</VadText>
+              <VadText variant="caption" tone="secondary">SHARE OF YOUR {position.asset_code} POSITIONS</VadText>
               <VadText variant="heading">{pct(portfolioWeight)}</VadText>
             </View>
-            <VadText variant="caption" tone="tertiary">of {position.asset_code} positions</VadText>
+            <VadText variant="caption" tone="tertiary">by amount invested</VadText>
           </View>
           <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(portfolioWeight * 100) }} style={{ height: 6, borderRadius: theme.radius.pill, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }}>
             <View style={{ width: allocationWidth, height: '100%', backgroundColor: yes ? theme.colors.yes : theme.colors.no }} />
@@ -88,18 +88,18 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
           <Detail label="Currency" value={position.asset_code} />
           <Detail label="Shares" value={shares.toLocaleString()} />
           <Detail label="Average entry" value={pct(average)} />
-          <Detail label="Cost basis" value={assetMoney(costBasis, position.asset_code)} />
+          <Detail label="Amount invested" value={assetMoney(costBasis, position.asset_code)} />
           <Detail label="Status" value={positionStatusLabel(position.status)} />
         </VadCard>
 
         <VadCard variant="raised" style={{ flex: 0.9, width: '100%', gap: theme.spacing.sm }}>
-          <VadText variant="bodyStrong">Portfolio context</VadText>
+          <VadText variant="bodyStrong">At a glance</VadText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <ContextFact label={`${position.asset_code} portfolio cost`} value={assetMoney(assetPortfolioCost, position.asset_code)} />
+            <ContextFact label={`All ${position.asset_code} positions`} value={assetMoney(assetPortfolioCost, position.asset_code)} />
             <ContextFact label="This position" value={assetMoney(costBasis, position.asset_code)} />
-            <ContextFact label="Portfolio weight" value={pct(portfolioWeight)} />
+            <ContextFact label="Share" value={pct(portfolioWeight)} />
           </View>
-          <VadText variant="caption" tone="secondary">Filled trades update your shares and cost. The final market result determines settlement.</VadText>
+          <VadText variant="caption" tone="secondary">Filled trades update your shares and amount invested. The final market result determines any payout.</VadText>
           <VadButton
             label="Open market"
             variant="secondary"
