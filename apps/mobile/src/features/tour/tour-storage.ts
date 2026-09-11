@@ -2,11 +2,15 @@ import { getProductLocalItem, setProductLocalItem } from '@/services/product-loc
 import { VAD_TOUR_VERSION } from './tour-catalog';
 import { DEFAULT_TOUR_PROGRESS, type TourProgress } from './tour-types';
 
-const TOUR_PROGRESS_KEY = 'vad.product-tour.progress.v1';
+const TOUR_PROGRESS_PREFIX = 'vad.product-tour.progress.v1';
 
-export async function readTourProgress(): Promise<TourProgress> {
+function progressKey(userId: string) {
+  return `${TOUR_PROGRESS_PREFIX}.${userId}`;
+}
+
+export async function readTourProgress(userId: string): Promise<TourProgress> {
   try {
-    const stored = await getProductLocalItem(TOUR_PROGRESS_KEY);
+    const stored = await getProductLocalItem(progressKey(userId));
     if (!stored) return { ...DEFAULT_TOUR_PROGRESS, tourVersion: VAD_TOUR_VERSION };
 
     const parsed = JSON.parse(stored) as Partial<TourProgress>;
@@ -24,6 +28,6 @@ export async function readTourProgress(): Promise<TourProgress> {
   }
 }
 
-export async function writeTourProgress(progress: TourProgress) {
-  await setProductLocalItem(TOUR_PROGRESS_KEY, JSON.stringify(progress));
+export async function writeTourProgress(userId: string, progress: TourProgress) {
+  await setProductLocalItem(progressKey(userId), JSON.stringify(progress));
 }
