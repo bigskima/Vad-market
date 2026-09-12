@@ -44,8 +44,12 @@ export function usePolicyGate(userId: string | null | undefined) {
   }, [userId]);
 
   useEffect(() => {
-    void refresh();
-    return subscribeLegalPolicyChanges(refresh);
+    const timer = setTimeout(() => void refresh(), 0);
+    const unsubscribe = subscribeLegalPolicyChanges(refresh);
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, [refresh]);
 
   return { ...state, refresh };
