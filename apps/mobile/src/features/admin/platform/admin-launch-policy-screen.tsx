@@ -33,7 +33,8 @@ export function AdminLaunchPolicyScreen() {
   }, []);
 
   useEffect(() => {
-    void load();
+    const timer = setTimeout(() => void load(), 0);
+    return () => clearTimeout(timer);
   }, [load]);
 
   const productionOracle = useMemo(
