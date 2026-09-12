@@ -16,6 +16,7 @@ export function ProductTopBar({
   canCreate,
   onCreate,
   onAdmin,
+  onAssistant,
   onAccount,
   onSearch,
   onNotices,
@@ -29,6 +30,7 @@ export function ProductTopBar({
   onNavigate?: (tab: ProductTab) => void;
   onCreate: () => void;
   onAdmin: () => void;
+  onAssistant: () => void;
   onAccount: () => void;
   onSearch: () => void;
   onNotices: () => void;
@@ -125,6 +127,8 @@ export function ProductTopBar({
             <HeaderAction label="Operations" icon="operations" onPress={onAdmin} />
           ) : null}
 
+          <HeaderIcon label="Open VAD Assistant" icon="activity" onPress={onAssistant} />
+
           <View>
             <HeaderIcon label="Open notices" icon="bell" onPress={onNotices} />
             {noticeCount > 0 ? (
@@ -175,7 +179,7 @@ export function ProductTopBar({
   );
 }
 
-function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell'; onPress: () => void }) {
+function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'activity'; onPress: () => void }) {
   const theme = useVadTheme();
   return (
     <Pressable
@@ -193,7 +197,7 @@ function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell'; onP
         borderColor: theme.colors.border,
       })}
     >
-      <VadIcon name={icon} size={19} tone="secondary" />
+      <VadIcon name={icon} size={19} tone={icon === 'activity' ? 'brand' : 'secondary'} />
     </Pressable>
   );
 }
