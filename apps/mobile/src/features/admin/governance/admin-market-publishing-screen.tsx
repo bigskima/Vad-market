@@ -90,14 +90,13 @@ export function AdminMarketPublishingScreen() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  const now = Date.now();
   const ready = useMemo(
-    () => rows.filter((row) => row.instrument_status === 'DRAFT' && (!row.opens_at || Date.parse(row.opens_at) <= now)),
-    [now, rows],
+    () => rows.filter((row) => row.instrument_status === 'DRAFT' && row.event_status === 'APPROVED'),
+    [rows],
   );
   const scheduled = useMemo(
-    () => rows.filter((row) => row.instrument_status === 'DRAFT' && Boolean(row.opens_at) && Date.parse(row.opens_at as string) > now),
-    [now, rows],
+    () => rows.filter((row) => row.instrument_status === 'DRAFT' && row.event_status === 'SCHEDULED'),
+    [rows],
   );
   const vad = useMemo(
     () => rows.filter((row) => row.instrument_status === 'OPEN' && row.is_vad_market),
