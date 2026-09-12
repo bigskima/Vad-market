@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { VadLogo } from '@/components/brand/vad-logo';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadText } from '@/components/ui/vad-text';
+import { GrowthAttributionBridge } from '@/features/growth/growth-attribution-bridge';
 import { ProductTourProvider } from '@/features/tour/tour-provider';
 import { usePolicyGate } from '@/hooks/use-policy-gate';
 import { supabaseConfiguration } from '@/lib/supabase';
@@ -47,12 +48,14 @@ function PolicyConsentBoundary({ children }: { children: ReactNode }) {
   const policyGate = usePolicyGate(session?.user.id);
   const policyRoute = pathname === '/policy-consent';
   const authRoute = pathname === '/';
+  const growthLandingRoute = pathname.startsWith('/a/');
   const gateApplies = Boolean(
     !isLoading
       && session
       && !isPasswordRecovery
       && !policyRoute
-      && !authRoute,
+      && !authRoute
+      && !growthLandingRoute,
   );
 
   if (gateApplies && policyGate.loading) {
@@ -177,13 +180,15 @@ export default function RootLayout() {
       <VadThemeProvider>
         {supabaseConfiguration.ready ? (
           <AuthProvider>
-            <PolicyConsentBoundary>
-              <ProductDataProvider>
-                <ProductTourProvider>
-                  <ThemedNavigation />
-                </ProductTourProvider>
-              </ProductDataProvider>
-            </PolicyConsentBoundary>
+            <GrowthAttributionBridge>
+              <PolicyConsentBoundary>
+                <ProductDataProvider>
+                  <ProductTourProvider>
+                    <ThemedNavigation />
+                  </ProductTourProvider>
+                </ProductDataProvider>
+              </PolicyConsentBoundary>
+            </GrowthAttributionBridge>
           </AuthProvider>
         ) : (
           <ServiceUnavailableScreen />
