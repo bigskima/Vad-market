@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
@@ -248,7 +249,7 @@ function MarketRailSection({
   emptyTitle: string;
   emptyBody: string;
   onSeeAll: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const theme = useVadTheme();
   const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
@@ -286,7 +287,6 @@ function MarketRailCard({
   detail?: string;
   onPress: () => void;
 }) {
-  const theme = useVadTheme();
   const density = useProductDensity();
   return (
     <View style={{ width: Math.min(density.width - (density.narrow ? 36 : 44), density.desktop ? 340 : 316), gap: 6 }}>
