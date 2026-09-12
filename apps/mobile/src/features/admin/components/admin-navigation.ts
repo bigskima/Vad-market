@@ -7,6 +7,7 @@ export type AdminHref =
   | '/admin/search'
   | '/admin/governance'
   | '/admin/market-publishing'
+  | '/admin/market-discovery'
   | '/admin/launch-policy'
   | '/admin/revenue'
   | '/admin/fees'
@@ -77,7 +78,14 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         label: 'Market Publishing',
         shortLabel: 'Publish',
         href: '/admin/market-publishing',
-        description: 'Publish approved markets, manage VAD Markets and automatic Featured rules',
+        description: 'Publish approved markets and manage the VAD Markets collection',
+        permissions: ['markets.manage'],
+      },
+      {
+        label: 'Featured & Trending',
+        shortLabel: 'Discovery',
+        href: '/admin/market-discovery',
+        description: 'Control Home ranking rules and remove or restore markets from discovery',
         permissions: ['markets.manage'],
       },
       {
@@ -214,10 +222,7 @@ export function getVisibleAdminGroups(access: AdminAccess) {
       ...group,
       items: group.items.filter((item) => {
         if (item.superAdminOnly && !access.isSuperAdmin) return false;
-        return (
-          item.permissions.length === 0 ||
-          hasAnyAdminPermission(access, item.permissions)
-        );
+        return item.permissions.length === 0 || hasAnyAdminPermission(access, item.permissions);
       }),
     }))
     .filter((group) => group.items.length > 0);
@@ -227,20 +232,14 @@ export function getAdminPageMeta(pathname: string, access: AdminAccess) {
   const groups = getVisibleAdminGroups(access);
   const items = groups.flatMap((group) => group.items);
   const exact = items.find((item) => item.href === pathname);
-  const nested = items
-    .filter((item) => item.href !== '/admin')
-    .find((item) => pathname.startsWith(`${item.href}/`));
-
-  return (
-    exact ??
-    nested ?? {
-      label: 'VAD Operations',
-      shortLabel: 'Operations',
-      href: '/admin' as const,
-      description: 'Administrative tools available to your role',
-      permissions: [],
-    }
-  );
+  const nested = items.filter((item) => item.href !== '/admin').find((item) => pathname.startsWith(`${item.href}/`));
+  return exact ?? nested ?? {
+    label: 'VAD Operations',
+    shortLabel: 'Operations',
+    href: '/admin' as const,
+    description: 'Administrative tools available to your role',
+    permissions: [],
+  };
 }
 
 export function isAdminItemSelected(pathname: string, href: AdminHref) {
