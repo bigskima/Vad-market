@@ -28,6 +28,46 @@ export type AdminFeaturedMarketSettings = {
   lastRefreshedAt: string | null;
 };
 
+export type AdminTrendingMarketSettings = {
+  enabled: boolean;
+  windowMinutes: number;
+  baselineHours: number;
+  minimumVolumeNgn: number;
+  minimumTrades: number;
+  minimumUniqueTraders: number;
+  minimumAcceleration: number;
+  maxMarkets: number;
+  lastRefreshedAt: string | null;
+};
+
+export type AdminTrendingRanking = {
+  instrumentPublicId: string;
+  rank: number;
+  volumeNgn: number;
+  tradeCount: number;
+  uniqueTraders: number;
+  momentumScore: number;
+  volumeAcceleration: number;
+  tradeAcceleration: number;
+  priceMovement: number;
+  lastTradeAt: string | null;
+  calculatedAt: string;
+};
+
+export type AdminMarketSuppression = {
+  instrumentPublicId: string;
+  featuredSuppressed: boolean;
+  trendingSuppressed: boolean;
+  reason: string | null;
+  updatedAt: string;
+};
+
+export type AdminTrendingMarketSnapshot = {
+  settings: AdminTrendingMarketSettings;
+  rankings: AdminTrendingRanking[];
+  suppressions: AdminMarketSuppression[];
+};
+
 function fail(
   error: { message: string; code?: string; details?: string; hint?: string } | null,
   fallback: string,
@@ -52,6 +92,28 @@ export async function getAdminFeaturedMarketSettings() {
     maxMarkets: Number(raw.maxMarkets ?? 20),
     lastRefreshedAt: raw.lastRefreshedAt ?? null,
   } satisfies AdminFeaturedMarketSettings;
+}
+
+export async function getAdminTrendingMarketSnapshot() {
+  const { data, error } = await supabase.rpc('admin_trending_market_snapshot');
+  fail(error, 'We could not load Trending Markets controls right now. Refresh and try again.');
+  const raw = (data ?? {}) as Partial<AdminTrendingMarketSnapshot>;
+  const settings = (raw.settings ?? {}) as Partial<AdminTrendingMarketSettings>;
+  return {
+    settings: {
+      enabled: settings.enabled !== false,
+      windowMinutes: Number(settings.windowMinutes ?? 60),
+      baselineHours: Number(settings.baselineHours ?? 6),
+      minimumVolumeNgn: Number(settings.minimumVolumeNgn ?? 100_000),
+      minimumTrades: Number(settings.minimumTrades ?? 5),
+      minimumUniqueTraders: Number(settings.minimumUniqueTraders ?? 3),
+      minimumAcceleration: Number(settings.minimumAcceleration ?? 1.5),
+      maxMarkets: Number(settings.maxMarkets ?? 12),
+      lastRefreshedAt: settings.lastRefreshedAt ?? null,
+    },
+    rankings: Array.isArray(raw.rankings) ? raw.rankings : [],
+    suppressions: Array.isArray(raw.suppressions) ? raw.suppressions : [],
+  } satisfies AdminTrendingMarketSnapshot;
 }
 
 export async function publishAdminMarket(input: {
@@ -102,8 +164,56 @@ export async function updateAdminFeaturedMarketSettings(input: {
   return data as AdminFeaturedMarketSettings;
 }
 
+export async function updateAdminTrendingMarketSettings(input: {
+  enabled: boolean;
+  windowMinutes: number;
+  baselineHours: number;
+  minimumVolumeNgn: number;
+  minimumTrades: number;
+  minimumUniqueTraders: number;
+  minimumAcceleration: number;
+  maxMarkets: number;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_update_trending_market_settings', {
+    p_enabled: input.enabled,
+    p_window_minutes: input.windowMinutes,
+    p_baseline_hours: input.baselineHours,
+    p_minimum_volume_ngn: input.minimumVolumeNgn,
+    p_minimum_trades: input.minimumTrades,
+    p_minimum_unique_traders: input.minimumUniqueTraders,
+    p_minimum_acceleration: input.minimumAcceleration,
+    p_max_markets: input.maxMarkets,
+    p_reason: input.reason.trim(),
+  });
+  fail(error, 'We could not save Trending Markets settings right now. Please try again.');
+  return data as AdminTrendingMarketSnapshot;
+}
+
+export async function setAdminMarketHomeSuppression(input: {
+  instrumentPublicId: string;
+  surface: 'FEATURED' | 'TRENDING';
+  suppressed: boolean;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_market_home_suppression', {
+    p_instrument_public_id: input.instrumentPublicId,
+    p_surface: input.surface,
+    p_suppressed: input.suppressed,
+    p_reason: input.reason.trim(),
+  });
+  fail(error, `We could not ${input.suppressed ? 'hide' : 'restore'} this market right now. Please try again.`);
+  return Boolean(data);
+}
+
 export async function refreshAdminFeaturedMarketRankings() {
   const { data, error } = await supabase.rpc('admin_refresh_featured_market_rankings');
   fail(error, 'We could not refresh Featured Markets right now. Please try again.');
+  return Number(data ?? 0);
+}
+
+export async function refreshAdminTrendingMarketRankings() {
+  const { data, error } = await supabase.rpc('admin_refresh_trending_market_rankings');
+  fail(error, 'We could not refresh Trending Markets right now. Please try again.');
   return Number(data ?? 0);
 }
