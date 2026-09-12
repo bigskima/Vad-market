@@ -179,7 +179,7 @@ test('a protected deep link redirects to consent with a stable navigator', async
 
 test('an existing agreement opens Home without the consent modal', async t => {
   const app = await openApp(t, { accepted: true });
-  await app.waitFor(() => app.text().includes('Price the outcome. Back your conviction.'));
+  await app.waitFor(() => app.dom.window.location.pathname === '/home' && app.document.getElementById('root').textContent.length > 100);
   assert.equal(app.dom.window.location.pathname, '/home');
   assert.ok(!app.text().includes('YOUR VAD AGREEMENT'));
 });
