@@ -44,6 +44,30 @@ export async function approveAdminMarketProposalAutomatically(input: {
   return (data ?? {}) as Record<string, unknown>;
 }
 
+export async function createAdminMarketDraft(input: {
+  title: string;
+  description: string;
+  category: string;
+  opensAt: string;
+  closesAt: string;
+  resolvesAfter: string;
+  countryCode: string;
+  assetCode: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_create_market_draft', {
+    p_title: input.title.trim(),
+    p_description: input.description.trim(),
+    p_category: input.category.trim(),
+    p_opens_at: input.opensAt,
+    p_closes_at: input.closesAt,
+    p_resolves_after: input.resolvesAfter,
+    p_country_code: input.countryCode,
+    p_asset_code: input.assetCode,
+  });
+  fail(error, 'We could not create this VAD market right now.');
+  return (data ?? {}) as Record<string, unknown>;
+}
+
 export async function decideAdminMarketProposalSimple(input: {
   proposalPublicId: string;
   decision: 'REJECT' | 'NEEDS_CLARIFICATION';
