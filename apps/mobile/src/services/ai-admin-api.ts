@@ -7,6 +7,8 @@ export type AiProviderAdapter =
   | 'ANTHROPIC_MESSAGES'
   | 'CLOUDFLARE_WORKERS_AI';
 
+export type AiCapability = 'MARKET_ADMISSION' | 'USER_ASSISTANT';
+
 export type AiProviderModelRow = {
   ai_provider_id: number;
   provider_code: string;
@@ -33,6 +35,18 @@ export async function getAdminAiProviderCatalog() {
   return (data ?? []) as AiProviderModelRow[];
 }
 
+export async function setAdminAiModelCapabilities(
+  aiProviderId: number,
+  capabilities: AiCapability[],
+) {
+  const { data, error } = await supabase.rpc('admin_set_ai_model_capabilities', {
+    p_ai_provider_id: aiProviderId,
+    p_capabilities: capabilities,
+  });
+  fail(error, 'We could not update what this AI model can be used for. Please try again.');
+  return (data ?? []) as AiCapability[];
+}
+
 export async function upsertAdminAiProviderModel(input: {
   providerCode: string;
   providerName: string;
@@ -44,6 +58,7 @@ export async function upsertAdminAiProviderModel(input: {
   priority: number;
   apiVersion?: string | null;
   costPolicy?: Record<string, unknown>;
+  capabilities?: AiCapability[];
 }) {
   const { data, error } = await supabase.rpc('admin_upsert_ai_provider_model', {
     p_provider_code: input.providerCode.trim().toUpperCase(),
@@ -58,5 +73,13 @@ export async function upsertAdminAiProviderModel(input: {
     p_api_version: input.apiVersion?.trim() || null,
   });
   fail(error, 'We could not save these AI service settings right now. Please try again.');
-  return Number(data);
+
+  const aiProviderId = Number(data);
+  await setAdminAiModelCapabilities(
+    aiProviderId,
+    input.capabilities?.length
+      ? input.capabilities
+      : ['MARKET_ADMISSION', 'USER_ASSISTANT'],
+  );
+  return aiProviderId;
 }
