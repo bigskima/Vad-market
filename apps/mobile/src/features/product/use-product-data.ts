@@ -4,8 +4,10 @@ import { userFacingErrorMessage, type UserErrorContext } from '@/lib/user-facing
 import {
   getHomeExperience,
   type FeaturedMarketRow,
+  type FeaturedMarketSettings,
   type HomePromotion,
   type PublicNotice,
+  type VadMarketRow,
 } from '@/services/home-content-api';
 import {
   getAdminRuntimeSummary,
@@ -37,6 +39,14 @@ const emptySectionErrors: ProductSectionErrors = {
   proposals: null,
 };
 
+const defaultFeaturedSettings: FeaturedMarketSettings = {
+  enabled: true,
+  minimumVolumeNgn: 1_000_000,
+  windowHours: 24,
+  maxMarkets: 20,
+  lastRefreshedAt: null,
+};
+
 function settledError(
   result: PromiseSettledResult<unknown>,
   context: UserErrorContext,
@@ -59,7 +69,10 @@ export function useProductData(enabled = true) {
   const [proposals, setProposals] = useState<ProposalRow[]>([]);
   const [homePromotions, setHomePromotions] = useState<HomePromotion[]>([]);
   const [publicNotices, setPublicNotices] = useState<PublicNotice[]>([]);
+  const [vadMarkets, setVadMarkets] = useState<VadMarketRow[]>([]);
   const [featuredMarkets, setFeaturedMarkets] = useState<FeaturedMarketRow[]>([]);
+  const [featuredMarketSettings, setFeaturedMarketSettings] =
+    useState<FeaturedMarketSettings>(defaultFeaturedSettings);
   const [homeExperienceError, setHomeExperienceError] = useState<string | null>(null);
   const [adminSummary, setAdminSummary] = useState<Record<
     string,
@@ -74,7 +87,9 @@ export function useProductData(enabled = true) {
     setProposals([]);
     setHomePromotions([]);
     setPublicNotices([]);
+    setVadMarkets([]);
     setFeaturedMarkets([]);
+    setFeaturedMarketSettings(defaultFeaturedSettings);
     setHomeExperienceError(null);
     setAdminSummary(null);
     setSectionErrors(emptySectionErrors);
@@ -98,7 +113,9 @@ export function useProductData(enabled = true) {
       const next = await getHomeExperience();
       setHomePromotions(next.promotions);
       setPublicNotices(next.notices);
+      setVadMarkets(next.vadMarkets);
       setFeaturedMarkets(next.featuredMarkets);
+      setFeaturedMarketSettings(next.featuredSettings);
       setHomeExperienceError(null);
     } catch (reason) {
       setHomeExperienceError(
@@ -207,7 +224,9 @@ export function useProductData(enabled = true) {
     proposals,
     homePromotions,
     publicNotices,
+    vadMarkets,
     featuredMarkets,
+    featuredMarketSettings,
     homeExperienceError,
     adminSummary,
     ngn,

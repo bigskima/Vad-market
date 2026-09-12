@@ -32,22 +32,25 @@ export default function AccountScreen() {
   const sideBySide = density.wide;
 
   useEffect(() => {
-    if (!userId) {
-      setHasAdminAccess(false);
-      return;
-    }
-
     let ignore = false;
-    void getAdminAccess()
-      .then((access) => {
-        if (!ignore) setHasAdminAccess(access.isSuperAdmin || access.roles.length > 0);
-      })
-      .catch(() => {
-        if (!ignore) setHasAdminAccess(false);
-      });
+    const timer = setTimeout(() => {
+      if (!userId) {
+        setHasAdminAccess(false);
+        return;
+      }
+
+      void getAdminAccess()
+        .then((access) => {
+          if (!ignore) setHasAdminAccess(access.isSuperAdmin || access.roles.length > 0);
+        })
+        .catch(() => {
+          if (!ignore) setHasAdminAccess(false);
+        });
+    }, 0);
 
     return () => {
       ignore = true;
+      clearTimeout(timer);
     };
   }, [userId]);
 

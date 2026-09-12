@@ -55,7 +55,9 @@ export default function HomeRoute() {
         <HomeScreen
           markets={data.markets}
           promotions={data.homePromotions}
+          vadMarkets={data.vadMarkets}
           featuredMarkets={data.featuredMarkets}
+          featuredSettings={data.featuredMarketSettings}
           onOpenMarket={openMarket}
           onOpenPromotion={openPromotion}
           onExploreMarkets={exploreMarkets}
