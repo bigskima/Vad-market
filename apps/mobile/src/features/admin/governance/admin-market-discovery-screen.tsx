@@ -64,6 +64,8 @@ export function AdminMarketDiscoveryScreen() {
   const featuredCount = rows.filter((row) => row.instrument_status === 'OPEN' && Boolean(row.automatic_featured)).length;
   const trendingCount = Math.min(trending.rankings.length, trending.settings.maxMarkets);
   const hiddenCount = trending.suppressions.filter((item) => item.featuredSuppressed || item.trendingSuppressed).length;
+  const featuredFormKey = [featured.enabled, featured.minimumVolumeNgn, featured.windowHours, featured.maxMarkets, featured.lastRefreshedAt ?? ''].join(':');
+  const trendingFormKey = [trending.settings.enabled, trending.settings.windowMinutes, trending.settings.baselineHours, trending.settings.minimumVolumeNgn, trending.settings.minimumTrades, trending.settings.minimumUniqueTraders, trending.settings.minimumAcceleration, trending.settings.maxMarkets, trending.settings.lastRefreshedAt ?? ''].join(':');
 
   return <View style={{ gap: theme.spacing.xl }}>
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: theme.spacing.md, flexWrap: 'wrap' }}>
@@ -73,8 +75,8 @@ export function AdminMarketDiscoveryScreen() {
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}><VadChip label={`${featuredCount} featured`} tone="yes" /><VadChip label={`${trendingCount} trending`} tone="warning" /><VadChip label={`${hiddenCount} manually hidden`} tone={hiddenCount ? 'warning' : 'neutral'} /></View>
     {message ? <View style={{ borderLeftWidth: 3, borderLeftColor: theme.colors.yes, backgroundColor: theme.colors.yesSoft, borderRadius: theme.radius.md, padding: theme.spacing.md, gap: 3 }}><VadText variant="bodyStrong" tone="yes">Updated</VadText><VadText variant="caption" tone="secondary">{message}</VadText></View> : null}
     {error ? <VadErrorState title="Some discovery information may be stale" message={error} onRetry={() => void load(true)} /> : null}
-    <AdminFeaturedMarketPanel rows={rows} settings={featured} onChanged={changed} />
-    <AdminTrendingMarketPanel rows={rows} snapshot={trending} onChanged={changed} />
+    <AdminFeaturedMarketPanel key={featuredFormKey} rows={rows} settings={featured} onChanged={changed} />
+    <AdminTrendingMarketPanel key={trendingFormKey} rows={rows} snapshot={trending} onChanged={changed} />
     <AdminMarketDiscoveryModeration rows={rows} snapshot={trending} onChanged={changed} />
   </View>;
 }
