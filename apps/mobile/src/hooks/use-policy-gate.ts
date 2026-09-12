@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   getPolicyGateState,
@@ -17,6 +17,11 @@ const OPEN_STATE: PolicyGateState = {
 
 const POLICY_GATE_TIMEOUT_MS = 8000;
 
+type PolicyGateSnapshot = {
+  userId: string | null;
+  state: PolicyGateState;
+};
+
 async function getPolicyGateStateWithTimeout(userId: string): Promise<PolicyGateState> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   try {
@@ -32,37 +37,60 @@ async function getPolicyGateStateWithTimeout(userId: string): Promise<PolicyGate
 }
 
 export function usePolicyGate(userId: string | null | undefined) {
-  const [state, setState] = useState<PolicyGateState>(
-    userId ? { ...OPEN_STATE, loading: true } : OPEN_STATE,
-  );
+  const activeUserId = userId ?? null;
+  const [snapshot, setSnapshot] = useState<PolicyGateSnapshot>(() => ({
+    userId: activeUserId,
+    state: activeUserId ? { ...OPEN_STATE, loading: true } : OPEN_STATE,
+  }));
+  const requestSequence = useRef(0);
+
+  const state = snapshot.userId === activeUserId
+    ? snapshot.state
+    : activeUserId
+      ? { ...OPEN_STATE, loading: true }
+      : OPEN_STATE;
 
   const refresh = useCallback(async () => {
-    if (!userId) {
-      setState(OPEN_STATE);
+    const requestId = ++requestSequence.current;
+
+    if (!activeUserId) {
+      setSnapshot({ userId: null, state: OPEN_STATE });
       return;
     }
 
-    setState((current) => ({ ...current, loading: true, error: null }));
+    setSnapshot((current) => ({
+      userId: activeUserId,
+      state: current.userId === activeUserId
+        ? { ...current.state, loading: true, error: null }
+        : { ...OPEN_STATE, loading: true },
+    }));
+
     try {
-      const next = await getPolicyGateStateWithTimeout(userId);
-      setState(next);
+      const next = await getPolicyGateStateWithTimeout(activeUserId);
+      if (requestId !== requestSequence.current) return;
+      setSnapshot({ userId: activeUserId, state: next });
     } catch (error) {
-      setState({
-        ...OPEN_STATE,
-        loading: false,
-        enforcementReady: true,
-        requiresAcceptance: true,
-        error: error instanceof Error
-          ? error.message
-          : 'We could not confirm the policies for your account. Please try again.',
+      if (requestId !== requestSequence.current) return;
+      setSnapshot({
+        userId: activeUserId,
+        state: {
+          ...OPEN_STATE,
+          loading: false,
+          enforcementReady: true,
+          requiresAcceptance: true,
+          error: error instanceof Error
+            ? error.message
+            : 'We could not confirm the policies for your account. Please try again.',
+        },
       });
     }
-  }, [userId]);
+  }, [activeUserId]);
 
   useEffect(() => {
     const timer = setTimeout(() => void refresh(), 0);
     const unsubscribe = subscribeLegalPolicyChanges(refresh);
     return () => {
+      requestSequence.current += 1;
       clearTimeout(timer);
       unsubscribe();
     };
