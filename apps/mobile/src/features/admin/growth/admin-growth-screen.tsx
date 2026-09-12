@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
@@ -39,7 +39,7 @@ type Editor =
   | { kind: 'contract'; value: GrowthContract | null }
   | null;
 
-type ReviewTarget = { reward: GrowthReward; decision: 'APPROVE' | 'HOLD' | 'DISQUALIFY' } | null;
+type ReviewTarget = { reward: GrowthReward; decision: 'APPROVE' | 'HOLD' | 'DISQUALIFY' };
 
 const emptyWorkspace: AdminGrowthWorkspace = {
   summary: { activeCampaigns: 0, partners: 0, attributedUsers: 0, pendingRewards: 0, approvedLiability: 0, paidRewards: 0 },
@@ -56,7 +56,7 @@ export function AdminGrowthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [editor, setEditor] = useState<Editor>(null);
-  const [reviewTarget, setReviewTarget] = useState<ReviewTarget>(null);
+  const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
 
   const canManage = admin.access.isSuperAdmin || admin.access.permissions.includes('growth.manage');
   const canReview = admin.access.isSuperAdmin || admin.access.permissions.includes('growth.review');
@@ -127,7 +127,14 @@ export function AdminGrowthScreen() {
         {editor?.kind === 'contract' ? <ContractEditor contract={editor.value} campaigns={workspace.campaigns} partners={workspace.partners} onSaved={async () => { setEditor(null); setMessage('Partner contract updated.'); await load(true); }} /> : null}
       </VadBottomSheet>
 
-      <ReviewSheet target={reviewTarget} onClose={() => setReviewTarget(null)} onSaved={async () => { setReviewTarget(null); setMessage('Reward review saved.'); await load(true); }} />
+      {reviewTarget ? (
+        <ReviewSheet
+          key={`${reviewTarget.reward.publicId}:${reviewTarget.decision}`}
+          target={reviewTarget}
+          onClose={() => setReviewTarget(null)}
+          onSaved={async () => { setReviewTarget(null); setMessage('Reward review saved.'); await load(true); }}
+        />
+      ) : null}
     </View>
   );
 }
@@ -204,7 +211,13 @@ function ContractEditor({ contract, campaigns, partners, onSaved }: { contract: 
   return <EditorScroll><EntityChoice label="Partner" value={form.partnerPublicId} items={partners.map((item)=>({value:item.publicId,label:item.displayName}))} onChange={(value)=>patch('partnerPublicId',value)}/><EntityChoice label="Campaign (optional)" value={form.campaignPublicId} items={campaigns.map((item)=>({value:item.publicId,label:item.name}))} onChange={(value)=>patch('campaignPublicId',value)} allowNone/><ChoiceRow label="Contract type" value={form.contractType} values={['CPA','REVENUE_SHARE','HYBRID','FLAT','TIERED']} onChange={(value)=>patch('contractType',value)}/><ChoiceRow label="Status" value={form.status} values={['DRAFT','ACTIVE','PAUSED','ENDED','ARCHIVED']} onChange={(value)=>patch('status',value)}/><VadInput label="Asset" value={form.rewardAssetCode} onChangeText={(value)=>patch('rewardAssetCode',value.toUpperCase())}/><VadInput label="CPA amount" value={form.cpaAmount} onChangeText={(value)=>patch('cpaAmount',value.replace(/[^0-9.]/g,''))}/><VadInput label="Revenue share (basis points)" value={form.revenueShareBps} onChangeText={(value)=>patch('revenueShareBps',value.replace(/\D/g,''))} hint="100 basis points = 1%"/><VadInput label="Revenue share duration (days)" value={form.revenueShareDays} onChangeText={(value)=>patch('revenueShareDays',value.replace(/\D/g,''))}/><VadInput label="Flat fee" value={form.flatFee} onChangeText={(value)=>patch('flatFee',value.replace(/[^0-9.]/g,''))}/><VadInput label="Payout cap" value={form.payoutCap} onChangeText={(value)=>patch('payoutCap',value.replace(/[^0-9.]/g,''))}/><VadInput label="Contract terms (JSON)" value={form.terms} onChangeText={(value)=>patch('terms',value)} multiline/>{error?<VadErrorState title="Contract not saved" message={error}/>:null}<VadButton label="Save contract" loading={working} disabled={!form.partnerPublicId} onPress={()=>void save()}/></EditorScroll>;
 }
 
-function ReviewSheet({ target, onClose, onSaved }: { target: ReviewTarget; onClose: () => void; onSaved: () => Promise<void> }) { const [reason,setReason]=useState('');const [working,setWorking]=useState(false);const [error,setError]=useState<string|null>(null);useEffect(()=>{if(target)setReason('');},[target]);async function submit(){if(!target)return;setWorking(true);setError(null);try{await decideGrowthReward(target.reward.publicId,target.decision,reason);await onSaved();}catch(value){setError(value instanceof Error?value.message:'Reward review failed.');}finally{setWorking(false);}}return <VadBottomSheet visible={Boolean(target)} title="Reward review" onClose={onClose}>{target?<EditorScroll><VadCard variant="muted" style={{ gap: 3 }}><VadText variant="bodyStrong">{target.reward.campaignName}</VadText><VadText variant="caption" tone="secondary">{target.reward.assetCode} {Number(target.reward.amount).toLocaleString()} · {target.decision}</VadText></VadCard><VadInput label="Review reason" value={reason} onChangeText={setReason} multiline placeholder="Explain why this reward is being approved, held or disqualified."/>{error?<VadErrorState title="Review not saved" message={error}/>:null}<VadButton label={target.decision === 'APPROVE' ? 'Approve reward' : target.decision === 'HOLD' ? 'Place on hold' : 'Disqualify reward'} loading={working} disabled={reason.trim().length<3} onPress={()=>void submit()}/></EditorScroll>:null}</VadBottomSheet>; }
+function ReviewSheet({ target, onClose, onSaved }: { target: ReviewTarget; onClose: () => void; onSaved: () => Promise<void> }) {
+  const [reason,setReason]=useState('');
+  const [working,setWorking]=useState(false);
+  const [error,setError]=useState<string|null>(null);
+  async function submit(){setWorking(true);setError(null);try{await decideGrowthReward(target.reward.publicId,target.decision,reason);await onSaved();}catch(value){setError(value instanceof Error?value.message:'Reward review failed.');}finally{setWorking(false);}}
+  return <VadBottomSheet visible title="Reward review" onClose={onClose}><EditorScroll><VadCard variant="muted" style={{ gap: 3 }}><VadText variant="bodyStrong">{target.reward.campaignName}</VadText><VadText variant="caption" tone="secondary">{target.reward.assetCode} {Number(target.reward.amount).toLocaleString()} · {target.decision}</VadText></VadCard><VadInput label="Review reason" value={reason} onChangeText={setReason} multiline placeholder="Explain why this reward is being approved, held or disqualified."/>{error?<VadErrorState title="Review not saved" message={error}/>:null}<VadButton label={target.decision === 'APPROVE' ? 'Approve reward' : target.decision === 'HOLD' ? 'Place on hold' : 'Disqualify reward'} loading={working} disabled={reason.trim().length<3} onPress={()=>void submit()}/></EditorScroll></VadBottomSheet>;
+}
 
 function SectionHeader({ title, subtitle, action }: { title: string; subtitle: string; action?: React.ReactNode }) { const theme=useVadTheme();return <View style={{ flexDirection:'row',alignItems:'flex-end',gap:theme.spacing.md,flexWrap:'wrap' }}><View style={{ flex:1,minWidth:220,gap:2 }}><VadText variant="heading">{title}</VadText><VadText variant="caption" tone="secondary">{subtitle}</VadText></View>{action}</View>; }
 function EditorScroll({ children }: { children: React.ReactNode }) { const theme=useVadTheme();return <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap:theme.spacing.md,paddingBottom:theme.spacing.lg }}>{children}</ScrollView>; }
