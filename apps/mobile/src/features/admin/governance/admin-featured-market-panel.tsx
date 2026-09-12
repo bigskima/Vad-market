@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
@@ -19,13 +19,6 @@ export function AdminFeaturedMarketPanel({ rows, settings, onChanged }: { rows: 
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const current = useMemo(() => rows.filter((row) => row.instrument_status === 'OPEN' && Boolean(row.automatic_featured)).sort((a, b) => (a.automatic_feature_rank ?? 9999) - (b.automatic_feature_rank ?? 9999)), [rows]);
-
-  useEffect(() => {
-    setEnabled(settings.enabled);
-    setMinimum(String(Math.round(settings.minimumVolumeNgn)));
-    setWindowHours(settings.windowHours);
-    setMaximum(String(settings.maxMarkets));
-  }, [settings.enabled, settings.maxMarkets, settings.minimumVolumeNgn, settings.windowHours]);
 
   async function save() {
     const min = Number(minimum);
