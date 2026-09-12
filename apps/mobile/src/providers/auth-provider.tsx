@@ -46,6 +46,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const PHONE_PROMPT_KEY = 'vad:phone-verification-pending';
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 8000;
 
 function authMessage(error: unknown, mode: 'signIn' | 'signUp') {
   return userFacingErrorMessage(error, mode === 'signIn' ? 'signIn' : 'signUp');
@@ -149,9 +150,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     let isMounted = true;
+    const bootstrapTimeout = setTimeout(() => {
+      if (isMounted) setIsLoading(false);
+    }, AUTH_BOOTSTRAP_TIMEOUT_MS);
 
     void supabase.auth.getSession().then(({ data }) => {
       if (!isMounted) return;
+      clearTimeout(bootstrapTimeout);
       setSession(data.session);
       if (data.session?.user.phone_confirmed_at) {
         persistPhonePrompt(false);
@@ -161,12 +166,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
       setIsLoading(false);
     }).catch(() => {
-      if (isMounted) setIsLoading(false);
+      if (!isMounted) return;
+      clearTimeout(bootstrapTimeout);
+      setIsLoading(false);
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
       (event, nextSession) => {
         if (!isMounted) return;
+        clearTimeout(bootstrapTimeout);
         setSession(nextSession);
         if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
         if (nextSession?.user.phone_confirmed_at) {
@@ -181,6 +189,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     return () => {
       isMounted = false;
+      clearTimeout(bootstrapTimeout);
       subscription.subscription.unsubscribe();
     };
   }, []);
@@ -193,7 +202,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const result = await consumeAuthRedirect(url);
         if (!active || !result) return;
-        if (result.session) setSession(result.session);
+        if (result.session) {
+          setSession(result.session);
+          setIsLoading(false);
+        }
         if (result.recovery) setIsPasswordRecovery(true);
         if (result.session && !result.recovery) requestPhonePrompt(result.session);
         clearWebAuthUrl();
@@ -239,9 +251,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
           }
 
           setSession(data.session);
+          setIsLoading(false);
           requestPhonePrompt(data.session);
           return { ok: true };
         } catch (error) {
+          setIsLoading(false);
           return { ok: false, message: authMessage(error, 'signIn') };
         }
       },
@@ -260,6 +274,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           persistPhonePrompt(true);
           if (data.session) {
             setSession(data.session);
+            setIsLoading(false);
             requestPhonePrompt(data.session);
             return { ok: true };
           }
@@ -375,7 +390,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
             type: 'phone_change',
           });
           if (error) return { ok: false, message: userFacingErrorMessage(error, 'phoneVerification') };
-          if (data.session) setSession(data.session);
+          if (data.session) {
+            setSession(data.session);
+            setIsLoading(false);
+          }
           persistPhonePrompt(false);
           setVerificationPromptPending(false);
           return { ok: true, message: 'Phone number verified.' };
@@ -396,6 +414,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setIsPasswordRecovery(false);
         await supabase.auth.signOut({ scope: 'local' });
         setSession(null);
+        setIsLoading(false);
       },
     }),
     [isLoading, isPasswordRecovery, requestPhonePrompt, session, verificationPromptPending],
