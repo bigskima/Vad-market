@@ -26,7 +26,14 @@ export async function getAdminKycAccess(search?: string) {
     p_limit: 100,
   });
   fail(error, 'We could not load tester and KYC access right now.');
-  return (data ?? []) as AdminKycAccessRow[];
+  const now = Date.now();
+  return ((data ?? []) as AdminKycAccessRow[]).map((row) => ({
+    ...row,
+    override_enabled: Boolean(
+      row.override_enabled
+      && (!row.override_expires_at || Date.parse(row.override_expires_at) > now),
+    ),
+  }));
 }
 
 export async function setAdminKycAccess(input: {
