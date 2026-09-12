@@ -6,6 +6,7 @@ export type AdminHref =
   | '/admin/queue'
   | '/admin/search'
   | '/admin/governance'
+  | '/admin/create-market'
   | '/admin/market-publishing'
   | '/admin/market-discovery'
   | '/admin/launch-policy'
@@ -73,6 +74,13 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         href: '/admin/governance',
         description: 'Market proposals, interventions and resolution',
         permissions: ['markets.manage', 'oracle.review'],
+      },
+      {
+        label: 'Create VAD Market',
+        shortLabel: 'Create',
+        href: '/admin/create-market',
+        description: 'Post a new VAD market proposal from the admin workspace',
+        permissions: ['markets.manage'],
       },
       {
         label: 'Market Publishing',
