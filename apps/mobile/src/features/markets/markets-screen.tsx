@@ -5,6 +5,7 @@ import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
@@ -26,9 +27,6 @@ export function MarketsScreen({
   const theme = useVadTheme();
   const density = useProductDensity();
   const { width } = useWindowDimensions();
-  // The product shell already reserves desktop space for the sidebar/right rail.
-  // Do not derive a three-column market grid from the full browser width or the
-  // cards become compressed inside the capped centre feed.
   const columns = width >= 920 ? 2 : 1;
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(() =>
@@ -81,16 +79,18 @@ export function MarketsScreen({
         </View>
       </View>
 
-      <MarketDiscoveryControls
-        query={query}
-        onQueryChange={setQuery}
-        categories={categories}
-        activeCategory={category}
-        onCategoryChange={setCategory}
-        sortMode={sortMode}
-        onSortModeChange={setSortMode}
-        resultCount={orderedMarkets.length}
-      />
+      <TourTarget id="markets-discovery">
+        <MarketDiscoveryControls
+          query={query}
+          onQueryChange={setQuery}
+          categories={categories}
+          activeCategory={category}
+          onCategoryChange={setCategory}
+          sortMode={sortMode}
+          onSortModeChange={setSortMode}
+          resultCount={orderedMarkets.length}
+        />
+      </TourTarget>
 
       <View
         style={{
@@ -107,38 +107,40 @@ export function MarketsScreen({
         <VadText variant="caption" tone={visibleLive ? 'yes' : 'tertiary'}>{visibleLive} live now</VadText>
       </View>
 
-      {orderedMarkets.length ? (
-        <View
-          style={{
-            flexDirection: columns > 1 ? 'row' : 'column',
-            flexWrap: columns > 1 ? 'wrap' : 'nowrap',
-            gap: theme.spacing.md,
-            alignItems: 'stretch',
-          }}
-        >
-          {orderedMarkets.map((market) => (
-            <View key={market.instrument_public_id} style={{ width: cardWidth }}>
-              <MarketCard market={market} onPress={() => onOpenMarket(market)} />
-            </View>
-          ))}
-        </View>
-      ) : !markets.length ? (
-        <VadEmptyState
-          title="No live markets yet"
-          body="Markets will appear here as soon as they are published and available to trade."
-        />
-      ) : (
-        <VadEmptyState
-          title="No matching markets"
-          body="Try another search, category or sorting option."
-          actionLabel="Clear filters"
-          onAction={() => {
-            setQuery('');
-            setCategory('All');
-            setSortMode('activity');
-          }}
-        />
-      )}
+      <TourTarget id="markets-results">
+        {orderedMarkets.length ? (
+          <View
+            style={{
+              flexDirection: columns > 1 ? 'row' : 'column',
+              flexWrap: columns > 1 ? 'wrap' : 'nowrap',
+              gap: theme.spacing.md,
+              alignItems: 'stretch',
+            }}
+          >
+            {orderedMarkets.map((market) => (
+              <View key={market.instrument_public_id} style={{ width: cardWidth }}>
+                <MarketCard market={market} onPress={() => onOpenMarket(market)} />
+              </View>
+            ))}
+          </View>
+        ) : !markets.length ? (
+          <VadEmptyState
+            title="No live markets yet"
+            body="Markets will appear here as soon as they are published and available to trade."
+          />
+        ) : (
+          <VadEmptyState
+            title="No matching markets"
+            body="Try another search, category or sorting option."
+            actionLabel="Clear filters"
+            onAction={() => {
+              setQuery('');
+              setCategory('All');
+              setSortMode('activity');
+            }}
+          />
+        )}
+      </TourTarget>
     </View>
   );
 }

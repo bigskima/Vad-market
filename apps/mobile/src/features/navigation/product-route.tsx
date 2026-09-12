@@ -1,11 +1,13 @@
 import type { RuntimeCapabilityKey } from '@vad/types';
 import { Redirect, router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
@@ -14,6 +16,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
+import { useProductTour } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
@@ -45,7 +48,10 @@ export function ProductRoute({
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
+  const { registerScrollController } = useProductTour();
   const [noticesOpen, setNoticesOpen] = useState(false);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const scrollOffsetRef = useRef(0);
 
   if (!isLoading && !session) return <Redirect href="/" />;
 
@@ -169,6 +175,33 @@ export function ProductRoute({
     allowCreate && runtime.snapshot.capabilities.submitMarketProposal,
   );
 
+  function connectTourScroller(node: ScrollView | null) {
+    scrollRef.current = node;
+    if (!node) {
+      registerScrollController(null);
+      return;
+    }
+
+    registerScrollController({
+      ensureVisible: (rect) => {
+        const safeTop = density.phone ? 120 : 132;
+        const safeBottom = density.height - (density.phone ? 300 : 270);
+        const alreadyVisible = rect.y >= safeTop && rect.y + rect.height <= safeBottom;
+        if (alreadyVisible) return false;
+
+        const targetCenter = rect.y + rect.height / 2;
+        const idealCenter = Math.max(safeTop + 54, Math.min(density.height * 0.38, 360));
+        const nextY = Math.max(0, scrollOffsetRef.current + targetCenter - idealCenter);
+        node.scrollTo({ y: nextY, animated: true });
+        return true;
+      },
+    });
+  }
+
+  function rememberScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ProductTopBar
@@ -202,10 +235,13 @@ export function ProductRoute({
 
         <View style={{ flex: 1, minWidth: 0, backgroundColor: theme.colors.background }}>
           <ScrollView
+            ref={connectTourScroller}
             style={{ flex: 1 }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             contentInsetAdjustmentBehavior="automatic"
+            onScroll={rememberScroll}
+            scrollEventThrottle={16}
             refreshControl={
               <RefreshControl
                 refreshing={data.refreshing}

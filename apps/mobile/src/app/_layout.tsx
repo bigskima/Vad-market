@@ -1,14 +1,17 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
+import { VadButton } from '@/components/ui/vad-button';
 import { VadText } from '@/components/ui/vad-text';
+import { ProductTourProvider } from '@/features/tour/tour-provider';
+import { usePolicyGate } from '@/hooks/use-policy-gate';
 import { supabaseConfiguration } from '@/lib/supabase';
-import { AuthProvider } from '@/providers/auth-provider';
+import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { ProductDataProvider } from '@/providers/product-data-provider';
 import {
   VadThemeProvider,
@@ -26,9 +29,7 @@ function ThemedNavigation() {
 
   return (
     <>
-      <StatusBar
-        style={theme.mode === 'dark' ? 'light' : 'dark'}
-      />
+      <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -37,6 +38,89 @@ function ThemedNavigation() {
         }}
       />
     </>
+  );
+}
+
+function PolicyConsentBoundary({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const { isLoading, isPasswordRecovery, session } = useAuth();
+  const policyGate = usePolicyGate(session?.user.id);
+  const policyRoute = pathname === '/policy-consent';
+  const authRoute = pathname === '/';
+  const gateApplies = Boolean(
+    !isLoading
+      && session
+      && !isPasswordRecovery
+      && !policyRoute
+      && !authRoute,
+  );
+
+  if (gateApplies && policyGate.loading) {
+    return <PolicyCheckScreen />;
+  }
+
+  if (gateApplies && policyGate.error) {
+    return (
+      <PolicyCheckScreen
+        message={policyGate.error}
+        actionLabel="Try again"
+        onAction={() => void policyGate.refresh()}
+      />
+    );
+  }
+
+  if (
+    gateApplies
+      && policyGate.enforcementReady
+      && policyGate.requiresAcceptance
+  ) {
+    return <Redirect href="/policy-consent" />;
+  }
+
+  return children;
+}
+
+function PolicyCheckScreen({
+  message = 'Checking the current VAD policies for your account…',
+  actionLabel,
+  onAction,
+}: {
+  message?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  const theme = useVadTheme();
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: theme.colors.background,
+        justifyContent: 'center',
+        padding: theme.spacing.xl,
+      }}
+    >
+      <View
+        style={{
+          width: '100%',
+          maxWidth: 520,
+          alignSelf: 'center',
+          gap: theme.spacing.lg,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <VadLogo size={38} />
+          <VadText variant="heading">VAD</VadText>
+        </View>
+        <View style={{ gap: 5 }}>
+          <VadText variant="caption" tone="brand">ACCOUNT CHECK</VadText>
+          <VadText variant="title">Before you continue</VadText>
+          <VadText tone="secondary">{message}</VadText>
+        </View>
+        {actionLabel && onAction ? (
+          <VadButton label={actionLabel} onPress={onAction} />
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -72,9 +156,7 @@ function ServiceUnavailableScreen() {
         </View>
 
         <View style={{ gap: theme.spacing.sm }}>
-          <VadText variant="label" tone="brand">
-            SERVICE UNAVAILABLE
-          </VadText>
+          <VadText variant="label" tone="brand">SERVICE UNAVAILABLE</VadText>
           <VadText variant="title">VAD cannot start right now.</VadText>
           <VadText tone="secondary">
             We are unable to connect to the services needed to open VAD. Please try again shortly. If the problem continues, contact VAD support.
@@ -95,9 +177,13 @@ export default function RootLayout() {
       <VadThemeProvider>
         {supabaseConfiguration.ready ? (
           <AuthProvider>
-            <ProductDataProvider>
-              <ThemedNavigation />
-            </ProductDataProvider>
+            <PolicyConsentBoundary>
+              <ProductDataProvider>
+                <ProductTourProvider>
+                  <ThemedNavigation />
+                </ProductTourProvider>
+              </ProductDataProvider>
+            </PolicyConsentBoundary>
           </AuthProvider>
         ) : (
           <ServiceUnavailableScreen />
