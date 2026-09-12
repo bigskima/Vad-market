@@ -33,7 +33,7 @@ export default function AccountScreen() {
       <View style={{ gap: density.sectionGap }}>
         <VadSectionHeader
           title="Account"
-          subtitle="Manage your profile, verification, funding, guidance and appearance settings."
+          subtitle="Manage your profile, verification, funding, rewards, guidance and appearance settings."
         />
 
         <View
@@ -116,13 +116,19 @@ export default function AccountScreen() {
               />
             </SettingGroup>
 
-            <SettingGroup title="Money & experience" subtitle="Manage funding access and how VAD looks on this device.">
+            <SettingGroup title="Money & experience" subtitle="Manage funding access, rewards and how VAD looks on this device.">
               <AccountRow
                 tourTarget="account-funding"
                 icon="wallet"
                 title="Funding & withdrawals"
                 subtitle="Availability, limits, fees and payment activity"
                 onPress={() => router.push('/account/funding')}
+              />
+              <AccountRow
+                icon="community"
+                title="Rewards & campaigns"
+                subtitle="Invite code, live campaigns, challenges and reward history"
+                onPress={() => router.push('/account/growth')}
               />
               <AccountRow
                 icon="markets"
