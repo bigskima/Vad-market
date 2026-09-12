@@ -2,6 +2,7 @@ import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
+import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
@@ -21,6 +22,14 @@ export default function AppTourSettingsRoute() {
           subtitle="The tour moves through VAD, highlights the exact controls you need and scrolls to parts of a page that are out of view."
         />
 
+        {tour.error ? (
+          <VadErrorState
+            title="The guided tour is unavailable"
+            message={tour.error}
+            onRetry={tour.refreshTour}
+          />
+        ) : null}
+
         <VadCard variant="brand" style={{ gap: theme.spacing.md, padding: theme.spacing.xl }}>
           <View style={{ gap: 5 }}>
             <VadText variant="caption" tone="brand">GUIDED WALKTHROUGH</VadText>
@@ -29,7 +38,17 @@ export default function AppTourSettingsRoute() {
               You will visit Home, Markets, Wallet, Portfolio and Account. Each step points to the real button, card or control being explained instead of showing a separate instruction page.
             </VadText>
           </View>
-          <VadButton label="Start the VAD tour" onPress={() => tour.startTour(true)} />
+          <VadButton
+            label={tour.loading ? 'Getting the tour ready…' : 'Start the VAD tour'}
+            loading={tour.loading}
+            disabled={!tour.available || Boolean(tour.error)}
+            onPress={() => tour.startTour(true)}
+          />
+          {!tour.loading && !tour.available && !tour.error ? (
+            <VadText variant="caption" tone="secondary">
+              The guided tour is not active right now. You can return here when it becomes available.
+            </VadText>
+          ) : null}
         </VadCard>
 
         <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
@@ -73,5 +92,6 @@ function statusCopy(status: string, remindAt: string | null) {
   if (status === 'COMPLETED') return 'Completed. VAD will not start this tour automatically again.';
   if (status === 'DISMISSED') return 'Automatic reminders are off. You can still start the tour here whenever you want.';
   if (status === 'REMIND' && remindAt) return `Paused. VAD will offer the tour again after ${new Date(remindAt).toLocaleString()}.`;
+  if (status === 'IN_PROGRESS') return 'In progress. VAD can continue from the part you most recently reached.';
   return 'Ready. VAD may offer this walkthrough when you arrive on Home.';
 }
