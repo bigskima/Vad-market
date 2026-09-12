@@ -42,7 +42,8 @@ type RawPolicyState = {
   documents?: LegalDocument[];
 };
 
-const changeListeners = new Set<() => void>();
+type PolicyChangeListener = () => void | Promise<void>;
+const changeListeners = new Set<PolicyChangeListener>();
 
 export const VAD_POLICY_PUBLISHING_CONNECTED = true;
 
@@ -89,20 +90,26 @@ function normalizeDocuments(value: unknown): LegalDocument[] {
     }));
 }
 
-export function subscribeLegalPolicyChanges(listener: () => void) {
+export function subscribeLegalPolicyChanges(listener: PolicyChangeListener) {
   changeListeners.add(listener);
   return () => {
     changeListeners.delete(listener);
   };
 }
 
-function notifyLegalPolicyChanges() {
-  changeListeners.forEach((listener) => listener());
+async function notifyLegalPolicyChanges() {
+  await Promise.all([...changeListeners].map((listener) => listener()));
+}
+
+async function readMyPolicyState(): Promise<RawPolicyState> {
+  const { data, error } = await supabase.rpc('my_legal_policy_state');
+  fail(error, 'We could not confirm the policies for your account. Please try again.');
+  return (data ?? {}) as RawPolicyState;
 }
 
 export async function getPolicyWorkspace(): Promise<LegalDocument[]> {
-  const state = await getPolicyGateState('current-user');
-  return state.documents;
+  const raw = await readMyPolicyState();
+  return normalizeDocuments(raw.documents);
 }
 
 export async function getPolicyGateState(
@@ -119,10 +126,7 @@ export async function getPolicyGateState(
     };
   }
 
-  const { data, error } = await supabase.rpc('my_legal_policy_state');
-  fail(error, 'We could not confirm the policies for your account. Please try again.');
-
-  const raw = (data ?? {}) as RawPolicyState;
+  const raw = await readMyPolicyState();
   const documents = normalizeDocuments(raw.documents);
   const requiredDocuments = documents.filter(
     (document) => document.requiredAcceptance && !document.accepted,
@@ -153,7 +157,7 @@ export async function acceptLegalPolicies(documents: LegalDocument[]) {
   });
   fail(error, 'We could not save your policy agreement. Please try again.');
   if (!data) throw new Error('We could not save your policy agreement. Please try again.');
-  notifyLegalPolicyChanges();
+  await notifyLegalPolicyChanges();
   return true;
 }
 
@@ -193,6 +197,6 @@ export async function publishAdminLegalPolicy(documentKey: LegalDocumentKey, rea
     p_reason: reason.trim(),
   });
   fail(error, 'We could not publish this policy version. Check the version and try again.');
-  notifyLegalPolicyChanges();
+  await notifyLegalPolicyChanges();
   return Number(data);
 }
