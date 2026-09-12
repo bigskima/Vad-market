@@ -128,7 +128,7 @@ export function AssistantScreen({
     if (!message || sending) return;
 
     const optimistic: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: `user-${threadId ?? 'new'}-${messages.length}`,
       role: 'USER',
       content: message,
       createdAt: new Date().toISOString(),
