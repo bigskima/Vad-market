@@ -10,6 +10,7 @@ export type AdminHref =
   | '/admin/revenue'
   | '/admin/fees'
   | '/admin/payments'
+  | '/admin/growth'
   | '/admin/compliance'
   | '/admin/users'
   | '/admin/content'
@@ -107,6 +108,25 @@ export const adminNavigationGroups: AdminNavGroup[] = [
     ],
   },
   {
+    label: 'Growth',
+    items: [
+      {
+        label: 'Growth & Partnerships',
+        shortLabel: 'Growth',
+        href: '/admin/growth',
+        description: 'Campaigns, referral rules, affiliates, partners and reward review',
+        permissions: ['growth.read', 'growth.manage', 'growth.review', 'growth.finance'],
+      },
+      {
+        label: 'Home Content',
+        shortLabel: 'Promos',
+        href: '/admin/home-content',
+        description: 'Promotional banners and public awareness notices',
+        permissions: ['content.moderate'],
+      },
+    ],
+  },
+  {
     label: 'Trust & Safety',
     items: [
       {
@@ -128,13 +148,6 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         shortLabel: 'Content',
         href: '/admin/content',
         description: 'Moderation and content restoration',
-        permissions: ['content.moderate'],
-      },
-      {
-        label: 'Home Content',
-        shortLabel: 'Home',
-        href: '/admin/home-content',
-        description: 'Promotional banners and public awareness notices',
         permissions: ['content.moderate'],
       },
       {
