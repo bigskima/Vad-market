@@ -80,16 +80,72 @@ function PolicyConsentBoundary({ children }: { children: ReactNode }) {
     return <Redirect href="/home" />;
   }
 
-  return (
-    <>
-      {children}
-      {needsAgreement && pathname === '/home' ? (
+  if (needsAgreement && pathname === '/home') {
+    return (
+      <>
+        <PolicyHomeBackdrop />
         <PolicyConsentModal
           documents={policyGate.requiredDocuments}
           onAccepted={policyGate.refresh}
         />
-      ) : null}
-    </>
+      </>
+    );
+  }
+
+  return children;
+}
+
+function PolicyHomeBackdrop() {
+  const theme = useVadTheme();
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View
+        style={{
+          minHeight: 62,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.border,
+          backgroundColor: theme.colors.surface,
+          paddingHorizontal: theme.spacing.lg,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+        }}
+      >
+        <VadLogo size={36} />
+        <View style={{ gap: 1 }}>
+          <VadText variant="bodyStrong">VAD</VadText>
+          <VadText variant="caption" tone="secondary">Home</VadText>
+        </View>
+      </View>
+
+      <View
+        style={{
+          width: '100%',
+          maxWidth: 760,
+          alignSelf: 'center',
+          padding: theme.spacing.lg,
+          gap: theme.spacing.lg,
+        }}
+      >
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radius.xl,
+            backgroundColor: theme.colors.surface,
+            padding: theme.spacing.lg,
+            gap: theme.spacing.sm,
+          }}
+        >
+          <VadText variant="caption" tone="brand">VAD HOME</VadText>
+          <VadText variant="heading">Your account is ready.</VadText>
+          <VadText tone="secondary">
+            Complete the required policy review to enter VAD. Your guided app tour will begin only after the policy step is finished.
+          </VadText>
+        </View>
+      </View>
+    </View>
   );
 }
 
