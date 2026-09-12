@@ -36,7 +36,8 @@ export function AdminKycAccessPanel() {
   }
 
   useEffect(() => {
-    void load('');
+    const timer = setTimeout(() => void load(''), 0);
+    return () => clearTimeout(timer);
     // Initial load only. Search is submitted explicitly to avoid querying on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -84,6 +85,7 @@ export function AdminKycAccessPanel() {
       )}
 
       <AccessEditor
+        key={selected?.user_id ?? 'no-user'}
         row={selected}
         onClose={() => setSelected(null)}
         onSaved={async () => {
@@ -98,7 +100,7 @@ export function AdminKycAccessPanel() {
 function AccessRow({ row, onPress }: { row: AdminKycAccessRow; onPress: () => void }) {
   const theme = useVadTheme();
   const verified = row.provider_kyc_status === 'VERIFIED' || row.provider_kyc_status === 'APPROVED';
-  const overrideActive = row.override_enabled && (!row.override_expires_at || Date.parse(row.override_expires_at) > Date.now());
+  const overrideActive = row.override_enabled;
 
   return (
     <Pressable
@@ -138,19 +140,11 @@ function AccessRow({ row, onPress }: { row: AdminKycAccessRow; onPress: () => vo
 
 function AccessEditor({ row, onClose, onSaved }: { row: AdminKycAccessRow | null; onClose: () => void; onSaved: () => Promise<void> | void }) {
   const theme = useVadTheme();
-  const [scope, setScope] = useState<'SANDBOX' | 'ALL'>('SANDBOX');
-  const [reason, setReason] = useState('');
-  const [expiresAt, setExpiresAt] = useState('');
+  const [scope, setScope] = useState<'SANDBOX' | 'ALL'>(row?.override_scope ?? 'SANDBOX');
+  const [reason, setReason] = useState(row?.override_reason ?? 'Tester access approved by admin');
+  const [expiresAt, setExpiresAt] = useState(row?.override_expires_at ?? '');
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!row) return;
-    setScope(row.override_scope ?? 'SANDBOX');
-    setReason(row.override_reason ?? 'Tester access approved by admin');
-    setExpiresAt(row.override_expires_at ?? '');
-    setError(null);
-  }, [row]);
 
   async function save(enabled: boolean) {
     if (!row || working) return;
