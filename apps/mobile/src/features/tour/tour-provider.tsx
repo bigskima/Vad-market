@@ -73,7 +73,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const scrollControllerRef = useRef<ScrollController | null>(null);
   const autoStartedRef = useRef(false);
 
-  const steps = definition?.steps ?? [];
+  const steps = useMemo(() => definition?.steps ?? [], [definition?.steps]);
   const progressReady = Boolean(userId && loadedUserId === userId);
   const currentStep = active ? (steps[stepIndex] ?? null) : null;
 
@@ -207,20 +207,23 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   }, [beginWithDefinition, definition, loadTour, userId]);
 
   useEffect(() => {
-    autoStartedRef.current = false;
-    setActive(false);
-    setSpotlight(null);
-    setShowReminderChoices(false);
+    const timer = setTimeout(() => {
+      autoStartedRef.current = false;
+      setActive(false);
+      setSpotlight(null);
+      setShowReminderChoices(false);
 
-    if (!userId) {
-      setDefinition(null);
-      setProgress(DEFAULT_TOUR_PROGRESS);
-      setLoadedUserId(null);
-      setError(null);
-      return;
-    }
+      if (!userId) {
+        setDefinition(null);
+        setProgress(DEFAULT_TOUR_PROGRESS);
+        setLoadedUserId(null);
+        setError(null);
+        return;
+      }
 
-    void loadTour();
+      void loadTour();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [loadTour, userId]);
 
   useEffect(() => {
