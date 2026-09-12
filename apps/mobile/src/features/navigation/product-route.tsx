@@ -211,6 +211,7 @@ export function ProductRoute({
         canCreate={canCreate}
         onCreate={() => router.push('/create-market')}
         onAdmin={() => router.push('/admin')}
+        onAssistant={() => router.push('/assistant')}
         onAccount={() => router.replace('/account')}
         onSearch={() => router.push('/markets')}
         onNotices={() => setNoticesOpen(true)}
