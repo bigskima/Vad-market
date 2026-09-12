@@ -1,16 +1,17 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
+import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import {
-  DEFAULT_LEGAL_DOCUMENTS,
-  getPolicyWorkspace,
-  recordPreviewAcceptance,
+  acceptLegalPolicies,
+  getPolicyGateState,
   type LegalDocument,
   type LegalDocumentKey,
 } from '@/features/policy/legal-policy-service';
@@ -22,34 +23,58 @@ export default function PolicyConsentRoute() {
   const theme = useVadTheme();
   const density = useProductDensity();
   const { session, signOut } = useAuth();
-  const [documents, setDocuments] = useState<LegalDocument[]>(DEFAULT_LEGAL_DOCUMENTS);
+  const [documents, setDocuments] = useState<LegalDocument[]>([]);
   const [selectedKey, setSelectedKey] = useState<LegalDocumentKey>('TERMS');
   const [agreedKeys, setAgreedKeys] = useState<LegalDocumentKey[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!session?.user.id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const state = await getPolicyGateState(session.user.id);
+      if (!state.requiresAcceptance) {
+        router.replace('/home');
+        return;
+      }
+      setDocuments(state.documents);
+      const firstRequired = state.requiredDocuments[0];
+      if (firstRequired) setSelectedKey(firstRequired.key);
+    } catch (loadError) {
+      setError(loadError instanceof Error
+        ? loadError.message
+        : 'We could not load the policies for your account. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.user.id]);
 
   useEffect(() => {
-    let mounted = true;
-    void getPolicyWorkspace().then((items) => {
-      if (mounted) setDocuments(items);
-    });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    void load();
+  }, [load]);
 
   const required = useMemo(
-    () => documents.filter((document) => document.requiredAcceptance),
+    () => documents.filter((document) => document.requiredAcceptance && !document.accepted),
     [documents],
   );
   const selected = documents.find((document) => document.key === selectedKey) ?? documents[0];
-  const ready = required.every((document) => agreedKeys.includes(document.key));
+  const ready = required.length > 0
+    && required.every((document) => agreedKeys.includes(document.key));
 
   async function agreeAndContinue() {
     if (!session?.user.id || !ready) return;
     setSaving(true);
+    setError(null);
     try {
-      await recordPreviewAcceptance(session.user.id, required);
+      await acceptLegalPolicies(required);
       router.replace('/home');
+    } catch (saveError) {
+      setError(saveError instanceof Error
+        ? saveError.message
+        : 'We could not save your agreement. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -108,94 +133,129 @@ export default function PolicyConsentRoute() {
           </VadText>
         </View>
 
-        <View style={{ flexDirection: density.desktop ? 'row' : 'column', gap: theme.spacing.lg, alignItems: 'flex-start' }}>
-          <View style={{ width: density.desktop ? 300 : '100%', gap: theme.spacing.sm }}>
-            {documents.map((document) => {
-              const agreed = agreedKeys.includes(document.key);
-              return (
-                <View key={document.key} style={{ gap: theme.spacing.xs }}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: selected?.key === document.key }}
-                    onPress={() => setSelectedKey(document.key)}
-                    style={({ pressed }) => ({ opacity: pressed ? 0.76 : 1 })}
-                  >
-                    <VadCard variant={selected?.key === document.key ? 'brand' : 'raised'} style={{ gap: 4 }}>
-                      <VadText variant="bodyStrong">{document.title}</VadText>
-                      <VadText variant="caption" tone="secondary" numberOfLines={2}>{document.summary}</VadText>
-                      <VadText variant="caption" tone="tertiary">Version {document.version}</VadText>
-                    </VadCard>
-                  </Pressable>
+        {error ? (
+          <VadErrorState
+            title="Policies could not be confirmed"
+            message={error}
+            onRetry={() => void load()}
+          />
+        ) : null}
 
-                  {document.requiredAcceptance ? (
+        {loading ? (
+          <View style={{ flexDirection: density.desktop ? 'row' : 'column', gap: theme.spacing.lg }}>
+            <View style={{ width: density.desktop ? 300 : '100%', gap: theme.spacing.sm }}>
+              <VadSkeleton height={110} radius={theme.radius.xl} />
+              <VadSkeleton height={110} radius={theme.radius.xl} />
+            </View>
+            <View style={{ flex: 1, gap: theme.spacing.sm }}>
+              <VadSkeleton width="56%" height={28} />
+              <VadSkeleton height={360} radius={theme.radius.xl} />
+            </View>
+          </View>
+        ) : documents.length ? (
+          <View style={{ flexDirection: density.desktop ? 'row' : 'column', gap: theme.spacing.lg, alignItems: 'flex-start' }}>
+            <View style={{ width: density.desktop ? 300 : '100%', gap: theme.spacing.sm }}>
+              {documents.map((document) => {
+                const agreed = document.accepted || agreedKeys.includes(document.key);
+                const needsAgreement = document.requiredAcceptance && !document.accepted;
+                return (
+                  <View key={`${document.key}-${document.policyVersionId ?? document.version}`} style={{ gap: theme.spacing.xs }}>
                     <Pressable
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: agreed }}
-                      onPress={() => toggleAgreement(document.key)}
-                      style={({ pressed }) => ({
-                        minHeight: 48,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: theme.spacing.sm,
-                        borderRadius: theme.radius.lg,
-                        borderWidth: 1,
-                        borderColor: agreed ? theme.colors.brandPrimary : theme.colors.border,
-                        backgroundColor: agreed ? theme.colors.brandSoft : theme.colors.surface,
-                        paddingHorizontal: theme.spacing.md,
-                        opacity: pressed ? 0.76 : 1,
-                      })}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: selected?.key === document.key }}
+                      onPress={() => setSelectedKey(document.key)}
+                      style={({ pressed }) => ({ opacity: pressed ? 0.76 : 1 })}
                     >
-                      <View
-                        style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 7,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: agreed ? theme.colors.brandPrimary : theme.colors.surfaceRaised,
-                          borderWidth: 1,
-                          borderColor: agreed ? theme.colors.brandPrimary : theme.colors.borderStrong,
-                        }}
-                      >
-                        {agreed ? <VadText variant="label" tone="inverse">✓</VadText> : null}
-                      </View>
-                      <VadText variant="caption" style={{ flex: 1 }}>I have read and agree to this document</VadText>
+                      <VadCard variant={selected?.key === document.key ? 'brand' : 'raised'} style={{ gap: 4 }}>
+                        <VadText variant="bodyStrong">{document.title}</VadText>
+                        <VadText variant="caption" tone="secondary" numberOfLines={2}>{document.summary}</VadText>
+                        <VadText variant="caption" tone="tertiary">Version {document.version}</VadText>
+                      </VadCard>
                     </Pressable>
-                  ) : null}
+
+                    {needsAgreement ? (
+                      <Pressable
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: agreed }}
+                        onPress={() => toggleAgreement(document.key)}
+                        style={({ pressed }) => ({
+                          minHeight: 48,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: theme.spacing.sm,
+                          borderRadius: theme.radius.lg,
+                          borderWidth: 1,
+                          borderColor: agreed ? theme.colors.brandPrimary : theme.colors.border,
+                          backgroundColor: agreed ? theme.colors.brandSoft : theme.colors.surface,
+                          paddingHorizontal: theme.spacing.md,
+                          opacity: pressed ? 0.76 : 1,
+                        })}
+                      >
+                        <View
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 7,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: agreed ? theme.colors.brandPrimary : theme.colors.surfaceRaised,
+                            borderWidth: 1,
+                            borderColor: agreed ? theme.colors.brandPrimary : theme.colors.borderStrong,
+                          }}
+                        >
+                          {agreed ? <VadText variant="label" tone="inverse">✓</VadText> : null}
+                        </View>
+                        <VadText variant="caption" style={{ flex: 1 }}>I have read and agree to this document</VadText>
+                      </Pressable>
+                    ) : document.accepted ? (
+                      <VadText variant="caption" tone="yes">Already agreed to this version</VadText>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+
+            {selected ? (
+              <VadCard
+                variant="raised"
+                style={{
+                  flex: 1,
+                  width: density.desktop ? undefined : '100%',
+                  minHeight: density.desktop ? 620 : undefined,
+                  padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+                  gap: theme.spacing.lg,
+                }}
+              >
+                <View style={{ gap: 5 }}>
+                  <VadText variant="caption" tone="brand">EFFECTIVE {selected.effectiveDate}</VadText>
+                  <VadText variant="title">{selected.title}</VadText>
+                  <VadText tone="secondary">{selected.summary}</VadText>
                 </View>
-              );
-            })}
+                <View style={{ height: 1, backgroundColor: theme.colors.border }} />
+                <VadText style={{ lineHeight: density.phone ? 24 : 26 }}>{selected.content}</VadText>
+              </VadCard>
+            ) : null}
           </View>
+        ) : null}
 
-          {selected ? (
-            <VadCard
-              variant="raised"
-              style={{
-                flex: 1,
-                width: density.desktop ? undefined : '100%',
-                minHeight: density.desktop ? 620 : undefined,
-                padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-                gap: theme.spacing.lg,
-              }}
-            >
-              <View style={{ gap: 5 }}>
-                <VadText variant="caption" tone="brand">EFFECTIVE {selected.effectiveDate}</VadText>
-                <VadText variant="title">{selected.title}</VadText>
-                <VadText tone="secondary">{selected.summary}</VadText>
-              </View>
-              <View style={{ height: 1, backgroundColor: theme.colors.border }} />
-              <VadText style={{ lineHeight: density.phone ? 24 : 26 }}>{selected.content}</VadText>
-            </VadCard>
-          ) : null}
-        </View>
-
-        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
-          <VadText variant="bodyStrong">{ready ? 'You are ready to continue.' : `Agree to ${required.length - agreedKeys.filter((key) => required.some((document) => document.key === key)).length} required document(s) to continue.`}</VadText>
-          <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: theme.spacing.sm }}>
-            <VadButton label="I agree — continue to VAD" disabled={!ready} loading={saving} onPress={() => void agreeAndContinue()} />
-            <VadButton label="I don't agree" variant="ghost" onPress={() => void decline()} />
-          </View>
-        </VadCard>
+        {!loading && documents.length ? (
+          <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
+            <VadText variant="bodyStrong">
+              {ready
+                ? 'You are ready to continue.'
+                : `Agree to ${required.length - agreedKeys.filter((key) => required.some((document) => document.key === key)).length} required document(s) to continue.`}
+            </VadText>
+            <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: theme.spacing.sm }}>
+              <VadButton
+                label="I agree — continue to VAD"
+                disabled={!ready || Boolean(error)}
+                loading={saving}
+                onPress={() => void agreeAndContinue()}
+              />
+              <VadButton label="I don't agree" variant="ghost" onPress={() => void decline()} />
+            </View>
+          </VadCard>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
