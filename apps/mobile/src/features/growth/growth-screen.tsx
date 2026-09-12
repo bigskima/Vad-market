@@ -59,7 +59,7 @@ export function GrowthScreen() {
       setMessage(result.message);
       await load(true);
     } catch (value) {
-      setError(value instanceof Error ? value.message : 'That code could not be attached.');
+      setError(value instanceof Error ? value.message : 'That code could not be applied.');
     } finally {
       setWorking(false);
     }
@@ -70,7 +70,7 @@ export function GrowthScreen() {
     setError(null);
     try {
       const result = await joinGrowthCampaign(campaign.publicId);
-      setMessage(`You joined ${result.campaignName}. Your eligible activity can now count toward this campaign.`);
+      setMessage(`You joined ${result.campaignName}. Activities that meet the campaign rules can now count toward your progress.`);
       await load(true);
     } catch (value) {
       setError(value instanceof Error ? value.message : 'This campaign could not be joined.');
@@ -107,8 +107,8 @@ export function GrowthScreen() {
       ) : null}
       {data.paused ? (
         <VadCard variant="muted" style={{ gap: 4 }}>
-          <VadText variant="bodyStrong">Growth features are temporarily paused</VadText>
-          <VadText variant="caption" tone="secondary">Your existing attribution and reward history remain safe while new campaign actions are paused.</VadText>
+          <VadText variant="bodyStrong">Rewards and campaigns are temporarily unavailable</VadText>
+          <VadText variant="caption" tone="secondary">Your campaign and reward history is still here. New actions will return when this feature is available again.</VadText>
         </VadCard>
       ) : null}
 
@@ -119,8 +119,8 @@ export function GrowthScreen() {
       {otherCampaigns.length ? (
         <View style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 2 }}>
-            <VadText variant="heading">Live opportunities</VadText>
-            <VadText variant="caption" tone="secondary">Only campaigns configured and activated by VAD appear here.</VadText>
+            <VadText variant="heading">More campaigns</VadText>
+            <VadText variant="caption" tone="secondary">Campaigns currently available to your account appear here.</VadText>
           </View>
           <View style={{ flexDirection: density.wide ? 'row' : 'column', flexWrap: 'wrap', gap: theme.spacing.md }}>
             {otherCampaigns.map((campaign) => (
@@ -133,15 +133,15 @@ export function GrowthScreen() {
       <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
         <View style={{ gap: 3 }}>
           <VadText variant="heading">Have a campaign or partner code?</VadText>
-          <VadText variant="caption" tone="secondary">Attach it once to your account. A code never guarantees money by itself; every reward still follows the campaign qualification rules.</VadText>
+          <VadText variant="caption" tone="secondary">Apply it once to your account. If the code belongs to a promotion, any reward follows the offer shown for that promotion.</VadText>
         </View>
         <VadInput value={code} onChangeText={(value) => setCode(value.toUpperCase())} autoCapitalize="characters" autoCorrect={false} placeholder="Enter code" />
         <VadButton label="Apply code" loading={working} disabled={!code.trim() || data.paused} onPress={() => void claimCode()} />
         {data.attribution ? (
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md, gap: 2 }}>
-            <VadText variant="caption" tone="secondary">CURRENT SOURCE</VadText>
+            <VadText variant="caption" tone="secondary">YOUR APPLIED CODE</VadText>
             <VadText variant="bodyStrong">{data.attribution.partnerName || data.attribution.campaignName || data.attribution.code}</VadText>
-            <VadText variant="caption" tone="tertiary">Code {data.attribution.code} · locked to this account</VadText>
+            <VadText variant="caption" tone="tertiary">Code {data.attribution.code} · applied to this account</VadText>
           </View>
         ) : null}
       </VadCard>
@@ -152,9 +152,9 @@ export function GrowthScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
             {data.partner.avatarUrl ? <Image source={{ uri: data.partner.avatarUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} /> : null}
             <View style={{ flex: 1, gap: 2 }}>
-              <VadText variant="caption" tone="brand">PARTNER PROFILE</VadText>
+              <VadText variant="caption" tone="brand">VAD PARTNER</VadText>
               <VadText variant="heading">{data.partner.displayName}</VadText>
-              <VadText variant="caption" tone="secondary">{data.partner.type.replaceAll('_', ' ')} · {data.partner.status}</VadText>
+              <VadText variant="caption" tone="secondary">{partnerTypeLabel(data.partner.type)} · {friendlyStatus(data.partner.status)}</VadText>
             </View>
           </View>
         </VadCard>
@@ -162,11 +162,11 @@ export function GrowthScreen() {
 
       <View style={{ gap: theme.spacing.md }}>
         <View style={{ gap: 2 }}>
-          <VadText variant="heading">Reward activity</VadText>
-          <VadText variant="caption" tone="secondary">Entitlements are tracked separately from your wallet until they pass the configured hold and review rules.</VadText>
+          <VadText variant="heading">Your rewards</VadText>
+          <VadText variant="caption" tone="secondary">Some rewards may be checked before they are added to your available VAD balance.</VadText>
         </View>
         {data.rewards.length ? data.rewards.map((reward) => <RewardRow key={reward.publicId} reward={reward} />) : (
-          <VadEmptyState title="No reward activity yet" body="Your normal invite link is for sharing VAD. Reward activity only appears when you qualify under an active promotion." />
+          <VadEmptyState title="No rewards yet" body="Your normal invite is for sharing VAD. Rewards appear here only when you qualify through an active promotion." />
         )}
       </View>
 
@@ -204,13 +204,14 @@ function CampaignHero({ campaign, working, onJoin }: { campaign: GrowthCampaign;
       )}
       <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
-          <VadChip label={campaign.badgeText || campaign.type.replaceAll('_', ' ')} tone="brand" />
+          <VadChip label={campaign.badgeText || campaignTypeLabel(campaign.type)} tone="brand" />
           {campaign.sponsorName ? <VadChip label={`By ${campaign.sponsorName}`} tone="neutral" /> : null}
         </View>
         <View style={{ gap: 5 }}>
           <VadText variant="title">{campaign.name}</VadText>
           <VadText variant="body" tone="secondary">{campaign.description}</VadText>
         </View>
+        {campaign.termsSummary ? <VadText variant="caption" tone="tertiary">{campaign.termsSummary}</VadText> : null}
         {joinable ? <VadButton label="Join campaign" loading={working} onPress={() => void onJoin(campaign)} /> : null}
       </View>
     </VadCard>
@@ -225,7 +226,7 @@ function CampaignCard({ campaign, working, onJoin, wide }: { campaign: GrowthCam
       {campaign.cardImageUrl ? <Image source={{ uri: campaign.cardImageUrl }} style={{ width: '100%', height: 112 }} resizeMode="cover" /> : null}
       <View style={{ padding: theme.spacing.md, gap: theme.spacing.sm }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-          <VadChip label={campaign.badgeText || campaign.type.replaceAll('_', ' ')} tone="brand" />
+          <VadChip label={campaign.badgeText || campaignTypeLabel(campaign.type)} tone="brand" />
         </View>
         <VadText variant="bodyStrong">{campaign.name}</VadText>
         <VadText variant="caption" tone="secondary">{campaign.description}</VadText>
@@ -242,12 +243,40 @@ function RewardRow({ reward }: { reward: GrowthReward }) {
     <VadCard variant="raised" style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
       <View style={{ flex: 1, gap: 2 }}>
         <VadText variant="bodyStrong">{reward.campaignName}</VadText>
-        <VadText variant="caption" tone="secondary">{reward.kind.replaceAll('_', ' ')}</VadText>
+        <VadText variant="caption" tone="secondary">{rewardKindLabel(reward.kind)}</VadText>
       </View>
       <View style={{ alignItems: 'flex-end', gap: 4 }}>
         <VadText variant="bodyStrong">{reward.assetCode} {Number(reward.amount).toLocaleString()}</VadText>
-        <VadChip label={reward.status} tone={positive ? 'yes' : reward.status === 'DISQUALIFIED' ? 'danger' : 'warning'} />
+        <VadChip label={rewardStatusLabel(reward.status)} tone={positive ? 'yes' : reward.status === 'DISQUALIFIED' || reward.status === 'REVERSED' ? 'danger' : 'warning'} />
       </View>
     </VadCard>
   );
+}
+
+function friendlyStatus(value: string) {
+  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+function partnerTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    CELEBRITY: 'Celebrity partner', INFLUENCER: 'Influencer partner', CREATOR: 'Creator partner', COMMUNITY: 'Community partner', MEDIA: 'Media partner', AGENCY: 'Agency partner', BRAND: 'Brand partner', CAMPUS_AMBASSADOR: 'Campus ambassador', STRATEGIC_PARTNER: 'Strategic partner', OTHER: 'Partner',
+  };
+  return labels[value] ?? friendlyStatus(value);
+}
+function campaignTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    REFERRAL: 'Referral promotion', AFFILIATE: 'Affiliate campaign', CHALLENGE: 'Prediction challenge', SPONSORED: 'Sponsored campaign', CREATOR: 'Creator campaign', SEASONAL: 'Seasonal campaign', LAUNCH: 'Launch campaign', EDUCATION: 'Education campaign',
+  };
+  return labels[value] ?? friendlyStatus(value);
+}
+function rewardKindLabel(value: string) {
+  const labels: Record<string, string> = {
+    REFERRAL_REWARD: 'Referral reward', AFFILIATE_COMMISSION: 'Partner earnings', CAMPAIGN_REWARD: 'Campaign reward', PROMOTIONAL_CREDIT: 'Promotional credit', FEE_CREDIT: 'Fee credit', PRIZE_PAYOUT: 'Campaign prize',
+  };
+  return labels[value] ?? 'Reward';
+}
+function rewardStatusLabel(value: string) {
+  const labels: Record<string, string> = {
+    PENDING: 'In progress', QUALIFYING: 'Checking', EARNED: 'Earned', HELD: 'Under review', APPROVED: 'Approved', PAYABLE: 'Ready for payment', PAID: 'Paid', REVERSED: 'Reversed', DISQUALIFIED: 'Not eligible',
+  };
+  return labels[value] ?? 'In progress';
 }
