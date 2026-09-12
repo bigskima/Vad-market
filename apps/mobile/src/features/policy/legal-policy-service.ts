@@ -91,7 +91,9 @@ function normalizeDocuments(value: unknown): LegalDocument[] {
 
 export function subscribeLegalPolicyChanges(listener: () => void) {
   changeListeners.add(listener);
-  return () => changeListeners.delete(listener);
+  return () => {
+    changeListeners.delete(listener);
+  };
 }
 
 function notifyLegalPolicyChanges() {
