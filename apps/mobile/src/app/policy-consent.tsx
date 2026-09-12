@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,7 +22,8 @@ import { useVadTheme } from '@/providers/theme-provider';
 export default function PolicyConsentRoute() {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const { session, signOut } = useAuth();
+  const { isLoading, session, signOut } = useAuth();
+  const userId = session?.user.id ?? null;
   const [documents, setDocuments] = useState<LegalDocument[]>([]);
   const [selectedKey, setSelectedKey] = useState<LegalDocumentKey>('TERMS');
   const [agreedKeys, setAgreedKeys] = useState<LegalDocumentKey[]>([]);
@@ -31,11 +32,14 @@ export default function PolicyConsentRoute() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!session?.user.id) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const state = await getPolicyGateState(session.user.id);
+      const state = await getPolicyGateState(userId);
       if (!state.requiresAcceptance) {
         router.replace('/home');
         return;
@@ -50,10 +54,11 @@ export default function PolicyConsentRoute() {
     } finally {
       setLoading(false);
     }
-  }, [session?.user.id]);
+  }, [userId]);
 
   useEffect(() => {
-    void load();
+    const timer = setTimeout(() => void load(), 0);
+    return () => clearTimeout(timer);
   }, [load]);
 
   const required = useMemo(
@@ -65,7 +70,7 @@ export default function PolicyConsentRoute() {
     && required.every((document) => agreedKeys.includes(document.key));
 
   async function agreeAndContinue() {
-    if (!session?.user.id || !ready) return;
+    if (!userId || !ready) return;
     setSaving(true);
     setError(null);
     try {
@@ -92,6 +97,8 @@ export default function PolicyConsentRoute() {
         : [...current, key],
     );
   }
+
+  if (!isLoading && !session) return <Redirect href="/" />;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'bottom']}>
