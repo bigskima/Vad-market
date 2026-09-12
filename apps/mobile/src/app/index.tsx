@@ -30,12 +30,6 @@ export default function IndexScreen() {
   useEffect(() => {
     const elapsed = Date.now() - entryBootstrapStartedAt;
     const remaining = Math.max(0, ENTRY_BOOTSTRAP_TIMEOUT_MS - elapsed);
-
-    if (remaining === 0) {
-      setBootstrapExpired(true);
-      return undefined;
-    }
-
     const timeoutId = setTimeout(() => {
       setBootstrapExpired(true);
     }, remaining);
