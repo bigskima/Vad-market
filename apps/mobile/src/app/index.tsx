@@ -12,6 +12,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 
 const ENTRY_BOOTSTRAP_TIMEOUT_MS = 4000;
+const entryBootstrapStartedAt = Date.now();
 
 export default function IndexScreen() {
   const {
@@ -22,12 +23,22 @@ export default function IndexScreen() {
   } = useAuth();
   const { methods } = useAuthMethods();
   const theme = useVadTheme();
-  const [bootstrapExpired, setBootstrapExpired] = useState(false);
+  const [bootstrapExpired, setBootstrapExpired] = useState(
+    () => Date.now() - entryBootstrapStartedAt >= ENTRY_BOOTSTRAP_TIMEOUT_MS,
+  );
 
   useEffect(() => {
+    const elapsed = Date.now() - entryBootstrapStartedAt;
+    const remaining = Math.max(0, ENTRY_BOOTSTRAP_TIMEOUT_MS - elapsed);
+
+    if (remaining === 0) {
+      setBootstrapExpired(true);
+      return undefined;
+    }
+
     const timeoutId = setTimeout(() => {
       setBootstrapExpired(true);
-    }, ENTRY_BOOTSTRAP_TIMEOUT_MS);
+    }, remaining);
 
     return () => clearTimeout(timeoutId);
   }, []);
