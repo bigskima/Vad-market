@@ -1,0 +1,4 @@
+Trigger production build after session-first bootstrap fix.
+PR: #90
+Merged head: 930f9a1c28276edfe0ff9afb86fccf5521c4ecd9
+Merge commit: 708d64b946227e4d03cb487b9f8ba68fd3d53084
