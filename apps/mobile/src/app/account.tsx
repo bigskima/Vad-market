@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -12,11 +12,14 @@ import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { getAdminAccess } from '@/services/admin-control-api';
 
 export default function AccountScreen() {
   const { session, signOut } = useAuth();
   const theme = useVadTheme();
   const density = useProductDensity();
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
+  const userId = session?.user.id ?? null;
   const email = session?.user.email ?? session?.user.phone ?? 'VAD member';
   const displayName = typeof session?.user.user_metadata?.display_name === 'string'
     ? session.user.user_metadata.display_name.trim()
@@ -27,6 +30,26 @@ export default function AccountScreen() {
     ? `System · currently ${theme.mode}`
     : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1);
   const sideBySide = density.wide;
+
+  useEffect(() => {
+    if (!userId) {
+      setHasAdminAccess(false);
+      return;
+    }
+
+    let ignore = false;
+    void getAdminAccess()
+      .then((access) => {
+        if (!ignore) setHasAdminAccess(access.isSuperAdmin || access.roles.length > 0);
+      })
+      .catch(() => {
+        if (!ignore) setHasAdminAccess(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [userId]);
 
   return (
     <ProductRoute active="Account">
@@ -100,6 +123,17 @@ export default function AccountScreen() {
           </VadCard>
 
           <View style={{ flex: 1, width: sideBySide ? undefined : '100%', gap: density.sectionGap }}>
+            {hasAdminAccess ? (
+              <SettingGroup title="Administration" subtitle="Open the VAD operations dashboard with your assigned admin permissions.">
+                <AccountRow
+                  icon="operations"
+                  title="Admin operations"
+                  subtitle="Open the VAD admin dashboard"
+                  onPress={() => router.push('/admin')}
+                />
+              </SettingGroup>
+            ) : null}
+
             <SettingGroup title="Identity" subtitle="Manage how you appear on VAD and your verification status.">
               <AccountRow
                 icon="account"
