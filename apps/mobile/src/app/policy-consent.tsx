@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
@@ -15,19 +15,14 @@ import {
   type LegalDocument,
   type LegalDocumentKey,
 } from '@/features/policy/legal-policy-service';
+import {
+  parseInlinePolicyText,
+  parsePolicySections,
+  type PolicyBlock,
+} from '@/features/policy/policy-format';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
-
-type PolicyBlock = {
-  kind: 'paragraph' | 'subheading' | 'bullet';
-  text: string;
-};
-
-type PolicySection = {
-  title: string;
-  blocks: PolicyBlock[];
-};
 
 export default function PolicyConsentRoute() {
   const theme = useVadTheme();
@@ -48,6 +43,7 @@ export default function PolicyConsentRoute() {
       setLoading(false);
       return;
     }
+
     setLoading(true);
     setError(null);
     try {
@@ -56,6 +52,7 @@ export default function PolicyConsentRoute() {
         router.replace('/home');
         return;
       }
+
       setDocuments(state.documents);
       setReadKeys(state.documents.filter((document) => document.accepted).map((document) => document.key));
       const firstRequired = state.requiredDocuments[0];
@@ -87,8 +84,7 @@ export default function PolicyConsentRoute() {
   const currentSection = sections[sectionIndex];
   const selectedRead = Boolean(selected?.accepted || readKeys.includes(selectedKey));
   const selectedAgreed = Boolean(selected?.accepted || agreedKeys.includes(selectedKey));
-  const ready = required.length > 0
-    && required.every((document) => agreedKeys.includes(document.key));
+  const ready = required.length > 0 && required.every((document) => agreedKeys.includes(document.key));
   const completedAgreementCount = required.filter((document) => agreedKeys.includes(document.key)).length;
 
   async function agreeAndContinue() {
@@ -131,8 +127,7 @@ export default function PolicyConsentRoute() {
 
   function moveToNextRequired() {
     const next = required.find((document) => !agreedKeys.includes(document.key));
-    if (!next) return;
-    setSelectedKey(next.key);
+    if (next) setSelectedKey(next.key);
   }
 
   if (!isLoading && !session) return <Redirect href="/" />;
@@ -174,33 +169,18 @@ export default function PolicyConsentRoute() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
             <VadText variant="caption" tone="brand">YOUR VAD AGREEMENT</VadText>
             {!loading && required.length ? (
-              <View
-                style={{
-                  borderRadius: theme.radius.pill,
-                  backgroundColor: theme.colors.brandSoft,
-                  paddingHorizontal: theme.spacing.sm,
-                  paddingVertical: 4,
-                }}
-              >
-                <VadText variant="caption" tone="brand">
-                  {completedAgreementCount}/{required.length} agreed
-                </VadText>
+              <View style={{ borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandSoft, paddingHorizontal: theme.spacing.sm, paddingVertical: 4 }}>
+                <VadText variant="caption" tone="brand">{completedAgreementCount}/{required.length} agreed</VadText>
               </View>
             ) : null}
           </View>
           <VadText variant={density.phone ? 'title' : 'display'}>Know what you are agreeing to.</VadText>
           <VadText tone="secondary" style={{ maxWidth: 720 }}>
-            We will guide you through one part at a time. You will confirm each document separately, so nothing important is hidden in a long page.
+            We guide you through one part at a time. Headings, subheadings, bold emphasis and bullets are exactly as VAD administrators published them.
           </VadText>
         </View>
 
-        {error ? (
-          <VadErrorState
-            title="Policies could not be confirmed"
-            message={error}
-            onRetry={() => void load()}
-          />
-        ) : null}
+        {error ? <VadErrorState title="Policies could not be confirmed" message={error} onRetry={() => void load()} /> : null}
 
         {loading ? (
           <View style={{ gap: theme.spacing.md }}>
@@ -208,7 +188,6 @@ export default function PolicyConsentRoute() {
               <VadSkeleton height={84} radius={theme.radius.xl} />
               <VadSkeleton height={84} radius={theme.radius.xl} />
             </View>
-            <VadSkeleton width="42%" height={24} />
             <VadSkeleton height={320} radius={theme.radius.xl} />
           </View>
         ) : documents.length && selected ? (
@@ -230,50 +209,26 @@ export default function PolicyConsentRoute() {
               </View>
             </View>
 
-            <VadCard
-              variant="raised"
-              style={{
-                padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-                gap: theme.spacing.lg,
-              }}
-            >
+            <VadCard variant="raised" style={{ padding: density.phone ? theme.spacing.lg : theme.spacing.xl, gap: theme.spacing.lg }}>
               <View style={{ gap: theme.spacing.sm }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md, alignItems: 'flex-start' }}>
                   <View style={{ flex: 1, gap: 4 }}>
                     <VadText variant="caption" tone="brand">{selected.title.toUpperCase()}</VadText>
                     <VadText variant="title">{selected.summary}</VadText>
                   </View>
-                  <View
-                    style={{
-                      minWidth: 72,
-                      borderRadius: theme.radius.pill,
-                      backgroundColor: theme.colors.surfaceMuted,
-                      paddingHorizontal: theme.spacing.sm,
-                      paddingVertical: 6,
-                      alignItems: 'center',
-                    }}
-                  >
+                  <View style={{ minWidth: 72, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: theme.spacing.sm, paddingVertical: 6, alignItems: 'center' }}>
                     <VadText variant="caption" tone="secondary">v{selected.version}</VadText>
                   </View>
                 </View>
 
                 <View style={{ gap: 6 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-                    <VadText variant="caption" tone="secondary">
-                      Part {sectionIndex + 1} of {sections.length}
-                    </VadText>
+                    <VadText variant="caption" tone="secondary">Part {sectionIndex + 1} of {sections.length}</VadText>
                     <VadText variant="caption" tone={selectedRead ? 'yes' : 'brand'}>
                       {selectedRead ? 'READ COMPLETE' : `${Math.round(((sectionIndex + 1) / sections.length) * 100)}%`}
                     </VadText>
                   </View>
-                  <View
-                    style={{
-                      height: 7,
-                      borderRadius: theme.radius.pill,
-                      overflow: 'hidden',
-                      backgroundColor: theme.colors.surfaceMuted,
-                    }}
-                  >
+                  <View style={{ height: 7, borderRadius: theme.radius.pill, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }}>
                     <View
                       style={{
                         width: `${selectedRead ? 100 : ((sectionIndex + 1) / sections.length) * 100}%`,
@@ -288,7 +243,7 @@ export default function PolicyConsentRoute() {
               <View style={{ height: 1, backgroundColor: theme.colors.border }} />
 
               {currentSection ? (
-                <View style={{ gap: theme.spacing.md, minHeight: density.phone ? 260 : 320 }}>
+                <View style={{ gap: theme.spacing.md, minHeight: density.phone ? 240 : 300 }}>
                   <VadText variant={density.phone ? 'heading' : 'title'}>{currentSection.title}</VadText>
                   <PolicySectionContent blocks={currentSection.blocks} />
                 </View>
@@ -296,43 +251,17 @@ export default function PolicyConsentRoute() {
 
               {!selectedRead ? (
                 <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: theme.spacing.sm }}>
-                  <VadButton
-                    label="Previous"
-                    variant="secondary"
-                    disabled={sectionIndex === 0}
-                    onPress={() => setSection(Math.max(0, sectionIndex - 1))}
-                  />
+                  <VadButton label="Previous" variant="secondary" disabled={sectionIndex === 0} onPress={() => setSection(Math.max(0, sectionIndex - 1))} />
                   {sectionIndex < sections.length - 1 ? (
-                    <VadButton
-                      label="Next part"
-                      onPress={() => setSection(Math.min(sections.length - 1, sectionIndex + 1))}
-                    />
+                    <VadButton label="Next part" onPress={() => setSection(Math.min(sections.length - 1, sectionIndex + 1))} />
                   ) : (
                     <VadButton label="Finish reading" onPress={finishReading} />
                   )}
                 </View>
               ) : (
                 <View style={{ gap: theme.spacing.sm }}>
-                  <View
-                    style={{
-                      borderRadius: theme.radius.lg,
-                      backgroundColor: theme.colors.yesSoft,
-                      padding: theme.spacing.md,
-                      flexDirection: 'row',
-                      gap: theme.spacing.sm,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 14,
-                        backgroundColor: theme.colors.yes,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
+                  <View style={{ borderRadius: theme.radius.lg, backgroundColor: theme.colors.yesSoft, padding: theme.spacing.md, flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'center' }}>
+                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: theme.colors.yes, alignItems: 'center', justifyContent: 'center' }}>
                       <VadText variant="label" tone="inverse">✓</VadText>
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
@@ -359,38 +288,19 @@ export default function PolicyConsentRoute() {
                         opacity: pressed ? 0.76 : 1,
                       })}
                     >
-                      <View
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 9,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: selectedAgreed ? theme.colors.brandPrimary : theme.colors.surfaceRaised,
-                          borderWidth: 1,
-                          borderColor: selectedAgreed ? theme.colors.brandPrimary : theme.colors.borderStrong,
-                        }}
-                      >
+                      <View style={{ width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: selectedAgreed ? theme.colors.brandPrimary : theme.colors.surfaceRaised, borderWidth: 1, borderColor: selectedAgreed ? theme.colors.brandPrimary : theme.colors.borderStrong }}>
                         {selectedAgreed ? <VadText variant="label" tone="inverse">✓</VadText> : null}
                       </View>
                       <View style={{ flex: 1, gap: 3 }}>
                         <VadText variant="bodyStrong">I agree to {selected.title}</VadText>
-                        <VadText variant="caption" tone="secondary">
-                          I have read this version and agree to it as part of using VAD.
-                        </VadText>
+                        <VadText variant="caption" tone="secondary">I have read this version and agree to it as part of using VAD.</VadText>
                       </View>
                     </Pressable>
                   ) : selected.accepted ? (
                     <VadText variant="caption" tone="yes">You already agreed to this version.</VadText>
                   ) : null}
 
-                  {selectedAgreed && !ready ? (
-                    <VadButton
-                      label="Continue to the next policy"
-                      variant="secondary"
-                      onPress={moveToNextRequired}
-                    />
-                  ) : null}
+                  {selectedAgreed && !ready ? <VadButton label="Continue to the next policy" variant="secondary" onPress={moveToNextRequired} /> : null}
                 </View>
               )}
             </VadCard>
@@ -400,8 +310,8 @@ export default function PolicyConsentRoute() {
                 <VadText variant="bodyStrong">Agreement checklist</VadText>
                 <VadText variant="caption" tone="secondary">
                   {ready
-                    ? 'Both required documents are confirmed. You can now continue into VAD.'
-                    : 'Read and agree to each required document separately. Your final Continue button stays locked until both are complete.'}
+                    ? 'All required documents are confirmed. You can now continue into VAD.'
+                    : 'Read and agree to each required document separately. The final Continue button remains locked until all are complete.'}
                 </VadText>
               </View>
 
@@ -414,46 +324,19 @@ export default function PolicyConsentRoute() {
                       key={`check-${document.key}`}
                       accessibilityRole="button"
                       onPress={() => setSelectedKey(document.key)}
-                      style={({ pressed }) => ({
-                        minHeight: 52,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: theme.spacing.sm,
-                        borderRadius: theme.radius.lg,
-                        backgroundColor: theme.colors.surface,
-                        paddingHorizontal: theme.spacing.md,
-                        opacity: pressed ? 0.76 : 1,
-                      })}
+                      style={({ pressed }) => ({ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface, paddingHorizontal: theme.spacing.md, opacity: pressed ? 0.76 : 1 })}
                     >
-                      <View
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 13,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: agreed ? theme.colors.yes : read ? theme.colors.brandSoft : theme.colors.surfaceMuted,
-                        }}
-                      >
-                        <VadText variant="caption" tone={agreed ? 'inverse' : read ? 'brand' : 'secondary'}>
-                          {agreed ? '✓' : read ? '•' : '—'}
-                        </VadText>
+                      <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: agreed ? theme.colors.yes : read ? theme.colors.brandSoft : theme.colors.surfaceMuted }}>
+                        <VadText variant="caption" tone={agreed ? 'inverse' : read ? 'brand' : 'secondary'}>{agreed ? '✓' : read ? '•' : '—'}</VadText>
                       </View>
                       <VadText variant="bodyStrong" style={{ flex: 1 }}>{document.title}</VadText>
-                      <VadText variant="caption" tone={agreed ? 'yes' : read ? 'brand' : 'tertiary'}>
-                        {agreed ? 'AGREED' : read ? 'READY TO AGREE' : 'READ NEXT'}
-                      </VadText>
+                      <VadText variant="caption" tone={agreed ? 'yes' : read ? 'brand' : 'tertiary'}>{agreed ? 'AGREED' : read ? 'READY TO AGREE' : 'READ NEXT'}</VadText>
                     </Pressable>
                   );
                 })}
               </View>
 
-              <VadButton
-                label="Agree and continue to VAD"
-                disabled={!ready || Boolean(error)}
-                loading={saving}
-                onPress={() => void agreeAndContinue()}
-              />
+              <VadButton label="Agree and continue to VAD" disabled={!ready || Boolean(error)} loading={saving} onPress={() => void agreeAndContinue()} />
               <VadButton label="I don't agree — sign me out" variant="ghost" onPress={() => void decline()} />
             </VadCard>
           </>
@@ -498,19 +381,8 @@ function DocumentStep({
         opacity: pressed ? 0.76 : 1,
       })}
     >
-      <View
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 17,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: agreed ? theme.colors.yes : selected ? theme.colors.brandPrimary : theme.colors.surfaceMuted,
-        }}
-      >
-        <VadText variant="label" tone={agreed || selected ? 'inverse' : 'secondary'}>
-          {agreed ? '✓' : number}
-        </VadText>
+      <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: agreed ? theme.colors.yes : selected ? theme.colors.brandPrimary : theme.colors.surfaceMuted }}>
+        <VadText variant="label" tone={agreed || selected ? 'inverse' : 'secondary'}>{agreed ? '✓' : number}</VadText>
       </View>
       <View style={{ flex: 1, gap: 3 }}>
         <VadText variant="bodyStrong">{document.title}</VadText>
@@ -524,144 +396,35 @@ function DocumentStep({
 
 function PolicySectionContent({ blocks }: { blocks: PolicyBlock[] }) {
   const theme = useVadTheme();
-  if (!blocks.length) {
-    return <VadText tone="secondary">There is no additional text in this section.</VadText>;
-  }
+  if (!blocks.length) return <VadText tone="secondary">There is no additional text in this section.</VadText>;
 
   return (
     <View style={{ gap: theme.spacing.md }}>
       {blocks.map((block, index) => {
         if (block.kind === 'subheading') {
-          return (
-            <VadText key={`${block.kind}-${index}`} variant="bodyStrong">
-              {block.text}
-            </VadText>
-          );
+          return <RichPolicyLine key={`${block.kind}-${index}`} text={block.text} strong />;
         }
         if (block.kind === 'bullet') {
           return (
             <View key={`${block.kind}-${index}`} style={{ flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'flex-start' }}>
-              <View
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: 4,
-                  marginTop: 8,
-                  backgroundColor: theme.colors.brandPrimary,
-                }}
-              />
-              <VadText tone="secondary" style={{ flex: 1, lineHeight: 24 }}>{block.text}</VadText>
+              <View style={{ width: 7, height: 7, borderRadius: 4, marginTop: 8, backgroundColor: theme.colors.brandPrimary }} />
+              <RichPolicyLine text={block.text} style={{ flex: 1, lineHeight: 24 }} />
             </View>
           );
         }
-        return (
-          <VadText key={`${block.kind}-${index}`} tone="secondary" style={{ lineHeight: 24 }}>
-            {block.text}
-          </VadText>
-        );
+        return <RichPolicyLine key={`${block.kind}-${index}`} text={block.text} style={{ lineHeight: 24 }} />;
       })}
     </View>
   );
 }
 
-function parsePolicySections(content: string, summary: string): PolicySection[] {
-  const normalized = content.replaceAll('\r', '').trim();
-  if (!normalized) {
-    return [{
-      title: 'Overview',
-      blocks: summary ? [{ kind: 'paragraph', text: summary }] : [],
-    }];
-  }
-
-  const lines = normalized.split('\n');
-  const sections: PolicySection[] = [];
-  let current: PolicySection = { title: 'Overview', blocks: [] };
-
-  function pushCurrent() {
-    if (current.blocks.length || current.title !== 'Overview') sections.push(current);
-  }
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    const sectionTitle = sectionHeading(line);
-    if (sectionTitle) {
-      pushCurrent();
-      current = { title: sectionTitle, blocks: [] };
-      continue;
-    }
-
-    const subheading = subheadingText(line);
-    if (subheading) {
-      current.blocks.push({ kind: 'subheading', text: subheading });
-      continue;
-    }
-
-    const bullet = line.match(/^(?:[-*•]|\d+[.)])\s+(.+)$/);
-    if (bullet?.[1]) {
-      current.blocks.push({ kind: 'bullet', text: cleanPolicyMarkup(bullet[1]) });
-      continue;
-    }
-
-    current.blocks.push({ kind: 'paragraph', text: cleanPolicyMarkup(line) });
-  }
-  pushCurrent();
-
-  if (!sections.length) {
-    return [{ title: 'Overview', blocks: [{ kind: 'paragraph', text: cleanPolicyMarkup(normalized) }] }];
-  }
-
-  if (sections.length === 1 && sections[0].blocks.length > 6) {
-    const blocks = sections[0].blocks;
-    const chunks: PolicySection[] = [];
-    for (let index = 0; index < blocks.length; index += 4) {
-      chunks.push({
-        title: index === 0 ? sections[0].title : `Continue reading · ${Math.floor(index / 4) + 1}`,
-        blocks: blocks.slice(index, index + 4),
-      });
-    }
-    return chunks;
-  }
-
-  return sections;
-}
-
-function sectionHeading(line: string) {
-  const markdown = line.match(/^#{1,2}\s+(.+)$/);
-  if (markdown?.[1]) return cleanPolicyMarkup(markdown[1]);
-
-  const numbered = line.match(/^((?:SECTION\s+)?\d+|[IVXLC]+)[.:)]\s+(.+)$/i);
-  if (numbered?.[2] && line.length <= 140) return cleanPolicyMarkup(line);
-
-  if (line.length <= 90 && line.endsWith(':') && line.split(/\s+/).length <= 10) {
-    return cleanPolicyMarkup(line.slice(0, -1));
-  }
-
-  if (line.length <= 84 && /[A-Z]/.test(line) && line === line.toUpperCase() && line.split(/\s+/).length <= 10) {
-    return cleanPolicyMarkup(line);
-  }
-
-  return null;
-}
-
-function subheadingText(line: string) {
-  const markdown = line.match(/^###\s+(.+)$/);
-  if (markdown?.[1]) return cleanPolicyMarkup(markdown[1]);
-
-  const bold = line.match(/^\*\*(.+)\*\*$/);
-  if (bold?.[1]) return cleanPolicyMarkup(bold[1]);
-
-  const nested = line.match(/^\d+\.\d+(?:\.\d+)?[.)]?\s+(.+)$/);
-  if (nested?.[1] && line.length <= 140) return cleanPolicyMarkup(line);
-
-  return null;
-}
-
-function cleanPolicyMarkup(value: string) {
-  return value
-    .replace(/^#+\s*/, '')
-    .replace(/^\*\*(.+)\*\*$/, '$1')
-    .replace(/^__(.+)__$/, '$1')
-    .trim();
+function RichPolicyLine({ text, strong = false, style }: { text: string; strong?: boolean; style?: object }) {
+  const segments = parseInlinePolicyText(text);
+  return (
+    <VadText variant={strong ? 'bodyStrong' : undefined} tone={strong ? 'primary' : 'secondary'} style={style}>
+      {segments.map((segment, index) => segment.bold ? (
+        <Text key={`${index}-${segment.text}`} style={{ fontWeight: '700' }}>{segment.text}</Text>
+      ) : segment.text)}
+    </VadText>
+  );
 }
