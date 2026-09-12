@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
@@ -39,39 +39,36 @@ export function PolicyConsentModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (documents.length && !documents.some((document) => document.key === selectedKey)) {
-      setSelectedKey(documents[0].key);
-    }
-  }, [documents, selectedKey]);
-
-  const selected = documents.find((document) => document.key === selectedKey) ?? documents[0];
+  const activeKey = documents.some((document) => document.key === selectedKey)
+    ? selectedKey
+    : documents[0]?.key ?? selectedKey;
+  const selected = documents.find((document) => document.key === activeKey) ?? documents[0];
   const pages = useMemo(() => buildPolicyPages(selected), [selected]);
-  const pageIndex = Math.min(pageByKey[selectedKey] ?? 0, Math.max(0, pages.length - 1));
+  const pageIndex = Math.min(pageByKey[activeKey] ?? 0, Math.max(0, pages.length - 1));
   const page = pages[pageIndex];
-  const selectedRead = readKeys.includes(selectedKey);
-  const selectedAgreed = agreedKeys.includes(selectedKey);
+  const selectedRead = readKeys.includes(activeKey);
+  const selectedAgreed = agreedKeys.includes(activeKey);
   const ready = documents.length > 0 && documents.every((document) => agreedKeys.includes(document.key));
   const completed = documents.filter((document) => agreedKeys.includes(document.key)).length;
 
   function setPage(index: number) {
-    setPageByKey((current) => ({ ...current, [selectedKey]: index }));
+    setPageByKey((current) => ({ ...current, [activeKey]: index }));
     setError(null);
   }
 
   function finishReading() {
-    setReadKeys((current) => current.includes(selectedKey) ? current : [...current, selectedKey]);
+    setReadKeys((current) => current.includes(activeKey) ? current : [...current, activeKey]);
   }
 
   function toggleAgreement() {
     if (!selectedRead) return;
-    setAgreedKeys((current) => current.includes(selectedKey)
-      ? current.filter((key) => key !== selectedKey)
-      : [...current, selectedKey]);
+    setAgreedKeys((current) => current.includes(activeKey)
+      ? current.filter((key) => key !== activeKey)
+      : [...current, activeKey]);
   }
 
   function nextPolicy() {
-    const next = documents.find((document) => !agreedKeys.includes(document.key) && document.key !== selectedKey)
+    const next = documents.find((document) => !agreedKeys.includes(document.key) && document.key !== activeKey)
       ?? documents.find((document) => !agreedKeys.includes(document.key));
     if (next) setSelectedKey(next.key);
   }
@@ -103,12 +100,7 @@ export function PolicyConsentModal({
   if (!selected) return null;
 
   return (
-    <VadBottomSheet
-      visible
-      title="A quick review before you continue"
-      dismissible={false}
-      onClose={() => undefined}
-    >
+    <VadBottomSheet visible title="A quick review before you continue" dismissible={false} onClose={() => undefined}>
       <View style={{ gap: theme.spacing.md }}>
         <View style={{ gap: 4 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
@@ -116,15 +108,13 @@ export function PolicyConsentModal({
             <VadText variant="caption" tone="secondary">{completed}/{documents.length} agreed</VadText>
           </View>
           <VadText variant="bodyStrong">Read one short part at a time.</VadText>
-          <VadText variant="caption" tone="secondary">
-            VAD will keep your place. You must read and agree to every required document before using the app.
-          </VadText>
+          <VadText variant="caption" tone="secondary">VAD will keep your place. You must read and agree to every required document before using the app.</VadText>
         </View>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
           {documents.map((document, index) => {
             const agreed = agreedKeys.includes(document.key);
-            const selectedDocument = document.key === selectedKey;
+            const selectedDocument = document.key === activeKey;
             return (
               <Pressable
                 key={`${document.key}-${document.policyVersionId ?? document.version}`}
@@ -160,9 +150,7 @@ export function PolicyConsentModal({
             <VadText variant="heading">{page?.title ?? selected.summary}</VadText>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
               <VadText variant="caption" tone="secondary">Part {pageIndex + 1} of {Math.max(pages.length, 1)}</VadText>
-              <VadText variant="caption" tone={selectedRead ? 'yes' : 'brand'}>
-                {selectedRead ? 'READ' : `${Math.round(((pageIndex + 1) / Math.max(pages.length, 1)) * 100)}%`}
-              </VadText>
+              <VadText variant="caption" tone={selectedRead ? 'yes' : 'brand'}>{selectedRead ? 'READ' : `${Math.round(((pageIndex + 1) / Math.max(pages.length, 1)) * 100)}%`}</VadText>
             </View>
             <View style={{ height: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surfaceMuted, overflow: 'hidden' }}>
               <View style={{ width: `${selectedRead ? 100 : ((pageIndex + 1) / Math.max(pages.length, 1)) * 100}%`, height: '100%', backgroundColor: selectedRead ? theme.colors.yes : theme.colors.brandPrimary }} />
@@ -177,11 +165,9 @@ export function PolicyConsentModal({
           {!selectedRead ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               <VadButton label="Previous" variant="secondary" disabled={pageIndex === 0} fullWidth={false} onPress={() => setPage(Math.max(0, pageIndex - 1))} />
-              {pageIndex < pages.length - 1 ? (
-                <VadButton label="Next part" fullWidth={false} onPress={() => setPage(pageIndex + 1)} />
-              ) : (
-                <VadButton label="I have read this" fullWidth={false} onPress={finishReading} />
-              )}
+              {pageIndex < pages.length - 1
+                ? <VadButton label="Next part" fullWidth={false} onPress={() => setPage(pageIndex + 1)} />
+                : <VadButton label="I have read this" fullWidth={false} onPress={finishReading} />}
             </View>
           ) : (
             <View style={{ gap: theme.spacing.sm }}>
@@ -220,9 +206,7 @@ export function PolicyConsentModal({
         <View style={{ gap: 8 }}>
           <VadButton label="Agree and enter VAD" disabled={!ready} loading={saving && ready} onPress={() => void acceptAndContinue()} />
           <VadButton label="I do not agree" variant="ghost" disabled={saving} onPress={() => void decline()} />
-          <VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>
-            If you do not agree to the required policies, VAD will sign you out.
-          </VadText>
+          <VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>If you do not agree to the required policies, VAD will sign you out.</VadText>
         </View>
       </View>
     </VadBottomSheet>
@@ -236,27 +220,17 @@ function buildPolicyPages(document?: LegalDocument): PolicyPage[] {
   sections.forEach((section) => {
     const blocks = section.blocks.length ? section.blocks : [{ kind: 'paragraph' as const, text: document.summary }];
     for (let index = 0; index < blocks.length; index += 3) {
-      pages.push({
-        title: index === 0 ? section.title : `${section.title} · continued`,
-        blocks: blocks.slice(index, index + 3),
-      });
+      pages.push({ title: index === 0 ? section.title : `${section.title} · continued`, blocks: blocks.slice(index, index + 3) });
     }
   });
   return pages.length ? pages : [{ title: 'Overview', blocks: [{ kind: 'paragraph', text: document.summary }] }];
 }
 
 function PolicyBlockView({ block }: { block: PolicyBlock }) {
-  const theme = useVadTheme();
   if (block.kind === 'subheading') return <VadText variant="bodyStrong">{block.text}</VadText>;
-
   const content = <InlinePolicyText text={block.text} />;
   if (block.kind === 'bullet') {
-    return (
-      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
-        <VadText tone="brand">•</VadText>
-        <View style={{ flex: 1 }}>{content}</View>
-      </View>
-    );
+    return <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}><VadText tone="brand">•</VadText><View style={{ flex: 1 }}>{content}</View></View>;
   }
   return <View>{content}</View>;
 }
@@ -266,11 +240,7 @@ function InlinePolicyText({ text }: { text: string }) {
   const segments = parseInlinePolicyText(text);
   return (
     <Text style={{ color: theme.colors.textPrimary, fontSize: 15, lineHeight: 22 }}>
-      {segments.map((segment, index) => (
-        <Text key={`${segment.text}-${index}`} style={{ fontWeight: segment.bold ? '700' : '400' }}>
-          {segment.text}
-        </Text>
-      ))}
+      {segments.map((segment, index) => <Text key={`${segment.text}-${index}`} style={{ fontWeight: segment.bold ? '700' : '400' }}>{segment.text}</Text>)}
     </Text>
   );
 }
