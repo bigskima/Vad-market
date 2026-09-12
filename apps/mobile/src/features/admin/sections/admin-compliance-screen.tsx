@@ -3,6 +3,7 @@ import { useWindowDimensions, View } from 'react-native';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { AdminKycAccessPanel } from '@/features/admin/compliance/admin-kyc-access-panel';
 import { AdminMetricCard } from '@/features/admin/dashboard/admin-metric-card';
 import {
   OperationsRow,
@@ -39,9 +40,7 @@ export function AdminComplianceScreen() {
   }
 
   const awaitingUser = Number(data.operations?.kycAwaitingUser ?? 0);
-  const inReview = Number(
-    data.operations?.kycInReview ?? data.kycQueue.length,
-  );
+  const inReview = Number(data.operations?.kycInReview ?? data.kycQueue.length);
   const verified = Number(data.operations?.kycVerified ?? 0);
   const accounted = awaitingUser + inReview + verified;
   const completionRatio = accounted > 0 ? verified / accounted : 0;
@@ -65,8 +64,7 @@ export function AdminComplianceScreen() {
           <VadText variant="label" tone="brand">COMPLIANCE</VadText>
           <VadText variant="title">Identity verification operations.</VadText>
           <VadText tone="secondary">
-            Work from verification status and provider references without
-            placing raw identity-document payloads in the operations interface.
+            See real provider verification status and manage separate, audited tester access without altering the underlying KYC record.
           </VadText>
         </View>
 
@@ -89,32 +87,19 @@ export function AdminComplianceScreen() {
             }}
           >
             <View style={{ gap: 2 }}>
-              <VadText
-                variant="caption"
-                tone={inReview > 0 ? 'warning' : 'yes'}
-              >
-                REVIEW LOAD
-              </VadText>
+              <VadText variant="caption" tone={inReview > 0 ? 'warning' : 'yes'}>REVIEW LOAD</VadText>
               <VadText variant="display">{inReview}</VadText>
               <VadText variant="caption" tone="secondary">cases in review</VadText>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 2 }}>
-              <VadText variant="heading" tone="yes">
-                {Math.round(completionRatio * 100)}%
-              </VadText>
-              <VadText variant="caption" tone="tertiary">
-                verified in summary
-              </VadText>
+              <VadText variant="heading" tone="yes">{Math.round(completionRatio * 100)}%</VadText>
+              <VadText variant="caption" tone="tertiary">verified in summary</VadText>
             </View>
           </View>
 
           <View
             accessibilityRole="progressbar"
-            accessibilityValue={{
-              min: 0,
-              max: 100,
-              now: Math.round(completionRatio * 100),
-            }}
+            accessibilityValue={{ min: 0, max: 100, now: Math.round(completionRatio * 100) }}
             style={{
               height: 8,
               borderRadius: theme.radius.pill,
@@ -133,26 +118,14 @@ export function AdminComplianceScreen() {
         </View>
       </View>
 
-      <View
-        style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: theme.spacing.sm,
-        }}
-      >
-        <AdminMetricCard
-          label="Awaiting user"
-          value={awaitingUser}
-          tone={awaitingUser ? 'brand' : 'primary'}
-        />
-        <AdminMetricCard
-          label="In review"
-          value={inReview}
-          tone={inReview ? 'warning' : 'yes'}
-        />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+        <AdminMetricCard label="Awaiting user" value={awaitingUser} tone={awaitingUser ? 'brand' : 'primary'} />
+        <AdminMetricCard label="In review" value={inReview} tone={inReview ? 'warning' : 'yes'} />
         <AdminMetricCard label="Verified" value={verified} tone="yes" />
         <AdminMetricCard label="Visible queue" value={data.kycQueue.length} />
       </View>
+
+      <AdminKycAccessPanel />
 
       <OperationsSection
         title="Verification queue"
@@ -165,10 +138,7 @@ export function AdminComplianceScreen() {
               key={row.case_public_id}
               title={`${row.verification_level} · ${String(row.provider_code ?? 'No provider')}`}
               detail={`${row.user_id.slice(0, 8)}… · ${String(row.country_code ?? '—')}`}
-              meta={
-                `Created ${new Date(row.created_at).toLocaleString()} · ` +
-                `updated ${new Date(row.updated_at).toLocaleString()}`
-              }
+              meta={`Created ${new Date(row.created_at).toLocaleString()} · updated ${new Date(row.updated_at).toLocaleString()}`}
               status={row.status}
               ready={row.status === 'VERIFIED'}
             />
@@ -177,8 +147,7 @@ export function AdminComplianceScreen() {
           <View style={{ paddingVertical: theme.spacing.lg }}>
             <VadText variant="bodyStrong">No verification review is waiting.</VadText>
             <VadText variant="caption" tone="secondary">
-              New provider-hosted cases will appear here when they are visible
-              to this role.
+              New provider-hosted cases will appear here when they are visible to this role.
             </VadText>
           </View>
         )}
@@ -194,14 +163,8 @@ export function AdminComplianceScreen() {
           paddingVertical: theme.spacing.md,
         }}
       >
-        <Boundary
-          title="Operator view"
-          body="Provider references, verification level, jurisdiction and status."
-        />
-        <Boundary
-          title="Outside this view"
-          body="Raw identity-document payloads and provider capture screens."
-        />
+        <Boundary title="Provider status" body="The actual Didit/provider verification state is read-only here and remains the compliance source of truth." />
+        <Boundary title="VAD access override" body="A separate, audited exception can be sandbox-only or explicitly allowed in all environments." />
       </View>
     </View>
   );
