@@ -10,7 +10,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { VadText } from './vad-text';
 
-type Variant = 'primary' | 'secondary' | 'tonal' | 'ghost' | 'danger' | 'destructive';
+type Variant = 'primary' | 'secondary' | 'tonal' | 'ghost' | 'plain' | 'danger' | 'destructive';
 type Size = 'small' | 'default' | 'large';
 
 type Props = PressableProps & {
@@ -65,7 +65,7 @@ export function VadButton({
   const borderColor =
     variant === 'secondary'
       ? theme.colors.borderStrong
-      : variant === 'ghost'
+      : variant === 'ghost' || variant === 'plain'
         ? 'transparent'
         : backgroundColor;
 
