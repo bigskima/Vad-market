@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 
+import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -43,18 +44,32 @@ export default function MarketDetailRoute() {
           <VadSkeleton height={118} />
         </View>
       ) : market ? (
-        <MarketDetailScreen
-          market={market}
-          markets={data.markets}
-          canTrade={runtime.snapshot.capabilities.trade}
-          tradeReason={tradeReason}
-          tradeCapabilityLoading={
-            runtime.isRefreshing && tradeReason === 'CAPABILITIES_LOADING'
-          }
-          canCreatePost={runtime.snapshot.capabilities.createPost}
-          onPlaced={data.load}
-          onOpenMarket={openMarket}
-        />
+        <View style={{ gap: theme.spacing.md }}>
+          <VadButton
+            label="Ask VAD Assistant about this market"
+            variant="secondary"
+            onPress={() => router.push({
+              pathname: '/assistant',
+              params: {
+                marketId: market.instrument_public_id,
+                from: `/market/${market.instrument_public_id}`,
+                prompt: 'Help me understand this market, its current prices and how it will be resolved.',
+              },
+            })}
+          />
+          <MarketDetailScreen
+            market={market}
+            markets={data.markets}
+            canTrade={runtime.snapshot.capabilities.trade}
+            tradeReason={tradeReason}
+            tradeCapabilityLoading={
+              runtime.isRefreshing && tradeReason === 'CAPABILITIES_LOADING'
+            }
+            canCreatePost={runtime.snapshot.capabilities.createPost}
+            onPlaced={data.load}
+            onOpenMarket={openMarket}
+          />
+        </View>
       ) : data.sectionErrors.markets ? (
         <VadErrorState
           title="Market could not be loaded"
