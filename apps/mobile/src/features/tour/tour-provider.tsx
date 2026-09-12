@@ -15,11 +15,15 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadText } from '@/components/ui/vad-text';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
-import { VAD_PRODUCT_TOUR, VAD_TOUR_VERSION } from './tour-catalog';
-import { readTourProgress, writeTourProgress } from './tour-storage';
+import {
+  getMyProductTour,
+  setMyProductTourProgress,
+  type ProductTourDefinition,
+} from './tour-service';
 import {
   DEFAULT_TOUR_PROGRESS,
   type TourProgress,
+  type TourProgressStatus,
   type TourStep,
   type TourTargetRect,
 } from './tour-types';
@@ -36,6 +40,9 @@ type ScrollController = {
 
 type TourContextValue = {
   active: boolean;
+  available: boolean;
+  loading: boolean;
+  error: string | null;
   progress: TourProgress;
   currentStep: TourStep | null;
   currentStepNumber: number;
@@ -43,6 +50,7 @@ type TourContextValue = {
   registerTarget: (targetId: string, node: TargetNode | null) => void;
   registerScrollController: (controller: ScrollController | null) => void;
   startTour: (manual?: boolean) => void;
+  refreshTour: () => void;
 };
 
 const TourContext = createContext<TourContextValue | null>(null);
@@ -52,11 +60,11 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const { height: windowHeight } = useWindowDimensions();
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
-  const [progress, setProgress] = useState<TourProgress>({
-    ...DEFAULT_TOUR_PROGRESS,
-    tourVersion: VAD_TOUR_VERSION,
-  });
+  const [definition, setDefinition] = useState<ProductTourDefinition | null>(null);
+  const [progress, setProgress] = useState<TourProgress>(DEFAULT_TOUR_PROGRESS);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<TourTargetRect | null>(null);
@@ -65,8 +73,9 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const scrollControllerRef = useRef<ScrollController | null>(null);
   const autoStartedRef = useRef(false);
 
+  const steps = definition?.steps ?? [];
   const progressReady = Boolean(userId && loadedUserId === userId);
-  const currentStep = active ? (VAD_PRODUCT_TOUR[stepIndex] ?? null) : null;
+  const currentStep = active ? (steps[stepIndex] ?? null) : null;
 
   const registerTarget = useCallback((targetId: string, node: TargetNode | null) => {
     if (node) targetsRef.current.set(targetId, node);
@@ -77,68 +86,158 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
     scrollControllerRef.current = controller;
   }, []);
 
-  const beginTour = useCallback((manual = false) => {
-    if (!userId) return;
-    autoStartedRef.current = true;
-    const nextProgress: TourProgress = {
+  const loadTour = useCallback(async () => {
+    if (!userId) return null;
+    setLoading(true);
+    setError(null);
+    try {
+      const next = await getMyProductTour();
+      setDefinition(next);
+      setProgress(next.progress);
+      setLoadedUserId(userId);
+      return next;
+    } catch (loadError) {
+      setDefinition(null);
+      setProgress(DEFAULT_TOUR_PROGRESS);
+      setLoadedUserId(userId);
+      setError(loadError instanceof Error
+        ? loadError.message
+        : 'The guided tour is unavailable right now. You can try again later from Account.');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  const saveProgress = useCallback((
+    status: Exclude<TourProgressStatus, 'NEW'>,
+    currentStepKey: string | null,
+    remindAt: string | null = null,
+  ) => {
+    const versionId = definition?.versionId;
+    if (!definition?.available || !versionId) return;
+
+    const now = new Date().toISOString();
+    const optimistic: TourProgress = {
       ...progress,
-      tourVersion: VAD_TOUR_VERSION,
-      lastStartedAt: new Date().toISOString(),
+      status,
+      tourVersion: definition.version,
+      tourVersionId: versionId,
+      currentStepKey,
+      remindAt: status === 'REMIND' ? remindAt : null,
+      completedAt: status === 'COMPLETED' ? now : status === 'IN_PROGRESS' ? null : progress.completedAt,
+      lastStartedAt: status === 'IN_PROGRESS' ? now : progress.lastStartedAt,
+    };
+    setProgress(optimistic);
+
+    void setMyProductTourProgress({
+      tourCode: definition.tourCode,
+      tourVersionId: versionId,
+      status,
+      currentStepKey,
+      remindAt,
+    }).then((stored) => {
+      setProgress((current) => ({
+        ...current,
+        ...stored,
+        tourVersion: definition.version,
+        tourVersionId: versionId,
+      }));
+    }).catch((saveError) => {
+      setError(saveError instanceof Error
+        ? saveError.message
+        : 'We could not save your guided tour progress. Please try again.');
+    });
+  }, [definition, progress]);
+
+  const beginWithDefinition = useCallback((tour: ProductTourDefinition, manual: boolean) => {
+    if (!tour.available || !tour.versionId || !tour.steps.length) return;
+    autoStartedRef.current = true;
+
+    let nextIndex = 0;
+    if (!manual && tour.progress.status === 'IN_PROGRESS' && tour.progress.currentStepKey) {
+      const savedIndex = tour.steps.findIndex((step) => step.id === tour.progress.currentStepKey);
+      if (savedIndex >= 0) nextIndex = savedIndex;
+    }
+
+    const step = tour.steps[nextIndex];
+    const now = new Date().toISOString();
+    const nextProgress: TourProgress = {
+      ...tour.progress,
+      status: 'IN_PROGRESS',
+      tourVersion: tour.version,
+      tourVersionId: tour.versionId,
+      currentStepKey: step.id,
+      remindAt: null,
+      completedAt: null,
+      lastStartedAt: now,
     };
 
+    setDefinition(tour);
     setProgress(nextProgress);
-    void writeTourProgress(userId, nextProgress);
-    setStepIndex(0);
+    setStepIndex(nextIndex);
     setSpotlight(null);
     setShowReminderChoices(false);
     setActive(true);
-    if (pathname !== '/home') router.replace('/home');
-    void manual;
-  }, [pathname, progress, userId]);
+    setError(null);
+
+    void setMyProductTourProgress({
+      tourCode: tour.tourCode,
+      tourVersionId: tour.versionId,
+      status: 'IN_PROGRESS',
+      currentStepKey: step.id,
+    }).catch((saveError) => {
+      setError(saveError instanceof Error
+        ? saveError.message
+        : 'We could not save your guided tour progress. Please try again.');
+    });
+
+    const destination = manual ? '/home' : step.route;
+    if (pathname !== destination) router.replace(destination);
+  }, [pathname]);
+
+  const startTour = useCallback((manual = false) => {
+    if (!userId) return;
+    autoStartedRef.current = true;
+    void (async () => {
+      const tour = definition?.available ? definition : await loadTour();
+      if (!tour) return;
+      beginWithDefinition(tour, manual);
+    })();
+  }, [beginWithDefinition, definition, loadTour, userId]);
 
   useEffect(() => {
     autoStartedRef.current = false;
-    let mounted = true;
+    setActive(false);
+    setSpotlight(null);
+    setShowReminderChoices(false);
 
     if (!userId) {
-      const timer = setTimeout(() => {
-        if (!mounted) return;
-        setActive(false);
-        setSpotlight(null);
-        setProgress({ ...DEFAULT_TOUR_PROGRESS, tourVersion: VAD_TOUR_VERSION });
-        setLoadedUserId(null);
-      }, 0);
-      return () => {
-        mounted = false;
-        clearTimeout(timer);
-      };
+      setDefinition(null);
+      setProgress(DEFAULT_TOUR_PROGRESS);
+      setLoadedUserId(null);
+      setError(null);
+      return;
     }
 
-    void readTourProgress(userId).then((stored) => {
-      if (!mounted) return;
-      setActive(false);
-      setSpotlight(null);
-      setProgress(stored);
-      setLoadedUserId(userId);
-    });
-
-    return () => {
-      mounted = false;
-    };
-  }, [userId]);
+    void loadTour();
+  }, [loadTour, userId]);
 
   useEffect(() => {
-    if (!userId || !progressReady || active || pathname !== '/home' || autoStartedRef.current) return;
-    const due =
-      progress.status === 'NEW' ||
-      (progress.status === 'REMIND' &&
-        Boolean(progress.remindAt) &&
-        new Date(progress.remindAt ?? 0).getTime() <= Date.now());
-    if (!due) return;
+    if (
+      !userId
+      || !progressReady
+      || loading
+      || active
+      || pathname !== '/home'
+      || autoStartedRef.current
+      || !definition?.available
+      || !definition.shouldStart
+    ) return;
 
-    const timer = setTimeout(() => beginTour(false), 1100);
+    const timer = setTimeout(() => startTour(false), 1100);
     return () => clearTimeout(timer);
-  }, [active, beginTour, pathname, progress, progressReady, userId]);
+  }, [active, definition, loading, pathname, progressReady, startTour, userId]);
 
   const revealStep = useCallback(() => {
     if (!currentStep) return;
@@ -194,72 +293,82 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!active || !currentStep) return;
-    const timer = setTimeout(() => {
-      revealStep();
-    }, 80);
+    const timer = setTimeout(revealStep, 80);
     return () => clearTimeout(timer);
   }, [active, currentStep, pathname, revealStep]);
 
   const completeTour = useCallback(() => {
-    if (!userId) return;
-    const nextProgress: TourProgress = {
-      status: 'COMPLETED',
-      tourVersion: VAD_TOUR_VERSION,
-      remindAt: null,
-      completedAt: new Date().toISOString(),
-      lastStartedAt: progress.lastStartedAt ?? new Date().toISOString(),
-    };
-    setProgress(nextProgress);
-    void writeTourProgress(userId, nextProgress);
+    const lastStep = steps[steps.length - 1];
+    saveProgress('COMPLETED', lastStep?.id ?? null);
     setActive(false);
     setSpotlight(null);
     setShowReminderChoices(false);
-  }, [progress.lastStartedAt, userId]);
+    setDefinition((current) => current ? { ...current, shouldStart: false } : current);
+  }, [saveProgress, steps]);
 
   const moveNext = useCallback(() => {
-    if (stepIndex >= VAD_PRODUCT_TOUR.length - 1) {
+    if (stepIndex >= steps.length - 1) {
       completeTour();
       return;
     }
+    const nextIndex = stepIndex + 1;
     setSpotlight(null);
     setShowReminderChoices(false);
-    setStepIndex((value) => value + 1);
-  }, [completeTour, stepIndex]);
+    setStepIndex(nextIndex);
+    saveProgress('IN_PROGRESS', steps[nextIndex]?.id ?? null);
+  }, [completeTour, saveProgress, stepIndex, steps]);
 
   const moveBack = useCallback(() => {
     if (stepIndex <= 0) return;
+    const nextIndex = Math.max(0, stepIndex - 1);
     setSpotlight(null);
     setShowReminderChoices(false);
-    setStepIndex((value) => Math.max(0, value - 1));
-  }, [stepIndex]);
+    setStepIndex(nextIndex);
+    saveProgress('IN_PROGRESS', steps[nextIndex]?.id ?? null);
+  }, [saveProgress, stepIndex, steps]);
 
   const postpone = useCallback((milliseconds: number | null) => {
-    if (!userId) return;
-    const nextProgress: TourProgress = {
-      ...progress,
-      status: milliseconds === null ? 'DISMISSED' : 'REMIND',
-      tourVersion: VAD_TOUR_VERSION,
-      remindAt: milliseconds === null
-        ? null
-        : new Date(Date.now() + milliseconds).toISOString(),
-    };
-    setProgress(nextProgress);
-    void writeTourProgress(userId, nextProgress);
+    const remindAt = milliseconds === null
+      ? null
+      : new Date(Date.now() + milliseconds).toISOString();
+    saveProgress(
+      milliseconds === null ? 'DISMISSED' : 'REMIND',
+      currentStep?.id ?? null,
+      remindAt,
+    );
     setActive(false);
     setSpotlight(null);
     setShowReminderChoices(false);
-  }, [progress, userId]);
+    setDefinition((current) => current ? { ...current, shouldStart: false } : current);
+  }, [currentStep?.id, saveProgress]);
 
   const value = useMemo<TourContextValue>(() => ({
     active,
+    available: Boolean(definition?.available),
+    loading,
+    error,
     progress,
     currentStep,
     currentStepNumber: currentStep ? stepIndex + 1 : 0,
-    totalSteps: VAD_PRODUCT_TOUR.length,
+    totalSteps: steps.length,
     registerTarget,
     registerScrollController,
-    startTour: beginTour,
-  }), [active, beginTour, currentStep, progress, registerScrollController, registerTarget, stepIndex]);
+    startTour,
+    refreshTour: () => { void loadTour(); },
+  }), [
+    active,
+    currentStep,
+    definition?.available,
+    error,
+    loadTour,
+    loading,
+    progress,
+    registerScrollController,
+    registerTarget,
+    startTour,
+    stepIndex,
+    steps.length,
+  ]);
 
   return (
     <TourContext.Provider value={value}>
@@ -269,7 +378,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
         step={currentStep}
         rect={spotlight}
         stepNumber={stepIndex + 1}
-        totalSteps={VAD_PRODUCT_TOUR.length}
+        totalSteps={steps.length}
         showReminderChoices={showReminderChoices}
         onBack={moveBack}
         onNext={moveNext}
@@ -287,10 +396,7 @@ export function TourTarget({
 }: PropsWithChildren<{ id: string }>) {
   const { registerTarget } = useProductTour();
   return (
-    <View
-      collapsable={false}
-      ref={(node) => registerTarget(id, node)}
-    >
+    <View collapsable={false} ref={(node) => registerTarget(id, node)}>
       {children}
     </View>
   );
@@ -419,7 +525,7 @@ function TourOverlay({
                 <View
                   style={{
                     height: '100%',
-                    width: `${Math.round((stepNumber / totalSteps) * 100)}%`,
+                    width: `${Math.round((stepNumber / Math.max(totalSteps, 1)) * 100)}%`,
                     backgroundColor: theme.colors.brandPrimary,
                   }}
                 />
