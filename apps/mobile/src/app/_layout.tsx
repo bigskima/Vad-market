@@ -9,22 +9,19 @@ import { VadLogo } from '@/components/brand/vad-logo';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadText } from '@/components/ui/vad-text';
 import { GrowthAttributionBridge } from '@/features/growth/growth-attribution-bridge';
+import { PolicyConsentModal } from '@/features/policy/policy-consent-modal';
 import { ProductTourProvider } from '@/features/tour/tour-provider';
 import { usePolicyGate } from '@/hooks/use-policy-gate';
 import { supabaseConfiguration } from '@/lib/supabase';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { ProductDataProvider } from '@/providers/product-data-provider';
-import {
-  VadThemeProvider,
-  useVadTheme,
-} from '@/providers/theme-provider';
+import { VadThemeProvider, useVadTheme } from '@/providers/theme-provider';
 
 function ThemedNavigation() {
   const theme = useVadTheme();
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
-
     void SystemUI.setBackgroundColorAsync(theme.colors.background);
   }, [theme.colors.background]);
 
@@ -72,15 +69,28 @@ function PolicyConsentBoundary({ children }: { children: ReactNode }) {
     );
   }
 
-  if (
+  const needsAgreement = Boolean(
     gateApplies
       && policyGate.enforcementReady
       && policyGate.requiresAcceptance
-  ) {
-    return <Redirect href="/policy-consent" />;
+      && policyGate.requiredDocuments.length,
+  );
+
+  if (needsAgreement && pathname !== '/home') {
+    return <Redirect href="/home" />;
   }
 
-  return children;
+  return (
+    <>
+      {children}
+      {needsAgreement && pathname === '/home' ? (
+        <PolicyConsentModal
+          documents={policyGate.requiredDocuments}
+          onAccepted={policyGate.refresh}
+        />
+      ) : null}
+    </>
+  );
 }
 
 function PolicyCheckScreen({
@@ -94,22 +104,8 @@ function PolicyCheckScreen({
 }) {
   const theme = useVadTheme();
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: theme.colors.background,
-        justifyContent: 'center',
-        padding: theme.spacing.xl,
-      }}
-    >
-      <View
-        style={{
-          width: '100%',
-          maxWidth: 520,
-          alignSelf: 'center',
-          gap: theme.spacing.lg,
-        }}
-      >
+    <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', padding: theme.spacing.xl }}>
+      <View style={{ width: '100%', maxWidth: 520, alignSelf: 'center', gap: theme.spacing.lg }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
           <VadLogo size={38} />
           <VadText variant="heading">VAD</VadText>
@@ -119,9 +115,7 @@ function PolicyCheckScreen({
           <VadText variant="title">Before you continue</VadText>
           <VadText tone="secondary">{message}</VadText>
         </View>
-        {actionLabel && onAction ? (
-          <VadButton label={actionLabel} onPress={onAction} />
-        ) : null}
+        {actionLabel && onAction ? <VadButton label={actionLabel} onPress={onAction} /> : null}
       </View>
     </View>
   );
@@ -131,44 +125,18 @@ function ServiceUnavailableScreen() {
   const theme = useVadTheme();
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: theme.colors.background,
-        justifyContent: 'center',
-        padding: theme.spacing.xl,
-      }}
-    >
-      <View
-        style={{
-          width: '100%',
-          maxWidth: 620,
-          alignSelf: 'center',
-          gap: theme.spacing.xl,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.spacing.sm,
-          }}
-        >
+    <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', padding: theme.spacing.xl }}>
+      <View style={{ width: '100%', maxWidth: 620, alignSelf: 'center', gap: theme.spacing.xl }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
           <VadLogo size={38} />
           <VadText variant="heading">VAD</VadText>
         </View>
-
         <View style={{ gap: theme.spacing.sm }}>
           <VadText variant="label" tone="brand">SERVICE UNAVAILABLE</VadText>
           <VadText variant="title">VAD cannot start right now.</VadText>
-          <VadText tone="secondary">
-            We are unable to connect to the services needed to open VAD. Please try again shortly. If the problem continues, contact VAD support.
-          </VadText>
+          <VadText tone="secondary">We are unable to connect to the services needed to open VAD. Please try again shortly. If the problem continues, contact VAD support.</VadText>
         </View>
-
-        <VadText variant="caption" tone="tertiary">
-          Your account information has not been changed.
-        </VadText>
+        <VadText variant="caption" tone="tertiary">Your account information has not been changed.</VadText>
       </View>
     </View>
   );
@@ -190,9 +158,7 @@ export default function RootLayout() {
               </PolicyConsentBoundary>
             </GrowthAttributionBridge>
           </AuthProvider>
-        ) : (
-          <ServiceUnavailableScreen />
-        )}
+        ) : <ServiceUnavailableScreen />}
       </VadThemeProvider>
     </SafeAreaProvider>
   );
