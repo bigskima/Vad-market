@@ -82,13 +82,13 @@ function PolicyConsentBoundary({ children }: { children: ReactNode }) {
 
   if (needsAgreement && pathname === '/home') {
     return (
-      <>
+      <View style={{ flex: 1, position: 'relative' }}>
         <PolicyHomeBackdrop />
         <PolicyConsentModal
           documents={policyGate.requiredDocuments}
           onAccepted={policyGate.refresh}
         />
-      </>
+      </View>
     );
   }
 
