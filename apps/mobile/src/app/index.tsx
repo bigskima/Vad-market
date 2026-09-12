@@ -1,4 +1,5 @@
 import { Redirect } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { AuthScreen } from '@/components/auth-screen';
@@ -10,6 +11,8 @@ import { useAuthMethods } from '@/hooks/use-auth-methods';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 
+const ENTRY_BOOTSTRAP_TIMEOUT_MS = 4000;
+
 export default function IndexScreen() {
   const {
     isLoading,
@@ -17,10 +20,36 @@ export default function IndexScreen() {
     isPasswordRecovery,
     verificationPromptPending,
   } = useAuth();
-  const { methods, loading: authMethodsLoading } = useAuthMethods();
+  const { methods } = useAuthMethods();
   const theme = useVadTheme();
+  const [bootstrapExpired, setBootstrapExpired] = useState(false);
 
-  if (isLoading || (Boolean(session) && authMethodsLoading)) {
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setBootstrapExpired(true);
+    }, ENTRY_BOOTSTRAP_TIMEOUT_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  if (isPasswordRecovery) return <PasswordRecoveryScreen />;
+
+  // A valid session is authoritative. Optional remote configuration and a
+  // stale auth-loading flag must never hold an authenticated member on the
+  // splash screen. Policy enforcement continues in PolicyConsentBoundary.
+  if (session) {
+    if (
+      methods.phoneVerification
+      && verificationPromptPending
+      && !session.user.phone_confirmed_at
+    ) {
+      return <PhoneVerificationScreen />;
+    }
+
+    return <Redirect href="/home" />;
+  }
+
+  if (isLoading && !bootstrapExpired) {
     return (
       <View
         style={{
@@ -42,18 +71,8 @@ export default function IndexScreen() {
     );
   }
 
-  if (isPasswordRecovery) return <PasswordRecoveryScreen />;
-  if (!session) return <AuthScreen />;
-  if (
-    methods.phoneVerification
-    && verificationPromptPending
-    && !session.user.phone_confirmed_at
-  ) {
-    return <PhoneVerificationScreen />;
-  }
-
-  // Policy enforcement is intentionally owned by PolicyConsentBoundary.
-  // Routing through Home prevents duplicate policy requests during sign-in
-  // and guarantees the policy modal wins before the product tour can mount.
-  return <Redirect href="/home" />;
+  // If session restoration is unusually slow, return control to the sign-in
+  // screen instead of leaving the app in a permanent startup state. A late
+  // Supabase session event will still update AuthProvider and route to Home.
+  return <AuthScreen />;
 }
