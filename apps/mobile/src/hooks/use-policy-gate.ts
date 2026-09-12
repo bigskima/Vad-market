@@ -45,9 +45,7 @@ export function usePolicyGate(userId: string | null | undefined) {
 
   useEffect(() => {
     void refresh();
-    return subscribeLegalPolicyChanges(() => {
-      void refresh();
-    });
+    return subscribeLegalPolicyChanges(refresh);
   }, [refresh]);
 
   return { ...state, refresh };
