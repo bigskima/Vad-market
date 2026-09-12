@@ -9,6 +9,7 @@ import {
 
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { VadDateTimeField } from './vad-date-time-field';
 import { VadText } from './vad-text';
 
 type Props = TextInputProps & {
@@ -20,6 +21,8 @@ type Props = TextInputProps & {
   trailing?: ReactNode;
   floatingLabel?: boolean;
   revealable?: boolean;
+  datePicker?: boolean;
+  dateOnly?: boolean;
 };
 
 export function VadInput({
@@ -31,6 +34,7 @@ export function VadInput({
   style,
   onFocus,
   onBlur,
+  onChangeText,
   accessibilityLabel,
   accessibilityHint,
   editable = true,
@@ -38,6 +42,8 @@ export function VadInput({
   trailing,
   floatingLabel = false,
   revealable = false,
+  datePicker,
+  dateOnly,
   secureTextEntry,
   value,
   ...props
@@ -50,6 +56,34 @@ export function VadInput({
   const multiHeight = density.phone ? (density.compact ? 96 : 104) : 116;
   const hasValue = typeof value === 'string' && value.length > 0;
   const floatActive = floatingLabel && Boolean(label) && (focused || hasValue);
+
+  const inferredDateField = Boolean(
+    label
+      && /\bdate\b/i.test(label)
+      && !multiline
+      && editable
+      && typeof value === 'string'
+      && onChangeText,
+  );
+  const useDatePicker = datePicker ?? inferredDateField;
+  const useDateOnly = dateOnly ?? Boolean(label && /\bdate\b/i.test(label) && !/\btime\b/i.test(label));
+
+  if (useDatePicker && typeof value === 'string' && onChangeText) {
+    return (
+      <View style={{ gap: density.phone ? theme.spacing.xxs : theme.spacing.xs }}>
+        <VadDateTimeField
+          label={label ?? 'Date'}
+          value={value}
+          onChange={onChangeText}
+          hint={error ?? success ?? hint}
+          dateOnly={useDateOnly}
+          clearable={!props.required}
+        />
+        {error ? <VadText variant="caption" tone="danger">{error}</VadText> : null}
+        {!error && success ? <VadText variant="caption" tone="yes">{success}</VadText> : null}
+      </View>
+    );
+  }
 
   const borderColor = error
     ? theme.colors.danger
@@ -112,6 +146,7 @@ export function VadInput({
           value={value}
           editable={editable}
           multiline={multiline}
+          onChangeText={onChangeText}
           secureTextEntry={revealable ? Boolean(secureTextEntry && !revealed) : secureTextEntry}
           onFocus={(event) => {
             setFocused(true);
