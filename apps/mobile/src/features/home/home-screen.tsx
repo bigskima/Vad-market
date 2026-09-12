@@ -14,6 +14,8 @@ import type {
   FeaturedMarketRow,
   FeaturedMarketSettings,
   HomePromotion,
+  TrendingMarketRow,
+  TrendingMarketSettings,
   VadMarketRow,
 } from '@/services/home-content-api';
 import type { MarketCatalogItem } from '@/services/market-api';
@@ -23,7 +25,9 @@ export function HomeScreen({
   promotions,
   vadMarkets,
   featuredMarkets,
+  trendingMarkets,
   featuredSettings,
+  trendingSettings,
   onOpenMarket,
   onOpenPromotion,
   onExploreMarkets,
@@ -33,7 +37,9 @@ export function HomeScreen({
   promotions: HomePromotion[];
   vadMarkets: VadMarketRow[];
   featuredMarkets: FeaturedMarketRow[];
+  trendingMarkets: TrendingMarketRow[];
   featuredSettings: FeaturedMarketSettings;
+  trendingSettings: TrendingMarketSettings;
   onOpenMarket: (market: MarketCatalogItem) => void;
   onOpenPromotion: (targetPath: string) => void;
   onExploreMarkets: (category?: string) => void;
@@ -42,49 +48,31 @@ export function HomeScreen({
   const theme = useVadTheme();
   const density = useProductDensity();
   const { registerTarget } = useProductTour();
-  const desktopMarketGrid = density.desktop;
 
-  const active = markets.filter(
-    (market) => market.status === 'OPEN' || market.status === 'ACTIVE',
-  );
-  const categories = [
-    ...new Set(markets.map((market) => market.category).filter(Boolean)),
-  ].slice(0, 8) as string[];
+  const active = markets.filter((market) => market.status === 'OPEN' || market.status === 'ACTIVE');
+  const categories = [...new Set(markets.map((market) => market.category).filter(Boolean))].slice(0, 8) as string[];
 
   const vadRail = vadMarkets
     .map((entry) => ({
       entry,
-      market: markets.find(
-        (market) => market.instrument_public_id === entry.instrument_public_id,
-      ),
+      market: markets.find((market) => market.instrument_public_id === entry.instrument_public_id),
     }))
-    .filter(
-      (row): row is { entry: VadMarketRow; market: MarketCatalogItem } => Boolean(row.market),
-    );
+    .filter((row): row is { entry: VadMarketRow; market: MarketCatalogItem } => Boolean(row.market));
 
   const featuredRail = featuredMarkets
     .map((entry) => ({
       entry,
-      market: markets.find(
-        (market) => market.instrument_public_id === entry.instrument_public_id,
-      ),
+      market: markets.find((market) => market.instrument_public_id === entry.instrument_public_id),
     }))
-    .filter(
-      (row): row is { entry: FeaturedMarketRow; market: MarketCatalogItem } => Boolean(row.market),
-    );
+    .filter((row): row is { entry: FeaturedMarketRow; market: MarketCatalogItem } => Boolean(row.market));
 
-  const highlightedIds = new Set([
-    ...vadRail.map(({ market }) => market.instrument_public_id),
-    ...featuredRail.map(({ market }) => market.instrument_public_id),
-  ]);
-  const trending = [...markets]
-    .sort(
-      (a, b) =>
-        Number(Boolean(b.last_trade_at)) - Number(Boolean(a.last_trade_at)) ||
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-    )
-    .filter((market) => !highlightedIds.has(market.instrument_public_id))
-    .slice(0, 5);
+  const trendingRail = trendingMarkets
+    .map((entry) => ({
+      entry,
+      market: markets.find((market) => market.instrument_public_id === entry.instrument_public_id),
+    }))
+    .filter((row): row is { entry: TrendingMarketRow; market: MarketCatalogItem } => Boolean(row.market));
+
   const sectionGap = density.compact ? theme.spacing.lg : theme.spacing.xl;
   const traded = markets.filter((market) => Boolean(market.last_trade_at)).length;
 
@@ -141,64 +129,43 @@ export function HomeScreen({
 
       <TourTarget id="home-featured-markets">
         <View style={{ gap: sectionGap }}>
-          <View style={{ gap: density.compact ? 8 : theme.spacing.sm }}>
-            <VadSectionHeader
-              title="VAD Markets"
-              subtitle="Markets published and selected by VAD."
-              actionLabel="All markets"
-              onAction={() => onExploreMarkets()}
-            />
-            {vadRail.length ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
-              >
-                {vadRail.map(({ market }) => (
-                  <MarketRailCard
-                    key={market.instrument_public_id}
-                    market={market}
-                    badge="VAD MARKET"
-                    badgeTone="brand"
-                    onPress={() => onOpenMarket(market)}
-                  />
-                ))}
-              </ScrollView>
-            ) : (
-              <VadCard variant="outlined" style={{ minHeight: 82, justifyContent: 'center', gap: 3 }}>
-                <VadText variant="bodyStrong">No VAD Markets are live right now.</VadText>
-                <VadText variant="caption" tone="secondary">
-                  Newly published VAD Markets will appear here.
-                </VadText>
-              </VadCard>
-            )}
-          </View>
-
-          {featuredRail.length ? (
-            <View style={{ gap: density.compact ? 8 : theme.spacing.sm }}>
-              <VadSectionHeader
-                title="Featured Markets"
-                subtitle={`Most active markets over the last ${formatWindow(featuredSettings.windowHours)}.`}
-                actionLabel="All markets"
-                onAction={() => onExploreMarkets()}
+          <MarketRailSection
+            title="VAD Markets"
+            subtitle="Markets published and selected by VAD."
+            emptyTitle="No VAD Markets are live right now."
+            emptyBody="Newly published VAD Markets will appear here."
+            onSeeAll={() => onExploreMarkets()}
+          >
+            {vadRail.map(({ market }) => (
+              <MarketRailCard
+                key={market.instrument_public_id}
+                market={market}
+                badge="VAD MARKET"
+                badgeTone="brand"
+                onPress={() => onOpenMarket(market)}
               />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
-              >
-                {featuredRail.map(({ market, entry }) => (
-                  <MarketRailCard
-                    key={market.instrument_public_id}
-                    market={market}
-                    badge={`#${entry.rank} FEATURED`}
-                    badgeTone="yes"
-                    detail={`${formatNairaCompact(entry.volume_ngn)} recent activity`}
-                    onPress={() => onOpenMarket(market)}
-                  />
-                ))}
-              </ScrollView>
-            </View>
+            ))}
+          </MarketRailSection>
+
+          {featuredSettings.enabled ? (
+            <MarketRailSection
+              title="Featured Markets"
+              subtitle={`The strongest completed trading activity over the last ${formatWindow(featuredSettings.windowHours)}.`}
+              emptyTitle="No market has reached Featured status yet."
+              emptyBody="Markets appear automatically when they reach the current activity requirement."
+              onSeeAll={() => onExploreMarkets()}
+            >
+              {featuredRail.map(({ market, entry }) => (
+                <MarketRailCard
+                  key={market.instrument_public_id}
+                  market={market}
+                  badge={`#${entry.rank} FEATURED`}
+                  badgeTone="yes"
+                  detail={`${formatNairaCompact(entry.volume_ngn)} completed activity`}
+                  onPress={() => onOpenMarket(market)}
+                />
+              ))}
+            </MarketRailSection>
           ) : null}
         </View>
       </TourTarget>
@@ -224,45 +191,28 @@ export function HomeScreen({
         </View>
       </TourTarget>
 
-      <TourTarget id="home-trending">
-        <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-          <VadSectionHeader
-            title="Trending now"
-            subtitle="More markets with recent activity."
-            actionLabel="See all"
-            onAction={() => onExploreMarkets()}
-          />
-          {trending.length ? (
-            desktopMarketGrid ? (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md, alignItems: 'stretch' }}>
-                {trending.map((market) => (
-                  <View key={market.instrument_public_id} style={{ flexGrow: 1, flexBasis: 320, minWidth: 0 }}>
-                    <MarketCard market={market} onPress={() => onOpenMarket(market)} />
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
-              >
-                {trending.map((market) => (
-                  <View key={market.instrument_public_id} style={{ width: Math.min(density.width - (density.narrow ? 36 : 44), 316) }}>
-                    <MarketCard market={market} onPress={() => onOpenMarket(market)} />
-                  </View>
-                ))}
-              </ScrollView>
-            )
-          ) : (
-            <VadCard variant="outlined" style={{ minHeight: 78, justifyContent: 'center' }}>
-              <VadText variant="caption" tone="tertiary">
-                Recent trading activity will appear here when available.
-              </VadText>
-            </VadCard>
-          )}
-        </View>
-      </TourTarget>
+      {trendingSettings.enabled ? (
+        <TourTarget id="home-trending">
+          <MarketRailSection
+            title="Trending Now"
+            subtitle={`Markets gaining momentum over the last ${formatMinutes(trendingSettings.windowMinutes)}.`}
+            emptyTitle="Nothing is surging right now."
+            emptyBody="Trending Markets appear when genuine completed trading starts accelerating."
+            onSeeAll={() => onExploreMarkets()}
+          >
+            {trendingRail.map(({ market, entry }) => (
+              <MarketRailCard
+                key={market.instrument_public_id}
+                market={market}
+                badge={`#${entry.rank} TRENDING`}
+                badgeTone="warning"
+                detail={`${formatAcceleration(Math.max(entry.volume_acceleration, entry.trade_acceleration))} activity · ${entry.unique_traders} traders`}
+                onPress={() => onOpenMarket(market)}
+              />
+            ))}
+          </MarketRailSection>
+        </TourTarget>
+      ) : null}
 
       <TourTarget id="home-community">
         <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
@@ -285,6 +235,44 @@ export function HomeScreen({
   );
 }
 
+function MarketRailSection({
+  title,
+  subtitle,
+  emptyTitle,
+  emptyBody,
+  onSeeAll,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  emptyTitle: string;
+  emptyBody: string;
+  onSeeAll: () => void;
+  children: React.ReactNode;
+}) {
+  const theme = useVadTheme();
+  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
+  return (
+    <View style={{ gap: 8 }}>
+      <VadSectionHeader title={title} subtitle={subtitle} actionLabel="All markets" onAction={onSeeAll} />
+      {hasChildren ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: theme.spacing.sm, paddingRight: theme.spacing.md }}
+        >
+          {children}
+        </ScrollView>
+      ) : (
+        <VadCard variant="outlined" style={{ minHeight: 82, justifyContent: 'center', gap: 3 }}>
+          <VadText variant="bodyStrong">{emptyTitle}</VadText>
+          <VadText variant="caption" tone="secondary">{emptyBody}</VadText>
+        </VadCard>
+      )}
+    </View>
+  );
+}
+
 function MarketRailCard({
   market,
   badge,
@@ -294,19 +282,14 @@ function MarketRailCard({
 }: {
   market: MarketCatalogItem;
   badge: string;
-  badgeTone: 'brand' | 'yes';
+  badgeTone: 'brand' | 'yes' | 'warning';
   detail?: string;
   onPress: () => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   return (
-    <View
-      style={{
-        width: Math.min(density.width - (density.narrow ? 36 : 44), density.desktop ? 340 : 316),
-        gap: 6,
-      }}
-    >
+    <View style={{ width: Math.min(density.width - (density.narrow ? 36 : 44), density.desktop ? 340 : 316), gap: 6 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 28 }}>
         <VadChip label={badge} tone={badgeTone} />
         {detail ? (
@@ -332,4 +315,15 @@ function formatWindow(hours: number) {
   if (hours === 24) return '24 hours';
   if (hours % 24 === 0) return `${hours / 24} days`;
   return `${hours} hours`;
+}
+
+function formatMinutes(minutes: number) {
+  if (minutes < 60) return `${minutes} minutes`;
+  if (minutes % 60 === 0) return `${minutes / 60} ${minutes === 60 ? 'hour' : 'hours'}`;
+  return `${minutes} minutes`;
+}
+
+function formatAcceleration(value: number) {
+  const speed = Number(value) || 0;
+  return `${Math.max(speed, 1).toFixed(speed >= 10 ? 0 : 1)}× faster`;
 }

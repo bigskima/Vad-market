@@ -7,6 +7,8 @@ import {
   type FeaturedMarketSettings,
   type HomePromotion,
   type PublicNotice,
+  type TrendingMarketRow,
+  type TrendingMarketSettings,
   type VadMarketRow,
 } from '@/services/home-content-api';
 import {
@@ -47,6 +49,18 @@ const defaultFeaturedSettings: FeaturedMarketSettings = {
   lastRefreshedAt: null,
 };
 
+const defaultTrendingSettings: TrendingMarketSettings = {
+  enabled: true,
+  windowMinutes: 60,
+  baselineHours: 6,
+  minimumVolumeNgn: 100_000,
+  minimumTrades: 5,
+  minimumUniqueTraders: 3,
+  minimumAcceleration: 1.5,
+  maxMarkets: 12,
+  lastRefreshedAt: null,
+};
+
 function settledError(
   result: PromiseSettledResult<unknown>,
   context: UserErrorContext,
@@ -60,8 +74,7 @@ export function useProductData(enabled = true) {
   const [loading, setLoading] = useState(enabled);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sectionErrors, setSectionErrors] =
-    useState<ProductSectionErrors>(emptySectionErrors);
+  const [sectionErrors, setSectionErrors] = useState<ProductSectionErrors>(emptySectionErrors);
   const [markets, setMarkets] = useState<MarketCatalogItem[]>([]);
   const [wallet, setWallet] = useState<WalletRow[]>([]);
   const [positions, setPositions] = useState<PositionRow[]>([]);
@@ -71,13 +84,11 @@ export function useProductData(enabled = true) {
   const [publicNotices, setPublicNotices] = useState<PublicNotice[]>([]);
   const [vadMarkets, setVadMarkets] = useState<VadMarketRow[]>([]);
   const [featuredMarkets, setFeaturedMarkets] = useState<FeaturedMarketRow[]>([]);
-  const [featuredMarketSettings, setFeaturedMarketSettings] =
-    useState<FeaturedMarketSettings>(defaultFeaturedSettings);
+  const [trendingMarkets, setTrendingMarkets] = useState<TrendingMarketRow[]>([]);
+  const [featuredMarketSettings, setFeaturedMarketSettings] = useState<FeaturedMarketSettings>(defaultFeaturedSettings);
+  const [trendingMarketSettings, setTrendingMarketSettings] = useState<TrendingMarketSettings>(defaultTrendingSettings);
   const [homeExperienceError, setHomeExperienceError] = useState<string | null>(null);
-  const [adminSummary, setAdminSummary] = useState<Record<
-    string,
-    number | string
-  > | null>(null);
+  const [adminSummary, setAdminSummary] = useState<Record<string, number | string> | null>(null);
 
   const reset = useCallback(() => {
     setMarkets([]);
@@ -89,7 +100,9 @@ export function useProductData(enabled = true) {
     setPublicNotices([]);
     setVadMarkets([]);
     setFeaturedMarkets([]);
+    setTrendingMarkets([]);
     setFeaturedMarketSettings(defaultFeaturedSettings);
+    setTrendingMarketSettings(defaultTrendingSettings);
     setHomeExperienceError(null);
     setAdminSummary(null);
     setSectionErrors(emptySectionErrors);
@@ -98,7 +111,6 @@ export function useProductData(enabled = true) {
 
   const probeAdmin = useCallback(async () => {
     if (!enabled) return;
-
     try {
       setAdminSummary(await getAdminRuntimeSummary());
     } catch {
@@ -108,14 +120,15 @@ export function useProductData(enabled = true) {
 
   const probeHomeExperience = useCallback(async () => {
     if (!enabled) return;
-
     try {
       const next = await getHomeExperience();
       setHomePromotions(next.promotions);
       setPublicNotices(next.notices);
       setVadMarkets(next.vadMarkets);
       setFeaturedMarkets(next.featuredMarkets);
+      setTrendingMarkets(next.trendingMarkets);
       setFeaturedMarketSettings(next.featuredSettings);
+      setTrendingMarketSettings(next.trendingSettings);
       setHomeExperienceError(null);
     } catch (reason) {
       setHomeExperienceError(
@@ -130,7 +143,6 @@ export function useProductData(enabled = true) {
 
   const load = useCallback(async () => {
     if (!enabled) return;
-
     const results = await Promise.allSettled([
       listMarkets(),
       getWalletSummary(),
@@ -146,18 +158,13 @@ export function useProductData(enabled = true) {
       orders: settledError(results[3], 'portfolio', 'We could not refresh your orders right now.'),
       proposals: settledError(results[4], 'proposal', 'We could not refresh your market proposals right now.'),
     };
-
     setSectionErrors(nextSectionErrors);
 
     const failures = Object.values(nextSectionErrors).filter(Boolean).length;
     if (failures === results.length) {
-      setError(
-        'We could not refresh your VAD information right now. Your last available information is still shown where possible.',
-      );
+      setError('We could not refresh your VAD information right now. Your last available information is still shown where possible.');
     } else if (failures > 0) {
-      setError(
-        'Some information could not refresh right now. Everything that updated successfully is still available.',
-      );
+      setError('Some information could not refresh right now. Everything that updated successfully is still available.');
     } else {
       setError(null);
     }
@@ -171,7 +178,6 @@ export function useProductData(enabled = true) {
 
   useEffect(() => {
     let cancelled = false;
-
     const timer = setTimeout(() => {
       if (!enabled) {
         reset();
@@ -179,16 +185,13 @@ export function useProductData(enabled = true) {
         setRefreshing(false);
         return;
       }
-
       setLoading(true);
-
       void probeAdmin();
       void probeHomeExperience();
       void load().finally(() => {
         if (!cancelled) setLoading(false);
       });
     }, 0);
-
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -197,7 +200,6 @@ export function useProductData(enabled = true) {
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
-
     setRefreshing(true);
     try {
       await Promise.all([load(), probeHomeExperience()]);
@@ -207,10 +209,7 @@ export function useProductData(enabled = true) {
     }
   }, [enabled, load, probeAdmin, probeHomeExperience]);
 
-  const ngn = useMemo(
-    () => wallet.find((row) => row.asset_code === 'NGN') ?? wallet[0],
-    [wallet],
-  );
+  const ngn = useMemo(() => wallet.find((row) => row.asset_code === 'NGN') ?? wallet[0], [wallet]);
 
   return {
     loading,
@@ -226,7 +225,9 @@ export function useProductData(enabled = true) {
     publicNotices,
     vadMarkets,
     featuredMarkets,
+    trendingMarkets,
     featuredMarketSettings,
+    trendingMarketSettings,
     homeExperienceError,
     adminSummary,
     ngn,

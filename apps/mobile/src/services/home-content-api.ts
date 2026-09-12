@@ -43,10 +43,36 @@ export type FeaturedMarketRow = {
   calculated_at: string;
 };
 
+export type TrendingMarketRow = {
+  instrument_public_id: string;
+  rank: number;
+  momentum_score: number;
+  volume_ngn: number;
+  trade_count: number;
+  unique_traders: number;
+  volume_acceleration: number;
+  trade_acceleration: number;
+  price_movement: number;
+  last_trade_at: string | null;
+  calculated_at: string;
+};
+
 export type FeaturedMarketSettings = {
   enabled: boolean;
   minimumVolumeNgn: number;
   windowHours: number;
+  maxMarkets: number;
+  lastRefreshedAt: string | null;
+};
+
+export type TrendingMarketSettings = {
+  enabled: boolean;
+  windowMinutes: number;
+  baselineHours: number;
+  minimumVolumeNgn: number;
+  minimumTrades: number;
+  minimumUniqueTraders: number;
+  minimumAcceleration: number;
   maxMarkets: number;
   lastRefreshedAt: string | null;
 };
@@ -56,7 +82,9 @@ export type HomeExperience = {
   notices: PublicNotice[];
   vadMarkets: VadMarketRow[];
   featuredMarkets: FeaturedMarketRow[];
+  trendingMarkets: TrendingMarketRow[];
   featuredSettings: FeaturedMarketSettings;
+  trendingSettings: TrendingMarketSettings;
 };
 
 function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback?: string) {
@@ -67,7 +95,6 @@ function isInsideLiveWindow(row: { starts_at: string | null; ends_at: string | n
   const now = Date.now();
   const startsAt = row.starts_at ? Date.parse(row.starts_at) : null;
   const endsAt = row.ends_at ? Date.parse(row.ends_at) : null;
-
   return (
     (startsAt == null || Number.isNaN(startsAt) || startsAt <= now) &&
     (endsAt == null || Number.isNaN(endsAt) || endsAt > now)
@@ -84,6 +111,18 @@ const defaultFeaturedSettings: FeaturedMarketSettings = {
   minimumVolumeNgn: 1_000_000,
   windowHours: 24,
   maxMarkets: 20,
+  lastRefreshedAt: null,
+};
+
+const defaultTrendingSettings: TrendingMarketSettings = {
+  enabled: true,
+  windowMinutes: 60,
+  baselineHours: 6,
+  minimumVolumeNgn: 100_000,
+  minimumTrades: 5,
+  minimumUniqueTraders: 3,
+  minimumAcceleration: 1.5,
+  maxMarkets: 12,
   lastRefreshedAt: null,
 };
 
@@ -115,26 +154,48 @@ export async function getHomeExperience(): Promise<HomeExperience> {
 
   let vadMarkets: VadMarketRow[] = [];
   let featuredMarkets: FeaturedMarketRow[] = [];
+  let trendingMarkets: TrendingMarketRow[] = [];
   let featuredSettings = defaultFeaturedSettings;
+  let trendingSettings = defaultTrendingSettings;
+
   if (railsResult.status === 'fulfilled' && !railsResult.value.error && railsResult.value.data) {
     const raw = railsResult.value.data as {
       vadMarkets?: VadMarketRow[];
       featuredMarkets?: FeaturedMarketRow[];
+      trendingMarkets?: TrendingMarketRow[];
       featuredSettings?: Partial<FeaturedMarketSettings>;
+      trendingSettings?: Partial<TrendingMarketSettings>;
     };
     vadMarkets = Array.isArray(raw.vadMarkets) ? raw.vadMarkets : [];
     featuredMarkets = Array.isArray(raw.featuredMarkets) ? raw.featuredMarkets : [];
+    trendingMarkets = Array.isArray(raw.trendingMarkets) ? raw.trendingMarkets : [];
     featuredSettings = { ...defaultFeaturedSettings, ...(raw.featuredSettings ?? {}) };
+    trendingSettings = { ...defaultTrendingSettings, ...(raw.trendingSettings ?? {}) };
   }
 
   const failed = [promotionsResult, noticesResult, railsResult].some(
     (result) => result.status === 'rejected' || Boolean(result.value?.error),
   );
-  if (failed && !promotions.length && !notices.length && !vadMarkets.length && !featuredMarkets.length) {
+  if (
+    failed &&
+    !promotions.length &&
+    !notices.length &&
+    !vadMarkets.length &&
+    !featuredMarkets.length &&
+    !trendingMarkets.length
+  ) {
     throw new Error('We could not refresh the latest highlights right now. Please try again.');
   }
 
-  return { promotions, notices, vadMarkets, featuredMarkets, featuredSettings };
+  return {
+    promotions,
+    notices,
+    vadMarkets,
+    featuredMarkets,
+    trendingMarkets,
+    featuredSettings,
+    trendingSettings,
+  };
 }
 
 export async function listAdminHomePromotions() {
@@ -207,7 +268,6 @@ export async function deleteAdminPublicNotice(publicId: string, reason: string) 
   if (cleanReason.length < 3) {
     throw new Error('Enter a reason before deleting this public notice.');
   }
-
   const { data, error } = await supabase.rpc('admin_delete_public_notice', {
     p_public_id: publicId,
     p_reason: cleanReason,
@@ -216,12 +276,8 @@ export async function deleteAdminPublicNotice(publicId: string, reason: string) 
   return Boolean(data);
 }
 
-export async function uploadHomePromotionImage(
-  bytes: ArrayBuffer,
-  mimeType: string,
-) {
-  const extension =
-    mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+export async function uploadHomePromotionImage(bytes: ArrayBuffer, mimeType: string) {
+  const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
   const path = `banners/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
   const { error } = await supabase.storage.from('home-promotions').upload(path, bytes, {
     contentType: mimeType,

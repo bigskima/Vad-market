@@ -22,13 +22,9 @@ export default function HomeRoute() {
 
   const exploreMarkets = (category?: string) => {
     if (category) {
-      router.push({
-        pathname: '/markets',
-        params: { category },
-      });
+      router.push({ pathname: '/markets', params: { category } });
       return;
     }
-
     router.push('/markets');
   };
 
@@ -37,9 +33,7 @@ export default function HomeRoute() {
     router.push(targetPath as never);
   };
 
-  const marketReadFailedWithoutData = Boolean(
-    data.sectionErrors.markets && !data.markets.length,
-  );
+  const marketReadFailedWithoutData = Boolean(data.sectionErrors.markets && !data.markets.length);
 
   return (
     <ProductRoute active="Home" allowCreate>
@@ -57,7 +51,9 @@ export default function HomeRoute() {
           promotions={data.homePromotions}
           vadMarkets={data.vadMarkets}
           featuredMarkets={data.featuredMarkets}
+          trendingMarkets={data.trendingMarkets}
           featuredSettings={data.featuredMarketSettings}
+          trendingSettings={data.trendingMarketSettings}
           onOpenMarket={openMarket}
           onOpenPromotion={openPromotion}
           onExploreMarkets={exploreMarkets}
