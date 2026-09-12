@@ -42,7 +42,6 @@ function ThemedNavigation() {
 function PolicyConsentBoundary({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { isLoading, isPasswordRecovery, session } = useAuth();
-  const policyGate = usePolicyGate(session?.user.id);
   const policyRoute = pathname === '/policy-consent';
   const authRoute = pathname === '/';
   const growthLandingRoute = pathname.startsWith('/a/');
@@ -54,6 +53,7 @@ function PolicyConsentBoundary({ children }: { children: ReactNode }) {
       && !authRoute
       && !growthLandingRoute,
   );
+  const policyGate = usePolicyGate(gateApplies ? session?.user.id : null);
 
   if (gateApplies && policyGate.loading) {
     return <PolicyCheckScreen />;

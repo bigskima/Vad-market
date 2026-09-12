@@ -15,6 +15,22 @@ const OPEN_STATE: PolicyGateState = {
   error: null,
 };
 
+const POLICY_GATE_TIMEOUT_MS = 8000;
+
+async function getPolicyGateStateWithTimeout(userId: string): Promise<PolicyGateState> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  try {
+    const timeout = new Promise<PolicyGateState>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error('We could not finish checking the current policies. Check your connection and try again.'));
+      }, POLICY_GATE_TIMEOUT_MS);
+    });
+    return await Promise.race([getPolicyGateState(userId), timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 export function usePolicyGate(userId: string | null | undefined) {
   const [state, setState] = useState<PolicyGateState>(
     userId ? { ...OPEN_STATE, loading: true } : OPEN_STATE,
@@ -28,7 +44,7 @@ export function usePolicyGate(userId: string | null | undefined) {
 
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
-      const next = await getPolicyGateState(userId);
+      const next = await getPolicyGateStateWithTimeout(userId);
       setState(next);
     } catch (error) {
       setState({
