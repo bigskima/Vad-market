@@ -7,6 +7,7 @@ export type AdminHref =
   | '/admin/search'
   | '/admin/governance'
   | '/admin/market-publishing'
+  | '/admin/launch-policy'
   | '/admin/revenue'
   | '/admin/fees'
   | '/admin/payments'
@@ -70,6 +71,13 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         href: '/admin/governance',
         description: 'Market proposals, interventions and resolution',
         permissions: ['markets.manage', 'oracle.review'],
+      },
+      {
+        label: 'Launch Policy',
+        shortLabel: 'Launch',
+        href: '/admin/launch-policy',
+        description: 'Production readiness across market, settlement and oracle policy',
+        permissions: ['policies.manage', 'markets.manage', 'oracle.review', 'finance.read'],
       },
       {
         label: 'Publish & Feature',
