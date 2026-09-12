@@ -29,9 +29,11 @@ export default function PoliciesRoute() {
     try {
       const items = await getPolicyWorkspace();
       setDocuments(items);
-      if (items.length && !items.some((document) => document.key === selectedKey)) {
-        setSelectedKey(items[0].key);
-      }
+      setSelectedKey((current) => (
+        items.some((document) => document.key === current)
+          ? current
+          : items[0]?.key ?? 'TERMS'
+      ));
     } catch (loadError) {
       setError(loadError instanceof Error
         ? loadError.message
@@ -39,10 +41,11 @@ export default function PoliciesRoute() {
     } finally {
       setLoading(false);
     }
-  }, [selectedKey]);
+  }, []);
 
   useEffect(() => {
-    void load();
+    const timer = setTimeout(() => void load(), 0);
+    return () => clearTimeout(timer);
   }, [load]);
 
   const selected = documents.find((document) => document.key === selectedKey) ?? documents[0];
