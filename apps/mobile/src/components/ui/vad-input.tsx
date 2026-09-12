@@ -77,7 +77,7 @@ export function VadInput({
           onChange={onChangeText}
           hint={error ?? success ?? hint}
           dateOnly={useDateOnly}
-          clearable={!props.required}
+          clearable
         />
         {error ? <VadText variant="caption" tone="danger">{error}</VadText> : null}
         {!error && success ? <VadText variant="caption" tone="yes">{success}</VadText> : null}
