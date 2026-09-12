@@ -64,7 +64,7 @@ export function ProductTopBar({
         }}
       >
         {density.phone ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, minWidth: density.narrow ? 72 : 88 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, minWidth: density.narrow ? 42 : 88 }}>
             <VadLogo size={34} />
             {!density.narrow ? (
               <View style={{ gap: 0 }}>
@@ -89,7 +89,7 @@ export function ProductTopBar({
           style={({ pressed }) => ({
             flex: density.phone || !roomy ? 1 : undefined,
             width: density.phone || !roomy ? undefined : Math.min(420, Math.max(280, density.width * 0.29)),
-            minWidth: density.phone ? 44 : 180,
+            minWidth: density.phone ? 40 : 180,
             maxWidth: density.phone ? undefined : 420,
             minHeight: 44,
             flexDirection: 'row',
@@ -119,40 +119,46 @@ export function ProductTopBar({
         {roomy ? <View style={{ flex: 1 }} /> : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
-          {canCreate && roomy ? (
-            <HeaderAction label="Create" icon="plus" brand onPress={onCreate} />
+          {canCreate ? (
+            roomy ? (
+              <HeaderAction label="Create" icon="plus" brand onPress={onCreate} />
+            ) : (
+              <CompactCreateAction onPress={onCreate} />
+            )
           ) : null}
 
           {isAdmin && roomy ? (
             <HeaderAction label="Operations" icon="operations" onPress={onAdmin} />
           ) : null}
 
-          <HeaderIcon label="Open VAD Assistant" icon="activity" onPress={onAssistant} />
+          {!density.narrow ? <HeaderIcon label="Open VAD Assistant" icon="activity" onPress={onAssistant} /> : null}
 
-          <View>
-            <HeaderIcon label="Open notices" icon="bell" onPress={onNotices} />
-            {noticeCount > 0 ? (
-              <View
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  top: 4,
-                  right: 4,
-                  minWidth: 16,
-                  height: 16,
-                  borderRadius: 8,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingHorizontal: 3,
-                  backgroundColor: theme.colors.no,
-                  borderWidth: 2,
-                  borderColor: theme.colors.surface,
-                }}
-              >
-                <VadText tone="inverse" style={{ fontSize: 9, lineHeight: 10, fontWeight: '800' }}>{Math.min(9, noticeCount)}</VadText>
-              </View>
-            ) : null}
-          </View>
+          {!density.narrow ? (
+            <View>
+              <HeaderIcon label="Open notices" icon="bell" onPress={onNotices} />
+              {noticeCount > 0 ? (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    minWidth: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 3,
+                    backgroundColor: theme.colors.no,
+                    borderWidth: 2,
+                    borderColor: theme.colors.surface,
+                  }}
+                >
+                  <VadText tone="inverse" style={{ fontSize: 9, lineHeight: 10, fontWeight: '800' }}>{Math.min(9, noticeCount)}</VadText>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
           <Pressable
             accessibilityRole="button"
@@ -176,6 +182,31 @@ export function ProductTopBar({
         </View>
       </View>
     </View>
+  );
+}
+
+function CompactCreateAction({ onPress }: { onPress: () => void }) {
+  const theme = useVadTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Create market"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.colors.brandPrimary,
+        borderWidth: 1,
+        borderColor: theme.colors.brandPrimary,
+        opacity: pressed ? 0.75 : 1,
+        transform: [{ scale: pressed ? 0.96 : 1 }],
+      })}
+    >
+      <VadIcon name="plus" size={19} tone="inverse" />
+    </Pressable>
   );
 }
 
