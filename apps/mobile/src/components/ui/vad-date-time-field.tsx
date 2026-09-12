@@ -14,6 +14,7 @@ type Props = {
   minDate?: string;
   minuteStep?: 5 | 10 | 15 | 30;
   clearable?: boolean;
+  dateOnly?: boolean;
 };
 
 export function VadDateTimeField({
@@ -24,23 +25,37 @@ export function VadDateTimeField({
   minDate,
   minuteStep = 15,
   clearable = false,
+  dateOnly = false,
 }: Props) {
   const theme = useVadTheme();
   const [open, setOpen] = useState(false);
-  const initial = useMemo(() => parseValue(value, minDate), [value, minDate]);
+  const initial = useMemo(() => parseValue(value, minDate, minuteStep), [value, minDate, minuteStep]);
   const [draft, setDraft] = useState(initial);
+  const [monthCursor, setMonthCursor] = useState(() => startOfMonth(initial));
 
   function showPicker() {
-    setDraft(parseValue(value, minDate));
+    const next = parseValue(value, minDate, minuteStep);
+    setDraft(next);
+    setMonthCursor(startOfMonth(next));
     setOpen(true);
   }
 
-  const days = useMemo(() => buildDays(minDate, 35), [minDate]);
+  const days = useMemo(() => buildMonthDays(monthCursor, minDate), [monthCursor, minDate]);
   const minutes = useMemo(() => {
     const result: number[] = [];
     for (let minute = 0; minute < 60; minute += minuteStep) result.push(minute);
     return result;
   }, [minuteStep]);
+
+  function moveMonth(delta: number) {
+    setMonthCursor((current) => {
+      const next = new Date(current);
+      next.setMonth(next.getMonth() + delta, 1);
+      const minimum = minDate && Number.isFinite(Date.parse(minDate)) ? startOfMonth(new Date(minDate)) : null;
+      if (minimum && next < minimum) return minimum;
+      return next;
+    });
+  }
 
   return (
     <View style={{ gap: 6 }}>
@@ -65,13 +80,9 @@ export function VadDateTimeField({
       >
         <View style={{ flex: 1, gap: 1 }}>
           <VadText tone={value ? 'primary' : 'tertiary'}>
-            {value ? formatDateTime(value) : 'Choose date and time'}
+            {value ? (dateOnly ? formatDate(value) : formatDateTime(value)) : dateOnly ? 'Choose date' : 'Choose date and time'}
           </VadText>
-          {value ? (
-            <VadText variant="caption" tone="tertiary">
-              {formatRelative(value)}
-            </VadText>
-          ) : null}
+          {value && !dateOnly ? <VadText variant="caption" tone="tertiary">{formatRelative(value)}</VadText> : null}
         </View>
         <VadText variant="heading" tone="brand">⌄</VadText>
       </Pressable>
@@ -80,63 +91,78 @@ export function VadDateTimeField({
       <VadBottomSheet visible={open} title={`Choose ${label.toLowerCase()}`} onClose={() => setOpen(false)}>
         <View style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: theme.spacing.sm }}>
-            <VadText variant="bodyStrong">Date</VadText>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+              <MonthButton label="‹" accessibilityLabel="Previous month" onPress={() => moveMonth(-1)} disabled={!canMovePrevious(monthCursor, minDate)} />
+              <View style={{ flex: 1, alignItems: 'center', gap: 1 }}>
+                <VadText variant="bodyStrong">{monthCursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</VadText>
+                <VadText variant="caption" tone="tertiary">Choose a day</VadText>
+              </View>
+              <MonthButton label="›" accessibilityLabel="Next month" onPress={() => moveMonth(1)} />
+            </View>
+
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
               {days.map((day) => (
-                <PickerChoice
+                <DayChoice
                   key={day.key}
-                  label={day.label}
-                  detail={day.detail}
+                  date={day.date}
+                  disabled={day.disabled}
                   selected={sameDay(draft, day.date)}
-                  onPress={() => setDraft(withDate(draft, day.date))}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={{ gap: theme.spacing.sm }}>
-            <VadText variant="bodyStrong">Time</VadText>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {[6, 8, 9, 10, 12, 14, 16, 18, 20, 22].map((hour) => (
-                <PickerChoice
-                  key={hour}
-                  label={formatHour(hour)}
-                  selected={draft.getHours() === hour}
                   onPress={() => {
-                    const next = new Date(draft);
-                    next.setHours(hour);
-                    setDraft(next);
+                    if (day.disabled) return;
+                    setDraft(withDate(draft, day.date));
                   }}
                 />
               ))}
             </View>
           </View>
 
-          <View style={{ gap: theme.spacing.sm }}>
-            <VadText variant="bodyStrong">Minutes</VadText>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {minutes.map((minute) => (
-                <PickerChoice
-                  key={minute}
-                  label={`:${String(minute).padStart(2, '0')}`}
-                  selected={draft.getMinutes() === minute}
-                  onPress={() => {
-                    const next = new Date(draft);
-                    next.setMinutes(minute, 0, 0);
-                    setDraft(next);
-                  }}
-                />
-              ))}
-            </View>
-          </View>
+          {!dateOnly ? (
+            <>
+              <View style={{ gap: theme.spacing.sm }}>
+                <VadText variant="bodyStrong">Hour</VadText>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {Array.from({ length: 24 }, (_, hour) => hour).map((hour) => (
+                    <PickerChoice
+                      key={hour}
+                      label={formatHour(hour)}
+                      selected={draft.getHours() === hour}
+                      onPress={() => {
+                        const next = new Date(draft);
+                        next.setHours(hour);
+                        setDraft(next);
+                      }}
+                    />
+                  ))}
+                </View>
+              </View>
+
+              <View style={{ gap: theme.spacing.sm }}>
+                <VadText variant="bodyStrong">Minutes</VadText>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {minutes.map((minute) => (
+                    <PickerChoice
+                      key={minute}
+                      label={`:${String(minute).padStart(2, '0')}`}
+                      selected={draft.getMinutes() === minute}
+                      onPress={() => {
+                        const next = new Date(draft);
+                        next.setMinutes(minute, 0, 0);
+                        setDraft(next);
+                      }}
+                    />
+                  ))}
+                </View>
+              </View>
+            </>
+          ) : null}
 
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md, gap: theme.spacing.sm }}>
             <VadText variant="caption" tone="secondary">Selected</VadText>
-            <VadText variant="heading">{formatDateTime(draft.toISOString())}</VadText>
+            <VadText variant="heading">{dateOnly ? formatDate(draft.toISOString()) : formatDateTime(draft.toISOString())}</VadText>
             <VadButton
-              label="Use this date and time"
+              label={dateOnly ? 'Use this date' : 'Use this date and time'}
               onPress={() => {
-                onChange(draft.toISOString());
+                onChange(dateOnly ? toLocalDateValue(draft) : draft.toISOString());
                 setOpen(false);
               }}
             />
@@ -157,7 +183,60 @@ export function VadDateTimeField({
   );
 }
 
-function PickerChoice({ label, detail, selected = false, onPress }: { label: string; detail?: string; selected?: boolean; onPress: () => void }) {
+function MonthButton({ label, accessibilityLabel, disabled = false, onPress }: { label: string; accessibilityLabel: string; disabled?: boolean; onPress: () => void }) {
+  const theme = useVadTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surfaceRaised,
+        opacity: disabled ? 0.35 : pressed ? 0.72 : 1,
+      })}
+    >
+      <VadText variant="heading" tone="brand">{label}</VadText>
+    </Pressable>
+  );
+}
+
+function DayChoice({ date, disabled, selected, onPress }: { date: Date; disabled: boolean; selected: boolean; onPress: () => void }) {
+  const theme = useVadTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+      accessibilityState={{ selected, disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 58,
+        minHeight: 54,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: theme.radius.lg,
+        borderWidth: 1,
+        borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
+        backgroundColor: selected ? theme.colors.brandSoft : pressed ? theme.colors.surfaceMuted : theme.colors.surface,
+        opacity: disabled ? 0.28 : pressed ? 0.78 : 1,
+      })}
+    >
+      <VadText variant="caption" tone="tertiary">{date.toLocaleDateString(undefined, { weekday: 'short' })}</VadText>
+      <VadText variant="bodyStrong" tone={selected ? 'brand' : 'primary'}>{date.getDate()}</VadText>
+    </Pressable>
+  );
+}
+
+function PickerChoice({ label, selected = false, onPress }: { label: string; selected?: boolean; onPress: () => void }) {
   const theme = useVadTheme();
   return (
     <Pressable
@@ -165,10 +244,11 @@ function PickerChoice({ label, detail, selected = false, onPress }: { label: str
       accessibilityState={{ selected }}
       onPress={onPress}
       style={({ pressed }) => ({
-        minWidth: detail ? 104 : 72,
-        minHeight: detail ? 54 : 42,
+        minWidth: 72,
+        minHeight: 42,
         justifyContent: 'center',
-        paddingHorizontal: 12,
+        alignItems: 'center',
+        paddingHorizontal: 10,
         paddingVertical: 8,
         borderRadius: theme.radius.lg,
         borderWidth: 1,
@@ -177,38 +257,58 @@ function PickerChoice({ label, detail, selected = false, onPress }: { label: str
         opacity: pressed ? 0.78 : 1,
       })}
     >
-      <VadText variant={detail ? 'bodyStrong' : 'caption'} tone={selected ? 'brand' : 'primary'}>{label}</VadText>
-      {detail ? <VadText variant="caption" tone="tertiary">{detail}</VadText> : null}
+      <VadText variant="caption" tone={selected ? 'brand' : 'primary'}>{label}</VadText>
     </Pressable>
   );
 }
 
-function parseValue(value: string, minDate?: string) {
-  const parsed = value ? new Date(value) : new Date();
-  const minimum = minDate ? new Date(minDate) : null;
-  const date = Number.isFinite(parsed.getTime()) ? parsed : new Date();
-  if (minimum && Number.isFinite(minimum.getTime()) && date < minimum) return new Date(minimum);
+function parseValue(value: string, minDate: string | undefined, minuteStep: number) {
+  const parsed = parseInputDate(value);
+  const minimum = minDate ? parseInputDate(minDate) : null;
+  const date = parsed ?? new Date();
+  if (minimum && date < minimum) return new Date(minimum);
   date.setSeconds(0, 0);
-  const minute = Math.ceil(date.getMinutes() / 15) * 15;
-  if (minute >= 60) {
-    date.setHours(date.getHours() + 1, 0, 0, 0);
-  } else {
-    date.setMinutes(minute, 0, 0);
-  }
+  const minute = Math.ceil(date.getMinutes() / minuteStep) * minuteStep;
+  if (minute >= 60) date.setHours(date.getHours() + 1, 0, 0, 0);
+  else date.setMinutes(minute, 0, 0);
   return date;
 }
 
-function buildDays(minDate: string | undefined, count: number) {
-  const start = minDate && Number.isFinite(Date.parse(minDate)) ? new Date(minDate) : new Date();
-  start.setHours(0, 0, 0, 0);
+function parseInputDate(value: string) {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number);
+    const local = new Date(year, month - 1, day, 12, 0, 0, 0);
+    return Number.isFinite(local.getTime()) ? local : null;
+  }
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1, 12, 0, 0, 0);
+}
+
+function canMovePrevious(month: Date, minDate?: string) {
+  if (!minDate) return true;
+  const minimum = parseInputDate(minDate);
+  if (!minimum) return true;
+  return startOfMonth(month) > startOfMonth(minimum);
+}
+
+function buildMonthDays(month: Date, minDate?: string) {
+  const minimum = minDate ? parseInputDate(minDate) : null;
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth();
+  const count = new Date(year, monthIndex + 1, 0).getDate();
   return Array.from({ length: count }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
+    const date = new Date(year, monthIndex, index + 1, 12, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
     return {
-      key: date.toISOString().slice(0, 10),
+      key: `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`,
       date,
-      label: index === 0 ? 'Today' : index === 1 ? 'Tomorrow' : date.toLocaleDateString(undefined, { weekday: 'short' }),
-      detail: date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+      disabled: Boolean(minimum && endOfDay < minimum),
     };
   });
 }
@@ -226,25 +326,28 @@ function sameDay(a: Date, b: Date) {
 function formatHour(hour: number) {
   const date = new Date();
   date.setHours(hour, 0, 0, 0);
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleTimeString(undefined, { hour: 'numeric' });
+}
+
+function formatDate(value: string) {
+  const date = parseInputDate(value);
+  if (!date) return 'Choose date';
+  return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatDateTime(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return 'Choose date and time';
-  return date.toLocaleString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  const date = parseInputDate(value);
+  if (!date) return 'Choose date and time';
+  return date.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function toLocalDateValue(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function formatRelative(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return '';
+  const date = parseInputDate(value);
+  if (!date) return '';
   const diffHours = Math.round((date.getTime() - Date.now()) / 3_600_000);
   if (Math.abs(diffHours) < 1) return 'Within the next hour';
   if (diffHours > 0 && diffHours < 24) return `In about ${diffHours} ${diffHours === 1 ? 'hour' : 'hours'}`;
