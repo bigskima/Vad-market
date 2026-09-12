@@ -69,14 +69,8 @@ export function AdminRolesScreen() {
   }, [load]);
 
   useEffect(() => {
-    if (!assignOpen) return undefined;
     const query = userSearch.trim();
-    if (query.length < 2) {
-      setUserResults([]);
-      setUserSearchError(null);
-      setSearchingUsers(false);
-      return undefined;
-    }
+    if (!assignOpen || query.length < 2) return undefined;
 
     let cancelled = false;
     const timer = setTimeout(() => {
@@ -103,25 +97,16 @@ export function AdminRolesScreen() {
     };
   }, [assignOpen, userSearch]);
 
-  const assignableRoles = useMemo(
-    () => roles.filter((role) => role.role_code !== 'SUPER_ADMIN'),
-    [roles],
-  );
+  const assignableRoles = useMemo(() => roles.filter((role) => role.role_code !== 'SUPER_ADMIN'), [roles]);
 
   const dualControl = useMemo(() => {
     const providerOperators = new Set<string>();
     const oracleReviewers = new Set<string>();
-
     assignments.forEach((row) => {
       if (row.role_code === 'SUPER_ADMIN' || row.role_code === 'PROVIDER_ADMIN') providerOperators.add(row.user_id);
       if (row.role_code === 'SUPER_ADMIN' || row.role_code === 'ORACLE_REVIEWER') oracleReviewers.add(row.user_id);
     });
-
-    return {
-      providerOperators: providerOperators.size,
-      oracleReviewers: oracleReviewers.size,
-      ready: providerOperators.size >= 2 && oracleReviewers.size >= 2,
-    };
+    return { providerOperators: providerOperators.size, oracleReviewers: oracleReviewers.size, ready: providerOperators.size >= 2 && oracleReviewers.size >= 2 };
   }, [assignments]);
 
   const filteredAssignments = useMemo(() => {
@@ -140,6 +125,7 @@ export function AdminRolesScreen() {
     setUserSearch('');
     setUserResults([]);
     setUserSearchError(null);
+    setSearchingUsers(false);
     setReason(defaultReason);
     setActionError(null);
     setAssignOpen(true);
@@ -153,7 +139,17 @@ export function AdminRolesScreen() {
     setUserSearch('');
     setUserResults([]);
     setUserSearchError(null);
+    setSearchingUsers(false);
     setReason('');
+    setActionError(null);
+  }
+
+  function changeUserSearch(value: string) {
+    setUserSearch(value);
+    setSelectedUser(null);
+    setUserResults([]);
+    setUserSearchError(null);
+    setSearchingUsers(value.trim().length >= 2);
     setActionError(null);
   }
 
@@ -261,26 +257,16 @@ export function AdminRolesScreen() {
             <VadInput
               label="Find user"
               value={userSearch}
-              onChangeText={(value) => {
-                setUserSearch(value);
-                setSelectedUser(null);
-                setActionError(null);
-              }}
+              onChangeText={changeUserSearch}
               placeholder="Search name or email"
               autoCapitalize="none"
               hint="Enter at least 2 characters. Up to 20 matching accounts are shown."
             />
             {searchingUsers ? <VadSkeleton height={62} radius={theme.radius.md} /> : null}
             {userSearchError ? <VadErrorState title="User search unavailable" message={userSearchError} /> : null}
-            {!searchingUsers && userSearch.trim().length < 2 ? (
-              <VadEmptyState title="Search for a user" body="No accounts are shown until you search by name or email." />
-            ) : null}
-            {!searchingUsers && userSearch.trim().length >= 2 && !userResults.length && !userSearchError ? (
-              <VadEmptyState title="No matching account" body="Check the name or email and try again." />
-            ) : null}
-            {userResults.map((user) => (
-              <Choice key={user.user_id} label={user.display_name ?? user.email ?? 'VAD user'} detail={user.email ?? user.country_code} selected={selectedUser?.user_id === user.user_id} onPress={() => setSelectedUser(user)} />
-            ))}
+            {!searchingUsers && userSearch.trim().length < 2 ? <VadEmptyState title="Search for a user" body="No accounts are shown until you search by name or email." /> : null}
+            {!searchingUsers && userSearch.trim().length >= 2 && !userResults.length && !userSearchError ? <VadEmptyState title="No matching account" body="Check the name or email and try again." /> : null}
+            {userResults.map((user) => <Choice key={user.user_id} label={user.display_name ?? user.email ?? 'VAD user'} detail={user.email ?? user.country_code} selected={selectedUser?.user_id === user.user_id} onPress={() => setSelectedUser(user)} />)}
           </View>
 
           {selectedUser ? (
