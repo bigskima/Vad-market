@@ -4,6 +4,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -19,11 +20,13 @@ export function VadBottomSheet({
   title,
   onClose,
   children,
+  dismissible = true,
 }: {
   visible: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
+  dismissible?: boolean;
 }) {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
@@ -36,7 +39,9 @@ export function VadBottomSheet({
       transparent
       animationType={dialog ? 'fade' : 'slide'}
       statusBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={() => {
+        if (dismissible) onClose();
+      }}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -51,12 +56,16 @@ export function VadBottomSheet({
             padding: dialog ? theme.spacing.xl : 0,
           }}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Close dialog"
-            onPress={onClose}
-            style={StyleSheet.absoluteFill}
-          />
+          {dismissible ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close dialog"
+              onPress={onClose}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : (
+            <View pointerEvents="none" style={StyleSheet.absoluteFill} />
+          )}
 
           <SafeAreaView
             edges={dialog ? [] : ['bottom']}
@@ -104,36 +113,42 @@ export function VadBottomSheet({
                 {title}
               </VadText>
 
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-                onPress={onClose}
-                hitSlop={4}
-                style={({ pressed }) => ({
-                  width: 44,
-                  height: 44,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 22,
-                  backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surfaceRaised,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                })}
-              >
-                <VadIcon name="close" size={17} tone="secondary" />
-              </Pressable>
+              {dismissible ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                  onPress={onClose}
+                  hitSlop={4}
+                  style={({ pressed }) => ({
+                    width: 44,
+                    height: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 22,
+                    backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surfaceRaised,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                  })}
+                >
+                  <VadIcon name="close" size={17} tone="secondary" />
+                </Pressable>
+              ) : null}
             </View>
 
-            <View
-              style={{
-                flexShrink: 1,
+            <ScrollView
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={{
                 paddingHorizontal: compact ? theme.spacing.md : theme.spacing.lg,
                 paddingTop: theme.spacing.md,
                 paddingBottom: theme.spacing.lg,
               }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
             >
               {children}
-            </View>
+            </ScrollView>
           </SafeAreaView>
         </View>
       </KeyboardAvoidingView>
