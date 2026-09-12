@@ -1,9 +1,4 @@
-import {
-  Pressable,
-  ScrollView,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Image, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
@@ -13,9 +8,9 @@ import { useVadTheme } from '@/providers/theme-provider';
 
 export type AuthMode = 'signIn' | 'signUp';
 
-type Props = {
-  onContinue(mode: AuthMode): void;
-};
+type Props = { onContinue(mode: AuthMode): void };
+
+const welcomeVisual = require('../../../assets/images/logo-glow.png');
 
 export function WelcomeScreen({ onContinue }: Props) {
   const theme = useVadTheme();
@@ -24,11 +19,7 @@ export function WelcomeScreen({ onContinue }: Props) {
   const compact = width < 390 || height < 720;
 
   function cycleTheme() {
-    const next = theme.preference === 'system'
-      ? 'light'
-      : theme.preference === 'light'
-        ? 'dark'
-        : 'system';
+    const next = theme.preference === 'system' ? 'light' : theme.preference === 'light' ? 'dark' : 'system';
     theme.setPreference(next);
   }
 
@@ -48,249 +39,96 @@ export function WelcomeScreen({ onContinue }: Props) {
           gap: compact ? theme.spacing.lg : theme.spacing.xl,
         }}
       >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: theme.spacing.md,
-          }}
-        >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
             <VadLogo size={compact ? 38 : 42} />
             <View style={{ gap: 1 }}>
               <VadText variant="heading">VAD</VadText>
-              <VadText variant="caption" tone="secondary">Value Asset Depot</VadText>
+              <VadText variant="caption" tone="secondary">MARKET</VadText>
             </View>
           </View>
-
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Theme ${theme.preference}. Change theme`}
             onPress={cycleTheme}
-            style={({ pressed }) => ({
-              minHeight: 40,
-              justifyContent: 'center',
-              paddingHorizontal: theme.spacing.md,
-              borderRadius: theme.radius.pill,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
-              opacity: pressed ? 0.78 : 1,
-            })}
+            style={({ pressed }) => ({ minHeight: 40, justifyContent: 'center', paddingHorizontal: theme.spacing.md, borderRadius: theme.radius.pill, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface, opacity: pressed ? 0.78 : 1 })}
           >
-            <VadText variant="caption" tone="secondary">
-              {theme.preference === 'system' ? 'System theme' : theme.preference === 'light' ? 'Light theme' : 'Dark theme'}
-            </VadText>
+            <VadText variant="caption" tone="secondary">{theme.preference === 'system' ? 'System' : theme.preference === 'light' ? 'Light' : 'Dark'}</VadText>
           </Pressable>
         </View>
 
-        <View
-          style={{
-            flex: 1,
-            minHeight: wide ? 560 : undefined,
-            flexDirection: wide ? 'row' : 'column',
-            alignItems: 'stretch',
-            justifyContent: 'center',
-            gap: wide ? theme.spacing.xxl : theme.spacing.lg,
-          }}
-        >
-          <View
-            style={{
-              flex: wide ? 1.05 : undefined,
-              justifyContent: 'center',
-              gap: compact ? theme.spacing.md : theme.spacing.lg,
-            }}
-          >
-            <View
-              style={{
-                alignSelf: 'flex-start',
-                minHeight: 32,
-                justifyContent: 'center',
-                paddingHorizontal: theme.spacing.md,
-                borderRadius: theme.radius.pill,
-                backgroundColor: theme.colors.brandSoft,
-                borderWidth: 1,
-                borderColor: theme.colors.brandPrimary,
-              }}
-            >
-              <VadText variant="caption" tone="brand">PREDICTION MARKETS, MADE CLEAR</VadText>
-            </View>
-
+        <View style={{ flex: 1, minHeight: wide ? 590 : undefined, flexDirection: wide ? 'row' : 'column', alignItems: 'stretch', justifyContent: 'center', gap: wide ? theme.spacing.xxl : theme.spacing.lg }}>
+          <View style={{ flex: wide ? 1.02 : undefined, justifyContent: 'center', gap: compact ? theme.spacing.md : theme.spacing.lg }}>
+            <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.4 }}>REAL PEOPLE. REAL PREDICTIONS.</VadText>
             <View style={{ gap: theme.spacing.sm }}>
-              <VadText variant={compact ? 'title' : 'display'}>
-                See what the market believes. Decide what you believe.
-              </VadText>
-              <VadText tone="secondary" style={{ maxWidth: 590 }}>
-                Explore real-world outcome markets, understand the probability behind each price, and take a position when your view is different.
+              <VadText variant={compact ? 'title' : 'display'}>Predict what happens next.</VadText>
+              <VadText tone="secondary" style={{ maxWidth: 570 }}>
+                Trade your conviction on real-world outcomes. Market prices reflect the collective probability of what people think will happen.
               </VadText>
             </View>
 
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-              <PremiumPoint label="Clear probabilities" />
-              <PremiumPoint label="Published market rules" />
-              <PremiumPoint label="Track your positions" />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+              <FeaturePoint symbol="↗" label="Trade on outcomes" />
+              <FeaturePoint symbol="◎" label="A global community" />
+              <FeaturePoint symbol="✓" label="Transparent & fair" />
             </View>
 
-            {wide ? (
-              <View style={{ maxWidth: 430, gap: theme.spacing.sm, paddingTop: theme.spacing.sm }}>
-                <VadButton label="Create account" size="large" onPress={() => onContinue('signUp')} />
-                <VadButton label="Sign in" size="large" variant="secondary" onPress={() => onContinue('signIn')} />
-                <VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>
-                  Some features may require identity verification and may not be available in every location.
-                </VadText>
-              </View>
-            ) : null}
+            {wide ? <WelcomeActions onContinue={onContinue} /> : null}
           </View>
 
-          <View
-            style={{
-              flex: wide ? 0.95 : undefined,
-              justifyContent: 'center',
-              borderRadius: theme.radius.xl,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              backgroundColor: theme.colors.surface,
-              overflow: 'hidden',
-              minHeight: compact ? 250 : 300,
-            }}
-          >
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                top: -72,
-                right: -56,
-                width: 190,
-                height: 190,
-                borderRadius: 95,
-                backgroundColor: theme.colors.brandSoft,
-              }}
-            />
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                bottom: -90,
-                left: -54,
-                width: 180,
-                height: 180,
-                borderRadius: 90,
-                backgroundColor: theme.colors.surfaceMuted,
-              }}
-            />
-
-            <View style={{ padding: compact ? theme.spacing.lg : theme.spacing.xl, gap: compact ? theme.spacing.md : theme.spacing.lg }}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md }}>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <VadText variant="caption" tone="brand">LIVE MARKET EXAMPLE</VadText>
-                  <VadText variant={compact ? 'heading' : 'title'}>Will this event resolve YES?</VadText>
-                  <VadText variant="caption" tone="secondary">Market-implied probability</VadText>
+          <View style={{ flex: wide ? 0.98 : undefined, minHeight: compact ? 315 : 390, borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, overflow: 'hidden', justifyContent: 'flex-end' }}>
+            <Image source={welcomeVisual} resizeMode="cover" style={{ position: 'absolute', width: '100%', height: '100%', opacity: theme.isDark ? 0.72 : 0.34 }} />
+            <View pointerEvents="none" style={{ position: 'absolute', inset: 0, backgroundColor: theme.colors.background, opacity: theme.isDark ? 0.2 : 0.42 }} />
+            <View style={{ padding: compact ? theme.spacing.md : theme.spacing.lg, gap: theme.spacing.sm }}>
+              <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandPrimary }}>
+                <VadText variant="caption" tone="inverse">MARKET PREVIEW</VadText>
+              </View>
+              <View style={{ borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.borderStrong, backgroundColor: theme.colors.surface, padding: compact ? theme.spacing.md : theme.spacing.lg, gap: theme.spacing.md }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md }}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <VadText variant="caption" tone="brand">ILLUSTRATIVE MARKET</VadText>
+                    <VadText variant={compact ? 'bodyStrong' : 'heading'}>Will this outcome resolve YES?</VadText>
+                  </View>
+                  <VadText variant={compact ? 'heading' : 'title'} tone="yes">68%</VadText>
                 </View>
-                <View
-                  style={{
-                    minWidth: compact ? 82 : 98,
-                    minHeight: compact ? 82 : 98,
-                    borderRadius: theme.radius.xl,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: theme.colors.brandPrimary,
-                  }}
-                >
-                  <VadText variant={compact ? 'title' : 'display'} tone="inverse">64%</VadText>
+                <View style={{ height: 7, flexDirection: 'row', overflow: 'hidden', borderRadius: theme.radius.pill }}>
+                  <View style={{ width: '68%', backgroundColor: theme.colors.yes }} />
+                  <View style={{ flex: 1, backgroundColor: theme.colors.no }} />
                 </View>
-              </View>
-
-              <View style={{ height: 8, borderRadius: theme.radius.pill, overflow: 'hidden', backgroundColor: theme.colors.noSoft }}>
-                <View style={{ width: '64%', height: '100%', backgroundColor: theme.colors.yes }} />
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-                <OutcomePill label="YES" value="64%" tone="yes" />
-                <OutcomePill label="NO" value="36%" tone="no" />
-              </View>
-
-              <View
-                style={{
-                  borderTopWidth: 1,
-                  borderTopColor: theme.colors.border,
-                  paddingTop: theme.spacing.md,
-                  gap: 3,
-                }}
-              >
-                <VadText variant="caption" tone="secondary">
-                  Prices can move as participants trade. Final outcomes follow the published resolution rules for each market.
-                </VadText>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <VadText variant="caption" tone="yes">YES 68%</VadText>
+                  <VadText variant="caption" tone="no">NO 32%</VadText>
+                </View>
               </View>
             </View>
           </View>
         </View>
 
-        {!wide ? (
-          <View style={{ gap: theme.spacing.sm }}>
-            <VadButton label="Create account" size="large" onPress={() => onContinue('signUp')} />
-            <VadButton label="I already have an account" size="large" variant="secondary" onPress={() => onContinue('signIn')} />
-            <VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>
-              Some features may require identity verification and may not be available in every location.
-            </VadText>
-          </View>
-        ) : null}
+        {!wide ? <WelcomeActions onContinue={onContinue} /> : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function PremiumPoint({ label }: { label: string }) {
+function WelcomeActions({ onContinue }: Props) {
   const theme = useVadTheme();
   return (
-    <View
-      style={{
-        minHeight: 38,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-        paddingHorizontal: theme.spacing.sm,
-        borderRadius: theme.radius.pill,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
-      }}
-    >
-      <View
-        style={{
-          width: 18,
-          height: 18,
-          borderRadius: 9,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: theme.colors.brandSoft,
-        }}
-      >
-        <VadText variant="caption" tone="brand">✓</VadText>
-      </View>
-      <VadText variant="caption" tone="secondary">{label}</VadText>
+    <View style={{ maxWidth: 440, gap: theme.spacing.sm, paddingTop: theme.spacing.xs }}>
+      <VadButton label="Create account" size="large" onPress={() => onContinue('signUp')} />
+      <VadButton label="Sign in" size="large" variant="secondary" onPress={() => onContinue('signIn')} />
+      <VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>Some features may require identity verification and may not be available in every location.</VadText>
     </View>
   );
 }
 
-function OutcomePill({ label, value, tone }: { label: string; value: string; tone: 'yes' | 'no' }) {
+function FeaturePoint({ symbol, label }: { symbol: string; label: string }) {
   const theme = useVadTheme();
   return (
-    <View
-      style={{
-        flex: 1,
-        minHeight: 58,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: theme.spacing.sm,
-        borderRadius: theme.radius.lg,
-        paddingHorizontal: theme.spacing.md,
-        backgroundColor: tone === 'yes' ? theme.colors.yesSoft : theme.colors.noSoft,
-      }}
-    >
-      <VadText variant="caption" tone={tone}>{label}</VadText>
-      <VadText variant="heading" tone={tone}>{value}</VadText>
+    <View style={{ minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: theme.spacing.sm, borderRadius: theme.radius.pill, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
+      <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+        <VadText variant="caption" tone="brand">{symbol}</VadText>
+      </View>
+      <VadText variant="caption" tone="secondary">{label}</VadText>
     </View>
   );
 }
