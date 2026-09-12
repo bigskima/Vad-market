@@ -19,6 +19,16 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 
+type PolicyBlock = {
+  kind: 'paragraph' | 'subheading' | 'bullet';
+  text: string;
+};
+
+type PolicySection = {
+  title: string;
+  blocks: PolicyBlock[];
+};
+
 export default function PolicyConsentRoute() {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -27,6 +37,8 @@ export default function PolicyConsentRoute() {
   const [documents, setDocuments] = useState<LegalDocument[]>([]);
   const [selectedKey, setSelectedKey] = useState<LegalDocumentKey>('TERMS');
   const [agreedKeys, setAgreedKeys] = useState<LegalDocumentKey[]>([]);
+  const [readKeys, setReadKeys] = useState<LegalDocumentKey[]>([]);
+  const [sectionByKey, setSectionByKey] = useState<Partial<Record<LegalDocumentKey, number>>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +57,7 @@ export default function PolicyConsentRoute() {
         return;
       }
       setDocuments(state.documents);
+      setReadKeys(state.documents.filter((document) => document.accepted).map((document) => document.key));
       const firstRequired = state.requiredDocuments[0];
       if (firstRequired) setSelectedKey(firstRequired.key);
     } catch (loadError) {
@@ -66,8 +79,17 @@ export default function PolicyConsentRoute() {
     [documents],
   );
   const selected = documents.find((document) => document.key === selectedKey) ?? documents[0];
+  const sections = useMemo(
+    () => parsePolicySections(selected?.content ?? '', selected?.summary ?? ''),
+    [selected?.content, selected?.summary],
+  );
+  const sectionIndex = Math.min(sectionByKey[selectedKey] ?? 0, Math.max(0, sections.length - 1));
+  const currentSection = sections[sectionIndex];
+  const selectedRead = Boolean(selected?.accepted || readKeys.includes(selectedKey));
+  const selectedAgreed = Boolean(selected?.accepted || agreedKeys.includes(selectedKey));
   const ready = required.length > 0
     && required.every((document) => agreedKeys.includes(document.key));
+  const completedAgreementCount = required.filter((document) => agreedKeys.includes(document.key)).length;
 
   async function agreeAndContinue() {
     if (!userId || !ready) return;
@@ -90,12 +112,27 @@ export default function PolicyConsentRoute() {
     router.replace('/');
   }
 
+  function setSection(index: number) {
+    setSectionByKey((current) => ({ ...current, [selectedKey]: index }));
+  }
+
+  function finishReading() {
+    setReadKeys((current) => current.includes(selectedKey) ? current : [...current, selectedKey]);
+  }
+
   function toggleAgreement(key: LegalDocumentKey) {
+    if (!readKeys.includes(key)) return;
     setAgreedKeys((current) =>
       current.includes(key)
         ? current.filter((item) => item !== key)
         : [...current, key],
     );
+  }
+
+  function moveToNextRequired() {
+    const next = required.find((document) => !agreedKeys.includes(document.key));
+    if (!next) return;
+    setSelectedKey(next.key);
   }
 
   if (!isLoading && !session) return <Redirect href="/" />;
@@ -116,27 +153,44 @@ export default function PolicyConsentRoute() {
       >
         <VadLogo size={34} />
         <View style={{ flex: 1, minWidth: 0 }}>
-          <VadText variant="bodyStrong">Before you continue</VadText>
-          <VadText variant="caption" tone="secondary">Review and agree to the current VAD policies</VadText>
+          <VadText variant="bodyStrong">A quick review before you enter</VadText>
+          <VadText variant="caption" tone="secondary">Read each required policy, then confirm your agreement</VadText>
         </View>
       </View>
 
       <ScrollView
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           width: '100%',
-          maxWidth: 1080,
+          maxWidth: 980,
           alignSelf: 'center',
           padding: density.horizontalPadding,
           paddingBottom: theme.spacing.xxxl,
           gap: density.sectionGap,
         }}
       >
-        <View style={{ gap: 6, paddingTop: theme.spacing.md }}>
-          <VadText variant="caption" tone="brand">REVIEW REQUIRED</VadText>
-          <VadText variant={density.phone ? 'title' : 'display'}>Know the rules before using VAD</VadText>
-          <VadText tone="secondary" style={{ maxWidth: 760 }}>
-            Please read each required document. You must agree before entering VAD. If you do not agree, you can leave without continuing to the app.
+        <View style={{ gap: theme.spacing.sm, paddingTop: theme.spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+            <VadText variant="caption" tone="brand">YOUR VAD AGREEMENT</VadText>
+            {!loading && required.length ? (
+              <View
+                style={{
+                  borderRadius: theme.radius.pill,
+                  backgroundColor: theme.colors.brandSoft,
+                  paddingHorizontal: theme.spacing.sm,
+                  paddingVertical: 4,
+                }}
+              >
+                <VadText variant="caption" tone="brand">
+                  {completedAgreementCount}/{required.length} agreed
+                </VadText>
+              </View>
+            ) : null}
+          </View>
+          <VadText variant={density.phone ? 'title' : 'display'}>Know what you are agreeing to.</VadText>
+          <VadText tone="secondary" style={{ maxWidth: 720 }}>
+            We will guide you through one part at a time. You will confirm each document separately, so nothing important is hidden in a long page.
           </VadText>
         </View>
 
@@ -149,121 +203,465 @@ export default function PolicyConsentRoute() {
         ) : null}
 
         {loading ? (
-          <View style={{ flexDirection: density.desktop ? 'row' : 'column', gap: theme.spacing.lg }}>
-            <View style={{ width: density.desktop ? 300 : '100%', gap: theme.spacing.sm }}>
-              <VadSkeleton height={110} radius={theme.radius.xl} />
-              <VadSkeleton height={110} radius={theme.radius.xl} />
+          <View style={{ gap: theme.spacing.md }}>
+            <View style={{ flexDirection: density.desktop ? 'row' : 'column', gap: theme.spacing.sm }}>
+              <VadSkeleton height={84} radius={theme.radius.xl} />
+              <VadSkeleton height={84} radius={theme.radius.xl} />
             </View>
-            <View style={{ flex: 1, gap: theme.spacing.sm }}>
-              <VadSkeleton width="56%" height={28} />
-              <VadSkeleton height={360} radius={theme.radius.xl} />
-            </View>
+            <VadSkeleton width="42%" height={24} />
+            <VadSkeleton height={320} radius={theme.radius.xl} />
           </View>
-        ) : documents.length ? (
-          <View style={{ flexDirection: density.desktop ? 'row' : 'column', gap: theme.spacing.lg, alignItems: 'flex-start' }}>
-            <View style={{ width: density.desktop ? 300 : '100%', gap: theme.spacing.sm }}>
-              {documents.map((document) => {
-                const agreed = document.accepted || agreedKeys.includes(document.key);
-                const needsAgreement = document.requiredAcceptance && !document.accepted;
-                return (
-                  <View key={`${document.key}-${document.policyVersionId ?? document.version}`} style={{ gap: theme.spacing.xs }}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: selected?.key === document.key }}
-                      onPress={() => setSelectedKey(document.key)}
-                      style={({ pressed }) => ({ opacity: pressed ? 0.76 : 1 })}
-                    >
-                      <VadCard variant={selected?.key === document.key ? 'brand' : 'raised'} style={{ gap: 4 }}>
-                        <VadText variant="bodyStrong">{document.title}</VadText>
-                        <VadText variant="caption" tone="secondary" numberOfLines={2}>{document.summary}</VadText>
-                        <VadText variant="caption" tone="tertiary">Version {document.version}</VadText>
-                      </VadCard>
-                    </Pressable>
+        ) : documents.length && selected ? (
+          <>
+            <View style={{ gap: theme.spacing.xs }}>
+              <VadText variant="caption" tone="tertiary">REQUIRED DOCUMENTS</VadText>
+              <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: theme.spacing.sm }}>
+                {documents.map((document, index) => (
+                  <DocumentStep
+                    key={`${document.key}-${document.policyVersionId ?? document.version}`}
+                    document={document}
+                    number={index + 1}
+                    selected={document.key === selected.key}
+                    read={document.accepted || readKeys.includes(document.key)}
+                    agreed={document.accepted || agreedKeys.includes(document.key)}
+                    onPress={() => setSelectedKey(document.key)}
+                  />
+                ))}
+              </View>
+            </View>
 
-                    {needsAgreement ? (
-                      <Pressable
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: agreed }}
-                        onPress={() => toggleAgreement(document.key)}
-                        style={({ pressed }) => ({
-                          minHeight: 48,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: theme.spacing.sm,
-                          borderRadius: theme.radius.lg,
-                          borderWidth: 1,
-                          borderColor: agreed ? theme.colors.brandPrimary : theme.colors.border,
-                          backgroundColor: agreed ? theme.colors.brandSoft : theme.colors.surface,
-                          paddingHorizontal: theme.spacing.md,
-                          opacity: pressed ? 0.76 : 1,
-                        })}
-                      >
-                        <View
-                          style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: 7,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: agreed ? theme.colors.brandPrimary : theme.colors.surfaceRaised,
-                            borderWidth: 1,
-                            borderColor: agreed ? theme.colors.brandPrimary : theme.colors.borderStrong,
-                          }}
-                        >
-                          {agreed ? <VadText variant="label" tone="inverse">✓</VadText> : null}
-                        </View>
-                        <VadText variant="caption" style={{ flex: 1 }}>I have read and agree to this document</VadText>
-                      </Pressable>
-                    ) : document.accepted ? (
-                      <VadText variant="caption" tone="yes">Already agreed to this version</VadText>
-                    ) : null}
+            <VadCard
+              variant="raised"
+              style={{
+                padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+                gap: theme.spacing.lg,
+              }}
+            >
+              <View style={{ gap: theme.spacing.sm }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md, alignItems: 'flex-start' }}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <VadText variant="caption" tone="brand">{selected.title.toUpperCase()}</VadText>
+                    <VadText variant="title">{selected.summary}</VadText>
                   </View>
-                );
-              })}
-            </View>
-
-            {selected ? (
-              <VadCard
-                variant="raised"
-                style={{
-                  flex: 1,
-                  width: density.desktop ? undefined : '100%',
-                  minHeight: density.desktop ? 620 : undefined,
-                  padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-                  gap: theme.spacing.lg,
-                }}
-              >
-                <View style={{ gap: 5 }}>
-                  <VadText variant="caption" tone="brand">EFFECTIVE {selected.effectiveDate}</VadText>
-                  <VadText variant="title">{selected.title}</VadText>
-                  <VadText tone="secondary">{selected.summary}</VadText>
+                  <View
+                    style={{
+                      minWidth: 72,
+                      borderRadius: theme.radius.pill,
+                      backgroundColor: theme.colors.surfaceMuted,
+                      paddingHorizontal: theme.spacing.sm,
+                      paddingVertical: 6,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <VadText variant="caption" tone="secondary">v{selected.version}</VadText>
+                  </View>
                 </View>
-                <View style={{ height: 1, backgroundColor: theme.colors.border }} />
-                <VadText style={{ lineHeight: density.phone ? 24 : 26 }}>{selected.content}</VadText>
-              </VadCard>
-            ) : null}
-          </View>
-        ) : null}
 
-        {!loading && documents.length ? (
-          <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
-            <VadText variant="bodyStrong">
-              {ready
-                ? 'You are ready to continue.'
-                : `Agree to ${required.length - agreedKeys.filter((key) => required.some((document) => document.key === key)).length} required document(s) to continue.`}
-            </VadText>
-            <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: theme.spacing.sm }}>
+                <View style={{ gap: 6 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+                    <VadText variant="caption" tone="secondary">
+                      Part {sectionIndex + 1} of {sections.length}
+                    </VadText>
+                    <VadText variant="caption" tone={selectedRead ? 'yes' : 'brand'}>
+                      {selectedRead ? 'READ COMPLETE' : `${Math.round(((sectionIndex + 1) / sections.length) * 100)}%`}
+                    </VadText>
+                  </View>
+                  <View
+                    style={{
+                      height: 7,
+                      borderRadius: theme.radius.pill,
+                      overflow: 'hidden',
+                      backgroundColor: theme.colors.surfaceMuted,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: `${selectedRead ? 100 : ((sectionIndex + 1) / sections.length) * 100}%`,
+                        height: '100%',
+                        backgroundColor: selectedRead ? theme.colors.yes : theme.colors.brandPrimary,
+                      }}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: theme.colors.border }} />
+
+              {currentSection ? (
+                <View style={{ gap: theme.spacing.md, minHeight: density.phone ? 260 : 320 }}>
+                  <VadText variant={density.phone ? 'heading' : 'title'}>{currentSection.title}</VadText>
+                  <PolicySectionContent blocks={currentSection.blocks} />
+                </View>
+              ) : null}
+
+              {!selectedRead ? (
+                <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: theme.spacing.sm }}>
+                  <VadButton
+                    label="Previous"
+                    variant="secondary"
+                    disabled={sectionIndex === 0}
+                    onPress={() => setSection(Math.max(0, sectionIndex - 1))}
+                  />
+                  {sectionIndex < sections.length - 1 ? (
+                    <VadButton
+                      label="Next part"
+                      onPress={() => setSection(Math.min(sections.length - 1, sectionIndex + 1))}
+                    />
+                  ) : (
+                    <VadButton label="Finish reading" onPress={finishReading} />
+                  )}
+                </View>
+              ) : (
+                <View style={{ gap: theme.spacing.sm }}>
+                  <View
+                    style={{
+                      borderRadius: theme.radius.lg,
+                      backgroundColor: theme.colors.yesSoft,
+                      padding: theme.spacing.md,
+                      flexDirection: 'row',
+                      gap: theme.spacing.sm,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: theme.colors.yes,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <VadText variant="label" tone="inverse">✓</VadText>
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <VadText variant="bodyStrong" tone="yes">You reached the end of this document</VadText>
+                      <VadText variant="caption" tone="secondary">Now confirm whether you agree to this version.</VadText>
+                    </View>
+                  </View>
+
+                  {selected.requiredAcceptance && !selected.accepted ? (
+                    <Pressable
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: selectedAgreed }}
+                      onPress={() => toggleAgreement(selected.key)}
+                      style={({ pressed }) => ({
+                        minHeight: 72,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: theme.spacing.md,
+                        borderRadius: theme.radius.xl,
+                        borderWidth: 2,
+                        borderColor: selectedAgreed ? theme.colors.brandPrimary : theme.colors.borderStrong,
+                        backgroundColor: selectedAgreed ? theme.colors.brandSoft : theme.colors.surface,
+                        padding: theme.spacing.md,
+                        opacity: pressed ? 0.76 : 1,
+                      })}
+                    >
+                      <View
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 9,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: selectedAgreed ? theme.colors.brandPrimary : theme.colors.surfaceRaised,
+                          borderWidth: 1,
+                          borderColor: selectedAgreed ? theme.colors.brandPrimary : theme.colors.borderStrong,
+                        }}
+                      >
+                        {selectedAgreed ? <VadText variant="label" tone="inverse">✓</VadText> : null}
+                      </View>
+                      <View style={{ flex: 1, gap: 3 }}>
+                        <VadText variant="bodyStrong">I agree to {selected.title}</VadText>
+                        <VadText variant="caption" tone="secondary">
+                          I have read this version and agree to it as part of using VAD.
+                        </VadText>
+                      </View>
+                    </Pressable>
+                  ) : selected.accepted ? (
+                    <VadText variant="caption" tone="yes">You already agreed to this version.</VadText>
+                  ) : null}
+
+                  {selectedAgreed && !ready ? (
+                    <VadButton
+                      label="Continue to the next policy"
+                      variant="secondary"
+                      onPress={moveToNextRequired}
+                    />
+                  ) : null}
+                </View>
+              )}
+            </VadCard>
+
+            <VadCard variant={ready ? 'brand' : 'muted'} style={{ gap: theme.spacing.md }}>
+              <View style={{ gap: 4 }}>
+                <VadText variant="bodyStrong">Agreement checklist</VadText>
+                <VadText variant="caption" tone="secondary">
+                  {ready
+                    ? 'Both required documents are confirmed. You can now continue into VAD.'
+                    : 'Read and agree to each required document separately. Your final Continue button stays locked until both are complete.'}
+                </VadText>
+              </View>
+
+              <View style={{ gap: theme.spacing.xs }}>
+                {required.map((document) => {
+                  const agreed = agreedKeys.includes(document.key);
+                  const read = readKeys.includes(document.key);
+                  return (
+                    <Pressable
+                      key={`check-${document.key}`}
+                      accessibilityRole="button"
+                      onPress={() => setSelectedKey(document.key)}
+                      style={({ pressed }) => ({
+                        minHeight: 52,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: theme.spacing.sm,
+                        borderRadius: theme.radius.lg,
+                        backgroundColor: theme.colors.surface,
+                        paddingHorizontal: theme.spacing.md,
+                        opacity: pressed ? 0.76 : 1,
+                      })}
+                    >
+                      <View
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 13,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: agreed ? theme.colors.yes : read ? theme.colors.brandSoft : theme.colors.surfaceMuted,
+                        }}
+                      >
+                        <VadText variant="caption" tone={agreed ? 'inverse' : read ? 'brand' : 'secondary'}>
+                          {agreed ? '✓' : read ? '•' : '—'}
+                        </VadText>
+                      </View>
+                      <VadText variant="bodyStrong" style={{ flex: 1 }}>{document.title}</VadText>
+                      <VadText variant="caption" tone={agreed ? 'yes' : read ? 'brand' : 'tertiary'}>
+                        {agreed ? 'AGREED' : read ? 'READY TO AGREE' : 'READ NEXT'}
+                      </VadText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
               <VadButton
-                label="I agree — continue to VAD"
+                label="Agree and continue to VAD"
                 disabled={!ready || Boolean(error)}
                 loading={saving}
                 onPress={() => void agreeAndContinue()}
               />
-              <VadButton label="I don't agree" variant="ghost" onPress={() => void decline()} />
-            </View>
-          </VadCard>
+              <VadButton label="I don't agree — sign me out" variant="ghost" onPress={() => void decline()} />
+            </VadCard>
+          </>
         ) : null}
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function DocumentStep({
+  document,
+  number,
+  selected,
+  read,
+  agreed,
+  onPress,
+}: {
+  document: LegalDocument;
+  number: number;
+  selected: boolean;
+  read: boolean;
+  agreed: boolean;
+  onPress: () => void;
+}) {
+  const theme = useVadTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        minHeight: 82,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        borderWidth: selected ? 2 : 1,
+        borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
+        borderRadius: theme.radius.xl,
+        backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
+        padding: theme.spacing.md,
+        opacity: pressed ? 0.76 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: agreed ? theme.colors.yes : selected ? theme.colors.brandPrimary : theme.colors.surfaceMuted,
+        }}
+      >
+        <VadText variant="label" tone={agreed || selected ? 'inverse' : 'secondary'}>
+          {agreed ? '✓' : number}
+        </VadText>
+      </View>
+      <View style={{ flex: 1, gap: 3 }}>
+        <VadText variant="bodyStrong">{document.title}</VadText>
+        <VadText variant="caption" tone={agreed ? 'yes' : read ? 'brand' : 'secondary'}>
+          {document.accepted ? 'Already agreed' : agreed ? 'Agreement confirmed' : read ? 'Read — agreement needed' : 'Read in short parts'}
+        </VadText>
+      </View>
+    </Pressable>
+  );
+}
+
+function PolicySectionContent({ blocks }: { blocks: PolicyBlock[] }) {
+  const theme = useVadTheme();
+  if (!blocks.length) {
+    return <VadText tone="secondary">There is no additional text in this section.</VadText>;
+  }
+
+  return (
+    <View style={{ gap: theme.spacing.md }}>
+      {blocks.map((block, index) => {
+        if (block.kind === 'subheading') {
+          return (
+            <VadText key={`${block.kind}-${index}`} variant="bodyStrong">
+              {block.text}
+            </VadText>
+          );
+        }
+        if (block.kind === 'bullet') {
+          return (
+            <View key={`${block.kind}-${index}`} style={{ flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'flex-start' }}>
+              <View
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 4,
+                  marginTop: 8,
+                  backgroundColor: theme.colors.brandPrimary,
+                }}
+              />
+              <VadText tone="secondary" style={{ flex: 1, lineHeight: 24 }}>{block.text}</VadText>
+            </View>
+          );
+        }
+        return (
+          <VadText key={`${block.kind}-${index}`} tone="secondary" style={{ lineHeight: 24 }}>
+            {block.text}
+          </VadText>
+        );
+      })}
+    </View>
+  );
+}
+
+function parsePolicySections(content: string, summary: string): PolicySection[] {
+  const normalized = content.replaceAll('\r', '').trim();
+  if (!normalized) {
+    return [{
+      title: 'Overview',
+      blocks: summary ? [{ kind: 'paragraph', text: summary }] : [],
+    }];
+  }
+
+  const lines = normalized.split('\n');
+  const sections: PolicySection[] = [];
+  let current: PolicySection = { title: 'Overview', blocks: [] };
+
+  function pushCurrent() {
+    if (current.blocks.length || current.title !== 'Overview') sections.push(current);
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const sectionTitle = sectionHeading(line);
+    if (sectionTitle) {
+      pushCurrent();
+      current = { title: sectionTitle, blocks: [] };
+      continue;
+    }
+
+    const subheading = subheadingText(line);
+    if (subheading) {
+      current.blocks.push({ kind: 'subheading', text: subheading });
+      continue;
+    }
+
+    const bullet = line.match(/^(?:[-*•]|\d+[.)])\s+(.+)$/);
+    if (bullet?.[1]) {
+      current.blocks.push({ kind: 'bullet', text: cleanPolicyMarkup(bullet[1]) });
+      continue;
+    }
+
+    current.blocks.push({ kind: 'paragraph', text: cleanPolicyMarkup(line) });
+  }
+  pushCurrent();
+
+  if (!sections.length) {
+    return [{ title: 'Overview', blocks: [{ kind: 'paragraph', text: cleanPolicyMarkup(normalized) }] }];
+  }
+
+  if (sections.length === 1 && sections[0].blocks.length > 6) {
+    const blocks = sections[0].blocks;
+    const chunks: PolicySection[] = [];
+    for (let index = 0; index < blocks.length; index += 4) {
+      chunks.push({
+        title: index === 0 ? sections[0].title : `Continue reading · ${Math.floor(index / 4) + 1}`,
+        blocks: blocks.slice(index, index + 4),
+      });
+    }
+    return chunks;
+  }
+
+  return sections;
+}
+
+function sectionHeading(line: string) {
+  const markdown = line.match(/^#{1,2}\s+(.+)$/);
+  if (markdown?.[1]) return cleanPolicyMarkup(markdown[1]);
+
+  const numbered = line.match(/^((?:SECTION\s+)?\d+|[IVXLC]+)[.:)]\s+(.+)$/i);
+  if (numbered?.[2] && line.length <= 140) return cleanPolicyMarkup(line);
+
+  if (line.length <= 90 && line.endsWith(':') && line.split(/\s+/).length <= 10) {
+    return cleanPolicyMarkup(line.slice(0, -1));
+  }
+
+  if (line.length <= 84 && /[A-Z]/.test(line) && line === line.toUpperCase() && line.split(/\s+/).length <= 10) {
+    return cleanPolicyMarkup(line);
+  }
+
+  return null;
+}
+
+function subheadingText(line: string) {
+  const markdown = line.match(/^###\s+(.+)$/);
+  if (markdown?.[1]) return cleanPolicyMarkup(markdown[1]);
+
+  const bold = line.match(/^\*\*(.+)\*\*$/);
+  if (bold?.[1]) return cleanPolicyMarkup(bold[1]);
+
+  const nested = line.match(/^\d+\.\d+(?:\.\d+)?[.)]?\s+(.+)$/);
+  if (nested?.[1] && line.length <= 140) return cleanPolicyMarkup(line);
+
+  return null;
+}
+
+function cleanPolicyMarkup(value: string) {
+  return value
+    .replace(/^#+\s*/, '')
+    .replace(/^\*\*(.+)\*\*$/, '$1')
+    .replace(/^__(.+)__$/, '$1')
+    .trim();
 }
