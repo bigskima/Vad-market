@@ -1,3 +1,3 @@
-Triggered after VAD bootstrap gate deadlock fix and policy/tour sequencing hardening.
-Source merge: 1d8daa6330d19af1316442556f1e3ac6d560ea65
-Netlify production deploy trigger: 2026-09-12T11:12:00Z
+Triggered after VAD bootstrap deadlock and active-user policy gate hardening.
+Source merge: e1f7eb05d1fbb67f55674933e5639684823fa945
+Netlify production deploy trigger: 2026-09-12T11:15:00Z
