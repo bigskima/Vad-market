@@ -1,4 +1,4 @@
-import { userFacingError } from '@/lib/user-facing-error';
+import { userFacingError, type UserErrorContext } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type GrowthCampaign = {
@@ -117,6 +117,17 @@ export type GrowthDashboard = {
   partner: GrowthPartner | null;
 };
 
+export type GrowthAdminOption = { code: string; name: string };
+export type GrowthAdminOptions = {
+  assets: GrowthAdminOption[];
+  countries: GrowthAdminOption[];
+};
+export type GrowthAccountSearchResult = {
+  user_id: string;
+  display_name: string;
+  handle?: string | null;
+};
+
 export type AdminGrowthWorkspace = {
   summary: {
     activeCampaigns: number;
@@ -133,19 +144,31 @@ export type AdminGrowthWorkspace = {
   rewardQueue: GrowthReward[];
 };
 
-function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback: string) {
-  if (error) throw userFacingError(error, 'admin', fallback);
+function fail(
+  error: { message: string; code?: string; details?: string; hint?: string } | null,
+  fallback: string,
+  context: UserErrorContext = 'admin',
+) {
+  if (error) throw userFacingError(error, context, fallback);
 }
 
 export async function getMyGrowthDashboard() {
-  const { data, error } = await supabase.rpc('my_growth_dashboard');
-  fail(error, 'We could not load rewards and campaigns right now. Please try again.');
-  return data as GrowthDashboard;
+  const [dashboardResult, stateResult] = await Promise.all([
+    supabase.rpc('my_growth_dashboard'),
+    supabase.rpc('my_growth_service_state'),
+  ]);
+  fail(dashboardResult.error, 'We could not load rewards and campaigns right now. Please try again.', 'general');
+  const dashboard = dashboardResult.data as GrowthDashboard;
+  if (!stateResult.error && stateResult.data && typeof stateResult.data === 'object') {
+    const state = stateResult.data as { enabled?: boolean };
+    dashboard.paused = state.enabled === false;
+  }
+  return dashboard;
 }
 
 export async function resolveGrowthCode(code: string) {
   const { data, error } = await supabase.rpc('resolve_growth_code', { p_code: code.trim() });
-  fail(error, 'We could not check that code right now.');
+  fail(error, 'We could not check that code right now.', 'general');
   return data as {
     valid: boolean;
     code?: string;
@@ -159,7 +182,7 @@ export async function resolveGrowthCode(code: string) {
 
 export async function claimGrowthCode(code: string) {
   const { data, error } = await supabase.rpc('claim_growth_code', { p_code: code.trim() });
-  fail(error, 'We could not attach that code to your account.');
+  fail(error, 'We could not apply that code to your account.', 'general');
   return data as { publicId: string; code: string; rewardable: boolean; message: string };
 }
 
@@ -167,7 +190,7 @@ export async function joinGrowthCampaign(campaignPublicId: string) {
   const { data, error } = await supabase.rpc('join_growth_campaign', {
     p_campaign_public_id: campaignPublicId,
   });
-  fail(error, 'We could not join this campaign right now.');
+  fail(error, 'We could not join this campaign right now.', 'general');
   return data as { joined: boolean; campaignPublicId: string; campaignName: string };
 }
 
@@ -175,6 +198,20 @@ export async function getAdminGrowthWorkspace() {
   const { data, error } = await supabase.rpc('admin_growth_workspace');
   fail(error, 'Growth operations could not be loaded.');
   return data as AdminGrowthWorkspace;
+}
+
+export async function getAdminGrowthOptions() {
+  const { data, error } = await supabase.rpc('admin_growth_options');
+  fail(error, 'Campaign options could not be loaded.');
+  return data as GrowthAdminOptions;
+}
+
+export async function searchGrowthAccounts(search: string) {
+  const { data, error } = await supabase.rpc('admin_growth_account_search', {
+    p_search: search.trim(),
+  });
+  fail(error, 'VAD accounts could not be searched.');
+  return (data ?? []) as GrowthAccountSearchResult[];
 }
 
 export async function upsertGrowthCampaign(publicId: string | null, payload: Record<string, unknown>) {
@@ -210,7 +247,7 @@ export async function upsertGrowthLink(publicId: string | null, payload: Record<
     p_public_id: publicId,
     p_payload: payload,
   });
-  fail(error, 'This tracking link could not be saved.');
+  fail(error, 'This campaign code could not be saved.');
   return String(data);
 }
 
@@ -219,11 +256,15 @@ export async function upsertGrowthContract(publicId: string | null, payload: Rec
     p_public_id: publicId,
     p_payload: payload,
   });
-  fail(error, 'This partner contract could not be saved.');
+  fail(error, 'These partner terms could not be saved.');
   return String(data);
 }
 
-export async function decideGrowthReward(publicId: string, decision: 'APPROVE' | 'HOLD' | 'DISQUALIFY', reason: string) {
+export async function decideGrowthReward(
+  publicId: string,
+  decision: 'APPROVE' | 'HOLD' | 'DISQUALIFY',
+  reason: string,
+) {
   const { data, error } = await supabase.rpc('admin_decide_growth_reward', {
     p_reward_public_id: publicId,
     p_decision: decision,
