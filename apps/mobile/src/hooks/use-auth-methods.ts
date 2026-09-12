@@ -6,23 +6,43 @@ import {
   type PublicAuthMethods,
 } from '@/services/auth-methods';
 
+const AUTH_METHODS_TIMEOUT_MS = 5000;
+
+async function getPublicAuthMethodsSafely(): Promise<PublicAuthMethods> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  try {
+    const timeout = new Promise<PublicAuthMethods>((resolve) => {
+      timeoutId = setTimeout(() => resolve(DEFAULT_PUBLIC_AUTH_METHODS), AUTH_METHODS_TIMEOUT_MS);
+    });
+    return await Promise.race([getPublicAuthMethods(), timeout]);
+  } catch {
+    return DEFAULT_PUBLIC_AUTH_METHODS;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 export function useAuthMethods() {
   const [methods, setMethods] = useState<PublicAuthMethods>(DEFAULT_PUBLIC_AUTH_METHODS);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const next = await getPublicAuthMethods();
-    setMethods(next);
-    setLoading(false);
+    try {
+      const next = await getPublicAuthMethodsSafely();
+      setMethods(next);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     let active = true;
 
-    void getPublicAuthMethods().then((next) => {
+    void getPublicAuthMethodsSafely().then((next) => {
       if (!active) return;
       setMethods(next);
-      setLoading(false);
+    }).finally(() => {
+      if (active) setLoading(false);
     });
 
     return () => {
