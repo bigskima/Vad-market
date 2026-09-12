@@ -28,17 +28,35 @@ export type PublicNotice = {
   updated_at: string;
 };
 
+export type VadMarketRow = {
+  instrument_public_id: string;
+  priority: number;
+  published_at: string;
+};
+
 export type FeaturedMarketRow = {
   instrument_public_id: string;
-  active: boolean;
-  feature_rank: number;
-  featured_at: string;
+  rank: number;
+  volume_ngn: number;
+  trade_count: number;
+  last_trade_at: string | null;
+  calculated_at: string;
+};
+
+export type FeaturedMarketSettings = {
+  enabled: boolean;
+  minimumVolumeNgn: number;
+  windowHours: number;
+  maxMarkets: number;
+  lastRefreshedAt: string | null;
 };
 
 export type HomeExperience = {
   promotions: HomePromotion[];
   notices: PublicNotice[];
+  vadMarkets: VadMarketRow[];
   featuredMarkets: FeaturedMarketRow[];
+  featuredSettings: FeaturedMarketSettings;
 };
 
 function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback?: string) {
@@ -61,8 +79,16 @@ export function isSafeInternalRoute(path: string) {
   return value === '/' || (value.startsWith('/') && !value.startsWith('//'));
 }
 
+const defaultFeaturedSettings: FeaturedMarketSettings = {
+  enabled: true,
+  minimumVolumeNgn: 1_000_000,
+  windowHours: 24,
+  maxMarkets: 20,
+  lastRefreshedAt: null,
+};
+
 export async function getHomeExperience(): Promise<HomeExperience> {
-  const [promotionsResult, noticesResult, featuredResult] = await Promise.allSettled([
+  const [promotionsResult, noticesResult, railsResult] = await Promise.allSettled([
     supabase
       .from('home_promotions')
       .select('*')
@@ -75,12 +101,7 @@ export async function getHomeExperience(): Promise<HomeExperience> {
       .eq('status', 'PUBLISHED')
       .order('priority', { ascending: true })
       .order('created_at', { ascending: false }),
-    supabase
-      .from('market_featured')
-      .select('*')
-      .eq('active', true)
-      .order('feature_rank', { ascending: true })
-      .order('featured_at', { ascending: false }),
+    supabase.rpc('home_market_rails'),
   ]);
 
   const promotions =
@@ -91,19 +112,29 @@ export async function getHomeExperience(): Promise<HomeExperience> {
     noticesResult.status === 'fulfilled' && !noticesResult.value.error
       ? ((noticesResult.value.data ?? []) as PublicNotice[]).filter(isInsideLiveWindow).slice(0, 1)
       : [];
-  const featuredMarkets =
-    featuredResult.status === 'fulfilled' && !featuredResult.value.error
-      ? ((featuredResult.value.data ?? []) as FeaturedMarketRow[])
-      : [];
 
-  const failed = [promotionsResult, noticesResult, featuredResult].some(
+  let vadMarkets: VadMarketRow[] = [];
+  let featuredMarkets: FeaturedMarketRow[] = [];
+  let featuredSettings = defaultFeaturedSettings;
+  if (railsResult.status === 'fulfilled' && !railsResult.value.error && railsResult.value.data) {
+    const raw = railsResult.value.data as {
+      vadMarkets?: VadMarketRow[];
+      featuredMarkets?: FeaturedMarketRow[];
+      featuredSettings?: Partial<FeaturedMarketSettings>;
+    };
+    vadMarkets = Array.isArray(raw.vadMarkets) ? raw.vadMarkets : [];
+    featuredMarkets = Array.isArray(raw.featuredMarkets) ? raw.featuredMarkets : [];
+    featuredSettings = { ...defaultFeaturedSettings, ...(raw.featuredSettings ?? {}) };
+  }
+
+  const failed = [promotionsResult, noticesResult, railsResult].some(
     (result) => result.status === 'rejected' || Boolean(result.value?.error),
   );
-  if (failed && !promotions.length && !notices.length && !featuredMarkets.length) {
+  if (failed && !promotions.length && !notices.length && !vadMarkets.length && !featuredMarkets.length) {
     throw new Error('We could not refresh the latest highlights right now. Please try again.');
   }
 
-  return { promotions, notices, featuredMarkets };
+  return { promotions, notices, vadMarkets, featuredMarkets, featuredSettings };
 }
 
 export async function listAdminHomePromotions() {
