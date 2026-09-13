@@ -34,20 +34,27 @@ export interface RuntimeCapabilityContext {
   platformMessage?: string;
   platformPauseScope?: "GLOBAL" | "USER";
   platformResumesAt?: IsoTimestamp | null;
+  /** v4: effective tester bypass state after individual and global access rules are combined. */
+  testerAccess?: {
+    sandbox: boolean;
+    production: boolean;
+  };
 }
 
 /**
  * Server-authoritative runtime capability snapshot.
  *
  * Version 2 added jurisdiction status. Version 3 adds canonical emergency
- * service-control context and human-readable pause messages. Older contracts
- * remain accepted during staggered deployments.
+ * service-control context and human-readable pause messages. Version 4 adds
+ * effective tester access state so sandbox/global bypasses can participate in
+ * server-authoritative capability decisions. Older contracts remain accepted
+ * during staggered deployments.
  *
  * A false decision is authoritative for the snapshot. Clients may explain it
  * using `reasons`/`messages`, but must never locally promote a false value to true.
  */
 export interface RuntimeCapabilitiesResponse {
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
   status: RuntimeCapabilityStatus;
   requestId: RequestId;
   evaluatedAt: IsoTimestamp;
