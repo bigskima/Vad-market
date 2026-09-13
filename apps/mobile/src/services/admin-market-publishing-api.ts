@@ -68,11 +68,33 @@ export type AdminTrendingMarketSnapshot = {
   suppressions: AdminMarketSuppression[];
 };
 
-function fail(
-  error: { message: string; code?: string; details?: string; hint?: string } | null,
-  fallback: string,
-) {
+type AdminRpcError = {
+  message: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+};
+
+function fail(error: AdminRpcError | null, fallback: string) {
   if (error) throw userFacingError(error, 'admin', fallback);
+}
+
+function canRetryPublish(error: AdminRpcError | null) {
+  if (!error) return false;
+  const code = (error.code ?? '').toUpperCase();
+  return !['42501', '22023', 'P0001', 'P0002'].includes(code);
+}
+
+async function publishOnce(input: {
+  instrumentPublicId: string;
+  vadPriority: number;
+  reason: string;
+}) {
+  return supabase.rpc('admin_publish_market', {
+    p_instrument_public_id: input.instrumentPublicId,
+    p_feature_rank: input.vadPriority,
+    p_reason: input.reason.trim(),
+  });
 }
 
 export async function getAdminMarketPublicationQueue() {
@@ -121,13 +143,18 @@ export async function publishAdminMarket(input: {
   vadPriority: number;
   reason: string;
 }) {
-  const { data, error } = await supabase.rpc('admin_publish_market', {
-    p_instrument_public_id: input.instrumentPublicId,
-    p_feature_rank: input.vadPriority,
-    p_reason: input.reason.trim(),
-  });
-  fail(error, 'We could not publish this market right now. Please try again.');
-  return Boolean(data);
+  const first = await publishOnce(input);
+  if (!first.error) return Boolean(first.data);
+
+  if (!canRetryPublish(first.error)) {
+    fail(first.error, 'We could not publish this market right now. Please review the market details and try again.');
+    return false;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  const second = await publishOnce(input);
+  fail(second.error ?? first.error, 'We could not confirm publication right now. Refresh Market Publishing before trying again.');
+  return Boolean(second.data);
 }
 
 export async function setAdminVadMarket(input: {
