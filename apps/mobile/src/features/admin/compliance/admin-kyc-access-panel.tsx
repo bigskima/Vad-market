@@ -52,12 +52,12 @@ export function AdminKycAccessPanel() {
         </VadText>
       </View>
 
-      <AdminGlobalTesterAccess />
+      <AdminGlobalTesterAccess onChanged={() => void load()} />
 
       <View style={{ gap: 4 }}>
         <VadText variant="bodyStrong">Individual overrides</VadText>
         <VadText variant="caption" tone="secondary">
-          These remain useful when the everyone bypass is off, or when one tester needs a different scope or expiry.
+          When the everyone bypass is active, covered users below show GLOBAL access. You only need an individual override for an exception with a different scope or expiry.
         </VadText>
       </View>
 
@@ -110,7 +110,21 @@ export function AdminKycAccessPanel() {
 function AccessRow({ row, onPress }: { row: AdminKycAccessRow; onPress: () => void }) {
   const theme = useVadTheme();
   const verified = row.provider_kyc_status === 'VERIFIED' || row.provider_kyc_status === 'APPROVED';
-  const overrideActive = row.override_enabled;
+  const individualOverrideActive = row.override_enabled;
+  const globalOverrideActive = row.global_override_enabled;
+  const testerAccessActive = row.effective_sandbox_override || row.effective_production_override;
+  const statusLabel = individualOverrideActive
+    ? `INDIVIDUAL ${row.override_scope ?? 'SANDBOX'}`
+    : globalOverrideActive
+      ? `GLOBAL ${row.global_override_scope ?? 'SANDBOX'}`
+      : verified
+        ? 'KYC VERIFIED'
+        : 'NO TESTER ACCESS';
+  const statusTone: 'brand' | 'yes' | 'secondary' = testerAccessActive
+    ? 'brand'
+    : verified
+      ? 'yes'
+      : 'secondary';
 
   return (
     <Pressable
@@ -119,9 +133,17 @@ function AccessRow({ row, onPress }: { row: AdminKycAccessRow; onPress: () => vo
       onPress={onPress}
       style={({ pressed }) => ({
         borderWidth: 1,
-        borderColor: overrideActive ? theme.colors.brandPrimary : theme.colors.border,
+        borderColor: testerAccessActive
+          ? theme.colors.brandPrimary
+          : verified
+            ? theme.colors.yes
+            : theme.colors.border,
         borderRadius: theme.radius.xl,
-        backgroundColor: overrideActive ? theme.colors.brandSoft : theme.colors.surfaceRaised,
+        backgroundColor: testerAccessActive
+          ? theme.colors.brandSoft
+          : verified
+            ? theme.colors.yesSoft
+            : theme.colors.surfaceRaised,
         padding: theme.spacing.md,
         gap: 8,
         opacity: pressed ? 0.72 : 1,
@@ -132,16 +154,20 @@ function AccessRow({ row, onPress }: { row: AdminKycAccessRow; onPress: () => vo
           <VadText variant="bodyStrong" numberOfLines={1}>{row.display_name || row.email || 'VAD user'}</VadText>
           <VadText variant="caption" tone="secondary" numberOfLines={1}>{row.email ?? row.user_id}</VadText>
         </View>
-        <StatusPill label={overrideActive ? `${row.override_scope} ACCESS` : verified ? 'KYC VERIFIED' : 'NO OVERRIDE'} tone={overrideActive ? 'brand' : verified ? 'yes' : 'secondary'} />
+        <StatusPill label={statusLabel} tone={statusTone} />
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         <VadText variant="caption" tone={verified ? 'yes' : 'secondary'}>Provider: {row.provider_kyc_status}</VadText>
         <VadText variant="caption" tone="tertiary">Level: {row.verification_level}</VadText>
         <VadText variant="caption" tone="tertiary">{row.provider_code ?? 'No provider yet'}</VadText>
       </View>
-      {overrideActive ? (
+      {individualOverrideActive ? (
         <VadText variant="caption" tone="secondary">
-          {row.override_reason ?? 'Tester access enabled'}{row.override_expires_at ? ` · expires ${new Date(row.override_expires_at).toLocaleString()}` : ' · no expiry'}
+          Individual override · {row.override_reason ?? 'Tester access enabled'}{row.override_expires_at ? ` · expires ${new Date(row.override_expires_at).toLocaleString()}` : ' · no expiry'}
+        </VadText>
+      ) : globalOverrideActive ? (
+        <VadText variant="caption" tone="secondary">
+          Covered automatically by the everyone {row.global_override_scope === 'ALL' ? 'all-environments' : 'sandbox'} bypass. No individual override is required.
         </VadText>
       ) : null}
     </Pressable>
@@ -194,6 +220,15 @@ function AccessEditor({ row, onClose, onSaved }: { row: AdminKycAccessRow | null
             <VadText variant="caption" tone="secondary">Actual KYC: {row.provider_kyc_status} · {row.verification_level}</VadText>
           </View>
 
+          {row.global_override_enabled ? (
+            <View style={{ borderWidth: 1, borderColor: theme.colors.brandPrimary, backgroundColor: theme.colors.brandSoft, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: 3 }}>
+              <VadText variant="bodyStrong" tone="brand">Already covered by the everyone bypass</VadText>
+              <VadText variant="caption" tone="secondary">
+                This account already has {row.global_override_scope === 'ALL' ? 'sandbox and production' : 'sandbox'} tester access. You do not need an individual override unless this user needs a different scope or expiry.
+              </VadText>
+            </View>
+          ) : null}
+
           <View style={{ borderWidth: 1, borderColor: theme.colors.warning, backgroundColor: theme.colors.warningSoft, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: 3 }}>
             <VadText variant="bodyStrong" tone="warning">This does not mark Didit as verified.</VadText>
             <VadText variant="caption" tone="secondary">
@@ -214,8 +249,12 @@ function AccessEditor({ row, onClose, onSaved }: { row: AdminKycAccessRow | null
 
           {error ? <VadErrorState title="Access update blocked" message={error} /> : null}
 
-          <VadButton label={row.override_enabled ? 'Update access override' : 'Grant access override'} loading={working} onPress={() => void save(true)} />
-          {row.override_enabled ? <VadButton label="Revoke override" variant="danger" loading={working} onPress={() => void save(false)} /> : null}
+          <VadButton
+            label={row.override_enabled ? 'Update individual override' : row.global_override_enabled ? 'Add individual exception' : 'Grant individual override'}
+            loading={working}
+            onPress={() => void save(true)}
+          />
+          {row.override_enabled ? <VadButton label="Revoke individual override" variant="danger" loading={working} onPress={() => void save(false)} /> : null}
         </View>
       ) : null}
     </VadBottomSheet>
