@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
@@ -12,7 +12,6 @@ type Props = {
   onChange: (value: string) => void;
   hint?: string;
   minDate?: string;
-  minuteStep?: 5 | 10 | 15 | 30;
   clearable?: boolean;
   dateOnly?: boolean;
 };
@@ -23,29 +22,25 @@ export function VadDateTimeField({
   onChange,
   hint,
   minDate,
-  minuteStep = 15,
   clearable = false,
   dateOnly = false,
 }: Props) {
   const theme = useVadTheme();
   const [open, setOpen] = useState(false);
-  const initial = useMemo(() => parseValue(value, minDate, minuteStep), [value, minDate, minuteStep]);
+  const initial = useMemo(() => parseValue(value, minDate), [value, minDate]);
   const [draft, setDraft] = useState(initial);
+  const [minuteText, setMinuteText] = useState(() => String(initial.getMinutes()).padStart(2, '0'));
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(initial));
 
   function showPicker() {
-    const next = parseValue(value, minDate, minuteStep);
+    const next = parseValue(value, minDate);
     setDraft(next);
+    setMinuteText(String(next.getMinutes()).padStart(2, '0'));
     setMonthCursor(startOfMonth(next));
     setOpen(true);
   }
 
   const days = useMemo(() => buildMonthDays(monthCursor, minDate), [monthCursor, minDate]);
-  const minutes = useMemo(() => {
-    const result: number[] = [];
-    for (let minute = 0; minute < 60; minute += minuteStep) result.push(minute);
-    return result;
-  }, [minuteStep]);
 
   function moveMonth(delta: number) {
     setMonthCursor((current) => {
@@ -55,6 +50,33 @@ export function VadDateTimeField({
       if (minimum && next < minimum) return minimum;
       return next;
     });
+  }
+
+  function setExactMinute(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 2);
+    setMinuteText(digits);
+    if (!digits) return;
+    const minute = Number(digits);
+    if (!Number.isInteger(minute) || minute < 0 || minute > 59) return;
+    const next = new Date(draft);
+    next.setMinutes(minute, 0, 0);
+    setDraft(next);
+  }
+
+  function adjustMinute(delta: number) {
+    const next = new Date(draft);
+    next.setMinutes(next.getMinutes() + delta, 0, 0);
+    setDraft(next);
+    setMinuteText(String(next.getMinutes()).padStart(2, '0'));
+  }
+
+  function normalizeMinuteText() {
+    const minute = Number(minuteText);
+    if (!minuteText || !Number.isInteger(minute) || minute < 0 || minute > 59) {
+      setMinuteText(String(draft.getMinutes()).padStart(2, '0'));
+      return;
+    }
+    setMinuteText(String(minute).padStart(2, '0'));
   }
 
   return (
@@ -137,20 +159,50 @@ export function VadDateTimeField({
               </View>
 
               <View style={{ gap: theme.spacing.sm }}>
-                <VadText variant="bodyStrong">Minutes</VadText>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {minutes.map((minute) => (
-                    <PickerChoice
-                      key={minute}
-                      label={`:${String(minute).padStart(2, '0')}`}
-                      selected={draft.getMinutes() === minute}
-                      onPress={() => {
-                        const next = new Date(draft);
-                        next.setMinutes(minute, 0, 0);
-                        setDraft(next);
+                <View style={{ gap: 2 }}>
+                  <VadText variant="bodyStrong">Minute</VadText>
+                  <VadText variant="caption" tone="tertiary">Choose any minute from 00 to 59. You are no longer limited to preset intervals.</VadText>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <MinuteButton label="−1" accessibilityLabel="Previous minute" onPress={() => adjustMinute(-1)} />
+                  <View
+                    style={{
+                      minWidth: 104,
+                      minHeight: 54,
+                      borderWidth: 1,
+                      borderColor: theme.colors.brandPrimary,
+                      borderRadius: theme.radius.lg,
+                      backgroundColor: theme.colors.brandSoft,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingHorizontal: 12,
+                    }}
+                  >
+                    <TextInput
+                      value={minuteText}
+                      onChangeText={setExactMinute}
+                      onBlur={normalizeMinuteText}
+                      keyboardType="number-pad"
+                      inputMode="numeric"
+                      maxLength={2}
+                      selectTextOnFocus
+                      accessibilityLabel="Minute from 00 to 59"
+                      placeholder="00"
+                      placeholderTextColor={theme.colors.textTertiary}
+                      selectionColor={theme.colors.brandPrimary}
+                      cursorColor={theme.colors.brandPrimary}
+                      style={{
+                        width: 72,
+                        textAlign: 'center',
+                        color: theme.colors.textPrimary,
+                        fontSize: 24,
+                        fontWeight: '700',
+                        paddingVertical: 8,
+                        backgroundColor: 'transparent',
                       }}
                     />
-                  ))}
+                  </View>
+                  <MinuteButton label="+1" accessibilityLabel="Next minute" onPress={() => adjustMinute(1)} />
                 </View>
               </View>
             </>
@@ -209,6 +261,30 @@ function MonthButton({ label, accessibilityLabel, disabled = false, onPress }: {
   );
 }
 
+function MinuteButton({ label, accessibilityLabel, onPress }: { label: string; accessibilityLabel: string; onPress: () => void }) {
+  const theme = useVadTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minWidth: 58,
+        minHeight: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: theme.radius.lg,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surfaceRaised,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <VadText variant="bodyStrong" tone="brand">{label}</VadText>
+    </Pressable>
+  );
+}
+
 function DayChoice({ date, disabled, selected, onPress }: { date: Date; disabled: boolean; selected: boolean; onPress: () => void }) {
   const theme = useVadTheme();
   return (
@@ -262,15 +338,12 @@ function PickerChoice({ label, selected = false, onPress }: { label: string; sel
   );
 }
 
-function parseValue(value: string, minDate: string | undefined, minuteStep: number) {
+function parseValue(value: string, minDate: string | undefined) {
   const parsed = parseInputDate(value);
   const minimum = minDate ? parseInputDate(minDate) : null;
   const date = parsed ?? new Date();
   if (minimum && date < minimum) return new Date(minimum);
   date.setSeconds(0, 0);
-  const minute = Math.ceil(date.getMinutes() / minuteStep) * minuteStep;
-  if (minute >= 60) date.setHours(date.getHours() + 1, 0, 0, 0);
-  else date.setMinutes(minute, 0, 0);
   return date;
 }
 
