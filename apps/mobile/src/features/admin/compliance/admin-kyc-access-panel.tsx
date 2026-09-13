@@ -3,11 +3,12 @@ import { Pressable, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
-import { VadDateTimeField } from '@/components/ui/vad-date-time-field';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { AdminGlobalTesterAccess } from '@/features/admin/compliance/admin-global-tester-access';
+import { TesterAccessExpiry, validateTesterExpiry } from '@/features/admin/compliance/tester-access-expiry';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getAdminKycAccess,
@@ -47,7 +48,16 @@ export function AdminKycAccessPanel() {
       <View style={{ gap: 3 }}>
         <VadText variant="heading">Tester & KYC access</VadText>
         <VadText variant="caption" tone="secondary">
-          Provider KYC status stays unchanged. A VAD access override only lets a selected tester pass product access checks; every grant and revoke is audited.
+          Provider KYC status stays unchanged. Use the everyone bypass for broad testing or keep using individual overrides for selected accounts. Every change is audited.
+        </VadText>
+      </View>
+
+      <AdminGlobalTesterAccess />
+
+      <View style={{ gap: 4 }}>
+        <VadText variant="bodyStrong">Individual overrides</VadText>
+        <VadText variant="caption" tone="secondary">
+          These remain useful when the everyone bypass is off, or when one tester needs a different scope or expiry.
         </VadText>
       </View>
 
@@ -152,6 +162,11 @@ function AccessEditor({ row, onClose, onSaved }: { row: AdminKycAccessRow | null
       setError('Add a short reason so this override is understandable in the audit log.');
       return;
     }
+    const expiryError = enabled ? validateTesterExpiry(expiresAt) : null;
+    if (expiryError) {
+      setError(expiryError);
+      return;
+    }
     setWorking(true);
     setError(null);
     try {
@@ -181,19 +196,21 @@ function AccessEditor({ row, onClose, onSaved }: { row: AdminKycAccessRow | null
 
           <View style={{ borderWidth: 1, borderColor: theme.colors.warning, backgroundColor: theme.colors.warningSoft, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: 3 }}>
             <VadText variant="bodyStrong" tone="warning">This does not mark Didit as verified.</VadText>
-            <VadText variant="caption" tone="secondary">It grants a separate VAD access exception. Use ALL only when you intentionally want this account to bypass KYC-gated access in production.</VadText>
+            <VadText variant="caption" tone="secondary">
+              Sandbox access supports sandbox-only assets such as Test NGN. Use ALL only when you intentionally want this account to bypass supported KYC and trading gates in production too.
+            </VadText>
           </View>
 
           <View style={{ gap: theme.spacing.sm }}>
             <VadText variant="bodyStrong">Access scope</VadText>
             <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-              <ScopeChoice label="Sandbox only" detail="Only works with sandbox providers" selected={scope === 'SANDBOX'} onPress={() => setScope('SANDBOX')} />
-              <ScopeChoice label="All environments" detail="Can bypass KYC in production" selected={scope === 'ALL'} danger onPress={() => setScope('ALL')} />
+              <ScopeChoice label="Sandbox only" detail="Test NGN and sandbox access" selected={scope === 'SANDBOX'} onPress={() => setScope('SANDBOX')} />
+              <ScopeChoice label="All environments" detail="Includes production bypass" selected={scope === 'ALL'} danger onPress={() => setScope('ALL')} />
             </View>
           </View>
 
           <VadInput label="Reason" value={reason} onChangeText={setReason} multiline placeholder="Why is this user allowed to bypass KYC?" />
-          <VadDateTimeField label="Override expiry" value={expiresAt} onChange={setExpiresAt} clearable hint="Optional. Leave empty for no automatic expiry." />
+          <TesterAccessExpiry value={expiresAt} onChange={setExpiresAt} />
 
           {error ? <VadErrorState title="Access update blocked" message={error} /> : null}
 
