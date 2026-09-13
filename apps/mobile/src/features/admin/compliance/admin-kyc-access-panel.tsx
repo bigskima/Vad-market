@@ -52,7 +52,7 @@ export function AdminKycAccessPanel() {
         </VadText>
       </View>
 
-      <AdminGlobalTesterAccess onChanged={() => void load()} />
+      <AdminGlobalTesterAccess />
 
       <View style={{ gap: 4 }}>
         <VadText variant="bodyStrong">Individual overrides</VadText>
