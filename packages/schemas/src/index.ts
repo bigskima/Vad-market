@@ -38,11 +38,23 @@ const runtimeCapabilityReasonSchema = z
   })
   .strict();
 
+const testerAccessSchema = z
+  .object({
+    sandbox: z.boolean(),
+    production: z.boolean(),
+  })
+  .strict();
+
 export const runtimeCapabilitiesResponseSchema = z
   .object({
-    // v3 adds canonical pause/resume state. v1/v2 remain accepted while
-    // clients and Edge Functions converge during a staggered deployment.
-    version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    // v4 adds effective tester access. v1-v3 remain accepted while clients
+    // and Edge Functions converge during staggered deployments.
+    version: z.union([
+      z.literal(1),
+      z.literal(2),
+      z.literal(3),
+      z.literal(4),
+    ]),
     status: z.enum(["ready", "degraded"]),
     requestId: z.string().min(1),
     evaluatedAt: z.iso.datetime({ offset: true }),
@@ -56,6 +68,7 @@ export const runtimeCapabilitiesResponseSchema = z
         platformMessage: z.string().min(1).optional(),
         platformPauseScope: z.enum(["GLOBAL", "USER"]).optional(),
         platformResumesAt: z.iso.datetime({ offset: true }).nullable().optional(),
+        testerAccess: testerAccessSchema.optional(),
       })
       .strict(),
     capabilities: runtimeCapabilityDecisionSchema,
