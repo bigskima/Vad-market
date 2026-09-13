@@ -38,7 +38,7 @@ export async function getAdminKycAccess(search?: string) {
     p_limit: 100,
   });
   fail(error, 'We could not load tester and KYC access right now.');
-  return ((data ?? []) as AdminKycAccessRow[]).map((row) => ({
+  return ((data ?? []) as AdminKycAccessRow[]).map((row): AdminKycAccessRow => ({
     ...row,
     override_enabled: row.override_enabled === true,
     global_override_enabled: row.global_override_enabled === true,
