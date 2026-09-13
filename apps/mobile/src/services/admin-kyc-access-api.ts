@@ -14,6 +14,10 @@ export type AdminKycAccessRow = {
   override_reason: string | null;
   override_expires_at: string | null;
   override_updated_at: string | null;
+  global_override_enabled: boolean;
+  global_override_scope: 'SANDBOX' | 'ALL' | null;
+  effective_sandbox_override: boolean;
+  effective_production_override: boolean;
 };
 
 export type AdminGlobalKycAccess = {
@@ -29,18 +33,22 @@ function fail(error: { message: string; code?: string; details?: string; hint?: 
 }
 
 export async function getAdminKycAccess(search?: string) {
-  const { data, error } = await supabase.rpc('admin_kyc_access_overrides', {
+  const { data, error } = await supabase.rpc('admin_kyc_access_overrides_v2', {
     p_search: search?.trim() || null,
     p_limit: 100,
   });
   fail(error, 'We could not load tester and KYC access right now.');
-  const now = Date.now();
   return ((data ?? []) as AdminKycAccessRow[]).map((row) => ({
     ...row,
-    override_enabled: Boolean(
-      row.override_enabled
-      && (!row.override_expires_at || Date.parse(row.override_expires_at) > now),
-    ),
+    override_enabled: row.override_enabled === true,
+    global_override_enabled: row.global_override_enabled === true,
+    effective_sandbox_override: row.effective_sandbox_override === true,
+    effective_production_override: row.effective_production_override === true,
+    global_override_scope: row.global_override_scope === 'ALL'
+      ? 'ALL'
+      : row.global_override_scope === 'SANDBOX'
+        ? 'SANDBOX'
+        : null,
   }));
 }
 
