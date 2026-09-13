@@ -16,6 +16,14 @@ export type AdminKycAccessRow = {
   override_updated_at: string | null;
 };
 
+export type AdminGlobalKycAccess = {
+  enabled: boolean;
+  scope: 'SANDBOX' | 'ALL';
+  reason: string | null;
+  expiresAt: string | null;
+  updatedAt: string | null;
+};
+
 function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback: string) {
   if (error) throw userFacingError(error, 'admin', fallback);
 }
@@ -52,4 +60,40 @@ export async function setAdminKycAccess(input: {
   });
   fail(error, 'We could not update this user’s tester access.');
   return (data ?? {}) as Record<string, unknown>;
+}
+
+export async function getAdminGlobalKycAccess() {
+  const { data, error } = await supabase.rpc('admin_kyc_global_access_override');
+  fail(error, 'We could not load the everyone tester bypass right now.');
+  const raw = (data ?? {}) as Partial<AdminGlobalKycAccess>;
+  return {
+    enabled: raw.enabled === true,
+    scope: raw.scope === 'ALL' ? 'ALL' : 'SANDBOX',
+    reason: raw.reason ?? null,
+    expiresAt: raw.expiresAt ?? null,
+    updatedAt: raw.updatedAt ?? null,
+  } satisfies AdminGlobalKycAccess;
+}
+
+export async function setAdminGlobalKycAccess(input: {
+  scope: 'SANDBOX' | 'ALL';
+  enabled: boolean;
+  reason: string;
+  expiresAt?: string | null;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_kyc_global_access_override', {
+    p_scope: input.scope,
+    p_enabled: input.enabled,
+    p_reason: input.reason.trim(),
+    p_expires_at: input.expiresAt ?? null,
+  });
+  fail(error, 'We could not update the everyone tester bypass.');
+  const raw = (data ?? {}) as Partial<AdminGlobalKycAccess>;
+  return {
+    enabled: raw.enabled === true,
+    scope: raw.scope === 'ALL' ? 'ALL' : 'SANDBOX',
+    reason: raw.reason ?? input.reason.trim(),
+    expiresAt: raw.expiresAt ?? input.expiresAt ?? null,
+    updatedAt: raw.updatedAt ?? new Date().toISOString(),
+  } satisfies AdminGlobalKycAccess;
 }
