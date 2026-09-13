@@ -52,6 +52,16 @@ interface ServiceControlSnapshot {
   services?: Partial<Record<ServiceKey, ServiceControlState>>;
 }
 
+interface TesterAccessState {
+  sandbox?: boolean;
+  production?: boolean;
+}
+
+interface AssetRow {
+  code: string;
+  metadata?: Record<string, unknown> | null;
+}
+
 function closedCapabilities() {
   return {
     createPost: false,
@@ -143,7 +153,7 @@ const authenticatedHandler = withSupabase(
       );
     }
 
-    const [rulesResult, jurisdictionAssetsResult, controlsResult] = await Promise.all([
+    const [rulesResult, jurisdictionAssetsResult, controlsResult, testerAccessResult] = await Promise.all([
       ctx.supabase
         .from("capability_rules")
         .select("capability_key,enabled,reason_code,version")
@@ -155,6 +165,7 @@ const authenticatedHandler = withSupabase(
         .eq("jurisdiction_id", jurisdiction.id)
         .eq("status", "ACTIVE"),
       ctx.supabase.rpc("my_service_control_snapshot"),
+      ctx.supabase.rpc("my_tester_access_state"),
     ]);
 
     if (rulesResult.error || jurisdictionAssetsResult.error) {
@@ -186,14 +197,23 @@ const authenticatedHandler = withSupabase(
       );
     }
 
+    if (testerAccessResult.error) {
+      console.warn("runtime-capabilities tester access lookup failed", {
+        requestId,
+        testerAccessCode: testerAccessResult.error.code,
+      });
+    }
+
     const controls = controlsResult.data as ServiceControlSnapshot;
+    const testerAccess = (testerAccessResult.data ?? {}) as TesterAccessState;
     const eligibleAssetIds = jurisdictionAssetsResult.data.map((row) => row.asset_id);
     let activeAssetCodes: string[] = [];
+    let hasSandboxAsset = false;
 
     if (eligibleAssetIds.length > 0) {
       const { data: assets, error: assetsError } = await ctx.supabase
         .from("assets")
-        .select("code")
+        .select("code,metadata")
         .in("id", eligibleAssetIds)
         .eq("status", "ACTIVE")
         .order("code");
@@ -212,7 +232,9 @@ const authenticatedHandler = withSupabase(
         );
       }
 
-      activeAssetCodes = assets.map((asset) => asset.code);
+      const assetRows = (assets ?? []) as AssetRow[];
+      activeAssetCodes = assetRows.map((asset) => asset.code);
+      hasSandboxAsset = assetRows.some((asset) => asset.metadata?.sandbox_only === true);
     }
 
     const capabilities = closedCapabilities();
@@ -251,6 +273,16 @@ const authenticatedHandler = withSupabase(
       if (!seen.has(clientKey)) reasons[clientKey] = "NO_ACTIVE_POLICY";
     }
 
+    const tradingServiceEnabled = controls.services?.trading?.enabled === true;
+    const testerCanTrade = testerAccess.production === true
+      || (testerAccess.sandbox === true && hasSandboxAsset);
+
+    if (!capabilities.trade && accountIsActive && tradingServiceEnabled && testerCanTrade) {
+      capabilities.trade = true;
+      delete reasons.trade;
+      delete messages.trade;
+    }
+
     if (activeAssetCodes.length === 0) {
       capabilities.trade = false;
       capabilities.deposit = false;
@@ -267,7 +299,7 @@ const authenticatedHandler = withSupabase(
     const platformPaused = platform?.enabled === false;
 
     return json({
-      version: 3,
+      version: 4,
       status: "ready",
       requestId,
       evaluatedAt: new Date().toISOString(),
@@ -275,6 +307,10 @@ const authenticatedHandler = withSupabase(
         countryCode: account.country_code,
         jurisdictionStatus: jurisdiction.status,
         activeAssetCodes,
+        testerAccess: {
+          sandbox: testerAccess.sandbox === true,
+          production: testerAccess.production === true,
+        },
         platformStatus: platformPaused ? "MAINTENANCE" : "READY",
         ...(platformPaused && platform?.reasonCode
           ? { platformReasonCode: platform.reasonCode }
