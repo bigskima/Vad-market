@@ -10,15 +10,13 @@ export type MarketCatalogItem = {
   market_type: string;
   status: string;
   closes_at: string | null;
+  resolves_after: string | null;
+  media_path: string | null;
   yes_price: number | string | null;
   no_price: number | string | null;
   last_trade_at: string | null;
   updated_at: string;
-  /**
-   * Optional forward-compatible presentation fields. The current public
-   * market_catalog contract does not guarantee any of these yet, so the UI
-   * must always render a category fallback when they are absent.
-   */
+  /** Legacy presentation fields remain optional for older seeded/read-model data. */
   thumbnail_url?: string | null;
   image_url?: string | null;
   media_url?: string | null;
