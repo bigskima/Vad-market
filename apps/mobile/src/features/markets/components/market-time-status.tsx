@@ -18,7 +18,7 @@ export function MarketTimeStatus({
   fill?: boolean;
 }) {
   const theme = useVadTheme();
-  const now = useLiveNow();
+  const now = useLiveNow(1000);
   const timing = describeMarketTiming(market.closes_at, market.status, now);
   const palette = timingPalette(timing.tone, theme);
 
