@@ -10,6 +10,8 @@ import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
+import { formatRelativeTimestamp } from '@/features/markets/market-state';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -20,6 +22,7 @@ import {
 export function WalletTransactionScreen({ intentId }: { intentId: string }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const [intent, setIntent] = useState<PaymentIntentRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,6 +96,10 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
       : 'Payment is processing';
   const netDifference = Number(intent.amount) - Number(intent.net_amount);
   const amount = (value: unknown) => assetMoney(value, intent.asset_code);
+  const createdRelative = formatRelativeTimestamp(intent.created_at, now) ?? 'recently';
+  const settledRelative = formatRelativeTimestamp(intent.settled_at, now);
+  const createdExact = new Date(intent.created_at).toLocaleString();
+  const settledExact = intent.settled_at ? new Date(intent.settled_at).toLocaleString() : null;
 
   return (
     <View style={{ gap: density.sectionGap }}>
@@ -122,13 +129,16 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
           <VadChip label={operationLabel(intent.operation).toUpperCase()} tone={incoming ? 'yes' : 'brand'} />
           <VadChip label={intent.asset_code} />
           <VadChip label={paymentStatusLabel(intent.status, settled, failed)} tone={settled ? 'yes' : failed ? 'no' : 'warning'} />
+          <VadChip label={(settledRelative ?? createdRelative).toUpperCase()} />
         </View>
         <View style={{ gap: 3 }}>
           <VadText variant="caption" tone="tertiary">TRANSACTION AMOUNT</VadText>
           <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
             {amount(intent.amount)}
           </VadText>
-          <VadText variant="caption" tone="secondary">{new Date(intent.created_at).toLocaleString()}</VadText>
+          <VadText variant="caption" tone="secondary">
+            {settled && settledRelative ? `Completed ${settledRelative}` : `Created ${createdRelative}`}
+          </VadText>
         </View>
         <View style={{ flexDirection: density.phone ? 'column' : 'row', alignItems: density.phone ? 'stretch' : 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
@@ -138,7 +148,7 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
                 ? 'The payment is complete and your wallet reflects its final status.'
                 : failed
                   ? 'Refresh once before retrying. If the issue continues, keep the reference below for support.'
-                  : 'You can safely leave this screen and return from Wallet activity while processing continues.'}
+                  : `Processing since ${createdRelative}. You can safely leave this screen and return from Wallet activity.`}
             </VadText>
           </View>
           <VadButton
@@ -162,7 +172,7 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
         </VadCard>
       ) : processing ? (
         <VadCard variant="muted" style={{ gap: 2 }}>
-          <VadText variant="bodyStrong">Still processing</VadText>
+          <VadText variant="bodyStrong">Still processing · {createdRelative}</VadText>
           <VadText variant="caption" tone="secondary">No need to keep this page open. You can return from Wallet activity later.</VadText>
         </VadCard>
       ) : null}
@@ -176,15 +186,15 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
         summary={<VadText variant="caption" tone={settled ? 'yes' : failed ? 'danger' : 'warning'}>{statusTitle}</VadText>}
       >
         <View>
-          <StatusStep label="Request created" detail={new Date(intent.created_at).toLocaleString()} state="complete" />
+          <StatusStep label="Request created" detail={`${createdRelative} · ${createdExact}`} state="complete" />
           <StatusStep
             label="Processing"
-            detail={failed ? 'Processing ended with an issue.' : settled ? 'Processing completed.' : 'Your payment is still being processed.'}
+            detail={failed ? 'Processing ended with an issue.' : settled ? 'Processing completed.' : `Processing for ${createdRelative.replace(' ago', '')}.`}
             state={failed ? 'failed' : settled ? 'complete' : 'active'}
           />
           <StatusStep
             label="Completed"
-            detail={intent.settled_at ? new Date(intent.settled_at).toLocaleString() : failed ? 'This payment was not completed.' : 'Waiting for the payment to finish.'}
+            detail={settledExact ? `${settledRelative ?? 'Completed'} · ${settledExact}` : failed ? 'This payment was not completed.' : 'Waiting for the payment to finish.'}
             state={settled ? 'complete' : failed ? 'failed' : 'waiting'}
           />
         </View>
@@ -215,8 +225,8 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
       >
         <View>
           <Detail label="Reference" value={intent.intent_public_id} selectable />
-          <Detail label="Created" value={new Date(intent.created_at).toLocaleString()} />
-          <Detail label="Completed" value={intent.settled_at ? new Date(intent.settled_at).toLocaleString() : 'Not completed yet'} />
+          <Detail label="Created" value={`${createdExact} · ${createdRelative}`} />
+          <Detail label="Completed" value={settledExact ? `${settledExact} · ${settledRelative ?? 'completed'}` : 'Not completed yet'} />
         </View>
       </VadProgressiveSection>
 
