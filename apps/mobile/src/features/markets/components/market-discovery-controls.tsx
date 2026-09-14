@@ -10,7 +10,7 @@ export type MarketSortMode = 'activity' | 'closing' | 'newest';
 export type MarketStageFilter = 'live' | 'result' | 'complete' | 'all';
 
 const SORT_OPTIONS: { value: MarketSortMode; label: string }[] = [
-  { value: 'activity', label: 'Active' },
+  { value: 'activity', label: 'Most active' },
   { value: 'closing', label: 'Closing soon' },
   { value: 'newest', label: 'Newest' },
 ];
@@ -19,7 +19,7 @@ const STAGE_OPTIONS: { value: MarketStageFilter; label: string }[] = [
   { value: 'live', label: 'Live now' },
   { value: 'result', label: 'Result / payout' },
   { value: 'complete', label: 'Completed' },
-  { value: 'all', label: 'All' },
+  { value: 'all', label: 'All stages' },
 ];
 
 export function MarketDiscoveryControls({
@@ -52,7 +52,10 @@ export function MarketDiscoveryControls({
   return (
     <View style={{ gap: theme.spacing.lg }}>
       <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="caption" tone="tertiary">Market stage</VadText>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+          <VadText variant="caption" tone="tertiary">Market stage</VadText>
+          <VadText variant="caption" tone="secondary">{resultCount} matching</VadText>
+        </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
           {STAGE_OPTIONS.map((option) => (
             <VadChip
@@ -80,8 +83,8 @@ export function MarketDiscoveryControls({
           />
         </View>
 
-        <View style={{ gap: theme.spacing.xs, minWidth: wide ? 330 : undefined }}>
-          <VadText variant="caption" tone="tertiary">Sort</VadText>
+        <View style={{ gap: theme.spacing.xs, minWidth: wide ? 360 : undefined }}>
+          <VadText variant="caption" tone="tertiary">Prioritise</VadText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
             {SORT_OPTIONS.map((option) => (
               <VadChip
@@ -97,11 +100,7 @@ export function MarketDiscoveryControls({
       </View>
 
       <View style={{ gap: theme.spacing.xs }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
-          <VadText variant="caption" tone="tertiary">Categories</VadText>
-          <VadText variant="caption" tone="secondary">{resultCount} {resultCount === 1 ? 'market' : 'markets'}</VadText>
-        </View>
-
+        <VadText variant="caption" tone="tertiary">Theme</VadText>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
           {['All', ...categories].map((category) => (
             <VadChip
