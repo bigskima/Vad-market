@@ -17,7 +17,7 @@ const SORT_OPTIONS: { value: MarketSortMode; label: string }[] = [
 
 const STAGE_OPTIONS: { value: MarketStageFilter; label: string }[] = [
   { value: 'live', label: 'Live now' },
-  { value: 'result', label: 'Awaiting result' },
+  { value: 'result', label: 'Result / payout' },
   { value: 'complete', label: 'Completed' },
   { value: 'all', label: 'All' },
 ];
