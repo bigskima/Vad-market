@@ -1,17 +1,20 @@
 import { useMemo, useState } from 'react';
 import { Pressable, View, type DimensionValue } from 'react-native';
 
+import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadMetricTile } from '@/components/ui/vad-metric-tile';
+import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney, pct } from '@/features/markets/format';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { OrderRow, PositionRow } from '@/services/market-api';
 
@@ -43,12 +46,26 @@ export function PortfolioScreen({
   const totalShares = positions.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
   const grid = density.wide;
   const exposure = useMemo(() => buildAssetExposure(positions, orders), [positions, orders]);
+  const pageSize = grid ? 8 : 5;
+  const visiblePositions = useProgressiveList({
+    items: positions,
+    initialCount: pageSize,
+    step: pageSize,
+    resetKey: `positions|${positions.length}|${grid}`,
+  });
+  const visibleOrders = useProgressiveList({
+    items: orders,
+    initialCount: pageSize,
+    step: pageSize,
+    resetKey: `orders|${orders.length}|${grid}`,
+  });
+  const activeList = tab === 'positions' ? visiblePositions : visibleOrders;
 
   return (
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Portfolio"
-        subtitle="Track your positions and open orders by currency. NGN and USDC values are always kept separate."
+        subtitle="See the important position first, then reveal more detail only when you need it. NGN and USDC remain separate."
       />
 
       <TourTarget id="portfolio-summary">
@@ -57,11 +74,25 @@ export function PortfolioScreen({
           style={{
             gap: density.phone ? theme.spacing.md : theme.spacing.lg,
             padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+            overflow: 'hidden',
           }}
         >
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              width: 176,
+              height: 176,
+              borderRadius: 88,
+              right: -62,
+              top: -84,
+              backgroundColor: theme.colors.surface,
+              opacity: theme.mode === 'dark' ? 0.06 : 0.42,
+            }}
+          />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <VadText variant="caption" tone="brand">YOUR PORTFOLIO</VadText>
+              <VadText variant="caption" tone="brand">YOUR CONVICTION BOOK</VadText>
               <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
                 {positions.length} {positions.length === 1 ? 'position' : 'positions'}
               </VadText>
@@ -93,42 +124,66 @@ export function PortfolioScreen({
       </TourTarget>
 
       {exposure.length ? (
-        <View style={{ gap: theme.spacing.sm }}>
-          <VadSectionHeader title="Portfolio by currency" subtitle="Values are shown separately for each currency." />
+        <VadProgressiveSection
+          title="Portfolio by currency"
+          eyebrow="EXPOSURE DETAILS"
+          description="Open this only when you want the currency-by-currency breakdown of invested value and open orders."
+          icon="wallet"
+          summary={(
+            <VadText variant="caption" tone="tertiary">
+              {exposure.map((item) => item.assetCode).join(' · ')}
+            </VadText>
+          )}
+        >
           <View style={{ flexDirection: density.width >= 720 ? 'row' : 'column', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             {exposure.map((item) => (
               <AssetExposureCard key={item.assetCode} exposure={item} />
             ))}
           </View>
-        </View>
+        </VadProgressiveSection>
       ) : null}
 
       <TourTarget id="portfolio-switcher">
-        <VadSegmentedControl
-          value={tab}
-          options={[
-            { value: 'positions', label: `Positions ${positions.length}` },
-            { value: 'orders', label: `Open orders ${orders.length}` },
-          ] as const}
-          onChange={setTab}
-        />
+        <View style={{ gap: theme.spacing.xs }}>
+          <VadSegmentedControl
+            value={tab}
+            options={[
+              { value: 'positions', label: `Positions ${positions.length}` },
+              { value: 'orders', label: `Open orders ${orders.length}` },
+            ] as const}
+            onChange={setTab}
+          />
+          <VadText variant="caption" tone="tertiary">
+            Showing {activeList.visibleCount} of {activeList.totalCount} {tab === 'positions' ? 'positions' : 'open orders'}.
+          </VadText>
+        </View>
       </TourTarget>
 
       {tab === 'positions' ? (
         positions.length ? (
-          <View
-            style={{
-              flexDirection: grid ? 'row' : 'column',
-              flexWrap: grid ? 'wrap' : 'nowrap',
-              gap: theme.spacing.md,
-              alignItems: 'stretch',
-            }}
-          >
-            {positions.map((position) => (
-              <View key={`${position.instrument_id}-${position.outcome_code}`} style={{ width: grid ? '48.9%' : '100%' }}>
-                <PositionCard position={position} onPress={() => onOpenPosition(position)} />
-              </View>
-            ))}
+          <View style={{ gap: theme.spacing.md }}>
+            <View
+              style={{
+                flexDirection: grid ? 'row' : 'column',
+                flexWrap: grid ? 'wrap' : 'nowrap',
+                gap: theme.spacing.md,
+                alignItems: 'stretch',
+              }}
+            >
+              {visiblePositions.visibleItems.map((position) => (
+                <View key={`${position.instrument_id}-${position.outcome_code}`} style={{ width: grid ? '48.9%' : '100%' }}>
+                  <PositionCard position={position} onPress={() => onOpenPosition(position)} />
+                </View>
+              ))}
+            </View>
+            {visiblePositions.hasMore ? (
+              <ProgressiveFooter
+                remaining={visiblePositions.remainingCount}
+                next={visiblePositions.nextCount}
+                noun="positions"
+                onMore={visiblePositions.showMore}
+              />
+            ) : null}
           </View>
         ) : (
           <VadEmptyState
@@ -137,19 +192,29 @@ export function PortfolioScreen({
           />
         )
       ) : orders.length ? (
-        <View
-          style={{
-            flexDirection: grid ? 'row' : 'column',
-            flexWrap: grid ? 'wrap' : 'nowrap',
-            gap: theme.spacing.md,
-            alignItems: 'stretch',
-          }}
-        >
-          {orders.map((order) => (
-            <View key={order.order_id} style={{ width: grid ? '48.9%' : '100%' }}>
-              <OrderCard order={order} onPress={() => onOpenOrder(order)} />
-            </View>
-          ))}
+        <View style={{ gap: theme.spacing.md }}>
+          <View
+            style={{
+              flexDirection: grid ? 'row' : 'column',
+              flexWrap: grid ? 'wrap' : 'nowrap',
+              gap: theme.spacing.md,
+              alignItems: 'stretch',
+            }}
+          >
+            {visibleOrders.visibleItems.map((order) => (
+              <View key={order.order_id} style={{ width: grid ? '48.9%' : '100%' }}>
+                <OrderCard order={order} onPress={() => onOpenOrder(order)} />
+              </View>
+            ))}
+          </View>
+          {visibleOrders.hasMore ? (
+            <ProgressiveFooter
+              remaining={visibleOrders.remainingCount}
+              next={visibleOrders.nextCount}
+              noun="orders"
+              onMore={visibleOrders.showMore}
+            />
+          ) : null}
         </View>
       ) : (
         <VadEmptyState
@@ -158,6 +223,16 @@ export function PortfolioScreen({
         />
       )}
     </View>
+  );
+}
+
+function ProgressiveFooter({ remaining, next, noun, onMore }: { remaining: number; next: number; noun: string; onMore: () => void }) {
+  const theme = useVadTheme();
+  return (
+    <VadCard variant="raised" style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+      <VadText variant="caption" tone="secondary">{remaining} more {noun} are available.</VadText>
+      <VadButton label={`Show next ${next}`} variant="secondary" size="small" fullWidth={false} onPress={onMore} />
+    </VadCard>
   );
 }
 

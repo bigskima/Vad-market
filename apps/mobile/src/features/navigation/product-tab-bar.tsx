@@ -38,27 +38,32 @@ export function ProductTabBar({
 
   return (
     <View
-      style={[
-        theme.shadows.floating,
-        {
-          borderTopWidth: 1,
-          borderTopColor: theme.colors.border,
-          backgroundColor: theme.colors.surface,
-          paddingBottom: Math.max(insets.bottom, 5),
-          paddingTop: 4,
-        },
-      ]}
+      pointerEvents="box-none"
+      style={{
+        backgroundColor: theme.colors.background,
+        paddingHorizontal: 10,
+        paddingTop: 7,
+        paddingBottom: Math.max(insets.bottom, 7),
+      }}
     >
       <View
         accessibilityRole="tablist"
-        style={{
-          width: '100%',
-          maxWidth: 720,
-          alignSelf: 'center',
-          flexDirection: 'row',
-          alignItems: 'stretch',
-          paddingHorizontal: 4,
-        }}
+        style={[
+          theme.shadows.floating,
+          {
+            width: '100%',
+            maxWidth: 620,
+            alignSelf: 'center',
+            flexDirection: 'row',
+            alignItems: 'stretch',
+            paddingHorizontal: 5,
+            paddingVertical: 4,
+            borderRadius: theme.radius.xxl,
+            borderWidth: 1,
+            borderColor: theme.colors.borderStrong,
+            backgroundColor: theme.colors.surface,
+          },
+        ]}
       >
         {PRODUCT_TABS.map((tab) => {
           const selected = tab.value === active;
@@ -72,27 +77,27 @@ export function ProductTabBar({
               onPress={() => onChange(tab.value)}
               style={({ pressed }) => ({
                 flex: 1,
-                minHeight: density.compact ? 54 : 58,
+                minHeight: density.compact ? 50 : 54,
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 2,
-                opacity: pressed ? 0.7 : 1,
-                transform: [{ translateY: selected ? -1 : 0 }, { scale: pressed ? 0.96 : 1 }],
+                borderRadius: theme.radius.xl,
+                backgroundColor: selected ? theme.colors.brandSoft : pressed ? theme.colors.surfaceRaised : 'transparent',
+                opacity: pressed ? 0.78 : 1,
+                transform: [{ scale: pressed ? 0.96 : 1 }],
               })}
             >
               <View
                 style={{
-                  minWidth: density.compact ? 40 : 44,
-                  height: 30,
+                  minWidth: density.compact ? 34 : 38,
+                  height: density.compact ? 28 : 30,
                   borderRadius: theme.radius.pill,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: selected ? theme.colors.brandSoft : 'transparent',
-                  borderWidth: selected ? 1 : 0,
-                  borderColor: selected ? theme.colors.brandPrimary : 'transparent',
+                  backgroundColor: selected ? theme.colors.brandPrimary : 'transparent',
                 }}
               >
-                <VadIcon name={tab.icon} size={density.compact ? 18 : 19} tone={selected ? 'brand' : 'tertiary'} />
+                <VadIcon name={tab.icon} size={density.compact ? 17 : 18} tone={selected ? 'inverse' : 'tertiary'} />
               </View>
 
               <VadText
@@ -103,20 +108,6 @@ export function ProductTabBar({
               >
                 {tab.label}
               </VadText>
-
-              {selected ? (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    bottom: 1,
-                    width: 18,
-                    height: 2,
-                    borderRadius: 1,
-                    backgroundColor: theme.colors.brandPrimary,
-                  }}
-                />
-              ) : null}
             </Pressable>
           );
         })}

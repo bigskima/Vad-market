@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductTour } from '@/features/tour/tour-provider';
@@ -12,6 +13,8 @@ import type { ProductTab } from './product-tab-bar';
 export function ProductTopBar({
   active,
   email,
+  displayName,
+  avatarPath,
   isAdmin,
   canCreate,
   onCreate,
@@ -24,6 +27,8 @@ export function ProductTopBar({
 }: {
   active: ProductTab;
   email: string;
+  displayName?: string | null;
+  avatarPath?: string | null;
   isAdmin: boolean;
   canCreate: boolean;
   showNavigation?: boolean;
@@ -40,7 +45,6 @@ export function ProductTopBar({
   const density = useProductDensity();
   const insets = useSafeAreaInsets();
   const { registerTarget } = useProductTour();
-  const initial = email.trim().charAt(0).toUpperCase() || 'V';
   const roomy = density.width >= 1024;
 
   return (
@@ -89,13 +93,13 @@ export function ProductTopBar({
           style={({ pressed }) => ({
             flex: density.phone || !roomy ? 1 : undefined,
             width: density.phone || !roomy ? undefined : Math.min(420, Math.max(280, density.width * 0.29)),
-            minWidth: density.phone ? 40 : 180,
+            minWidth: density.phone ? 38 : 180,
             maxWidth: density.phone ? undefined : 420,
             minHeight: 44,
             flexDirection: 'row',
             alignItems: 'center',
             gap: theme.spacing.sm,
-            paddingHorizontal: density.narrow ? theme.spacing.sm : theme.spacing.md,
+            paddingHorizontal: density.narrow ? theme.spacing.xs : theme.spacing.md,
             borderRadius: theme.radius.pill,
             borderWidth: 1,
             borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
@@ -133,32 +137,30 @@ export function ProductTopBar({
 
           {!density.narrow ? <HeaderIcon label="Open VAD Assistant" icon="activity" onPress={onAssistant} /> : null}
 
-          {!density.narrow ? (
-            <View>
-              <HeaderIcon label="Open notices" icon="bell" onPress={onNotices} />
-              {noticeCount > 0 ? (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    top: 4,
-                    right: 4,
-                    minWidth: 16,
-                    height: 16,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingHorizontal: 3,
-                    backgroundColor: theme.colors.no,
-                    borderWidth: 2,
-                    borderColor: theme.colors.surface,
-                  }}
-                >
-                  <VadText tone="inverse" style={{ fontSize: 9, lineHeight: 10, fontWeight: '800' }}>{Math.min(9, noticeCount)}</VadText>
-                </View>
-              ) : null}
-            </View>
-          ) : null}
+          <View>
+            <HeaderIcon label="Open notifications" icon="bell" onPress={onNotices} />
+            {noticeCount > 0 ? (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 3,
+                  backgroundColor: theme.colors.no,
+                  borderWidth: 2,
+                  borderColor: theme.colors.surface,
+                }}
+              >
+                <VadText tone="inverse" style={{ fontSize: 9, lineHeight: 10, fontWeight: '800' }}>{Math.min(9, noticeCount)}</VadText>
+              </View>
+            ) : null}
+          </View>
 
           <Pressable
             accessibilityRole="button"
@@ -175,9 +177,15 @@ export function ProductTopBar({
               backgroundColor: active === 'Account' ? theme.colors.brandSoft : theme.colors.surfaceRaised,
               opacity: pressed ? 0.7 : 1,
               transform: [{ scale: pressed ? 0.96 : 1 }],
+              overflow: 'hidden',
             })}
           >
-            <VadText variant="label" tone={active === 'Account' ? 'brand' : 'primary'}>{initial}</VadText>
+            <ProfileAvatar
+              path={avatarPath}
+              name={displayName || email}
+              size={40}
+              fallback="account"
+            />
           </Pressable>
         </View>
       </View>

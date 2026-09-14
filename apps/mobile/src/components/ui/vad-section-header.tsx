@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { VadIcon } from './vad-icon';
 import { VadText } from './vad-text';
 
 export function VadSectionHeader({
@@ -18,6 +20,7 @@ export function VadSectionHeader({
   trailing?: ReactNode;
 }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
 
   return (
     <View
@@ -26,7 +29,7 @@ export function VadSectionHeader({
         flexWrap: 'wrap',
         alignItems: 'flex-end',
         justifyContent: 'space-between',
-        gap: theme.spacing.md,
+        gap: density.compact ? theme.spacing.sm : theme.spacing.md,
       }}
     >
       <View
@@ -34,12 +37,12 @@ export function VadSectionHeader({
           flexGrow: 1,
           flexShrink: 1,
           flexBasis: 220,
-          gap: theme.spacing.xxs,
+          gap: 3,
         }}
       >
-        <VadText variant="heading">{title}</VadText>
+        <VadText variant="heading" style={{ letterSpacing: -0.2 }}>{title}</VadText>
         {subtitle ? (
-          <VadText variant="caption" tone="secondary">
+          <VadText variant="caption" tone="secondary" style={{ maxWidth: 620 }}>
             {subtitle}
           </VadText>
         ) : null}
@@ -53,16 +56,24 @@ export function VadSectionHeader({
             onPress={onAction}
             hitSlop={4}
             style={({ pressed }) => ({
-              minHeight: 44,
+              minHeight: 38,
               justifyContent: 'center',
-              paddingHorizontal: theme.spacing.xs,
+              alignItems: 'center',
+              flexDirection: 'row',
+              gap: 4,
+              paddingHorizontal: theme.spacing.sm,
               borderRadius: theme.radius.pill,
-              opacity: pressed ? 0.6 : 1,
+              borderWidth: 1,
+              borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
+              backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surface,
+              opacity: pressed ? 0.78 : 1,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
             })}
           >
             <VadText variant="label" tone="brand">
               {actionLabel}
             </VadText>
+            <VadIcon name="chevronRight" size={13} tone="brand" />
           </Pressable>
         ) : null)}
     </View>

@@ -1,5 +1,10 @@
 import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
+import {
+  attachProposalMarketMedia,
+  uploadMarketMedia,
+  type MarketMediaSelection,
+} from '@/services/market-media-api';
 
 export type MarketCatalogItem = {
   instrument_public_id: string;
@@ -10,10 +15,16 @@ export type MarketCatalogItem = {
   market_type: string;
   status: string;
   closes_at: string | null;
+  resolves_after: string | null;
+  media_path: string | null;
   yes_price: number | string | null;
   no_price: number | string | null;
   last_trade_at: string | null;
   updated_at: string;
+  /** Legacy presentation fields remain optional for older seeded/read-model data. */
+  thumbnail_url?: string | null;
+  image_url?: string | null;
+  media_url?: string | null;
 };
 
 export type TradeQuote = {
@@ -110,6 +121,7 @@ export type MarketAdmissionResult = {
 export type MarketAdmissionResponse = {
   proposalId: string;
   admission: MarketAdmissionResult;
+  mediaWarning?: string;
   ai?: {
     attempted?: boolean;
     providerCode?: string;
@@ -194,6 +206,7 @@ export async function submitMarketProposal(input: {
   context?: string;
   category?: string;
   assetCode?: string;
+  media?: MarketMediaSelection | null;
 }) {
   const { data, error } = await supabase.functions.invoke('market-admission', {
     body: {
@@ -209,7 +222,26 @@ export async function submitMarketProposal(input: {
   if (payload.error || !payload.admission) {
     throw userFacingError(payload.message ?? payload.error, 'proposal');
   }
-  return payload as MarketAdmissionResponse;
+
+  let mediaWarning: string | undefined;
+  if (input.media) {
+    try {
+      const mediaPath = await uploadMarketMedia(input.media, 'proposals');
+      await attachProposalMarketMedia(String(payload.proposalId ?? payload.admission.proposalId), mediaPath);
+      if (payload.admission.lane === 'MERGED') {
+        mediaWarning = 'A matching market already exists, so your image stays with this proposal and does not replace the existing market image.';
+      }
+    } catch (mediaError) {
+      mediaWarning = mediaError instanceof Error
+        ? `${mediaError.message} The proposal itself was still submitted successfully.`
+        : 'The image could not be attached, but the proposal itself was submitted successfully.';
+    }
+  }
+
+  return {
+    ...(payload as MarketAdmissionResponse),
+    mediaWarning,
+  } satisfies MarketAdmissionResponse;
 }
 
 export async function getAdminRuntimeSummary() {

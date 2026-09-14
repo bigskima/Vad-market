@@ -1,14 +1,20 @@
-import type { ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
+import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
+import { VadIcon } from '@/components/ui/vad-icon';
+import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { HomePromotionCarousel } from '@/features/home/components/home-promotion-carousel';
 import { MarketCard } from '@/features/markets/components/market-card';
+import { MarketTimeStatus } from '@/features/markets/components/market-time-status';
+import { probability } from '@/features/markets/format';
+import { marketStatusMeta } from '@/features/markets/market-state';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
-import { TourTarget, useProductTour } from '@/features/tour/tour-provider';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type {
@@ -20,6 +26,8 @@ import type {
   VadMarketRow,
 } from '@/services/home-content-api';
 import type { MarketCatalogItem } from '@/services/market-api';
+
+type MarketLens = 'LIVE' | 'VAD' | 'MOMENTUM';
 
 export function HomeScreen({
   markets,
@@ -48,7 +56,7 @@ export function HomeScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const { registerTarget } = useProductTour();
+  const [lens, setLens] = useState<MarketLens>('LIVE');
 
   const active = markets.filter((market) => market.status === 'OPEN' || market.status === 'ACTIVE');
   const categories = [...new Set(markets.map((market) => market.category).filter(Boolean))].slice(0, 8) as string[];
@@ -71,9 +79,21 @@ export function HomeScreen({
     ? `${formatAcceleration(Math.max(trendingRail[0].entry.volume_acceleration, trendingRail[0].entry.trade_acceleration))} · ${trendingRail[0].entry.unique_traders} traders`
     : featuredRail[0]
       ? `${formatNairaCompact(featuredRail[0].entry.volume_ngn)} completed activity`
-      : leadMarket?.last_trade_at
-        ? 'Recently traded'
-        : 'Live now';
+      : leadMarket
+        ? `${leadMarket.category ?? 'General'} · ${leadMarket.asset_code}`
+        : '';
+
+  const lensMarkets = useMemo(() => {
+    if (lens === 'VAD') return vadRail.map((row) => row.market);
+    if (lens === 'MOMENTUM') return trendingSettings.enabled ? trendingRail.map((row) => row.market) : [];
+    return active;
+  }, [active, lens, trendingRail, trendingSettings.enabled, vadRail]);
+
+  const boardSubtitle = lens === 'LIVE'
+    ? 'Open markets you can evaluate now.'
+    : lens === 'VAD'
+      ? 'Markets published or selected by VAD.'
+      : `Markets accelerating over ${formatMinutes(trendingSettings.windowMinutes)}.`;
 
   const sectionGap = density.compact ? theme.spacing.md : theme.spacing.lg;
 
@@ -84,7 +104,7 @@ export function HomeScreen({
           variant="brand"
           style={{
             padding: density.phone ? theme.spacing.md : theme.spacing.lg,
-            gap: theme.spacing.md,
+            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
             borderColor: theme.colors.brandPrimary,
             overflow: 'hidden',
           }}
@@ -93,363 +113,351 @@ export function HomeScreen({
             pointerEvents="none"
             style={{
               position: 'absolute',
-              width: 220,
-              height: 220,
-              borderRadius: 110,
-              right: -92,
-              top: -112,
-              backgroundColor: theme.colors.brandSoft,
+              width: density.phone ? 190 : 270,
+              height: density.phone ? 190 : 270,
+              borderRadius: density.phone ? 95 : 135,
+              right: density.phone ? -88 : -108,
+              top: density.phone ? -98 : -132,
+              backgroundColor: theme.colors.surface,
+              opacity: theme.mode === 'dark' ? 0.05 : 0.38,
             }}
           />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <View style={{ gap: 3, flex: 1 }}>
-              <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.2 }}>
-                VAD MARKET PULSE
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.yes }} />
+              <VadText variant="caption" tone="brand" style={{ letterSpacing: 1 }}>
+                MARKET PULSE
               </VadText>
-              <VadText variant={density.phone ? 'title' : 'heading'}>What’s moving today?</VadText>
             </View>
             <VadChip label={`${active.length} LIVE`} tone="yes" />
           </View>
 
-          <VadText variant="caption" tone="secondary" style={{ maxWidth: 620 }}>
-            A market-first view of live opportunities, completed activity and genuine momentum.
-          </VadText>
-
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Metric value={`${active.length}`} label="Live markets" />
-            <Metric value={`${traded}`} label="Recently traded" />
-            <Metric value={`${trendingRail.length}`} label="Trending" />
-          </View>
-
           {leadMarket ? (
-            <PulseMarket
+            <FocusMarket
               market={leadMarket}
               detail={leadDetail}
               onPress={() => onOpenMarket(leadMarket)}
             />
-          ) : null}
+          ) : (
+            <View style={{ gap: 3, paddingVertical: theme.spacing.md }}>
+              <VadText variant="heading">No market is live right now.</VadText>
+              <VadText variant="caption" tone="secondary">Use Market discovery to inspect the full catalogue.</VadText>
+            </View>
+          )}
 
-          <Pressable
-            ref={(node) => registerTarget('home-explore-markets', node)}
-            collapsable={false}
-            accessibilityRole="button"
-            onPress={() => onExploreMarkets()}
-            style={({ pressed }) => ({
-              minHeight: 42,
-              alignSelf: 'flex-start',
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: theme.spacing.md,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.brandPrimary,
-              opacity: pressed ? 0.78 : 1,
-            })}
-          >
-            <VadText variant="label" tone="inverse">Browse all markets →</VadText>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 7 }}>
+            <PulseMetric value={`${active.length}`} label="Live" tone="yes" />
+            <PulseMetric value={`${traded}`} label="Traded" />
+            <PulseMetric value={`${trendingRail.length}`} label="Moving" tone="brand" />
+          </View>
+
+          <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.xs }}>
+            <TourTarget id="home-explore-markets">
+              <VadButton
+                label="Explore markets"
+                fullWidth={density.narrow}
+                onPress={() => onExploreMarkets()}
+                leading={<VadIcon name="markets" size={17} tone="inverse" />}
+              />
+            </TourTarget>
+            <VadButton
+              label="Community"
+              variant="secondary"
+              fullWidth={density.narrow}
+              onPress={onOpenCommunity}
+              leading={<VadIcon name="community" size={16} tone="brand" />}
+            />
+          </View>
         </VadCard>
       </TourTarget>
 
       <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
 
       <TourTarget id="home-featured-markets">
-        <View style={{ gap: sectionGap }}>
-          <MarketRailSection
-            title="VAD Markets"
-            subtitle="Published and selected by VAD."
-            emptyTitle="No VAD Markets are live right now."
-            emptyBody="Newly published VAD Markets will appear here."
-            onSeeAll={() => onExploreMarkets()}
-          >
-            {vadRail.map(({ market }) => (
-              <MarketRailCard
-                key={market.instrument_public_id}
-                market={market}
-                badge="VAD MARKET"
-                badgeTone="brand"
-                onPress={() => onOpenMarket(market)}
-              />
-            ))}
-          </MarketRailSection>
+        <View style={{ gap: theme.spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <VadText variant="caption" tone="brand">DISCOVERY BOARD</VadText>
+              <VadText variant="heading">Markets at a glance</VadText>
+              <VadText variant="caption" tone="secondary" numberOfLines={2}>{boardSubtitle}</VadText>
+            </View>
+            {!density.narrow ? (
+              <VadButton label="All markets" variant="ghost" size="small" fullWidth={false} onPress={() => onExploreMarkets()} />
+            ) : null}
+          </View>
 
-          {featuredSettings.enabled ? (
-            <MarketRailSection
-              title="Worth Watching"
-              subtitle={`Strongest completed activity over ${formatWindow(featuredSettings.windowHours)}.`}
-              emptyTitle="No Featured Market yet."
-              emptyBody="Markets appear here automatically after reaching the current activity requirement."
-              onSeeAll={() => onExploreMarkets()}
-            >
-              {featuredRail.map(({ market, entry }) => (
-                <MarketRailCard
-                  key={market.instrument_public_id}
-                  market={market}
-                  badge={`#${entry.rank} FEATURED`}
-                  badgeTone="yes"
-                  detail={`${formatNairaCompact(entry.volume_ngn)} activity`}
-                  onPress={() => onOpenMarket(market)}
-                />
-              ))}
-            </MarketRailSection>
-          ) : null}
-
-          {trendingSettings.enabled ? (
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <LensButton label="Live" selected={lens === 'LIVE'} onPress={() => setLens('LIVE')} />
+            <LensButton label="VAD Select" selected={lens === 'VAD'} onPress={() => setLens('VAD')} />
             <TourTarget id="home-trending">
-              <MarketRailSection
-                title="Trending Now"
-                subtitle={`Markets gaining genuine momentum over ${formatMinutes(trendingSettings.windowMinutes)}.`}
-                emptyTitle="Nothing is trending right now."
-                emptyBody="Markets appear here when completed trading begins accelerating."
-                onSeeAll={() => onExploreMarkets()}
-              >
-                {trendingRail.map(({ market, entry }) => (
-                  <MarketRailCard
-                    key={market.instrument_public_id}
-                    market={market}
-                    badge={`#${entry.rank} TRENDING`}
-                    badgeTone="warning"
-                    detail={`${formatAcceleration(Math.max(entry.volume_acceleration, entry.trade_acceleration))} · ${entry.unique_traders} traders`}
-                    onPress={() => onOpenMarket(market)}
-                  />
-                ))}
-              </MarketRailSection>
+              <LensButton label="Momentum" selected={lens === 'MOMENTUM'} onPress={() => setLens('MOMENTUM')} />
             </TourTarget>
-          ) : null}
+          </View>
+
+          {lensMarkets.length ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              contentContainerStyle={{ gap: 10, paddingRight: theme.spacing.md }}
+            >
+              {lensMarkets.slice(0, 6).map((market) => (
+                <View
+                  key={`${lens}-${market.instrument_public_id}`}
+                  style={{ width: density.desktop ? 308 : Math.min(Math.max(density.width * 0.78, 246), 292) }}
+                >
+                  <MarketCard market={market} compact onPress={() => onOpenMarket(market)} />
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <VadCard variant="muted" style={{ minHeight: 84, justifyContent: 'center', gap: 2 }}>
+              <VadText variant="bodyStrong">
+                {lens === 'MOMENTUM' ? 'Momentum is quiet right now.' : lens === 'VAD' ? 'No VAD selections are live right now.' : 'No live markets right now.'}
+              </VadText>
+              <VadText variant="caption" tone="secondary">Switch views or open the full market catalogue.</VadText>
+            </VadCard>
+          )}
         </View>
       </TourTarget>
 
       <TourTarget id="home-categories">
-        <View style={{ gap: theme.spacing.sm }}>
+        <View style={{ gap: 8 }}>
           <VadSectionHeader
-            title="Explore Categories"
-            subtitle="Go directly to the outcomes you follow."
-            actionLabel="All markets"
+            title="Explore a theme"
+            subtitle="Jump straight to the questions you care about."
+            actionLabel="All"
             onAction={() => onExploreMarkets()}
           />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingRight: theme.spacing.md }}
+            contentContainerStyle={{ gap: 7, paddingRight: theme.spacing.md }}
           >
-            <CategoryTile label="All markets" symbol="◎" selected onPress={() => onExploreMarkets()} />
+            <ThemeChip label="All markets" selected onPress={() => onExploreMarkets()} />
             {categories.map((category) => (
-              <CategoryTile
-                key={category}
-                label={category}
-                symbol={category.slice(0, 1).toUpperCase()}
-                onPress={() => onExploreMarkets(category)}
-              />
+              <ThemeChip key={category} label={category} onPress={() => onExploreMarkets(category)} />
             ))}
           </ScrollView>
         </View>
       </TourTarget>
 
       <TourTarget id="home-community">
-        <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-          <VadSectionHeader
-            title="Community Pulse"
-            subtitle="A short look at what participants are saying."
-            actionLabel="Open feed"
-            onAction={onOpenCommunity}
-          />
-          <SocialConvictionFeed
-            markets={markets}
-            canCreatePost={false}
-            showComposer={false}
-            maxPosts={density.phone ? 2 : 3}
-            onOpenMarket={onOpenMarket}
-          />
-        </View>
+        <VadProgressiveSection
+          title="More market intelligence"
+          eyebrow="DEPTH ON DEMAND"
+          description="Open conviction signals and a small community sample only when you want more context."
+          icon="activity"
+          summary={(
+            <VadText variant="caption" tone="tertiary">
+              {featuredSettings.enabled ? `${featuredRail.length} signals` : 'Signals'} · Community
+            </VadText>
+          )}
+        >
+          {featuredSettings.enabled && featuredRail.length ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <View style={{ gap: 2 }}>
+                <VadText variant="caption" tone="brand">CONVICTION SIGNALS</VadText>
+                <VadText variant="caption" tone="secondary">
+                  Strong completed activity over {formatWindow(featuredSettings.windowHours)}.
+                </VadText>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: theme.spacing.sm }}>
+                {featuredRail.slice(0, 4).map(({ market, entry }) => (
+                  <SignalCard
+                    key={market.instrument_public_id}
+                    market={market}
+                    detail={`${formatNairaCompact(entry.volume_ngn)} activity`}
+                    onPress={() => onOpenMarket(market)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
+
+          <View style={{ gap: theme.spacing.sm }}>
+            <VadSectionHeader
+              title="Community conviction"
+              subtitle="A small sample of reasoning around VAD markets."
+              actionLabel="Open feed"
+              onAction={onOpenCommunity}
+            />
+            <SocialConvictionFeed
+              markets={markets}
+              canCreatePost={false}
+              showComposer={false}
+              maxPosts={1}
+              onOpenMarket={onOpenMarket}
+            />
+          </View>
+        </VadProgressiveSection>
       </TourTarget>
     </View>
   );
 }
 
-function Metric({ value, label }: { value: string; label: string }) {
+function FocusMarket({ market, detail, onPress }: { market: MarketCatalogItem; detail: string; onPress: () => void }) {
+  const theme = useVadTheme();
+  const density = useProductDensity();
+  const status = marketStatusMeta(market.status);
+  const yes = probability(market.yes_price);
+  const no = probability(market.no_price);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${market.title}. YES ${yes}. NO ${no}. ${status.label}.`}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        borderRadius: theme.radius.xl,
+        borderWidth: 1,
+        borderColor: pressed ? theme.colors.brandPrimary : theme.colors.borderStrong,
+        backgroundColor: theme.colors.surface,
+        padding: density.phone ? theme.spacing.md : theme.spacing.lg,
+        gap: theme.spacing.sm,
+        opacity: pressed ? 0.82 : 1,
+        transform: [{ scale: pressed ? 0.992 : 1 }],
+      })}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+        <VadText variant="caption" tone="brand">IN FOCUS</VadText>
+        <MarketTimeStatus market={market} compact />
+      </View>
+
+      <VadText variant={density.phone ? 'heading' : 'title'} numberOfLines={3}>{market.title}</VadText>
+      <VadText variant="caption" tone="tertiary" numberOfLines={1}>{detail}</VadText>
+
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <ProbabilityTile label="YES" value={yes} positive />
+        <ProbabilityTile label="NO" value={no} positive={false} />
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+        <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ flex: 1 }}>
+          {status.detail}
+        </VadText>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <VadText variant="caption" tone="brand">{status.tradeOpen ? 'Trade' : 'Details'}</VadText>
+          <VadIcon name="chevronRight" size={14} tone="brand" />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+function ProbabilityTile({ label, value, positive }: { label: string; value: string; positive: boolean }) {
   const theme = useVadTheme();
   return (
     <View
       style={{
         flex: 1,
         minWidth: 0,
-        paddingHorizontal: 10,
-        paddingVertical: 10,
-        borderRadius: theme.radius.lg,
+        borderRadius: theme.radius.md,
+        paddingHorizontal: theme.spacing.sm,
+        paddingVertical: 9,
+        backgroundColor: positive ? theme.colors.yesSoft : theme.colors.noSoft,
         borderWidth: 1,
-        borderColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
-        gap: 2,
+        borderColor: positive ? theme.colors.yes : theme.colors.no,
+        gap: 1,
       }}
     >
-      <VadText variant="heading">{value}</VadText>
+      <VadText variant="caption" tone={positive ? 'yes' : 'no'}>{label}</VadText>
+      <VadText variant="heading" tone={positive ? 'yes' : 'no'}>{value}</VadText>
+    </View>
+  );
+}
+
+function PulseMetric({ value, label, tone = 'primary' }: { value: string; label: string; tone?: 'primary' | 'yes' | 'brand' }) {
+  const theme = useVadTheme();
+  return (
+    <View
+      style={{
+        flex: 1,
+        minWidth: 0,
+        minHeight: 54,
+        justifyContent: 'center',
+        paddingHorizontal: 10,
+        borderRadius: theme.radius.md,
+        backgroundColor: theme.colors.surfaceMuted,
+        gap: 0,
+      }}
+    >
+      <VadText variant="heading" tone={tone}>{value}</VadText>
       <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
     </View>
   );
 }
 
-function PulseMarket({ market, detail, onPress }: { market: MarketCatalogItem; detail: string; onPress: () => void }) {
+function LensButton({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   const theme = useVadTheme();
-  const isOpen = market.status === 'OPEN' || market.status === 'ACTIVE';
-
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open ${market.title}`}
+      accessibilityRole="tab"
+      accessibilityState={{ selected }}
       onPress={onPress}
       style={({ pressed }) => ({
-        borderRadius: theme.radius.xl,
+        flex: 1,
+        minHeight: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 8,
+        borderRadius: theme.radius.pill,
         borderWidth: 1,
-        borderColor: pressed ? theme.colors.borderStrong : theme.colors.border,
-        backgroundColor: theme.colors.surface,
-        padding: theme.spacing.md,
-        gap: 7,
-        opacity: pressed ? 0.82 : 1,
+        borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
+        backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
+        opacity: pressed ? 0.7 : 1,
       })}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <VadChip label={isOpen ? 'TOP MOVEMENT' : 'MARKET TO WATCH'} tone={isOpen ? 'warning' : 'brand'} />
-        <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ flex: 1 }}>
-          {detail}
-        </VadText>
-      </View>
-      <VadText variant="bodyStrong" numberOfLines={2}>{market.title}</VadText>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-        <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ flex: 1 }}>
-          {market.category ?? 'General'} · {market.asset_code}
-        </VadText>
-        <VadText variant="caption" tone="brand">Open market →</VadText>
-      </View>
+      <VadText variant="caption" tone={selected ? 'brand' : 'secondary'} numberOfLines={1}>{label}</VadText>
     </Pressable>
   );
 }
 
-function MarketRailSection({
-  title,
-  subtitle,
-  emptyTitle,
-  emptyBody,
-  onSeeAll,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  emptyTitle: string;
-  emptyBody: string;
-  onSeeAll: () => void;
-  children: ReactNode;
-}) {
+function ThemeChip({ label, selected = false, onPress }: { label: string; selected?: boolean; onPress: () => void }) {
   const theme = useVadTheme();
-  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
-
-  return (
-    <View style={{ gap: 8 }}>
-      <VadSectionHeader title={title} subtitle={subtitle} actionLabel="See all" onAction={onSeeAll} />
-      {hasChildren ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 10, paddingRight: theme.spacing.md }}
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View
-          style={{
-            minHeight: 72,
-            justifyContent: 'center',
-            gap: 2,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            borderRadius: theme.radius.lg,
-            paddingHorizontal: theme.spacing.md,
-            paddingVertical: 10,
-            backgroundColor: theme.colors.surface,
-          }}
-        >
-          <VadText variant="bodyStrong">{emptyTitle}</VadText>
-          <VadText variant="caption" tone="secondary">{emptyBody}</VadText>
-        </View>
-      )}
-    </View>
-  );
-}
-
-function MarketRailCard({
-  market,
-  badge,
-  badgeTone,
-  detail,
-  onPress,
-}: {
-  market: MarketCatalogItem;
-  badge: string;
-  badgeTone: 'brand' | 'yes' | 'warning';
-  detail?: string;
-  onPress: () => void;
-}) {
-  const density = useProductDensity();
-
-  return (
-    <View
-      style={{
-        width: density.desktop ? 300 : Math.min(Math.max(density.width * 0.8, 252), 292),
-        gap: 6,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 25 }}>
-        <VadChip label={badge} tone={badgeTone} />
-        {detail ? (
-          <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ flex: 1 }}>
-            {detail}
-          </VadText>
-        ) : null}
-      </View>
-      <MarketCard market={market} compact onPress={onPress} />
-    </View>
-  );
-}
-
-function CategoryTile({ label, symbol, selected = false, onPress }: {
-  label: string;
-  symbol: string;
-  selected?: boolean;
-  onPress: () => void;
-}) {
-  const theme = useVadTheme();
-
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Explore ${label}`}
+      accessibilityState={{ selected }}
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 108,
-        minHeight: 84,
-        justifyContent: 'space-between',
-        borderRadius: theme.radius.lg,
+        minHeight: 38,
+        justifyContent: 'center',
+        paddingHorizontal: 13,
+        borderRadius: theme.radius.pill,
         borderWidth: 1,
         borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
         backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
-        padding: 10,
-        opacity: pressed ? 0.78 : 1,
+        opacity: pressed ? 0.72 : 1,
       })}
     >
-      <View
-        style={{
-          width: 30,
-          height: 30,
-          borderRadius: 15,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: selected ? theme.colors.brandPrimary : theme.colors.surfaceMuted,
-        }}
-      >
-        <VadText variant="caption" tone={selected ? 'inverse' : 'brand'}>{symbol}</VadText>
-      </View>
-      <VadText variant="caption" tone={selected ? 'brand' : 'secondary'} numberOfLines={2}>
-        {label}
-      </VadText>
+      <VadText variant="caption" tone={selected ? 'brand' : 'secondary'}>{label}</VadText>
+    </Pressable>
+  );
+}
+
+function SignalCard({ market, detail, onPress }: { market: MarketCatalogItem; detail: string; onPress: () => void }) {
+  const theme = useVadTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 230,
+        minHeight: 102,
+        borderRadius: theme.radius.lg,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surface,
+        padding: theme.spacing.sm,
+        gap: 5,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <VadText variant="bodyStrong" numberOfLines={2}>{market.title}</VadText>
+      <VadText variant="caption" tone="brand">{detail}</VadText>
+      <MarketTimeStatus market={market} compact fill />
     </Pressable>
   );
 }

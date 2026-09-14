@@ -8,7 +8,9 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { formatRelativeTimestamp } from '@/features/markets/market-state';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getProviderReadiness } from '@/services/payment-api';
@@ -37,6 +39,7 @@ export function FundingOverview({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const wide = density.width >= 760;
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,6 +84,7 @@ export function FundingOverview({
     : availableCount > 0
       ? 'Some features unavailable'
       : 'Temporarily unavailable';
+  const checkedRelative = formatRelativeTimestamp(readiness?.generatedAt, now);
 
   return (
     <View style={{ gap: density.sectionGap }}>
@@ -92,25 +96,26 @@ export function FundingOverview({
             <VadText variant="caption" tone="brand">YOUR MONEY</VadText>
             <VadText variant="heading">Funding & withdrawals</VadText>
             <VadText variant="caption" tone="secondary">
-              Check what you can do with your VAD wallet right now.
+              See what your account and the current payment providers allow right now.
             </VadText>
           </View>
-          <View style={{ alignItems: 'flex-end', gap: 2, maxWidth: 150 }}>
+          <View style={{ alignItems: 'flex-end', gap: 2, maxWidth: 170 }}>
             <VadText variant="bodyStrong" tone={availableCount === 3 ? 'yes' : availableCount ? 'brand' : 'warning'}>{overallStatus}</VadText>
+            {checkedRelative ? <VadText variant="caption" tone="tertiary">Checked {checkedRelative}</VadText> : null}
           </View>
         </View>
       </VadCard>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
         <VadCard variant="raised" style={{ flex: 1, gap: theme.spacing.xs }}>
-          <VadText variant="bodyStrong">Available features</VadText>
+          <VadText variant="bodyStrong">Provider availability</VadText>
           <StatusFact label="Deposits" ready={depositReady} />
           <StatusFact label="Withdrawals" ready={withdrawalReady} />
           <StatusFact label="Identity verification" ready={kycReady} />
         </VadCard>
 
         <VadCard variant="raised" style={{ flex: 1, gap: theme.spacing.xs }}>
-          <VadText variant="bodyStrong">For your account</VadText>
+          <VadText variant="bodyStrong">Your account access</VadText>
           <PolicyFact label="Deposits" allowed={depositAllowed} loading={policyLoading} reason={depositReason} />
           <PolicyFact label="Withdrawals" allowed={withdrawalAllowed} loading={policyLoading} reason={withdrawalReason} />
         </VadCard>
@@ -118,8 +123,8 @@ export function FundingOverview({
 
       <VadCard style={{ gap: theme.spacing.xs }}>
         <View style={{ gap: 2, marginBottom: theme.spacing.xs }}>
-          <VadText variant="bodyStrong">Deposit or withdraw</VadText>
-          <VadText variant="caption" tone="secondary">Choose what you want to do. We&apos;ll check the details before you continue.</VadText>
+          <VadText variant="bodyStrong">Choose a money action</VadText>
+          <VadText variant="caption" tone="secondary">VAD checks provider readiness and your account policy again before a transfer starts.</VadText>
         </View>
         <ReadinessRow
           title="Deposit NGN"
@@ -147,7 +152,7 @@ export function FundingOverview({
         />
         <ReadinessRow
           title="Payment activity"
-          detail="See your deposits, withdrawals and their status"
+          detail="See deposits, withdrawals and their live status"
           ready
           statusLabel="OPEN"
           icon="activity"
@@ -157,9 +162,13 @@ export function FundingOverview({
 
       <VadCard variant="raised" style={{ gap: 2 }}>
         <VadText variant="caption" tone="secondary">
-          Before a transfer starts, VAD checks your available balance, verification, fees and limits.
+          Before a transfer starts, VAD checks your available balance, verification, fees and limits again.
         </VadText>
-        {readiness?.generatedAt ? <VadText variant="caption" tone="tertiary">Checked {new Date(readiness.generatedAt).toLocaleString()}</VadText> : null}
+        {readiness?.generatedAt ? (
+          <VadText variant="caption" tone="tertiary">
+            Provider snapshot: {checkedRelative ?? new Date(readiness.generatedAt).toLocaleString()}
+          </VadText>
+        ) : null}
       </VadCard>
     </View>
   );

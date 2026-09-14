@@ -2,9 +2,10 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
-import { VadSectionHeader } from '@/components/ui/vad-section-header';
+import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { AssistantEntry } from '@/features/assistant/assistant-entry';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
@@ -34,24 +35,46 @@ export default function CommunityRoute() {
 
   return (
     <ProductSubpage title="Community" maxWidth={800}>
-      <VadSectionHeader
-        title="Community"
-        subtitle="Share your view, follow other creators and discuss the markets you care about."
-      />
-
       <VadCard
         variant="brand"
         style={{
           padding: density.phone ? theme.spacing.md : theme.spacing.lg,
-          gap: theme.spacing.xs,
+          gap: theme.spacing.sm,
+          overflow: 'hidden',
         }}
       >
-        <VadText variant="caption" tone="brand">VAD COMMUNITY</VadText>
-        <VadText variant={density.phone ? 'heading' : 'title'}>Share your reasoning. Build a track record.</VadText>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <View
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.colors.surface,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+            }}
+          >
+            <VadIcon name="community" size={19} tone="brand" />
+          </View>
+          <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+            <VadText variant="caption" tone="brand">CONVICTION FLOOR</VadText>
+            <VadText variant={density.phone ? 'heading' : 'title'}>Reasoning around the market</VadText>
+          </View>
+        </View>
         <VadText variant="caption" tone="secondary">
-          Link your predictions to live markets and see how your calls perform over time. Every market still follows its own published rules.
+          Follow how people think, attach views to live markets and discuss the evidence. Community conviction never replaces a market's published resolution rules.
         </VadText>
       </VadCard>
+
+      <AssistantEntry
+        compact
+        label="Ask AI about market reasoning"
+        detail="Use VAD Assistant to understand probabilities, evidence and market mechanics."
+        prompt="Help me understand how to evaluate reasoning in VAD Community posts without confusing trader conviction with the official market result."
+        sourceRoute="/community"
+      />
 
       {createPostLoading ? (
         <View

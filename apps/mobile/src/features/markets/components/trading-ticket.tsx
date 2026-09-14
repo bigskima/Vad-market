@@ -9,6 +9,7 @@ import { VadInput } from '@/components/ui/vad-input';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -18,6 +19,8 @@ import {
   type TradeQuote,
 } from '@/services/market-api';
 import { assetMoney, probability } from '../format';
+import { describeMarketTiming, formatRelativeTimestamp, marketStatusMeta } from '../market-state';
+import { MarketTimeStatus } from './market-time-status';
 
 const SHARE_PRESETS = ['25', '50', '100', '250'] as const;
 const SIDES = [
@@ -46,7 +49,10 @@ export function TradingTicket({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const splitReview = density.width >= 860;
+  const marketState = marketStatusMeta(market.status);
+  const timing = describeMarketTiming(market.closes_at, market.status, now);
   const [outcome, setOutcome] = useState<'YES' | 'NO'>('YES');
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
   const [price, setPrice] = useState(() => priceInput(market.yes_price));
@@ -57,7 +63,7 @@ export function TradingTicket({
   const [placeError, setPlaceError] = useState<string | null>(null);
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
 
-  const tradeReady = canTrade && !capabilityLoading;
+  const tradeReady = canTrade && !capabilityLoading && marketState.tradeOpen;
 
   function clearReviewState() {
     setQuote(null);
@@ -144,9 +150,10 @@ export function TradingTicket({
           <View style={{ gap: 2 }}>
             <VadText variant="heading">Your order is live.</VadText>
             <VadText variant="caption" tone="secondary">
-              It may fill when matching orders become available. You can track its progress from Portfolio.
+              It may fill while the market remains open and matching orders are available. Track its progress from Portfolio.
             </VadText>
           </View>
+          <MarketTimeStatus market={market} showAbsolute />
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 1 }}>
             <VadText variant="caption" tone="tertiary">ORDER REFERENCE</VadText>
             <VadText variant="bodyStrong" selectable>{placedOrderId}</VadText>
@@ -174,10 +181,16 @@ export function TradingTicket({
           </View>
         </View>
 
+        <MarketTimeStatus market={market} showAbsolute />
+
         {capabilityLoading ? (
           <InlineMessage tone="warning" title="Checking trading availability" body={runtimeCapabilityReason('CAPABILITIES_LOADING')} />
+        ) : !marketState.tradeOpen ? (
+          <InlineMessage tone="warning" title={marketState.label} body={marketState.detail} />
         ) : !canTrade ? (
           <InlineMessage tone="warning" title="Trading unavailable" body={runtimeCapabilityReason(tradeReason, 'Trading is not available for your account right now.')} />
+        ) : timing.isPastClose ? (
+          <InlineMessage tone="warning" title="Scheduled close reached" body="The displayed close time has been reached. VAD will still rely on the authoritative market state when accepting or rejecting an order." />
         ) : null}
 
         <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: 6 }}>
@@ -255,8 +268,10 @@ export function TradingTicket({
           <View style={{ gap: 1 }}>
             <VadText variant="caption" tone="brand">ORDER REVIEW · {market.asset_code}</VadText>
             <VadText variant="heading">Check before placing.</VadText>
-            <VadText variant="caption" tone="secondary">Review these figures carefully. They apply to this order if you place it now.</VadText>
+            <VadText variant="caption" tone="secondary">Review the exposure, fees and remaining market time together before you commit.</VadText>
           </View>
+
+          <MarketTimeStatus market={market} />
 
           <QuoteLine label="Order value" value={assetMoney(quote.notional, market.asset_code)} />
           <QuoteLine label="Fee if matched later" value={assetMoney(quote.makerFee, market.asset_code)} />
@@ -267,9 +282,10 @@ export function TradingTicket({
             <QuoteLine label="Shares available" value={String(quote.availableSharesToSell)} />
           )}
           <QuoteLine label="Payout before fees if correct" value={assetMoney(quote.potentialGrossSettlement, market.asset_code)} />
+          <QuoteLine label="Review prepared" value={formatRelativeTimestamp(quote.quotedAt, now) ?? 'just now'} />
 
           {placeError ? <InlineMessage tone="danger" title="Order not placed" body={placeError} /> : null}
-          {!tradeReady ? <InlineMessage tone="warning" title="Trading unavailable" body={runtimeCapabilityReason(tradeReason)} /> : null}
+          {!tradeReady ? <InlineMessage tone="warning" title={marketState.tradeOpen ? 'Trading unavailable' : marketState.label} body={marketState.tradeOpen ? runtimeCapabilityReason(tradeReason) : marketState.detail} /> : null}
 
           <VadButton label="Place order" loading={working} disabled={!tradeReady || working} onPress={() => void execute()} />
           <VadButton label="Edit order" variant="ghost" size="small" disabled={working} onPress={() => { setQuote(null); setPlaceError(null); }} />

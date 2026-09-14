@@ -19,17 +19,30 @@ export function PolicyConsentBoundary({ children }: { children: ReactNode }) {
   );
 
   if (isLoading) {
-    return <PolicyCheckScreen message="Restoring your account…" />;
+    return (
+      <AccountReadyScreen
+        title="Getting your account ready"
+        message="Reconnecting securely and restoring your VAD experience."
+      />
+    );
   }
 
   if (!session || isPasswordRecovery) return <Redirect href="/" />;
 
-  if (policyGate.loading) return <PolicyCheckScreen />;
+  if (policyGate.loading) {
+    return (
+      <AccountReadyScreen
+        title="Getting your account ready"
+        message="Preparing your access, preferences and latest VAD experience."
+      />
+    );
+  }
 
   if (policyGate.error) {
     return (
-      <PolicyCheckScreen
-        message={policyGate.error}
+      <AccountReadyScreen
+        title="We couldn't finish getting things ready"
+        message="Your account is safe. Try again to continue into VAD."
         actionLabel="Try again"
         onAction={() => void policyGate.refresh()}
       />
@@ -107,7 +120,7 @@ function PolicyHomeBackdrop() {
           <VadText variant="caption" tone="brand">VAD HOME</VadText>
           <VadText variant="heading">Your account is ready.</VadText>
           <VadText tone="secondary">
-            Complete the required policy review to enter VAD. Your guided app tour will begin only after the policy step is finished.
+            Review the latest important information to continue. Your guided app tour begins only after this step is finished.
           </VadText>
         </View>
       </View>
@@ -115,37 +128,80 @@ function PolicyHomeBackdrop() {
   );
 }
 
-function PolicyCheckScreen({
-  message = 'Checking the current VAD policies for your account…',
+function AccountReadyScreen({
+  title,
+  message,
   actionLabel,
   onAction,
 }: {
-  message?: string;
+  title: string;
+  message: string;
   actionLabel?: string;
   onAction?: () => void;
 }) {
   const theme = useVadTheme();
+
   return (
     <ViewportFrame>
       <View
+        accessibilityRole="progressbar"
+        accessibilityLabel={title}
         style={{
           flex: 1,
+          alignItems: 'center',
           justifyContent: 'center',
-          padding: theme.spacing.xl,
+          paddingHorizontal: theme.spacing.xl,
           backgroundColor: theme.colors.background,
         }}
       >
-        <View style={{ width: '100%', maxWidth: 520, alignSelf: 'center', gap: theme.spacing.lg }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-            <VadLogo size={38} />
-            <VadText variant="heading">VAD</VadText>
+        <View
+          style={{
+            width: '100%',
+            maxWidth: 360,
+            alignItems: 'center',
+            gap: theme.spacing.lg,
+          }}
+        >
+          <View
+            style={{
+              width: 92,
+              height: 92,
+              borderRadius: 28,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.colors.surface,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              ...theme.shadows.subtle,
+            }}
+          >
+            <VadLogo size={62} />
           </View>
-          <View style={{ gap: 5 }}>
-            <VadText variant="caption" tone="brand">ACCOUNT CHECK</VadText>
-            <VadText variant="title">Before you continue</VadText>
-            <VadText tone="secondary">{message}</VadText>
+
+          <View style={{ alignItems: 'center', gap: 7 }}>
+            <VadText variant="heading" style={{ textAlign: 'center' }}>{title}</VadText>
+            <VadText variant="caption" tone="secondary" style={{ textAlign: 'center', maxWidth: 320 }}>
+              {message}
+            </VadText>
           </View>
-          {actionLabel && onAction ? <VadButton label={actionLabel} onPress={onAction} /> : null}
+
+          {actionLabel && onAction ? (
+            <VadButton label={actionLabel} fullWidth={false} onPress={onAction} />
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+              {[0, 1, 2].map((item) => (
+                <View
+                  key={item}
+                  style={{
+                    width: item === 1 ? 18 : 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: item === 1 ? theme.colors.brandPrimary : theme.colors.borderStrong,
+                  }}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </View>
     </ViewportFrame>

@@ -7,11 +7,14 @@ import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadMetricTile } from '@/components/ui/vad-metric-tile';
+import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
+import { formatRelativeTimestamp } from '@/features/markets/market-state';
 import { TourTarget } from '@/features/tour/tour-provider';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getMyPaymentIntents, type PaymentIntentRow } from '@/services/payment-api';
@@ -62,12 +65,13 @@ export function WalletScreen({
   const pending = Number(primary?.withdrawal_pending ?? 0);
   const total = available + reserved + pending;
   const primaryCode = primary?.asset_code ?? 'NGN';
+  const recentIntents = intents.slice(0, density.phone ? 3 : 4);
 
   return (
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Wallet"
-        subtitle="See your available, committed and pending balances for each currency. NGN and USDC are always kept separate."
+        subtitle="Your available balance and money actions come first. Currency detail and history stay one tap away."
         actionLabel="Activity"
         onAction={onActivity}
       />
@@ -78,11 +82,25 @@ export function WalletScreen({
           style={{
             gap: density.phone ? theme.spacing.md : theme.spacing.lg,
             padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+            overflow: 'hidden',
           }}
         >
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              width: 180,
+              height: 180,
+              borderRadius: 90,
+              right: -64,
+              top: -84,
+              backgroundColor: theme.colors.surface,
+              opacity: theme.mode === 'dark' ? 0.06 : 0.42,
+            }}
+          />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <VadText variant="caption" tone="brand">{primaryCode} BALANCE</VadText>
+              <VadText variant="caption" tone="brand">{primaryCode} LIQUIDITY</VadText>
               <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
                 {assetMoney(total, primaryCode)}
               </VadText>
@@ -112,25 +130,6 @@ export function WalletScreen({
         </VadCard>
       </TourTarget>
 
-      {orderedWallets.length ? (
-        <View style={{ gap: theme.spacing.sm }}>
-          <VadSectionHeader
-            title="Currency balances"
-            subtitle="Each currency balance is tracked separately."
-          />
-          <View style={{ flexDirection: density.width >= 720 ? 'row' : 'column', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-            {orderedWallets.map((wallet) => (
-              <AssetBalanceCard key={wallet.asset_code} wallet={wallet} />
-            ))}
-          </View>
-        </View>
-      ) : (
-        <VadEmptyState
-          title="No wallet balances yet"
-          body="Your balances will appear here when funds become available in your account."
-        />
-      )}
-
       <TourTarget id="wallet-actions">
         <View style={{ flexDirection: 'row', gap: density.phone ? 8 : theme.spacing.sm }}>
           <WalletAction label="Deposit" detail="Add NGN" icon="arrowDown" tone="yes" onPress={onDeposit} />
@@ -139,11 +138,36 @@ export function WalletScreen({
         </View>
       </TourTarget>
 
+      {orderedWallets.length ? (
+        <VadProgressiveSection
+          title="Currency balances"
+          eyebrow="BALANCE BREAKDOWN"
+          description="Open the detailed breakdown only when you need to inspect available, committed and pending balances by currency."
+          icon="wallet"
+          summary={(
+            <VadText variant="caption" tone="tertiary">
+              {orderedWallets.map((wallet) => wallet.asset_code).join(' · ')}
+            </VadText>
+          )}
+        >
+          <View style={{ flexDirection: density.width >= 720 ? 'row' : 'column', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {orderedWallets.map((wallet) => (
+              <AssetBalanceCard key={wallet.asset_code} wallet={wallet} />
+            ))}
+          </View>
+        </VadProgressiveSection>
+      ) : (
+        <VadEmptyState
+          title="No wallet balances yet"
+          body="Your balances will appear here when funds become available in your account."
+        />
+      )}
+
       <TourTarget id="wallet-activity">
         <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
           <VadSectionHeader
             title="Recent activity"
-            subtitle="Latest deposits, withdrawals and refunds."
+            subtitle="A short preview only. Open Activity for the complete payment history."
             actionLabel="See all"
             onAction={onActivity}
           />
@@ -152,6 +176,7 @@ export function WalletScreen({
             <View style={{ gap: theme.spacing.sm }}>
               <VadSkeleton height={density.compact ? 68 : 76} radius={theme.radius.xl} />
               <VadSkeleton height={density.compact ? 68 : 76} radius={theme.radius.xl} />
+              {density.phone ? null : <VadSkeleton height={76} radius={theme.radius.xl} />}
             </View>
           ) : activityError && !intents.length ? (
             <VadErrorState
@@ -167,9 +192,9 @@ export function WalletScreen({
               {activityError ? (
                 <VadErrorState title="Could not refresh wallet activity" message={activityError} onRetry={() => void load()} />
               ) : null}
-              {intents.length ? (
+              {recentIntents.length ? (
                 <View style={{ gap: density.compact ? 7 : theme.spacing.sm }}>
-                  {intents.map((intent) => (
+                  {recentIntents.map((intent) => (
                     <PaymentRow key={intent.intent_public_id} intent={intent} onPress={() => onOpenTransaction(intent)} />
                   ))}
                 </View>
@@ -236,10 +261,13 @@ function AssetFact({ label, value, tone = 'primary' }: { label: string; value: s
 export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPress?: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const incoming = intent.operation === 'DEPOSIT';
   const label = incoming ? 'Deposit' : intent.operation === 'WITHDRAWAL' ? 'Withdrawal' : 'Refund';
   const icon: VadIconName = incoming ? 'arrowDown' : 'arrowUp';
   const status = paymentStatus(intent);
+  const activityTime = formatRelativeTimestamp(intent.settled_at ?? intent.created_at, now) ?? 'recently';
+  const timePrefix = intent.settled_at ? 'Completed' : status.label === 'PROCESSING' ? 'Started' : 'Created';
 
   return (
     <Pressable
@@ -275,7 +303,7 @@ export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPr
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
           <VadText variant="bodyStrong">{label}</VadText>
-          <VadText variant="caption" tone="tertiary">{new Date(intent.created_at).toLocaleString()}</VadText>
+          <VadText variant="caption" tone="tertiary">{timePrefix} {activityTime}</VadText>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '46%' }}>
           <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(intent.amount, intent.asset_code)}</VadText>

@@ -1,7 +1,7 @@
 import type { RuntimeCapabilityKey } from '@vad/types';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams, usePathname } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -10,13 +10,14 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
-import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { AssistantEntry } from '@/features/assistant/assistant-entry';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useProductTour } from '@/features/tour/tour-provider';
+import { useCurrentProfile } from '@/hooks/use-current-profile';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
@@ -36,6 +37,13 @@ type Props = {
   capabilityTitle?: string;
 };
 
+type AssistantSurface = {
+  label: string;
+  detail: string;
+  prompt: string;
+  marketId?: string | null;
+} | null;
+
 export function ProductRoute({
   active,
   children,
@@ -45,13 +53,17 @@ export function ProductRoute({
 }: Props) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const pathname = usePathname();
+  const params = useLocalSearchParams<{ marketId?: string | string[] }>();
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
   const { registerScrollController } = useProductTour();
-  const [noticesOpen, setNoticesOpen] = useState(false);
+  const { profile } = useCurrentProfile(session?.user.id);
   const scrollRef = useRef<ScrollView | null>(null);
   const scrollOffsetRef = useRef(0);
+  const marketId = Array.isArray(params.marketId) ? params.marketId[0] : params.marketId;
+  const assistantSurface = assistantSurfaceFor(active, pathname, marketId);
 
   if (!isLoading && !session) return <Redirect href="/" />;
 
@@ -207,6 +219,8 @@ export function ProductRoute({
       <ProductTopBar
         active={active}
         email={email}
+        displayName={profile?.display_name}
+        avatarPath={profile?.avatar_path}
         isAdmin={Boolean(data.adminSummary)}
         canCreate={canCreate}
         onCreate={() => router.push('/create-market')}
@@ -214,7 +228,7 @@ export function ProductRoute({
         onAssistant={() => router.push('/assistant')}
         onAccount={() => router.replace('/account')}
         onSearch={() => router.push('/markets')}
-        onNotices={() => setNoticesOpen(true)}
+        onNotices={() => router.push('/notifications')}
         noticeCount={noticeCount}
       />
 
@@ -291,6 +305,17 @@ export function ProductRoute({
               </View>
             ) : null}
 
+            {assistantSurface && !requiredLoading && (!requiredCapability || requiredAllowed) ? (
+              <AssistantEntry
+                compact
+                label={assistantSurface.label}
+                detail={assistantSurface.detail}
+                prompt={assistantSurface.prompt}
+                marketId={assistantSurface.marketId}
+                sourceRoute={pathname}
+              />
+            ) : null}
+
             {requiredLoading ? (
               <View style={{ gap: theme.spacing.md }}>
                 <VadSkeleton width="48%" height={26} />
@@ -324,35 +349,50 @@ export function ProductRoute({
       {density.phone ? (
         <ProductTabBar active={active} onChange={navigate} />
       ) : null}
-
-      <VadBottomSheet
-        visible={noticesOpen}
-        title="VAD updates"
-        onClose={() => setNoticesOpen(false)}
-      >
-        <View style={{ gap: theme.spacing.md }}>
-          {maintenance ? (
-            <View style={{ gap: 4, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-              <VadText variant="caption" tone="warning">{maintenanceLabel}</VadText>
-              <VadText variant="bodyStrong">{maintenanceMessage}</VadText>
-              {resumesAt ? (
-                <VadText variant="caption" tone="tertiary">Scheduled to resume {new Date(resumesAt).toLocaleString()}.</VadText>
-              ) : null}
-            </View>
-          ) : null}
-
-          {data.publicNotices.length ? data.publicNotices.map((notice) => (
-            <View key={notice.public_id} style={{ gap: 4, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-              <VadText variant="caption" tone={notice.tone === 'WARNING' ? 'warning' : 'yes'}>
-                {notice.tone === 'WARNING' ? 'SERVICE NOTICE' : 'VAD UPDATE'}
-              </VadText>
-              <VadText>{notice.message}</VadText>
-            </View>
-          )) : maintenance ? null : (
-            <VadText tone="secondary">There are no active service notices right now.</VadText>
-          )}
-        </View>
-      </VadBottomSheet>
     </View>
   );
+}
+
+function assistantSurfaceFor(active: ProductTab, pathname: string, marketId?: string): AssistantSurface {
+  if (pathname.startsWith('/market/')) {
+    return {
+      label: 'Ask AI about this market',
+      detail: 'Understand probability, timing, risk and market mechanics.',
+      prompt: 'Explain the market I am viewing: what its current probability means, what the timing means, and what I should understand before taking a position. Do not predict or guarantee the final result.',
+      marketId: marketId ?? null,
+    };
+  }
+
+  if (pathname !== '/home' && pathname !== '/markets' && pathname !== '/wallet' && pathname !== '/portfolio') return null;
+
+  if (active === 'Home') {
+    return {
+      label: 'Ask VAD Assistant',
+      detail: 'Get help reading market signals without leaving Home.',
+      prompt: 'Help me understand what I should look at on VAD Home before deciding which market to research further.',
+    };
+  }
+  if (active === 'Markets') {
+    return {
+      label: 'Ask AI about market discovery',
+      detail: 'Understand states, probability and how to compare markets.',
+      prompt: 'Help me understand how to compare VAD markets using probability, lifecycle state, closing time and market rules without treating price as a guaranteed result.',
+    };
+  }
+  if (active === 'Wallet') {
+    return {
+      label: 'Ask AI about your wallet',
+      detail: 'Understand available, committed and pending balances.',
+      prompt: 'Explain how my VAD wallet works, especially the difference between available, committed and withdrawal-pending balances, and where I should look for payment status.',
+    };
+  }
+  if (active === 'Portfolio') {
+    return {
+      label: 'Ask AI about your portfolio',
+      detail: 'Understand positions, exposure and open orders.',
+      prompt: 'Explain how to read my VAD portfolio, including positions, cost basis, exposure and open orders. Do not give me a guaranteed-return recommendation.',
+    };
+  }
+
+  return null;
 }

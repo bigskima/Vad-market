@@ -6,6 +6,7 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney, pct } from '@/features/markets/format';
@@ -53,17 +54,32 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
           <VadChip label={positionStatusLabel(position.status)} />
         </View>
         <VadText variant="heading">{position.market_title}</VadText>
-        <VadText variant="caption" tone="secondary">This view shows your shares, average entry price and amount invested. Profit or loss appears when reliable market pricing is available.</VadText>
       </View>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
-        <VadCard style={{ flex: 1.1, borderColor: yes ? theme.colors.yes : theme.colors.no, gap: theme.spacing.sm }}>
+        <VadCard variant="brand" style={{ flex: 1.1, borderColor: yes ? theme.colors.yes : theme.colors.no, gap: theme.spacing.md, overflow: 'hidden' }}>
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              width: 150,
+              height: 150,
+              borderRadius: 75,
+              right: -58,
+              top: -72,
+              backgroundColor: yes ? theme.colors.yesSoft : theme.colors.noSoft,
+              opacity: 0.5,
+            }}
+          />
           <VadText variant="caption" tone={yes ? 'yes' : 'no'}>AMOUNT INVESTED · {position.asset_code}</VadText>
-          <VadText variant="display" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(costBasis, position.asset_code)}</VadText>
+          <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{assetMoney(costBasis, position.asset_code)}</VadText>
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <Snapshot label="Shares" value={shares.toLocaleString()} />
             <Snapshot label="Avg. entry" value={pct(average)} />
           </View>
+          <VadText variant="caption" tone="secondary">
+            This is your current conviction exposure. Final payout still depends on the market result.
+          </VadText>
         </VadCard>
 
         <VadCard variant="raised" style={{ flex: 0.9, gap: theme.spacing.sm }}>
@@ -74,32 +90,10 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
             </View>
             <VadText variant="caption" tone="tertiary">by amount invested</VadText>
           </View>
-          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(portfolioWeight * 100) }} style={{ height: 6, borderRadius: theme.radius.pill, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }}>
+          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(portfolioWeight * 100) }} style={{ height: 7, borderRadius: theme.radius.pill, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }}>
             <View style={{ width: allocationWidth, height: '100%', backgroundColor: yes ? theme.colors.yes : theme.colors.no }} />
           </View>
           <VadText variant="caption" tone="secondary">This percentage compares only positions using the same currency.</VadText>
-        </VadCard>
-      </View>
-
-      <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: theme.spacing.md }}>
-        <VadCard style={{ flex: 1.1, width: '100%', gap: theme.spacing.xs }}>
-          <VadText variant="bodyStrong">Position details</VadText>
-          <Detail label="Outcome" value={position.outcome_code} tone={yes ? 'yes' : 'no'} />
-          <Detail label="Currency" value={position.asset_code} />
-          <Detail label="Shares" value={shares.toLocaleString()} />
-          <Detail label="Average entry" value={pct(average)} />
-          <Detail label="Amount invested" value={assetMoney(costBasis, position.asset_code)} />
-          <Detail label="Status" value={positionStatusLabel(position.status)} />
-        </VadCard>
-
-        <VadCard variant="raised" style={{ flex: 0.9, width: '100%', gap: theme.spacing.sm }}>
-          <VadText variant="bodyStrong">At a glance</VadText>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <ContextFact label={`All ${position.asset_code} positions`} value={assetMoney(assetPortfolioCost, position.asset_code)} />
-            <ContextFact label="This position" value={assetMoney(costBasis, position.asset_code)} />
-            <ContextFact label="Share" value={pct(portfolioWeight)} />
-          </View>
-          <VadText variant="caption" tone="secondary">Filled trades update your shares and amount invested. The final market result determines any payout.</VadText>
           <VadButton
             label="Open market"
             variant="secondary"
@@ -107,6 +101,36 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
           />
         </VadCard>
       </View>
+
+      <VadProgressiveSection
+        title="Position details"
+        eyebrow="HOLDING BREAKDOWN"
+        description="Shares, entry price, invested amount and current position status."
+        icon="portfolio"
+        summary={<VadText variant="caption" tone="tertiary">{shares.toLocaleString()} shares · {pct(average)} average entry</VadText>}
+      >
+        <Detail label="Outcome" value={position.outcome_code} tone={yes ? 'yes' : 'no'} />
+        <Detail label="Currency" value={position.asset_code} />
+        <Detail label="Shares" value={shares.toLocaleString()} />
+        <Detail label="Average entry" value={pct(average)} />
+        <Detail label="Amount invested" value={assetMoney(costBasis, position.asset_code)} />
+        <Detail label="Status" value={positionStatusLabel(position.status)} />
+      </VadProgressiveSection>
+
+      <VadProgressiveSection
+        title="Portfolio context"
+        eyebrow="EXPOSURE CONTEXT"
+        description={`See how this position compares with your other ${position.asset_code} positions.`}
+        icon="wallet"
+        summary={<VadText variant="caption" tone="tertiary">{pct(portfolioWeight)} of {position.asset_code} invested value</VadText>}
+      >
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+          <ContextFact label={`All ${position.asset_code} positions`} value={assetMoney(assetPortfolioCost, position.asset_code)} />
+          <ContextFact label="This position" value={assetMoney(costBasis, position.asset_code)} />
+          <ContextFact label="Share" value={pct(portfolioWeight)} />
+        </View>
+        <VadText variant="caption" tone="secondary">Filled trades update your shares and amount invested. The final market result determines any payout.</VadText>
+      </VadProgressiveSection>
     </View>
   );
 }
