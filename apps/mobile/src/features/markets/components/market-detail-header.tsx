@@ -27,7 +27,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
         <VadChip label={status.label} tone={status.tone} />
         <VadChip label={market.asset_code} tone="brand" />
-        <VadText variant="caption" tone="secondary">{market.category ?? 'General'}</VadText>
+        <VadText variant="caption" tone="secondary">{market.category ?? 'General'} · {friendlyEnum(market.market_type)}</VadText>
       </View>
 
       <VadText variant={density.compact ? 'heading' : 'title'}>{market.title}</VadText>
@@ -49,7 +49,6 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
         <MetaChip label="State" value={status.detail} />
-        <MetaChip label="Type" value={friendlyEnum(market.market_type)} />
         <MetaChip label="Activity" value={lastTrade ? `Traded ${lastTrade}` : 'No trades yet'} />
       </View>
     </View>
