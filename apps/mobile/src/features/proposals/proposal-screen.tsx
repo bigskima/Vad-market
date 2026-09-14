@@ -11,6 +11,7 @@ import { VadInput } from '@/components/ui/vad-input';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { MarketMediaPicker } from '@/features/markets/components/market-media-picker';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -19,6 +20,7 @@ import {
   type MarketAdmissionResponse,
   type ProposalRow,
 } from '@/services/market-api';
+import type { MarketMediaSelection } from '@/services/market-media-api';
 
 type ProposalView = 'new' | 'history';
 type ProposalStep = 0 | 1 | 2;
@@ -56,6 +58,7 @@ export function ProposalScreen({
   const [context, setContext] = useState('');
   const [category, setCategory] = useState('');
   const [preferredAssetCode, setPreferredAssetCode] = useState(activeAssetCodes[0] ?? '');
+  const [media, setMedia] = useState<MarketMediaSelection | null>(null);
   const [working, setWorking] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [admission, setAdmission] = useState<MarketAdmissionResponse | null>(null);
@@ -72,6 +75,7 @@ export function ProposalScreen({
     setContext('');
     setCategory('');
     setPreferredAssetCode(activeAssetCodes[0] ?? '');
+    setMedia(null);
     setStep(0);
     setSubmitError(null);
     setAdmission(null);
@@ -106,6 +110,7 @@ export function ProposalScreen({
         context: context.trim() || undefined,
         category: category.trim() || undefined,
         assetCode,
+        media,
       });
 
       setAdmission(result);
@@ -244,6 +249,15 @@ export function ProposalScreen({
                   placeholder="Add the deadline, exact YES condition and a trusted source that can confirm the result."
                   hint={context.trim() ? `${context.trim().length} characters` : 'Adding these details can make the review faster and clearer'}
                 />
+
+                <MarketMediaPicker
+                  value={media}
+                  onChange={(next) => {
+                    setMedia(next);
+                    setSubmitError(null);
+                  }}
+                  disabled={working}
+                />
               </View>
             ) : null}
 
@@ -261,6 +275,7 @@ export function ProposalScreen({
                   <ReviewRow label="Currency" value={assetCode || 'Unavailable'} />
                   <ReviewRow label="Category" value={category.trim() || 'Not specified'} />
                   <ReviewRow label="How the result will be decided" value={context.trim() || 'Not specified'} />
+                  <ReviewRow label="Market image" value={media ? 'Attached · compact feed thumbnail' : 'No image attached'} />
                 </View>
 
                 {capabilityLoading ? (
@@ -366,6 +381,10 @@ function AdmissionOutcome({
           <VadText variant="caption" tone="tertiary">PROPOSAL REFERENCE</VadText>
           <VadText variant="bodyStrong" selectable>{response.proposalId}</VadText>
         </View>
+
+        {response.mediaWarning ? (
+          <InlineStatus tone="warning" title="Market image" message={response.mediaWarning} />
+        ) : null}
 
         {result.clarificationQuestions?.length ? (
           <View style={{ gap: 5 }}>
