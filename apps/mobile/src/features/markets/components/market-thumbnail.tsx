@@ -7,13 +7,34 @@ import type { MarketCatalogItem } from '@/services/market-api';
 import { marketMediaPublicUrl } from '@/services/market-media-api';
 
 export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogItem; size?: number }) {
+  const legacyUrl = market.thumbnail_url ?? market.image_url ?? market.media_url ?? null;
+  return (
+    <MarketMediaThumbnail
+      mediaPath={market.media_path}
+      legacyUrl={legacyUrl}
+      title={market.title}
+      category={market.category}
+      size={size}
+    />
+  );
+}
+
+export function MarketMediaThumbnail({
+  mediaPath,
+  legacyUrl,
+  title,
+  category,
+  size = 66,
+}: {
+  mediaPath?: string | null;
+  legacyUrl?: string | null;
+  title: string;
+  category?: string | null;
+  size?: number;
+}) {
   const theme = useVadTheme();
-  const mediaUrl = marketMediaPublicUrl(market.media_path)
-    ?? market.thumbnail_url
-    ?? market.image_url
-    ?? market.media_url
-    ?? null;
-  const category = market.category?.trim() || 'Market';
+  const mediaUrl = marketMediaPublicUrl(mediaPath) ?? legacyUrl ?? null;
+  const categoryLabel = category?.trim() || 'Market';
 
   if (mediaUrl) {
     return (
@@ -31,7 +52,7 @@ export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogIt
         <Image
           source={{ uri: mediaUrl }}
           resizeMode="cover"
-          accessibilityLabel={`${market.title} market image`}
+          accessibilityLabel={`${title} market image`}
           style={{ width: '100%', height: '100%' }}
         />
       </View>
@@ -40,7 +61,7 @@ export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogIt
 
   return (
     <View
-      accessibilityLabel={`${category} market`}
+      accessibilityLabel={`${categoryLabel} market`}
       style={{
         width: size,
         height: size,
@@ -56,7 +77,7 @@ export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogIt
       <VadIcon name="markets" size={Math.max(18, size * 0.3)} tone="brand" />
       {size >= 58 ? (
         <VadText variant="caption" tone="brand" numberOfLines={1} style={{ maxWidth: size - 12 }}>
-          {category.slice(0, 9)}
+          {categoryLabel.slice(0, 9)}
         </VadText>
       ) : null}
     </View>
