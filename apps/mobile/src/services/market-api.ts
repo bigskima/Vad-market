@@ -208,19 +208,6 @@ export async function submitMarketProposal(input: {
   assetCode?: string;
   media?: MarketMediaSelection | null;
 }) {
-  let mediaPath: string | null = null;
-  let mediaWarning: string | undefined;
-
-  if (input.media) {
-    try {
-      mediaPath = await uploadMarketMedia(input.media, 'proposals');
-    } catch (error) {
-      mediaWarning = error instanceof Error
-        ? `${error.message} Your proposal can still continue without the image.`
-        : 'The image could not be uploaded. Your proposal can still continue without it.';
-    }
-  }
-
   const { data, error } = await supabase.functions.invoke('market-admission', {
     body: {
       question: input.question.trim(),
@@ -236,12 +223,17 @@ export async function submitMarketProposal(input: {
     throw userFacingError(payload.message ?? payload.error, 'proposal');
   }
 
-  if (mediaPath) {
+  let mediaWarning: string | undefined;
+  if (input.media) {
     try {
+      const mediaPath = await uploadMarketMedia(input.media, 'proposals');
       await attachProposalMarketMedia(String(payload.proposalId ?? payload.admission.proposalId), mediaPath);
-    } catch (error) {
-      mediaWarning = error instanceof Error
-        ? `${error.message} The proposal itself was still submitted successfully.`
+      if (payload.admission.lane === 'MERGED') {
+        mediaWarning = 'A matching market already exists, so your image stays with this proposal and does not replace the existing market image.';
+      }
+    } catch (mediaError) {
+      mediaWarning = mediaError instanceof Error
+        ? `${mediaError.message} The proposal itself was still submitted successfully.`
         : 'The image could not be attached, but the proposal itself was submitted successfully.';
     }
   }
