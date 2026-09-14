@@ -1,5 +1,5 @@
 import type { RuntimeCapabilityKey } from '@vad/types';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams, usePathname } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useRef } from 'react';
 import {
@@ -14,6 +14,7 @@ import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { AssistantEntry } from '@/features/assistant/assistant-entry';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useProductTour } from '@/features/tour/tour-provider';
 import { useCurrentProfile } from '@/hooks/use-current-profile';
@@ -36,6 +37,13 @@ type Props = {
   capabilityTitle?: string;
 };
 
+type AssistantSurface = {
+  label: string;
+  detail: string;
+  prompt: string;
+  marketId?: string | null;
+} | null;
+
 export function ProductRoute({
   active,
   children,
@@ -45,6 +53,8 @@ export function ProductRoute({
 }: Props) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const pathname = usePathname();
+  const params = useLocalSearchParams<{ marketId?: string | string[] }>();
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
@@ -52,6 +62,8 @@ export function ProductRoute({
   const { profile } = useCurrentProfile(session?.user.id);
   const scrollRef = useRef<ScrollView | null>(null);
   const scrollOffsetRef = useRef(0);
+  const marketId = Array.isArray(params.marketId) ? params.marketId[0] : params.marketId;
+  const assistantSurface = assistantSurfaceFor(active, pathname, marketId);
 
   if (!isLoading && !session) return <Redirect href="/" />;
 
@@ -293,6 +305,17 @@ export function ProductRoute({
               </View>
             ) : null}
 
+            {assistantSurface && !requiredLoading && (!requiredCapability || requiredAllowed) ? (
+              <AssistantEntry
+                compact
+                label={assistantSurface.label}
+                detail={assistantSurface.detail}
+                prompt={assistantSurface.prompt}
+                marketId={assistantSurface.marketId}
+                sourceRoute={pathname}
+              />
+            ) : null}
+
             {requiredLoading ? (
               <View style={{ gap: theme.spacing.md }}>
                 <VadSkeleton width="48%" height={26} />
@@ -328,4 +351,48 @@ export function ProductRoute({
       ) : null}
     </View>
   );
+}
+
+function assistantSurfaceFor(active: ProductTab, pathname: string, marketId?: string): AssistantSurface {
+  if (pathname.startsWith('/market/')) {
+    return {
+      label: 'Ask AI about this market',
+      detail: 'Understand probability, timing, risk and market mechanics.',
+      prompt: 'Explain the market I am viewing: what its current probability means, what the timing means, and what I should understand before taking a position. Do not predict or guarantee the final result.',
+      marketId: marketId ?? null,
+    };
+  }
+
+  if (pathname !== '/home' && pathname !== '/markets' && pathname !== '/wallet' && pathname !== '/portfolio') return null;
+
+  if (active === 'Home') {
+    return {
+      label: 'Ask VAD Assistant',
+      detail: 'Get help reading market signals without leaving Home.',
+      prompt: 'Help me understand what I should look at on VAD Home before deciding which market to research further.',
+    };
+  }
+  if (active === 'Markets') {
+    return {
+      label: 'Ask AI about market discovery',
+      detail: 'Understand states, probability and how to compare markets.',
+      prompt: 'Help me understand how to compare VAD markets using probability, lifecycle state, closing time and market rules without treating price as a guaranteed result.',
+    };
+  }
+  if (active === 'Wallet') {
+    return {
+      label: 'Ask AI about your wallet',
+      detail: 'Understand available, committed and pending balances.',
+      prompt: 'Explain how my VAD wallet works, especially the difference between available, committed and withdrawal-pending balances, and where I should look for payment status.',
+    };
+  }
+  if (active === 'Portfolio') {
+    return {
+      label: 'Ask AI about your portfolio',
+      detail: 'Understand positions, exposure and open orders.',
+      prompt: 'Explain how to read my VAD portfolio, including positions, cost basis, exposure and open orders. Do not give me a guaranteed-return recommendation.',
+    };
+  }
+
+  return null;
 }
