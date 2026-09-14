@@ -53,7 +53,7 @@ export function MarketDiscoveryControls({
     <View style={{ gap: theme.spacing.lg }}>
       <View style={{ gap: theme.spacing.xs }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-          <VadText variant="caption" tone="tertiary">Market stage</VadText>
+          <VadText variant="caption" tone="tertiary">Stage</VadText>
           <VadText variant="caption" tone="secondary">{resultCount} matching</VadText>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
@@ -74,7 +74,7 @@ export function MarketDiscoveryControls({
           <VadInput
             value={query}
             onChangeText={onQueryChange}
-            placeholder="Search this market stage"
+            placeholder="Search this stage"
             returnKeyType="search"
             autoCorrect={false}
             accessibilityLabel="Search markets"
