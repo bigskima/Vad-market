@@ -1,4 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
+import { useState } from 'react';
 import { Image, Platform, Pressable, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
@@ -8,6 +9,8 @@ import {
   MARKET_MEDIA_MAX_BYTES,
   type MarketMediaSelection,
 } from '@/services/market-media-api';
+
+const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 
 export function MarketMediaPicker({
   value,
@@ -21,36 +24,59 @@ export function MarketMediaPicker({
   label?: string;
 }) {
   const theme = useVadTheme();
+  const [pickerError, setPickerError] = useState<string | null>(null);
 
   async function chooseImage() {
     if (disabled) return;
+    setPickerError(null);
 
-    if (Platform.OS !== 'web') {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) return;
+    try {
+      if (Platform.OS !== 'web') {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          setPickerError('Allow photo access to choose a market image. You can still create the market without one.');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.82,
+        preferredAssetRepresentationMode:
+          ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+      });
+
+      if (result.canceled || !result.assets[0]) return;
+      const asset = result.assets[0];
+      const mimeType = asset.mimeType?.toLowerCase() ?? null;
+
+      if (asset.fileSize != null && asset.fileSize > MARKET_MEDIA_MAX_BYTES) {
+        setPickerError('Choose an image that is 5 MB or smaller.');
+        return;
+      }
+      if (mimeType && !SUPPORTED_IMAGE_TYPES.has(mimeType)) {
+        setPickerError('Choose a JPG, PNG or WebP image.');
+        return;
+      }
+
+      onChange({
+        uri: asset.uri,
+        mimeType,
+        fileName: asset.fileName ?? null,
+        fileSize: asset.fileSize ?? null,
+        width: asset.width,
+        height: asset.height,
+      });
+    } catch (error) {
+      setPickerError(error instanceof Error ? error.message : 'VAD could not open your photo library right now.');
     }
+  }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.82,
-      preferredAssetRepresentationMode:
-        ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
-    });
-
-    if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-    if (asset.fileSize != null && asset.fileSize > MARKET_MEDIA_MAX_BYTES) return;
-
-    onChange({
-      uri: asset.uri,
-      mimeType: asset.mimeType ?? null,
-      fileName: asset.fileName ?? null,
-      fileSize: asset.fileSize ?? null,
-      width: asset.width,
-      height: asset.height,
-    });
+  function removeImage() {
+    setPickerError(null);
+    onChange(null);
   }
 
   return (
@@ -79,6 +105,7 @@ export function MarketMediaPicker({
           <Image
             source={{ uri: value.uri }}
             resizeMode="cover"
+            accessibilityLabel="Selected market image preview"
             style={{ width: 104, height: 68, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface }}
           />
           <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
@@ -88,7 +115,7 @@ export function MarketMediaPicker({
             </VadText>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               <MediaAction label="Replace" icon="markets" disabled={disabled} onPress={() => void chooseImage()} />
-              <MediaAction label="Remove" icon="close" disabled={disabled} onPress={() => onChange(null)} />
+              <MediaAction label="Remove" icon="close" disabled={disabled} onPress={removeImage} />
             </View>
           </View>
         </View>
@@ -131,6 +158,22 @@ export function MarketMediaPicker({
           <VadIcon name="chevronRight" size={16} tone="tertiary" />
         </Pressable>
       )}
+
+      {pickerError ? (
+        <View
+          accessibilityRole="alert"
+          style={{
+            borderLeftWidth: 3,
+            borderLeftColor: theme.colors.warning,
+            borderRadius: theme.radius.sm,
+            backgroundColor: theme.colors.warningSoft,
+            paddingHorizontal: theme.spacing.sm,
+            paddingVertical: 8,
+          }}
+        >
+          <VadText variant="caption" tone="warning">{pickerError}</VadText>
+        </View>
+      ) : null}
     </View>
   );
 }
