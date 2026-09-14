@@ -113,7 +113,7 @@ export function ConvictionComposer({
             <VadText variant="bodyStrong">Attach a live market</VadText>
             <VadText variant="caption" tone="secondary">Optional · connect this reasoning to a tradable question.</VadText>
           </View>
-          <VadIcon name={marketPickerOpen ? 'chevronUp' : 'chevronDown'} size={16} tone="tertiary" />
+          <VadIcon name={marketPickerOpen ? 'close' : 'plus'} size={16} tone="tertiary" />
         </Pressable>
       )}
 
