@@ -81,7 +81,7 @@ export default function NotificationsRoute() {
               eyebrow={notice.tone === 'WARNING' ? 'SERVICE NOTICE' : 'VAD UPDATE'}
               title={notice.message}
               tone={notice.tone === 'WARNING' ? 'warning' : 'yes'}
-              createdAt={'created_at' in notice && typeof notice.created_at === 'string' ? notice.created_at : undefined}
+              createdAt={notice.created_at}
             />
           ))}
         </View>
