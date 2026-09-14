@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 let currentNow = Date.now();
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -31,12 +31,22 @@ function subscribe(listener: () => void) {
   };
 }
 
-function getSnapshot() {
-  return currentNow;
-}
-
 const serverSnapshot = Date.now();
 
-export function useLiveNow() {
-  return useSyncExternalStore(subscribe, getSnapshot, () => serverSnapshot);
+function quantize(value: number, resolutionMs: number) {
+  if (resolutionMs <= 1000) return value;
+  return Math.floor(value / resolutionMs) * resolutionMs;
+}
+
+export function useLiveNow(resolutionMs = 1000) {
+  const getSnapshot = useCallback(
+    () => quantize(currentNow, resolutionMs),
+    [resolutionMs],
+  );
+  const getServerSnapshot = useCallback(
+    () => quantize(serverSnapshot, resolutionMs),
+    [resolutionMs],
+  );
+
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
