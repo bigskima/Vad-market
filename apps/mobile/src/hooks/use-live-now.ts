@@ -38,6 +38,8 @@ function quantize(value: number, resolutionMs: number) {
   return Math.floor(value / resolutionMs) * resolutionMs;
 }
 
+// Passive activity timestamps default to minute cadence. Deadline-sensitive
+// surfaces opt into 1-second resolution without creating extra intervals.
 export function useLiveNow(resolutionMs = 60_000) {
   const getSnapshot = useCallback(
     () => quantize(currentNow, resolutionMs),
