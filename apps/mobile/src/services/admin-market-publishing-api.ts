@@ -11,6 +11,8 @@ export type AdminMarketPublicationRow = {
   event_status: string;
   opens_at: string | null;
   closes_at: string;
+  resolves_after: string | null;
+  media_path: string | null;
   is_vad_market: boolean;
   vad_priority: number | null;
   vad_published_at: string | null;
