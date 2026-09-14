@@ -1,7 +1,7 @@
 import type { RuntimeCapabilityKey } from '@vad/types';
 import { Redirect, router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -10,13 +10,13 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
-import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useProductTour } from '@/features/tour/tour-provider';
+import { useCurrentProfile } from '@/hooks/use-current-profile';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
@@ -49,7 +49,7 @@ export function ProductRoute({
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
   const { registerScrollController } = useProductTour();
-  const [noticesOpen, setNoticesOpen] = useState(false);
+  const { profile } = useCurrentProfile(session?.user.id);
   const scrollRef = useRef<ScrollView | null>(null);
   const scrollOffsetRef = useRef(0);
 
@@ -207,6 +207,8 @@ export function ProductRoute({
       <ProductTopBar
         active={active}
         email={email}
+        displayName={profile?.display_name}
+        avatarPath={profile?.avatar_path}
         isAdmin={Boolean(data.adminSummary)}
         canCreate={canCreate}
         onCreate={() => router.push('/create-market')}
@@ -214,7 +216,7 @@ export function ProductRoute({
         onAssistant={() => router.push('/assistant')}
         onAccount={() => router.replace('/account')}
         onSearch={() => router.push('/markets')}
-        onNotices={() => setNoticesOpen(true)}
+        onNotices={() => router.push('/notifications')}
         noticeCount={noticeCount}
       />
 
@@ -324,35 +326,6 @@ export function ProductRoute({
       {density.phone ? (
         <ProductTabBar active={active} onChange={navigate} />
       ) : null}
-
-      <VadBottomSheet
-        visible={noticesOpen}
-        title="VAD updates"
-        onClose={() => setNoticesOpen(false)}
-      >
-        <View style={{ gap: theme.spacing.md }}>
-          {maintenance ? (
-            <View style={{ gap: 4, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-              <VadText variant="caption" tone="warning">{maintenanceLabel}</VadText>
-              <VadText variant="bodyStrong">{maintenanceMessage}</VadText>
-              {resumesAt ? (
-                <VadText variant="caption" tone="tertiary">Scheduled to resume {new Date(resumesAt).toLocaleString()}.</VadText>
-              ) : null}
-            </View>
-          ) : null}
-
-          {data.publicNotices.length ? data.publicNotices.map((notice) => (
-            <View key={notice.public_id} style={{ gap: 4, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-              <VadText variant="caption" tone={notice.tone === 'WARNING' ? 'warning' : 'yes'}>
-                {notice.tone === 'WARNING' ? 'SERVICE NOTICE' : 'VAD UPDATE'}
-              </VadText>
-              <VadText>{notice.message}</VadText>
-            </View>
-          )) : maintenance ? null : (
-            <VadText tone="secondary">There are no active service notices right now.</VadText>
-          )}
-        </View>
-      </VadBottomSheet>
     </View>
   );
 }
