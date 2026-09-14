@@ -12,7 +12,10 @@ import { VadIcon } from '@/components/ui/vad-icon';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { formatRelativeTimestamp } from '@/features/markets/market-state';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
@@ -96,9 +99,17 @@ export function SocialConvictionFeed({
     () => marketFilter ? posts.filter((post) => post.instrument_public_id === marketFilter.instrument_public_id) : posts,
     [marketFilter, posts],
   );
+  const postBatchSize = marketFilter ? (density.phone ? 5 : 7) : density.phone ? 6 : 8;
+  const progressivePosts = useProgressiveList({
+    items: filteredPosts,
+    initialCount: postBatchSize,
+    step: postBatchSize,
+    resetKey: `${marketFilter?.instrument_public_id ?? 'community'}|${filteredPosts.length}`,
+  });
+  const fixedPreview = typeof maxPosts === 'number';
   const visiblePosts = useMemo(
-    () => typeof maxPosts === 'number' ? filteredPosts.slice(0, Math.max(0, maxPosts)) : filteredPosts,
-    [filteredPosts, maxPosts],
+    () => fixedPreview ? filteredPosts.slice(0, Math.max(0, maxPosts ?? 0)) : progressivePosts.visibleItems,
+    [filteredPosts, fixedPreview, maxPosts, progressivePosts.visibleItems],
   );
   const selectedMarket = marketFilter ?? market;
 
@@ -107,6 +118,13 @@ export function SocialConvictionFeed({
     () => comments.filter((comment) => !comment.parent_comment_public_id || !commentIds.has(comment.parent_comment_public_id)),
     [commentIds, comments],
   );
+  const commentBatchSize = density.phone ? 5 : 7;
+  const progressiveComments = useProgressiveList({
+    items: rootComments,
+    initialCount: commentBatchSize,
+    step: commentBatchSize,
+    resetKey: `${commentsPostId ?? 'closed'}|${rootComments.length}`,
+  });
   const childrenByParent = useMemo(() => {
     const grouped = new Map<string, PostComment[]>();
     for (const comment of comments) {
@@ -253,7 +271,7 @@ export function SocialConvictionFeed({
             <VadText variant="bodyStrong">{marketFilter ? 'Market discussion' : 'Community feed'}</VadText>
             <VadText variant="caption" tone="secondary" numberOfLines={2}>
               {canCreatePost
-                ? marketFilter ? 'Share your reasoning or prediction for this market.' : 'Share your analysis or a prediction about a live market.'
+                ? marketFilter ? 'Share your reasoning or prediction for this market.' : 'Share analysis and conviction without turning the feed into one endless wall.'
                 : 'Read what other people are saying about the markets.'}
             </VadText>
           </View>
@@ -324,6 +342,24 @@ export function SocialConvictionFeed({
               />
             );
           })}
+
+          {!fixedPreview && progressivePosts.hasMore ? (
+            <VadCard variant="raised" style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+              <View style={{ alignItems: 'center', gap: 2 }}>
+                <VadText variant="bodyStrong">Continue the conviction feed</VadText>
+                <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>
+                  {progressivePosts.remainingCount} more {progressivePosts.remainingCount === 1 ? 'post is' : 'posts are'} available without loading the whole feed at once.
+                </VadText>
+              </View>
+              <VadButton
+                label={`Show next ${progressivePosts.nextCount}`}
+                variant="secondary"
+                size="small"
+                fullWidth={false}
+                onPress={progressivePosts.showMore}
+              />
+            </VadCard>
+          ) : null}
         </View>
       )}
 
@@ -353,21 +389,31 @@ export function SocialConvictionFeed({
             ) : commentsError ? (
               <VadErrorState title="Discussion unavailable" message={commentsError} onRetry={() => commentsPost && void openComments(commentsPost)} />
             ) : rootComments.length ? (
-              rootComments.map((comment) => (
-                <CommentNode
-                  key={comment.comment_public_id}
-                  comment={comment}
-                  childrenByParent={childrenByParent}
-                  collapsedThreads={collapsedThreads}
-                  depth={0}
-                  onReply={(target) => {
-                    setReplyTo(target);
-                    setCommentBody('');
-                    setCommentSubmitError(null);
-                  }}
-                  onToggle={toggleThread}
-                />
-              ))
+              <>
+                {progressiveComments.visibleItems.map((comment) => (
+                  <CommentNode
+                    key={comment.comment_public_id}
+                    comment={comment}
+                    childrenByParent={childrenByParent}
+                    collapsedThreads={collapsedThreads}
+                    depth={0}
+                    onReply={(target) => {
+                      setReplyTo(target);
+                      setCommentBody('');
+                      setCommentSubmitError(null);
+                    }}
+                    onToggle={toggleThread}
+                  />
+                ))}
+                {progressiveComments.hasMore ? (
+                  <VadButton
+                    label={`Show ${progressiveComments.nextCount} more threads`}
+                    variant="ghost"
+                    size="small"
+                    onPress={progressiveComments.showMore}
+                  />
+                ) : null}
+              </>
             ) : (
               <VadCard variant="outlined" style={{ minHeight: 84, justifyContent: 'center', alignItems: 'center' }}>
                 <VadText tone="secondary">No comments yet. Start the discussion.</VadText>
@@ -437,10 +483,12 @@ function CommentNode({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const authorName = comment.author_display_name ?? comment.author_handle ?? 'VAD member';
   const replies = childrenByParent.get(comment.comment_public_id) ?? [];
   const collapsed = collapsedThreads.has(comment.comment_public_id);
   const visualDepth = Math.min(depth, 3);
+  const createdRelative = formatRelativeTimestamp(comment.created_at, now) ?? 'recently';
 
   return (
     <View style={{ marginLeft: visualDepth * (density.compact ? 10 : 18) }}>
@@ -453,7 +501,7 @@ function CommentNode({
           <View style={{ borderRadius: theme.radius.lg, backgroundColor: depth > 0 ? theme.colors.surfaceRaised : theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.sm, gap: 3 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
               <VadText variant="label" numberOfLines={1} style={{ flex: 1 }}>{authorName}</VadText>
-              <VadText variant="caption" tone="tertiary">{new Date(comment.created_at).toLocaleDateString()}</VadText>
+              <VadText variant="caption" tone="tertiary">{createdRelative}</VadText>
             </View>
             <VadText variant="body">{comment.body}</VadText>
           </View>
