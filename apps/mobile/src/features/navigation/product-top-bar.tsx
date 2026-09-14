@@ -93,13 +93,13 @@ export function ProductTopBar({
           style={({ pressed }) => ({
             flex: density.phone || !roomy ? 1 : undefined,
             width: density.phone || !roomy ? undefined : Math.min(420, Math.max(280, density.width * 0.29)),
-            minWidth: density.phone ? 40 : 180,
+            minWidth: density.phone ? 38 : 180,
             maxWidth: density.phone ? undefined : 420,
             minHeight: 44,
             flexDirection: 'row',
             alignItems: 'center',
             gap: theme.spacing.sm,
-            paddingHorizontal: density.narrow ? theme.spacing.sm : theme.spacing.md,
+            paddingHorizontal: density.narrow ? theme.spacing.xs : theme.spacing.md,
             borderRadius: theme.radius.pill,
             borderWidth: 1,
             borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
@@ -126,7 +126,7 @@ export function ProductTopBar({
           {canCreate ? (
             roomy ? (
               <HeaderAction label="Create" icon="plus" brand onPress={onCreate} />
-            ) : density.narrow ? null : (
+            ) : (
               <CompactCreateAction onPress={onCreate} />
             )
           ) : null}
