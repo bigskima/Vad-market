@@ -12,6 +12,8 @@ import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney, pct } from '@/features/markets/format';
+import { formatRelativeTimestamp } from '@/features/markets/market-state';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -20,6 +22,7 @@ import { cancelOrder } from '@/services/market-api';
 export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string; onCancelled?: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const wide = density.width >= 840;
   const data = useProductDataContext();
   const [cancelling, setCancelling] = useState(false);
@@ -52,6 +55,8 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   const remainingNotional = limitPrice * remaining;
   const yes = currentOrder.outcome_code === 'YES';
   const amount = (value: unknown) => assetMoney(value, currentOrder.asset_code);
+  const createdRelative = formatRelativeTimestamp(currentOrder.created_at, now) ?? 'recently';
+  const createdExact = new Date(currentOrder.created_at).toLocaleString();
 
   async function cancel() {
     setCancelling(true);
@@ -76,6 +81,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
           <VadChip label={currentOrder.outcome_code} tone={yes ? 'yes' : 'no'} />
           <VadChip label={currentOrder.asset_code} />
           <VadChip label={orderStatusLabel(currentOrder.status)} />
+          <VadChip label={createdRelative.toUpperCase()} tone="neutral" />
         </View>
         <VadText variant="heading">{currentOrder.market_title}</VadText>
       </View>
@@ -101,7 +107,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
             <Snapshot label="Original shares" value={quantity.toLocaleString()} />
             <Snapshot label="Original value" value={amount(originalNotional)} />
           </View>
-          <VadText variant="caption" tone="secondary">Created {new Date(currentOrder.created_at).toLocaleString()}</VadText>
+          <VadText variant="caption" tone="secondary">Created {createdRelative}</VadText>
         </VadCard>
 
         <VadCard variant="raised" style={{ flex: 0.9, gap: theme.spacing.sm }}>
@@ -146,7 +152,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
       <VadProgressiveSection
         title="Order details"
         eyebrow="FULL BREAKDOWN"
-        description="Reference, action, price, quantities and order status."
+        description="Reference, action, timing, price, quantities and order status."
         icon="portfolio"
         summary={<VadText variant="caption" tone="tertiary">{currentOrder.side} {currentOrder.outcome_code} · {orderStatusLabel(currentOrder.status)}</VadText>}
       >
@@ -154,6 +160,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
         <Detail label="Outcome" value={currentOrder.outcome_code} />
         <Detail label="Currency" value={currentOrder.asset_code} />
         <Detail label="Reference" value={String(currentOrder.order_id)} selectable />
+        <Detail label="Created" value={`${createdExact} · ${createdRelative}`} />
         <Detail label="Action" value={currentOrder.side} />
         <Detail label="Price per share" value={amount(limitPrice)} />
         <Detail label="Shares ordered" value={quantity.toLocaleString()} />
