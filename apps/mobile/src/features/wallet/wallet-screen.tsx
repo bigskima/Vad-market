@@ -12,7 +12,9 @@ import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
+import { formatRelativeTimestamp } from '@/features/markets/market-state';
 import { TourTarget } from '@/features/tour/tour-provider';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getMyPaymentIntents, type PaymentIntentRow } from '@/services/payment-api';
@@ -259,10 +261,13 @@ function AssetFact({ label, value, tone = 'primary' }: { label: string; value: s
 export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPress?: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const incoming = intent.operation === 'DEPOSIT';
   const label = incoming ? 'Deposit' : intent.operation === 'WITHDRAWAL' ? 'Withdrawal' : 'Refund';
   const icon: VadIconName = incoming ? 'arrowDown' : 'arrowUp';
   const status = paymentStatus(intent);
+  const activityTime = formatRelativeTimestamp(intent.settled_at ?? intent.created_at, now) ?? 'recently';
+  const timePrefix = intent.settled_at ? 'Completed' : status.label === 'PROCESSING' ? 'Started' : 'Created';
 
   return (
     <Pressable
@@ -298,7 +303,7 @@ export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPr
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
           <VadText variant="bodyStrong">{label}</VadText>
-          <VadText variant="caption" tone="tertiary">{new Date(intent.created_at).toLocaleString()}</VadText>
+          <VadText variant="caption" tone="tertiary">{timePrefix} {activityTime}</VadText>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '46%' }}>
           <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(intent.amount, intent.asset_code)}</VadText>
