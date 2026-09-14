@@ -14,6 +14,14 @@ export type MarketCatalogItem = {
   no_price: number | string | null;
   last_trade_at: string | null;
   updated_at: string;
+  /**
+   * Optional forward-compatible presentation fields. The current public
+   * market_catalog contract does not guarantee any of these yet, so the UI
+   * must always render a category fallback when they are absent.
+   */
+  thumbnail_url?: string | null;
+  image_url?: string | null;
+  media_url?: string | null;
 };
 
 export type TradeQuote = {
