@@ -4,10 +4,15 @@ import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
+import { marketMediaPublicUrl } from '@/services/market-media-api';
 
 export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogItem; size?: number }) {
   const theme = useVadTheme();
-  const mediaUrl = market.thumbnail_url ?? market.image_url ?? market.media_url ?? null;
+  const mediaUrl = marketMediaPublicUrl(market.media_path)
+    ?? market.thumbnail_url
+    ?? market.image_url
+    ?? market.media_url
+    ?? null;
   const category = market.category?.trim() || 'Market';
 
   if (mediaUrl) {
@@ -26,6 +31,7 @@ export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogIt
         <Image
           source={{ uri: mediaUrl }}
           resizeMode="cover"
+          accessibilityLabel={`${market.title} market image`}
           style={{ width: '100%', height: '100%' }}
         />
       </View>
