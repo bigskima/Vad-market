@@ -8,8 +8,10 @@ import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { HomePromotionCarousel } from '@/features/home/components/home-promotion-carousel';
-import { probability } from '@/features/markets/format';
 import { MarketCard } from '@/features/markets/components/market-card';
+import { MarketTimeStatus } from '@/features/markets/components/market-time-status';
+import { probability } from '@/features/markets/format';
+import { marketStatusMeta } from '@/features/markets/market-state';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
 import { TourTarget, useProductTour } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -74,9 +76,9 @@ export function HomeScreen({
     ? `${formatAcceleration(Math.max(trendingRail[0].entry.volume_acceleration, trendingRail[0].entry.trade_acceleration))} · ${trendingRail[0].entry.unique_traders} traders`
     : featuredRail[0]
       ? `${formatNairaCompact(featuredRail[0].entry.volume_ngn)} completed activity`
-      : leadMarket?.last_trade_at
-        ? 'Recently traded'
-        : 'Live now';
+      : leadMarket
+        ? `${leadMarket.category ?? 'General'} · ${leadMarket.asset_code}`
+        : '';
 
   const sectionGap = density.compact ? theme.spacing.md : theme.spacing.lg;
 
@@ -118,7 +120,7 @@ export function HomeScreen({
                 Read the market. Form a conviction. Take a position.
               </VadText>
               <VadText variant="body" tone="secondary">
-                Start with the strongest signal, then move through live markets, momentum and community context without information overload.
+                Start with the strongest signal, then weigh probability, time-to-close, momentum and community context without information overload.
               </VadText>
             </View>
             {!density.phone ? <VadChip label={`${active.length} LIVE`} tone="yes" /> : null}
@@ -134,8 +136,8 @@ export function HomeScreen({
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Metric value={`${active.length}`} label="Live" tone="yes" />
-            <Metric value={`${traded}`} label="Active" />
-            <Metric value={`${trendingRail.length}`} label="Trending" tone="brand" />
+            <Metric value={`${traded}`} label="Traded" />
+            <Metric value={`${trendingRail.length}`} label="Momentum" tone="brand" />
           </View>
 
           <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: theme.spacing.sm }}>
@@ -179,7 +181,7 @@ export function HomeScreen({
         <View style={{ gap: sectionGap }}>
           <MarketRailSection
             title="Live board"
-            subtitle="A fast scan of markets open for participation now."
+            subtitle="A fast scan of open markets, with conviction and closing urgency visible before you tap."
             emptyTitle="No live markets right now."
             emptyBody="New live markets will appear here when they open."
             onSeeAll={() => onExploreMarkets()}
@@ -333,14 +335,14 @@ function Metric({ value, label, tone = 'primary' }: { value: string; label: stri
 function LeadMarket({ market, detail, onPress }: { market: MarketCatalogItem; detail: string; onPress: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const isOpen = market.status === 'OPEN' || market.status === 'ACTIVE';
+  const status = marketStatusMeta(market.status);
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open ${market.title}. YES ${yes}. NO ${no}.`}
+      accessibilityLabel={`Open ${market.title}. YES ${yes}. NO ${no}. ${status.label}.`}
       onPress={onPress}
       style={({ pressed }) => ({
         borderRadius: theme.radius.xl,
@@ -354,7 +356,7 @@ function LeadMarket({ market, detail, onPress }: { market: MarketCatalogItem; de
       })}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <VadChip label={isOpen ? 'MARKET IN FOCUS' : 'WATCHLIST'} tone={isOpen ? 'warning' : 'brand'} />
+        <VadChip label="MARKET IN FOCUS" tone={status.tradeOpen ? 'warning' : 'brand'} />
         <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ flex: 1 }}>
           {detail}
         </VadText>
@@ -364,12 +366,13 @@ function LeadMarket({ market, detail, onPress }: { market: MarketCatalogItem; de
         <ProbabilityTile label="YES" value={yes} positive />
         <ProbabilityTile label="NO" value={no} positive={false} />
       </View>
+      <MarketTimeStatus market={market} compact fill />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ flex: 1 }}>
-          {market.category ?? 'General'} · {market.asset_code}
+          {status.detail}
         </VadText>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-          <VadText variant="caption" tone="brand">Open market</VadText>
+          <VadText variant="caption" tone="brand">{status.tradeOpen ? 'Trade market' : 'View details'}</VadText>
           <VadIcon name="chevronRight" size={14} tone="brand" />
         </View>
       </View>
