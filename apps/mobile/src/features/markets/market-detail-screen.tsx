@@ -3,17 +3,19 @@ import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
-import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
+import { MarketTimeStatus } from './components/market-time-status';
 import { TradingTicket } from './components/trading-ticket';
+import { describeMarketTiming, formatRelativeTimestamp, marketStatusMeta } from './market-state';
 
 type DetailTab = 'Overview' | 'Trade' | 'Discussion' | 'Rules';
 const tabs = [
@@ -44,6 +46,7 @@ export function MarketDetailScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const marketState = marketStatusMeta(market.status);
   const [tab, setTab] = useState<DetailTab>('Overview');
 
   return (
@@ -63,12 +66,12 @@ export function MarketDetailScreen({
         <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
         <VadText variant="caption" tone="tertiary" style={{ paddingHorizontal: 4 }}>
           {tab === 'Overview'
-            ? 'Start with the market state. Reveal deeper context only when you need it.'
+            ? 'Read the live state, timing and lifecycle before going deeper.'
             : tab === 'Trade'
-              ? 'Build or reduce your position without leaving the market.'
+              ? marketState.tradeOpen ? 'Build or reduce a position while the market remains open.' : 'Trading controls stay visible with a clear explanation of the current market state.'
               : tab === 'Discussion'
                 ? 'Use community conviction as context, not as the resolution rule.'
-                : 'Read the rules that determine how the market is resolved.'}
+                : 'Read the timing and resolution rules before taking a position.'}
         </VadText>
       </View>
 
@@ -104,7 +107,7 @@ export function MarketDetailScreen({
       {density.phone && tab !== 'Trade' ? (
         <View style={{ paddingTop: theme.spacing.xs }}>
           <VadButton
-            label={tradeCapabilityLoading ? 'Checking trade availability' : canTrade ? 'Trade this market' : 'View trade availability'}
+            label={tradeCapabilityLoading ? 'Checking trade availability' : marketState.tradeOpen && canTrade ? 'Trade this market' : 'View trading status'}
             size="small"
             onPress={() => setTab('Trade')}
             leading={<VadIcon name="markets" size={16} tone="inverse" />}
@@ -132,8 +135,10 @@ function Overview({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const open = market.status === 'OPEN' || market.status === 'ACTIVE';
-  const closed = ['CLOSED', 'RESOLVING', 'RESOLVED', 'SETTLED', 'VOID'].includes(market.status);
+  const now = useLiveNow();
+  const marketState = marketStatusMeta(market.status);
+  const timing = describeMarketTiming(market.closes_at, market.status, now);
+  const lastTrade = formatRelativeTimestamp(market.last_trade_at, now);
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
@@ -153,22 +158,22 @@ function Overview({
         />
         <View style={{ gap: 3, maxWidth: 620 }}>
           <VadText variant="caption" tone="brand">DECISION SNAPSHOT</VadText>
-          <VadText variant="heading">Price shows conviction. Rules decide the result.</VadText>
+          <VadText variant="heading">Know the clock. Read conviction. Then decide.</VadText>
           <VadText variant="caption" tone="secondary">
-            YES and NO prices show how participants are positioning. The final result still follows the published criteria and evidence.
+            Market price shows how participants are positioned; the live clock shows how much decision time remains; published evidence still determines the result.
           </VadText>
         </View>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-          <StatePill label="Trading" value={open ? 'Open' : closed ? 'Closed' : marketStatusLabel(market.status)} tone={open ? 'yes' : 'secondary'} />
+          <StatePill label="State" value={marketState.label} tone={marketState.tradeOpen ? 'yes' : 'brand'} />
+          <StatePill label="Time" value={timing.compact} tone={timing.tone === 'warning' || timing.tone === 'danger' ? 'warning' : 'brand'} />
           <StatePill label="Currency" value={market.asset_code} tone="brand" />
-          <StatePill label="Type" value={friendlyEnum(market.market_type)} />
         </View>
 
         {!density.phone ? (
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <VadButton
-              label={tradeCapabilityLoading ? 'Checking availability' : canTrade ? 'Trade this market' : 'View trade availability'}
+              label={tradeCapabilityLoading ? 'Checking availability' : marketState.tradeOpen && canTrade ? 'Trade this market' : 'View trading status'}
               onPress={onTrade}
               style={{ flex: 1 }}
               leading={<VadIcon name="markets" size={17} tone="inverse" />}
@@ -192,22 +197,23 @@ function Overview({
       <VadProgressiveSection
         title="Market facts"
         eyebrow="DETAILS"
-        description="Category, currency, market type and important timing."
+        description="The exact close time, activity, currency and market structure."
         icon="markets"
-        summary={<VadText variant="caption" tone="tertiary">{market.category ?? 'General'} · {market.asset_code}</VadText>}
+        summary={<VadText variant="caption" tone="tertiary">{market.category ?? 'General'} · {market.asset_code} · {timing.compact}</VadText>}
       >
+        <MarketTimeStatus market={market} showAbsolute />
         <Fact label="Category" value={market.category ?? 'General'} />
         <Fact label="Currency" value={market.asset_code} />
         <Fact label="Type" value={friendlyEnum(market.market_type)} />
-        <Fact label="Closes" value={market.closes_at ? new Date(market.closes_at).toLocaleString() : 'Closing time not available'} />
-        <Fact label="Last trade" value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : 'No trades yet'} />
+        <Fact label="Last trade" value={lastTrade ? `Traded ${lastTrade}` : 'No trades yet'} />
       </VadProgressiveSection>
 
       <VadProgressiveSection
-        title="What happens next"
+        title="Live market timeline"
         eyebrow="MARKET LIFECYCLE"
-        description="Trading closes, the outcome is resolved, then eligible winning positions are paid."
+        description="Follow the market from open trading through official result and payout."
         icon="activity"
+        defaultExpanded
       >
         <Lifecycle market={market} />
       </VadProgressiveSection>
@@ -231,32 +237,56 @@ function Overview({
 function Lifecycle({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const status = market.status.toUpperCase();
-  const tradeDone = ['CLOSED', 'RESOLVING', 'RESOLVED', 'SETTLED', 'VOID'].includes(status);
-  const resolutionDone = ['RESOLVED', 'SETTLED', 'VOID'].includes(status);
-  const settlementDone = status === 'SETTLED';
-  const resolutionActive = status === 'RESOLVING';
+  const timing = describeMarketTiming(market.closes_at, market.status, now);
+  const tradeDone = ['CLOSED', 'AWAITING_ORACLE', 'RESOLVING', 'RESOLVED', 'FINALIZED', 'SETTLEMENT_PENDING', 'SETTLED', 'VOID', 'VOIDED', 'CANCELLED'].includes(status);
+  const resolutionDone = ['RESOLVED', 'FINALIZED', 'SETTLEMENT_PENDING', 'SETTLED', 'VOID', 'VOIDED'].includes(status);
+  const settlementDone = status === 'SETTLED' || status === 'VOID' || status === 'VOIDED';
+  const resolutionActive = ['CLOSED', 'AWAITING_ORACLE', 'RESOLVING'].includes(status);
+  const settlementActive = ['RESOLVED', 'FINALIZED', 'SETTLEMENT_PENDING'].includes(status);
+
+  const tradingBody = tradeDone
+    ? timing.detail
+    : status === 'SUSPENDED'
+      ? `${timing.compact}. Trading is paused until the market is reopened or closed.`
+      : `${timing.headline}. Orders remain subject to the authoritative market state.`;
+  const resultBody = resolutionDone
+    ? status === 'VOID' || status === 'VOIDED'
+      ? 'The market has been voided under its resolution policy.'
+      : 'The official result is final. The market can now move through settlement.'
+    : resolutionActive
+      ? 'Trading is closed. VAD is checking the published criteria and eligible evidence for the official result.'
+      : `Result review follows the trading close. ${timing.isPastClose ? 'The close has been reached.' : `The result stage begins after ${timing.compact.toLowerCase()}.`}`;
+  const payoutBody = settlementDone
+    ? status === 'SETTLED'
+      ? `Settlement is complete in ${market.asset_code}.`
+      : 'This market was voided; settlement follows the applicable void policy.'
+    : settlementActive
+      ? `The result is final. Eligible positions are being prepared for payout in ${market.asset_code}.`
+      : `Eligible winning positions are paid in ${market.asset_code} after the result becomes final.`;
 
   return (
     <View style={{ gap: theme.spacing.sm }}>
+      <MarketTimeStatus market={market} showAbsolute />
       <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', gap: theme.spacing.xs }}>
         <LifecycleStep
           number="1"
           title="Trading"
-          body={market.closes_at ? `Scheduled to close ${new Date(market.closes_at).toLocaleString()}.` : 'Trading closes at the time shown for this market.'}
+          body={tradingBody}
           state={tradeDone ? 'complete' : 'active'}
         />
         <LifecycleStep
           number="2"
-          title="Result"
-          body="The outcome is checked against the published market rules and supporting evidence."
+          title="Official result"
+          body={resultBody}
           state={resolutionDone ? 'complete' : resolutionActive ? 'active' : 'waiting'}
         />
         <LifecycleStep
           number="3"
           title="Payout"
-          body={`Eligible winning positions are paid in ${market.asset_code} after the result becomes final.`}
-          state={settlementDone ? 'complete' : 'waiting'}
+          body={payoutBody}
+          state={settlementDone ? 'complete' : settlementActive ? 'active' : 'waiting'}
         />
       </View>
     </View>
@@ -269,7 +299,7 @@ function LifecycleStep({ number, title, body, state }: { number: string; title: 
   const complete = state === 'complete';
   const tone = complete ? 'yes' : active ? 'brand' : 'tertiary';
   return (
-    <View style={{ flex: 1, minWidth: 0, minHeight: 106, borderRadius: theme.radius.lg, backgroundColor: active ? theme.colors.brandSoft : complete ? theme.colors.yesSoft : theme.colors.surfaceMuted, borderWidth: 1, borderColor: active ? theme.colors.brandPrimary : complete ? theme.colors.yes : theme.colors.border, padding: theme.spacing.sm, gap: 5 }}>
+    <View style={{ flex: 1, minWidth: 0, minHeight: 118, borderRadius: theme.radius.lg, backgroundColor: active ? theme.colors.brandSoft : complete ? theme.colors.yesSoft : theme.colors.surfaceMuted, borderWidth: 1, borderColor: active ? theme.colors.brandPrimary : complete ? theme.colors.yes : theme.colors.border, padding: theme.spacing.sm, gap: 5 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.xs }}>
         <VadText variant="caption" tone={tone}>{number}</VadText>
         <VadText variant="caption" tone={tone}>{complete ? 'COMPLETE' : active ? 'CURRENT' : 'NEXT'}</VadText>
@@ -285,10 +315,8 @@ function Rules({ market }: { market: MarketCatalogItem }) {
   const rules = [
     {
       number: '1',
-      title: 'Trading closes at a defined time',
-      body: market.closes_at
-        ? `Trading is scheduled to close on ${new Date(market.closes_at).toLocaleString()}. Orders can only be placed while the market is open.`
-        : 'Orders can only be placed while this market is open.',
+      title: 'The trading clock is live',
+      body: 'Orders can only be accepted while the market is in an authoritative open state. The countdown is a live UX guide; final acceptance is still checked by VAD when the order is submitted.',
     },
     {
       number: '2',
@@ -297,13 +325,13 @@ function Rules({ market }: { market: MarketCatalogItem }) {
     },
     {
       number: '3',
-      title: 'The result follows the rules',
-      body: 'The final result comes from the market’s published criteria and supporting evidence. Community posts and creator opinions do not decide the outcome.',
+      title: 'Resolution follows evidence',
+      body: 'After trading closes, the result follows the market’s published criteria and eligible evidence. Community posts and creator opinions do not decide the outcome.',
     },
     {
       number: '4',
-      title: 'Payouts use this market’s currency',
-      body: `Eligible winning positions are paid in ${market.asset_code}. Values from another currency are not mixed into this market.`,
+      title: 'Payout follows finality',
+      body: `Eligible winning positions are paid in ${market.asset_code} only after the result becomes final. Values from another currency are not mixed into this market.`,
     },
   ];
 
@@ -311,9 +339,11 @@ function Rules({ market }: { market: MarketCatalogItem }) {
     <View style={{ gap: theme.spacing.md }}>
       <View style={{ gap: 2 }}>
         <VadText variant="caption" tone="brand">MARKET RULES</VadText>
-        <VadText variant="heading">Understand the resolution before you trade</VadText>
-        <VadText variant="caption" tone="secondary">Open each rule progressively instead of reading one long wall of text.</VadText>
+        <VadText variant="heading">Understand timing and resolution before you trade</VadText>
+        <VadText variant="caption" tone="secondary">The live market clock stays separate from the evidence that decides the final outcome.</VadText>
       </View>
+
+      <MarketTimeStatus market={market} showAbsolute />
 
       {rules.map((rule, index) => (
         <VadProgressiveSection
@@ -329,9 +359,9 @@ function Rules({ market }: { market: MarketCatalogItem }) {
       ))}
 
       <VadCard variant="raised" style={{ gap: 3 }}>
-        <VadText variant="caption" tone="brand">FLOW</VadText>
-        <VadText variant="bodyStrong">Trading → Result → Payout</VadText>
-        <VadText variant="caption" tone="secondary">Popularity can inform your view, but the published rules determine the final result.</VadText>
+        <VadText variant="caption" tone="brand">LIFECYCLE</VadText>
+        <VadText variant="bodyStrong">Live trading → Evidence review → Final result → Payout</VadText>
+        <VadText variant="caption" tone="secondary">Market conviction can inform your decision, but only the published resolution criteria determine the result.</VadText>
       </VadCard>
     </View>
   );
@@ -344,18 +374,7 @@ function friendlyEnum(value: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function marketStatusLabel(status: string) {
-  const normalized = status.toUpperCase();
-  if (normalized === 'OPEN' || normalized === 'ACTIVE') return 'Open';
-  if (normalized === 'RESOLVING') return 'Result pending';
-  if (normalized === 'RESOLVED') return 'Result confirmed';
-  if (normalized === 'SETTLED') return 'Completed';
-  if (normalized === 'VOID') return 'Cancelled';
-  if (normalized === 'CLOSED') return 'Closed';
-  return 'Unavailable';
-}
-
-function StatePill({ label, value, tone = 'secondary' }: { label: string; value: string; tone?: 'secondary' | 'yes' | 'brand' }) {
+function StatePill({ label, value, tone = 'secondary' }: { label: string; value: string; tone?: 'secondary' | 'yes' | 'brand' | 'warning' }) {
   const theme = useVadTheme();
   return (
     <View style={{ flexGrow: 1, flexBasis: 120, minHeight: 52, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: theme.spacing.sm, paddingVertical: 7, gap: 1 }}>
