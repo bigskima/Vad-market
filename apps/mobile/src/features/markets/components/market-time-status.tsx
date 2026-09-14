@@ -21,12 +21,13 @@ export function MarketTimeStatus({
   const now = useLiveNow(1000);
   const timing = describeMarketTiming(market.closes_at, market.status, now);
   const palette = timingPalette(timing.tone, theme);
+  const accessibilityTiming = [timing.headline, timing.absolute, timing.detail].filter(Boolean).join('. ');
 
   if (compact) {
     return (
       <View
         accessibilityRole="text"
-        accessibilityLabel={`${timing.headline}. ${timing.absolute ?? ''}`.trim()}
+        accessibilityLabel={accessibilityTiming}
         style={{
           minHeight: 26,
           maxWidth: fill ? undefined : 190,
@@ -53,6 +54,7 @@ export function MarketTimeStatus({
   return (
     <View
       accessibilityRole="summary"
+      accessibilityLabel={accessibilityTiming}
       style={{
         borderRadius: theme.radius.lg,
         borderWidth: 1,
