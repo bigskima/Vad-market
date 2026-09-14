@@ -10,7 +10,9 @@ import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
+import { formatRelativeTimestamp } from '@/features/markets/market-state';
 import { PaymentRow } from '@/features/wallet/wallet-screen';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -35,10 +37,12 @@ export function WalletActivityScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const desktopTable = density.width >= 920;
   const [rows, setRows] = useState<PaymentIntentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>('all');
 
@@ -55,6 +59,7 @@ export function WalletActivityScreen({
             new Date(a.created_at).getTime(),
         ),
       );
+      setLastLoadedAt(Date.now());
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -122,7 +127,7 @@ export function WalletActivityScreen({
     const groups: { label: string; rows: PaymentIntentRow[] }[] = [];
 
     progressive.visibleItems.forEach((row) => {
-      const label = dayLabel(row.created_at);
+      const label = dayLabel(row.created_at, now);
       const existing = groups.find((group) => group.label === label);
 
       if (existing) existing.rows.push(row);
@@ -130,7 +135,9 @@ export function WalletActivityScreen({
     });
 
     return groups;
-  }, [progressive.visibleItems]);
+  }, [progressive.visibleItems, now]);
+
+  const loadedRelative = lastLoadedAt ? relativeFromNumber(lastLoadedAt, now) : null;
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.lg : theme.spacing.xl }}>
@@ -145,8 +152,9 @@ export function WalletActivityScreen({
           <VadText variant="caption" tone="brand">WALLET ACTIVITY</VadText>
           <VadText variant="title">Money movement</VadText>
           <VadText variant="caption" tone="secondary">
-            Track deposits and withdrawals in manageable batches instead of one long history page.
+            Track deposits and withdrawals in manageable batches, with live status and relative timing instead of a static ledger wall.
           </VadText>
+          {loadedRelative ? <VadText variant="caption" tone="tertiary">Updated {loadedRelative}</VadText> : null}
         </View>
 
         <VadButton
@@ -310,6 +318,7 @@ function DesktopActivityTable({
   onOpenTransaction: (intent: PaymentIntentRow) => void;
 }) {
   const theme = useVadTheme();
+  const now = useLiveNow();
 
   return (
     <View style={{ borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.border }}>
@@ -317,13 +326,15 @@ function DesktopActivityTable({
         <TableLabel flex={1.2}>TYPE</TableLabel>
         <TableLabel flex={1}>AMOUNT</TableLabel>
         <TableLabel flex={1}>STATUS</TableLabel>
-        <TableLabel flex={1.2}>CREATED</TableLabel>
+        <TableLabel flex={1.2}>WHEN</TableLabel>
         <TableLabel flex={1.7}>REFERENCE</TableLabel>
       </View>
 
       {rows.map((row) => {
         const classification = classify(row);
         const statusTone = classification === 'settled' ? 'yes' : classification === 'failed' ? 'danger' : 'warning';
+        const eventTime = row.settled_at ?? row.created_at;
+        const relative = formatRelativeTimestamp(eventTime, now) ?? 'recently';
 
         return (
           <Pressable
@@ -347,7 +358,10 @@ function DesktopActivityTable({
             </TableCell>
             <TableCell flex={1}><VadText variant="bodyStrong">{assetMoney(row.amount, row.asset_code)}</VadText></TableCell>
             <TableCell flex={1}><VadText variant="caption" tone={statusTone}>{paymentStatusLabel(row, classification)}</VadText></TableCell>
-            <TableCell flex={1.2}><VadText variant="caption" tone="secondary">{new Date(row.created_at).toLocaleString()}</VadText></TableCell>
+            <TableCell flex={1.2}>
+              <VadText variant="caption" tone="secondary">{relative}</VadText>
+              <VadText variant="caption" tone="tertiary" numberOfLines={1}>{classification === 'settled' ? 'completed' : 'created'}</VadText>
+            </TableCell>
             <TableCell flex={1.7}><VadText variant="caption" tone="secondary" numberOfLines={1}>{row.intent_public_id}</VadText></TableCell>
           </Pressable>
         );
@@ -386,9 +400,9 @@ function operationLabel(operation: PaymentIntentRow['operation']) {
   return 'Refund';
 }
 
-function dayLabel(value: string) {
+function dayLabel(value: string, nowMs: number) {
   const date = new Date(value);
-  const now = new Date();
+  const now = new Date(nowMs);
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   const diffDays = Math.round((startToday - startDate) / 86400000);
@@ -401,6 +415,14 @@ function dayLabel(value: string) {
     day: 'numeric',
     year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
   });
+}
+
+function relativeFromNumber(value: number, now: number) {
+  const diff = Math.max(0, now - value);
+  if (diff < 10_000) return 'just now';
+  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
+  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)}m ago`;
+  return `${Math.floor(diff / (60 * 60_000))}h ago`;
 }
 
 function Summary({ label, value, tone = 'primary' }: { label: string; value: string; tone?: 'primary' | 'yes' | 'brand' }) {
