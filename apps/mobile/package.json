@@ -8,6 +8,7 @@
     "@vad/types": "0.1.0",
     "expo": "~57.0.21",
     "expo-constants": "~57.0.17",
+    "expo-image-picker": "~57.0.17",
     "expo-linking": "~57.0.9",
     "expo-router": "~57.0.20",
     "expo-splash-screen": "~57.0.8",
