@@ -11,6 +11,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { MarketMediaThumbnail } from '@/features/markets/components/market-thumbnail';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getAdminMarketPublicationQueue,
@@ -116,7 +117,7 @@ export function AdminMarketPublishingScreen() {
           <VadText variant="label" tone="brand">MARKET PUBLISHING</VadText>
           <VadText variant="title">Publish and manage VAD Markets.</VadText>
           <VadText variant="caption" tone="secondary">
-            Publishing makes an approved market live in All Markets and places it in VAD Markets. Featured and Trending rules are managed separately in Home Discovery.
+            Publishing makes an approved market live in All Markets and places it in VAD Markets. Review the compact image and resolution eligibility time before it reaches traders.
           </VadText>
         </View>
         <VadButton label="Refresh" variant="secondary" size="small" fullWidth={false} loading={refreshing} onPress={() => void load(true)} />
@@ -149,7 +150,17 @@ export function AdminMarketPublishingScreen() {
 
       <VadBottomSheet visible={Boolean(pending)} title={actionTitle(pending?.action)} onClose={() => { if (!working) setPending(null); }}>
         {pending ? <View style={{ gap: theme.spacing.md }}>
-          <VadCard variant="raised" style={{ gap: 3 }}><VadText variant="bodyStrong">{pending.row.title}</VadText><VadText variant="caption" tone="secondary">{pending.row.category} · {pending.row.asset_code}</VadText><VadText variant="caption" tone="tertiary">Closes {new Date(pending.row.closes_at).toLocaleString()}</VadText></VadCard>
+          <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+              <MarketMediaThumbnail mediaPath={pending.row.media_path} title={pending.row.title} category={pending.row.category} size={70} />
+              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                <VadText variant="bodyStrong">{pending.row.title}</VadText>
+                <VadText variant="caption" tone="secondary">{pending.row.category} · {pending.row.asset_code}</VadText>
+                <VadText variant="caption" tone="tertiary">Closes {new Date(pending.row.closes_at).toLocaleString()}</VadText>
+                {pending.row.resolves_after ? <VadText variant="caption" tone="tertiary">Resolution eligible {new Date(pending.row.resolves_after).toLocaleString()}</VadText> : null}
+              </View>
+            </View>
+          </VadCard>
           {pending.action === 'PUBLISH' ? <VadCard variant="brand" style={{ gap: 3 }}><VadText variant="bodyStrong">This will make the market live.</VadText><VadText variant="caption" tone="secondary">It will appear in All Markets and VAD Markets. Featured and Trending remain separate activity-based lists.</VadText></VadCard> : null}
           {pending.action !== 'REMOVE_VAD' ? <View style={{ gap: 7 }}><VadText variant="label">VAD Markets priority</VadText><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{(['HIGH', 'STANDARD', 'LOW'] as Priority[]).map((option) => <VadChip key={option} label={option === 'HIGH' ? 'High' : option === 'STANDARD' ? 'Standard' : 'Low'} selected={priority === option} tone={priority === option ? 'brand' : 'neutral'} onPress={() => setPriority(option)} />)}</View><VadText variant="caption" tone="tertiary">Higher-priority VAD Markets appear earlier in the horizontal collection.</VadText></View> : null}
           <VadInput label="Reason" value={reason} onChangeText={(value) => { setReason(value); setActionError(null); }} placeholder="Why are you making this change?" multiline error={reason.length > 0 && reason.trim().length < 3 ? 'Enter at least 3 characters.' : undefined} />
@@ -168,7 +179,28 @@ function MarketSection({ title, count, countTone, children }: { title: string; c
 
 function MarketRow({ row, badge, badgeTone = 'neutral', children }: { row: AdminMarketPublicationRow; badge?: string; badgeTone?: 'brand' | 'yes' | 'warning' | 'neutral'; children?: ReactNode }) {
   const theme = useVadTheme();
-  return <VadCard variant="raised" style={{ gap: theme.spacing.sm }}><View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, flexWrap: 'wrap' }}><View style={{ flex: 1, minWidth: 200, gap: 3 }}><VadText variant="bodyStrong">{row.title}</VadText><VadText variant="caption" tone="secondary">{row.category} · {row.asset_code}</VadText><VadText variant="caption" tone="tertiary">{row.opens_at ? `Opens ${new Date(row.opens_at).toLocaleString()} · ` : ''}closes {new Date(row.closes_at).toLocaleString()}</VadText></View><View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}><VadChip label={friendlyStatus(row.instrument_status)} tone={row.instrument_status === 'OPEN' ? 'yes' : 'neutral'} />{badge ? <VadChip label={badge} tone={badgeTone} /> : null}</View></View>{children}</VadCard>;
+  return (
+    <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+        <MarketMediaThumbnail mediaPath={row.media_path} title={row.title} category={row.category} size={68} />
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+            <View style={{ flex: 1, minWidth: 180, gap: 3 }}>
+              <VadText variant="bodyStrong">{row.title}</VadText>
+              <VadText variant="caption" tone="secondary">{row.category} · {row.asset_code}</VadText>
+              <VadText variant="caption" tone="tertiary">{row.opens_at ? `Opens ${new Date(row.opens_at).toLocaleString()} · ` : ''}closes {new Date(row.closes_at).toLocaleString()}</VadText>
+              {row.resolves_after ? <VadText variant="caption" tone="tertiary">Resolution eligible {new Date(row.resolves_after).toLocaleString()}</VadText> : null}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+              <VadChip label={friendlyStatus(row.instrument_status)} tone={row.instrument_status === 'OPEN' ? 'yes' : 'neutral'} />
+              {badge ? <VadChip label={badge} tone={badgeTone} /> : null}
+            </View>
+          </View>
+          {children}
+        </View>
+      </View>
+    </VadCard>
+  );
 }
 
 function priorityFromValue(value: number | null): Priority { if (value != null && value <= 25) return 'HIGH'; if (value != null && value >= 300) return 'LOW'; return 'STANDARD'; }
