@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductTour } from '@/features/tour/tour-provider';
@@ -12,6 +13,8 @@ import type { ProductTab } from './product-tab-bar';
 export function ProductTopBar({
   active,
   email,
+  displayName,
+  avatarPath,
   isAdmin,
   canCreate,
   onCreate,
@@ -24,6 +27,8 @@ export function ProductTopBar({
 }: {
   active: ProductTab;
   email: string;
+  displayName?: string | null;
+  avatarPath?: string | null;
   isAdmin: boolean;
   canCreate: boolean;
   showNavigation?: boolean;
@@ -40,7 +45,6 @@ export function ProductTopBar({
   const density = useProductDensity();
   const insets = useSafeAreaInsets();
   const { registerTarget } = useProductTour();
-  const initial = email.trim().charAt(0).toUpperCase() || 'V';
   const roomy = density.width >= 1024;
 
   return (
@@ -135,7 +139,7 @@ export function ProductTopBar({
 
           {!density.narrow ? (
             <View>
-              <HeaderIcon label="Open notices" icon="bell" onPress={onNotices} />
+              <HeaderIcon label="Open notifications" icon="bell" onPress={onNotices} />
               {noticeCount > 0 ? (
                 <View
                   pointerEvents="none"
@@ -175,9 +179,15 @@ export function ProductTopBar({
               backgroundColor: active === 'Account' ? theme.colors.brandSoft : theme.colors.surfaceRaised,
               opacity: pressed ? 0.7 : 1,
               transform: [{ scale: pressed ? 0.96 : 1 }],
+              overflow: 'hidden',
             })}
           >
-            <VadText variant="label" tone={active === 'Account' ? 'brand' : 'primary'}>{initial}</VadText>
+            <ProfileAvatar
+              path={avatarPath}
+              name={displayName || email}
+              size={40}
+              fallback="account"
+            />
           </Pressable>
         </View>
       </View>
