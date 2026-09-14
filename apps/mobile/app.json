@@ -34,6 +34,14 @@
             "image": "./assets/images/vad-logo-square.png"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow VAD to access a photo you choose for a market image.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {
