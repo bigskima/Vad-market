@@ -29,12 +29,12 @@ export function VadSegmentedControl<T extends string>({
       style={{
         flexDirection: 'row',
         alignSelf: fullWidth ? 'stretch' : 'flex-start',
-        borderRadius: theme.radius.pill,
+        borderRadius: theme.radius.xl,
         backgroundColor: theme.colors.surfaceRaised,
         borderWidth: 1,
         borderColor: theme.colors.border,
-        padding: 3,
-        gap: 2,
+        padding: 4,
+        gap: 3,
       }}
     >
       {options.map((option) => {
@@ -49,17 +49,18 @@ export function VadSegmentedControl<T extends string>({
             hitSlop={2}
             style={({ pressed }) => ({
               flex: fullWidth ? 1 : undefined,
-              minHeight: 44,
+              minHeight: density.compact ? 40 : 44,
               minWidth: fullWidth ? 0 : 88,
               alignItems: 'center',
               justifyContent: 'center',
-              paddingHorizontal: density.phone ? 10 : theme.spacing.md,
-              borderRadius: theme.radius.pill,
-              backgroundColor: selected ? theme.colors.surface : 'transparent',
-              borderWidth: selected ? 1 : 0,
-              borderColor: selected ? theme.colors.borderStrong : 'transparent',
-              opacity: pressed ? 0.7 : 1,
-              transform: [{ scale: pressed ? 0.985 : 1 }],
+              paddingHorizontal: density.phone ? 9 : theme.spacing.md,
+              borderRadius: theme.radius.lg,
+              backgroundColor: selected ? theme.colors.surface : pressed ? theme.colors.surfaceMuted : 'transparent',
+              borderWidth: 1,
+              borderColor: selected ? theme.colors.brandPrimary : 'transparent',
+              opacity: pressed ? 0.78 : 1,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+              ...(selected ? theme.shadows.subtle : {}),
             })}
           >
             <VadText
