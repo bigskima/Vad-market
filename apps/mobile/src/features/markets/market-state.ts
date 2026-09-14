@@ -10,6 +10,9 @@ export type MarketTiming = {
   absolute: string | null;
   detail: string;
   tone: MarketTimingTone;
+  resolutionAbsolute: string | null;
+  resolutionRemainingMs: number | null;
+  resolutionEligible: boolean | null;
 };
 
 export function marketStatusMeta(status: string) {
@@ -40,9 +43,19 @@ export function marketStatusMeta(status: string) {
   return { label: 'UNAVAILABLE', detail: 'Market state is unavailable', tone: 'neutral' as MarketStatusTone, tradeOpen: false };
 }
 
-export function describeMarketTiming(closesAt: string | null | undefined, status: string, now: number): MarketTiming {
+export function describeMarketTiming(
+  closesAt: string | null | undefined,
+  status: string,
+  now: number,
+  resolvesAfter?: string | null,
+): MarketTiming {
   const statusMeta = marketStatusMeta(status);
   const parsed = closesAt ? Date.parse(closesAt) : Number.NaN;
+  const resolutionParsed = resolvesAfter ? Date.parse(resolvesAfter) : Number.NaN;
+  const hasResolution = Number.isFinite(resolutionParsed);
+  const resolutionRemainingMs = hasResolution ? resolutionParsed - now : null;
+  const resolutionAbsolute = hasResolution ? formatAbsolute(resolutionParsed) : null;
+  const resolutionEligible = hasResolution ? resolutionParsed <= now : null;
 
   if (!Number.isFinite(parsed)) {
     return {
@@ -56,24 +69,43 @@ export function describeMarketTiming(closesAt: string | null | undefined, status
         ? 'Trading is live, but the public closing time is not available.'
         : statusMeta.detail,
       tone: statusMeta.tradeOpen ? 'secondary' : statusMeta.tone === 'warning' ? 'warning' : 'secondary',
+      resolutionAbsolute,
+      resolutionRemainingMs,
+      resolutionEligible,
     };
   }
 
   const remainingMs = parsed - now;
   const isPastClose = remainingMs <= 0;
-  const absolute = new Date(parsed).toLocaleString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  const absolute = formatAbsolute(parsed);
 
   if (!statusMeta.tradeOpen) {
     const normalized = status.toUpperCase();
+    const awaitingResult = normalized === 'CLOSED' || normalized === 'AWAITING_ORACLE' || normalized === 'RESOLVING';
+
+    if (awaitingResult && hasResolution) {
+      const resolutionDuration = formatDuration(resolutionRemainingMs ?? 0);
+      const eligibilityReached = Boolean(resolutionEligible);
+      return {
+        available: true,
+        isPastClose,
+        remainingMs,
+        headline: eligibilityReached ? 'Resolution window is open' : `Resolution eligible in ${resolutionDuration}`,
+        compact: eligibilityReached ? 'Resolution eligible' : `Resolve eligible ${resolutionDuration}`,
+        absolute,
+        detail: eligibilityReached
+          ? 'The earliest configured resolution time has been reached. VAD can finalize the result once the required evidence and resolution checks are satisfied.'
+          : `Trading is closed. The result cannot be finalized before ${resolutionAbsolute}; evidence checks can continue while that time approaches.`,
+        tone: eligibilityReached ? 'brand' : 'warning',
+        resolutionAbsolute,
+        resolutionRemainingMs,
+        resolutionEligible,
+      };
+    }
+
     const compact = normalized === 'SUSPENDED'
       ? `Paused · ${isPastClose ? 'close reached' : `closes ${formatDuration(remainingMs)}`}`
-      : normalized === 'CLOSED' || normalized === 'AWAITING_ORACLE' || normalized === 'RESOLVING'
+      : awaitingResult
         ? 'Awaiting result'
         : normalized === 'RESOLVED' || normalized === 'FINALIZED' || normalized === 'SETTLEMENT_PENDING'
           ? 'Result final'
@@ -90,10 +122,13 @@ export function describeMarketTiming(closesAt: string | null | undefined, status
       headline: statusMeta.detail,
       compact,
       absolute,
-      detail: normalized === 'CLOSED' || normalized === 'AWAITING_ORACLE' || normalized === 'RESOLVING'
+      detail: awaitingResult
         ? `Trading closed ${formatElapsed(parsed, now)}. The market is waiting for an official result.`
         : statusMeta.detail,
       tone: normalized === 'SUSPENDED' ? 'warning' : normalized === 'SETTLED' ? 'yes' : 'brand',
+      resolutionAbsolute,
+      resolutionRemainingMs,
+      resolutionEligible,
     };
   }
 
@@ -107,6 +142,9 @@ export function describeMarketTiming(closesAt: string | null | undefined, status
       absolute,
       detail: 'The scheduled close has been reached. Final trade acceptance still follows the authoritative market state.',
       tone: 'warning',
+      resolutionAbsolute,
+      resolutionRemainingMs,
+      resolutionEligible,
     };
   }
 
@@ -130,6 +168,9 @@ export function describeMarketTiming(closesAt: string | null | undefined, status
           ? 'This market closes within the next 24 hours.'
           : `Scheduled close: ${absolute}.`,
     tone: critical ? 'danger' : soon || today ? 'warning' : 'brand',
+    resolutionAbsolute,
+    resolutionRemainingMs,
+    resolutionEligible,
   };
 }
 
@@ -147,6 +188,16 @@ export function formatRelativeTimestamp(value: string | null | undefined, now: n
   if (delta < 7 * 24 * 60 * 60_000) return `${Math.floor(delta / (24 * 60 * 60_000))}d ago`;
 
   return new Date(parsed).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function formatAbsolute(timestamp: number) {
+  return new Date(timestamp).toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function formatDuration(ms: number) {
