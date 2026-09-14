@@ -76,7 +76,7 @@ export function MarketTimeStatus({
       </VadText>
       {showAbsolute && timing.absolute ? (
         <VadText variant="caption" tone="tertiary">
-          {timing.absolute}
+          Scheduled close · {timing.absolute}
         </VadText>
       ) : null}
     </View>
