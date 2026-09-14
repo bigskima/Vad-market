@@ -12,12 +12,18 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { AdminPermissionGate } from '@/features/admin/components/admin-permission-gate';
 import { AdminRouteContainer } from '@/features/admin/components/admin-route-container';
+import { MarketMediaPicker } from '@/features/markets/components/market-media-picker';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   createAdminMarketDraft,
   getAdminMarketAutoOptions,
   type AdminMarketAutoOptions,
 } from '@/services/admin-market-approval-api';
+import {
+  attachAdminMarketMedia,
+  uploadMarketMedia,
+  type MarketMediaSelection,
+} from '@/services/market-media-api';
 
 const CATEGORIES = ['Politics', 'Sports', 'Crypto', 'Business', 'Economy', 'Technology', 'Entertainment', 'Science', 'World', 'Other'] as const;
 
@@ -37,6 +43,7 @@ function AdminCreateMarketContent() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mediaWarning, setMediaWarning] = useState<string | null>(null);
   const [created, setCreated] = useState<Record<string, unknown> | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -46,6 +53,7 @@ function AdminCreateMarketContent() {
   const [opensAt, setOpensAt] = useState('');
   const [closesAt, setClosesAt] = useState('');
   const [resolvesAfter, setResolvesAfter] = useState('');
+  const [media, setMedia] = useState<MarketMediaSelection | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -75,6 +83,7 @@ function AdminCreateMarketContent() {
   async function createMarket() {
     if (working) return;
     setError(null);
+    setMediaWarning(null);
     setCreated(null);
     if (!title.trim()) {
       setError('Enter the market question.');
@@ -99,7 +108,7 @@ function AdminCreateMarketContent() {
 
     setWorking(true);
     try {
-      setCreated(await createAdminMarketDraft({
+      const result = await createAdminMarketDraft({
         title,
         description,
         category,
@@ -108,7 +117,21 @@ function AdminCreateMarketContent() {
         resolvesAfter: new Date(resolvesAfter).toISOString(),
         countryCode: resolvedCountryCode,
         assetCode: resolvedAssetCode,
-      }));
+      });
+      setCreated(result);
+
+      if (media) {
+        try {
+          const instrumentId = typeof result.instrument_id === 'string' ? result.instrument_id : '';
+          if (!instrumentId) throw new Error('The market was created, but its public market reference was not returned.');
+          const mediaPath = await uploadMarketMedia(media, 'markets');
+          await attachAdminMarketMedia(instrumentId, mediaPath);
+        } catch (value) {
+          setMediaWarning(value instanceof Error
+            ? `${value.message} The market draft itself was still created successfully.`
+            : 'The image could not be attached, but the market draft itself was created successfully.');
+        }
+      }
     } catch (value) {
       setError(value instanceof Error ? value.message : 'VAD market could not be created.');
     } finally {
@@ -146,15 +169,24 @@ function AdminCreateMarketContent() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             <VadChip label={String(created.asset_code ?? resolvedAssetCode)} tone={sandbox ? 'brand' : 'neutral'} />
             <VadChip label={String(created.resolution_mode ?? 'VAD AUTO').replaceAll('_', ' ')} tone="yes" />
+            {media && !mediaWarning ? <VadChip label="IMAGE ATTACHED" tone="yes" /> : null}
           </View>
+          {mediaWarning ? (
+            <VadCard variant="muted" style={{ gap: 3, borderColor: theme.colors.warning }}>
+              <VadText variant="caption" tone="warning">MARKET IMAGE</VadText>
+              <VadText variant="caption" tone="secondary">{mediaWarning}</VadText>
+            </VadCard>
+          ) : null}
           <VadButton label="Open Market Publishing" onPress={() => router.push('/admin/market-publishing')} />
           <VadButton
             label="Create another market"
             variant="secondary"
             onPress={() => {
               setCreated(null);
+              setMediaWarning(null);
               setTitle('');
               setDescription('');
+              setMedia(null);
               setOpensAt('');
               setClosesAt('');
               setResolvesAfter('');
@@ -181,6 +213,8 @@ function AdminCreateMarketContent() {
             multiline
             placeholder="Add any useful context for traders."
           />
+
+          <MarketMediaPicker value={media} onChange={setMedia} disabled={working} />
 
           <View style={{ gap: 8 }}>
             <VadText variant="label">Category</VadText>
@@ -222,7 +256,7 @@ function AdminCreateMarketContent() {
 
           <VadDateTimeField label="Opens" value={opensAt} onChange={setOpensAt} hint="When testers can begin trading." />
           <VadDateTimeField label="Closes" value={closesAt} onChange={setClosesAt} minDate={opensAt || undefined} hint="Trading stops at this time." />
-          <VadDateTimeField label="Resolve after" value={resolvesAfter} onChange={setResolvesAfter} minDate={closesAt || opensAt || undefined} hint="VAD starts automatic resolution or controlled oracle review from this time." />
+          <VadDateTimeField label="Resolve after" value={resolvesAfter} onChange={setResolvesAfter} minDate={closesAt || opensAt || undefined} hint="Earliest time VAD may finalize the result after evidence and oracle checks are satisfied." />
 
           <VadCard variant="muted" style={{ gap: 4 }}>
             <VadText variant="bodyStrong" tone="yes">Automatic resolution configuration</VadText>
