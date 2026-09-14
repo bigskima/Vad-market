@@ -19,9 +19,9 @@ export function MarketTimeStatus({
 }) {
   const theme = useVadTheme();
   const now = useLiveNow(1000);
-  const timing = describeMarketTiming(market.closes_at, market.status, now);
+  const timing = describeMarketTiming(market.closes_at, market.status, now, market.resolves_after);
   const palette = timingPalette(timing.tone, theme);
-  const accessibilityTiming = [timing.headline, timing.absolute, timing.detail].filter(Boolean).join('. ');
+  const accessibilityTiming = [timing.headline, timing.absolute, timing.resolutionAbsolute, timing.detail].filter(Boolean).join('. ');
 
   if (compact) {
     return (
@@ -77,6 +77,11 @@ export function MarketTimeStatus({
       {showAbsolute && timing.absolute ? (
         <VadText variant="caption" tone="tertiary">
           Scheduled close · {timing.absolute}
+        </VadText>
+      ) : null}
+      {showAbsolute && timing.resolutionAbsolute ? (
+        <VadText variant="caption" tone="tertiary">
+          Resolution eligible · {timing.resolutionAbsolute}
         </VadText>
       ) : null}
     </View>
