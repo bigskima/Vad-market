@@ -38,7 +38,7 @@ function quantize(value: number, resolutionMs: number) {
   return Math.floor(value / resolutionMs) * resolutionMs;
 }
 
-export function useLiveNow(resolutionMs = 1000) {
+export function useLiveNow(resolutionMs = 60_000) {
   const getSnapshot = useCallback(
     () => quantize(currentNow, resolutionMs),
     [resolutionMs],
