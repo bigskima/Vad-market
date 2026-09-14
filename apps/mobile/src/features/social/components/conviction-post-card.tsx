@@ -9,6 +9,7 @@ import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadMediaContainer } from '@/components/ui/vad-media-container';
 import { VadText } from '@/components/ui/vad-text';
 import { MarketProbabilityBar } from '@/features/markets/components/market-probability-bar';
+import { MarketThumbnail } from '@/features/markets/components/market-thumbnail';
 import { MarketTimeStatus } from '@/features/markets/components/market-time-status';
 import { pct } from '@/features/markets/format';
 import { formatRelativeTimestamp, marketStatusMeta } from '@/features/markets/market-state';
@@ -88,7 +89,14 @@ export function ConvictionPostCard({
   }
 
   return (
-    <VadCard variant="raised" style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md, overflow: 'hidden' }}>
+    <VadCard
+      variant="raised"
+      style={{
+        gap: density.compact ? theme.spacing.sm : theme.spacing.md,
+        overflow: 'hidden',
+        borderColor: stance === 'YES' ? theme.colors.yes : stance === 'NO' ? theme.colors.no : theme.colors.border,
+      }}
+    >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
         <Pressable
           accessibilityRole={creatorNavigable ? 'button' : undefined}
@@ -108,45 +116,61 @@ export function ConvictionPostCard({
           onPress={onOpenCreator}
           style={({ pressed }) => ({ flex: 1, minWidth: 0, gap: 1, opacity: pressed && creatorNavigable ? 0.7 : 1 })}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <VadText variant="bodyStrong" tone={creatorOpen ? 'brand' : 'primary'} numberOfLines={1}>
-              {authorName}
-            </VadText>
-            <View style={{ minHeight: 24, justifyContent: 'center', paddingHorizontal: 8, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surfaceMuted }}>
-              <VadText variant="caption" tone="tertiary" numberOfLines={1}>{postType}</VadText>
-            </View>
-          </View>
+          <VadText variant="bodyStrong" tone={creatorOpen ? 'brand' : 'primary'} numberOfLines={1}>
+            {authorName}
+          </VadText>
           <VadText variant="caption" tone="secondary" numberOfLines={1}>
-            {post.author_handle ? `@${post.author_handle}` : 'Username not set'} · {postAge}
+            {post.author_handle ? `@${post.author_handle}` : 'VAD member'} · {postAge}
           </VadText>
         </Pressable>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={post.viewer_follows_author ? `Unfollow ${authorName}` : `Follow ${authorName}`}
-          accessibilityState={{ selected: post.viewer_follows_author, disabled: followDisabled, busy: followDisabled }}
-          disabled={followDisabled}
-          onPress={onFollow}
-          style={({ pressed }) => ({
-            minWidth: 44,
-            minHeight: 44,
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingHorizontal: theme.spacing.sm,
-            borderRadius: theme.radius.pill,
-            backgroundColor: post.viewer_follows_author ? theme.colors.surface : theme.colors.brandSoft,
-            borderWidth: 1,
-            borderColor: post.viewer_follows_author ? theme.colors.border : theme.colors.brandPrimary,
-            opacity: followDisabled ? 0.5 : pressed ? 0.65 : 1,
-          })}
-        >
-          <VadText variant="caption" tone={post.viewer_follows_author ? 'secondary' : 'brand'}>
-            {post.viewer_follows_author ? 'Following' : 'Follow'}
-          </VadText>
-        </Pressable>
+        <View style={{ alignItems: 'flex-end', gap: 5 }}>
+          <VadChip label={postType} tone="neutral" />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={post.viewer_follows_author ? `Unfollow ${authorName}` : `Follow ${authorName}`}
+            accessibilityState={{ selected: post.viewer_follows_author, disabled: followDisabled, busy: followDisabled }}
+            disabled={followDisabled}
+            onPress={onFollow}
+            style={({ pressed }) => ({
+              minHeight: 34,
+              justifyContent: 'center',
+              paddingHorizontal: 9,
+              borderRadius: theme.radius.pill,
+              backgroundColor: post.viewer_follows_author ? theme.colors.surface : theme.colors.brandSoft,
+              opacity: followDisabled ? 0.5 : pressed ? 0.65 : 1,
+            })}
+          >
+            <VadText variant="caption" tone={post.viewer_follows_author ? 'secondary' : 'brand'}>
+              {post.viewer_follows_author ? 'Following' : 'Follow'}
+            </VadText>
+          </Pressable>
+        </View>
       </View>
 
-      <View style={{ gap: theme.spacing.xs }}>
+      {stance || post.confidence != null ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 7,
+            minHeight: 36,
+            paddingHorizontal: 10,
+            borderRadius: theme.radius.md,
+            backgroundColor: stance === 'YES' ? theme.colors.yesSoft : stance === 'NO' ? theme.colors.noSoft : theme.colors.brandSoft,
+          }}
+        >
+          <VadText variant="caption" tone={stance === 'YES' ? 'yes' : stance === 'NO' ? 'no' : 'brand'}>
+            {stance ? `${stance} CONVICTION` : 'CONVICTION'}
+          </VadText>
+          <View style={{ flex: 1 }} />
+          {post.confidence != null ? (
+            <VadText variant="caption" tone="secondary">Confidence {pct(post.confidence)}</VadText>
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={{ gap: 2 }}>
         <VadText
           numberOfLines={longPost && !bodyExpanded ? (density.compact ? 5 : 6) : undefined}
           style={{ fontSize: density.compact ? 14 : 15, lineHeight: density.compact ? 20 : 23 }}
@@ -159,27 +183,15 @@ export function ConvictionPostCard({
             accessibilityLabel={bodyExpanded ? 'Show less of this post' : 'Read the full post'}
             accessibilityState={{ expanded: bodyExpanded }}
             onPress={() => setBodyExpanded((value) => !value)}
-            style={({ pressed }) => ({
-              alignSelf: 'flex-start',
-              minHeight: 36,
-              justifyContent: 'center',
-              opacity: pressed ? 0.62 : 1,
-            })}
+            style={({ pressed }) => ({ alignSelf: 'flex-start', minHeight: 36, justifyContent: 'center', opacity: pressed ? 0.62 : 1 })}
           >
             <VadText variant="caption" tone="brand">{bodyExpanded ? 'Show less' : 'Read more'}</VadText>
           </Pressable>
         ) : null}
-        {post.confidence != null ? (
-          <View style={{ alignSelf: 'flex-start', minHeight: 30, justifyContent: 'center', paddingHorizontal: 10, borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandSoft }}>
-            <VadText variant="caption" tone="brand">Confidence {pct(post.confidence)}</VadText>
-          </View>
-        ) : null}
       </View>
 
       {remoteMedia ? (
-        <VadMediaContainer
-          items={[{ uri: remoteMedia, type: mediaType, alt: 'Community post media' }]}
-        />
+        <VadMediaContainer items={[{ uri: remoteMedia, type: mediaType, alt: 'Community post media' }]} />
       ) : post.media_path ? (
         <View style={{ minHeight: 96, justifyContent: 'center', alignItems: 'center', gap: theme.spacing.xs, borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted }}>
           <VadIcon name="activity" size={24} tone="tertiary" />
@@ -194,32 +206,32 @@ export function ConvictionPostCard({
           onPress={onOpenMarket}
           disabled={!linkedMarket}
           style={({ pressed }) => ({
-            borderRadius: theme.radius.xl,
-            backgroundColor: theme.colors.surface,
+            borderRadius: theme.radius.lg,
+            backgroundColor: theme.colors.background,
             borderWidth: 1,
-            borderColor: stance === 'NO' ? theme.colors.no : stance === 'YES' ? theme.colors.yes : theme.colors.border,
-            padding: density.compact ? 10 : theme.spacing.md,
-            gap: density.compact ? 6 : theme.spacing.xs,
+            borderColor: theme.colors.border,
+            padding: density.compact ? 9 : theme.spacing.sm,
+            gap: 7,
             opacity: pressed && linkedMarket ? 0.72 : 1,
           })}
         >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'flex-start' }}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <VadText variant="caption" tone="tertiary">LINKED MARKET{post.asset_code ? ` · ${post.asset_code}` : ''}</VadText>
-              <VadText variant="bodyStrong" numberOfLines={density.compact ? 2 : 3}>{post.market_title}</VadText>
-            </View>
-            <View style={{ alignItems: 'flex-end', gap: 5 }}>
-              {stance ? <VadChip label={stance} tone={stance === 'YES' ? 'yes' : 'no'} /> : null}
-              {linkedStatus ? <VadChip label={linkedStatus.label} tone={linkedStatus.tone} /> : null}
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'flex-start' }}>
+            {linkedMarket ? <MarketThumbnail market={linkedMarket} size={density.compact ? 54 : 60} /> : null}
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <VadText variant="caption" tone="tertiary" style={{ flex: 1 }}>LINKED MARKET{post.asset_code ? ` · ${post.asset_code}` : ''}</VadText>
+                {linkedStatus ? <VadChip label={linkedStatus.label} tone={linkedStatus.tone} /> : null}
+              </View>
+              <VadText variant="bodyStrong" numberOfLines={2}>{post.market_title}</VadText>
+              {linkedMarket ? <MarketTimeStatus market={linkedMarket} compact fill /> : null}
             </View>
           </View>
 
           <MarketProbabilityBar yes={post.yes_price} no={post.no_price} />
-          {linkedMarket ? <MarketTimeStatus market={linkedMarket} compact fill /> : null}
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
             <VadText variant="caption" tone="secondary">
-              {linkedMarket ? (linkedStatus?.tradeOpen ? 'Live market context' : linkedStatus?.detail ?? 'Market details') : 'Market'}
+              {stance ? `${stance} view · ` : ''}{linkedStatus?.tradeOpen ? 'Live market context' : linkedStatus?.detail ?? 'Market context'}
             </VadText>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
               <VadText variant="caption" tone={linkedMarket ? 'brand' : 'tertiary'}>{linkedMarket ? (linkedStatus?.tradeOpen ? 'Trade' : 'Details') : 'Unavailable'}</VadText>
@@ -229,10 +241,10 @@ export function ConvictionPostCard({
         </Pressable>
       ) : null}
 
-      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm }}>
+      <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 7 }}>
         <Action icon="activity" label="Like" count={Number(post.reaction_count)} active={post.viewer_liked} disabled={likeDisabled} onPress={onLike} />
-        <Action icon="reply" label="Reply" count={Number(post.comment_count)} active={commentsOpen} onPress={onComments} />
-        <Action icon="share" label="Share" active={false} onPress={() => void sharePost()} />
+        <Action icon="reply" label="Discuss" count={Number(post.comment_count)} active={commentsOpen} onPress={onComments} />
+        <Action icon="share" label="Share" active={false} onPress={() => void sharePost()} compact />
         <Action icon="bookmark" label="Save" active={bookmarked} onPress={toggleBookmark} compact />
       </View>
 
@@ -268,8 +280,8 @@ function Action({
       onPress={onPress}
       style={({ pressed }) => ({
         flex: compact ? 0 : 1,
-        minWidth: compact ? 44 : 0,
-        minHeight: 44,
+        minWidth: compact ? 42 : 0,
+        minHeight: 40,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -280,7 +292,7 @@ function Action({
         opacity: disabled ? 0.5 : pressed ? 0.68 : 1,
       })}
     >
-      <VadIcon name={icon} size={16} tone={active ? 'brand' : 'tertiary'} />
+      <VadIcon name={icon} size={15} tone={active ? 'brand' : 'tertiary'} />
       {!compact ? <VadText variant="caption" tone={active ? 'brand' : 'secondary'}>{label}</VadText> : null}
       {count != null ? <VadText variant="caption" tone={active ? 'brand' : 'tertiary'}>{count}</VadText> : null}
     </Pressable>
