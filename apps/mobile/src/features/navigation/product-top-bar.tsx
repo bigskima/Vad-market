@@ -126,7 +126,7 @@ export function ProductTopBar({
           {canCreate ? (
             roomy ? (
               <HeaderAction label="Create" icon="plus" brand onPress={onCreate} />
-            ) : (
+            ) : density.narrow ? null : (
               <CompactCreateAction onPress={onCreate} />
             )
           ) : null}
@@ -137,32 +137,30 @@ export function ProductTopBar({
 
           {!density.narrow ? <HeaderIcon label="Open VAD Assistant" icon="activity" onPress={onAssistant} /> : null}
 
-          {!density.narrow ? (
-            <View>
-              <HeaderIcon label="Open notifications" icon="bell" onPress={onNotices} />
-              {noticeCount > 0 ? (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    top: 4,
-                    right: 4,
-                    minWidth: 16,
-                    height: 16,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingHorizontal: 3,
-                    backgroundColor: theme.colors.no,
-                    borderWidth: 2,
-                    borderColor: theme.colors.surface,
-                  }}
-                >
-                  <VadText tone="inverse" style={{ fontSize: 9, lineHeight: 10, fontWeight: '800' }}>{Math.min(9, noticeCount)}</VadText>
-                </View>
-              ) : null}
-            </View>
-          ) : null}
+          <View>
+            <HeaderIcon label="Open notifications" icon="bell" onPress={onNotices} />
+            {noticeCount > 0 ? (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 3,
+                  backgroundColor: theme.colors.no,
+                  borderWidth: 2,
+                  borderColor: theme.colors.surface,
+                }}
+              >
+                <VadText tone="inverse" style={{ fontSize: 9, lineHeight: 10, fontWeight: '800' }}>{Math.min(9, noticeCount)}</VadText>
+              </View>
+            ) : null}
+          </View>
 
           <Pressable
             accessibilityRole="button"
