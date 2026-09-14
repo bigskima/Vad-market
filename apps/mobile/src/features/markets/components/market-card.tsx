@@ -7,7 +7,9 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { probability } from '../format';
+import { marketStatusMeta } from '../market-state';
 import { MarketProbabilityBar } from './market-probability-bar';
+import { MarketRelativeTime, MarketTimeStatus } from './market-time-status';
 
 export function MarketCard({
   market,
@@ -21,23 +23,18 @@ export function MarketCard({
   const theme = useVadTheme();
   const density = useProductDensity();
   const tight = compact || density.compact;
-  const isOpen = market.status === 'OPEN' || market.status === 'ACTIVE';
+  const status = marketStatusMeta(market.status);
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
-  const statusLabel = marketStatusLabel(market.status);
-
-  const closesLabel = market.closes_at
-    ? new Date(market.closes_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-    : 'Time unavailable';
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${statusLabel}.`}
-      accessibilityHint="Opens market details, discussion, rules and trading when available."
+      accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${status.label}.`}
+      accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
       style={({ pressed }) => ({
-        minHeight: compact ? 132 : density.compact ? 164 : density.phone ? 176 : 196,
+        minHeight: compact ? 138 : density.compact ? 172 : density.phone ? 184 : 202,
         borderWidth: 1,
         borderColor: pressed ? theme.colors.borderStrong : theme.colors.border,
         borderRadius: compact ? theme.radius.lg : density.cardRadius,
@@ -50,13 +47,13 @@ export function MarketCard({
       })}
     >
       <View style={{ gap: compact ? 8 : density.compact ? theme.spacing.sm : theme.spacing.md }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6, alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6, alignItems: 'flex-start' }}>
           <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
-            <VadChip label={statusLabel.toUpperCase()} tone={isOpen ? 'yes' : 'neutral'} />
+            <VadChip label={status.label} tone={status.tone} />
             <VadChip label={market.asset_code} tone="brand" />
             {!tight ? <VadText variant="caption" tone="secondary" numberOfLines={1}>{market.category ?? 'General'}</VadText> : null}
           </View>
-          <VadText variant="caption" tone="tertiary" numberOfLines={1}>{closesLabel}</VadText>
+          <MarketTimeStatus market={market} compact />
         </View>
 
         {!compact && density.compact ? <VadText variant="caption" tone="secondary" numberOfLines={1}>{market.category ?? 'General'}</VadText> : null}
@@ -73,25 +70,14 @@ export function MarketCard({
       </View>
 
       <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: compact ? 6 : density.compact ? 7 : theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
-        <VadText variant="caption" tone="tertiary" numberOfLines={1}>{market.last_trade_at ? 'Recently traded' : 'No trades yet'}</VadText>
+        <MarketRelativeTime value={market.last_trade_at} prefix="Traded" fallback="No trades yet" />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <VadText variant="caption" tone="brand">Open</VadText>
+          <VadText variant="caption" tone="brand">{status.tradeOpen ? 'Trade' : 'View'}</VadText>
           <VadIcon name="chevronRight" size={14} tone="brand" />
         </View>
       </View>
     </Pressable>
   );
-}
-
-function marketStatusLabel(status: string) {
-  const normalized = status.toUpperCase();
-  if (normalized === 'OPEN' || normalized === 'ACTIVE') return 'Live';
-  if (normalized === 'CLOSED') return 'Closed';
-  if (normalized === 'RESOLVING') return 'Result pending';
-  if (normalized === 'RESOLVED') return 'Result confirmed';
-  if (normalized === 'SETTLED') return 'Completed';
-  if (normalized === 'VOID') return 'Cancelled';
-  return 'Unavailable';
 }
 
 function PriceTile({ label, value, positive, compact }: { label: string; value: string; positive: boolean; compact: boolean }) {
