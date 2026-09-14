@@ -10,6 +10,7 @@ import type { MarketCatalogItem } from '@/services/market-api';
 import { probability } from '../format';
 import { formatRelativeTimestamp, marketStatusMeta } from '../market-state';
 import { MarketProbabilityBar } from './market-probability-bar';
+import { MarketThumbnail } from './market-thumbnail';
 import { MarketTimeStatus } from './market-time-status';
 
 export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
@@ -30,7 +31,13 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <VadText variant="caption" tone="secondary">{market.category ?? 'General'} · {friendlyEnum(market.market_type)}</VadText>
       </View>
 
-      <VadText variant={density.compact ? 'heading' : 'title'}>{market.title}</VadText>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <VadText variant="caption" tone="tertiary">MARKET</VadText>
+          <VadText variant={density.compact ? 'heading' : 'title'}>{market.title}</VadText>
+        </View>
+        <MarketThumbnail market={market} size={density.compact ? 70 : 82} />
+      </View>
 
       <VadCard accessibilityRole="summary" variant="raised" style={{ gap: theme.spacing.sm }}>
         <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
