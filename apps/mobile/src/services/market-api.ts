@@ -1,5 +1,10 @@
 import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
+import {
+  attachProposalMarketMedia,
+  uploadMarketMedia,
+  type MarketMediaSelection,
+} from '@/services/market-media-api';
 
 export type MarketCatalogItem = {
   instrument_public_id: string;
@@ -116,6 +121,7 @@ export type MarketAdmissionResult = {
 export type MarketAdmissionResponse = {
   proposalId: string;
   admission: MarketAdmissionResult;
+  mediaWarning?: string;
   ai?: {
     attempted?: boolean;
     providerCode?: string;
@@ -200,7 +206,21 @@ export async function submitMarketProposal(input: {
   context?: string;
   category?: string;
   assetCode?: string;
+  media?: MarketMediaSelection | null;
 }) {
+  let mediaPath: string | null = null;
+  let mediaWarning: string | undefined;
+
+  if (input.media) {
+    try {
+      mediaPath = await uploadMarketMedia(input.media, 'proposals');
+    } catch (error) {
+      mediaWarning = error instanceof Error
+        ? `${error.message} Your proposal can still continue without the image.`
+        : 'The image could not be uploaded. Your proposal can still continue without it.';
+    }
+  }
+
   const { data, error } = await supabase.functions.invoke('market-admission', {
     body: {
       question: input.question.trim(),
@@ -215,7 +235,21 @@ export async function submitMarketProposal(input: {
   if (payload.error || !payload.admission) {
     throw userFacingError(payload.message ?? payload.error, 'proposal');
   }
-  return payload as MarketAdmissionResponse;
+
+  if (mediaPath) {
+    try {
+      await attachProposalMarketMedia(String(payload.proposalId ?? payload.admission.proposalId), mediaPath);
+    } catch (error) {
+      mediaWarning = error instanceof Error
+        ? `${error.message} The proposal itself was still submitted successfully.`
+        : 'The image could not be attached, but the proposal itself was submitted successfully.';
+    }
+  }
+
+  return {
+    ...(payload as MarketAdmissionResponse),
+    mediaWarning,
+  } satisfies MarketAdmissionResponse;
 }
 
 export async function getAdminRuntimeSummary() {
