@@ -12,6 +12,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { PaymentRow } from '@/features/wallet/wallet-screen';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getMyPaymentIntents,
@@ -101,7 +102,7 @@ export function WalletActivityScreen({
     return [...totals.entries()].sort(([a], [b]) => assetRank(a) - assetRank(b));
   }, [rows]);
 
-  const visibleRows = useMemo(
+  const filteredRows = useMemo(
     () =>
       filter === 'all'
         ? rows
@@ -109,10 +110,18 @@ export function WalletActivityScreen({
     [filter, rows],
   );
 
+  const pageSize = desktopTable ? 12 : density.phone ? 7 : 9;
+  const progressive = useProgressiveList({
+    items: filteredRows,
+    initialCount: pageSize,
+    step: pageSize,
+    resetKey: `${filter}|${filteredRows.length}|${desktopTable}`,
+  });
+
   const groupedRows = useMemo(() => {
     const groups: { label: string; rows: PaymentIntentRow[] }[] = [];
 
-    visibleRows.forEach((row) => {
+    progressive.visibleItems.forEach((row) => {
       const label = dayLabel(row.created_at);
       const existing = groups.find((group) => group.label === label);
 
@@ -121,7 +130,7 @@ export function WalletActivityScreen({
     });
 
     return groups;
-  }, [visibleRows]);
+  }, [progressive.visibleItems]);
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.lg : theme.spacing.xl }}>
@@ -136,7 +145,7 @@ export function WalletActivityScreen({
           <VadText variant="caption" tone="brand">WALLET ACTIVITY</VadText>
           <VadText variant="title">Money movement</VadText>
           <VadText variant="caption" tone="secondary">
-            Track deposits, withdrawals and their latest status, with each currency kept separate.
+            Track deposits and withdrawals in manageable batches instead of one long history page.
           </VadText>
         </View>
 
@@ -200,21 +209,28 @@ export function WalletActivityScreen({
             </View>
           </VadCard>
 
-          <VadSegmentedControl
-            value={filter}
-            options={FILTERS}
-            onChange={setFilter}
-          />
+          <View style={{ gap: theme.spacing.xs }}>
+            <VadSegmentedControl
+              value={filter}
+              options={FILTERS}
+              onChange={setFilter}
+            />
+            {filteredRows.length ? (
+              <VadText variant="caption" tone="tertiary">
+                Showing {progressive.visibleCount} of {progressive.totalCount} transactions.
+              </VadText>
+            ) : null}
+          </View>
 
-          {visibleRows.length ? (
-            desktopTable ? (
-              <DesktopActivityTable
-                rows={visibleRows}
-                onOpenTransaction={onOpenTransaction}
-              />
-            ) : (
-              <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-                {groupedRows.map((group) => (
+          {filteredRows.length ? (
+            <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
+              {desktopTable ? (
+                <DesktopActivityTable
+                  rows={progressive.visibleItems}
+                  onOpenTransaction={onOpenTransaction}
+                />
+              ) : (
+                groupedRows.map((group) => (
                   <View key={group.label} style={{ gap: 6 }}>
                     <VadText variant="caption" tone="tertiary">
                       {group.label.toUpperCase()}
@@ -229,9 +245,27 @@ export function WalletActivityScreen({
                       ))}
                     </View>
                   </View>
-                ))}
-              </View>
-            )
+                ))
+              )}
+
+              {progressive.hasMore ? (
+                <VadCard variant="raised" style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+                  <View style={{ alignItems: 'center', gap: 2 }}>
+                    <VadText variant="bodyStrong">More history is available</VadText>
+                    <VadText variant="caption" tone="secondary">
+                      {progressive.remainingCount} more {progressive.remainingCount === 1 ? 'transaction' : 'transactions'} match this view.
+                    </VadText>
+                  </View>
+                  <VadButton
+                    label={`Show next ${progressive.nextCount}`}
+                    variant="secondary"
+                    size="small"
+                    fullWidth={false}
+                    onPress={progressive.showMore}
+                  />
+                </VadCard>
+              ) : null}
+            </View>
           ) : (
             <VadEmptyState
               title={filter === 'all' ? 'No payment activity yet' : 'Nothing in this status'}
