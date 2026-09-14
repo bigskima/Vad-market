@@ -72,7 +72,7 @@ export function MarketCard({
       <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: compact ? 6 : density.compact ? 7 : theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
         <MarketRelativeTime value={market.last_trade_at} prefix="Traded" fallback="No trades yet" />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <VadText variant="caption" tone="brand">{status.tradeOpen ? 'Trade' : 'Open'}</VadText>
+          <VadText variant="caption" tone="brand">{status.tradeOpen ? 'Trade' : 'Details'}</VadText>
           <VadIcon name="chevronRight" size={14} tone="brand" />
         </View>
       </View>
