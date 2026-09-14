@@ -8,6 +8,7 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney, pct } from '@/features/markets/format';
@@ -77,17 +78,30 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
           <VadChip label={orderStatusLabel(currentOrder.status)} />
         </View>
         <VadText variant="heading">{currentOrder.market_title}</VadText>
-        <VadText variant="caption" tone="secondary">Created {new Date(currentOrder.created_at).toLocaleString()}. Cancelling only affects shares that have not filled yet.</VadText>
       </View>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
-        <VadCard style={{ flex: 1.1, borderColor: yes ? theme.colors.yes : theme.colors.no, gap: theme.spacing.sm }}>
+        <VadCard variant="brand" style={{ flex: 1.1, borderColor: yes ? theme.colors.yes : theme.colors.no, gap: theme.spacing.md, overflow: 'hidden' }}>
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              width: 150,
+              height: 150,
+              borderRadius: 75,
+              right: -58,
+              top: -72,
+              backgroundColor: yes ? theme.colors.yesSoft : theme.colors.noSoft,
+              opacity: 0.5,
+            }}
+          />
           <VadText variant="caption" tone={yes ? 'yes' : 'no'}>PRICE PER SHARE · {currentOrder.asset_code}</VadText>
-          <VadText variant="display" numberOfLines={1} adjustsFontSizeToFit>{amount(limitPrice)}</VadText>
+          <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{amount(limitPrice)}</VadText>
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <Snapshot label="Original shares" value={quantity.toLocaleString()} />
             <Snapshot label="Original value" value={amount(originalNotional)} />
           </View>
+          <VadText variant="caption" tone="secondary">Created {new Date(currentOrder.created_at).toLocaleString()}</VadText>
         </VadCard>
 
         <VadCard variant="raised" style={{ flex: 0.9, gap: theme.spacing.sm }}>
@@ -98,39 +112,13 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
             </View>
             <VadText variant="caption" tone="tertiary">{remaining.toLocaleString()} shares remaining</VadText>
           </View>
-          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(fillPercent * 100) }} style={{ height: 6, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surfaceMuted, overflow: 'hidden' }}>
+          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(fillPercent * 100) }} style={{ height: 7, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surfaceMuted, overflow: 'hidden' }}>
             <View style={{ width: progressWidth, height: '100%', backgroundColor: theme.colors.brandPrimary }} />
           </View>
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <Snapshot label="Filled" value={filled.toLocaleString()} />
             <Snapshot label="Remaining" value={remaining.toLocaleString()} />
           </View>
-        </VadCard>
-      </View>
-
-      <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: theme.spacing.md }}>
-        <VadCard style={{ flex: 1.1, width: '100%', gap: theme.spacing.xs }}>
-          <VadText variant="bodyStrong">Order details</VadText>
-          <Detail label="Market" value={currentOrder.market_title} />
-          <Detail label="Outcome" value={currentOrder.outcome_code} />
-          <Detail label="Currency" value={currentOrder.asset_code} />
-          <Detail label="Reference" value={String(currentOrder.order_id)} selectable />
-          <Detail label="Action" value={currentOrder.side} />
-          <Detail label="Price per share" value={amount(limitPrice)} />
-          <Detail label="Shares ordered" value={quantity.toLocaleString()} />
-          <Detail label="Shares filled" value={filled.toLocaleString()} />
-          <Detail label="Shares remaining" value={remaining.toLocaleString()} />
-          <Detail label="Remaining value" value={amount(remainingNotional)} />
-          <Detail label="Status" value={orderStatusLabel(currentOrder.status)} />
-        </VadCard>
-
-        <VadCard variant="raised" style={{ flex: 0.9, width: '100%', gap: theme.spacing.sm }}>
-          <VadText variant="bodyStrong">What&apos;s still open</VadText>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
-            <ContextFact label="Shares remaining" value={remaining.toLocaleString()} />
-            <ContextFact label="Remaining value" value={amount(remainingNotional)} />
-          </View>
-          <VadText variant="caption" tone="secondary">Shares that already filled will not be affected if you cancel the remaining part of this order.</VadText>
           <VadButton
             label="Open market"
             variant="secondary"
@@ -139,6 +127,41 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
           <VadButton label="Cancel remaining" variant="danger" loading={cancelling} disabled={remaining <= 0} onPress={() => { setCancelError(null); setConfirmOpen(true); }} />
         </VadCard>
       </View>
+
+      <VadProgressiveSection
+        title="What's still open"
+        eyebrow="REMAINING EXPOSURE"
+        description="Only unfilled shares are affected if you cancel this order."
+        icon="activity"
+        defaultExpanded={remaining > 0}
+        summary={<VadText variant="caption" tone="tertiary">{remaining.toLocaleString()} shares · {amount(remainingNotional)}</VadText>}
+      >
+        <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
+          <ContextFact label="Shares remaining" value={remaining.toLocaleString()} />
+          <ContextFact label="Remaining value" value={amount(remainingNotional)} />
+        </View>
+        <VadText variant="caption" tone="secondary">Shares that already filled stay filled. Cancelling affects only the remaining open portion.</VadText>
+      </VadProgressiveSection>
+
+      <VadProgressiveSection
+        title="Order details"
+        eyebrow="FULL BREAKDOWN"
+        description="Reference, action, price, quantities and order status."
+        icon="portfolio"
+        summary={<VadText variant="caption" tone="tertiary">{currentOrder.side} {currentOrder.outcome_code} · {orderStatusLabel(currentOrder.status)}</VadText>}
+      >
+        <Detail label="Market" value={currentOrder.market_title} />
+        <Detail label="Outcome" value={currentOrder.outcome_code} />
+        <Detail label="Currency" value={currentOrder.asset_code} />
+        <Detail label="Reference" value={String(currentOrder.order_id)} selectable />
+        <Detail label="Action" value={currentOrder.side} />
+        <Detail label="Price per share" value={amount(limitPrice)} />
+        <Detail label="Shares ordered" value={quantity.toLocaleString()} />
+        <Detail label="Shares filled" value={filled.toLocaleString()} />
+        <Detail label="Shares remaining" value={remaining.toLocaleString()} />
+        <Detail label="Remaining value" value={amount(remainingNotional)} />
+        <Detail label="Status" value={orderStatusLabel(currentOrder.status)} />
+      </VadProgressiveSection>
 
       <VadBottomSheet visible={confirmOpen} title="Cancel remaining order?" onClose={() => { if (!cancelling) setConfirmOpen(false); }}>
         <View style={{ gap: theme.spacing.md }}>
