@@ -9,11 +9,16 @@ import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadMediaContainer } from '@/components/ui/vad-media-container';
 import { VadText } from '@/components/ui/vad-text';
 import { MarketProbabilityBar } from '@/features/markets/components/market-probability-bar';
+import { MarketTimeStatus } from '@/features/markets/components/market-time-status';
 import { pct } from '@/features/markets/format';
+import { formatRelativeTimestamp, marketStatusMeta } from '@/features/markets/market-state';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import type { ConvictionPost } from '@/services/social-api';
+
+const LONG_POST_THRESHOLD = 320;
 
 export function ConvictionPostCard({
   post,
@@ -44,6 +49,7 @@ export function ConvictionPostCard({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const authorName = post.author_display_name ?? post.author_handle ?? 'VAD creator';
   const stance = post.stance_outcome_code === 'YES' || post.stance_outcome_code === 'NO' ? post.stance_outcome_code : null;
   const postType = post.post_type.replaceAll('_', ' ');
@@ -56,8 +62,12 @@ export function ConvictionPostCard({
       return false;
     }
   });
+  const [bodyExpanded, setBodyExpanded] = useState(false);
   const remoteMedia = post.media_path && /^https?:\/\//i.test(post.media_path) ? post.media_path : null;
   const mediaType = post.post_type === 'SHORT_VIDEO' ? 'video' as const : 'image' as const;
+  const postAge = formatRelativeTimestamp(post.created_at, now) ?? 'recently';
+  const longPost = post.body.trim().length > LONG_POST_THRESHOLD;
+  const linkedStatus = linkedMarket ? marketStatusMeta(linkedMarket.status) : null;
 
   function toggleBookmark() {
     const next = !bookmarked;
@@ -107,7 +117,7 @@ export function ConvictionPostCard({
             </View>
           </View>
           <VadText variant="caption" tone="secondary" numberOfLines={1}>
-            {post.author_handle ? `@${post.author_handle}` : 'Username not set'} · {new Date(post.created_at).toLocaleDateString()}
+            {post.author_handle ? `@${post.author_handle}` : 'Username not set'} · {postAge}
           </VadText>
         </Pressable>
 
@@ -137,9 +147,28 @@ export function ConvictionPostCard({
       </View>
 
       <View style={{ gap: theme.spacing.xs }}>
-        <VadText style={{ fontSize: density.compact ? 14 : 15, lineHeight: density.compact ? 20 : 23 }}>
+        <VadText
+          numberOfLines={longPost && !bodyExpanded ? (density.compact ? 5 : 6) : undefined}
+          style={{ fontSize: density.compact ? 14 : 15, lineHeight: density.compact ? 20 : 23 }}
+        >
           {post.body}
         </VadText>
+        {longPost ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={bodyExpanded ? 'Show less of this post' : 'Read the full post'}
+            accessibilityState={{ expanded: bodyExpanded }}
+            onPress={() => setBodyExpanded((value) => !value)}
+            style={({ pressed }) => ({
+              alignSelf: 'flex-start',
+              minHeight: 36,
+              justifyContent: 'center',
+              opacity: pressed ? 0.62 : 1,
+            })}
+          >
+            <VadText variant="caption" tone="brand">{bodyExpanded ? 'Show less' : 'Read more'}</VadText>
+          </Pressable>
+        ) : null}
         {post.confidence != null ? (
           <View style={{ alignSelf: 'flex-start', minHeight: 30, justifyContent: 'center', paddingHorizontal: 10, borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandSoft }}>
             <VadText variant="caption" tone="brand">Confidence {pct(post.confidence)}</VadText>
@@ -179,15 +208,21 @@ export function ConvictionPostCard({
               <VadText variant="caption" tone="tertiary">LINKED MARKET{post.asset_code ? ` · ${post.asset_code}` : ''}</VadText>
               <VadText variant="bodyStrong" numberOfLines={density.compact ? 2 : 3}>{post.market_title}</VadText>
             </View>
-            {stance ? <VadChip label={stance} tone={stance === 'YES' ? 'yes' : 'no'} /> : null}
+            <View style={{ alignItems: 'flex-end', gap: 5 }}>
+              {stance ? <VadChip label={stance} tone={stance === 'YES' ? 'yes' : 'no'} /> : null}
+              {linkedStatus ? <VadChip label={linkedStatus.label} tone={linkedStatus.tone} /> : null}
+            </View>
           </View>
 
           <MarketProbabilityBar yes={post.yes_price} no={post.no_price} />
+          {linkedMarket ? <MarketTimeStatus market={linkedMarket} compact fill /> : null}
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
-            <VadText variant="caption" tone="secondary">{linkedMarket ? 'Current market price' : 'Market'}</VadText>
+            <VadText variant="caption" tone="secondary">
+              {linkedMarket ? (linkedStatus?.tradeOpen ? 'Live market context' : linkedStatus?.detail ?? 'Market details') : 'Market'}
+            </VadText>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-              <VadText variant="caption" tone={linkedMarket ? 'brand' : 'tertiary'}>{linkedMarket ? 'Open market' : 'Unavailable'}</VadText>
+              <VadText variant="caption" tone={linkedMarket ? 'brand' : 'tertiary'}>{linkedMarket ? (linkedStatus?.tradeOpen ? 'Trade' : 'Details') : 'Unavailable'}</VadText>
               {linkedMarket ? <VadIcon name="chevronRight" size={13} tone="brand" /> : null}
             </View>
           </View>
