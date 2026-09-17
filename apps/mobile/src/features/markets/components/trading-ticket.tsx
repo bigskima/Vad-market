@@ -557,7 +557,7 @@ function QuoteLine({ label, value }: { label: string; value: string }) {
 function InlineMessage({ tone, title, body }: { tone: 'warning' | 'danger' | 'brand'; title: string; body: string }) {
   const theme = useVadTheme();
   const borderColor = tone === 'danger' ? theme.colors.danger : tone === 'warning' ? theme.colors.warning : theme.colors.brandPrimary;
-  const backgroundColor = tone === 'danger' ? theme.colors.dangerSoft : tone === 'warning' ? theme.colors.warningSoft : theme.colors.brandSoft;
+  const backgroundColor = tone === 'danger' ? theme.colors.noSoft : tone === 'warning' ? theme.colors.warningSoft : theme.colors.brandSoft;
   return (
     <View style={{ width: '100%', borderWidth: 1, borderColor, backgroundColor, borderRadius: theme.radius.md, padding: theme.spacing.sm, gap: 2 }}>
       <VadText variant="bodyStrong">{title}</VadText>
