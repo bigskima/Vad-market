@@ -34,6 +34,10 @@ export default function MarketDetailRoute() {
     });
   };
 
+  const refreshAfterTrade = async () => {
+    await Promise.all([data.refreshPortfolio(), data.refreshMarkets()]);
+  };
+
   return (
     <ProductSubpage title="Market" maxWidth={980}>
       {data.loading ? (
@@ -66,15 +70,16 @@ export default function MarketDetailRoute() {
               runtime.isRefreshing && tradeReason === 'CAPABILITIES_LOADING'
             }
             canCreatePost={runtime.snapshot.capabilities.createPost}
-            onPlaced={data.load}
+            onPlaced={refreshAfterTrade}
             onOpenMarket={openMarket}
+            onRefreshMarket={data.refreshMarkets}
           />
         </View>
       ) : data.sectionErrors.markets ? (
         <VadErrorState
           title="Market could not be loaded"
           message={data.sectionErrors.markets}
-          onRetry={() => void data.load()}
+          onRetry={() => void data.refreshMarkets()}
         />
       ) : (
         <VadEmptyState
