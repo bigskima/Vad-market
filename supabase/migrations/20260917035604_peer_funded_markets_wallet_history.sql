@@ -1,0 +1,4 @@
+-- Repository history marker for the live peer_funded_markets_wallet_history migration.
+-- The live schema change was applied through the connected Supabase migration API during
+-- the VAD peer-funded accounting repair. The consolidated end-state reconciliation
+-- migration later in this series is intentionally idempotent and is the clean-install source of truth.
