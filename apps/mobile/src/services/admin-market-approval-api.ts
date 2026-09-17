@@ -9,6 +9,7 @@ export type AdminMarketAutoOptions = {
       automaticSourceName: string;
       automaticSandboxAvailable: boolean;
       automaticProductionAvailable: boolean;
+      competitions: string[];
     };
   };
 };
@@ -21,7 +22,7 @@ export type AdminGuidedMarketSetup =
       homeTeam: string;
       awayTeam: string;
       prediction: 'HOME_WIN' | 'DRAW' | 'AWAY_WIN';
-      matchReference?: string;
+      matchStartsAt: string;
       sourceName?: string;
       sourceUrl?: string;
     }
@@ -81,6 +82,9 @@ export async function getAdminMarketAutoOptions() {
         automaticSourceName: String(football.automaticSourceName ?? 'Football-Data.org'),
         automaticSandboxAvailable: football.automaticSandboxAvailable === true,
         automaticProductionAvailable: football.automaticProductionAvailable === true,
+        competitions: Array.isArray(football.competitions)
+          ? football.competitions.map((item) => String(item)).filter(Boolean)
+          : [],
       },
     },
   } satisfies AdminMarketAutoOptions;
@@ -152,7 +156,7 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
       home_team: input.homeTeam.trim(),
       away_team: input.awayTeam.trim(),
       prediction: input.prediction,
-      match_reference: input.matchReference?.trim() || null,
+      match_starts_at: input.matchStartsAt,
       source_name: input.sourceName?.trim() || null,
       source_url: input.sourceUrl?.trim() || null,
     };
@@ -189,7 +193,7 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
 }
 
 export async function createAdminGuidedMarket(input: CreateMarketInput & { setup: AdminGuidedMarketSetup }) {
-  const { data, error } = await supabase.rpc('admin_create_guided_market', {
+  const { data, error } = await supabase.rpc('admin_create_guided_market_v2', {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_category: input.category.trim(),
