@@ -95,6 +95,7 @@ export type SettlementReceiptRow = {
   market_id: string;
   market_title: string;
   outcome_code: string;
+  asset_code: string;
   quantity: number | string;
   gross_amount: number | string;
   fee_amount: number | string;
