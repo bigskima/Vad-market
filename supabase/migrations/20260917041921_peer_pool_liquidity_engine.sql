@@ -1,0 +1,4 @@
+-- Repository history marker for the live peer_pool_liquidity_engine migration.
+-- The connected production project already records this version as applied.
+-- See the later idempotent peer_pool_repository_reconciliation migration for the
+-- clean-install end state of the pooled-stake schema, RPCs, settlement and read models.
