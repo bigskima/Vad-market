@@ -89,13 +89,13 @@ export function ProductTopBar({
           style={({ pressed }) => ({
             flex: density.phone || !roomy ? 1 : undefined,
             width: density.phone || !roomy ? undefined : Math.min(420, Math.max(280, density.width * 0.29)),
-            minWidth: density.phone ? 40 : 180,
+            minWidth: density.phone ? 38 : 180,
             maxWidth: density.phone ? undefined : 420,
             minHeight: 44,
             flexDirection: 'row',
             alignItems: 'center',
             gap: theme.spacing.sm,
-            paddingHorizontal: density.narrow ? theme.spacing.sm : theme.spacing.md,
+            paddingHorizontal: density.narrow ? theme.spacing.xs : theme.spacing.md,
             borderRadius: theme.radius.pill,
             borderWidth: 1,
             borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
@@ -133,32 +133,30 @@ export function ProductTopBar({
 
           {!density.narrow ? <HeaderIcon label="Open VAD Assistant" icon="activity" onPress={onAssistant} /> : null}
 
-          {!density.narrow ? (
-            <View>
-              <HeaderIcon label="Open notices" icon="bell" onPress={onNotices} />
-              {noticeCount > 0 ? (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    top: 4,
-                    right: 4,
-                    minWidth: 16,
-                    height: 16,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingHorizontal: 3,
-                    backgroundColor: theme.colors.no,
-                    borderWidth: 2,
-                    borderColor: theme.colors.surface,
-                  }}
-                >
-                  <VadText tone="inverse" style={{ fontSize: 9, lineHeight: 10, fontWeight: '800' }}>{Math.min(9, noticeCount)}</VadText>
-                </View>
-              ) : null}
-            </View>
-          ) : null}
+          <View>
+            <HeaderIcon label="Open notifications" icon="bell" onPress={onNotices} />
+            {noticeCount > 0 ? (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 3,
+                  backgroundColor: theme.colors.no,
+                  borderWidth: 2,
+                  borderColor: theme.colors.surface,
+                }}
+              >
+                <VadText tone="inverse" style={{ fontSize: 9, lineHeight: 10, fontWeight: '800' }}>{Math.min(9, noticeCount)}</VadText>
+              </View>
+            ) : null}
+          </View>
 
           <Pressable
             accessibilityRole="button"
