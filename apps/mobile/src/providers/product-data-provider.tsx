@@ -1,4 +1,4 @@
-import { createContext, type PropsWithChildren, useContext } from 'react';
+import { createContext, type PropsWithChildren, useContext, useMemo } from 'react';
 
 import { LiveNotificationOverlay } from '@/features/notifications/live-notification-overlay';
 import { WinnerCelebrationOverlay } from '@/features/portfolio/winner-celebration-overlay';
@@ -15,6 +15,13 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
     !isLoading && Boolean(session),
     session?.user.id ?? null,
   );
+  const winRefreshKey = useMemo(
+    () => data.marketHistory
+      .filter((row) => row.result === 'WON' && row.settled_at)
+      .map((row) => `${row.market_id}:${row.selected_outcome}:${row.settled_at}`)
+      .join('|'),
+    [data.marketHistory],
+  );
 
   return (
     <ProductDataContext.Provider value={data}>
@@ -24,7 +31,7 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
         onDismiss={data.dismissLiveNotification}
         onRead={data.markNotificationRead}
       />
-      <WinnerCelebrationOverlay />
+      <WinnerCelebrationOverlay refreshKey={winRefreshKey} />
     </ProductDataContext.Provider>
   );
 }
