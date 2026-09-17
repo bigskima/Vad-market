@@ -16,12 +16,14 @@ import {
   getMyProposals,
   getOpenOrders,
   getPositions,
+  getSettlementReceipts,
   getWalletSummary,
   listMarkets,
   type MarketCatalogItem,
   type OrderRow,
   type PositionRow,
   type ProposalRow,
+  type SettlementReceiptRow,
   type WalletRow,
 } from '@/services/market-api';
 
@@ -30,6 +32,7 @@ type ProductSectionErrors = {
   wallet: string | null;
   positions: string | null;
   orders: string | null;
+  settlements: string | null;
   proposals: string | null;
 };
 
@@ -38,6 +41,7 @@ const emptySectionErrors: ProductSectionErrors = {
   wallet: null,
   positions: null,
   orders: null,
+  settlements: null,
   proposals: null,
 };
 
@@ -79,6 +83,7 @@ export function useProductData(enabled = true) {
   const [wallet, setWallet] = useState<WalletRow[]>([]);
   const [positions, setPositions] = useState<PositionRow[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [settlements, setSettlements] = useState<SettlementReceiptRow[]>([]);
   const [proposals, setProposals] = useState<ProposalRow[]>([]);
   const [homePromotions, setHomePromotions] = useState<HomePromotion[]>([]);
   const [publicNotices, setPublicNotices] = useState<PublicNotice[]>([]);
@@ -95,6 +100,7 @@ export function useProductData(enabled = true) {
     setWallet([]);
     setPositions([]);
     setOrders([]);
+    setSettlements([]);
     setProposals([]);
     setHomePromotions([]);
     setPublicNotices([]);
@@ -148,6 +154,7 @@ export function useProductData(enabled = true) {
       getWalletSummary(),
       getPositions(),
       getOpenOrders(),
+      getSettlementReceipts(),
       getMyProposals(),
     ]);
 
@@ -156,7 +163,8 @@ export function useProductData(enabled = true) {
       wallet: settledError(results[1], 'payments', 'We could not refresh wallet balances right now.'),
       positions: settledError(results[2], 'portfolio', 'We could not refresh your positions right now.'),
       orders: settledError(results[3], 'portfolio', 'We could not refresh your orders right now.'),
-      proposals: settledError(results[4], 'proposal', 'We could not refresh your market proposals right now.'),
+      settlements: settledError(results[4], 'portfolio', 'We could not refresh your payout history right now.'),
+      proposals: settledError(results[5], 'proposal', 'We could not refresh your market proposals right now.'),
     };
     setSectionErrors(nextSectionErrors);
 
@@ -173,7 +181,8 @@ export function useProductData(enabled = true) {
     if (results[1].status === 'fulfilled') setWallet(results[1].value);
     if (results[2].status === 'fulfilled') setPositions(results[2].value);
     if (results[3].status === 'fulfilled') setOrders(results[3].value);
-    if (results[4].status === 'fulfilled') setProposals(results[4].value);
+    if (results[4].status === 'fulfilled') setSettlements(results[4].value);
+    if (results[5].status === 'fulfilled') setProposals(results[5].value);
   }, [enabled]);
 
   useEffect(() => {
@@ -220,6 +229,7 @@ export function useProductData(enabled = true) {
     wallet,
     positions,
     orders,
+    settlements,
     proposals,
     homePromotions,
     publicNotices,
