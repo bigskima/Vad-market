@@ -35,25 +35,21 @@ export default function PortfolioRoute() {
   const portfolioReadBlocked = positionsReadFailedWithoutData || ordersReadFailedWithoutData;
 
   return (
-    <ProductRoute
-      active="Portfolio"
-      requiredCapability="viewPortfolio"
-      capabilityTitle="Portfolio is not enabled yet"
-    >
+    <ProductRoute active="Portfolio">
       {portfolioReadBlocked ? (
         <View style={{ gap: theme.spacing.md }}>
           {positionsReadFailedWithoutData ? (
             <VadErrorState
               title="Positions could not be loaded"
               message={data.sectionErrors.positions ?? 'Position data is unavailable.'}
-              onRetry={() => void data.load()}
+              onRetry={() => void data.refreshPortfolio()}
             />
           ) : null}
           {ordersReadFailedWithoutData ? (
             <VadErrorState
               title="Open orders could not be loaded"
               message={data.sectionErrors.orders ?? 'Order data is unavailable.'}
-              onRetry={() => void data.load()}
+              onRetry={() => void data.refreshPortfolio()}
             />
           ) : null}
         </View>
@@ -63,7 +59,7 @@ export default function PortfolioRoute() {
             <VadErrorState
               title="Payout history could not be loaded"
               message={data.sectionErrors.settlements ?? 'Payout history is unavailable.'}
-              onRetry={() => void data.load()}
+              onRetry={() => void data.refreshPortfolio()}
             />
           ) : null}
           <PortfolioScreen
