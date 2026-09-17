@@ -1,0 +1,4 @@
+-- Repository history marker for the live peer_pool_runtime_dispatch migration.
+-- The connected production project already records this version as applied.
+-- The later idempotent peer_pool_repository_reconciliation migration is the
+-- clean-install source of truth for runtime dispatch and pooled settlement wiring.
