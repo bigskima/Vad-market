@@ -50,8 +50,8 @@ export function PortfolioScreen({
   return (
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
-        title="Portfolio"
-        subtitle="Positions, matching orders and completed payouts stay separated so each stage is easy to follow."
+        title="Exchange positions"
+        subtitle="Matched order-book positions, open matching orders and completed payouts stay separated from peer-pool predictions."
       />
 
       <TourTarget id="portfolio-summary">
@@ -61,12 +61,12 @@ export function PortfolioScreen({
         >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <VadText variant="caption" tone="brand">YOUR VAD ACTIVITY</VadText>
+              <VadText variant="caption" tone="brand">ORDER-BOOK ACTIVITY</VadText>
               <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
-                {positions.length} active {positions.length === 1 ? 'position' : 'positions'}
+                {positions.length} matched {positions.length === 1 ? 'position' : 'positions'}
               </VadText>
               <VadText variant="caption" tone="secondary">
-                Each currency is accounted for independently from order through settlement.
+                Only real matched orders become positions here. Peer-pool predictions are shown in the Predictions section above.
               </VadText>
             </View>
             <View style={{ width: density.phone ? 48 : 56, height: density.phone ? 48 : 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
@@ -114,7 +114,7 @@ export function PortfolioScreen({
             ))}
           </CardGrid>
         ) : (
-          <VadEmptyState title="No positions yet" body="When an order matches, your YES or NO holding appears here. TNGN sandbox BUY orders can match instantly during testing." />
+          <VadEmptyState title="No matched positions" body="When an order-book order matches another participant, your YES or NO holding appears here. Peer-pool stakes are tracked in Predictions above." />
         )
       ) : null}
 
