@@ -73,21 +73,10 @@ export function MarketDetailScreen({
         />
       ) : null}
       {tab === 'Trade' ? (
-        <TradingTicket
-          market={market}
-          canTrade={canTrade}
-          tradeReason={tradeReason}
-          capabilityLoading={tradeCapabilityLoading}
-          onPlaced={onPlaced}
-        />
+        <TradingTicket market={market} canTrade={canTrade} tradeReason={tradeReason} capabilityLoading={tradeCapabilityLoading} onPlaced={onPlaced} />
       ) : null}
       {tab === 'Discussion' ? (
-        <SocialConvictionFeed
-          markets={markets}
-          canCreatePost={canCreatePost}
-          onOpenMarket={onOpenMarket}
-          marketFilter={market}
-        />
+        <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} marketFilter={market} />
       ) : null}
       {tab === 'Rules' ? <Rules market={market} /> : null}
 
@@ -123,8 +112,9 @@ function Overview({
   const theme = useVadTheme();
   const density = useProductDensity();
   const wide = density.width >= 780;
-  const open = market.status === 'OPEN' || market.status === 'ACTIVE';
-  const closed = ['CLOSED', 'RESOLVING', 'RESOLVED', 'SETTLED', 'VOID'].includes(market.status);
+  const status = market.status.toUpperCase();
+  const open = status === 'OPEN' || status === 'ACTIVE';
+  const closed = ['CLOSED', 'RESOLVING', 'RESOLVED', 'SETTLEMENT_PENDING', 'SETTLED', 'VOID', 'VOIDED'].includes(status);
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
@@ -139,10 +129,19 @@ function Overview({
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <StatePill label="Trading" value={open ? 'Open' : closed ? 'Closed' : marketStatusLabel(market.status)} tone={open ? 'yes' : 'secondary'} />
+            <StatePill label="Trading" value={open ? 'Open' : closed ? 'Closed' : marketStatusLabel(status)} tone={open ? 'yes' : 'secondary'} />
+            <StatePill label="Stage" value={marketStatusLabel(status)} tone={status === 'SETTLED' ? 'yes' : status === 'SETTLEMENT_PENDING' ? 'brand' : 'secondary'} />
             <StatePill label="Currency" value={market.asset_code} tone="brand" />
             <StatePill label="Market type" value={friendlyEnum(market.market_type)} />
           </View>
+
+          {market.liquidity_mode === 'SANDBOX_INSTANT' ? (
+            <VadCard variant="brand" style={{ gap: 3 }}>
+              <VadChip label="TNGN SANDBOX" tone="brand" />
+              <VadText variant="bodyStrong">Instant test liquidity enabled</VadText>
+              <VadText variant="caption" tone="secondary">Eligible TNGN BUY orders can become test positions immediately. Production matching rules remain unchanged.</VadText>
+            </VadCard>
+          ) : null}
 
           {!density.phone ? (
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
@@ -152,13 +151,7 @@ function Overview({
                 style={{ flex: 1 }}
                 leading={<VadIcon name="markets" size={17} tone="inverse" />}
               />
-              <VadButton
-                label="Discussion"
-                variant="secondary"
-                onPress={onDiscuss}
-                style={{ flex: 1 }}
-                leading={<VadIcon name="community" size={17} tone="primary" />}
-              />
+              <VadButton label="Discussion" variant="secondary" onPress={onDiscuss} style={{ flex: 1 }} leading={<VadIcon name="community" size={17} tone="primary" />} />
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
@@ -174,6 +167,7 @@ function Overview({
           <Fact label="Currency" value={market.asset_code} />
           <Fact label="Type" value={friendlyEnum(market.market_type)} />
           <Fact label="Closes" value={market.closes_at ? new Date(market.closes_at).toLocaleString() : 'Closing time not available'} />
+          {market.resolves_after ? <Fact label="Resolve after" value={new Date(market.resolves_after).toLocaleString()} /> : null}
           <Fact label="Last trade" value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : 'No trades yet'} />
         </VadCard>
       </View>
@@ -183,9 +177,7 @@ function Overview({
       <VadCard variant="brand" style={{ gap: theme.spacing.xs }}>
         <VadText variant="caption" tone="brand">HOW TO READ THE PRICE</VadText>
         <VadText variant="bodyStrong">A market price is not the final result.</VadText>
-        <VadText variant="caption" tone="secondary">
-          For example, a 90% YES price means traders strongly favour YES. The final result can still be NO if the published rules and evidence support NO.
-        </VadText>
+        <VadText variant="caption" tone="secondary">For example, a 90% YES price means traders strongly favour YES. The final result can still be NO if the published rules and evidence support NO.</VadText>
       </VadCard>
     </View>
   );
@@ -195,35 +187,36 @@ function Lifecycle({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const status = market.status.toUpperCase();
-  const tradeDone = ['CLOSED', 'RESOLVING', 'RESOLVED', 'SETTLED', 'VOID'].includes(status);
-  const resolutionDone = ['RESOLVED', 'SETTLED', 'VOID'].includes(status);
-  const settlementDone = status === 'SETTLED';
+  const tradeDone = ['CLOSED', 'RESOLVING', 'RESOLVED', 'SETTLEMENT_PENDING', 'SETTLED', 'VOID', 'VOIDED'].includes(status);
+  const resolutionDone = ['RESOLVED', 'SETTLEMENT_PENDING', 'SETTLED', 'VOID', 'VOIDED'].includes(status);
+  const settlementDone = status === 'SETTLED' || status === 'VOIDED';
   const resolutionActive = status === 'RESOLVING';
+  const settlementActive = status === 'SETTLEMENT_PENDING';
 
   return (
     <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
       <View style={{ gap: 2 }}>
-        <VadText variant="bodyStrong">What happens next</VadText>
-        <VadText variant="caption" tone="secondary">Trading closes first, then the result is confirmed before eligible winning positions are paid.</VadText>
+        <VadText variant="bodyStrong">Market lifecycle</VadText>
+        <VadText variant="caption" tone="secondary">One stage at a time: trading closes, the result becomes final, then eligible payouts are settled.</VadText>
       </View>
       <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', gap: theme.spacing.xs }}>
         <LifecycleStep
           number="1"
           title="Trading"
-          body={market.closes_at ? `Trading is scheduled to close ${new Date(market.closes_at).toLocaleString()}.` : 'Trading closes at the time shown for this market.'}
+          body={tradeDone ? 'Trading has closed for this market.' : market.closes_at ? `Trading is scheduled to close ${new Date(market.closes_at).toLocaleString()}.` : 'Trading is open.'}
           state={tradeDone ? 'complete' : 'active'}
         />
         <LifecycleStep
           number="2"
           title="Result"
-          body="The final outcome is checked against the market rules and supporting evidence."
+          body={resolutionDone ? 'The market result has been finalized.' : 'The final outcome is checked against the market rules and supporting evidence.'}
           state={resolutionDone ? 'complete' : resolutionActive ? 'active' : 'waiting'}
         />
         <LifecycleStep
           number="3"
           title="Payout"
-          body={`Eligible winning positions are paid in ${market.asset_code} after the result becomes final.`}
-          state={settlementDone ? 'complete' : 'waiting'}
+          body={settlementDone ? `Settlement is complete in ${market.asset_code}.` : settlementActive ? `Eligible ${market.asset_code} payouts are being processed automatically.` : `Eligible winning positions are paid in ${market.asset_code} after the result becomes final.`}
+          state={settlementDone ? 'complete' : settlementActive ? 'active' : 'waiting'}
         />
       </View>
     </VadCard>
@@ -255,9 +248,7 @@ function Rules({ market }: { market: MarketCatalogItem }) {
     {
       number: '1',
       title: 'Trading closes at a defined time',
-      body: market.closes_at
-        ? `Trading is scheduled to close on ${new Date(market.closes_at).toLocaleString()}. Orders can only be placed while the market is open.`
-        : 'Orders can only be placed while this market is open.',
+      body: market.closes_at ? `Trading is scheduled to close on ${new Date(market.closes_at).toLocaleString()}. Orders can only be placed while this market is open.` : 'Orders can only be placed while this market is open.',
     },
     {
       number: '2',
@@ -303,21 +294,22 @@ function Rules({ market }: { market: MarketCatalogItem }) {
 }
 
 function friendlyEnum(value: string) {
-  return value
-    .replaceAll('_', ' ')
-    .toLowerCase()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function marketStatusLabel(status: string) {
   const normalized = status.toUpperCase();
   if (normalized === 'OPEN' || normalized === 'ACTIVE') return 'Open';
+  if (normalized === 'DRAFT') return 'Draft';
+  if (normalized === 'SCHEDULED') return 'Scheduled';
   if (normalized === 'RESOLVING') return 'Result pending';
   if (normalized === 'RESOLVED') return 'Result confirmed';
+  if (normalized === 'SETTLEMENT_PENDING') return 'Payout processing';
   if (normalized === 'SETTLED') return 'Completed';
-  if (normalized === 'VOID') return 'Cancelled';
+  if (normalized === 'VOID' || normalized === 'VOIDED') return 'Cancelled';
   if (normalized === 'CLOSED') return 'Closed';
-  return 'Unavailable';
+  if (normalized === 'SUSPENDED') return 'Paused';
+  return friendlyEnum(normalized);
 }
 
 function StatePill({ label, value, tone = 'secondary' }: { label: string; value: string; tone?: 'secondary' | 'yes' | 'brand' }) {
