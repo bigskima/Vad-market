@@ -23,33 +23,33 @@ const PARTICLES = Array.from({ length: 14 }, (_, index) => ({
   delay: (index % 5) * 0.08,
 }));
 
-export function WinnerCelebrationOverlay() {
+export function WinnerCelebrationOverlay({ refreshKey = '' }: { refreshKey?: string }) {
   const { session } = useAuth();
   const theme = useVadTheme();
   const [queue, setQueue] = useState<WinCelebrationRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [acknowledged, setAcknowledged] = useState<Set<string>>(new Set());
+  const acknowledged = useRef(new Set<string>()).current;
   const entrance = useRef(new Animated.Value(0)).current;
   const celebration = useRef(new Animated.Value(0)).current;
   const current = queue[0] ?? null;
   const currentKey = current ? `${current.market_id}:${current.selected_outcome}` : null;
 
   useEffect(() => {
-    if (!session?.user.id || loading) return;
+    if (!session?.user.id) return;
     let cancelled = false;
-    setLoading(true);
     void getPendingWinCelebrations(20)
       .then((rows) => {
-        if (!cancelled) setQueue(rows);
+        if (cancelled || !rows.length) return;
+        setQueue((existing) => {
+          const keys = new Set(existing.map((row) => `${row.market_id}:${row.selected_outcome}`));
+          const next = rows.filter((row) => !keys.has(`${row.market_id}:${row.selected_outcome}`));
+          return next.length ? [...existing, ...next] : existing;
+        });
       })
       .catch(() => {
-        // A celebration is delight, not an auth blocker. Retry on the next product session.
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        // A celebration is delight, not an auth blocker. Retry after the next product refresh/session.
       });
     return () => { cancelled = true; };
-  }, [session?.user.id]); // intentionally once per signed-in product session
+  }, [refreshKey, session?.user.id]);
 
   useEffect(() => {
     if (!current || !currentKey) return;
@@ -73,9 +73,10 @@ export function WinnerCelebrationOverlay() {
 
     if (acknowledged.has(currentKey)) return;
     const timer = setTimeout(() => {
-      setAcknowledged((existing) => new Set(existing).add(currentKey));
+      acknowledged.add(currentKey);
       void acknowledgeWinCelebration(current.market_id, current.selected_outcome).catch(() => {
-        // If persistence fails the win may replay next session, which is safer than losing it.
+        acknowledged.delete(currentKey);
+        // If persistence fails the win may replay later, which is safer than silently losing it.
       });
     }, 650);
     return () => clearTimeout(timer);
@@ -101,9 +102,14 @@ export function WinnerCelebrationOverlay() {
           backgroundColor: 'rgba(0,0,0,0.72)',
         }}
       >
-        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss win celebration" onPress={close} style={{ position: 'absolute', inset: 0 }} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss win celebration"
+          onPress={close}
+          style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
+        />
 
-        <View pointerEvents="none" style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }}>
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' }}>
           {PARTICLES.map((particle) => {
             const start = particle.delay;
             const opacity = celebration.interpolate({
