@@ -6,9 +6,11 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -19,7 +21,7 @@ import {
 export function WalletTransactionScreen({ intentId }: { intentId: string }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const wide = density.width >= 840;
+  const now = useLiveNow();
   const [intent, setIntent] = useState<PaymentIntentRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,9 +95,13 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
       : 'Payment is processing';
   const netDifference = Number(intent.amount) - Number(intent.net_amount);
   const amount = (value: unknown) => assetMoney(value, intent.asset_code);
+  const createdRelative = relativeTime(intent.created_at, now);
+  const settledRelative = intent.settled_at ? relativeTime(intent.settled_at, now) : null;
+  const createdExact = new Date(intent.created_at).toLocaleString();
+  const settledExact = intent.settled_at ? new Date(intent.settled_at).toLocaleString() : null;
 
   return (
-    <View style={{ gap: density.compact ? theme.spacing.lg : theme.spacing.xl }}>
+    <View style={{ gap: density.sectionGap }}>
       {error ? (
         <VadErrorState
           title="Could not refresh transaction"
@@ -104,141 +110,142 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
         />
       ) : null}
 
-      <View
-        style={{
-          flexDirection: density.width >= 620 ? 'row' : 'column',
-          justifyContent: 'space-between',
-          alignItems: density.width >= 620 ? 'flex-end' : 'stretch',
-          gap: density.compact ? theme.spacing.sm : theme.spacing.md,
-        }}
-      >
-        <View style={{ flex: 1, gap: 3 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <VadChip label={operationLabel(intent.operation).toUpperCase()} tone={incoming ? 'yes' : 'brand'} />
-            <VadChip label={intent.asset_code} />
-          </View>
-          <VadText variant={density.compact ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
+      <VadCard variant="brand" style={{ gap: theme.spacing.md, padding: density.phone ? theme.spacing.lg : theme.spacing.xl, overflow: 'hidden' }}>
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            width: 170,
+            height: 170,
+            borderRadius: 85,
+            right: -66,
+            top: -82,
+            backgroundColor: theme.colors.surface,
+            opacity: theme.mode === 'dark' ? 0.06 : 0.42,
+          }}
+        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <VadChip label={operationLabel(intent.operation).toUpperCase()} tone={incoming ? 'yes' : 'brand'} />
+          <VadChip label={intent.asset_code} />
+          <VadChip label={paymentStatusLabel(intent.status, settled, failed)} tone={settled ? 'yes' : failed ? 'no' : 'warning'} />
+          <VadChip label={(settledRelative ?? createdRelative).toUpperCase()} />
+        </View>
+        <View style={{ gap: 3 }}>
+          <VadText variant="caption" tone="tertiary">TRANSACTION AMOUNT</VadText>
+          <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
             {amount(intent.amount)}
           </VadText>
           <VadText variant="caption" tone="secondary">
-            {new Date(intent.created_at).toLocaleString()}
+            {settled && settledRelative ? `Completed ${settledRelative}` : `Created ${createdRelative}`}
           </VadText>
         </View>
-
-        <VadButton
-          label="Refresh status"
-          variant="secondary"
-          size="small"
-          fullWidth={false}
-          loading={refreshing}
-          onPress={() => void load(true)}
-        />
-      </View>
-
-      <VadCard
-        variant="raised"
-        accessibilityRole="summary"
-        style={{
-          borderColor: settled
-            ? theme.colors.yes
-            : failed
-              ? theme.colors.danger
-              : theme.colors.warning,
-          gap: density.compact ? 6 : theme.spacing.xs,
-        }}
-      >
-        <VadChip
-          label={paymentStatusLabel(intent.status, settled, failed)}
-          tone={settled ? 'yes' : failed ? 'no' : 'warning'}
-        />
-        <VadText variant="heading">{statusTitle}</VadText>
-        <VadText variant="caption" tone="secondary">
-          {settled
-            ? 'This payment has been completed and your wallet reflects its final status.'
-            : failed
-              ? 'This payment did not complete successfully. You can refresh the status or start a new request when appropriate.'
-              : 'Your payment request is still being processed. You can leave this screen and check again later.'}
-        </VadText>
+        <View style={{ flexDirection: density.phone ? 'column' : 'row', alignItems: density.phone ? 'stretch' : 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <VadText variant="bodyStrong">{statusTitle}</VadText>
+            <VadText variant="caption" tone="secondary">
+              {settled
+                ? 'The payment is complete and your wallet reflects its final status.'
+                : failed
+                  ? 'Refresh once before retrying. If the issue continues, keep the reference below for support.'
+                  : `Processing since ${createdRelative}. You can safely leave this screen and return from Wallet activity.`}
+            </VadText>
+          </View>
+          <VadButton
+            label="Refresh status"
+            variant="secondary"
+            size="small"
+            fullWidth={density.phone}
+            loading={refreshing}
+            onPress={() => void load(true)}
+          />
+        </View>
       </VadCard>
 
-      <View
-        style={{
-          flexDirection: wide ? 'row' : 'column',
-          alignItems: 'flex-start',
-          gap: density.compact ? theme.spacing.md : theme.spacing.lg,
-        }}
+      {failed ? (
+        <VadCard variant="raised" style={{ borderColor: theme.colors.danger, gap: 4 }}>
+          <VadText variant="caption" tone="danger">PAYMENT ISSUE</VadText>
+          <VadText variant="bodyStrong">This payment could not be completed.</VadText>
+          <VadText variant="caption" tone="secondary">
+            Refresh the status first. If the issue continues, start a new request or contact support with the transaction reference.
+          </VadText>
+        </VadCard>
+      ) : processing ? (
+        <VadCard variant="muted" style={{ gap: 2 }}>
+          <VadText variant="bodyStrong">Still processing · {createdRelative}</VadText>
+          <VadText variant="caption" tone="secondary">No need to keep this page open. You can return from Wallet activity later.</VadText>
+        </VadCard>
+      ) : null}
+
+      <VadProgressiveSection
+        title="Payment progress"
+        eyebrow="STATUS TIMELINE"
+        description="See where this request is in its payment lifecycle."
+        icon="activity"
+        defaultExpanded={!settled}
+        summary={<VadText variant="caption" tone={settled ? 'yes' : failed ? 'danger' : 'warning'}>{statusTitle}</VadText>}
       >
-        <View style={{ flex: 1.1, width: '100%', gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-          <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
-            <View style={{ gap: 1 }}>
-              <VadText variant="heading">Amount breakdown</VadText>
-              <VadText variant="caption" tone="secondary">A summary of the amounts for this payment.</VadText>
-            </View>
-            <View>
-              <Detail label="Gross amount" value={amount(intent.amount)} />
-              <Detail label="Fee" value={amount(intent.fee_amount)} />
-              <Detail label="Net amount" value={amount(intent.net_amount)} emphasized />
-              <Detail label="Fee difference" value={amount(netDifference)} />
-              <Detail label="Currency" value={intent.asset_code} />
-            </View>
-          </VadCard>
-
-          <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
-            <View style={{ gap: 1 }}>
-              <VadText variant="heading">Transaction details</VadText>
-              <VadText variant="caption" tone="secondary">Keep this reference if you need help with this payment.</VadText>
-            </View>
-            <View>
-              <Detail label="Reference" value={intent.intent_public_id} selectable />
-              <Detail label="Created" value={new Date(intent.created_at).toLocaleString()} />
-              <Detail label="Completed" value={intent.settled_at ? new Date(intent.settled_at).toLocaleString() : 'Not completed yet'} />
-            </View>
-          </VadCard>
+        <View>
+          <StatusStep label="Request created" detail={`${createdRelative} · ${createdExact}`} state="complete" />
+          <StatusStep
+            label="Processing"
+            detail={failed ? 'Processing ended with an issue.' : settled ? 'Processing completed.' : `Processing since ${createdRelative}.`}
+            state={failed ? 'failed' : settled ? 'complete' : 'active'}
+          />
+          <StatusStep
+            label="Completed"
+            detail={settledExact ? `${settledRelative ?? 'Completed'} · ${settledExact}` : failed ? 'This payment was not completed.' : 'Waiting for the payment to finish.'}
+            state={settled ? 'complete' : failed ? 'failed' : 'waiting'}
+          />
         </View>
+      </VadProgressiveSection>
 
-        <View style={{ flex: 0.9, width: '100%', gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-          <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
-            <View style={{ gap: 1 }}>
-              <VadText variant="heading">Payment progress</VadText>
-              <VadText variant="caption" tone="secondary">Follow the current progress of this payment request.</VadText>
-            </View>
-            <View>
-              <StatusStep label="Request created" detail={new Date(intent.created_at).toLocaleString()} state="complete" />
-              <StatusStep
-                label="Processing"
-                detail={failed ? 'Processing ended with an issue.' : settled ? 'Processing completed.' : 'Your payment is still being processed.'}
-                state={failed ? 'failed' : settled ? 'complete' : 'active'}
-              />
-              <StatusStep
-                label="Completed"
-                detail={intent.settled_at ? new Date(intent.settled_at).toLocaleString() : failed ? 'This payment was not completed.' : 'Waiting for the payment to finish.'}
-                state={settled ? 'complete' : failed ? 'failed' : 'waiting'}
-              />
-            </View>
-          </VadCard>
-
-          {failed ? (
-            <VadCard variant="raised" style={{ borderColor: theme.colors.danger, gap: 4 }}>
-              <VadText variant="caption" tone="danger">PAYMENT ISSUE</VadText>
-              <VadText variant="bodyStrong">This payment could not be completed.</VadText>
-              <VadText variant="caption" tone="secondary">
-                Refresh the status first. If the issue continues, start a new request or contact support with the transaction reference.
-              </VadText>
-            </VadCard>
-          ) : processing ? (
-            <VadCard variant="muted" style={{ gap: 2 }}>
-              <VadText variant="bodyStrong">Still processing</VadText>
-              <VadText variant="caption" tone="secondary">You can leave this screen and return from Wallet activity later.</VadText>
-            </VadCard>
-          ) : null}
+      <VadProgressiveSection
+        title="Amount breakdown"
+        eyebrow="MONEY DETAILS"
+        description="Gross amount, fee and final net amount."
+        icon="wallet"
+        summary={<VadText variant="caption" tone="tertiary">Net {amount(intent.net_amount)} · Fee {amount(intent.fee_amount)}</VadText>}
+      >
+        <View>
+          <Detail label="Gross amount" value={amount(intent.amount)} />
+          <Detail label="Fee" value={amount(intent.fee_amount)} />
+          <Detail label="Net amount" value={amount(intent.net_amount)} emphasized />
+          <Detail label="Fee difference" value={amount(netDifference)} />
+          <Detail label="Currency" value={intent.asset_code} />
         </View>
-      </View>
+      </VadProgressiveSection>
+
+      <VadProgressiveSection
+        title="Reference and timestamps"
+        eyebrow="TECHNICAL DETAILS"
+        description="Open this only when you need a reference for support or reconciliation."
+        icon="account"
+        summary={<VadText variant="caption" tone="tertiary" numberOfLines={1}>{intent.intent_public_id}</VadText>}
+      >
+        <View>
+          <Detail label="Reference" value={intent.intent_public_id} selectable />
+          <Detail label="Created" value={`${createdExact} · ${createdRelative}`} />
+          <Detail label="Completed" value={settledExact ? `${settledExact} · ${settledRelative ?? 'completed'}` : 'Not completed yet'} />
+        </View>
+      </VadProgressiveSection>
 
       <VadText variant="caption" tone="tertiary">
         Your wallet balance is the final record of funds available to use or withdraw.
       </VadText>
     </View>
   );
+}
+
+function relativeTime(value: string, now: number) {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return 'recently';
+  const elapsed = Math.max(0, now - timestamp);
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 function operationLabel(operation: PaymentIntentRow['operation']) {
