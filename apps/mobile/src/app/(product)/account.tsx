@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
+import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductRoute } from '@/features/navigation/product-route';
@@ -29,7 +30,7 @@ export default function AccountScreen() {
   const appearance = theme.preference === 'system'
     ? `System · currently ${theme.mode}`
     : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1);
-  const sideBySide = density.wide;
+  const wide = density.width >= 860;
 
   useEffect(() => {
     let ignore = false;
@@ -59,183 +60,238 @@ export default function AccountScreen() {
       <View style={{ gap: density.sectionGap }}>
         <VadSectionHeader
           title="Account"
-          subtitle="Manage your profile, verification, funding, rewards, guidance and appearance settings."
+          subtitle="Your identity, access and preferences in one place."
         />
 
-        <View
+        <VadCard
+          variant="brand"
           style={{
-            flexDirection: sideBySide ? 'row' : 'column',
-            alignItems: 'flex-start',
-            gap: theme.spacing.xl,
+            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+            gap: theme.spacing.lg,
+            overflow: 'hidden',
           }}
         >
-          <VadCard
-            variant="brand"
+          <View
+            pointerEvents="none"
             style={{
-              width: sideBySide ? '34%' : '100%',
-              gap: theme.spacing.lg,
-              padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+              position: 'absolute',
+              width: 190,
+              height: 190,
+              borderRadius: 95,
+              right: -72,
+              top: -96,
+              backgroundColor: theme.colors.surface,
+              opacity: theme.mode === 'dark' ? 0.06 : 0.38,
             }}
-          >
+          />
+
+          <View style={{ flexDirection: density.narrow ? 'column' : 'row', alignItems: density.narrow ? 'flex-start' : 'center', gap: theme.spacing.md }}>
             <View
               style={{
-                flexDirection: sideBySide ? 'column' : 'row',
-                alignItems: sideBySide ? 'flex-start' : 'center',
-                gap: theme.spacing.md,
+                width: density.phone ? 66 : 76,
+                height: density.phone ? 66 : 76,
+                borderRadius: 40,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.colors.surface,
+                borderWidth: 1,
+                borderColor: theme.colors.brandPrimary,
               }}
             >
-              <View
-                style={{
-                  width: density.phone ? 58 : 68,
-                  height: density.phone ? 58 : 68,
-                  borderRadius: 34,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: theme.colors.surface,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                }}
-              >
-                <VadText variant="title" tone="brand">{initial}</VadText>
-              </View>
-              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <VadText variant="caption" tone="brand">YOUR ACCOUNT</VadText>
-                <VadText variant="heading" numberOfLines={2}>{displayName || 'Your VAD account'}</VadText>
-                <VadText variant="caption" tone="secondary" numberOfLines={2}>{email}</VadText>
-              </View>
+              <VadText variant="title" tone="brand">{initial}</VadText>
             </View>
 
-            <View
-              style={{
-                borderTopWidth: 1,
-                borderTopColor: theme.colors.border,
-                paddingTop: theme.spacing.md,
-                gap: theme.spacing.xs,
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
-                <VadIcon name="operations" size={16} tone="brand" />
-                <VadText variant="caption" tone="brand">ACCOUNT ACCESS</VadText>
-              </View>
-              <VadText variant="caption" tone="secondary">
-                Some features may require identity verification and may not be available in every location.
-              </VadText>
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <VadText variant="caption" tone="brand">YOUR VAD IDENTITY</VadText>
+              <VadText variant={density.phone ? 'heading' : 'title'} numberOfLines={2}>{displayName || 'Your VAD account'}</VadText>
+              <VadText variant="caption" tone="secondary" numberOfLines={1}>{email}</VadText>
             </View>
 
-            <VadButton label="Sign out" variant="secondary" onPress={() => void signOut()} />
-          </VadCard>
+            <VadButton
+              label="Edit profile"
+              variant="secondary"
+              size="small"
+              fullWidth={density.narrow}
+              onPress={() => router.push('/account/profile')}
+            />
+          </View>
 
-          <View style={{ flex: 1, width: sideBySide ? undefined : '100%', gap: density.sectionGap }}>
-            {hasAdminAccess ? (
-              <SettingGroup title="Administration" subtitle="Open the VAD operations dashboard with your assigned admin permissions.">
-                <AccountRow
-                  icon="operations"
-                  title="Admin operations"
-                  subtitle="Open the VAD admin dashboard"
-                  onPress={() => router.push('/admin')}
-                />
-              </SettingGroup>
-            ) : null}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+            <IdentityFact icon="account" label={displayName ? 'Profile identity set' : 'Complete your profile'} />
+            <IdentityFact icon="markets" label={appearance} />
+            <IdentityFact icon="operations" label={hasAdminAccess ? 'Admin access enabled' : 'Standard account access'} />
+          </View>
+        </VadCard>
 
-            <SettingGroup title="Identity" subtitle="Manage how you appear on VAD and your verification status.">
-              <AccountRow
-                icon="account"
-                title="Public profile"
-                subtitle="Name, username, photo, banner and bio"
-                onPress={() => router.push('/account/profile')}
-              />
-              <AccountRow
-                tourTarget="account-verification"
+        <View style={{ gap: theme.spacing.sm }}>
+          <VadSectionHeader
+            title="Account essentials"
+            subtitle="The actions you are most likely to need stay visible; deeper settings remain below."
+          />
+          <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.sm }}>
+            <TourTarget id="account-verification">
+              <EssentialAction
                 icon="operations"
-                title="Identity verification"
-                subtitle="Verification status and next step"
+                eyebrow="IDENTITY"
+                title="Verification"
+                body="See your verification status and next step."
                 onPress={() => router.push('/account/verification')}
               />
-            </SettingGroup>
+            </TourTarget>
 
-            <SettingGroup title="Money & experience" subtitle="Manage funding access, rewards and how VAD looks on this device.">
-              <AccountRow
-                tourTarget="account-funding"
+            <TourTarget id="account-funding">
+              <EssentialAction
                 icon="wallet"
-                title="Funding & withdrawals"
-                subtitle="Availability, limits, fees and payment activity"
+                eyebrow="MONEY"
+                title="Funding"
+                body="Deposits, withdrawals, limits and availability."
                 onPress={() => router.push('/account/funding')}
               />
-              <AccountRow
-                icon="community"
-                title="Rewards & campaigns"
-                subtitle="Invite code, live campaigns, challenges and reward history"
-                onPress={() => router.push('/account/growth')}
-              />
-              <AccountRow
-                icon="markets"
-                title="Appearance"
-                subtitle={appearance}
-                onPress={() => router.push('/account/appearance')}
-              />
-            </SettingGroup>
+            </TourTarget>
 
             <TourTarget id="account-guidance">
-              <SettingGroup title="Guidance & legal" subtitle="Learn VAD at your own pace and revisit important documents whenever you need them.">
-                <AccountRow
-                  icon="activity"
-                  title="Take the VAD tour"
-                  subtitle="Walk through the app again with on-screen guidance"
-                  onPress={() => router.push('/account/app-tour')}
-                />
-                <AccountRow
-                  icon="operations"
-                  title="Policies & privacy"
-                  subtitle="Read VAD terms, privacy information and important notices"
-                  onPress={() => router.push('/account/policies')}
-                />
-              </SettingGroup>
+              <EssentialAction
+                icon="activity"
+                eyebrow="GUIDANCE"
+                title="VAD tour"
+                body="Take the guided product tour again at any time."
+                onPress={() => router.push('/account/app-tour')}
+              />
             </TourTarget>
           </View>
+        </View>
+
+        <VadProgressiveSection
+          title="Profile & experience"
+          eyebrow="PERSONALISE VAD"
+          description="Public identity, rewards and how VAD looks on this device."
+          icon="account"
+          defaultExpanded
+          summary={<VadText variant="caption" tone="tertiary">Profile · Rewards · Appearance</VadText>}
+        >
+          <SettingsList>
+            <AccountRow
+              icon="account"
+              title="Public profile"
+              subtitle="Name, username, photo, banner and bio"
+              onPress={() => router.push('/account/profile')}
+            />
+            <AccountRow
+              icon="community"
+              title="Rewards & campaigns"
+              subtitle="Invite code, campaigns, challenges and reward history"
+              onPress={() => router.push('/account/growth')}
+            />
+            <AccountRow
+              icon="markets"
+              title="Appearance"
+              subtitle={appearance}
+              onPress={() => router.push('/account/appearance')}
+            />
+          </SettingsList>
+        </VadProgressiveSection>
+
+        <VadProgressiveSection
+          title="Safety, legal & access"
+          eyebrow="ACCOUNT CONTROLS"
+          description="Policies, platform access and administration controls."
+          icon="operations"
+          summary={<VadText variant="caption" tone="tertiary">Policies{hasAdminAccess ? ' · Admin' : ''}</VadText>}
+        >
+          <SettingsList>
+            <AccountRow
+              icon="operations"
+              title="Policies & privacy"
+              subtitle="Terms, privacy information and important notices"
+              onPress={() => router.push('/account/policies')}
+            />
+            {hasAdminAccess ? (
+              <AccountRow
+                icon="operations"
+                title="Admin operations"
+                subtitle="Open the VAD operations dashboard with your assigned access"
+                onPress={() => router.push('/admin')}
+              />
+            ) : null}
+          </SettingsList>
+        </VadProgressiveSection>
+
+        <View style={{ alignItems: density.phone ? 'stretch' : 'flex-start' }}>
+          <VadButton label="Sign out" variant="ghost" fullWidth={density.phone} onPress={() => void signOut()} />
         </View>
       </View>
     </ProductRoute>
   );
 }
 
-function SettingGroup({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  children: ReactNode;
-}) {
+function IdentityFact({ icon, label }: { icon: VadIconName; label: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ gap: theme.spacing.sm }}>
-      <VadSectionHeader title={title} subtitle={subtitle} />
-      <View style={{ gap: theme.spacing.sm }}>{children}</View>
+    <View
+      style={{
+        minHeight: 32,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        borderRadius: theme.radius.pill,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surface,
+      }}
+    >
+      <VadIcon name={icon} size={14} tone="brand" />
+      <VadText variant="caption" tone="secondary" numberOfLines={1}>{label}</VadText>
     </View>
   );
 }
 
-function AccountRow({
+function EssentialAction({
   icon,
+  eyebrow,
   title,
-  subtitle,
+  body,
   onPress,
-  tourTarget,
 }: {
   icon: VadIconName;
+  eyebrow: string;
   title: string;
-  subtitle: string;
+  body: string;
   onPress: () => void;
-  tourTarget?: string;
 }) {
-  const content = (
-    <AccountRowContent icon={icon} title={title} subtitle={subtitle} onPress={onPress} />
+  const theme = useVadTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={body}
+      onPress={onPress}
+      style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.76 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}
+    >
+      <VadCard variant="raised" style={{ minHeight: 128, gap: theme.spacing.sm }}>
+        <View style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+          <VadIcon name={icon} size={19} tone="brand" />
+        </View>
+        <View style={{ gap: 2 }}>
+          <VadText variant="caption" tone="brand">{eyebrow}</VadText>
+          <VadText variant="bodyStrong">{title}</VadText>
+          <VadText variant="caption" tone="secondary">{body}</VadText>
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 3, marginTop: 'auto' }}>
+          <VadText variant="caption" tone="brand">Open</VadText>
+          <VadIcon name="chevronRight" size={14} tone="brand" />
+        </View>
+      </VadCard>
+    </Pressable>
   );
-  return tourTarget ? <TourTarget id={tourTarget}>{content}</TourTarget> : content;
 }
 
-function AccountRowContent({
+function SettingsList({ children }: { children: ReactNode }) {
+  const theme = useVadTheme();
+  return <View style={{ gap: theme.spacing.sm }}>{children}</View>;
+}
+
+function AccountRow({
   icon,
   title,
   subtitle,
@@ -254,34 +310,20 @@ function AccountRowContent({
       accessibilityLabel={title}
       accessibilityHint={subtitle}
       onPress={onPress}
-      style={({ pressed }) => ({
-        opacity: pressed ? 0.7 : 1,
-        transform: [{ scale: pressed ? 0.992 : 1 }],
-      })}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}
     >
       <VadCard
         variant="raised"
         style={{
-          minHeight: density.phone ? 78 : 86,
-          paddingVertical: theme.spacing.md,
+          minHeight: density.phone ? 74 : 82,
+          paddingVertical: theme.spacing.sm,
           flexDirection: 'row',
           alignItems: 'center',
           gap: theme.spacing.md,
         }}
       >
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: theme.colors.brandSoft,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-          }}
-        >
-          <VadIcon name={icon} size={20} tone="brand" />
+        <View style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+          <VadIcon name={icon} size={19} tone="brand" />
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <VadText variant="bodyStrong">{title}</VadText>
