@@ -86,7 +86,7 @@ function StakeCard({ stake }: { stake: PoolStakeRow }) {
         <Metric label="Committed" value={assetMoney(stake.amount, stake.asset_code)} />
         <Metric label="Trading fee" value={assetMoney(stake.trading_fee, stake.asset_code)} />
       </View>
-      <VadText variant="caption" tone="secondary">This stake is held in the market's participant collateral pool. VAD does not fund the opposing side.</VadText>
+      <VadText variant="caption" tone="secondary">This stake is held in the market’s participant collateral pool. VAD does not fund the opposing side.</VadText>
     </VadCard>
   );
 }
