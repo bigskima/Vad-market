@@ -1,0 +1,4 @@
+-- Repository history marker for the live asset_configured_liquidity_model migration.
+-- This version removed asset-code branching from market economics and made the
+-- default liquidity model metadata-driven per asset. The later idempotent
+-- peer_pool_repository_reconciliation migration contains the reproducible end state.
