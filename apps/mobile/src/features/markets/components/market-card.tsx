@@ -3,7 +3,9 @@ import { Pressable, View } from 'react-native';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { probability } from '../format';
@@ -20,21 +22,19 @@ export function MarketCard({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
+  const timing = getMarketTiming(market, now);
   const tight = compact || density.compact;
-  const isOpen = market.status === 'OPEN' || market.status === 'ACTIVE';
+  const isOpen = timing.tradingOpen;
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
-  const statusLabel = marketStatusLabel(market.status);
-
-  const closesLabel = market.closes_at
-    ? new Date(market.closes_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-    : 'Time unavailable';
+  const statusLabel = timing.statusLabel;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${statusLabel}.`}
+      accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${statusLabel}. ${timing.primaryTiming}.`}
       accessibilityHint="Opens market details, discussion, rules and trading when available."
       style={({ pressed }) => ({
         minHeight: compact ? 132 : density.compact ? 164 : density.phone ? 176 : 196,
@@ -52,11 +52,12 @@ export function MarketCard({
       <View style={{ gap: compact ? 8 : density.compact ? theme.spacing.sm : theme.spacing.md }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6, alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
-            <VadChip label={statusLabel.toUpperCase()} tone={isOpen ? 'yes' : 'neutral'} />
+            <VadChip label={statusLabel.toUpperCase()} tone={isOpen ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
             <VadChip label={market.asset_code} tone="brand" />
+            {timing.resolutionOutcome ? <VadChip label={`RESULT ${timing.resolutionOutcome}`} tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'} /> : null}
             {!tight ? <VadText variant="caption" tone="secondary" numberOfLines={1}>{market.category ?? 'General'}</VadText> : null}
           </View>
-          <VadText variant="caption" tone="tertiary" numberOfLines={1}>{closesLabel}</VadText>
+          <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={1}>{timing.primaryTiming}</VadText>
         </View>
 
         {!compact && density.compact ? <VadText variant="caption" tone="secondary" numberOfLines={1}>{market.category ?? 'General'}</VadText> : null}
@@ -75,23 +76,12 @@ export function MarketCard({
       <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: compact ? 6 : density.compact ? 7 : theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
         <VadText variant="caption" tone="tertiary" numberOfLines={1}>{market.last_trade_at ? 'Recently traded' : 'No trades yet'}</VadText>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <VadText variant="caption" tone="brand">Open</VadText>
+          <VadText variant="caption" tone="brand">View</VadText>
           <VadIcon name="chevronRight" size={14} tone="brand" />
         </View>
       </View>
     </Pressable>
   );
-}
-
-function marketStatusLabel(status: string) {
-  const normalized = status.toUpperCase();
-  if (normalized === 'OPEN' || normalized === 'ACTIVE') return 'Live';
-  if (normalized === 'CLOSED') return 'Closed';
-  if (normalized === 'RESOLVING') return 'Result pending';
-  if (normalized === 'RESOLVED') return 'Result confirmed';
-  if (normalized === 'SETTLED') return 'Completed';
-  if (normalized === 'VOID') return 'Cancelled';
-  return 'Unavailable';
 }
 
 function PriceTile({ label, value, positive, compact }: { label: string; value: string; positive: boolean; compact: boolean }) {
