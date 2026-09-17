@@ -1,4 +1,4 @@
-import { Share } from 'react-native';
+import { Platform, Share } from 'react-native';
 
 import type { MarketHistoryRow } from '@/services/market-api';
 
@@ -31,7 +31,7 @@ export function resultShareCopy(row: MarketHistoryRow, profile: ResultCardProfil
 
 export async function shareResultCard(row: MarketHistoryRow, profile: ResultCardProfile) {
   const message = resultShareCopy(row, profile);
-  if (process.env.EXPO_OS === 'web') {
+  if (Platform.OS === 'web') {
     const file = await createWebResultCardFile(row, profile);
     const nav = (globalThis as any).navigator;
     if (file && nav?.share) {
@@ -53,7 +53,7 @@ export async function shareResultCard(row: MarketHistoryRow, profile: ResultCard
 }
 
 export async function saveResultCard(row: MarketHistoryRow, profile: ResultCardProfile) {
-  if (process.env.EXPO_OS === 'web') {
+  if (Platform.OS === 'web') {
     const file = await createWebResultCardFile(row, profile);
     const documentRef = (globalThis as any).document;
     const urlApi = (globalThis as any).URL;
