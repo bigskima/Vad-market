@@ -14,13 +14,21 @@ import { AdminPermissionGate } from '@/features/admin/components/admin-permissio
 import { AdminRouteContainer } from '@/features/admin/components/admin-route-container';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
-  createAdminMarketDraft,
+  createAdminCustomMarket,
+  createAdminGuidedMarket,
   getAdminMarketAutoOptions,
+  type AdminGuidedMarketSetup,
   type AdminMarketAutoOptions,
 } from '@/services/admin-market-approval-api';
 
 const CATEGORIES = ['Politics', 'Sports', 'Crypto', 'Business', 'Economy', 'Technology', 'Entertainment', 'Science', 'World', 'Other'] as const;
 type CreateStep = 1 | 2 | 3;
+type CreationStyle = 'GUIDED' | 'CUSTOM';
+type SportsMarketType = 'MATCH' | 'TRANSFER' | 'OTHER';
+type PoliticsMarketType = 'ELECTION' | 'OTHER';
+type ResultChecking = 'AUTOMATIC' | 'VERIFIED';
+type MatchPrediction = 'HOME_WIN' | 'DRAW' | 'AWAY_WIN';
+type PublicationChoice = 'DRAFT' | 'NOW';
 
 export default function AdminCreateMarketRoute() {
   return (
@@ -40,7 +48,10 @@ function AdminCreateMarketContent() {
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<Record<string, unknown> | null>(null);
   const [step, setStep] = useState<CreateStep>(1);
+  const [creationStyle, setCreationStyle] = useState<CreationStyle>('GUIDED');
+  const [publicationChoice, setPublicationChoice] = useState<PublicationChoice>('DRAFT');
   const [title, setTitle] = useState('');
+  const [titleEdited, setTitleEdited] = useState(false);
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('Politics');
   const [countryCode, setCountryCode] = useState('');
@@ -48,6 +59,26 @@ function AdminCreateMarketContent() {
   const [opensAt, setOpensAt] = useState('');
   const [closesAt, setClosesAt] = useState('');
   const [resolvesAfter, setResolvesAfter] = useState('');
+
+  const [sportsMarketType, setSportsMarketType] = useState<SportsMarketType>('MATCH');
+  const [competition, setCompetition] = useState('');
+  const [homeTeam, setHomeTeam] = useState('');
+  const [awayTeam, setAwayTeam] = useState('');
+  const [matchPrediction, setMatchPrediction] = useState<MatchPrediction>('HOME_WIN');
+  const [resultChecking, setResultChecking] = useState<ResultChecking>('AUTOMATIC');
+  const [matchReference, setMatchReference] = useState('');
+  const [player, setPlayer] = useState('');
+  const [destinationClub, setDestinationClub] = useState('');
+
+  const [politicsMarketType, setPoliticsMarketType] = useState<PoliticsMarketType>('ELECTION');
+  const [electionCountry, setElectionCountry] = useState('');
+  const [electionOffice, setElectionOffice] = useState('');
+  const [candidate, setCandidate] = useState('');
+  const [electionLabel, setElectionLabel] = useState('');
+
+  const [sourceName, setSourceName] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [resultCondition, setResultCondition] = useState('');
 
   useEffect(() => {
     let ignore = false;
@@ -71,15 +102,141 @@ function AdminCreateMarketContent() {
   );
   const resolvedAssetCode = assetCode || (jurisdiction?.assets.includes('TNGN') ? 'TNGN' : jurisdiction?.assets[0] ?? '');
   const sandbox = resolvedAssetCode === 'TNGN';
+  const usesGuidedBackend = creationStyle === 'GUIDED' && category !== 'Crypto';
+  const isAutomaticFootball = usesGuidedBackend && category === 'Sports' && sportsMarketType === 'MATCH' && resultChecking === 'AUTOMATIC';
+  const automaticFootballAvailable = sandbox
+    ? options?.guided.football.automaticSandboxAvailable === true
+    : options?.guided.football.automaticProductionAvailable === true;
 
   const scheduleValid = [opensAt, closesAt, resolvesAfter].every((value) => value && Number.isFinite(Date.parse(value)))
     && Date.parse(closesAt) > Date.parse(opensAt)
     && Date.parse(resolvesAfter) >= Date.parse(closesAt);
+  const canPublishNow = scheduleValid
+    && Date.parse(opensAt) <= Date.now()
+    && Date.parse(closesAt) > Date.now();
+
+  const suggestedTitle = useMemo(() => {
+    if (creationStyle !== 'GUIDED') return '';
+    if (category === 'Sports' && sportsMarketType === 'MATCH' && homeTeam.trim() && awayTeam.trim()) {
+      const suffix = competition.trim() ? ` in ${competition.trim()}` : '';
+      if (matchPrediction === 'DRAW') return `Will ${homeTeam.trim()} vs ${awayTeam.trim()} end in a draw${suffix}?`;
+      if (matchPrediction === 'AWAY_WIN') return `Will ${awayTeam.trim()} beat ${homeTeam.trim()}${suffix}?`;
+      return `Will ${homeTeam.trim()} beat ${awayTeam.trim()}${suffix}?`;
+    }
+    if (category === 'Sports' && sportsMarketType === 'TRANSFER' && player.trim() && destinationClub.trim()) {
+      return `Will ${player.trim()} join ${destinationClub.trim()}?`;
+    }
+    if (category === 'Politics' && politicsMarketType === 'ELECTION' && candidate.trim() && electionCountry.trim()) {
+      const election = electionLabel.trim() || electionOffice.trim() || 'election';
+      return `Will ${candidate.trim()} win the ${election} in ${electionCountry.trim()}?`;
+    }
+    return '';
+  }, [awayTeam, candidate, category, competition, creationStyle, destinationClub, electionCountry, electionLabel, electionOffice, homeTeam, matchPrediction, player, politicsMarketType, sportsMarketType]);
+
+  useEffect(() => {
+    if (creationStyle === 'GUIDED' && !titleEdited && suggestedTitle) setTitle(suggestedTitle);
+  }, [creationStyle, suggestedTitle, titleEdited]);
+
+  function chooseCategory(item: (typeof CATEGORIES)[number]) {
+    setCategory(item);
+    setError(null);
+    if (creationStyle === 'GUIDED') {
+      setTitle('');
+      setTitleEdited(false);
+      setSourceName('');
+      setSourceUrl('');
+      setResultCondition('');
+      if (item !== 'Sports') setResultChecking('VERIFIED');
+      if (item === 'Sports' && sportsMarketType === 'MATCH') setResultChecking('AUTOMATIC');
+    }
+  }
+
+  function chooseCreationStyle(next: CreationStyle) {
+    setCreationStyle(next);
+    setError(null);
+    if (next === 'GUIDED') setTitleEdited(false);
+  }
+
+  function buildGuidedSetup(): AdminGuidedMarketSetup {
+    if (category === 'Sports' && sportsMarketType === 'MATCH') {
+      return {
+        kind: 'FOOTBALL_MATCH',
+        resultChecking,
+        competition,
+        homeTeam,
+        awayTeam,
+        prediction: matchPrediction,
+        matchReference: resultChecking === 'AUTOMATIC' ? matchReference : undefined,
+        sourceName: resultChecking === 'VERIFIED' ? sourceName : undefined,
+        sourceUrl: resultChecking === 'VERIFIED' ? sourceUrl : undefined,
+      };
+    }
+    if (category === 'Sports' && sportsMarketType === 'TRANSFER') {
+      return {
+        kind: 'PLAYER_TRANSFER',
+        resultChecking: 'VERIFIED',
+        player,
+        destinationClub,
+        sourceName,
+        sourceUrl,
+      };
+    }
+    if (category === 'Sports') {
+      return { kind: 'SPORTS_EVENT', resultChecking: 'VERIFIED', condition: resultCondition, sourceName, sourceUrl };
+    }
+    if (category === 'Politics' && politicsMarketType === 'ELECTION') {
+      return {
+        kind: 'ELECTION_WINNER',
+        resultChecking: 'VERIFIED',
+        country: electionCountry,
+        office: electionOffice,
+        candidate,
+        electionLabel,
+        sourceName,
+        sourceUrl,
+      };
+    }
+    if (category === 'Politics') {
+      return { kind: 'POLITICAL_EVENT', resultChecking: 'VERIFIED', condition: resultCondition, sourceName, sourceUrl };
+    }
+    return { kind: 'OBJECTIVE_EVENT', resultChecking: 'VERIFIED', condition: resultCondition, sourceName, sourceUrl };
+  }
 
   function continueFromDetails() {
     setError(null);
     if (!title.trim()) {
       setError('Enter the market question before continuing.');
+      return;
+    }
+    if (!usesGuidedBackend) {
+      setStep(2);
+      return;
+    }
+    if (category === 'Sports' && sportsMarketType === 'MATCH') {
+      if (!competition.trim() || !homeTeam.trim() || !awayTeam.trim()) {
+        setError('Add the competition, home team and away team.');
+        return;
+      }
+      if (resultChecking === 'AUTOMATIC' && !matchReference.trim()) {
+        setError('Add the Football-Data match reference for automatic result checking.');
+        return;
+      }
+      if (resultChecking === 'VERIFIED' && !sourceName.trim()) {
+        setError('Add the official result source VAD should use.');
+        return;
+      }
+    } else if (category === 'Sports' && sportsMarketType === 'TRANSFER') {
+      if (!player.trim() || !destinationClub.trim() || !sourceName.trim()) {
+        setError('Add the player, destination club and official result source.');
+        return;
+      }
+    } else if (category === 'Politics' && politicsMarketType === 'ELECTION') {
+      if (!electionCountry.trim() || !electionOffice.trim() || !candidate.trim() || !sourceName.trim()) {
+        setError('Add the country, office, candidate and official election result source.');
+        return;
+      }
+    } else if (!sourceName.trim()) {
+      setError('Add the authoritative result source VAD should use.');
       return;
     }
     setStep(2);
@@ -92,7 +249,7 @@ function AdminCreateMarketContent() {
       return;
     }
     if (![opensAt, closesAt, resolvesAfter].every((value) => value && Number.isFinite(Date.parse(value)))) {
-      setError('Choose the opening, closing and resolution times.');
+      setError('Choose the opening, closing and result-checking times.');
       return;
     }
     if (Date.parse(closesAt) <= Date.parse(opensAt)) {
@@ -100,7 +257,11 @@ function AdminCreateMarketContent() {
       return;
     }
     if (Date.parse(resolvesAfter) < Date.parse(closesAt)) {
-      setError('Resolution time cannot be before market close.');
+      setError('Result checking cannot begin before market close.');
+      return;
+    }
+    if (isAutomaticFootball && !automaticFootballAvailable) {
+      setError('Automatic football results are not enabled for this currency yet. Go back and choose Verified result, or choose a supported test currency.');
       return;
     }
     setStep(3);
@@ -108,11 +269,15 @@ function AdminCreateMarketContent() {
 
   async function createMarket() {
     if (working || !scheduleValid) return;
+    if (publicationChoice === 'NOW' && !canPublishNow) {
+      setError('Publish now needs an opening time that has already started and a closing time still in the future.');
+      return;
+    }
     setError(null);
     setCreated(null);
     setWorking(true);
     try {
-      setCreated(await createAdminMarketDraft({
+      const shared = {
         title,
         description,
         category,
@@ -121,7 +286,12 @@ function AdminCreateMarketContent() {
         resolvesAfter: new Date(resolvesAfter).toISOString(),
         countryCode: resolvedCountryCode,
         assetCode: resolvedAssetCode,
-      }));
+        publishNow: publicationChoice === 'NOW',
+      };
+      const next = usesGuidedBackend
+        ? await createAdminGuidedMarket({ ...shared, setup: buildGuidedSetup() })
+        : await createAdminCustomMarket(shared);
+      setCreated(next);
     } catch (value) {
       setError(value instanceof Error ? value.message : 'VAD market could not be created.');
     } finally {
@@ -132,7 +302,10 @@ function AdminCreateMarketContent() {
   function resetForm() {
     setCreated(null);
     setStep(1);
+    setCreationStyle('GUIDED');
+    setPublicationChoice('DRAFT');
     setTitle('');
+    setTitleEdited(false);
     setDescription('');
     setCategory('Politics');
     setCountryCode('');
@@ -140,6 +313,23 @@ function AdminCreateMarketContent() {
     setOpensAt('');
     setClosesAt('');
     setResolvesAfter('');
+    setSportsMarketType('MATCH');
+    setCompetition('');
+    setHomeTeam('');
+    setAwayTeam('');
+    setMatchPrediction('HOME_WIN');
+    setResultChecking('AUTOMATIC');
+    setMatchReference('');
+    setPlayer('');
+    setDestinationClub('');
+    setPoliticsMarketType('ELECTION');
+    setElectionCountry('');
+    setElectionOffice('');
+    setCandidate('');
+    setElectionLabel('');
+    setSourceName('');
+    setSourceUrl('');
+    setResultCondition('');
     setError(null);
   }
 
@@ -147,28 +337,38 @@ function AdminCreateMarketContent() {
     return <View style={{ gap: theme.spacing.md }}><VadSkeleton width="50%" height={32} /><VadSkeleton height={110} /><VadSkeleton height={260} /></View>;
   }
 
+  const publicationStatus = String(created?.publication_status ?? 'DRAFT').toUpperCase();
+  const createdSource = String(created?.result_source ?? '').trim();
+  const reviewResultLabel = usesGuidedBackend
+    ? isAutomaticFootball
+      ? `Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`
+      : `Verified result${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
+    : 'VAD configured result checking';
+
   return (
     <View style={{ gap: theme.spacing.xl }}>
       <View style={{ gap: 4 }}>
         <VadText variant="label" tone="brand">VAD MARKETS</VadText>
         <VadText variant="title">Create a VAD market.</VadText>
-        <VadText tone="secondary">A guided three-step flow keeps the market question, trading setup and final review separate.</VadText>
+        <VadText tone="secondary">Use guided setup for common market types, or keep the existing custom-question flow when you need full flexibility.</VadText>
       </View>
 
       {!created ? <CreateStepRail step={step} /> : null}
 
       {created ? (
         <VadCard variant="raised" style={{ gap: theme.spacing.md, borderColor: theme.colors.yes }}>
-          <VadChip label="DRAFT CREATED" tone="yes" />
+          <VadChip label={publicationStatus === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT CREATED'} tone="yes" />
           <VadText variant="title" tone="yes">Market created successfully.</VadText>
           <VadText variant="caption" tone="secondary">
-            VAD configured the resolution path automatically. The market is still a controlled draft; publish it when you are ready for testers to see it.
+            {publicationStatus === 'PUBLISHED'
+              ? 'The market is live for eligible users and its result-checking instructions are saved with the market.'
+              : 'The market and its result-checking instructions are saved. Publish it when you are ready for users to see it.'}
           </VadText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             <VadChip label={String(created.asset_code ?? resolvedAssetCode)} tone={sandbox ? 'brand' : 'neutral'} />
-            <VadChip label={String(created.resolution_mode ?? 'VAD AUTO').replaceAll('_', ' ')} tone="yes" />
+            {createdSource ? <VadChip label={createdSource} tone="neutral" /> : null}
           </View>
-          <VadButton label="Open Market Publishing" onPress={() => router.push('/admin/market-publishing')} />
+          {publicationStatus !== 'PUBLISHED' ? <VadButton label="Open Market Publishing" onPress={() => router.push('/admin/market-publishing')} /> : null}
           <VadButton label="Create another market" variant="secondary" onPress={resetForm} />
         </VadCard>
       ) : null}
@@ -177,17 +377,152 @@ function AdminCreateMarketContent() {
         <VadCard variant="raised" style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 1 · MARKET</VadText>
-            <VadText variant="heading">Define the question.</VadText>
-            <VadText variant="caption" tone="secondary">Keep this step focused on what users are predicting. Timing and currency come next.</VadText>
+            <VadText variant="heading">Define the market.</VadText>
+            <VadText variant="caption" tone="secondary">Guided setup asks only for the real-world details VAD needs. Custom question keeps the existing flexible creator.</VadText>
           </View>
+
+          <View style={{ gap: 8 }}>
+            <VadText variant="label">Creation style</VadText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+              <VadChip label="Guided setup" selected={creationStyle === 'GUIDED'} tone={creationStyle === 'GUIDED' ? 'brand' : 'neutral'} onPress={() => chooseCreationStyle('GUIDED')} />
+              <VadChip label="Custom question" selected={creationStyle === 'CUSTOM'} tone={creationStyle === 'CUSTOM' ? 'brand' : 'neutral'} onPress={() => chooseCreationStyle('CUSTOM')} />
+            </View>
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <VadText variant="label">Category</VadText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+              {CATEGORIES.map((item) => (
+                <VadChip key={item} label={item} selected={category === item} tone={category === item ? 'brand' : 'neutral'} onPress={() => chooseCategory(item)} />
+              ))}
+            </View>
+          </View>
+
+          {creationStyle === 'GUIDED' && category === 'Sports' ? (
+            <View style={{ gap: theme.spacing.lg }}>
+              <View style={{ gap: 8 }}>
+                <VadText variant="label">Sports market</VadText>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+                  <VadChip label="Match result" selected={sportsMarketType === 'MATCH'} onPress={() => { setSportsMarketType('MATCH'); setResultChecking('AUTOMATIC'); setTitleEdited(false); setError(null); }} />
+                  <VadChip label="Player transfer" selected={sportsMarketType === 'TRANSFER'} onPress={() => { setSportsMarketType('TRANSFER'); setResultChecking('VERIFIED'); setTitleEdited(false); setError(null); }} />
+                  <VadChip label="Other sports event" selected={sportsMarketType === 'OTHER'} onPress={() => { setSportsMarketType('OTHER'); setResultChecking('VERIFIED'); setTitleEdited(false); setError(null); }} />
+                </View>
+              </View>
+
+              {sportsMarketType === 'MATCH' ? (
+                <View style={{ gap: theme.spacing.md }}>
+                  <View style={{ gap: 8 }}>
+                    <VadText variant="label">Sport</VadText>
+                    <View style={{ flexDirection: 'row', gap: 7 }}><VadChip label="Football" selected /></View>
+                  </View>
+                  <VadInput label="Competition" value={competition} onChangeText={(value) => { setCompetition(value); setError(null); }} placeholder="La Liga" />
+                  <VadInput label="Home team" value={homeTeam} onChangeText={(value) => { setHomeTeam(value); setError(null); }} placeholder="Real Betis" />
+                  <VadInput label="Away team" value={awayTeam} onChangeText={(value) => { setAwayTeam(value); setError(null); }} placeholder="Getafe" />
+                  <View style={{ gap: 8 }}>
+                    <VadText variant="label">Prediction</VadText>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+                      <VadChip label="Home team wins" selected={matchPrediction === 'HOME_WIN'} onPress={() => { setMatchPrediction('HOME_WIN'); setTitleEdited(false); }} />
+                      <VadChip label="Draw" selected={matchPrediction === 'DRAW'} onPress={() => { setMatchPrediction('DRAW'); setTitleEdited(false); }} />
+                      <VadChip label="Away team wins" selected={matchPrediction === 'AWAY_WIN'} onPress={() => { setMatchPrediction('AWAY_WIN'); setTitleEdited(false); }} />
+                    </View>
+                  </View>
+                  <View style={{ gap: 8 }}>
+                    <VadText variant="label">Result checking</VadText>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+                      <VadChip label={`Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`} selected={resultChecking === 'AUTOMATIC'} tone={resultChecking === 'AUTOMATIC' ? 'brand' : 'neutral'} onPress={() => { setResultChecking('AUTOMATIC'); setError(null); }} />
+                      <VadChip label="Verified result" selected={resultChecking === 'VERIFIED'} tone={resultChecking === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => { setResultChecking('VERIFIED'); setError(null); }} />
+                    </View>
+                  </View>
+                  {resultChecking === 'AUTOMATIC' ? (
+                    <>
+                      <VadInput
+                        label="Match reference"
+                        value={matchReference}
+                        onChangeText={(value) => { setMatchReference(value); setError(null); }}
+                        placeholder="Football-Data match number"
+                        hint="Paste the Football-Data match number or a reference ending in that number. VAD uses it only to fetch the final result."
+                      />
+                      <VadCard variant="muted" style={{ gap: 3 }}>
+                        <VadText variant="bodyStrong" tone="yes">One final-result check</VadText>
+                        <VadText variant="caption" tone="secondary">VAD waits until the result-checking time, then checks this match automatically. Creating the market does not spend a football result request.</VadText>
+                      </VadCard>
+                    </>
+                  ) : <SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />}
+                </View>
+              ) : null}
+
+              {sportsMarketType === 'TRANSFER' ? (
+                <View style={{ gap: theme.spacing.md }}>
+                  <VadInput label="Player" value={player} onChangeText={(value) => { setPlayer(value); setError(null); }} placeholder="Player name" />
+                  <VadInput label="Destination club" value={destinationClub} onChangeText={(value) => { setDestinationClub(value); setError(null); }} placeholder="Club name" />
+                  <VadCard variant="muted" style={{ gap: 3 }}>
+                    <VadText variant="bodyStrong">Verified result</VadText>
+                    <VadText variant="caption" tone="secondary">Transfers are verified from the official source you choose. Automatic transfer checking can be added later without changing how admins create these markets.</VadText>
+                  </VadCard>
+                  <SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
+                </View>
+              ) : null}
+
+              {sportsMarketType === 'OTHER' ? (
+                <View style={{ gap: theme.spacing.md }}>
+                  <VadInput label="What makes YES true? · optional" value={resultCondition} onChangeText={setResultCondition} multiline placeholder="Example: Resolve YES if the player scores at least 20 league goals before the deadline." />
+                  <SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          {creationStyle === 'GUIDED' && category === 'Politics' ? (
+            <View style={{ gap: theme.spacing.lg }}>
+              <View style={{ gap: 8 }}>
+                <VadText variant="label">Political market</VadText>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+                  <VadChip label="Election winner" selected={politicsMarketType === 'ELECTION'} onPress={() => { setPoliticsMarketType('ELECTION'); setTitleEdited(false); setError(null); }} />
+                  <VadChip label="Other political event" selected={politicsMarketType === 'OTHER'} onPress={() => { setPoliticsMarketType('OTHER'); setTitleEdited(false); setError(null); }} />
+                </View>
+              </View>
+              {politicsMarketType === 'ELECTION' ? (
+                <View style={{ gap: theme.spacing.md }}>
+                  <VadInput label="Country" value={electionCountry} onChangeText={(value) => { setElectionCountry(value); setError(null); }} placeholder="Nigeria" />
+                  <VadInput label="Office" value={electionOffice} onChangeText={(value) => { setElectionOffice(value); setError(null); }} placeholder="President" />
+                  <VadInput label="Candidate" value={candidate} onChangeText={(value) => { setCandidate(value); setError(null); }} placeholder="Candidate name" />
+                  <VadInput label="Election name · optional" value={electionLabel} onChangeText={(value) => { setElectionLabel(value); setTitleEdited(false); }} placeholder="2027 presidential election" />
+                  <VadCard variant="muted" style={{ gap: 3 }}>
+                    <VadText variant="bodyStrong">Verified official result</VadText>
+                    <VadText variant="caption" tone="secondary">VAD records the source you select and verifies the declared result from that source. This avoids pretending an election is automatically settled when no approved live election feed is connected.</VadText>
+                  </VadCard>
+                  <SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} sourceLabel="Official election result source" />
+                </View>
+              ) : (
+                <View style={{ gap: theme.spacing.md }}>
+                  <VadInput label="What makes YES true? · optional" value={resultCondition} onChangeText={setResultCondition} multiline placeholder="State the objective condition VAD should verify." />
+                  <SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
+                </View>
+              )}
+            </View>
+          ) : null}
+
+          {creationStyle === 'GUIDED' && category === 'Crypto' ? (
+            <VadCard variant="muted" style={{ gap: 3 }}>
+              <VadText variant="bodyStrong" tone="yes">Existing crypto automation preserved</VadText>
+              <VadText variant="caption" tone="secondary">Crypto keeps the current question-based setup and automatic price-result logic. Nothing in this upgrade replaces that flow.</VadText>
+            </VadCard>
+          ) : null}
+
+          {creationStyle === 'GUIDED' && !['Sports', 'Politics', 'Crypto'].includes(category) ? (
+            <View style={{ gap: theme.spacing.md }}>
+              <VadInput label="What makes YES true? · optional" value={resultCondition} onChangeText={setResultCondition} multiline placeholder="State the objective result condition, or leave this blank and VAD will use the market question." />
+              <SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
+            </View>
+          ) : null}
 
           <VadInput
             label="Market question"
             value={title}
-            onChangeText={(value) => { setTitle(value); setError(null); }}
+            onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }}
             multiline
             placeholder="Will … happen before …?"
-            hint="Write one clear YES/NO question."
+            hint={creationStyle === 'GUIDED' ? 'VAD suggests a clear YES/NO question from the details above. You can still edit it.' : 'Write one clear YES/NO question.'}
           />
           <VadInput
             label="Short context · optional"
@@ -196,15 +531,6 @@ function AdminCreateMarketContent() {
             multiline
             placeholder="Add useful context for traders."
           />
-
-          <View style={{ gap: 8 }}>
-            <VadText variant="label">Category</VadText>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
-              {CATEGORIES.map((item) => (
-                <VadChip key={item} label={item} selected={category === item} tone={category === item ? 'brand' : 'neutral'} onPress={() => setCategory(item)} />
-              ))}
-            </View>
-          </View>
 
           {error ? <VadErrorState title="Check this step" message={error} /> : null}
           <VadButton label="Continue to setup" onPress={continueFromDetails} />
@@ -240,7 +566,7 @@ function AdminCreateMarketContent() {
                     label={asset === 'TNGN' ? 'Test NGN · Sandbox' : asset}
                     selected={resolvedAssetCode === asset}
                     tone={resolvedAssetCode === asset && asset === 'TNGN' ? 'brand' : 'neutral'}
-                    onPress={() => setAssetCode(asset)}
+                    onPress={() => { setAssetCode(asset); setError(null); }}
                   />
                 ))}
               </View>
@@ -248,16 +574,29 @@ function AdminCreateMarketContent() {
                 <VadText variant="bodyStrong" tone={sandbox ? 'brand' : 'warning'}>{sandbox ? 'Recommended for testnet' : 'Real-money currency selected'}</VadText>
                 <VadText variant="caption" tone="secondary">
                   {sandbox
-                    ? 'TNGN uses synthetic balances and instant sandbox liquidity. It cannot be deposited or withdrawn.'
-                    : 'Use TNGN until matching, oracle resolution and automatic settlement have passed your sandbox tests.'}
+                    ? 'TNGN uses synthetic balances and cannot be deposited or withdrawn.'
+                    : 'Use TNGN until matching, result checking and settlement have passed your sandbox tests.'}
                 </VadText>
               </VadCard>
             </View>
           ) : null}
 
-          <VadDateTimeField label="Opens" value={opensAt} onChange={setOpensAt} hint="When testers can begin trading." />
+          {isAutomaticFootball ? (
+            <VadCard variant={automaticFootballAvailable ? 'muted' : 'raised'} style={{ gap: 3 }}>
+              <VadText variant="bodyStrong" tone={automaticFootballAvailable ? 'yes' : 'warning'}>
+                {automaticFootballAvailable ? 'Automatic football results available' : 'Automatic football results are not enabled for this currency'}
+              </VadText>
+              <VadText variant="caption" tone="secondary">
+                {automaticFootballAvailable
+                  ? `${options?.guided.football.automaticSourceName ?? 'Football-Data.org'} will be used after the match result is due.`
+                  : 'Go back and choose Verified result, or use a currency where automatic football result checking is enabled.'}
+              </VadText>
+            </VadCard>
+          ) : null}
+
+          <VadDateTimeField label="Opens" value={opensAt} onChange={setOpensAt} hint="When users can begin trading." />
           <VadDateTimeField label="Closes" value={closesAt} onChange={setClosesAt} minDate={opensAt || undefined} hint="Trading stops at this time." />
-          <VadDateTimeField label="Resolve after" value={resolvesAfter} onChange={setResolvesAfter} minDate={closesAt || opensAt || undefined} hint="VAD begins automatic resolution or controlled oracle review from this time." />
+          <VadDateTimeField label="Check result after" value={resolvesAfter} onChange={setResolvesAfter} minDate={closesAt || opensAt || undefined} hint="VAD begins automatic checking or verified-result review from this time." />
 
           {error ? <VadErrorState title="Check this step" message={error} /> : null}
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
@@ -271,29 +610,78 @@ function AdminCreateMarketContent() {
         <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · REVIEW</VadText>
-            <VadText variant="heading">Ready to create the draft.</VadText>
-            <VadText variant="caption" tone="secondary">Nothing is public yet. Creation produces a controlled draft, then Market Publishing decides when users can see it.</VadText>
+            <VadText variant="heading">Review and finish.</VadText>
+            <VadText variant="caption" tone="secondary">Choose whether to keep this as a draft or publish it immediately. All result instructions are saved automatically.</VadText>
           </View>
 
           <ReviewRow label="Question" value={title.trim()} />
           <ReviewRow label="Category" value={category} />
           <ReviewRow label="Currency" value={sandbox ? 'TNGN · Sandbox' : resolvedAssetCode} />
+          <ReviewRow label="Result checking" value={reviewResultLabel} />
           <ReviewRow label="Opens" value={new Date(opensAt).toLocaleString()} />
           <ReviewRow label="Closes" value={new Date(closesAt).toLocaleString()} />
-          <ReviewRow label="Resolve after" value={new Date(resolvesAfter).toLocaleString()} />
+          <ReviewRow label="Check result after" value={new Date(resolvesAfter).toLocaleString()} />
+
+          <View style={{ gap: 8 }}>
+            <VadText variant="label">After creation</VadText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+              <VadChip label="Save as draft" selected={publicationChoice === 'DRAFT'} tone={publicationChoice === 'DRAFT' ? 'brand' : 'neutral'} onPress={() => { setPublicationChoice('DRAFT'); setError(null); }} />
+              <VadChip label="Publish now" selected={publicationChoice === 'NOW'} tone={publicationChoice === 'NOW' ? 'brand' : 'neutral'} onPress={() => { setPublicationChoice('NOW'); setError(null); }} />
+            </View>
+          </View>
+
+          {publicationChoice === 'NOW' && !canPublishNow ? (
+            <VadCard variant="muted" style={{ gap: 3 }}>
+              <VadText variant="bodyStrong" tone="warning">Publish now needs a live opening window</VadText>
+              <VadText variant="caption" tone="secondary">Set the opening time to now or earlier while keeping the closing time in the future, or choose Save as draft.</VadText>
+            </VadCard>
+          ) : null}
 
           <VadCard variant="muted" style={{ gap: 4 }}>
-            <VadText variant="bodyStrong" tone="yes">Automatic resolution configuration</VadText>
-            <VadText variant="caption" tone="secondary">VAD selects the configured policy and resolver. Deterministic markets use approved providers; unresolved cases move to oracle review.</VadText>
+            <VadText variant="bodyStrong" tone="yes">{reviewResultLabel}</VadText>
+            <VadText variant="caption" tone="secondary">
+              {usesGuidedBackend
+                ? isAutomaticFootball
+                  ? 'VAD will use the saved match reference to check the final result automatically after the result time.'
+                  : 'VAD will use the authoritative source saved with this market when the result is due.'
+                : 'The existing custom market logic remains active and will select the configured result path from the market question and platform rules.'}
+            </VadText>
           </VadCard>
 
           {error ? <VadErrorState title="Market not created" message={error} /> : null}
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <VadButton label="Back" variant="secondary" disabled={working} onPress={() => { setError(null); setStep(2); }} style={{ flex: 1 }} />
-            <VadButton label="Create market draft" loading={working} disabled={!scheduleValid || working} onPress={() => void createMarket()} style={{ flex: 1.5 }} />
+            <VadButton
+              label={publicationChoice === 'NOW' ? 'Create & publish' : 'Create market draft'}
+              loading={working}
+              disabled={!scheduleValid || working || (publicationChoice === 'NOW' && !canPublishNow)}
+              onPress={() => void createMarket()}
+              style={{ flex: 1.5 }}
+            />
           </View>
         </VadCard>
       ) : null}
+    </View>
+  );
+}
+
+function SourceFields({
+  sourceName,
+  sourceUrl,
+  setSourceName,
+  setSourceUrl,
+  sourceLabel = 'Official result source',
+}: {
+  sourceName: string;
+  sourceUrl: string;
+  setSourceName: (value: string) => void;
+  setSourceUrl: (value: string) => void;
+  sourceLabel?: string;
+}) {
+  return (
+    <View style={{ gap: 12 }}>
+      <VadInput label={sourceLabel} value={sourceName} onChangeText={setSourceName} placeholder="Official league, club, authority or trusted source" />
+      <VadInput label="Source website · optional" value={sourceUrl} onChangeText={setSourceUrl} placeholder="https://…" hint="Use the official or authoritative website when available." />
     </View>
   );
 }
