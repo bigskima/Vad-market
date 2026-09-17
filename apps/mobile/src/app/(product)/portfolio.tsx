@@ -29,14 +29,10 @@ export default function PortfolioRoute() {
     });
   };
 
-  const positionsReadFailedWithoutData = Boolean(
-    data.sectionErrors.positions && !data.positions.length,
-  );
-  const ordersReadFailedWithoutData = Boolean(
-    data.sectionErrors.orders && !data.orders.length,
-  );
-  const portfolioReadBlocked =
-    positionsReadFailedWithoutData || ordersReadFailedWithoutData;
+  const positionsReadFailedWithoutData = Boolean(data.sectionErrors.positions && !data.positions.length);
+  const ordersReadFailedWithoutData = Boolean(data.sectionErrors.orders && !data.orders.length);
+  const settlementsReadFailedWithoutData = Boolean(data.sectionErrors.settlements && !data.settlements.length);
+  const portfolioReadBlocked = positionsReadFailedWithoutData || ordersReadFailedWithoutData;
 
   return (
     <ProductRoute
@@ -49,9 +45,7 @@ export default function PortfolioRoute() {
           {positionsReadFailedWithoutData ? (
             <VadErrorState
               title="Positions could not be loaded"
-              message={
-                data.sectionErrors.positions ?? 'Position data is unavailable.'
-              }
+              message={data.sectionErrors.positions ?? 'Position data is unavailable.'}
               onRetry={() => void data.load()}
             />
           ) : null}
@@ -64,12 +58,22 @@ export default function PortfolioRoute() {
           ) : null}
         </View>
       ) : (
-        <PortfolioScreen
-          positions={data.positions}
-          orders={data.orders}
-          onOpenPosition={openPosition}
-          onOpenOrder={openOrder}
-        />
+        <View style={{ gap: theme.spacing.md }}>
+          {settlementsReadFailedWithoutData ? (
+            <VadErrorState
+              title="Payout history could not be loaded"
+              message={data.sectionErrors.settlements ?? 'Payout history is unavailable.'}
+              onRetry={() => void data.load()}
+            />
+          ) : null}
+          <PortfolioScreen
+            positions={data.positions}
+            orders={data.orders}
+            settlements={data.settlements}
+            onOpenPosition={openPosition}
+            onOpenOrder={openOrder}
+          />
+        </View>
       )}
     </ProductRoute>
   );
