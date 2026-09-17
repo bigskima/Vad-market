@@ -22,12 +22,15 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
       .join('|'),
     [data.marketHistory],
   );
+  const liveNotification = data.liveNotification?.notification_type === 'PAYOUT_CREDITED'
+    ? null
+    : data.liveNotification;
 
   return (
     <ProductDataContext.Provider value={data}>
       {children}
       <LiveNotificationOverlay
-        notification={data.liveNotification}
+        notification={liveNotification}
         onDismiss={data.dismissLiveNotification}
         onRead={data.markNotificationRead}
       />
