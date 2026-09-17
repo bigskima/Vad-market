@@ -214,7 +214,7 @@ export function PaymentReadinessCard({
           {mode === 'DEPOSIT' ? 'Add funds to your wallet.' : 'Move available funds out.'}
         </VadText>
         <VadText variant="caption" tone="secondary">
-          We&apos;ll show any fees and requirements before you continue.
+          VAD shows the platform fee and final amount before anything is created or money begins moving.
         </VadText>
       </View>
 
@@ -317,7 +317,7 @@ export function PaymentReadinessCard({
 
           {!quote ? (
             <VadButton
-              label={mode === 'DEPOSIT' ? 'Review deposit' : 'Review withdrawal'}
+              label={mode === 'DEPOSIT' ? 'Review deposit & fees' : 'Review withdrawal & fees'}
               loading={working || capabilityLoading}
               disabled={!accountReady || !validAmount || readinessError != null}
               onPress={() => void preview()}
@@ -335,23 +335,44 @@ export function PaymentReadinessCard({
               gap: density.compact ? theme.spacing.sm : theme.spacing.md,
             }}
           >
-            <View style={{ gap: 2 }}>
+            <View style={{ gap: 4 }}>
               <VadText variant="caption" tone={quote.enabled ? 'brand' : 'warning'}>
-                {quote.enabled ? 'PAYMENT REVIEW' : 'ACTION REQUIRED'}
+                {quote.enabled ? 'FEE & MONEY PREVIEW · NOTHING CHARGED YET' : 'ACTION REQUIRED'}
               </VadText>
               <VadText variant="heading">
-                {quote.enabled ? 'Check the amounts before you continue.' : 'This payment cannot continue yet.'}
+                {quote.enabled ? 'Check every amount before you continue.' : 'This payment cannot continue yet.'}
               </VadText>
+              {quote.enabled ? (
+                <VadText variant="caption" tone="secondary">
+                  This is the server-calculated quote VAD will use if you confirm now.
+                </VadText>
+              ) : null}
             </View>
 
             {quote.enabled ? (
               <>
-                <MoneyRow label="Amount" value={'₦' + Number(quote.amount).toLocaleString()} />
-                <MoneyRow label="Fee" value={'₦' + Number(quote.feeAmount ?? 0).toLocaleString()} />
-                <MoneyRow label="You receive" value={'₦' + Number(quote.netAmount ?? quote.amount).toLocaleString()} emphasized />
+                <MoneyRow
+                  label={mode === 'DEPOSIT' ? 'Amount you want to deposit' : 'Withdrawal request'}
+                  value={'₦' + Number(quote.amount).toLocaleString()}
+                />
+                <MoneyRow label="VAD platform fee" value={'₦' + Number(quote.feeAmount ?? 0).toLocaleString()} />
+                {quote.providerCode ? <MoneyRow label="Payment provider" value={quote.providerCode} /> : null}
+                {quote.requiredKycLevel && quote.requiredKycLevel !== 'NONE' ? <MoneyRow label="Verification level" value={quote.requiredKycLevel} /> : null}
+                <MoneyRow
+                  label={mode === 'DEPOSIT' ? 'Wallet credit after VAD fee' : 'Amount sent after VAD fee'}
+                  value={'₦' + Number(quote.netAmount ?? quote.amount).toLocaleString()}
+                  emphasized
+                />
+
+                <VadCard variant="muted" style={{ gap: 3 }}>
+                  <VadText variant="caption" tone="brand">FEE TRANSPARENCY</VadText>
+                  <VadText variant="caption" tone="secondary">
+                    No VAD fee is hidden after this confirmation. If an external bank or provider later reports a separate third-party charge, it will be recorded in the transaction details rather than represented as a VAD fee.
+                  </VadText>
+                </VadCard>
 
                 <VadButton
-                  label={mode === 'DEPOSIT' ? 'Start deposit' : 'Confirm withdrawal'}
+                  label={mode === 'DEPOSIT' ? 'Confirm & start deposit' : 'Confirm withdrawal'}
                   loading={working}
                   disabled={!accountReady}
                   onPress={() => void create()}
@@ -373,7 +394,7 @@ export function PaymentReadinessCard({
       </View>
 
       <VadText variant="caption" tone="tertiary">
-        Your balance, verification, fees and limits are checked before a payment starts.
+        Your balance, verification, VAD fees, limits and provider availability are checked before a payment starts.
       </VadText>
     </View>
   );
@@ -382,7 +403,7 @@ export function PaymentReadinessCard({
 function PaymentProgress({ stage }: { stage: number }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const labels = ['Amount', 'Review', 'Confirm'];
+  const labels = ['Amount', 'Review fees', 'Confirm'];
 
   return (
     <View style={{ flexDirection: 'row', gap: density.compact ? 6 : theme.spacing.xs }}>
