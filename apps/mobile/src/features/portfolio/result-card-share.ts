@@ -6,6 +6,12 @@ export type ResultCardProfile = {
   displayName: string;
   handle: string | null;
   avatarUrl: string | null;
+  inviteCode: string | null;
+};
+
+export type ResultCardPrivacy = {
+  showPayout: boolean;
+  showPnl: boolean;
 };
 
 function money(value: number | string, assetCode: string) {
@@ -20,19 +26,22 @@ function signedMoney(value: number | string, assetCode: string) {
   return `${numeric > 0 ? '+' : ''}${money(numeric, assetCode)}`;
 }
 
-export function resultShareCopy(row: MarketHistoryRow, profile: ResultCardProfile) {
+export function resultShareCopy(row: MarketHistoryRow, profile: ResultCardProfile, privacy: ResultCardPrivacy) {
   const result = row.result.toUpperCase();
   const headline = result === 'WON' ? 'I won this VAD prediction 🎉' : result === 'LOST' ? 'My VAD prediction is settled' : 'My VAD prediction result';
-  const payoutLine = result === 'WON'
-    ? `Net payout: ${money(row.net_payout, row.asset_code)} · P&L: ${signedMoney(row.realized_pnl, row.asset_code)}`
-    : `Result: ${result} · P&L: ${signedMoney(row.realized_pnl, row.asset_code)}`;
-  return `${headline}\n${row.market_title}\nMy pick: ${row.selected_outcome} · Final: ${row.final_outcome ?? '—'}\n${payoutLine}\n— ${profile.displayName}${profile.handle ? ` (@${profile.handle})` : ''} on VAD Market`;
+  const financialParts: string[] = [];
+  if (privacy.showPayout && result === 'WON') financialParts.push(`Net payout: ${money(row.net_payout, row.asset_code)}`);
+  if (privacy.showPnl) financialParts.push(`P&L: ${signedMoney(row.realized_pnl, row.asset_code)}`);
+  if (!financialParts.length) financialParts.push('Financial result: private');
+  const inviteLine = profile.inviteCode ? `Join VAD with my invite code: ${profile.inviteCode}` : 'VAD Market';
+
+  return `${headline}\n${row.market_title}\nMy pick: ${row.selected_outcome} · Final: ${row.final_outcome ?? '—'}\n${financialParts.join(' · ')}\n${inviteLine}\n— ${profile.displayName}${profile.handle ? ` (@${profile.handle})` : ''}`;
 }
 
-export async function shareResultCard(row: MarketHistoryRow, profile: ResultCardProfile) {
-  const message = resultShareCopy(row, profile);
+export async function shareResultCard(row: MarketHistoryRow, profile: ResultCardProfile, privacy: ResultCardPrivacy) {
+  const message = resultShareCopy(row, profile, privacy);
   if (Platform.OS === 'web') {
-    const file = await createWebResultCardFile(row, profile);
+    const file = await createWebResultCardFile(row, profile, privacy);
     const nav = (globalThis as any).navigator;
     if (file && nav?.share) {
       try {
@@ -52,9 +61,9 @@ export async function shareResultCard(row: MarketHistoryRow, profile: ResultCard
   await Share.share({ title: `${row.result} · VAD Market`, message });
 }
 
-export async function saveResultCard(row: MarketHistoryRow, profile: ResultCardProfile) {
+export async function saveResultCard(row: MarketHistoryRow, profile: ResultCardProfile, privacy: ResultCardPrivacy) {
   if (Platform.OS === 'web') {
-    const file = await createWebResultCardFile(row, profile);
+    const file = await createWebResultCardFile(row, profile, privacy);
     const documentRef = (globalThis as any).document;
     const urlApi = (globalThis as any).URL;
     if (file && documentRef && urlApi?.createObjectURL) {
@@ -70,29 +79,30 @@ export async function saveResultCard(row: MarketHistoryRow, profile: ResultCardP
     }
   }
 
-  // Expo native builds use the system share/save sheet without introducing a
-  // second file-storage permission flow. The rendered card remains available
-  // permanently in Portfolio even when the OS does not expose a local save target.
   await Share.share({
     title: 'Save my VAD result',
-    message: resultShareCopy(row, profile),
+    message: resultShareCopy(row, profile, privacy),
   });
 }
 
-async function createWebResultCardFile(row: MarketHistoryRow, profile: ResultCardProfile) {
+async function createWebResultCardFile(row: MarketHistoryRow, profile: ResultCardProfile, privacy: ResultCardPrivacy) {
   const documentRef = (globalThis as any).document;
   const FileCtor = (globalThis as any).File;
   if (!documentRef || !FileCtor) return null;
 
+  // Slightly taller than square so the card feels premium and social-first
+  // without becoming a long poster.
   const canvas = documentRef.createElement('canvas');
   canvas.width = 1080;
-  canvas.height = 1350;
+  canvas.height = 1180;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
-  const dark = '#080a12';
-  const panel = '#111526';
+  const dark = '#070910';
+  const panel = '#101421';
+  const panelSoft = '#151a2b';
   const brand = '#7c5cff';
+  const brandLight = '#a995ff';
   const success = '#2dd4a8';
   const danger = '#ff667d';
   const white = '#f8f9ff';
@@ -101,26 +111,53 @@ async function createWebResultCardFile(row: MarketHistoryRow, profile: ResultCar
 
   ctx.fillStyle = dark;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  const gradient = ctx.createRadialGradient(890, 120, 20, 890, 120, 520);
-  gradient.addColorStop(0, 'rgba(124,92,255,0.38)');
-  gradient.addColorStop(1, 'rgba(124,92,255,0)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvas.width, 650);
 
-  roundRect(ctx, 70, 70, 940, 1210, 48);
+  const topGlow = ctx.createRadialGradient(860, 30, 25, 860, 30, 520);
+  topGlow.addColorStop(0, 'rgba(124,92,255,0.42)');
+  topGlow.addColorStop(1, 'rgba(124,92,255,0)');
+  ctx.fillStyle = topGlow;
+  ctx.fillRect(0, 0, canvas.width, 620);
+
+  const lowerGlow = ctx.createRadialGradient(110, 1110, 10, 110, 1110, 360);
+  lowerGlow.addColorStop(0, row.result === 'WON' ? 'rgba(45,212,168,0.16)' : 'rgba(255,102,125,0.12)');
+  lowerGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = lowerGlow;
+  ctx.fillRect(0, 760, canvas.width, 420);
+
+  roundRect(ctx, 58, 54, 964, 1072, 38);
   ctx.fillStyle = panel;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(124,92,255,0.55)';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(169,149,255,0.42)';
+  ctx.lineWidth = 2;
   ctx.stroke();
 
-  ctx.fillStyle = brand;
-  ctx.font = '700 34px system-ui, sans-serif';
-  ctx.fillText('VAD MARKET', 130, 150);
+  roundRect(ctx, 76, 72, 928, 1036, 30);
+  ctx.strokeStyle = 'rgba(255,255,255,0.055)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
-  const avatarX = 130;
-  const avatarY = 205;
-  const avatarSize = 120;
+  ctx.fillStyle = brandLight;
+  ctx.font = '800 30px system-ui, sans-serif';
+  ctx.fillText('VAD', 116, 132);
+  ctx.fillStyle = muted;
+  ctx.font = '650 19px system-ui, sans-serif';
+  ctx.fillText('VERIFIED MARKET RESULT', 186, 130);
+
+  roundRect(ctx, 765, 95, 188, 48, 24);
+  ctx.fillStyle = `${resultColor}22`;
+  ctx.fill();
+  ctx.strokeStyle = resultColor;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = resultColor;
+  ctx.font = '800 20px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(row.result.toUpperCase(), 859, 126);
+  ctx.textAlign = 'left';
+
+  const avatarX = 116;
+  const avatarY = 176;
+  const avatarSize = 104;
   let avatarDrawn = false;
   if (profile.avatarUrl) {
     try {
@@ -142,44 +179,84 @@ async function createWebResultCardFile(row: MarketHistoryRow, profile: ResultCar
     ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = white;
-    ctx.font = '800 42px system-ui, sans-serif';
+    ctx.font = '800 36px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(initials(profile.displayName), avatarX + avatarSize / 2, avatarY + 75);
+    ctx.fillText(initials(profile.displayName), avatarX + avatarSize / 2, avatarY + 66);
     ctx.textAlign = 'left';
   }
+  ctx.strokeStyle = resultColor;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 5, 0, Math.PI * 2);
+  ctx.stroke();
 
   ctx.fillStyle = white;
-  ctx.font = '800 40px system-ui, sans-serif';
-  ctx.fillText(profile.displayName, 280, 250);
+  ctx.font = '800 36px system-ui, sans-serif';
+  ctx.fillText(profile.displayName, 252, 214);
   ctx.fillStyle = muted;
-  ctx.font = '500 28px system-ui, sans-serif';
-  ctx.fillText(profile.handle ? `@${profile.handle}` : 'VAD participant', 280, 295);
-
-  ctx.fillStyle = resultColor;
-  ctx.font = '800 46px system-ui, sans-serif';
-  ctx.fillText(row.result.toUpperCase(), 130, 405);
+  ctx.font = '500 24px system-ui, sans-serif';
+  ctx.fillText(profile.handle ? `@${profile.handle}` : 'VAD participant', 252, 252);
 
   ctx.fillStyle = white;
-  ctx.font = '800 48px system-ui, sans-serif';
-  const nextY = wrapText(ctx, row.market_title, 130, 480, 820, 60, 4);
+  ctx.font = '800 44px system-ui, sans-serif';
+  const nextY = wrapText(ctx, row.market_title, 116, 355, 848, 53, 4);
 
-  const outcomeY = Math.max(nextY + 35, 700);
-  drawMetric(ctx, 'MY PICK', row.selected_outcome, 130, outcomeY, 370, resultColor, white, muted);
-  drawMetric(ctx, 'FINAL RESULT', row.final_outcome ?? '—', 560, outcomeY, 370, resultColor, white, muted);
+  const outcomeY = Math.max(nextY + 30, 555);
+  drawMetric(ctx, 'MY PICK', row.selected_outcome, 116, outcomeY, 394, resultColor, white, muted, panelSoft);
+  drawMetric(ctx, 'FINAL RESULT', row.final_outcome ?? '—', 554, outcomeY, 394, resultColor, white, muted, panelSoft);
 
-  const moneyY = outcomeY + 190;
-  drawMetric(ctx, 'STAKE', money(row.stake_amount, row.asset_code), 130, moneyY, 370, brand, white, muted);
-  drawMetric(ctx, row.result === 'WON' ? 'NET PAYOUT' : 'REALIZED P&L', row.result === 'WON' ? money(row.net_payout, row.asset_code) : signedMoney(row.realized_pnl, row.asset_code), 560, moneyY, 370, resultColor, white, muted);
+  const financialY = outcomeY + 154;
+  drawMetric(ctx, 'STAKE', money(row.stake_amount, row.asset_code), 116, financialY, 260, brand, white, muted, panelSoft);
+  drawMetric(
+    ctx,
+    'NET PAYOUT',
+    privacy.showPayout ? money(row.net_payout, row.asset_code) : 'PRIVATE',
+    410,
+    financialY,
+    260,
+    privacy.showPayout ? resultColor : brand,
+    white,
+    muted,
+    panelSoft,
+  );
+  drawMetric(
+    ctx,
+    'REALIZED P&L',
+    privacy.showPnl ? signedMoney(row.realized_pnl, row.asset_code) : 'PRIVATE',
+    704,
+    financialY,
+    244,
+    privacy.showPnl ? resultColor : brand,
+    white,
+    muted,
+    panelSoft,
+  );
 
+  const footerY = Math.min(financialY + 190, 958);
   ctx.fillStyle = muted;
-  ctx.font = '500 25px system-ui, sans-serif';
-  ctx.fillText(`Trading fee ${money(row.trading_fee, row.asset_code)} · Settlement fee ${money(row.settlement_fee, row.asset_code)}`, 130, 1130);
-  ctx.fillText(row.settled_at ? `Settled ${new Date(row.settled_at).toLocaleString()}` : 'Final market result', 130, 1180);
-  ctx.fillStyle = brand;
-  ctx.font = '700 26px system-ui, sans-serif';
-  ctx.fillText('Make your view. Own your result. · VAD', 130, 1230);
+  ctx.font = '500 20px system-ui, sans-serif';
+  ctx.fillText(`VAD trading fee ${money(row.trading_fee, row.asset_code)} · VAD settlement fee ${money(row.settlement_fee, row.asset_code)}`, 116, footerY);
+  ctx.fillText(row.settled_at ? `Settled ${new Date(row.settled_at).toLocaleString()}` : 'Final market result', 116, footerY + 34);
 
-  const blob = await new Promise<any>((resolve) => canvas.toBlob(resolve, 'image/png', 0.94));
+  roundRect(ctx, 116, footerY + 62, 832, 76, 20);
+  ctx.fillStyle = 'rgba(124,92,255,0.10)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(169,149,255,0.30)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = muted;
+  ctx.font = '650 18px system-ui, sans-serif';
+  ctx.fillText('INVITE TO VAD', 142, footerY + 91);
+  ctx.fillStyle = white;
+  ctx.font = '800 25px system-ui, sans-serif';
+  ctx.fillText(profile.inviteCode ?? 'VAD MARKET', 142, footerY + 119);
+  ctx.fillStyle = brandLight;
+  ctx.font = '700 19px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('Make your view. Own your result.', 922, footerY + 107);
+  ctx.textAlign = 'left';
+
+  const blob = await new Promise<any>((resolve) => canvas.toBlob(resolve, 'image/png', 0.95));
   if (!blob) return null;
   return new FileCtor([blob], `vad-${row.result.toLowerCase()}-${row.market_id.slice(0, 8)}.png`, { type: 'image/png' });
 }
@@ -189,19 +266,30 @@ function roundRect(ctx: any, x: number, y: number, width: number, height: number
   ctx.roundRect(x, y, width, height, radius);
 }
 
-function drawMetric(ctx: any, label: string, value: string, x: number, y: number, width: number, accent: string, white: string, muted: string) {
-  roundRect(ctx, x, y, width, 145, 28);
-  ctx.fillStyle = 'rgba(255,255,255,0.035)';
+function drawMetric(
+  ctx: any,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  width: number,
+  accent: string,
+  white: string,
+  muted: string,
+  background: string,
+) {
+  roundRect(ctx, x, y, width, 118, 22);
+  ctx.fillStyle = background;
   ctx.fill();
   ctx.strokeStyle = accent;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
   ctx.fillStyle = muted;
-  ctx.font = '700 22px system-ui, sans-serif';
-  ctx.fillText(label, x + 28, y + 43);
+  ctx.font = '700 18px system-ui, sans-serif';
+  ctx.fillText(label, x + 22, y + 34);
   ctx.fillStyle = white;
-  ctx.font = '800 36px system-ui, sans-serif';
-  ctx.fillText(value, x + 28, y + 99, width - 56);
+  ctx.font = '800 29px system-ui, sans-serif';
+  ctx.fillText(value, x + 22, y + 82, width - 44);
 }
 
 function wrapText(ctx: any, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines: number) {
