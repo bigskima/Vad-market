@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -8,13 +8,17 @@ import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { TradingTicket } from './components/trading-ticket';
 
 type DetailTab = 'Overview' | 'Trade' | 'Discussion' | 'Rules';
+type MarketTiming = ReturnType<typeof getMarketTiming>;
+
 const tabs = [
   { value: 'Overview', label: 'Overview' },
   { value: 'Trade', label: 'Trade' },
@@ -31,6 +35,7 @@ export function MarketDetailScreen({
   canCreatePost,
   onPlaced,
   onOpenMarket,
+  onRefreshMarket,
 }: {
   market: MarketCatalogItem;
   markets: MarketCatalogItem[];
@@ -40,10 +45,39 @@ export function MarketDetailScreen({
   canCreatePost: boolean;
   onPlaced: () => Promise<void>;
   onOpenMarket: (market: MarketCatalogItem) => void;
+  onRefreshMarket?: () => Promise<void>;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
+  const timing = getMarketTiming(market, now);
   const [tab, setTab] = useState<DetailTab>('Overview');
+  const closeRefreshDone = useRef(false);
+  const resolveRefreshDone = useRef(false);
+
+  useEffect(() => {
+    closeRefreshDone.current = false;
+    resolveRefreshDone.current = false;
+  }, [market.instrument_public_id]);
+
+  useEffect(() => {
+    if (!onRefreshMarket) return;
+    if (timing.closesAt != null && now >= timing.closesAt && !closeRefreshDone.current) {
+      closeRefreshDone.current = true;
+      void onRefreshMarket();
+    }
+    if (timing.resolvesAt != null && now >= timing.resolvesAt && !resolveRefreshDone.current) {
+      resolveRefreshDone.current = true;
+      void onRefreshMarket();
+    }
+  }, [now, onRefreshMarket, timing.closesAt, timing.resolvesAt]);
+
+  const effectiveCanTrade = canTrade && timing.tradingOpen;
+  const effectiveTradeReason = timing.tradingOpen
+    ? tradeReason
+    : timing.stage === 'SCHEDULED'
+      ? 'MARKET_NOT_OPEN'
+      : 'MARKET_CLOSED';
 
   return (
     <View style={{ gap: density.sectionGap }}>
@@ -55,7 +89,7 @@ export function MarketDetailScreen({
           {tab === 'Overview'
             ? 'Market details, timing and current stage.'
             : tab === 'Trade'
-              ? 'Build or reduce your position.'
+              ? timing.tradingOpen ? 'Build or reduce your position.' : timing.primaryTiming
               : tab === 'Discussion'
                 ? 'See what the community thinks about this market.'
                 : 'See how the result is decided and how payouts work.'}
@@ -65,7 +99,8 @@ export function MarketDetailScreen({
       {tab === 'Overview' ? (
         <Overview
           market={market}
-          canTrade={canTrade}
+          timing={timing}
+          canTrade={effectiveCanTrade}
           tradeCapabilityLoading={tradeCapabilityLoading}
           onTrade={() => setTab('Trade')}
           onDiscuss={() => setTab('Discussion')}
@@ -73,17 +108,23 @@ export function MarketDetailScreen({
         />
       ) : null}
       {tab === 'Trade' ? (
-        <TradingTicket market={market} canTrade={canTrade} tradeReason={tradeReason} capabilityLoading={tradeCapabilityLoading} onPlaced={onPlaced} />
+        <TradingTicket
+          market={market}
+          canTrade={effectiveCanTrade}
+          tradeReason={effectiveTradeReason}
+          capabilityLoading={tradeCapabilityLoading}
+          onPlaced={onPlaced}
+        />
       ) : null}
       {tab === 'Discussion' ? (
         <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} marketFilter={market} />
       ) : null}
-      {tab === 'Rules' ? <Rules market={market} /> : null}
+      {tab === 'Rules' ? <Rules market={market} timing={timing} /> : null}
 
       {density.phone && tab !== 'Trade' ? (
         <View style={{ paddingTop: theme.spacing.xs }}>
           <VadButton
-            label={tradeCapabilityLoading ? 'Checking trade availability' : canTrade ? 'Trade this market' : 'View trade availability'}
+            label={tradeCapabilityLoading ? 'Checking trade availability' : effectiveCanTrade ? 'Trade this market' : timing.primaryTiming}
             size="small"
             onPress={() => setTab('Trade')}
             leading={<VadIcon name="markets" size={16} tone="inverse" />}
@@ -96,6 +137,7 @@ export function MarketDetailScreen({
 
 function Overview({
   market,
+  timing,
   canTrade,
   tradeCapabilityLoading,
   onTrade,
@@ -103,6 +145,7 @@ function Overview({
   onRules,
 }: {
   market: MarketCatalogItem;
+  timing: MarketTiming;
   canTrade: boolean;
   tradeCapabilityLoading: boolean;
   onTrade: () => void;
@@ -112,9 +155,7 @@ function Overview({
   const theme = useVadTheme();
   const density = useProductDensity();
   const wide = density.width >= 780;
-  const status = market.status.toUpperCase();
-  const open = status === 'OPEN' || status === 'ACTIVE';
-  const closed = ['CLOSED', 'RESOLVING', 'RESOLVED', 'SETTLEMENT_PENDING', 'SETTLED', 'VOID', 'VOIDED'].includes(status);
+  const tradeDone = !timing.tradingOpen && timing.stage !== 'SCHEDULED';
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
@@ -129,11 +170,31 @@ function Overview({
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <StatePill label="Trading" value={open ? 'Open' : closed ? 'Closed' : marketStatusLabel(status)} tone={open ? 'yes' : 'secondary'} />
-            <StatePill label="Stage" value={marketStatusLabel(status)} tone={status === 'SETTLED' ? 'yes' : status === 'SETTLEMENT_PENDING' ? 'brand' : 'secondary'} />
+            <StatePill label="Trading" value={timing.tradingOpen ? 'Open' : timing.stage === 'SCHEDULED' ? 'Not open yet' : 'Closed'} tone={timing.tradingOpen ? 'yes' : 'secondary'} />
+            <StatePill label="Stage" value={timing.statusLabel} tone={timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'secondary'} />
+            {timing.resolutionOutcome ? <StatePill label="Result" value={timing.resolutionOutcome} tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'secondary'} /> : null}
             <StatePill label="Currency" value={market.asset_code} tone="brand" />
-            <StatePill label="Market type" value={friendlyEnum(market.market_type)} />
           </View>
+
+          <VadCard variant={timing.stage === 'SETTLED' ? 'raised' : 'brand'} style={{ gap: 3 }}>
+            <VadText variant="caption" tone={timing.stage === 'SETTLED' ? 'yes' : 'brand'}>{timing.primaryTiming.toUpperCase()}</VadText>
+            <VadText variant="bodyStrong">
+              {timing.stage === 'OPEN' ? 'Trading is live'
+                : timing.stage === 'CLOSED' ? 'Trading has closed'
+                  : timing.stage === 'RESOLVING' ? 'VAD is verifying the result'
+                    : timing.stage === 'SETTLEMENT_PENDING' ? 'Result final — payout processing'
+                      : timing.stage === 'SETTLED' ? 'Market completed'
+                        : timing.statusLabel}
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              {timing.stage === 'OPEN' && timing.closeCountdown ? `New orders stop in ${timing.closeCountdown}.`
+                : timing.stage === 'CLOSED' && timing.resolutionCountdown ? `Result check begins in ${timing.resolutionCountdown}.`
+                  : timing.stage === 'RESOLVING' ? 'The market stays closed while oracle evidence and finalization complete.'
+                    : timing.stage === 'SETTLEMENT_PENDING' ? `Eligible ${market.asset_code} payouts are being settled automatically.`
+                      : timing.stage === 'SETTLED' ? `Final result${timing.resolutionOutcome ? `: ${timing.resolutionOutcome}` : ''}. Settlement is complete.`
+                        : 'Lifecycle timing updates automatically.'}
+            </VadText>
+          </VadCard>
 
           {market.liquidity_mode === 'SANDBOX_INSTANT' ? (
             <VadCard variant="brand" style={{ gap: 3 }}>
@@ -146,7 +207,7 @@ function Overview({
           {!density.phone ? (
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
               <VadButton
-                label={tradeCapabilityLoading ? 'Checking availability' : canTrade ? 'Trade this market' : 'View trade availability'}
+                label={tradeCapabilityLoading ? 'Checking availability' : canTrade ? 'Trade this market' : tradeDone ? 'Trading closed' : 'View trade availability'}
                 onPress={onTrade}
                 style={{ flex: 1 }}
                 leading={<VadIcon name="markets" size={17} tone="inverse" />}
@@ -162,17 +223,17 @@ function Overview({
         </VadCard>
 
         <VadCard variant="raised" style={{ flex: 0.9, gap: theme.spacing.xs }}>
-          <VadText variant="bodyStrong">Market details</VadText>
-          <Fact label="Category" value={market.category ?? 'General'} />
+          <VadText variant="bodyStrong">Market timing</VadText>
+          {market.opens_at ? <Fact label="Opens" value={timing.openCountdown ? `In ${timing.openCountdown}` : 'Opened'} /> : null}
+          <Fact label="Trading" value={timing.stage === 'OPEN' && timing.closeCountdown ? `Closes in ${timing.closeCountdown}` : timing.tradingOpen ? 'Open' : 'Closed'} />
+          <Fact label="Result" value={timing.resolutionOutcome ? `Final · ${timing.resolutionOutcome}` : timing.resolutionCountdown ? `Check in ${timing.resolutionCountdown}` : timing.stage === 'RESOLVING' ? 'Processing' : timing.stage === 'SETTLEMENT_PENDING' ? 'Finalized' : timing.stage === 'SETTLED' ? 'Finalized' : 'Pending'} />
           <Fact label="Currency" value={market.asset_code} />
           <Fact label="Type" value={friendlyEnum(market.market_type)} />
-          <Fact label="Closes" value={market.closes_at ? new Date(market.closes_at).toLocaleString() : 'Closing time not available'} />
-          {market.resolves_after ? <Fact label="Resolve after" value={new Date(market.resolves_after).toLocaleString()} /> : null}
           <Fact label="Last trade" value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : 'No trades yet'} />
         </VadCard>
       </View>
 
-      <Lifecycle market={market} />
+      <Lifecycle market={market} timing={timing} />
 
       <VadCard variant="brand" style={{ gap: theme.spacing.xs }}>
         <VadText variant="caption" tone="brand">HOW TO READ THE PRICE</VadText>
@@ -183,39 +244,38 @@ function Overview({
   );
 }
 
-function Lifecycle({ market }: { market: MarketCatalogItem }) {
+function Lifecycle({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const status = market.status.toUpperCase();
-  const tradeDone = ['CLOSED', 'RESOLVING', 'RESOLVED', 'SETTLEMENT_PENDING', 'SETTLED', 'VOID', 'VOIDED'].includes(status);
-  const resolutionDone = ['RESOLVED', 'SETTLEMENT_PENDING', 'SETTLED', 'VOID', 'VOIDED'].includes(status);
-  const settlementDone = status === 'SETTLED' || status === 'VOIDED';
-  const resolutionActive = status === 'RESOLVING';
-  const settlementActive = status === 'SETTLEMENT_PENDING';
+  const tradeDone = ['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING', 'SETTLED', 'VOIDED'].includes(timing.stage);
+  const resolutionDone = ['SETTLEMENT_PENDING', 'SETTLED', 'VOIDED'].includes(timing.stage);
+  const settlementDone = timing.stage === 'SETTLED' || timing.stage === 'VOIDED';
+  const resolutionActive = timing.stage === 'RESOLVING' || timing.stage === 'CLOSED';
+  const settlementActive = timing.stage === 'SETTLEMENT_PENDING';
 
   return (
     <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
       <View style={{ gap: 2 }}>
         <VadText variant="bodyStrong">Market lifecycle</VadText>
-        <VadText variant="caption" tone="secondary">One stage at a time: trading closes, the result becomes final, then eligible payouts are settled.</VadText>
+        <VadText variant="caption" tone="secondary">The countdown changes stages automatically; realtime backend events then confirm each transition.</VadText>
       </View>
       <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', gap: theme.spacing.xs }}>
         <LifecycleStep
           number="1"
           title="Trading"
-          body={tradeDone ? 'Trading has closed for this market.' : market.closes_at ? `Trading is scheduled to close ${new Date(market.closes_at).toLocaleString()}.` : 'Trading is open.'}
-          state={tradeDone ? 'complete' : 'active'}
+          body={tradeDone ? 'Trading has closed.' : timing.stage === 'SCHEDULED' ? `Opens in ${timing.openCountdown ?? '—'}.` : timing.closeCountdown ? `Closes in ${timing.closeCountdown}.` : 'Trading is open.'}
+          state={tradeDone ? 'complete' : timing.stage === 'SCHEDULED' ? 'waiting' : 'active'}
         />
         <LifecycleStep
           number="2"
           title="Result"
-          body={resolutionDone ? 'The market result has been finalized.' : 'The final outcome is checked against the market rules and supporting evidence.'}
+          body={resolutionDone ? `Final result${timing.resolutionOutcome ? `: ${timing.resolutionOutcome}` : ''}.` : timing.resolutionCountdown ? `Result check in ${timing.resolutionCountdown}.` : resolutionActive ? 'Result verification is in progress.' : 'Result verification starts after trading closes.'}
           state={resolutionDone ? 'complete' : resolutionActive ? 'active' : 'waiting'}
         />
         <LifecycleStep
           number="3"
           title="Payout"
-          body={settlementDone ? `Settlement is complete in ${market.asset_code}.` : settlementActive ? `Eligible ${market.asset_code} payouts are being processed automatically.` : `Eligible winning positions are paid in ${market.asset_code} after the result becomes final.`}
+          body={settlementDone ? `Settlement is complete in ${market.asset_code}.` : settlementActive ? `Eligible ${market.asset_code} payouts are being processed automatically.` : `Eligible winning positions are paid in ${market.asset_code} after the result is final.`}
           state={settlementDone ? 'complete' : settlementActive ? 'active' : 'waiting'}
         />
       </View>
@@ -240,15 +300,17 @@ function LifecycleStep({ number, title, body, state }: { number: string; title: 
   );
 }
 
-function Rules({ market }: { market: MarketCatalogItem }) {
+function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const wide = density.width >= 820;
   const rules = [
     {
       number: '1',
-      title: 'Trading closes at a defined time',
-      body: market.closes_at ? `Trading is scheduled to close on ${new Date(market.closes_at).toLocaleString()}. Orders can only be placed while this market is open.` : 'Orders can only be placed while this market is open.',
+      title: 'Trading closes automatically',
+      body: timing.tradingOpen && timing.closeCountdown
+        ? `New orders stop in ${timing.closeCountdown}. The configured close is ${exactTime(market.closes_at) ?? 'set by the market'}.`
+        : `Trading is ${timing.stage === 'SCHEDULED' ? 'not open yet' : 'closed'}. Orders are accepted only inside the configured trading window.`,
     },
     {
       number: '2',
@@ -258,7 +320,7 @@ function Rules({ market }: { market: MarketCatalogItem }) {
     {
       number: '3',
       title: 'The result follows the rules',
-      body: 'The final result comes from the market’s published criteria and supporting evidence. Community posts and creator opinions do not decide the outcome.',
+      body: timing.resolutionOutcome ? `This market finalized ${timing.resolutionOutcome}.` : 'The final result comes from the market’s published criteria and supporting evidence. Community posts and creator opinions do not decide the outcome.',
     },
     {
       number: '4',
@@ -295,21 +357,6 @@ function Rules({ market }: { market: MarketCatalogItem }) {
 
 function friendlyEnum(value: string) {
   return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function marketStatusLabel(status: string) {
-  const normalized = status.toUpperCase();
-  if (normalized === 'OPEN' || normalized === 'ACTIVE') return 'Open';
-  if (normalized === 'DRAFT') return 'Draft';
-  if (normalized === 'SCHEDULED') return 'Scheduled';
-  if (normalized === 'RESOLVING') return 'Result pending';
-  if (normalized === 'RESOLVED') return 'Result confirmed';
-  if (normalized === 'SETTLEMENT_PENDING') return 'Payout processing';
-  if (normalized === 'SETTLED') return 'Completed';
-  if (normalized === 'VOID' || normalized === 'VOIDED') return 'Cancelled';
-  if (normalized === 'CLOSED') return 'Closed';
-  if (normalized === 'SUSPENDED') return 'Paused';
-  return friendlyEnum(normalized);
 }
 
 function StatePill({ label, value, tone = 'secondary' }: { label: string; value: string; tone?: 'secondary' | 'yes' | 'brand' }) {
