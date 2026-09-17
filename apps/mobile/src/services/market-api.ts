@@ -9,6 +9,7 @@ export type MarketCatalogItem = {
   asset_code: string;
   market_type: string;
   status: string;
+  opens_at?: string | null;
   closes_at: string | null;
   resolves_after?: string | null;
   media_path?: string | null;
@@ -17,6 +18,9 @@ export type MarketCatalogItem = {
   last_trade_at: string | null;
   liquidity_mode?: string | null;
   reference_price?: number | string | null;
+  resolution_status?: string | null;
+  resolution_outcome?: string | null;
+  resolution_finalized_at?: string | null;
   updated_at: string;
 };
 
