@@ -8,7 +8,7 @@ import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
-import { probability } from '../format';
+import { assetMoney, probability } from '../format';
 import { MarketProbabilityBar } from './market-probability-bar';
 
 export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
@@ -17,9 +17,10 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
   const live = timing.tradingOpen;
+  const isPool = market.liquidity_mode === 'POOL';
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
-  const hasPrice = market.yes_price != null || market.no_price != null;
+  const hasSignal = market.yes_price != null || market.no_price != null;
 
   return (
     <View style={{ gap: theme.spacing.sm }}>
@@ -27,10 +28,24 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <VadChip label={market.category ?? 'General'} tone="brand" />
         <VadChip label={timing.statusLabel.toUpperCase()} tone={live ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
         <VadChip label={market.asset_code} />
-        {timing.resolutionOutcome ? <VadChip label={`RESULT ${timing.resolutionOutcome}`} tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'} /> : null}
+        {isPool ? <VadChip label="PEER POOL" tone="brand" /> : null}
       </View>
 
       <VadText variant={density.compact ? 'heading' : 'title'}>{market.title}</VadText>
+
+      {timing.resolutionOutcome ? (
+        <VadCard variant="brand" accessibilityRole="summary" style={{ gap: theme.spacing.sm, paddingVertical: theme.spacing.lg }}>
+          <VadText variant="caption" tone="brand">FINAL RESULT</VadText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
+            <VadText variant="display" tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'}>{timing.resolutionOutcome}</VadText>
+            <VadChip label="CONFIRMED" tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'} />
+          </View>
+          <VadText variant="bodyStrong">This is the confirmed outcome used for settlement.</VadText>
+          <VadText variant="caption" tone="secondary">
+            Trading is closed. Payouts and losses are determined from this result, not from the earlier YES/NO market split.
+          </VadText>
+        </VadCard>
+      ) : null}
 
       <VadCard accessibilityRole="summary" variant="raised" style={{ gap: theme.spacing.sm }}>
         <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
@@ -39,10 +54,20 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         </View>
         <MarketProbabilityBar yes={market.yes_price} no={market.no_price} />
         <VadText variant="caption" tone="tertiary">
-          {hasPrice
-            ? 'Prices show where traders currently stand. The market rules determine the final result.'
-            : 'No trade price is available yet. Probabilities will appear after trading begins.'}
+          {isPool
+            ? hasSignal
+              ? 'This split reflects how participant stakes are distributed across YES and NO. It is not the final result.'
+              : 'The YES/NO split will reflect participant stakes after the first prediction is committed.'
+            : hasSignal
+              ? 'Prices show where traders currently stand. The market rules determine the final result.'
+              : 'No trade price is available yet. Probabilities will appear after trading begins.'}
         </VadText>
+        {isPool ? (
+          <View style={{ flexDirection: 'row', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
+            <MetaChip label="Participant pool" value={assetMoney(market.total_volume ?? 0, market.asset_code)} />
+            <MetaChip label="Participants" value={String(Number(market.participant_count ?? 0))} />
+          </View>
+        ) : null}
       </VadCard>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
@@ -68,10 +93,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
 }
 
 function friendlyEnum(value: string) {
-  return value
-    .replaceAll('_', ' ')
-    .toLowerCase()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function SignalTile({ label, value, positive, available }: { label: string; value: string; positive: boolean; available: boolean }) {
