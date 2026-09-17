@@ -10,9 +10,13 @@ export type MarketCatalogItem = {
   market_type: string;
   status: string;
   closes_at: string | null;
+  resolves_after?: string | null;
+  media_path?: string | null;
   yes_price: number | string | null;
   no_price: number | string | null;
   last_trade_at: string | null;
+  liquidity_mode?: string | null;
+  reference_price?: number | string | null;
   updated_at: string;
 };
 
@@ -33,6 +37,21 @@ export type TradeQuote = {
   maximumCashReservation: number;
   availableSharesToSell: number;
   quotedAt: string;
+};
+
+export type OrderStatus = {
+  orderId: string;
+  status: string;
+  side: string;
+  outcomeCode: string;
+  assetCode: string;
+  quantity: number | string;
+  filledQuantity: number | string;
+  remainingQuantity: number | string;
+  positionQuantity: number | string;
+  positionCreated: boolean;
+  liquidityMode: string;
+  updatedAt: string;
 };
 
 export type WalletRow = {
@@ -69,6 +88,18 @@ export type OrderRow = {
   asset_code: string;
   status: string;
   created_at: string;
+};
+
+export type SettlementReceiptRow = {
+  settlement_id: string;
+  market_id: string;
+  market_title: string;
+  outcome_code: string;
+  quantity: number | string;
+  gross_amount: number | string;
+  fee_amount: number | string;
+  net_amount: number | string;
+  settled_at: string;
 };
 
 export type MarketAdmissionLane =
@@ -151,6 +182,12 @@ export async function getOpenOrders() {
   return (data ?? []) as OrderRow[];
 }
 
+export async function getSettlementReceipts() {
+  const { data, error } = await supabase.rpc('my_settlement_receipts');
+  assertNoError(error, 'portfolio', 'We could not load your payout history right now. Please try again.');
+  return (data ?? []) as SettlementReceiptRow[];
+}
+
 export async function getMyProposals() {
   const { data, error } = await supabase.rpc('my_market_proposals');
   assertNoError(error, 'proposal', 'We could not load your market proposals right now. Please try again.');
@@ -169,6 +206,14 @@ export async function quoteTrade(input: { instrumentPublicId: string; outcomeCod
   return data as TradeQuote;
 }
 
+export async function getOrderStatus(orderPublicId: string) {
+  const { data, error } = await supabase.rpc('my_order_status', {
+    p_order_public_id: orderPublicId,
+  });
+  assertNoError(error, 'trading', 'We could not confirm this order status right now. Check Portfolio for the latest state.');
+  return data as OrderStatus;
+}
+
 export async function placeOrder(quote: TradeQuote) {
   const idempotencyKey = `mobile:${quote.instrumentPublicId}:${quote.outcomeCode}:${quote.side}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_order', {
@@ -180,7 +225,8 @@ export async function placeOrder(quote: TradeQuote) {
     p_idempotency_key: idempotencyKey,
   });
   assertNoError(error, 'trading');
-  return data as string;
+  const orderId = data as string;
+  return getOrderStatus(orderId);
 }
 
 export async function cancelOrder(orderPublicId: string) {
