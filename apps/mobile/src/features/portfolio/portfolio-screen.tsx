@@ -1,17 +1,20 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import { Pressable, View, type DimensionValue } from 'react-native';
 
+import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadMetricTile } from '@/components/ui/vad-metric-tile';
+import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney, pct } from '@/features/markets/format';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { OrderRow, PositionRow, SettlementReceiptRow } from '@/services/market-api';
 
@@ -46,19 +49,56 @@ export function PortfolioScreen({
   const totalPayouts = settlements.reduce((sum, row) => sum + Number(row.net_amount ?? 0), 0);
   const exposure = useMemo(() => buildAssetExposure(positions, orders), [positions, orders]);
   const grid = density.wide;
+  const pageSize = grid ? 8 : 5;
+  const visiblePositions = useProgressiveList({
+    items: positions,
+    initialCount: pageSize,
+    step: pageSize,
+    resetKey: `positions|${positions.length}|${grid}`,
+  });
+  const visibleOrders = useProgressiveList({
+    items: orders,
+    initialCount: pageSize,
+    step: pageSize,
+    resetKey: `orders|${orders.length}|${grid}`,
+  });
+  const visiblePayouts = useProgressiveList({
+    items: settlements,
+    initialCount: pageSize,
+    step: pageSize,
+    resetKey: `payouts|${settlements.length}|${grid}`,
+  });
+  const activeList = tab === 'positions' ? visiblePositions : tab === 'orders' ? visibleOrders : visiblePayouts;
 
   return (
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Exchange positions"
-        subtitle="Matched order-book positions, open matching orders and completed payouts stay separated from peer-pool predictions."
+        subtitle="Matched order-book positions, open matching orders and completed payouts stay separate from peer-pool predictions."
       />
 
       <TourTarget id="portfolio-summary">
         <VadCard
           variant="brand"
-          style={{ gap: density.phone ? theme.spacing.md : theme.spacing.lg, padding: density.phone ? theme.spacing.lg : theme.spacing.xl }}
+          style={{
+            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
+            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+            overflow: 'hidden',
+          }}
         >
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              width: 176,
+              height: 176,
+              borderRadius: 88,
+              right: -62,
+              top: -84,
+              backgroundColor: theme.colors.surface,
+              opacity: theme.mode === 'dark' ? 0.06 : 0.42,
+            }}
+          />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
               <VadText variant="caption" tone="brand">ORDER-BOOK ACTIVITY</VadText>
@@ -66,7 +106,7 @@ export function PortfolioScreen({
                 {positions.length} matched {positions.length === 1 ? 'position' : 'positions'}
               </VadText>
               <VadText variant="caption" tone="secondary">
-                Only real matched orders become positions here. Peer-pool predictions are shown in the Predictions section above.
+                Only real matched orders become positions here. Peer-pool predictions remain in the Predictions section above.
               </VadText>
             </View>
             <View style={{ width: density.phone ? 48 : 56, height: density.phone ? 48 : 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
@@ -84,35 +124,51 @@ export function PortfolioScreen({
       </TourTarget>
 
       {exposure.length ? (
-        <View style={{ gap: theme.spacing.sm }}>
-          <VadSectionHeader title="Exposure by currency" subtitle="No currency values are mixed together." />
+        <VadProgressiveSection
+          title="Exposure by currency"
+          eyebrow="EXPOSURE DETAILS"
+          description="Open the currency-by-currency breakdown only when you need to inspect invested value and outstanding order exposure."
+          icon="wallet"
+          summary={<VadText variant="caption" tone="tertiary">{exposure.map((item) => item.assetCode).join(' · ')}</VadText>}
+        >
           <View style={{ flexDirection: density.width >= 720 ? 'row' : 'column', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             {exposure.map((item) => <AssetExposureCard key={item.assetCode} exposure={item} />)}
           </View>
-        </View>
+        </VadProgressiveSection>
       ) : null}
 
       <TourTarget id="portfolio-switcher">
-        <VadSegmentedControl
-          value={tab}
-          options={[
-            { value: 'positions', label: `Positions ${positions.length}` },
-            { value: 'orders', label: `Orders ${orders.length}` },
-            { value: 'payouts', label: `Payouts ${settlements.length}` },
-          ] as const}
-          onChange={setTab}
-        />
+        <View style={{ gap: theme.spacing.xs }}>
+          <VadSegmentedControl
+            value={tab}
+            options={[
+              { value: 'positions', label: `Positions ${positions.length}` },
+              { value: 'orders', label: `Orders ${orders.length}` },
+              { value: 'payouts', label: `Payouts ${settlements.length}` },
+            ] as const}
+            onChange={setTab}
+          />
+          <VadText variant="caption" tone="tertiary">
+            Showing {activeList.visibleCount} of {activeList.totalCount} {tab === 'positions' ? 'positions' : tab === 'orders' ? 'open orders' : 'payouts'}.
+          </VadText>
+        </View>
       </TourTarget>
 
       {tab === 'positions' ? (
         positions.length ? (
-          <CardGrid grid={grid}>
-            {positions.map((position) => (
+          <ProgressiveGrid
+            grid={grid}
+            remaining={visiblePositions.remainingCount}
+            next={visiblePositions.nextCount}
+            noun="positions"
+            onMore={visiblePositions.showMore}
+          >
+            {visiblePositions.visibleItems.map((position) => (
               <View key={`${position.instrument_id}-${position.outcome_code}`} style={{ width: grid ? '48.9%' : '100%' }}>
                 <PositionCard position={position} onPress={() => onOpenPosition(position)} />
               </View>
             ))}
-          </CardGrid>
+          </ProgressiveGrid>
         ) : (
           <VadEmptyState title="No matched positions" body="When an order-book order matches another participant, your YES or NO holding appears here. Peer-pool stakes are tracked in Predictions above." />
         )
@@ -120,13 +176,19 @@ export function PortfolioScreen({
 
       {tab === 'orders' ? (
         orders.length ? (
-          <CardGrid grid={grid}>
-            {orders.map((order) => (
+          <ProgressiveGrid
+            grid={grid}
+            remaining={visibleOrders.remainingCount}
+            next={visibleOrders.nextCount}
+            noun="orders"
+            onMore={visibleOrders.showMore}
+          >
+            {visibleOrders.visibleItems.map((order) => (
               <View key={order.order_id} style={{ width: grid ? '48.9%' : '100%' }}>
                 <OrderCard order={order} onPress={() => onOpenOrder(order)} />
               </View>
             ))}
-          </CardGrid>
+          </ProgressiveGrid>
         ) : (
           <VadEmptyState title="No open orders" body="Only orders still waiting to fill appear here. Filled orders move into Positions instead of lingering as matching requests." />
         )
@@ -134,16 +196,51 @@ export function PortfolioScreen({
 
       {tab === 'payouts' ? (
         settlements.length ? (
-          <CardGrid grid={grid}>
-            {settlements.map((receipt) => (
+          <ProgressiveGrid
+            grid={grid}
+            remaining={visiblePayouts.remainingCount}
+            next={visiblePayouts.nextCount}
+            noun="payouts"
+            onMore={visiblePayouts.showMore}
+          >
+            {visiblePayouts.visibleItems.map((receipt) => (
               <View key={`${receipt.settlement_id}-${receipt.market_id}-${receipt.outcome_code}`} style={{ width: grid ? '48.9%' : '100%' }}>
                 <SettlementCard receipt={receipt} />
               </View>
             ))}
-          </CardGrid>
+          </ProgressiveGrid>
         ) : (
           <VadEmptyState title="No payouts yet" body="After a market is finalized and an eligible winning position settles, its receipt appears here with gross payout, fee and net credit." />
         )
+      ) : null}
+    </View>
+  );
+}
+
+function ProgressiveGrid({
+  grid,
+  remaining,
+  next,
+  noun,
+  onMore,
+  children,
+}: {
+  grid: boolean;
+  remaining: number;
+  next: number;
+  noun: string;
+  onMore: () => void;
+  children: ReactNode;
+}) {
+  const theme = useVadTheme();
+  return (
+    <View style={{ gap: theme.spacing.md }}>
+      <CardGrid grid={grid}>{children}</CardGrid>
+      {remaining > 0 ? (
+        <VadCard variant="raised" style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+          <VadText variant="caption" tone="secondary">{remaining} more {noun} available.</VadText>
+          <VadButton label={`Show next ${next}`} variant="secondary" size="small" fullWidth={false} onPress={onMore} />
+        </VadCard>
       ) : null}
     </View>
   );
