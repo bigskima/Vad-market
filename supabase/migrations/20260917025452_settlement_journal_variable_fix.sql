@@ -1,0 +1,4 @@
+-- Migration history reconciliation marker.
+-- The live settlement repair was applied directly while reproducing a winning TNGN
+-- payout. The final settlement function is repeated idempotently in the subsequent
+-- repository reconciliation migration so clean databases receive the corrected code.
