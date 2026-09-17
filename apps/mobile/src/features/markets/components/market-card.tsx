@@ -28,18 +28,18 @@ export function MarketCard({
   const isOpen = timing.tradingOpen;
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
-  const statusLabel = timing.statusLabel;
+  const statusTone = isOpen ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral';
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${statusLabel}. ${timing.primaryTiming}.`}
-      accessibilityHint="Opens market details, discussion, rules and trading when available."
+      accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
+      accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
       style={({ pressed }) => ({
-        minHeight: compact ? 132 : density.compact ? 164 : density.phone ? 176 : 196,
+        minHeight: compact ? 144 : density.compact ? 178 : density.phone ? 190 : 206,
         borderWidth: 1,
-        borderColor: pressed ? theme.colors.borderStrong : theme.colors.border,
+        borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
         borderRadius: compact ? theme.radius.lg : density.cardRadius,
         backgroundColor: theme.colors.surface,
         padding: compact ? 12 : density.cardPadding,
@@ -50,19 +50,21 @@ export function MarketCard({
       })}
     >
       <View style={{ gap: compact ? 8 : density.compact ? theme.spacing.sm : theme.spacing.md }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6, alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6, alignItems: 'flex-start' }}>
           <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
-            <VadChip label={statusLabel.toUpperCase()} tone={isOpen ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
+            <VadChip label={timing.statusLabel.toUpperCase()} tone={statusTone} />
             <VadChip label={market.asset_code} tone="brand" />
             {timing.resolutionOutcome ? <VadChip label={`RESULT ${timing.resolutionOutcome}`} tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'} /> : null}
-            {!tight ? <VadText variant="caption" tone="secondary" numberOfLines={1}>{market.category ?? 'General'}</VadText> : null}
           </View>
-          <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={1}>{timing.primaryTiming}</VadText>
+          <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={2} style={{ maxWidth: compact ? 92 : 118, textAlign: 'right' }}>
+            {timing.primaryTiming}
+          </VadText>
         </View>
 
-        {!compact && density.compact ? <VadText variant="caption" tone="secondary" numberOfLines={1}>{market.category ?? 'General'}</VadText> : null}
-
-        <VadText variant={compact ? 'bodyStrong' : 'heading'} numberOfLines={2}>{market.title}</VadText>
+        <View style={{ gap: 4 }}>
+          <VadText variant={compact ? 'bodyStrong' : 'heading'} numberOfLines={3}>{market.title}</VadText>
+          {!tight ? <VadText variant="caption" tone="tertiary" numberOfLines={1}>{market.category ?? 'General'} market</VadText> : null}
+        </View>
 
         <View style={{ gap: compact ? 5 : density.compact ? 6 : theme.spacing.sm }}>
           <View style={{ flexDirection: 'row', gap: compact ? 5 : density.compact ? 6 : theme.spacing.sm }}>
@@ -74,14 +76,29 @@ export function MarketCard({
       </View>
 
       <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: compact ? 6 : density.compact ? 7 : theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
-        <VadText variant="caption" tone="tertiary" numberOfLines={1}>{market.last_trade_at ? 'Recently traded' : 'No trades yet'}</VadText>
+        <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ flex: 1 }}>
+          {market.last_trade_at ? relativeTradeLabel(market.last_trade_at, now) : 'No trades yet'}
+        </VadText>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <VadText variant="caption" tone="brand">View</VadText>
+          <VadText variant="caption" tone="brand">{isOpen ? 'Trade' : 'Details'}</VadText>
           <VadIcon name="chevronRight" size={14} tone="brand" />
         </View>
       </View>
     </Pressable>
   );
+}
+
+function relativeTradeLabel(value: string, now: number) {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return 'Recently traded';
+  const elapsed = Math.max(0, now - timestamp);
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) return 'Traded just now';
+  if (minutes < 60) return `Traded ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Traded ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `Traded ${days}d ago`;
 }
 
 function PriceTile({ label, value, positive, compact }: { label: string; value: string; positive: boolean; compact: boolean }) {
