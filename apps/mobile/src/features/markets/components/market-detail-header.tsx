@@ -3,6 +3,8 @@ import { View } from 'react-native';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadText } from '@/components/ui/vad-text';
+import { useLiveNow } from '@/hooks/use-live-now';
+import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
@@ -12,7 +14,9 @@ import { MarketProbabilityBar } from './market-probability-bar';
 export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const live = market.status === 'OPEN' || market.status === 'ACTIVE';
+  const now = useLiveNow();
+  const timing = getMarketTiming(market, now);
+  const live = timing.tradingOpen;
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
   const hasPrice = market.yes_price != null || market.no_price != null;
@@ -21,8 +25,9 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
         <VadChip label={market.category ?? 'General'} tone="brand" />
-        <VadChip label={marketStatusLabel(market.status)} tone={live ? 'yes' : 'neutral'} />
+        <VadChip label={timing.statusLabel.toUpperCase()} tone={live ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
         <VadChip label={market.asset_code} />
+        {timing.resolutionOutcome ? <VadChip label={`RESULT ${timing.resolutionOutcome}`} tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'} /> : null}
       </View>
 
       <VadText variant={density.compact ? 'heading' : 'title'}>{market.title}</VadText>
@@ -42,23 +47,24 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
         <MetaChip label="Currency" value={market.asset_code} />
-        <MetaChip label="Closes" value={market.closes_at ? new Date(market.closes_at).toLocaleString() : 'Closing time unavailable'} />
+        <MetaChip label="Lifecycle" value={timing.primaryTiming} />
+        {timing.stage === 'SCHEDULED' && market.opens_at ? <MetaChip label="Opens" value={`In ${timing.openCountdown ?? '—'}`} /> : null}
+        {timing.stage === 'OPEN' ? <MetaChip label="Trading closes" value={timing.closeCountdown ? `In ${timing.closeCountdown}` : 'Closing time unavailable'} /> : null}
+        {(timing.stage === 'CLOSED' || timing.stage === 'RESOLVING') ? <MetaChip label="Result" value={timing.resolutionCountdown ? `Check in ${timing.resolutionCountdown}` : timing.resolutionOutcome ? `Final · ${timing.resolutionOutcome}` : 'Processing'} /> : null}
         <MetaChip label="Type" value={friendlyEnum(market.market_type)} />
-        <MetaChip label="Last trade" value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : 'No trades yet'} />
       </View>
+
+      {(market.opens_at || market.closes_at || market.resolves_after) ? (
+        <VadText variant="caption" tone="tertiary">
+          {[
+            market.opens_at ? `Opens ${exactTime(market.opens_at)}` : null,
+            market.closes_at ? `Closes ${exactTime(market.closes_at)}` : null,
+            market.resolves_after ? `Result check ${exactTime(market.resolves_after)}` : null,
+          ].filter(Boolean).join(' · ')}
+        </VadText>
+      ) : null}
     </View>
   );
-}
-
-function marketStatusLabel(status: string) {
-  const normalized = status.toUpperCase();
-  if (normalized === 'OPEN' || normalized === 'ACTIVE') return 'LIVE';
-  if (normalized === 'CLOSED') return 'CLOSED';
-  if (normalized === 'RESOLVING') return 'RESULT PENDING';
-  if (normalized === 'RESOLVED') return 'RESULT CONFIRMED';
-  if (normalized === 'SETTLED') return 'COMPLETED';
-  if (normalized === 'VOID') return 'CANCELLED';
-  return 'UNAVAILABLE';
 }
 
 function friendlyEnum(value: string) {
