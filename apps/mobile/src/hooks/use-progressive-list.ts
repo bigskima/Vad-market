@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+
+type ProgressiveState = {
+  key: string;
+  count: number;
+};
 
 export function useProgressiveList<T>({
   items,
@@ -11,11 +16,9 @@ export function useProgressiveList<T>({
   step?: number;
   resetKey?: string;
 }) {
-  const [visibleCount, setVisibleCount] = useState(initialCount);
-
-  useEffect(() => {
-    setVisibleCount(initialCount);
-  }, [initialCount, resetKey]);
+  const currentKey = `${resetKey ?? ''}|${initialCount}`;
+  const [state, setState] = useState<ProgressiveState>(() => ({ key: currentKey, count: initialCount }));
+  const visibleCount = state.key === currentKey ? state.count : initialCount;
 
   const visibleItems = useMemo(
     () => items.slice(0, Math.min(visibleCount, items.length)),
@@ -31,8 +34,8 @@ export function useProgressiveList<T>({
     remainingCount,
     hasMore: remainingCount > 0,
     nextCount,
-    showMore: () => setVisibleCount((count) => Math.min(items.length, count + step)),
-    showAll: () => setVisibleCount(items.length),
-    collapse: () => setVisibleCount(initialCount),
+    showMore: () => setState({ key: currentKey, count: Math.min(items.length, visibleCount + step) }),
+    showAll: () => setState({ key: currentKey, count: items.length }),
+    collapse: () => setState({ key: currentKey, count: initialCount }),
   };
 }
