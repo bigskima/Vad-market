@@ -64,7 +64,7 @@ export default function CommunityRoute() {
           </View>
         </View>
         <VadText variant="caption" tone="secondary">
-          Follow how people think, attach views to live markets and discuss the evidence. Community conviction never replaces a market's published resolution rules.
+          Follow how people think, attach views to live markets and discuss the evidence. Community conviction never replaces a market&apos;s published resolution rules.
         </VadText>
       </VadCard>
 
