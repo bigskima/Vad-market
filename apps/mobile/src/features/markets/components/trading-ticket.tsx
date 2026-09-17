@@ -128,7 +128,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
             <VadText variant="title">What do you think happens?</VadText>
             <VadText variant="caption" tone="secondary">
-              Choose YES or NO. Your stake goes into this market's protected participant pool — VAD does not fund the other side.
+              Choose YES or NO. Your stake goes into this market’s protected participant pool — VAD does not fund the other side.
             </VadText>
           </View>
 
@@ -231,7 +231,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
               <VadText variant="caption" tone="yes">STEP 4 · STAKE COMMITTED</VadText>
               <VadText variant="title">Your prediction is live.</VadText>
               <VadText variant="caption" tone="secondary">
-                Your funds moved from your available wallet balance into this market's protected peer pool. Result and settlement will update automatically.
+                Your funds moved from your available wallet balance into this market’s protected peer pool. Result and settlement will update automatically.
               </VadText>
             </View>
             <VadChip label={stakeStatus.outcomeCode} tone={stakeStatus.outcomeCode === 'YES' ? 'yes' : 'no'} />
