@@ -11,7 +11,9 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { PaymentRow } from '@/features/wallet/wallet-screen';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getMyPaymentIntents,
@@ -34,10 +36,12 @@ export function WalletActivityScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const desktopTable = density.width >= 920;
   const [rows, setRows] = useState<PaymentIntentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>('all');
 
@@ -54,6 +58,7 @@ export function WalletActivityScreen({
             new Date(a.created_at).getTime(),
         ),
       );
+      setLastLoadedAt(Date.now());
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -101,7 +106,7 @@ export function WalletActivityScreen({
     return [...totals.entries()].sort(([a], [b]) => assetRank(a) - assetRank(b));
   }, [rows]);
 
-  const visibleRows = useMemo(
+  const filteredRows = useMemo(
     () =>
       filter === 'all'
         ? rows
@@ -109,11 +114,19 @@ export function WalletActivityScreen({
     [filter, rows],
   );
 
+  const pageSize = desktopTable ? 12 : density.phone ? 7 : 9;
+  const progressive = useProgressiveList({
+    items: filteredRows,
+    initialCount: pageSize,
+    step: pageSize,
+    resetKey: `${filter}|${filteredRows.length}|${desktopTable}`,
+  });
+
   const groupedRows = useMemo(() => {
     const groups: { label: string; rows: PaymentIntentRow[] }[] = [];
 
-    visibleRows.forEach((row) => {
-      const label = dayLabel(row.created_at);
+    progressive.visibleItems.forEach((row) => {
+      const label = dayLabel(row.created_at, now);
       const existing = groups.find((group) => group.label === label);
 
       if (existing) existing.rows.push(row);
@@ -121,7 +134,9 @@ export function WalletActivityScreen({
     });
 
     return groups;
-  }, [visibleRows]);
+  }, [progressive.visibleItems, now]);
+
+  const loadedRelative = lastLoadedAt ? relativeFromNumber(lastLoadedAt, now) : null;
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.lg : theme.spacing.xl }}>
@@ -133,11 +148,12 @@ export function WalletActivityScreen({
         }}
       >
         <View style={{ flex: 1, gap: 2 }}>
-          <VadText variant="caption" tone="brand">WALLET ACTIVITY</VadText>
-          <VadText variant="title">Money movement</VadText>
+          <VadText variant="caption" tone="brand">PAYMENT ACTIVITY</VadText>
+          <VadText variant="title">Deposits & withdrawals</VadText>
           <VadText variant="caption" tone="secondary">
-            Track deposits, withdrawals and their latest status, with each currency kept separate.
+            Provider payment requests stay separate from the market-ledger activity shown above, so deposits and withdrawals are easier to inspect.
           </VadText>
+          {loadedRelative ? <VadText variant="caption" tone="tertiary">Updated {loadedRelative}</VadText> : null}
         </View>
 
         <VadButton
@@ -159,7 +175,7 @@ export function WalletActivityScreen({
         </View>
       ) : error && !rows.length ? (
         <VadErrorState
-          title="Wallet activity unavailable"
+          title="Payment activity unavailable"
           message={error}
           onRetry={() => {
             setLoading(true);
@@ -170,7 +186,7 @@ export function WalletActivityScreen({
         <>
           {error ? (
             <VadErrorState
-              title="Could not refresh wallet activity"
+              title="Could not refresh payment activity"
               message={error}
               onRetry={() => void load(true)}
             />
@@ -200,25 +216,23 @@ export function WalletActivityScreen({
             </View>
           </VadCard>
 
-          <VadSegmentedControl
-            value={filter}
-            options={FILTERS}
-            onChange={setFilter}
-          />
+          <View style={{ gap: theme.spacing.xs }}>
+            <VadSegmentedControl value={filter} options={FILTERS} onChange={setFilter} />
+            {filteredRows.length ? (
+              <VadText variant="caption" tone="tertiary">
+                Showing {progressive.visibleCount} of {progressive.totalCount} payment requests.
+              </VadText>
+            ) : null}
+          </View>
 
-          {visibleRows.length ? (
-            desktopTable ? (
-              <DesktopActivityTable
-                rows={visibleRows}
-                onOpenTransaction={onOpenTransaction}
-              />
-            ) : (
-              <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-                {groupedRows.map((group) => (
+          {filteredRows.length ? (
+            <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
+              {desktopTable ? (
+                <DesktopActivityTable rows={progressive.visibleItems} onOpenTransaction={onOpenTransaction} now={now} />
+              ) : (
+                groupedRows.map((group) => (
                   <View key={group.label} style={{ gap: 6 }}>
-                    <VadText variant="caption" tone="tertiary">
-                      {group.label.toUpperCase()}
-                    </VadText>
+                    <VadText variant="caption" tone="tertiary">{group.label.toUpperCase()}</VadText>
                     <View style={{ gap: density.compact ? 6 : theme.spacing.sm }}>
                       {group.rows.map((row) => (
                         <PaymentRow
@@ -229,9 +243,21 @@ export function WalletActivityScreen({
                       ))}
                     </View>
                   </View>
-                ))}
-              </View>
-            )
+                ))
+              )}
+
+              {progressive.hasMore ? (
+                <VadCard variant="raised" style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+                  <View style={{ alignItems: 'center', gap: 2 }}>
+                    <VadText variant="bodyStrong">More payment history is available</VadText>
+                    <VadText variant="caption" tone="secondary">
+                      {progressive.remainingCount} more {progressive.remainingCount === 1 ? 'transaction' : 'transactions'} match this view.
+                    </VadText>
+                  </View>
+                  <VadButton label={`Show next ${progressive.nextCount}`} variant="secondary" size="small" fullWidth={false} onPress={progressive.showMore} />
+                </VadCard>
+              ) : null}
+            </View>
           ) : (
             <VadEmptyState
               title={filter === 'all' ? 'No payment activity yet' : 'Nothing in this status'}
@@ -271,9 +297,11 @@ function AssetSummary({
 function DesktopActivityTable({
   rows,
   onOpenTransaction,
+  now,
 }: {
   rows: PaymentIntentRow[];
   onOpenTransaction: (intent: PaymentIntentRow) => void;
+  now: number;
 }) {
   const theme = useVadTheme();
 
@@ -283,13 +311,15 @@ function DesktopActivityTable({
         <TableLabel flex={1.2}>TYPE</TableLabel>
         <TableLabel flex={1}>AMOUNT</TableLabel>
         <TableLabel flex={1}>STATUS</TableLabel>
-        <TableLabel flex={1.2}>CREATED</TableLabel>
+        <TableLabel flex={1.2}>WHEN</TableLabel>
         <TableLabel flex={1.7}>REFERENCE</TableLabel>
       </View>
 
       {rows.map((row) => {
         const classification = classify(row);
         const statusTone = classification === 'settled' ? 'yes' : classification === 'failed' ? 'danger' : 'warning';
+        const eventTime = row.settled_at ?? row.created_at;
+        const relative = relativeTimestamp(eventTime, now);
 
         return (
           <Pressable
@@ -313,7 +343,10 @@ function DesktopActivityTable({
             </TableCell>
             <TableCell flex={1}><VadText variant="bodyStrong">{assetMoney(row.amount, row.asset_code)}</VadText></TableCell>
             <TableCell flex={1}><VadText variant="caption" tone={statusTone}>{paymentStatusLabel(row, classification)}</VadText></TableCell>
-            <TableCell flex={1.2}><VadText variant="caption" tone="secondary">{new Date(row.created_at).toLocaleString()}</VadText></TableCell>
+            <TableCell flex={1.2}>
+              <VadText variant="caption" tone="secondary">{relative}</VadText>
+              <VadText variant="caption" tone="tertiary" numberOfLines={1}>{classification === 'settled' ? 'completed' : 'created'}</VadText>
+            </TableCell>
             <TableCell flex={1.7}><VadText variant="caption" tone="secondary" numberOfLines={1}>{row.intent_public_id}</VadText></TableCell>
           </Pressable>
         );
@@ -352,9 +385,9 @@ function operationLabel(operation: PaymentIntentRow['operation']) {
   return 'Refund';
 }
 
-function dayLabel(value: string) {
+function dayLabel(value: string, nowMs: number) {
   const date = new Date(value);
-  const now = new Date();
+  const now = new Date(nowMs);
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   const diffDays = Math.round((startToday - startDate) / 86400000);
@@ -367,6 +400,21 @@ function dayLabel(value: string) {
     day: 'numeric',
     year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
   });
+}
+
+function relativeTimestamp(value: string, now: number) {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return 'recently';
+  return relativeFromNumber(timestamp, now);
+}
+
+function relativeFromNumber(value: number, now: number) {
+  const diff = Math.max(0, now - value);
+  if (diff < 10_000) return 'just now';
+  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
+  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 24 * 60 * 60_000) return `${Math.floor(diff / (60 * 60_000))}h ago`;
+  return `${Math.floor(diff / (24 * 60 * 60_000))}d ago`;
 }
 
 function Summary({ label, value, tone = 'primary' }: { label: string; value: string; tone?: 'primary' | 'yes' | 'brand' }) {
