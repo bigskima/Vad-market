@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Pressable, View, type DimensionValue } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
@@ -149,7 +149,7 @@ export function PortfolioScreen({
   );
 }
 
-function CardGrid({ grid, children }: { grid: boolean; children: React.ReactNode }) {
+function CardGrid({ grid, children }: { grid: boolean; children: ReactNode }) {
   const theme = useVadTheme();
   return (
     <View style={{ flexDirection: grid ? 'row' : 'column', flexWrap: grid ? 'wrap' : 'nowrap', gap: theme.spacing.md, alignItems: 'stretch' }}>
