@@ -1,7 +1,7 @@
 import type { RuntimeCapabilityKey } from '@vad/types';
 import { Redirect, router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -10,7 +10,6 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
-import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -49,7 +48,6 @@ export function ProductRoute({
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
   const { registerScrollController } = useProductTour();
-  const [noticesOpen, setNoticesOpen] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
   const scrollOffsetRef = useRef(0);
 
@@ -169,7 +167,7 @@ export function ProductRoute({
       : 'Some actions are temporarily unavailable while we carry out maintenance.');
   const resumesAt = runtime.snapshot.context.platformResumesAt;
   const publicNotice = data.publicNotices[0] ?? null;
-  const noticeCount = data.publicNotices.length + (maintenance ? 1 : 0);
+  const noticeCount = data.unreadNotificationCount + data.publicNotices.length + (maintenance ? 1 : 0);
   const email = session.user.email ?? session.user.phone ?? 'VAD member';
   const canCreate = Boolean(
     allowCreate && runtime.snapshot.capabilities.submitMarketProposal,
@@ -214,7 +212,7 @@ export function ProductRoute({
         onAssistant={() => router.push('/assistant')}
         onAccount={() => router.replace('/account')}
         onSearch={() => router.push('/markets')}
-        onNotices={() => setNoticesOpen(true)}
+        onNotices={() => router.push('/notifications')}
         noticeCount={noticeCount}
       />
 
@@ -324,35 +322,6 @@ export function ProductRoute({
       {density.phone ? (
         <ProductTabBar active={active} onChange={navigate} />
       ) : null}
-
-      <VadBottomSheet
-        visible={noticesOpen}
-        title="VAD updates"
-        onClose={() => setNoticesOpen(false)}
-      >
-        <View style={{ gap: theme.spacing.md }}>
-          {maintenance ? (
-            <View style={{ gap: 4, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-              <VadText variant="caption" tone="warning">{maintenanceLabel}</VadText>
-              <VadText variant="bodyStrong">{maintenanceMessage}</VadText>
-              {resumesAt ? (
-                <VadText variant="caption" tone="tertiary">Scheduled to resume {new Date(resumesAt).toLocaleString()}.</VadText>
-              ) : null}
-            </View>
-          ) : null}
-
-          {data.publicNotices.length ? data.publicNotices.map((notice) => (
-            <View key={notice.public_id} style={{ gap: 4, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-              <VadText variant="caption" tone={notice.tone === 'WARNING' ? 'warning' : 'yes'}>
-                {notice.tone === 'WARNING' ? 'SERVICE NOTICE' : 'VAD UPDATE'}
-              </VadText>
-              <VadText>{notice.message}</VadText>
-            </View>
-          )) : maintenance ? null : (
-            <VadText tone="secondary">There are no active service notices right now.</VadText>
-          )}
-        </View>
-      </VadBottomSheet>
     </View>
   );
 }
