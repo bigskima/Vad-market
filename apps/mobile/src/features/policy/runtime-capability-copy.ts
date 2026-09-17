@@ -31,6 +31,10 @@ export function runtimeCapabilityReason(
       return 'Market creation is not available for your account yet.';
     case 'PHASE_4_NOT_ENABLED':
       return 'Trading is not available for your account yet.';
+    case 'MARKET_NOT_OPEN':
+      return 'Trading has not opened for this market yet.';
+    case 'MARKET_CLOSED':
+      return 'Trading has closed for this market. The result and payout stages will continue automatically.';
     default:
       return fallback;
   }
