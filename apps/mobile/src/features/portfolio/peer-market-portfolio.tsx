@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Switch, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -11,11 +11,13 @@ import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { getMyGrowthDashboard } from '@/services/growth-api';
 import type { MarketHistoryRow, PoolStakeRow } from '@/services/market-api';
 import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
 import {
   saveResultCard,
   shareResultCard,
+  type ResultCardPrivacy,
   type ResultCardProfile,
 } from './result-card-share';
 
@@ -27,13 +29,14 @@ export function PeerMarketPortfolio({ poolStakes, marketHistory }: { poolStakes:
   const [tab, setTab] = useState<Tab>('active');
   const [visible, setVisible] = useState(6);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void getMyProfile().then((next) => {
-      if (!cancelled) setProfile(next);
-    }).catch(() => {
-      // Result history remains usable if profile media is temporarily unavailable.
+    void Promise.allSettled([getMyProfile(), getMyGrowthDashboard()]).then(([profileResult, growthResult]) => {
+      if (cancelled) return;
+      if (profileResult.status === 'fulfilled') setProfile(profileResult.value);
+      if (growthResult.status === 'fulfilled') setInviteCode(growthResult.value.invite?.code ?? null);
     });
     return () => { cancelled = true; };
   }, []);
@@ -50,6 +53,7 @@ export function PeerMarketPortfolio({ poolStakes, marketHistory }: { poolStakes:
     displayName: profile?.display_name?.trim() || profile?.handle?.trim() || 'VAD participant',
     handle: profile?.handle ?? null,
     avatarUrl: profileMediaUrl(profile?.avatar_path),
+    inviteCode,
   };
 
   return (
@@ -90,7 +94,7 @@ export function PeerMarketPortfolio({ poolStakes, marketHistory }: { poolStakes:
                 {tab === 'wins' ? 'Your settled wins live here.' : tab === 'losses' ? 'Your settled losses stay visible too.' : 'Refunds, voids and in-progress results stay separate.'}
               </VadText>
               <VadText variant="caption" tone="secondary">
-                Result cards use the settled VAD ledger history. Share or save a card without changing the underlying market result.
+                Your private Portfolio always keeps the complete result. Before sharing or saving, you can independently hide payout and P&L from the social card.
               </VadText>
             </VadCard>
             <View style={{ flexDirection: density.wide ? 'row' : 'column', flexWrap: density.wide ? 'wrap' : 'nowrap', gap: theme.spacing.md }}>
@@ -139,16 +143,19 @@ function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCa
   const theme = useVadTheme();
   const [working, setWorking] = useState<'share' | 'save' | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showPayout, setShowPayout] = useState(true);
+  const [showPnl, setShowPnl] = useState(true);
   const final = row.final_outcome ?? 'PENDING';
   const resultTone = row.result === 'WON' ? 'yes' : row.result === 'LOST' ? 'no' : 'brand';
+  const privacy: ResultCardPrivacy = { showPayout, showPnl };
 
   async function run(action: 'share' | 'save') {
     if (working) return;
     setWorking(action);
     setActionError(null);
     try {
-      if (action === 'share') await shareResultCard(row, profile);
-      else await saveResultCard(row, profile);
+      if (action === 'share') await shareResultCard(row, profile, privacy);
+      else await saveResultCard(row, profile, privacy);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'The result card could not be exported right now.');
     } finally {
@@ -157,7 +164,14 @@ function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCa
   }
 
   return (
-    <VadCard variant={row.result === 'WON' ? 'brand' : 'raised'} style={{ gap: theme.spacing.md }}>
+    <VadCard
+      variant={row.result === 'WON' ? 'brand' : 'raised'}
+      style={{
+        gap: theme.spacing.md,
+        borderWidth: 1,
+        borderColor: row.result === 'WON' ? theme.colors.yes : row.result === 'LOST' ? theme.colors.no : theme.colors.brandPrimary,
+      }}
+    >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
         <Avatar profile={profile} />
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
@@ -187,8 +201,27 @@ function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCa
         <VadText variant="heading" tone={Number(row.realized_pnl) >= 0 ? 'yes' : 'no'}>{signedMoney(row.realized_pnl, row.asset_code)}</VadText>
       </View>
 
+      <View style={{ borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.sm, gap: theme.spacing.sm }}>
+        <View style={{ gap: 2 }}>
+          <VadText variant="caption" tone="brand">SHARE CARD PRIVACY</VadText>
+          <VadText variant="caption" tone="secondary">These switches affect only the exported/shared card. Your private Portfolio record stays complete.</VadText>
+        </View>
+        <PrivacyToggle label="Include payout" value={showPayout} onChange={setShowPayout} />
+        <PrivacyToggle label="Include P&L" value={showPnl} onChange={setShowPnl} />
+      </View>
+
+      {profile.inviteCode ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm, borderRadius: theme.radius.md, backgroundColor: theme.colors.brandSoft, padding: theme.spacing.sm }}>
+          <View style={{ flex: 1, gap: 1 }}>
+            <VadText variant="caption" tone="tertiary">YOUR INVITE CODE</VadText>
+            <VadText variant="bodyStrong" tone="brand" selectable>{profile.inviteCode}</VadText>
+          </View>
+          <VadChip label="INCLUDED ON CARD" tone="brand" />
+        </View>
+      ) : null}
+
       {row.settled_at ? <VadText variant="caption" tone="tertiary">Settled {new Date(row.settled_at).toLocaleString()}</VadText> : null}
-      <VadText variant="caption" tone="secondary">Share to X, Instagram, Facebook, TikTok and other apps through your device share sheet.</VadText>
+      <VadText variant="caption" tone="secondary">The premium semi-square social card can be shared to X, Instagram, Facebook, TikTok and other apps through your device share sheet.</VadText>
       {actionError ? <VadText variant="caption" tone="danger">{actionError}</VadText> : null}
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
@@ -196,6 +229,19 @@ function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCa
         <VadButton label="Save card" variant="secondary" size="small" loading={working === 'save'} disabled={Boolean(working)} onPress={() => void run('save')} style={{ flex: 1 }} />
       </View>
     </VadCard>
+  );
+}
+
+function PrivacyToggle({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+  const theme = useVadTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+      <View style={{ flex: 1, gap: 1 }}>
+        <VadText variant="bodyStrong">{label}</VadText>
+        <VadText variant="caption" tone="tertiary">{value ? 'Visible on shared card' : 'Hidden as PRIVATE'}</VadText>
+      </View>
+      <Switch value={value} onValueChange={onChange} accessibilityLabel={label} />
+    </View>
   );
 }
 
