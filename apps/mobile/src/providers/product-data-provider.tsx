@@ -9,7 +9,10 @@ const ProductDataContext = createContext<ProductDataValue | null>(null);
 
 export function ProductDataProvider({ children }: PropsWithChildren) {
   const { isLoading, session } = useAuth();
-  const data = useProductData(!isLoading && Boolean(session));
+  const data = useProductData(
+    !isLoading && Boolean(session),
+    session?.user.id ?? null,
+  );
 
   return (
     <ProductDataContext.Provider value={data}>
