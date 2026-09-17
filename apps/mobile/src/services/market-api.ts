@@ -15,6 +15,10 @@ export type MarketCatalogItem = {
   media_path?: string | null;
   yes_price: number | string | null;
   no_price: number | string | null;
+  yes_volume?: number | string | null;
+  no_volume?: number | string | null;
+  total_volume?: number | string | null;
+  participant_count?: number | string | null;
   last_trade_at: string | null;
   liquidity_mode?: string | null;
   reference_price?: number | string | null;
@@ -41,6 +45,80 @@ export type TradeQuote = {
   maximumCashReservation: number;
   availableSharesToSell: number;
   quotedAt: string;
+};
+
+export type PoolQuote = {
+  instrumentPublicId: string;
+  instrumentId: number;
+  outcomeId: number;
+  outcomeCode: 'YES' | 'NO';
+  assetId: number;
+  amount: number | string;
+  tradingFee: number | string;
+  maximumCashDebit: number | string;
+  poolTotalBefore: number | string;
+  outcomePoolBefore: number | string;
+  poolTotalAfter: number | string;
+  outcomePoolAfter: number | string;
+  impliedProbability: number | string;
+  estimatedGrossPayout: number | string;
+  estimatedSettlementFee: number | string;
+  estimatedNetPayout: number | string;
+  quotedAt: string;
+};
+
+export type PoolStakeStatus = {
+  stakeId: string;
+  marketId: string;
+  outcomeCode: 'YES' | 'NO';
+  amount: number | string;
+  tradingFee: number | string;
+  status: 'COMMITTED' | string;
+};
+
+export type PoolStakeRow = {
+  stake_id: string;
+  market_id: string;
+  market_title: string;
+  outcome_code: string;
+  asset_code: string;
+  amount: number | string;
+  trading_fee: number | string;
+  market_status: string;
+  final_outcome: string | null;
+  created_at: string;
+};
+
+export type MarketHistoryRow = {
+  market_id: string;
+  market_title: string;
+  selected_outcome: string;
+  final_outcome: string | null;
+  asset_code: string;
+  matched_quantity: number | string;
+  stake_amount: number | string;
+  trading_fee: number | string;
+  gross_payout: number | string;
+  settlement_fee: number | string;
+  net_payout: number | string;
+  realized_pnl: number | string;
+  result: 'WON' | 'LOST' | 'REFUNDED' | 'VOID' | 'SETTLING' | 'PENDING' | string;
+  settled_at: string | null;
+};
+
+export type WalletActivityRow = {
+  activity_id: string;
+  asset_code: string;
+  activity_type: string;
+  direction: 'DEBIT' | 'CREDIT' | string;
+  amount: number | string;
+  account_type: string;
+  market_id: string | null;
+  market_title: string | null;
+  reference_type: string | null;
+  reference_id: string | null;
+  description: string | null;
+  created_at: string;
 };
 
 export type OrderStatus = {
@@ -175,6 +253,12 @@ export async function getWalletSummary() {
   return (data ?? []) as WalletRow[];
 }
 
+export async function getWalletActivity(limit = 100) {
+  const { data, error } = await supabase.rpc('my_wallet_activity', { p_limit: limit });
+  assertNoError(error, 'portfolio', 'We could not load your complete wallet activity right now. Please try again.');
+  return (data ?? []) as WalletActivityRow[];
+}
+
 export async function getPositions() {
   const { data, error } = await supabase.rpc('my_positions');
   assertNoError(error, 'portfolio');
@@ -187,6 +271,18 @@ export async function getOpenOrders() {
   return (data ?? []) as OrderRow[];
 }
 
+export async function getPoolStakes() {
+  const { data, error } = await supabase.rpc('my_pool_stakes');
+  assertNoError(error, 'portfolio', 'We could not load your committed predictions right now. Please try again.');
+  return (data ?? []) as PoolStakeRow[];
+}
+
+export async function getMarketHistory() {
+  const { data, error } = await supabase.rpc('my_market_history');
+  assertNoError(error, 'portfolio', 'We could not load your settled market history right now. Please try again.');
+  return (data ?? []) as MarketHistoryRow[];
+}
+
 export async function getSettlementReceipts() {
   const { data, error } = await supabase.rpc('my_settlement_receipts');
   assertNoError(error, 'portfolio', 'We could not load your payout history right now. Please try again.');
@@ -197,6 +293,28 @@ export async function getMyProposals() {
   const { data, error } = await supabase.rpc('my_market_proposals');
   assertNoError(error, 'proposal', 'We could not load your market proposals right now. Please try again.');
   return (data ?? []) as ProposalRow[];
+}
+
+export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; amount: number }) {
+  const { data, error } = await supabase.rpc('pool_quote', {
+    p_instrument_public_id: input.instrumentPublicId,
+    p_outcome_code: input.outcomeCode,
+    p_amount: input.amount,
+  });
+  assertNoError(error, 'trading', 'We could not prepare this prediction right now. Please try again.');
+  return data as PoolQuote;
+}
+
+export async function placePoolStake(quote: PoolQuote) {
+  const idempotencyKey = `pool:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  const { data, error } = await supabase.rpc('place_pool_stake', {
+    p_instrument_public_id: quote.instrumentPublicId,
+    p_outcome_code: quote.outcomeCode,
+    p_amount: Number(quote.amount),
+    p_idempotency_key: idempotencyKey,
+  });
+  assertNoError(error, 'trading', 'We could not commit this prediction right now. Please try again.');
+  return data as PoolStakeStatus;
 }
 
 export async function quoteTrade(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; side: 'BUY' | 'SELL'; price: number; quantity: number }) {
