@@ -14,17 +14,23 @@ import {
 } from '@/services/home-content-api';
 import {
   getAdminRuntimeSummary,
+  getMarketHistory,
   getMyProposals,
   getOpenOrders,
+  getPoolStakes,
   getPositions,
   getSettlementReceipts,
+  getWalletActivity,
   getWalletSummary,
   listMarkets,
   type MarketCatalogItem,
+  type MarketHistoryRow,
   type OrderRow,
+  type PoolStakeRow,
   type PositionRow,
   type ProposalRow,
   type SettlementReceiptRow,
+  type WalletActivityRow,
   type WalletRow,
 } from '@/services/market-api';
 import {
@@ -37,8 +43,11 @@ import {
 type ProductSectionErrors = {
   markets: string | null;
   wallet: string | null;
+  walletActivity: string | null;
   positions: string | null;
   orders: string | null;
+  poolStakes: string | null;
+  marketHistory: string | null;
   settlements: string | null;
   proposals: string | null;
   notifications: string | null;
@@ -47,8 +56,11 @@ type ProductSectionErrors = {
 const emptySectionErrors: ProductSectionErrors = {
   markets: null,
   wallet: null,
+  walletActivity: null,
   positions: null,
   orders: null,
+  poolStakes: null,
+  marketHistory: null,
   settlements: null,
   proposals: null,
   notifications: null,
@@ -74,11 +86,7 @@ const defaultTrendingSettings: TrendingMarketSettings = {
   lastRefreshedAt: null,
 };
 
-function settledError(
-  result: PromiseSettledResult<unknown>,
-  context: UserErrorContext,
-  fallback: string,
-) {
+function settledError(result: PromiseSettledResult<unknown>, context: UserErrorContext, fallback: string) {
   if (result.status === 'fulfilled') return null;
   return userFacingErrorMessage(result.reason, context, fallback);
 }
@@ -102,8 +110,11 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const [sectionErrors, setSectionErrors] = useState<ProductSectionErrors>(emptySectionErrors);
   const [markets, setMarkets] = useState<MarketCatalogItem[]>([]);
   const [wallet, setWallet] = useState<WalletRow[]>([]);
+  const [walletActivity, setWalletActivity] = useState<WalletActivityRow[]>([]);
   const [positions, setPositions] = useState<PositionRow[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [poolStakes, setPoolStakes] = useState<PoolStakeRow[]>([]);
+  const [marketHistory, setMarketHistory] = useState<MarketHistoryRow[]>([]);
   const [settlements, setSettlements] = useState<SettlementReceiptRow[]>([]);
   const [proposals, setProposals] = useState<ProposalRow[]>([]);
   const [notifications, setNotifications] = useState<UserNotificationRow[]>([]);
@@ -121,8 +132,11 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const reset = useCallback(() => {
     setMarkets([]);
     setWallet([]);
+    setWalletActivity([]);
     setPositions([]);
     setOrders([]);
+    setPoolStakes([]);
+    setMarketHistory([]);
     setSettlements([]);
     setProposals([]);
     setNotifications([]);
@@ -142,11 +156,7 @@ export function useProductData(enabled = true, userId: string | null = null) {
 
   const probeAdmin = useCallback(async () => {
     if (!enabled) return;
-    try {
-      setAdminSummary(await getAdminRuntimeSummary());
-    } catch {
-      setAdminSummary(null);
-    }
+    try { setAdminSummary(await getAdminRuntimeSummary()); } catch { setAdminSummary(null); }
   }, [enabled]);
 
   const probeHomeExperience = useCallback(async () => {
@@ -162,27 +172,17 @@ export function useProductData(enabled = true, userId: string | null = null) {
       setTrendingMarketSettings(next.trendingSettings);
       setHomeExperienceError(null);
     } catch (reason) {
-      setHomeExperienceError(
-        userFacingErrorMessage(
-          reason,
-          'general',
-          'We could not refresh the latest highlights right now. Please try again.',
-        ),
-      );
+      setHomeExperienceError(userFacingErrorMessage(reason, 'general', 'We could not refresh the latest highlights right now. Please try again.'));
     }
   }, [enabled]);
 
   const refreshMarkets = useCallback(async () => {
     if (!enabled) return;
     try {
-      const next = await listMarkets();
-      setMarkets(next);
+      setMarkets(await listMarkets());
       setSectionErrors((current) => ({ ...current, markets: null }));
     } catch (reason) {
-      setSectionErrors((current) => ({
-        ...current,
-        markets: userFacingErrorMessage(reason, 'markets', 'We could not refresh markets right now.'),
-      }));
+      setSectionErrors((current) => ({ ...current, markets: userFacingErrorMessage(reason, 'markets', 'We could not refresh markets right now.') }));
     }
   }, [enabled]);
 
@@ -190,34 +190,39 @@ export function useProductData(enabled = true, userId: string | null = null) {
     if (!enabled) return;
     const results = await Promise.allSettled([
       getWalletSummary(),
+      getWalletActivity(),
       getPositions(),
       getOpenOrders(),
+      getPoolStakes(),
+      getMarketHistory(),
       getSettlementReceipts(),
     ]);
     setSectionErrors((current) => ({
       ...current,
       wallet: settledError(results[0], 'payments', 'We could not refresh wallet balances right now.'),
-      positions: settledError(results[1], 'portfolio', 'We could not refresh your positions right now.'),
-      orders: settledError(results[2], 'portfolio', 'We could not refresh your orders right now.'),
-      settlements: settledError(results[3], 'portfolio', 'We could not refresh your payout history right now.'),
+      walletActivity: settledError(results[1], 'payments', 'We could not refresh wallet activity right now.'),
+      positions: settledError(results[2], 'portfolio', 'We could not refresh your positions right now.'),
+      orders: settledError(results[3], 'portfolio', 'We could not refresh your orders right now.'),
+      poolStakes: settledError(results[4], 'portfolio', 'We could not refresh your committed predictions right now.'),
+      marketHistory: settledError(results[5], 'portfolio', 'We could not refresh your market results right now.'),
+      settlements: settledError(results[6], 'portfolio', 'We could not refresh your payout history right now.'),
     }));
     if (results[0].status === 'fulfilled') setWallet(results[0].value);
-    if (results[1].status === 'fulfilled') setPositions(results[1].value);
-    if (results[2].status === 'fulfilled') setOrders(results[2].value);
-    if (results[3].status === 'fulfilled') setSettlements(results[3].value);
+    if (results[1].status === 'fulfilled') setWalletActivity(results[1].value);
+    if (results[2].status === 'fulfilled') setPositions(results[2].value);
+    if (results[3].status === 'fulfilled') setOrders(results[3].value);
+    if (results[4].status === 'fulfilled') setPoolStakes(results[4].value);
+    if (results[5].status === 'fulfilled') setMarketHistory(results[5].value);
+    if (results[6].status === 'fulfilled') setSettlements(results[6].value);
   }, [enabled]);
 
   const refreshNotifications = useCallback(async () => {
     if (!enabled) return;
     try {
-      const next = await getNotifications();
-      setNotifications(next);
+      setNotifications(await getNotifications());
       setSectionErrors((current) => ({ ...current, notifications: null }));
     } catch (reason) {
-      setSectionErrors((current) => ({
-        ...current,
-        notifications: userFacingErrorMessage(reason, 'general', 'We could not refresh notifications right now.'),
-      }));
+      setSectionErrors((current) => ({ ...current, notifications: userFacingErrorMessage(reason, 'general', 'We could not refresh notifications right now.') }));
     }
   }, [enabled]);
 
@@ -226,8 +231,11 @@ export function useProductData(enabled = true, userId: string | null = null) {
     const results = await Promise.allSettled([
       listMarkets(),
       getWalletSummary(),
+      getWalletActivity(),
       getPositions(),
       getOpenOrders(),
+      getPoolStakes(),
+      getMarketHistory(),
       getSettlementReceipts(),
       getMyProposals(),
       getNotifications(),
@@ -236,30 +244,32 @@ export function useProductData(enabled = true, userId: string | null = null) {
     const nextSectionErrors: ProductSectionErrors = {
       markets: settledError(results[0], 'markets', 'We could not refresh markets right now.'),
       wallet: settledError(results[1], 'payments', 'We could not refresh wallet balances right now.'),
-      positions: settledError(results[2], 'portfolio', 'We could not refresh your positions right now.'),
-      orders: settledError(results[3], 'portfolio', 'We could not refresh your orders right now.'),
-      settlements: settledError(results[4], 'portfolio', 'We could not refresh your payout history right now.'),
-      proposals: settledError(results[5], 'proposal', 'We could not refresh your market proposals right now.'),
-      notifications: settledError(results[6], 'general', 'We could not refresh notifications right now.'),
+      walletActivity: settledError(results[2], 'payments', 'We could not refresh wallet activity right now.'),
+      positions: settledError(results[3], 'portfolio', 'We could not refresh your positions right now.'),
+      orders: settledError(results[4], 'portfolio', 'We could not refresh your orders right now.'),
+      poolStakes: settledError(results[5], 'portfolio', 'We could not refresh your committed predictions right now.'),
+      marketHistory: settledError(results[6], 'portfolio', 'We could not refresh your market results right now.'),
+      settlements: settledError(results[7], 'portfolio', 'We could not refresh your payout history right now.'),
+      proposals: settledError(results[8], 'proposal', 'We could not refresh your market proposals right now.'),
+      notifications: settledError(results[9], 'general', 'We could not refresh notifications right now.'),
     };
     setSectionErrors(nextSectionErrors);
 
     const failures = Object.values(nextSectionErrors).filter(Boolean).length;
-    if (failures === results.length) {
-      setError('We could not refresh your VAD information right now. Your last available information is still shown where possible.');
-    } else if (failures > 0) {
-      setError('Some information could not refresh right now. Everything that updated successfully is still available.');
-    } else {
-      setError(null);
-    }
+    if (failures === results.length) setError('We could not refresh your VAD information right now. Your last available information is still shown where possible.');
+    else if (failures > 0) setError('Some information could not refresh right now. Everything that updated successfully is still available.');
+    else setError(null);
 
     if (results[0].status === 'fulfilled') setMarkets(results[0].value);
     if (results[1].status === 'fulfilled') setWallet(results[1].value);
-    if (results[2].status === 'fulfilled') setPositions(results[2].value);
-    if (results[3].status === 'fulfilled') setOrders(results[3].value);
-    if (results[4].status === 'fulfilled') setSettlements(results[4].value);
-    if (results[5].status === 'fulfilled') setProposals(results[5].value);
-    if (results[6].status === 'fulfilled') setNotifications(results[6].value);
+    if (results[2].status === 'fulfilled') setWalletActivity(results[2].value);
+    if (results[3].status === 'fulfilled') setPositions(results[3].value);
+    if (results[4].status === 'fulfilled') setOrders(results[4].value);
+    if (results[5].status === 'fulfilled') setPoolStakes(results[5].value);
+    if (results[6].status === 'fulfilled') setMarketHistory(results[6].value);
+    if (results[7].status === 'fulfilled') setSettlements(results[7].value);
+    if (results[8].status === 'fulfilled') setProposals(results[8].value);
+    if (results[9].status === 'fulfilled') setNotifications(results[9].value);
   }, [enabled]);
 
   useEffect(() => {
@@ -274,22 +284,15 @@ export function useProductData(enabled = true, userId: string | null = null) {
       setLoading(true);
       void probeAdmin();
       void probeHomeExperience();
-      void load().finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      void load().finally(() => { if (!cancelled) setLoading(false); });
     }, 0);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [enabled, load, probeAdmin, probeHomeExperience, reset]);
 
   useEffect(() => {
     if (!enabled || !userId) return;
-
     let marketRefreshTimer: ReturnType<typeof setTimeout> | null = null;
     let portfolioRefreshTimer: ReturnType<typeof setTimeout> | null = null;
-
     const queueMarketRefresh = () => {
       if (marketRefreshTimer) clearTimeout(marketRefreshTimer);
       marketRefreshTimer = setTimeout(() => void refreshMarkets(), 250);
@@ -301,30 +304,19 @@ export function useProductData(enabled = true, userId: string | null = null) {
 
     const channel = supabase
       .channel(`vad-product-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'market_catalog' },
-        (payload) => {
-          if (payload.eventType === 'DELETE') {
-            queueMarketRefresh();
-            return;
-          }
-          const next = payload.new as MarketCatalogItem;
-          if (next?.instrument_public_id) setMarkets((current) => upsertMarket(current, next));
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'user_notifications', filter: `user_id=eq.${userId}` },
-        (payload) => {
-          const next = payload.new as UserNotificationRow;
-          if (!next?.public_id) return;
-          setNotifications((current) => prependNotification(current, next));
-          setLiveNotification(next);
-          queueMarketRefresh();
-          queuePortfolioRefresh();
-        },
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'market_catalog' }, (payload) => {
+        if (payload.eventType === 'DELETE') { queueMarketRefresh(); return; }
+        const next = payload.new as MarketCatalogItem;
+        if (next?.instrument_public_id) setMarkets((current) => upsertMarket(current, next));
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_notifications', filter: `user_id=eq.${userId}` }, (payload) => {
+        const next = payload.new as UserNotificationRow;
+        if (!next?.public_id) return;
+        setNotifications((current) => prependNotification(current, next));
+        setLiveNotification(next);
+        queueMarketRefresh();
+        queuePortfolioRefresh();
+      })
       .subscribe();
 
     return () => {
@@ -340,18 +332,12 @@ export function useProductData(enabled = true, userId: string | null = null) {
     try {
       await Promise.all([load(), probeHomeExperience()]);
       void probeAdmin();
-    } finally {
-      setRefreshing(false);
-    }
+    } finally { setRefreshing(false); }
   }, [enabled, load, probeAdmin, probeHomeExperience]);
 
   const markNotificationRead = useCallback(async (notificationPublicId: string) => {
     await markNotificationReadApi(notificationPublicId);
-    setNotifications((current) => current.map((item) => (
-      item.public_id === notificationPublicId
-        ? { ...item, read_at: item.read_at ?? new Date().toISOString() }
-        : item
-    )));
+    setNotifications((current) => current.map((item) => item.public_id === notificationPublicId ? { ...item, read_at: item.read_at ?? new Date().toISOString() } : item));
   }, []);
 
   const markAllNotificationsRead = useCallback(async () => {
@@ -361,11 +347,7 @@ export function useProductData(enabled = true, userId: string | null = null) {
   }, []);
 
   const dismissLiveNotification = useCallback(() => setLiveNotification(null), []);
-
-  const unreadNotificationCount = useMemo(
-    () => notifications.filter((item) => !item.read_at).length,
-    [notifications],
-  );
+  const unreadNotificationCount = useMemo(() => notifications.filter((item) => !item.read_at).length, [notifications]);
   const ngn = useMemo(() => wallet.find((row) => row.asset_code === 'NGN') ?? wallet[0], [wallet]);
 
   return {
@@ -375,8 +357,11 @@ export function useProductData(enabled = true, userId: string | null = null) {
     sectionErrors,
     markets,
     wallet,
+    walletActivity,
     positions,
     orders,
+    poolStakes,
+    marketHistory,
     settlements,
     proposals,
     notifications,
