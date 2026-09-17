@@ -78,6 +78,7 @@ export function MarketDetailScreen({
     : timing.stage === 'SCHEDULED'
       ? 'MARKET_NOT_OPEN'
       : 'MARKET_CLOSED';
+  const poolMarket = market.liquidity_mode === 'POOL';
 
   return (
     <View style={{ gap: density.sectionGap }}>
@@ -89,7 +90,9 @@ export function MarketDetailScreen({
           {tab === 'Overview'
             ? 'Market details, timing and current stage.'
             : tab === 'Trade'
-              ? timing.tradingOpen ? 'Build or reduce your position.' : timing.primaryTiming
+              ? timing.tradingOpen
+                ? poolMarket ? 'Choose an outcome and commit a peer-funded stake.' : 'Build or reduce your matched position.'
+                : timing.primaryTiming
               : tab === 'Discussion'
                 ? 'See what the community thinks about this market.'
                 : 'See how the result is decided and how payouts work.'}
@@ -124,7 +127,7 @@ export function MarketDetailScreen({
       {density.phone && tab !== 'Trade' ? (
         <View style={{ paddingTop: theme.spacing.xs }}>
           <VadButton
-            label={tradeCapabilityLoading ? 'Checking trade availability' : effectiveCanTrade ? 'Trade this market' : timing.primaryTiming}
+            label={tradeCapabilityLoading ? 'Checking trade availability' : effectiveCanTrade ? (poolMarket ? 'Make a prediction' : 'Trade this market') : timing.primaryTiming}
             size="small"
             onPress={() => setTab('Trade')}
             leading={<VadIcon name="markets" size={16} tone="inverse" />}
@@ -156,6 +159,7 @@ function Overview({
   const density = useProductDensity();
   const wide = density.width >= 780;
   const tradeDone = !timing.tradingOpen && timing.stage !== 'SCHEDULED';
+  const poolMarket = market.liquidity_mode === 'POOL';
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
@@ -163,9 +167,11 @@ function Overview({
         <VadCard style={{ flex: 1.1, gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="caption" tone="brand">MARKET OVERVIEW</VadText>
-            <VadText variant="heading">Prices show what traders think. The rules decide the result.</VadText>
+            <VadText variant="heading">{poolMarket ? 'The pool shows participant conviction. The rules decide the result.' : 'Prices show what traders think. The rules decide the result.'}</VadText>
             <VadText variant="caption" tone="secondary">
-              YES and NO prices show how people are trading. The final result follows the published market rules and the evidence used to verify what happened, not whichever side has the higher price.
+              {poolMarket
+                ? 'YES and NO percentages show how participant stakes are distributed. The final result follows the published rules and evidence, not whichever side has more money.'
+                : 'YES and NO prices show how people are trading. The final result follows the published market rules and the evidence used to verify what happened, not whichever side has the higher price.'}
             </VadText>
           </View>
 
@@ -187,7 +193,7 @@ function Overview({
                         : timing.statusLabel}
             </VadText>
             <VadText variant="caption" tone="secondary">
-              {timing.stage === 'OPEN' && timing.closeCountdown ? `New orders stop in ${timing.closeCountdown}.`
+              {timing.stage === 'OPEN' && timing.closeCountdown ? `${poolMarket ? 'New predictions' : 'New orders'} stop in ${timing.closeCountdown}.`
                 : timing.stage === 'CLOSED' && timing.resolutionCountdown ? `Result check begins in ${timing.resolutionCountdown}.`
                   : timing.stage === 'RESOLVING' ? 'The market stays closed while oracle evidence and finalization complete.'
                     : timing.stage === 'SETTLEMENT_PENDING' ? `Eligible ${market.asset_code} payouts are being settled automatically.`
@@ -196,18 +202,20 @@ function Overview({
             </VadText>
           </VadCard>
 
-          {market.liquidity_mode === 'SANDBOX_INSTANT' ? (
+          {poolMarket ? (
             <VadCard variant="brand" style={{ gap: 3 }}>
-              <VadChip label="TNGN SANDBOX" tone="brand" />
-              <VadText variant="bodyStrong">Instant test liquidity enabled</VadText>
-              <VadText variant="caption" tone="secondary">Eligible TNGN BUY orders can become test positions immediately. Production matching rules remain unchanged.</VadText>
+              <VadChip label="PEER FUNDED" tone="brand" />
+              <VadText variant="bodyStrong">Participants fund the market pool</VadText>
+              <VadText variant="caption" tone="secondary">
+                Stakes move into protected market collateral. Winning payouts are redistributed from that participant pool after fees; VAD does not supply the opposing stake.
+              </VadText>
             </VadCard>
           ) : null}
 
           {!density.phone ? (
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
               <VadButton
-                label={tradeCapabilityLoading ? 'Checking availability' : canTrade ? 'Trade this market' : tradeDone ? 'Trading closed' : 'View trade availability'}
+                label={tradeCapabilityLoading ? 'Checking availability' : canTrade ? (poolMarket ? 'Make a prediction' : 'Trade this market') : tradeDone ? 'Trading closed' : 'View trade availability'}
                 onPress={onTrade}
                 style={{ flex: 1 }}
                 leading={<VadIcon name="markets" size={17} tone="inverse" />}
@@ -227,18 +235,24 @@ function Overview({
           {market.opens_at ? <Fact label="Opens" value={timing.openCountdown ? `In ${timing.openCountdown}` : 'Opened'} /> : null}
           <Fact label="Trading" value={timing.stage === 'OPEN' && timing.closeCountdown ? `Closes in ${timing.closeCountdown}` : timing.tradingOpen ? 'Open' : 'Closed'} />
           <Fact label="Result" value={timing.resolutionOutcome ? `Final · ${timing.resolutionOutcome}` : timing.resolutionCountdown ? `Check in ${timing.resolutionCountdown}` : timing.stage === 'RESOLVING' ? 'Processing' : timing.stage === 'SETTLEMENT_PENDING' ? 'Finalized' : timing.stage === 'SETTLED' ? 'Finalized' : 'Pending'} />
+          {poolMarket ? <Fact label="Participant pool" value={`${Number(market.total_volume ?? 0).toLocaleString()} ${market.asset_code}`} /> : null}
+          {poolMarket ? <Fact label="Participants" value={String(Number(market.participant_count ?? 0))} /> : null}
           <Fact label="Currency" value={market.asset_code} />
           <Fact label="Type" value={friendlyEnum(market.market_type)} />
-          <Fact label="Last trade" value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : 'No trades yet'} />
+          <Fact label={poolMarket ? 'Last stake' : 'Last trade'} value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : poolMarket ? 'No stakes yet' : 'No trades yet'} />
         </VadCard>
       </View>
 
       <Lifecycle market={market} timing={timing} />
 
       <VadCard variant="brand" style={{ gap: theme.spacing.xs }}>
-        <VadText variant="caption" tone="brand">HOW TO READ THE PRICE</VadText>
-        <VadText variant="bodyStrong">A market price is not the final result.</VadText>
-        <VadText variant="caption" tone="secondary">For example, a 90% YES price means traders strongly favour YES. The final result can still be NO if the published rules and evidence support NO.</VadText>
+        <VadText variant="caption" tone="brand">HOW TO READ THE MARKET</VadText>
+        <VadText variant="bodyStrong">{poolMarket ? 'The stake split is not the final result.' : 'A market price is not the final result.'}</VadText>
+        <VadText variant="caption" tone="secondary">
+          {poolMarket
+            ? 'For example, 90% of the pool backing YES means participant money strongly favours YES. The confirmed result can still be NO if the published rules and evidence support NO.'
+            : 'For example, a 90% YES price means traders strongly favour YES. The final result can still be NO if the published rules and evidence support NO.'}
+        </VadText>
       </VadCard>
     </View>
   );
@@ -304,18 +318,21 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
   const theme = useVadTheme();
   const density = useProductDensity();
   const wide = density.width >= 820;
+  const poolMarket = market.liquidity_mode === 'POOL';
   const rules = [
     {
       number: '1',
       title: 'Trading closes automatically',
       body: timing.tradingOpen && timing.closeCountdown
-        ? `New orders stop in ${timing.closeCountdown}. The configured close is ${exactTime(market.closes_at) ?? 'set by the market'}.`
-        : `Trading is ${timing.stage === 'SCHEDULED' ? 'not open yet' : 'closed'}. Orders are accepted only inside the configured trading window.`,
+        ? `New ${poolMarket ? 'predictions' : 'orders'} stop in ${timing.closeCountdown}. The configured close is ${exactTime(market.closes_at) ?? 'set by the market'}.`
+        : `Trading is ${timing.stage === 'SCHEDULED' ? 'not open yet' : 'closed'}. ${poolMarket ? 'Stakes' : 'Orders'} are accepted only inside the configured trading window.`,
     },
     {
       number: '2',
-      title: 'Price does not decide the outcome',
-      body: 'YES and NO prices show what traders currently think. They do not decide the final result.',
+      title: poolMarket ? 'Pool share does not decide the outcome' : 'Price does not decide the outcome',
+      body: poolMarket
+        ? 'YES and NO percentages show where participant stakes are allocated. They do not decide the final result.'
+        : 'YES and NO prices show what traders currently think. They do not decide the final result.',
     },
     {
       number: '3',
@@ -325,7 +342,9 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
     {
       number: '4',
       title: 'Payouts use this market’s currency',
-      body: `Eligible winning positions are paid in ${market.asset_code}. Values from another currency are not mixed into this market.`,
+      body: poolMarket
+        ? `Eligible winners share the protected participant pool in ${market.asset_code}, proportionally to their winning stakes after configured fees. VAD does not inject company funds into the payout.`
+        : `Eligible winning positions are paid in ${market.asset_code}. Values from another currency are not mixed into this market.`,
     },
   ];
 
@@ -334,7 +353,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
       <View style={{ gap: 2 }}>
         <VadText variant="caption" tone="brand">MARKET RULES</VadText>
         <VadText variant="heading">How this market works</VadText>
-        <VadText variant="caption" tone="secondary">What to understand before taking a position.</VadText>
+        <VadText variant="caption" tone="secondary">What to understand before committing funds.</VadText>
       </View>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', flexWrap: wide ? 'wrap' : 'nowrap', gap: theme.spacing.sm }}>
