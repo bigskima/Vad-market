@@ -1,0 +1,5 @@
+-- Migration history reconciliation marker.
+-- This change was applied to the connected production Supabase while diagnosing the
+-- live market lifecycle/notification issue. The complete idempotent schema definition
+-- is repeated in the subsequent repository reconciliation migration so fresh databases
+-- receive the same final state while this version remains aligned with production.
