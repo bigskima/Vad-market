@@ -6,7 +6,9 @@ import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { TourTarget } from '@/features/tour/tour-provider';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketCard } from './components/market-card';
@@ -26,6 +28,7 @@ export function MarketsScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const { width } = useWindowDimensions();
   const columns = width >= 920 ? 2 : 1;
   const [query, setQuery] = useState('');
@@ -60,9 +63,9 @@ export function MarketsScreen({
     });
   }, [markets, category, query, sortMode]);
 
-  const live = markets.filter((market) => market.status === 'OPEN' || market.status === 'ACTIVE').length;
+  const live = markets.filter((market) => getMarketTiming(market, now).tradingOpen).length;
   const recentlyTraded = markets.filter((market) => market.last_trade_at).length;
-  const visibleLive = orderedMarkets.filter((market) => market.status === 'OPEN' || market.status === 'ACTIVE').length;
+  const visibleLive = orderedMarkets.filter((market) => getMarketTiming(market, now).tradingOpen).length;
   const cardWidth = columns === 2 ? '48.9%' : '100%';
 
   return (
@@ -125,8 +128,8 @@ export function MarketsScreen({
           </View>
         ) : !markets.length ? (
           <VadEmptyState
-            title="No live markets yet"
-            body="Markets will appear here as soon as they are published and available to trade."
+            title="No markets yet"
+            body="Markets will appear here as soon as they are published."
           />
         ) : (
           <VadEmptyState
