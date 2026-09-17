@@ -1,6 +1,7 @@
 import { createContext, type PropsWithChildren, useContext } from 'react';
 
 import { LiveNotificationOverlay } from '@/features/notifications/live-notification-overlay';
+import { WinnerCelebrationOverlay } from '@/features/portfolio/winner-celebration-overlay';
 import { useProductData } from '@/features/product/use-product-data';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -23,6 +24,7 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
         onDismiss={data.dismissLiveNotification}
         onRead={data.markNotificationRead}
       />
+      <WinnerCelebrationOverlay />
     </ProductDataContext.Provider>
   );
 }
