@@ -7,6 +7,7 @@ export type AdminHref =
   | '/admin/search'
   | '/admin/governance'
   | '/admin/create-market'
+  | '/admin/market-types'
   | '/admin/market-publishing'
   | '/admin/market-discovery'
   | '/admin/launch-policy'
@@ -79,7 +80,14 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         label: 'Create VAD Market',
         shortLabel: 'Create',
         href: '/admin/create-market',
-        description: 'Post a new VAD market proposal from the admin workspace',
+        description: 'Create a market from friendly guided event types or use the flexible custom flow',
+        permissions: ['markets.manage'],
+      },
+      {
+        label: 'Categories & Market Types',
+        shortLabel: 'Types',
+        href: '/admin/market-types',
+        description: 'Add categories and simple guided market types without changing app code',
         permissions: ['markets.manage'],
       },
       {
