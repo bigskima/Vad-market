@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { supabase } from '@/lib/supabase';
 import { userFacingErrorMessage, type UserErrorContext } from '@/lib/user-facing-error';
 import {
   getHomeExperience,
@@ -26,6 +27,12 @@ import {
   type SettlementReceiptRow,
   type WalletRow,
 } from '@/services/market-api';
+import {
+  getNotifications,
+  markAllNotificationsRead as markAllNotificationsReadApi,
+  markNotificationRead as markNotificationReadApi,
+  type UserNotificationRow,
+} from '@/services/notification-api';
 
 type ProductSectionErrors = {
   markets: string | null;
@@ -34,6 +41,7 @@ type ProductSectionErrors = {
   orders: string | null;
   settlements: string | null;
   proposals: string | null;
+  notifications: string | null;
 };
 
 const emptySectionErrors: ProductSectionErrors = {
@@ -43,6 +51,7 @@ const emptySectionErrors: ProductSectionErrors = {
   orders: null,
   settlements: null,
   proposals: null,
+  notifications: null,
 };
 
 const defaultFeaturedSettings: FeaturedMarketSettings = {
@@ -74,7 +83,19 @@ function settledError(
   return userFacingErrorMessage(result.reason, context, fallback);
 }
 
-export function useProductData(enabled = true) {
+function upsertMarket(previous: MarketCatalogItem[], next: MarketCatalogItem) {
+  const found = previous.some((item) => item.instrument_public_id === next.instrument_public_id);
+  const merged = found
+    ? previous.map((item) => item.instrument_public_id === next.instrument_public_id ? next : item)
+    : [next, ...previous];
+  return [...merged].sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
+}
+
+function prependNotification(previous: UserNotificationRow[], next: UserNotificationRow) {
+  return [next, ...previous.filter((item) => item.public_id !== next.public_id)].slice(0, 100);
+}
+
+export function useProductData(enabled = true, userId: string | null = null) {
   const [loading, setLoading] = useState(enabled);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +106,8 @@ export function useProductData(enabled = true) {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [settlements, setSettlements] = useState<SettlementReceiptRow[]>([]);
   const [proposals, setProposals] = useState<ProposalRow[]>([]);
+  const [notifications, setNotifications] = useState<UserNotificationRow[]>([]);
+  const [liveNotification, setLiveNotification] = useState<UserNotificationRow | null>(null);
   const [homePromotions, setHomePromotions] = useState<HomePromotion[]>([]);
   const [publicNotices, setPublicNotices] = useState<PublicNotice[]>([]);
   const [vadMarkets, setVadMarkets] = useState<VadMarketRow[]>([]);
@@ -102,6 +125,8 @@ export function useProductData(enabled = true) {
     setOrders([]);
     setSettlements([]);
     setProposals([]);
+    setNotifications([]);
+    setLiveNotification(null);
     setHomePromotions([]);
     setPublicNotices([]);
     setVadMarkets([]);
@@ -147,6 +172,55 @@ export function useProductData(enabled = true) {
     }
   }, [enabled]);
 
+  const refreshMarkets = useCallback(async () => {
+    if (!enabled) return;
+    try {
+      const next = await listMarkets();
+      setMarkets(next);
+      setSectionErrors((current) => ({ ...current, markets: null }));
+    } catch (reason) {
+      setSectionErrors((current) => ({
+        ...current,
+        markets: userFacingErrorMessage(reason, 'markets', 'We could not refresh markets right now.'),
+      }));
+    }
+  }, [enabled]);
+
+  const refreshPortfolio = useCallback(async () => {
+    if (!enabled) return;
+    const results = await Promise.allSettled([
+      getWalletSummary(),
+      getPositions(),
+      getOpenOrders(),
+      getSettlementReceipts(),
+    ]);
+    setSectionErrors((current) => ({
+      ...current,
+      wallet: settledError(results[0], 'payments', 'We could not refresh wallet balances right now.'),
+      positions: settledError(results[1], 'portfolio', 'We could not refresh your positions right now.'),
+      orders: settledError(results[2], 'portfolio', 'We could not refresh your orders right now.'),
+      settlements: settledError(results[3], 'portfolio', 'We could not refresh your payout history right now.'),
+    }));
+    if (results[0].status === 'fulfilled') setWallet(results[0].value);
+    if (results[1].status === 'fulfilled') setPositions(results[1].value);
+    if (results[2].status === 'fulfilled') setOrders(results[2].value);
+    if (results[3].status === 'fulfilled') setSettlements(results[3].value);
+  }, [enabled]);
+
+  const refreshNotifications = useCallback(async () => {
+    if (!enabled) return;
+    try {
+      const next = await getNotifications();
+      setNotifications(next);
+      setSectionErrors((current) => ({ ...current, notifications: null }));
+    } catch (reason) {
+      setSectionErrors((current) => ({
+        ...current,
+        notifications: userFacingErrorMessage(reason, 'general', 'We could not refresh notifications right now.'),
+      }));
+    }
+  }, [enabled]);
+
   const load = useCallback(async () => {
     if (!enabled) return;
     const results = await Promise.allSettled([
@@ -156,6 +230,7 @@ export function useProductData(enabled = true) {
       getOpenOrders(),
       getSettlementReceipts(),
       getMyProposals(),
+      getNotifications(),
     ]);
 
     const nextSectionErrors: ProductSectionErrors = {
@@ -165,6 +240,7 @@ export function useProductData(enabled = true) {
       orders: settledError(results[3], 'portfolio', 'We could not refresh your orders right now.'),
       settlements: settledError(results[4], 'portfolio', 'We could not refresh your payout history right now.'),
       proposals: settledError(results[5], 'proposal', 'We could not refresh your market proposals right now.'),
+      notifications: settledError(results[6], 'general', 'We could not refresh notifications right now.'),
     };
     setSectionErrors(nextSectionErrors);
 
@@ -183,6 +259,7 @@ export function useProductData(enabled = true) {
     if (results[3].status === 'fulfilled') setOrders(results[3].value);
     if (results[4].status === 'fulfilled') setSettlements(results[4].value);
     if (results[5].status === 'fulfilled') setProposals(results[5].value);
+    if (results[6].status === 'fulfilled') setNotifications(results[6].value);
   }, [enabled]);
 
   useEffect(() => {
@@ -207,6 +284,56 @@ export function useProductData(enabled = true) {
     };
   }, [enabled, load, probeAdmin, probeHomeExperience, reset]);
 
+  useEffect(() => {
+    if (!enabled || !userId) return;
+
+    let marketRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let portfolioRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const queueMarketRefresh = () => {
+      if (marketRefreshTimer) clearTimeout(marketRefreshTimer);
+      marketRefreshTimer = setTimeout(() => void refreshMarkets(), 250);
+    };
+    const queuePortfolioRefresh = () => {
+      if (portfolioRefreshTimer) clearTimeout(portfolioRefreshTimer);
+      portfolioRefreshTimer = setTimeout(() => void refreshPortfolio(), 250);
+    };
+
+    const channel = supabase
+      .channel(`vad-product-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'market_catalog' },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            queueMarketRefresh();
+            return;
+          }
+          const next = payload.new as MarketCatalogItem;
+          if (next?.instrument_public_id) setMarkets((current) => upsertMarket(current, next));
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'user_notifications', filter: `user_id=eq.${userId}` },
+        (payload) => {
+          const next = payload.new as UserNotificationRow;
+          if (!next?.public_id) return;
+          setNotifications((current) => prependNotification(current, next));
+          setLiveNotification(next);
+          queueMarketRefresh();
+          queuePortfolioRefresh();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      if (marketRefreshTimer) clearTimeout(marketRefreshTimer);
+      if (portfolioRefreshTimer) clearTimeout(portfolioRefreshTimer);
+      void supabase.removeChannel(channel);
+    };
+  }, [enabled, refreshMarkets, refreshPortfolio, userId]);
+
   const refresh = useCallback(async () => {
     if (!enabled) return;
     setRefreshing(true);
@@ -218,6 +345,27 @@ export function useProductData(enabled = true) {
     }
   }, [enabled, load, probeAdmin, probeHomeExperience]);
 
+  const markNotificationRead = useCallback(async (notificationPublicId: string) => {
+    await markNotificationReadApi(notificationPublicId);
+    setNotifications((current) => current.map((item) => (
+      item.public_id === notificationPublicId
+        ? { ...item, read_at: item.read_at ?? new Date().toISOString() }
+        : item
+    )));
+  }, []);
+
+  const markAllNotificationsRead = useCallback(async () => {
+    await markAllNotificationsReadApi();
+    const now = new Date().toISOString();
+    setNotifications((current) => current.map((item) => ({ ...item, read_at: item.read_at ?? now })));
+  }, []);
+
+  const dismissLiveNotification = useCallback(() => setLiveNotification(null), []);
+
+  const unreadNotificationCount = useMemo(
+    () => notifications.filter((item) => !item.read_at).length,
+    [notifications],
+  );
   const ngn = useMemo(() => wallet.find((row) => row.asset_code === 'NGN') ?? wallet[0], [wallet]);
 
   return {
@@ -231,6 +379,9 @@ export function useProductData(enabled = true) {
     orders,
     settlements,
     proposals,
+    notifications,
+    liveNotification,
+    unreadNotificationCount,
     homePromotions,
     publicNotices,
     vadMarkets,
@@ -243,5 +394,11 @@ export function useProductData(enabled = true) {
     ngn,
     load,
     refresh,
+    refreshMarkets,
+    refreshPortfolio,
+    refreshNotifications,
+    markNotificationRead,
+    markAllNotificationsRead,
+    dismissLiveNotification,
   };
 }
