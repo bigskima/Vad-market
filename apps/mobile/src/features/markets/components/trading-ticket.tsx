@@ -31,6 +31,10 @@ const SIDES = [
 ] as const;
 
 type TradeStep = 'prediction' | 'order' | 'review' | 'result';
+type CompleteTradeQuote = TradeQuote & {
+  estimatedSettlementFee?: number | string;
+  estimatedNetSettlement?: number | string;
+};
 
 type TicketProps = {
   market: MarketCatalogItem;
@@ -154,7 +158,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
               <VadText variant="caption" tone="brand">STEP 2 · STAKE</VadText>
               <VadText variant="title">Choose your stake.</VadText>
               <VadText variant="caption" tone="secondary">
-                This amount is committed immediately to the market pool. If your outcome loses, that stake helps fund the winning side.
+                Nothing is committed on this step. VAD calculates the stake, platform fee, wallet debit and estimated winning settlement before you confirm.
               </VadText>
             </View>
             <VadChip label={outcome} tone={outcome === 'YES' ? 'yes' : 'no'} />
@@ -181,7 +185,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Back" variant="secondary" onPress={() => setStep('prediction')} style={{ flex: 1 }} />
-            <VadButton label="Review prediction" loading={working} disabled={!tradeReady || working || !inputValid} onPress={() => void prepareReview()} style={{ flex: 1.4 }} />
+            <VadButton label="Review prediction & fees" loading={working} disabled={!tradeReady || working || !inputValid} onPress={() => void prepareReview()} style={{ flex: 1.4 }} />
           </View>
         </VadCard>
       ) : null}
@@ -189,10 +193,10 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       {step === 'review' && quote ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: 3 }}>
-            <VadText variant="caption" tone="brand">STEP 3 · REVIEW</VadText>
+            <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING CHARGED YET</VadText>
             <VadText variant="title">Confirm your prediction.</VadText>
             <VadText variant="caption" tone="secondary">
-              Nothing is committed until you confirm. Estimated payout changes as other users add stakes before the market closes.
+              Every current VAD charge is shown below before commitment. Estimated payout can still change as other users add stakes before the market closes.
             </VadText>
           </View>
 
@@ -204,22 +208,23 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
           <View style={{ gap: 2 }}>
             <QuoteLine label="Your stake" value={assetMoney(quote.amount, market.asset_code)} />
-            <QuoteLine label="Trading fee" value={assetMoney(quote.tradingFee, market.asset_code)} />
-            <QuoteLine label="Total wallet debit" value={assetMoney(quote.maximumCashDebit, market.asset_code)} />
+            <QuoteLine label="VAD trading fee" value={assetMoney(quote.tradingFee, market.asset_code)} />
+            <QuoteLine label="Total wallet debit now" value={assetMoney(quote.maximumCashDebit, market.asset_code)} />
             <QuoteLine label="Pool after your stake" value={assetMoney(quote.poolTotalAfter, market.asset_code)} />
             <QuoteLine label={`${quote.outcomeCode} pool after`} value={assetMoney(quote.outcomePoolAfter, market.asset_code)} />
             <QuoteLine label="Current implied share" value={probability(quote.impliedProbability)} />
             <QuoteLine label="Estimated gross payout if correct" value={assetMoney(quote.estimatedGrossPayout, market.asset_code)} />
-            <QuoteLine label="Estimated settlement fee" value={assetMoney(quote.estimatedSettlementFee, market.asset_code)} />
-            <QuoteLine label="Estimated net payout" value={assetMoney(quote.estimatedNetPayout, market.asset_code)} />
+            <QuoteLine label="Estimated VAD settlement fee if you win" value={assetMoney(quote.estimatedSettlementFee, market.asset_code)} />
+            <QuoteLine label="Estimated net payout if you win" value={assetMoney(quote.estimatedNetPayout, market.asset_code)} />
           </View>
 
+          <InlineMessage tone="brand" title="Fee transparency" body="The trading fee is charged with this stake. The settlement fee is only an estimate now and is charged from an eligible winning payout at settlement. VAD shows both before you commit." />
           <InlineMessage tone="brand" title="Peer-funded payout" body="Winning payouts can only come from the participant pool for this market. VAD does not inject company money to complete the payout." />
           {placeError ? <InlineMessage tone="danger" title="Prediction not committed" body={placeError} /> : null}
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Edit stake" variant="secondary" disabled={working} onPress={() => { setStep('order'); setPlaceError(null); }} style={{ flex: 1 }} />
-            <VadButton label="Commit prediction" loading={working} disabled={!tradeReady || working} onPress={() => void execute()} style={{ flex: 1.4 }} />
+            <VadButton label="Confirm & commit prediction" loading={working} disabled={!tradeReady || working} onPress={() => void execute()} style={{ flex: 1.4 }} />
           </View>
         </VadCard>
       ) : null}
@@ -239,7 +244,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             <MiniMetric label="Stake" value={assetMoney(stakeStatus.amount, market.asset_code)} />
-            <MiniMetric label="Fee" value={assetMoney(stakeStatus.tradingFee, market.asset_code)} />
+            <MiniMetric label="VAD trading fee" value={assetMoney(stakeStatus.tradingFee, market.asset_code)} />
             <MiniMetric label="Status" value="Committed" />
           </View>
 
@@ -323,6 +328,8 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
     }
   }
 
+  const completeQuote = quote as CompleteTradeQuote | null;
+
   return (
     <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
       <TradeStepRail step={step} secondLabel="Order" />
@@ -349,7 +356,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 2 · ORDER</VadText>
               <VadText variant="title">Set your limit order.</VadText>
-              <VadText variant="caption" tone="secondary">Choose whether to build or reduce a position, then set price and shares.</VadText>
+              <VadText variant="caption" tone="secondary">Choose whether to build or reduce a position, then VAD will preview the order value and every applicable platform fee before placement.</VadText>
             </View>
             <VadChip label={outcome} tone={outcome === 'YES' ? 'yes' : 'no'} />
           </View>
@@ -377,7 +384,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
           {quoteError ? <InlineMessage tone="danger" title="Order review unavailable" body={quoteError} /> : null}
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Back" variant="secondary" onPress={() => setStep('prediction')} style={{ flex: 1 }} />
-            <VadButton label="Review order" loading={working} disabled={!tradeReady || working || !inputValid} onPress={() => void prepareReview()} style={{ flex: 1.4 }} />
+            <VadButton label="Review order & fees" loading={working} disabled={!tradeReady || working || !inputValid} onPress={() => void prepareReview()} style={{ flex: 1.4 }} />
           </View>
         </VadCard>
       ) : null}
@@ -385,9 +392,9 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       {step === 'review' && quote ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: 3 }}>
-            <VadText variant="caption" tone="brand">STEP 3 · REVIEW</VadText>
+            <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING PLACED YET</VadText>
             <VadText variant="title">Confirm before placing.</VadText>
-            <VadText variant="caption" tone="secondary">An order can remain unmatched. Only filled quantity becomes a real position.</VadText>
+            <VadText variant="caption" tone="secondary">An order can remain unmatched. Only filled quantity becomes a real position. Maker/taker treatment depends on how the order fills.</VadText>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             <VadChip label={quote.outcomeCode} tone={quote.outcomeCode === 'YES' ? 'yes' : 'no'} />
@@ -398,15 +405,19 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
             <QuoteLine label="Order value" value={assetMoney(quote.notional, market.asset_code)} />
             <QuoteLine label="Price per share" value={assetMoney(quote.price, market.asset_code)} />
             <QuoteLine label="Shares" value={Number(quote.quantity).toLocaleString()} />
-            <QuoteLine label="Maker fee" value={assetMoney(quote.makerFee, market.asset_code)} />
-            <QuoteLine label="Taker fee" value={assetMoney(quote.takerFee, market.asset_code)} />
-            {quote.side === 'BUY' ? <QuoteLine label="Maximum amount held" value={assetMoney(quote.maximumCashReservation, market.asset_code)} /> : <QuoteLine label="Shares available" value={String(quote.availableSharesToSell)} />}
-            <QuoteLine label="Gross payout if fully filled and correct" value={assetMoney(quote.potentialGrossSettlement, market.asset_code)} />
+            <QuoteLine label="VAD maker fee if maker" value={assetMoney(quote.makerFee, market.asset_code)} />
+            <QuoteLine label="VAD taker fee if taker" value={assetMoney(quote.takerFee, market.asset_code)} />
+            {quote.side === 'BUY' ? <QuoteLine label="Maximum VAD fee reserve" value={assetMoney(quote.maximumFeeReserve, market.asset_code)} /> : null}
+            {quote.side === 'BUY' ? <QuoteLine label="Maximum wallet amount held" value={assetMoney(quote.maximumCashReservation, market.asset_code)} /> : <QuoteLine label="Shares available to sell" value={String(quote.availableSharesToSell)} />}
+            <QuoteLine label="Gross settlement if fully filled and correct" value={assetMoney(quote.potentialGrossSettlement, market.asset_code)} />
+            <QuoteLine label="Estimated VAD settlement fee if you win" value={assetMoney(completeQuote?.estimatedSettlementFee ?? 0, market.asset_code)} />
+            <QuoteLine label="Estimated net settlement if you win" value={assetMoney(completeQuote?.estimatedNetSettlement ?? quote.potentialGrossSettlement, market.asset_code)} />
           </View>
+          <InlineMessage tone="brand" title="Fee transparency" body="VAD reserves up to the displayed trading-fee amount for a BUY. The actual maker/taker fee follows the way each fill executes. The settlement fee applies only to an eligible winning payout and is shown here as an estimate before placement." />
           {placeError ? <InlineMessage tone="danger" title="Order not placed" body={placeError} /> : null}
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Edit order" variant="secondary" disabled={working} onPress={() => setStep('order')} style={{ flex: 1 }} />
-            <VadButton label="Place order" loading={working} disabled={!tradeReady || working} onPress={() => void execute()} style={{ flex: 1.4 }} />
+            <VadButton label="Confirm & place order" loading={working} disabled={!tradeReady || working} onPress={() => void execute()} style={{ flex: 1.4 }} />
           </View>
         </VadCard>
       ) : null}
