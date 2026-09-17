@@ -25,13 +25,16 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   return (
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
-        <VadChip label={market.category ?? 'General'} tone="brand" />
         <VadChip label={timing.statusLabel.toUpperCase()} tone={live ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
-        <VadChip label={market.asset_code} />
+        <VadChip label={market.asset_code} tone="brand" />
         {isPool ? <VadChip label="PEER POOL" tone="brand" /> : null}
+        <VadText variant="caption" tone="secondary">{market.category ?? 'General'} · {friendlyEnum(market.market_type)}</VadText>
       </View>
 
-      <VadText variant={density.compact ? 'heading' : 'title'}>{market.title}</VadText>
+      <View style={{ gap: 3 }}>
+        <VadText variant="caption" tone="tertiary">MARKET</VadText>
+        <VadText variant={density.compact ? 'heading' : 'title'}>{market.title}</VadText>
+      </View>
 
       {timing.resolutionOutcome ? (
         <VadCard variant="brand" accessibilityRole="summary" style={{ gap: theme.spacing.sm, paddingVertical: theme.spacing.lg }}>
@@ -59,8 +62,8 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
               ? 'This split reflects how participant stakes are distributed across YES and NO. It is not the final result.'
               : 'The YES/NO split will reflect participant stakes after the first prediction is committed.'
             : hasSignal
-              ? 'Prices show where traders currently stand. The market rules determine the final result.'
-              : 'No trade price is available yet. Probabilities will appear after trading begins.'}
+              ? 'These prices show current trader conviction. The published market rules still determine the final YES or NO.'
+              : 'No trade price is available yet. Conviction signals appear after trading begins.'}
         </VadText>
         {isPool ? (
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
@@ -110,7 +113,7 @@ function SignalTile({ label, value, positive, available }: { label: string; valu
 function MetaChip({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ minHeight: 44, flexGrow: 1, flexBasis: 130, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: theme.spacing.sm, paddingVertical: 6, gap: 1 }}>
+    <View style={{ minHeight: 48, flexGrow: 1, flexBasis: 145, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: theme.spacing.sm, paddingVertical: 7, gap: 1 }}>
       <VadText variant="caption" tone="tertiary">{label}</VadText>
       <VadText variant="caption" numberOfLines={2}>{value}</VadText>
     </View>
