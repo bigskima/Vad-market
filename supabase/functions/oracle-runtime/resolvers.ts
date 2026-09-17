@@ -7,7 +7,8 @@ import {
   type ProviderResolutionResult,
   type ResolverSpec,
 } from './types.ts';
-import { resolveCryptoWithProvider, resolveFootballWithProvider } from './providers.ts';
+import { resolveCryptoWithProvider } from './providers.ts';
+import { resolveFootballFixtureWithProvider } from './football.ts';
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -157,5 +158,5 @@ export async function resolveWithProvider(
   if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') {
     return resolveCryptoWithProvider(provider, resource, spec);
   }
-  return resolveFootballWithProvider(provider, resource, spec);
+  return resolveFootballFixtureWithProvider(provider, resource, spec);
 }
