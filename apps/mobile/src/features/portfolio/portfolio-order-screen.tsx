@@ -73,7 +73,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   }
 
   return (
-    <View style={{ gap: density.sectionGap }}>
+    <View style={{ gap: density.sectionGap, paddingBottom: density.phone ? theme.spacing.xl : 0 }}>
       <View style={{ gap: theme.spacing.xs }}>
         <View style={{ flexDirection: 'row', gap: theme.spacing.xs, alignItems: 'center', flexWrap: 'wrap' }}>
           <VadChip label={`${currentOrder.side} order`} tone="brand" />
@@ -129,7 +129,9 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
             variant="secondary"
             onPress={() => router.push({ pathname: '/market/[marketId]', params: { marketId: currentOrder.instrument_public_id } })}
           />
-          <VadButton label="Cancel remaining" variant="danger" loading={cancelling} disabled={remaining <= 0} onPress={() => { setCancelError(null); setConfirmOpen(true); }} />
+          <View style={{ marginBottom: density.phone ? theme.spacing.md : 0 }}>
+            <VadButton label="Cancel remaining" variant="danger" loading={cancelling} disabled={remaining <= 0} onPress={() => { setCancelError(null); setConfirmOpen(true); }} />
+          </View>
         </VadCard>
       </View>
 
