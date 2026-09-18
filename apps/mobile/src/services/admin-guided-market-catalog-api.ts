@@ -47,6 +47,7 @@ type CreateCatalogMarketInput = {
   resolvesAfter: string;
   countryCode: string;
   assetCode: string;
+  liquidityModel: 'POOL' | 'ORDER_BOOK';
   publishNow?: boolean;
 };
 
@@ -125,7 +126,7 @@ export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) 
       .map(([key, value]) => [key, String(value ?? '').trim()])
       .filter(([, value]) => Boolean(value)),
   );
-  const { data, error } = await supabase.rpc('admin_create_catalog_market', {
+  const { data, error } = await supabase.rpc('admin_create_catalog_market_v2', {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_market_type_code: input.marketTypeCode,
@@ -138,6 +139,7 @@ export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) 
     p_resolves_after: input.resolvesAfter,
     p_country_code: input.countryCode,
     p_asset_code: input.assetCode,
+    p_liquidity_model: input.liquidityModel,
     p_publish_now: input.publishNow === true,
   });
   fail(error, 'We could not create this guided VAD market right now.');
