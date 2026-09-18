@@ -36,8 +36,8 @@ insert into oracle.policies(name,capability_id,version,source_hierarchy,consensu
 select 'VAD Automatic Official Public Record Policy',capability_id,2,'["US_SENATE"]'::jsonb,
   '{"environment":"PRODUCTION","tie_behavior":"NO_RESOLUTION","finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":false,"min_agreeing_providers":1}'::jsonb,
   close_rule,postponement_rule,cancellation_rule,void_rule,60,'ACTIVE',statement_timestamp(),null,approved_by
-from oracle.policies where public_id='da18a5f7-ab70-4c98-99f4-83bd5b68fe05'
-on conflict(capability_id,version) do nothing;
+from oracle.policies old where public_id='da18a5f7-ab70-4c98-99f4-83bd5b68fe05'
+and not exists(select 1 from oracle.policies x where x.capability_id=old.capability_id and x.version=2);
 
 update oracle.event_policy_bindings b
 set oracle_policy_id=p.id,bound_at=statement_timestamp()
