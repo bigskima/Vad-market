@@ -106,6 +106,4 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
     const cutoff = stringValue(rule.cutoff, scope.cutoff_local_time, scope.cutoffLocalTime) ?? legacyCondition.match(/(\d{1,2}:\d{2}\s*(?:AM|PM))/i)?.[1] ?? null;
     if (!['BEFORE_OR_AT','AFTER','EQUALS','CONTAINS','EXISTS'].includes(String(operator))) throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID','Public-record rule requires a supported deterministic operator',422);
     return { resolverType:'PUBLIC_RECORD_RULE_V1', operator:operator as 'BEFORE_OR_AT'|'AFTER'|'EQUALS'|'CONTAINS'|'EXISTS', field, expected:(rule.expected as string|number|boolean|null) ?? null, cutoff, timeZone:stringValue(rule.timezone,scope.timezone,scope.time_zone), recordDate:stringValue(rule.record_date,scope.record_date,scope.legislative_date) };
-  }
-
-
+  }\n\n
