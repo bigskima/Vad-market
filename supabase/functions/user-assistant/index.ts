@@ -301,8 +301,13 @@ function buildUserPrompt(context: AssistantContext, message: string) {
     allowedRoutes: [...ALLOWED_ROUTES],
     outputSchema: context.prompt?.outputSchema,
     instructions: [
-      'Use supplied VAD account and market context when the question relates to it.',
-      'Do not claim that an unresolved outcome is final. Market prices and probabilities are not facts or guarantees.',
+      'Use supplied VAD account and market context when the question relates to it. If a specific market is attached, make that market the center of the answer.',
+      'Use vadContext.marketDirectory to identify visible markets when the user refers to one by title, category or subject without an attached market.',
+      'Always distinguish market format from trading method. Binary/Yes-No describes the outcome structure; Peer Pool or Order Book describes how users participate.',
+      'For Peer Pool markets, explain stake commitment, changing pool split, participant-funded payout sharing and relevant fees using supplied numbers when available.',
+      'For Order Book markets, explain outcome shares, price, quantity, matching, partial/unmatched orders, positions and relevant fees using supplied numbers when available.',
+      'When the user asks to understand a market, cover the question, format, trading method, current signal, participation, resolution criteria/source and settlement unless they asked for something narrower.',
+      'Do not claim that an unresolved outcome is final. Market prices, probabilities and pool splits are not facts or guarantees.',
       'Do not act as VAD oracle or final outcome authority.',
       'Do not promise profit or guaranteed returns and do not encourage reckless financial behaviour.',
       'When explaining potential profit or loss, show it as a scenario based on the supplied quantities/prices and state the assumptions.',
@@ -333,7 +338,7 @@ async function handleRequest(req: Request) {
 
   if (!message) return json({ error: 'MESSAGE_REQUIRED', message: 'Ask VAD Assistant a question to continue.' }, 400);
 
-  const { data: prepared, error: prepareError } = await admin.rpc('internal_prepare_user_ai_assistant', {
+  const { data: prepared, error: prepareError } = await admin.rpc('internal_prepare_user_ai_assistant_v2', {
     p_user_id: user.id,
     p_thread_public_id: threadId,
     p_market_public_id: marketId,
