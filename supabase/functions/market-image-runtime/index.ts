@@ -22,7 +22,7 @@ Deno.serve(async(req)=>{
   if(!ai.ok) return json({error:'Cloudflare image generation failed',providerStatus:ai.status,detail:(await ai.text()).slice(0,800)},502);
   const bytes=new Uint8Array(await ai.arrayBuffer()); const path=`generated/${instrumentId}/cover-${Date.now()}.png`;
   const up=await admin.storage.from('market-media').upload(path,bytes,{contentType:'image/png',upsert:false}); if(up.error) return json({error:'Generated image could not be stored',detail:up.error.message},500);
-  const set=await admin.rpc('admin_set_market_generated_media',{p_instrument_public_id:instrumentId,p_media_path:path,p_provider:'CLOUDFLARE_WORKERS_AI',p_model:model,p_prompt:prompt}); if(set.error) return json({error:'Generated image could not be attached',detail:set.error.message},500);
+  const set=await userClient.rpc('admin_set_market_generated_media',{p_instrument_public_id:instrumentId,p_media_path:path,p_provider:'CLOUDFLARE_WORKERS_AI',p_model:model,p_prompt:prompt}); if(set.error) return json({error:'Generated image could not be attached',detail:set.error.message},500);
   return json({ok:true,mediaPath:path,model});
  }catch(error){return json({error:error instanceof Error?error.message:'Unexpected image generation error'},500)}
 });
