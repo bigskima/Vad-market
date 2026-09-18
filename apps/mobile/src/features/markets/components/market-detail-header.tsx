@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Image, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
@@ -9,7 +9,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { assetMoney, probability } from '../format';
-import { MarketProbabilityBar } from './market-probability-bar';
+import { MarketProbabilityBar } from './market-probability-bar';\nimport { supabase } from '@/lib/supabase';
 
 export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
@@ -20,7 +20,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const isPool = market.liquidity_mode === 'POOL';
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
-  const hasSignal = market.yes_price != null || market.no_price != null;
+  const hasSignal = market.yes_price != null || market.no_price != null;\n  const imageUrl = market.media_path ? supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl : null;
 
   return (
     <View style={{ gap: theme.spacing.sm }}>
@@ -32,7 +32,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <VadText variant="caption" tone="secondary">{market.category ?? 'General'}</VadText>
       </View>
 
-      <View style={{ gap: 3 }}>
+      {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={`${market.title} market image`} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} resizeMode="cover" /> : null}\n\n      <View style={{ gap: 3 }}>
         <VadText variant="caption" tone="tertiary">MARKET</VadText>
         <VadText variant={density.compact ? 'heading' : 'title'}>{market.title}</VadText>
       </View>
