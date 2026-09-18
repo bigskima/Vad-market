@@ -34,6 +34,5 @@ where public_id='e63d82f5-3026-428b-a05e-1166a61f50b2';
 
 update oracle.policies p
 set consensus_rule = p.consensus_rule
-  || jsonb_build_object('finalization_mode','AUTO_AFTER_DISPUTE_WINDOW','min_agreeing_providers',1),
-  updated_at=statement_timestamp()
+  || jsonb_build_object('finalization_mode','AUTO_AFTER_DISPUTE_WINDOW','min_agreeing_providers',1)
 where p.public_id='da18a5f7-ab70-4c98-99f4-83bd5b68fe05';
