@@ -64,7 +64,17 @@ export type LegislativeAdjournmentSpec = {
   timeZone: string;
 };
 
-export type ResolverSpec = CryptoThresholdSpec | FootballResultSpec | LegislativeAdjournmentSpec;
+export type ResolverSpec = CryptoThresholdSpec | FootballResultSpec |export type PublicRecordSpec = {
+  resolverType: 'PUBLIC_RECORD_RULE_V1';
+  operator: 'BEFORE_OR_AT' | 'AFTER' | 'EQUALS' | 'CONTAINS' | 'EXISTS';
+  field?: string | null;
+  expected?: string | number | boolean | null;
+  cutoff?: string | null;
+  timeZone?: string | null;
+  recordDate?: string | null;
+};
+
+export type ResolverSpec = CryptoThresholdSpec | FootballResultSpec | PublicRecordSpec;
 
 export type ProviderObservation = {
   observedOutcome: 'YES' | 'NO';
