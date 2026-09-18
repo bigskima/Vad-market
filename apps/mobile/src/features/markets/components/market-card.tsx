@@ -8,7 +8,8 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
-import { probability } from '../format';\nimport { supabase } from '@/lib/supabase';
+import { probability } from '../format';
+import { supabase } from '@/lib/supabase';
 import { MarketProbabilityBar } from './market-probability-bar';
 
 export function MarketCard({
