@@ -9,6 +9,7 @@ import {
 } from './types.ts';
 import { resolveCryptoWithProvider } from './providers.ts';
 import { resolveFootballFixtureWithProvider } from './football.ts';
+import { resolveLegislativeAdjournment } from './public-record.ts';
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -97,6 +98,33 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
     };
   }
 
+  if (resolverType === 'LEGISLATIVE_SESSION_ADJOURNMENT_V1' || resolverType === 'VAD_REVIEW_V1') {
+    const conditionText = typeof scope.condition === 'string' ? scope.condition : '';
+    const date = stringValue(scope.legislative_date, scope.legislativeDate)
+      ?? conditionText.match(/(20\d{2})-(\d{2})-(\d{2})/)?.[0]
+      ?? (conditionText.match(/September\s+(\d{1,2}),\s*(20\d{2})/i)
+        ? (() => {
+            const m = conditionText.match(/September\s+(\d{1,2}),\s*(20\d{2})/i)!;
+            return `${m[2]}-09-${m[1].padStart(2, '0')}`;
+          })()
+        : null);
+    const cutoff = stringValue(scope.cutoff_local_time, scope.cutoffLocalTime)
+      ?? (() => {
+        const m = conditionText.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+        return m ? `${m[1]}:${m[2]} ${m[3].toUpperCase()}` : null;
+      })();
+    const eventType = stringValue(scope.event_type, scope.eventType)?.toUpperCase();
+    if (eventType !== 'LEGISLATIVE_SESSION_ADJOURNMENT' || !date || !cutoff) {
+      throw new OracleRuntimeError('RESOLVER_UNSUPPORTED', 'VAD review markets require a supported structured public-record event type', 422);
+    }
+    return {
+      resolverType: 'LEGISLATIVE_SESSION_ADJOURNMENT_V1',
+      legislativeDate: date,
+      cutoffLocalTime: cutoff,
+      timeZone: stringValue(scope.timezone, scope.time_zone, 'America/New_York')!,
+    };
+  }
+
   throw new OracleRuntimeError(
     'RESOLVER_UNSUPPORTED',
     'This market does not yet have a deterministic VAD resolver specification',
@@ -105,9 +133,9 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
 }
 
 function requiredCapability(spec: ResolverSpec) {
-  return spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1'
-    ? 'CRYPTO_PRICE_THRESHOLD'
-    : 'FOOTBALL_MATCH_RESULT';
+  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') return 'CRYPTO_PRICE_THRESHOLD';
+  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') return 'FOOTBALL_MATCH_RESULT';
+  return 'LEGISLATIVE_SESSION_ADJOURNMENT';
 }
 
 function policyProviderCodes(sourceHierarchy: unknown, knownProviderCodes: Set<string>) {
@@ -145,8 +173,13 @@ export function resourceFor(provider: OracleProvider, event: DueOracleEvent, spe
       resource.status === 'ACTIVE' && resource.resourceType === 'CRYPTO_PAIR' && resource.canonicalKey.toUpperCase() === canonicalKey,
     ) ?? null;
   }
+  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
+    return provider.resources.find((resource) =>
+      resource.status === 'ACTIVE' && resource.resourceType === 'CANONICAL_EVENT' && resource.canonicalKey === event.eventPublicId,
+    ) ?? null;
+  }
   return provider.resources.find((resource) =>
-    resource.status === 'ACTIVE' && resource.resourceType === 'CANONICAL_EVENT' && resource.canonicalKey === event.eventPublicId,
+    resource.status === 'ACTIVE' && resource.resourceType === 'PUBLIC_EVENT' && resource.canonicalKey === event.eventPublicId,
   ) ?? null;
 }
 
@@ -158,5 +191,8 @@ export async function resolveWithProvider(
   if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') {
     return resolveCryptoWithProvider(provider, resource, spec);
   }
-  return resolveFootballFixtureWithProvider(provider, resource, spec);
+  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
+    return resolveFootballFixtureWithProvider(provider, resource, spec);
+  }
+  return resolveLegislativeAdjournment(resource, spec);
 }
