@@ -256,3 +256,11 @@ export async function decideAdminMarketProposalSimple(input: {
   fail(error, 'We could not save this proposal decision right now.');
   return Boolean(data);
 }
+
+
+export async function generateAdminMarketImage(input: { instrumentId: string; title: string; category: string }) {
+  const { data, error } = await supabase.functions.invoke('market-image-runtime', { body: input });
+  fail(error, 'We could not generate the market image right now.');
+  if (data?.error) throw new Error(String(data.error));
+  return data as { ok: boolean; mediaPath: string; model: string };
+}
