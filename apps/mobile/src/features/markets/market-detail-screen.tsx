@@ -7,6 +7,7 @@ import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
+import { AssistantEntry } from '@/features/assistant/assistant-entry';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
 import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -83,6 +84,17 @@ export function MarketDetailScreen({
   return (
     <View style={{ gap: density.sectionGap }}>
       <MarketDetailHeader market={market} />
+
+      <AssistantEntry
+        label="Ask AI about this market"
+        detail={market.liquidity_mode === 'POOL'
+          ? 'Understand the question, peer pool, current split, fees, result rules and settlement.'
+          : 'Understand the question, order book, prices, matching, fees, result rules and settlement.'}
+        prompt="Explain this market to me clearly. Tell me what the question asks, whether it is Yes/No or another format, whether it uses Peer Pool or Order Book, how I participate, what the current market signal means, how fees and payouts work, how the result is verified, and what happens at settlement. Use this market’s actual current data."
+        marketId={market.instrument_public_id}
+        sourceRoute="/markets"
+        compact={density.compact}
+      />
 
       <View style={{ gap: theme.spacing.xs }}>
         <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
@@ -238,7 +250,8 @@ function Overview({
           {poolMarket ? <Fact label="Participant pool" value={`${Number(market.total_volume ?? 0).toLocaleString()} ${market.asset_code}`} /> : null}
           {poolMarket ? <Fact label="Participants" value={String(Number(market.participant_count ?? 0))} /> : null}
           <Fact label="Currency" value={market.asset_code} />
-          <Fact label="Type" value={friendlyEnum(market.market_type)} />
+          <Fact label="Market format" value={market.market_type === 'BINARY' ? 'Yes / No' : friendlyEnum(market.market_type)} />
+          <Fact label="Trading method" value={poolMarket ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')} />
           <Fact label={poolMarket ? 'Last stake' : 'Last trade'} value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : poolMarket ? 'No stakes yet' : 'No trades yet'} />
         </VadCard>
       </View>
