@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
@@ -8,7 +8,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
-import { probability } from '../format';
+import { probability } from '../format';\nimport { supabase } from '@/lib/supabase';
 import { MarketProbabilityBar } from './market-probability-bar';
 
 export function MarketCard({
@@ -31,7 +31,7 @@ export function MarketCard({
   const statusTone = isOpen ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral';
   const isPool = market.liquidity_mode === 'POOL';
   const tradingMethod = isPool ? 'PEER POOL' : market.liquidity_mode === 'ORDER_BOOK' ? 'ORDER BOOK' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK');
-  const marketFormat = market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type);
+  const marketFormat = market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type);\n  const imageUrl = market.media_path ? supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl : null;
 
   return (
     <Pressable
