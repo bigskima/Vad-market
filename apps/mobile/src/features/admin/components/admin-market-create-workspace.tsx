@@ -89,7 +89,7 @@ export function AdminMarketCreateWorkspace() {
   const resolvedAssetCode = assetCode || (jurisdiction?.assets.includes('TNGN') ? 'TNGN' : jurisdiction?.assets[0] ?? '');
   const sandbox = resolvedAssetCode === 'TNGN';
   const guided = creationStyle === 'GUIDED' && category !== 'Crypto';
-  const automaticFootball = guided && category === 'Sports' && sportsType === 'MATCH' && resultChecking === 'AUTOMATIC';
+  const automaticFootball = guided && category === 'Sports' && sportsType === 'MATCH' && resultChecking === 'AUTOMATIC';\n  const automaticEvidence = guided && category !== 'Crypto' && !automaticFootball && resultChecking === 'AUTOMATIC';
   const automaticFootballAvailable = sandbox
     ? options?.guided.football.automaticSandboxAvailable === true
     : options?.guided.football.automaticProductionAvailable === true;
@@ -437,6 +437,8 @@ export function AdminMarketCreateWorkspace() {
               <VadText variant="caption" tone="secondary">{automaticFootballAvailable ? 'The provider is called only when the result is due.' : 'Choose Verified result or a supported test currency.'}</VadText>
             </VadCard>
           ) : null}
+
+          {automaticEvidence ? <VadCard variant="muted" style={{ gap: 4 }}><VadText variant="bodyStrong" tone={options?.guided.evidence.automaticAvailable ? 'yes' : 'warning'}>{options?.guided.evidence.automaticAvailable ? 'Automatic evidence route available' : 'Automatic evidence route needs configuration'}</VadText><VadText variant="caption" tone="secondary">{options?.guided.evidence.broadSearchAvailable ? 'Broad evidence discovery is registered. Add TAVILY_API_KEY in Supabase Edge Function secrets for live search; an authoritative HTTPS source can also be used when supplied.' : 'Direct public records remain available when an authoritative HTTPS source is supplied. Add TAVILY_API_KEY to enable broad evidence discovery.'}</VadText></VadCard> : null}
 
           <VadDateTimeField label="Opens" value={opensAt} onChange={setOpensAt} hint="When users can begin trading." />
           <VadDateTimeField label="Closes" value={closesAt} onChange={setClosesAt} minDate={opensAt || undefined} hint={automaticFootball ? 'For match-result markets, close no later than kickoff.' : 'Trading stops at this time.'} />
