@@ -23,12 +23,13 @@ import {
 } from '@/services/user-assistant-api';
 
 const STARTERS = [
-  'How do probabilities work on VAD?',
-  'Explain my wallet balance.',
-  'How do my positions work?',
-  'How does VAD resolve a market?',
-  'Where can I find my open orders?',
-  'Explain the difference between market price and final outcome.',
+  'Explain the market I am viewing and how it works.',
+  'What is the difference between Peer Pool and Order Book?',
+  'How do probabilities and pool percentages work on VAD?',
+  'Explain my wallet balance and recent financial activity.',
+  'How do my positions and open orders work?',
+  'How does VAD resolve and settle a market?',
+  'Explain the difference between market price, pool split and final outcome.',
 ] as const;
 
 type ChatMessage = {
@@ -204,7 +205,7 @@ export function AssistantScreen({
               {initialMarketId ? <VadChip label="Market context" tone="yes" /> : null}
             </View>
             <VadText variant="caption" tone="secondary" numberOfLines={2}>
-              Ask about markets, positions, wallet activity, settlement or how to use VAD.
+              Ask about a specific market, its trading method, positions, wallet activity, fees, settlement or how to use VAD.
             </VadText>
           </View>
         </View>
