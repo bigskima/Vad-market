@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 export type AdminMarketAutoOptions = {
   jurisdictions: { countryCode: string; name: string; assets: string[] }[];
+  tradingMethods: { code: 'POOL' | 'ORDER_BOOK'; name: string; description: string }[];
   guided: {
     verifiedResultAvailable: boolean;
     football: {
@@ -61,6 +62,7 @@ type CreateMarketInput = {
   resolvesAfter: string;
   countryCode: string;
   assetCode: string;
+  liquidityModel: 'POOL' | 'ORDER_BOOK';
   publishNow?: boolean;
 };
 
@@ -74,8 +76,27 @@ export async function getAdminMarketAutoOptions() {
   const raw = (data ?? {}) as Partial<AdminMarketAutoOptions>;
   const guided = raw.guided ?? ({} as Partial<AdminMarketAutoOptions['guided']>);
   const football = guided.football ?? ({} as Partial<AdminMarketAutoOptions['guided']['football']>);
+  const tradingMethods = Array.isArray((raw as Record<string, unknown>).tradingMethods)
+    ? ((raw as Record<string, unknown>).tradingMethods as unknown[])
+        .map((item) => {
+          if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+          const value = item as Record<string, unknown>;
+          const code = String(value.code ?? '').toUpperCase();
+          if (code !== 'POOL' && code !== 'ORDER_BOOK') return null;
+          return {
+            code: code as 'POOL' | 'ORDER_BOOK',
+            name: String(value.name ?? (code === 'POOL' ? 'Peer Pool' : 'Order Book')),
+            description: String(value.description ?? ''),
+          };
+        })
+        .filter((item): item is { code: 'POOL' | 'ORDER_BOOK'; name: string; description: string } => Boolean(item))
+    : [];
   return {
     jurisdictions: Array.isArray(raw.jurisdictions) ? raw.jurisdictions : [],
+    tradingMethods: tradingMethods.length ? tradingMethods : [
+      { code: 'POOL', name: 'Peer Pool', description: 'Users choose YES or NO and commit stakes into a participant-funded pool.' },
+      { code: 'ORDER_BOOK', name: 'Order Book', description: 'Users place buy or sell orders for YES/NO outcome shares at chosen prices and quantities.' },
+    ],
     guided: {
       verifiedResultAvailable: guided.verifiedResultAvailable !== false,
       football: {
@@ -132,7 +153,7 @@ export async function createAdminMarketDraft(input: Omit<CreateMarketInput, 'pub
 }
 
 export async function createAdminCustomMarket(input: CreateMarketInput) {
-  const { data, error } = await supabase.rpc('admin_create_custom_market', {
+  const { data, error } = await supabase.rpc('admin_create_custom_market_v2', {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_category: input.category.trim(),
@@ -141,6 +162,7 @@ export async function createAdminCustomMarket(input: CreateMarketInput) {
     p_resolves_after: input.resolvesAfter,
     p_country_code: input.countryCode,
     p_asset_code: input.assetCode,
+    p_liquidity_model: input.liquidityModel,
     p_publish_now: input.publishNow === true,
   });
   fail(error, 'We could not create this VAD market right now.');
@@ -193,7 +215,7 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
 }
 
 export async function createAdminGuidedMarket(input: CreateMarketInput & { setup: AdminGuidedMarketSetup }) {
-  const { data, error } = await supabase.rpc('admin_create_guided_market_v2', {
+  const { data, error } = await supabase.rpc('admin_create_guided_market_v3', {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_category: input.category.trim(),
@@ -203,6 +225,7 @@ export async function createAdminGuidedMarket(input: CreateMarketInput & { setup
     p_resolves_after: input.resolvesAfter,
     p_country_code: input.countryCode,
     p_asset_code: input.assetCode,
+    p_liquidity_model: input.liquidityModel,
     p_publish_now: input.publishNow === true,
   });
   fail(error, 'We could not create this guided VAD market right now.');
