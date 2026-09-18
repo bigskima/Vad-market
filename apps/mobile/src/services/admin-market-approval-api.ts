@@ -6,7 +6,7 @@ export type AdminMarketAutoOptions = {
   tradingMethods: { code: 'POOL' | 'ORDER_BOOK'; name: string; description: string }[];
   guided: {
     verifiedResultAvailable: boolean;
-    football: {
+    evidence: { automaticAvailable: boolean; broadSearchAvailable: boolean; directPublicRecordAvailable: boolean; automaticSourceName: string; secretName: string; };\n    football: {
       automaticSourceName: string;
       automaticSandboxAvailable: boolean;
       automaticProductionAvailable: boolean;
@@ -71,7 +71,7 @@ function fail(error: { message: string; code?: string; details?: string; hint?: 
 }
 
 export async function getAdminMarketAutoOptions() {
-  const { data, error } = await supabase.rpc('admin_market_approval_options');
+  const { data, error } = await supabase.rpc('admin_market_approval_options_v2');
   fail(error, 'We could not load the available market options right now.');
   const raw = (data ?? {}) as Partial<AdminMarketAutoOptions>;
   const guided = raw.guided ?? ({} as Partial<AdminMarketAutoOptions['guided']>);
@@ -98,7 +98,7 @@ export async function getAdminMarketAutoOptions() {
       { code: 'ORDER_BOOK', name: 'Order Book', description: 'Users place buy or sell orders for YES/NO outcome shares at chosen prices and quantities.' },
     ],
     guided: {
-      verifiedResultAvailable: guided.verifiedResultAvailable !== false,
+      verifiedResultAvailable: guided.verifiedResultAvailable !== false,\n      evidence: {\n        automaticAvailable: (guided as any).evidence?.automaticAvailable === true,\n        broadSearchAvailable: (guided as any).evidence?.broadSearchAvailable === true,\n        directPublicRecordAvailable: (guided as any).evidence?.directPublicRecordAvailable === true,\n        automaticSourceName: String((guided as any).evidence?.automaticSourceName ?? 'VAD Evidence Gateway'),\n        secretName: String((guided as any).evidence?.secretName ?? 'TAVILY_API_KEY'),\n      },
       football: {
         automaticSourceName: String(football.automaticSourceName ?? 'Football-Data.org'),
         automaticSandboxAvailable: football.automaticSandboxAvailable === true,
@@ -187,7 +187,7 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
     return {
       kind: input.kind,
       result_checking: input.resultChecking,
-      player: input.player.trim(),
+      evidence_phrase: input.evidencePhrase?.trim() || null,\n      player: input.player.trim(),
       destination_club: input.destinationClub.trim(),
       source_name: input.sourceName.trim(),
       source_url: input.sourceUrl?.trim() || null,
@@ -197,7 +197,7 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
     return {
       kind: input.kind,
       result_checking: input.resultChecking,
-      country: input.country.trim(),
+      evidence_phrase: input.evidencePhrase?.trim() || null,\n      country: input.country.trim(),
       office: input.office.trim(),
       candidate: input.candidate.trim(),
       election_label: input.electionLabel?.trim() || null,
@@ -208,14 +208,14 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
   return {
     kind: input.kind,
     result_checking: input.resultChecking,
-    condition: input.condition?.trim() || null,
+    evidence_phrase: input.evidencePhrase?.trim() || null,\n    condition: input.condition?.trim() || null,
     source_name: input.sourceName.trim(),
     source_url: input.sourceUrl?.trim() || null,
   };
 }
 
 export async function createAdminGuidedMarket(input: CreateMarketInput & { setup: AdminGuidedMarketSetup }) {
-  const { data, error } = await supabase.rpc('admin_create_guided_market_v3', {
+  const { data, error } = await supabase.rpc('admin_create_guided_market_v4', {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_category: input.category.trim(),
