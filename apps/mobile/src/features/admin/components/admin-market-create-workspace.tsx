@@ -63,7 +63,8 @@ export function AdminMarketCreateWorkspace() {
 
   const [sourceName, setSourceName] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
-  const [resultCondition, setResultCondition] = useState('');\n  const [evidencePhrase, setEvidencePhrase] = useState('');
+  const [resultCondition, setResultCondition] = useState('');
+  const [evidencePhrase, setEvidencePhrase] = useState('');
 
   const [countryCode, setCountryCode] = useState('');
   const [assetCode, setAssetCode] = useState('');
@@ -132,7 +133,8 @@ export function AdminMarketCreateWorkspace() {
     setTitleEdited(false);
     setSourceName('');
     setSourceUrl('');
-    setResultCondition('');\n    setEvidencePhrase('');
+    setResultCondition('');
+    setEvidencePhrase('');
   }
 
   function selectCategory(next: Category) {
@@ -191,9 +193,13 @@ export function AdminMarketCreateWorkspace() {
       if (!matchStartsAt || !Number.isFinite(Date.parse(matchStartsAt))) return setError('Choose when the match starts.');
       if (resultChecking === 'VERIFIED' && !sourceName.trim()) return setError('Add the official result source VAD should use.');
     } else if (category === 'Sports' && sportsType === 'TRANSFER') {
-      if (!player.trim() || !destinationClub.trim()) return setError('Add the player and destination club.');\n      if (resultChecking === 'AUTOMATIC' && evidencePhrase.trim().length < 4) return setError('Add a short evidence phrase that objectively confirms YES.');\n      if (resultChecking === 'VERIFIED' && !sourceName.trim()) return setError('Add the official result source.');
+      if (!player.trim() || !destinationClub.trim()) return setError('Add the player and destination club.');
+      if (resultChecking === 'AUTOMATIC' && evidencePhrase.trim().length < 4) return setError('Add a short evidence phrase that objectively confirms YES.');
+      if (resultChecking === 'VERIFIED' && !sourceName.trim()) return setError('Add the official result source.');
     } else if (category === 'Politics' && politicsType === 'ELECTION') {
-      if (!electionCountry.trim() || !electionOffice.trim() || !candidate.trim()) return setError('Add the country, office and candidate.');\n      if (resultChecking === 'AUTOMATIC' && evidencePhrase.trim().length < 4) return setError('Add a short evidence phrase that objectively confirms YES.');\n      if (resultChecking === 'VERIFIED' && !sourceName.trim()) return setError('Add the official election result source.');
+      if (!electionCountry.trim() || !electionOffice.trim() || !candidate.trim()) return setError('Add the country, office and candidate.');
+      if (resultChecking === 'AUTOMATIC' && evidencePhrase.trim().length < 4) return setError('Add a short evidence phrase that objectively confirms YES.');
+      if (resultChecking === 'VERIFIED' && !sourceName.trim()) return setError('Add the official election result source.');
     } else if (!sourceName.trim()) {
       return setError('Add the authoritative result source VAD should use.');
     }
