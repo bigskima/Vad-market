@@ -8,7 +8,7 @@ Deno.serve(async(req)=>{
  try{
   const supabaseUrl=Deno.env.get('SUPABASE_URL')!; const serviceKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const auth=req.headers.get('Authorization')??''; if(!auth) return json({error:'Authentication required'},401);
-  const admin=createClient(supabaseUrl,serviceKey,{auth:{persistSession:false}}); const token=auth.replace(/^Bearer\s+/i,'');
+  const admin=createClient(supabaseUrl,serviceKey,{auth:{persistSession:false}}); const userClient=createClient(supabaseUrl,Deno.env.get('SUPABASE_ANON_KEY')!,{global:{headers:{Authorization:auth}},auth:{persistSession:false}}); const token=auth.replace(/^Bearer\s+/i,'');
   const {data:{user}}=await admin.auth.getUser(token); if(!user) return json({error:'Authentication required'},401);
   const {data:allowed,error:permissionError}=await admin.rpc('admin_can_manage_markets',{p_user_id:user.id});
   if(permissionError||allowed!==true) return json({error:'Market management permission required'},403);
@@ -23,7 +23,7 @@ Deno.serve(async(req)=>{
   if(!ai.ok) return json({error:'Cloudflare image generation failed',providerStatus:ai.status,detail:(await ai.text()).slice(0,800)},502);
   const payload=await ai.json(); const base64=String(payload?.result?.image||payload?.image||'');
   if(!base64) return json({error:'Cloudflare returned no generated image',code:'IMAGE_PAYLOAD_INVALID'},502);
-  const binary=atob(base64); const bytes=Uint8Array.from(binary,(ch)=>ch.charCodeAt(0)); const path=`generated/${instrumentId}/cover-${Date.now()}.png`;
+  const binary=atob(base64); const bytes=Uint8Array.from(binary,(ch)=>ch.charCodeAt(0)); const path=`generated/${instrumentId}/cover-${Date.now()}.jpg`;
   const up=await admin.storage.from('market-media').upload(path,bytes,{contentType:'image/jpeg',upsert:false}); if(up.error) return json({error:'Generated image could not be stored',detail:up.error.message},500);
   const set=await userClient.rpc('admin_set_market_generated_media',{p_instrument_public_id:instrumentId,p_media_path:path,p_provider:'CLOUDFLARE_WORKERS_AI',p_model:model,p_prompt:prompt}); if(set.error) return json({error:'Generated image could not be attached',detail:set.error.message},500);
   return json({ok:true,mediaPath:path,model});
