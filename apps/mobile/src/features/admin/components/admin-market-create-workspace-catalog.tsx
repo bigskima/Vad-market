@@ -29,6 +29,7 @@ type CreationStyle = 'GUIDED' | 'CUSTOM';
 type ResultChecking = 'AUTOMATIC' | 'VERIFIED';
 type Prediction = 'HOME_WIN' | 'DRAW' | 'AWAY_WIN';
 type PublicationChoice = 'DRAFT' | 'NOW';
+type LiquidityModel = 'POOL' | 'ORDER_BOOK';
 
 function suggestedFromTemplate(template: string, details: Record<string, string>) {
   if (!template.trim()) return '';
@@ -71,6 +72,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   const [countryCode, setCountryCode] = useState('');
   const [assetCode, setAssetCode] = useState('');
+  const [liquidityModel, setLiquidityModel] = useState<LiquidityModel>('POOL');
   const [opensAt, setOpensAt] = useState('');
   const [closesAt, setClosesAt] = useState('');
   const [resolvesAfter, setResolvesAfter] = useState('');
@@ -235,6 +237,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
         resolvesAfter: new Date(resolvesAfter).toISOString(),
         countryCode: resolvedCountryCode,
         assetCode: resolvedAssetCode,
+        liquidityModel,
         publishNow: publicationChoice === 'NOW',
       };
       let result: Record<string, unknown>;
@@ -288,6 +291,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     if (firstCategory?.marketTypes[0]?.handler === 'FOOTBALL_MATCH') setResultChecking('AUTOMATIC');
     setCountryCode('');
     setAssetCode('');
+    setLiquidityModel('POOL');
     setOpensAt('');
     setClosesAt('');
     setResolvesAfter('');
@@ -410,7 +414,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
       {step === 2 ? (
         <VadCard variant="raised" style={{ gap: theme.spacing.lg }}>
-          <SectionTitle eyebrow="STEP 2 · TRADING SETUP" title="Choose currency and timing." text="Use TNGN while validating the complete market lifecycle." />
+          <SectionTitle eyebrow="STEP 2 · TRADING SETUP" title="Choose how this market trades." text="Choose the currency, trading method and timing. Peer Pool and Order Book are available independently of the market currency." />
           {options && options.jurisdictions.length > 1 ? (
             <FieldGroup label="Jurisdiction">
               {options.jurisdictions.map((item) => <VadChip key={item.countryCode} label={item.name} selected={resolvedCountryCode === item.countryCode} onPress={() => { setCountryCode(item.countryCode); setAssetCode(''); }} />)}
@@ -433,6 +437,30 @@ export function AdminMarketCreateWorkspaceCatalog() {
               <VadText variant="caption" tone="secondary">{automaticFootballAvailable ? 'The provider is called only when the result is due.' : 'Choose Verified result or a supported test currency.'}</VadText>
             </VadCard>
           ) : null}
+          <View style={{ gap: 8 }}>
+            <FieldGroup label="Trading method">
+              {(options?.tradingMethods ?? [
+                { code: 'POOL' as const, name: 'Peer Pool', description: '' },
+                { code: 'ORDER_BOOK' as const, name: 'Order Book', description: '' },
+              ]).map((method) => (
+                <VadChip
+                  key={method.code}
+                  label={method.name}
+                  selected={liquidityModel === method.code}
+                  tone={liquidityModel === method.code ? 'brand' : 'neutral'}
+                  onPress={() => { setLiquidityModel(method.code); setError(null); }}
+                />
+              ))}
+            </FieldGroup>
+            <VadCard variant="muted" style={{ gap: 4 }}>
+              <VadText variant="bodyStrong">{liquidityModel === 'POOL' ? 'Peer Pool' : 'Order Book'}</VadText>
+              <VadText variant="caption" tone="secondary">
+                {liquidityModel === 'POOL'
+                  ? 'Users choose YES or NO and commit stakes into a participant-funded pool. Their stake is committed immediately and the estimated payout moves as the pool changes.'
+                  : 'Users trade YES or NO outcome shares by price and quantity. Orders may remain unmatched, fill partly, or fill completely depending on other traders.'}
+              </VadText>
+            </VadCard>
+          </View>
           <VadDateTimeField label="Opens" value={opensAt} onChange={setOpensAt} hint="When users can begin trading." />
           <VadDateTimeField label="Closes" value={closesAt} onChange={setClosesAt} minDate={opensAt || undefined} hint={automaticFootball ? 'For match-result markets, close no later than kickoff.' : 'Trading stops at this time.'} />
           <VadDateTimeField label="Check result after" value={resolvesAfter} onChange={setResolvesAfter} minDate={closesAt || opensAt || undefined} hint={automaticFootball ? 'At least two hours after kickoff so VAD waits for a final result.' : 'VAD begins result verification from this time.'} />
@@ -453,6 +481,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
           {football ? <ReviewRow label="Match" value={`${homeTeam} vs ${awayTeam} · ${competition}`} /> : null}
           {football && matchStartsAt ? <ReviewRow label="Kickoff" value={new Date(matchStartsAt).toLocaleString()} /> : null}
           <ReviewRow label="Currency" value={sandbox ? 'TNGN · Sandbox' : resolvedAssetCode} />
+          <ReviewRow label="Market format" value="Yes / No" />
+          <ReviewRow label="Trading method" value={liquidityModel === 'POOL' ? 'Peer Pool' : 'Order Book'} />
           <ReviewRow label="Result checking" value={resultLabel} />
           <ReviewRow label="Opens" value={new Date(opensAt).toLocaleString()} />
           <ReviewRow label="Closes" value={new Date(closesAt).toLocaleString()} />
