@@ -98,14 +98,14 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
     };
   }
 
-  if (resolverType === 'PUBLIC_RECORD_RULE_V1' || resolverType === 'VAD_REVIEW_V1' || resolverType === 'LEGISLATIVE_SESSION_ADJOURNMENT_V1') {
+  if (resolverType === 'PUBLIC_RECORD_RULE_V1') {
     const rule = isRecord(scope.rule) ? scope.rule : {};
     const legacyCondition = typeof scope.condition === 'string' ? scope.condition : '';
-    const operator = stringValue(rule.operator, scope.operator, resolverType === 'LEGISLATIVE_SESSION_ADJOURNMENT_V1' ? 'BEFORE_OR_AT' : null)?.toUpperCase();
-    const field = stringValue(rule.field, rule.field_pattern, scope.field_pattern, resolverType === 'LEGISLATIVE_SESSION_ADJOURNMENT_V1' ? 'adjourned\\s+at\\s+(\\d{1,2}:\\d{2}\\s*(?:a\\.?m\\.?|p\\.?m\\.?))' : null);
+    const operator = stringValue(rule.operator, scope.operator)?.toUpperCase();
+    const field = stringValue(rule.field, rule.field_pattern, scope.field_pattern);
     const cutoff = stringValue(rule.cutoff, scope.cutoff_local_time, scope.cutoffLocalTime) ?? legacyCondition.match(/(\d{1,2}:\d{2}\s*(?:AM|PM))/i)?.[1] ?? null;
     if (!['BEFORE_OR_AT','AFTER','EQUALS','CONTAINS','EXISTS'].includes(String(operator))) throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID','Public-record rule requires a supported deterministic operator',422);
-    return { resolverType:'PUBLIC_RECORD_RULE_V1', operator:operator as 'BEFORE_OR_AT'|'AFTER'|'EQUALS'|'CONTAINS'|'EXISTS', field, expected:(rule.expected as string|number|boolean|null) ?? null, cutoff, timeZone:stringValue(rule.timezone,scope.timezone,scope.time_zone), recordDate:stringValue(rule.record_date,scope.record_date,scope.legislative_date) };
+    return { resolverType:'PUBLIC_RECORD_RULE_V1', operator:operator as 'BEFORE_OR_AT'|'AFTER'|'EQUALS'|'CONTAINS'|'EXISTS', field, expected:(rule.expected as string|number|boolean|null) ?? null, cutoff, timeZone:stringValue(rule.timezone,scope.timezone,scope.time_zone), recordDate:stringValue(rule.record_date,scope.record_date) };
   }
 
 
