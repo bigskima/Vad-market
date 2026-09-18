@@ -9,7 +9,7 @@ import {
 } from './types.ts';
 import { resolveCryptoWithProvider } from './providers.ts';
 import { resolveFootballFixtureWithProvider } from './football.ts';
-import { resolveLegislativeAdjournment } from './public-record.ts';
+import { resolvePublicRecord } from './public-record.ts';
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -98,101 +98,18 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
     };
   }
 
-  if (resolverType === 'LEGISLATIVE_SESSION_ADJOURNMENT_V1' || resolverType === 'VAD_REVIEW_V1') {
-    const conditionText = typeof scope.condition === 'string' ? scope.condition : '';
-    const date = stringValue(scope.legislative_date, scope.legislativeDate)
-      ?? conditionText.match(/(20\d{2})-(\d{2})-(\d{2})/)?.[0]
-      ?? (conditionText.match(/September\s+(\d{1,2}),\s*(20\d{2})/i)
-        ? (() => {
-            const m = conditionText.match(/September\s+(\d{1,2}),\s*(20\d{2})/i)!;
-            return `${m[2]}-09-${m[1].padStart(2, '0')}`;
-          })()
-        : null);
-    const cutoff = stringValue(scope.cutoff_local_time, scope.cutoffLocalTime)
-      ?? (() => {
-        const m = conditionText.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-        return m ? `${m[1]}:${m[2]} ${m[3].toUpperCase()}` : null;
-      })();
-    const eventType = stringValue(scope.event_type, scope.eventType)?.toUpperCase();
-    if (eventType !== 'LEGISLATIVE_SESSION_ADJOURNMENT' || !date || !cutoff) {
-      throw new OracleRuntimeError('RESOLVER_UNSUPPORTED', 'VAD review markets require a supported structured public-record event type', 422);
+  if (resolverType === 'PUBLIC_RECORD_RULE_V1' || resolverType === 'VAD_REVIEW_V1' || resolverType === 'LEGISLATIVE_SESSION_ADJOURNMENT_V1') {
+    const rule = isRecord(scope.rule) ? scope.rule : {};
+    const legacyCondition = typeof scope.condition === 'string' ? scope.condition : '';
+    const operator = stringValue(rule.operator, scope.operator,
+      resolverType === 'LEGISLATIVE_SESSION_ADJOURNMENT_V1' ? 'BEFORE_OR_AT' : null)?.toUpperCase();
+    const field = stringValue(rule.field, rule.field_pattern, scope.field_pattern,
+      resolverType === 'LEGISLATIVE_SESSION_ADJOURNMENT_V1' ? 'adjourned\\s+at\\s+(\\d{1,2}:\\d{2}\\s*(?:a\\.?m\\.?|p\\.?m\\.?))' : null);
+    const cutoff = stringValue(rule.cutoff, scope.cutoff_local_time, scope.cutoffLocalTime)
+      ?? legacyCondition.match(/(\d{1,2}:\d{2}\s*(?:AM|PM))/i)?.[1] ?? null;
+    if (!['BEFORE_OR_AT','AFTER','EQUALS','CONTAINS','EXISTS'].includes(String(operator))) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID','Public-record rule requires a supported deterministic operator',422);
     }
-    return {
-      resolverType: 'LEGISLATIVE_SESSION_ADJOURNMENT_V1',
-      legislativeDate: date,
-      cutoffLocalTime: cutoff,
-      timeZone: stringValue(scope.timezone, scope.time_zone, 'America/New_York')!,
-    };
+    return { resolverType:'PUBLIC_RECORD_RULE_V1', operator:operator as any, field, expected:rule.expected as any ?? null,
+      cutoff, timeZone:stringValue(rule.timezone,scope.timezone,scope.time_zone), recordDate:stringValue(rule.record_date,scope.record_date,scope.legislative_date) };
   }
-
-  throw new OracleRuntimeError(
-    'RESOLVER_UNSUPPORTED',
-    'This market does not yet have a deterministic VAD resolver specification',
-    422,
-  );
-}
-
-function requiredCapability(spec: ResolverSpec) {
-  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') return 'CRYPTO_PRICE_THRESHOLD';
-  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') return 'FOOTBALL_MATCH_RESULT';
-  return 'LEGISLATIVE_SESSION_ADJOURNMENT';
-}
-
-function policyProviderCodes(sourceHierarchy: unknown, knownProviderCodes: Set<string>) {
-  if (!Array.isArray(sourceHierarchy)) return new Set<string>();
-  const selected = new Set<string>();
-  for (const entry of sourceHierarchy) {
-    const candidate = typeof entry === 'string'
-      ? entry
-      : isRecord(entry)
-        ? stringValue(entry.provider_code, entry.providerCode, entry.code)
-        : null;
-    if (!candidate) continue;
-    const normalized = candidate.toUpperCase();
-    if (knownProviderCodes.has(normalized)) selected.add(normalized);
-  }
-  return selected;
-}
-
-export function eligibleProviders(event: DueOracleEvent, spec: ResolverSpec, providers: OracleProvider[]) {
-  const knownCodes = new Set(providers.map((provider) => provider.code.toUpperCase()));
-  const policyCodes = policyProviderCodes(event.sourceHierarchy, knownCodes);
-  const capability = requiredCapability(spec);
-  return providers
-    .filter((provider) => provider.environment === 'PRODUCTION')
-    .filter((provider) => ['ACTIVE','DEGRADED'].includes(provider.status))
-    .filter((provider) => provider.capabilities.map((item) => String(item).toUpperCase()).includes(capability))
-    .filter((provider) => policyCodes.size === 0 || policyCodes.has(provider.code.toUpperCase()))
-    .sort((a, b) => a.priority - b.priority || a.code.localeCompare(b.code));
-}
-
-export function resourceFor(provider: OracleProvider, event: DueOracleEvent, spec: ResolverSpec): OracleResource | null {
-  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') {
-    const canonicalKey = `${spec.asset}/${spec.quote}`;
-    return provider.resources.find((resource) =>
-      resource.status === 'ACTIVE' && resource.resourceType === 'CRYPTO_PAIR' && resource.canonicalKey.toUpperCase() === canonicalKey,
-    ) ?? null;
-  }
-  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
-    return provider.resources.find((resource) =>
-      resource.status === 'ACTIVE' && resource.resourceType === 'CANONICAL_EVENT' && resource.canonicalKey === event.eventPublicId,
-    ) ?? null;
-  }
-  return provider.resources.find((resource) =>
-    resource.status === 'ACTIVE' && resource.resourceType === 'PUBLIC_EVENT' && resource.canonicalKey === event.eventPublicId,
-  ) ?? null;
-}
-
-export async function resolveWithProvider(
-  provider: OracleProvider,
-  resource: OracleResource,
-  spec: ResolverSpec,
-): Promise<ProviderResolutionResult> {
-  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') {
-    return resolveCryptoWithProvider(provider, resource, spec);
-  }
-  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
-    return resolveFootballFixtureWithProvider(provider, resource, spec);
-  }
-  return resolveLegislativeAdjournment(resource, spec);
-}
