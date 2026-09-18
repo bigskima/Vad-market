@@ -14,8 +14,8 @@ Deno.serve(async(req)=>{
   if(permissionError||allowed!==true) return json({error:'Market management permission required'},403);
   const body=await req.json(); const instrumentId=String(body.instrumentId??''); const title=String(body.title??'').trim(); const category=String(body.category??'General').trim();
   if(!instrumentId||!title) return json({error:'instrumentId and title are required'},400);
-  const accountId=Deno.env.get('CLOUDFLARE_ACCOUNT_ID'); const apiToken=Deno.env.get('CLOUDFLARE_API_TOKEN');
-  if(!accountId||!apiToken) return json({error:'Cloudflare image generation is not configured',code:'CLOUDFLARE_NOT_CONFIGURED'},503);
+  const {data:provider}=await admin.schema('integration').from('providers').select('secret_reference,public_metadata').eq('code','CLOUDFLARE_WORKERS_AI').eq('environment','PRODUCTION').in('status',['ACTIVE','DEGRADED']).maybeSingle();\n  const accountId=String(provider?.public_metadata?.account_id||'').trim(); const secretName=String(provider?.secret_reference||'VAD_AI_CLOUDFLARE_API_TOKEN').trim(); const apiToken=Deno.env.get(secretName);
+  if(!accountId||!apiToken) return json({error:'Cloudflare image generation is not configured',code:'CLOUDFLARE_NOT_CONFIGURED',secretName},503);
   const model=Deno.env.get('CLOUDFLARE_IMAGE_MODEL')||'@cf/black-forest-labs/flux-1-schnell';
   const prompt=`Editorial prediction-market cover image for: "${title}". Category: ${category}. Create one clean, recognizable visual centered on the primary company, person, team, institution, asset, place, or event named in the question. If a famous brand such as Apple is central, evoke its recognizable product/brand context without inventing claims. No odds, no YES/NO buttons, no prices, no misleading news headline, minimal or no text, premium financial-news aesthetic, 16:9 composition.`;
   const ai=await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,{method:'POST',headers:{Authorization:`Bearer ${apiToken}`,'Content-Type':'application/json'},body:JSON.stringify({prompt,num_steps:4,width:1024,height:576})});
