@@ -367,12 +367,11 @@ export function AdminMarketCreateWorkspace() {
                 <View style={{ gap: theme.spacing.md }}>
                   <VadInput label="Player" value={player} onChangeText={setPlayer} placeholder="Player name" />
                   <VadInput label="Destination club" value={destinationClub} onChangeText={setDestinationClub} placeholder="Club name" />
-                  <VadCard variant="muted" style={{ gap: 4 }}><VadText variant="bodyStrong">Verified result</VadText><VadText variant="caption" tone="secondary">Choose the official source VAD should use to verify whether the transfer becomes official.</VadText></VadCard>
-                  <SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
+                  <GenericEvidenceControls resultChecking={resultChecking} setResultChecking={setResultChecking} evidencePhrase={evidencePhrase} setEvidencePhrase={setEvidencePhrase} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} automaticAvailable={options?.guided.evidence.automaticAvailable === true} />
                 </View>
               ) : null}
 
-              {sportsType === 'OTHER' ? <ObjectiveSourceFields condition={resultCondition} setCondition={setResultCondition} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} /> : null}
+              {sportsType === 'OTHER' ? <ObjectiveSourceFields condition={resultCondition} setCondition={setResultCondition} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} resultChecking={resultChecking} setResultChecking={setResultChecking} evidencePhrase={evidencePhrase} setEvidencePhrase={setEvidencePhrase} automaticAvailable={options?.guided.evidence.automaticAvailable === true} /> : null}
             </View>
           ) : null}
 
@@ -388,15 +387,14 @@ export function AdminMarketCreateWorkspace() {
                   <VadInput label="Office" value={electionOffice} onChangeText={setElectionOffice} placeholder="President" />
                   <VadInput label="Candidate" value={candidate} onChangeText={setCandidate} placeholder="Candidate name" />
                   <VadInput label="Election name · optional" value={electionLabel} onChangeText={(value) => { setElectionLabel(value); setTitleEdited(false); }} placeholder="2027 presidential election" />
-                  <VadCard variant="muted" style={{ gap: 4 }}><VadText variant="bodyStrong">Verified official result</VadText><VadText variant="caption" tone="secondary">VAD will use the official result source you configure. No election outcome is assumed or predicted by the system.</VadText></VadCard>
-                  <SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} sourceLabel="Official election result source" />
+                  <GenericEvidenceControls resultChecking={resultChecking} setResultChecking={setResultChecking} evidencePhrase={evidencePhrase} setEvidencePhrase={setEvidencePhrase} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} automaticAvailable={options?.guided.evidence.automaticAvailable === true} />
                 </View>
-              ) : <ObjectiveSourceFields condition={resultCondition} setCondition={setResultCondition} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />}
+              ) : <ObjectiveSourceFields condition={resultCondition} setCondition={setResultCondition} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} resultChecking={resultChecking} setResultChecking={setResultChecking} evidencePhrase={evidencePhrase} setEvidencePhrase={setEvidencePhrase} automaticAvailable={options?.guided.evidence.automaticAvailable === true} />}
             </View>
           ) : null}
 
           {guided && category === 'Crypto' ? <VadCard variant="muted"><VadText tone="secondary">Existing crypto question-based automation is preserved. Nothing in this guided upgrade replaces it.</VadText></VadCard> : null}
-          {guided && !['Sports', 'Politics', 'Crypto'].includes(category) ? <ObjectiveSourceFields condition={resultCondition} setCondition={setResultCondition} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} /> : null}
+          {guided && !['Sports', 'Politics', 'Crypto'].includes(category) ? <ObjectiveSourceFields condition={resultCondition} setCondition={setResultCondition} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} resultChecking={resultChecking} setResultChecking={setResultChecking} evidencePhrase={evidencePhrase} setEvidencePhrase={setEvidencePhrase} automaticAvailable={options?.guided.evidence.automaticAvailable === true} /> : null}
 
           <VadInput label="Market question" value={title} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a clear YES/NO question from the details above. You can edit it.' : 'Write one clear YES/NO question.'} />
           <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
@@ -486,6 +484,10 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
 
 function SourceFields({ sourceName, sourceUrl, setSourceName, setSourceUrl, sourceLabel = 'Official result source' }: { sourceName: string; sourceUrl: string; setSourceName: (value: string) => void; setSourceUrl: (value: string) => void; sourceLabel?: string }) {
   return <View style={{ gap: 12 }}><VadInput label={sourceLabel} value={sourceName} onChangeText={setSourceName} placeholder="Official league, club, authority or trusted source" /><VadInput label="Source website · optional" value={sourceUrl} onChangeText={setSourceUrl} placeholder="https://…" hint="Use the official or authoritative website when available." /></View>;
+}
+
+function GenericEvidenceControls({ resultChecking, setResultChecking, evidencePhrase, setEvidencePhrase, sourceName, sourceUrl, setSourceName, setSourceUrl, automaticAvailable }: { resultChecking: ResultChecking; setResultChecking: (value: ResultChecking) => void; evidencePhrase: string; setEvidencePhrase: (value: string) => void; sourceName: string; sourceUrl: string; setSourceName: (value: string) => void; setSourceUrl: (value: string) => void; automaticAvailable: boolean }) {
+  return <View style={{ gap: 12 }}><FieldGroup label="Result checking"><VadChip label="Automatic evidence" selected={resultChecking === 'AUTOMATIC'} tone={resultChecking === 'AUTOMATIC' ? 'brand' : 'neutral'} onPress={() => setResultChecking('AUTOMATIC')} /><VadChip label="Verified result" selected={resultChecking === 'VERIFIED'} tone={resultChecking === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => setResultChecking('VERIFIED')} /></FieldGroup>{resultChecking === 'AUTOMATIC' ? <><VadCard variant="muted" style={{ gap: 4 }}><VadText variant="bodyStrong" tone={automaticAvailable ? 'yes' : 'warning'}>{automaticAvailable ? 'VAD Evidence Gateway ready' : 'Automatic evidence route needs attention'}</VadText><VadText variant="caption" tone="secondary">VAD checks an authoritative URL when supplied and can use the broad evidence provider as fallback. Settlement still passes through the existing oracle consensus and dispute workflow.</VadText></VadCard><VadInput label="Evidence phrase that confirms YES" value={evidencePhrase} onChangeText={setEvidencePhrase} placeholder="e.g. officially declared winner" hint="Use a short objective phrase expected in the final evidence." /><SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} sourceLabel="Preferred authoritative source · optional" /></> : <SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />}</View>;
 }
 
 function ObjectiveSourceFields({ condition, setCondition, sourceName, sourceUrl, setSourceName, setSourceUrl }: { condition: string; setCondition: (value: string) => void; sourceName: string; sourceUrl: string; setSourceName: (value: string) => void; setSourceUrl: (value: string) => void }) {
