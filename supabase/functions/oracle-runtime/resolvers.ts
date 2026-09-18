@@ -176,4 +176,5 @@ export async function resolveWithProvider(
   if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
     return resolveFootballFixtureWithProvider(provider, resource, spec);
   }
-  return resolvePublicRecord(resource, spec);\n}\n
+  return resolvePublicRecord(resource, spec);
+}
