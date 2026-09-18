@@ -7,6 +7,8 @@ export type AdminMarketPublicationRow = {
   title: string;
   category: string;
   asset_code: string;
+  market_type: string;
+  liquidity_model: string;
   instrument_status: string;
   event_status: string;
   opens_at: string | null;
@@ -98,7 +100,7 @@ async function publishOnce(input: {
 }
 
 export async function getAdminMarketPublicationQueue() {
-  const { data, error } = await supabase.rpc('admin_market_publication_queue_v2');
+  const { data, error } = await supabase.rpc('admin_market_publication_queue_v3');
   fail(error, 'We could not load the market publishing workspace right now. Refresh and try again.');
   return (data ?? []) as AdminMarketPublicationRow[];
 }
