@@ -36,7 +36,10 @@ async function evidenceText(resource: OracleResource, spec: PublicRecordSpec, pr
   const contentType=response.headers.get('content-type')||''; return {text:contentType.includes('html')?cleanHtml(raw):raw.replace(/\s+/g,' ').trim(),url:url.toString(),source:'DIRECT_PUBLIC_RECORD'};
 }
 export async function resolvePublicRecord(resource: OracleResource,spec: PublicRecordSpec,provider?: OracleProvider): Promise<ProviderResolutionResult>{
-  const evidence=await evidenceText(resource,spec,provider);\n  if(!evidence) return {kind:'skipped',code:'EVIDENCE_NOT_FOUND',detail:'No suitable evidence source was found'};\n  const text=evidence.text;\n  if(!text) return {kind:'skipped',code:'OFFICIAL_RECORD_NOT_PUBLISHED',detail:'Evidence source returned no usable record'};
+  const evidence=await evidenceText(resource,spec,provider);
+  if(!evidence) return {kind:'skipped',code:'EVIDENCE_NOT_FOUND',detail:'No suitable evidence source was found'};
+  const text=evidence.text;
+  if(!text) return {kind:'skipped',code:'OFFICIAL_RECORD_NOT_PUBLISHED',detail:'Evidence source returned no usable record'};
 
   const field=(spec.field||resource.metadata?.field_pattern||'').toString();
   const pattern=field ? new RegExp(field,'i') : null;
