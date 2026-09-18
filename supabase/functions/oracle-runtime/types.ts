@@ -57,7 +57,14 @@ export type FootballResultSpec = {
   condition: 'HOME_WIN' | 'AWAY_WIN' | 'DRAW';
 };
 
-export type ResolverSpec = CryptoThresholdSpec | FootballResultSpec;
+export type LegislativeAdjournmentSpec = {
+  resolverType: 'LEGISLATIVE_SESSION_ADJOURNMENT_V1';
+  legislativeDate: string;
+  cutoffLocalTime: string;
+  timeZone: string;
+};
+
+export type ResolverSpec = CryptoThresholdSpec | FootballResultSpec | LegislativeAdjournmentSpec;
 
 export type ProviderObservation = {
   observedOutcome: 'YES' | 'NO';
