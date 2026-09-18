@@ -62,7 +62,7 @@ type CreateMarketInput = {
   resolvesAfter: string;
   countryCode: string;
   assetCode: string;
-  liquidityModel: 'POOL' | 'ORDER_BOOK';
+  liquidityModel?: 'POOL' | 'ORDER_BOOK';
   publishNow?: boolean;
 };
 
@@ -162,7 +162,7 @@ export async function createAdminCustomMarket(input: CreateMarketInput) {
     p_resolves_after: input.resolvesAfter,
     p_country_code: input.countryCode,
     p_asset_code: input.assetCode,
-    p_liquidity_model: input.liquidityModel,
+    p_liquidity_model: input.liquidityModel ?? 'POOL',
     p_publish_now: input.publishNow === true,
   });
   fail(error, 'We could not create this VAD market right now.');
@@ -225,7 +225,7 @@ export async function createAdminGuidedMarket(input: CreateMarketInput & { setup
     p_resolves_after: input.resolvesAfter,
     p_country_code: input.countryCode,
     p_asset_code: input.assetCode,
-    p_liquidity_model: input.liquidityModel,
+    p_liquidity_model: input.liquidityModel ?? 'POOL',
     p_publish_now: input.publishNow === true,
   });
   fail(error, 'We could not create this guided VAD market right now.');
