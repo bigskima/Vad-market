@@ -170,4 +170,67 @@ export async function resolveWithProvider(
     return resolveFootballFixtureWithProvider(provider, resource, spec);
   }
   return resolvePublicRecord(resource, spec);
+}  }\n\n  throw new OracleRuntimeError('RESOLVER_UNSUPPORTED','This market does not yet have a deterministic VAD resolver specification',422);\n}\n\nfunction requiredCapability(spec: ResolverSpec) {
+  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') return 'CRYPTO_PRICE_THRESHOLD';
+  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') return 'FOOTBALL_MATCH_RESULT';
+  return 'PUBLIC_RECORD_EVIDENCE';
+}
+
+function policyProviderCodes(sourceHierarchy: unknown, knownProviderCodes: Set<string>) {
+  if (!Array.isArray(sourceHierarchy)) return new Set<string>();
+  const selected = new Set<string>();
+  for (const entry of sourceHierarchy) {
+    const candidate = typeof entry === 'string'
+      ? entry
+      : isRecord(entry)
+        ? stringValue(entry.provider_code, entry.providerCode, entry.code)
+        : null;
+    if (!candidate) continue;
+    const normalized = candidate.toUpperCase();
+    if (knownProviderCodes.has(normalized)) selected.add(normalized);
+  }
+  return selected;
+}
+
+export function eligibleProviders(event: DueOracleEvent, spec: ResolverSpec, providers: OracleProvider[]) {
+  const knownCodes = new Set(providers.map((provider) => provider.code.toUpperCase()));
+  const policyCodes = policyProviderCodes(event.sourceHierarchy, knownCodes);
+  const capability = requiredCapability(spec);
+  return providers
+    .filter((provider) => provider.environment === 'PRODUCTION')
+    .filter((provider) => ['ACTIVE','DEGRADED'].includes(provider.status))
+    .filter((provider) => provider.capabilities.map((item) => String(item).toUpperCase()).includes(capability))
+    .filter((provider) => policyCodes.size === 0 || policyCodes.has(provider.code.toUpperCase()))
+    .sort((a, b) => a.priority - b.priority || a.code.localeCompare(b.code));
+}
+
+export function resourceFor(provider: OracleProvider, event: DueOracleEvent, spec: ResolverSpec): OracleResource | null {
+  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') {
+    const canonicalKey = `${spec.asset}/${spec.quote}`;
+    return provider.resources.find((resource) =>
+      resource.status === 'ACTIVE' && resource.resourceType === 'CRYPTO_PAIR' && resource.canonicalKey.toUpperCase() === canonicalKey,
+    ) ?? null;
+  }
+  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
+    return provider.resources.find((resource) =>
+      resource.status === 'ACTIVE' && resource.resourceType === 'CANONICAL_EVENT' && resource.canonicalKey === event.eventPublicId,
+    ) ?? null;
+  }
+  return provider.resources.find((resource) =>
+    resource.status === 'ACTIVE' && resource.resourceType === 'PUBLIC_EVENT' && resource.canonicalKey === event.eventPublicId,
+  ) ?? null;
+}
+
+export async function resolveWithProvider(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: ResolverSpec,
+): Promise<ProviderResolutionResult> {
+  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') {
+    return resolveCryptoWithProvider(provider, resource, spec);
+  }
+  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
+    return resolveFootballFixtureWithProvider(provider, resource, spec);
+  }
+  return resolvePublicRecord(resource, spec);
 }
