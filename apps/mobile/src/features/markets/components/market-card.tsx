@@ -29,12 +29,15 @@ export function MarketCard({
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
   const statusTone = isOpen ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral';
+  const isPool = market.liquidity_mode === 'POOL';
+  const tradingMethod = isPool ? 'PEER POOL' : market.liquidity_mode === 'ORDER_BOOK' ? 'ORDER BOOK' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK');
+  const marketFormat = market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type);
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
+      accessibilityLabel={`${market.title}. ${marketFormat} market using ${tradingMethod}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
       accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
       style={({ pressed }) => ({
         minHeight: compact ? 144 : density.compact ? 178 : density.phone ? 190 : 206,
@@ -54,6 +57,8 @@ export function MarketCard({
           <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
             <VadChip label={timing.statusLabel.toUpperCase()} tone={statusTone} />
             <VadChip label={market.asset_code} tone="brand" />
+            <VadChip label={marketFormat} tone="brand" />
+            <VadChip label={tradingMethod} tone={isPool ? 'brand' : 'warning'} />
             {timing.resolutionOutcome ? <VadChip label={`RESULT ${timing.resolutionOutcome}`} tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'} /> : null}
           </View>
           <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={2} style={{ maxWidth: compact ? 92 : 118, textAlign: 'right' }}>
@@ -77,7 +82,7 @@ export function MarketCard({
 
       <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: compact ? 6 : density.compact ? 7 : theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'center' }}>
         <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ flex: 1 }}>
-          {market.last_trade_at ? relativeTradeLabel(market.last_trade_at, now) : 'No trades yet'}
+          {market.last_trade_at ? relativeTradeLabel(market.last_trade_at, now, isPool) : isPool ? 'No stakes yet' : 'No trades yet'}
         </VadText>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
           <VadText variant="caption" tone="brand">{isOpen ? 'Trade' : 'Details'}</VadText>
@@ -88,17 +93,18 @@ export function MarketCard({
   );
 }
 
-function relativeTradeLabel(value: string, now: number) {
+function relativeTradeLabel(value: string, now: number, pool = false) {
   const timestamp = new Date(value).getTime();
   if (!Number.isFinite(timestamp)) return 'Recently traded';
   const elapsed = Math.max(0, now - timestamp);
   const minutes = Math.floor(elapsed / 60_000);
-  if (minutes < 1) return 'Traded just now';
-  if (minutes < 60) return `Traded ${minutes}m ago`;
+  const verb = pool ? 'Staked' : 'Traded';
+  if (minutes < 1) return `${verb} just now`;
+  if (minutes < 60) return `${verb} ${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Traded ${hours}h ago`;
+  if (hours < 24) return `${verb} ${hours}h ago`;
   const days = Math.floor(hours / 24);
-  return `Traded ${days}d ago`;
+  return `${verb} ${days}d ago`;
 }
 
 function PriceTile({ label, value, positive, compact }: { label: string; value: string; positive: boolean; compact: boolean }) {
@@ -110,4 +116,8 @@ function PriceTile({ label, value, positive, compact }: { label: string; value: 
       <VadText variant={compact || density.compact ? 'bodyStrong' : 'heading'} tone={positive ? 'yes' : 'no'}>{value}</VadText>
     </View>
   );
+}
+
+function friendlyEnum(value: string) {
+  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
