@@ -63,7 +63,7 @@ export function AdminMarketCreateWorkspace() {
 
   const [sourceName, setSourceName] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
-  const [resultCondition, setResultCondition] = useState('');
+  const [resultCondition, setResultCondition] = useState('');\n  const [evidencePhrase, setEvidencePhrase] = useState('');
 
   const [countryCode, setCountryCode] = useState('');
   const [assetCode, setAssetCode] = useState('');
@@ -132,7 +132,7 @@ export function AdminMarketCreateWorkspace() {
     setTitleEdited(false);
     setSourceName('');
     setSourceUrl('');
-    setResultCondition('');
+    setResultCondition('');\n    setEvidencePhrase('');
   }
 
   function selectCategory(next: Category) {
@@ -140,7 +140,7 @@ export function AdminMarketCreateWorkspace() {
     setError(null);
     if (creationStyle === 'GUIDED') clearGuidedDetails();
     if (next === 'Sports' && sportsType === 'MATCH') setResultChecking('AUTOMATIC');
-    else setResultChecking('VERIFIED');
+    else setResultChecking(next === 'Crypto' ? 'VERIFIED' : 'AUTOMATIC');
   }
 
   function updateMatchStart(value: string) {
@@ -167,18 +167,18 @@ export function AdminMarketCreateWorkspace() {
       };
     }
     if (category === 'Sports' && sportsType === 'TRANSFER') {
-      return { kind: 'PLAYER_TRANSFER', resultChecking: 'VERIFIED', player, destinationClub, sourceName, sourceUrl };
+      return { kind: 'PLAYER_TRANSFER', resultChecking, evidencePhrase, player, destinationClub, sourceName: sourceName || 'VAD Evidence Gateway', sourceUrl };
     }
     if (category === 'Sports') {
-      return { kind: 'SPORTS_EVENT', resultChecking: 'VERIFIED', condition: resultCondition, sourceName, sourceUrl };
+      return { kind: 'SPORTS_EVENT', resultChecking, evidencePhrase, condition: resultCondition, sourceName: sourceName || 'VAD Evidence Gateway', sourceUrl };
     }
     if (category === 'Politics' && politicsType === 'ELECTION') {
-      return { kind: 'ELECTION_WINNER', resultChecking: 'VERIFIED', country: electionCountry, office: electionOffice, candidate, electionLabel, sourceName, sourceUrl };
+      return { kind: 'ELECTION_WINNER', resultChecking, evidencePhrase, country: electionCountry, office: electionOffice, candidate, electionLabel, sourceName: sourceName || 'VAD Evidence Gateway', sourceUrl };
     }
     if (category === 'Politics') {
-      return { kind: 'POLITICAL_EVENT', resultChecking: 'VERIFIED', condition: resultCondition, sourceName, sourceUrl };
+      return { kind: 'POLITICAL_EVENT', resultChecking, evidencePhrase, condition: resultCondition, sourceName: sourceName || 'VAD Evidence Gateway', sourceUrl };
     }
-    return { kind: 'OBJECTIVE_EVENT', resultChecking: 'VERIFIED', condition: resultCondition, sourceName, sourceUrl };
+    return { kind: 'OBJECTIVE_EVENT', resultChecking, evidencePhrase, condition: resultCondition, sourceName: sourceName || 'VAD Evidence Gateway', sourceUrl };
   }
 
   function continueFromMarket() {
@@ -191,9 +191,9 @@ export function AdminMarketCreateWorkspace() {
       if (!matchStartsAt || !Number.isFinite(Date.parse(matchStartsAt))) return setError('Choose when the match starts.');
       if (resultChecking === 'VERIFIED' && !sourceName.trim()) return setError('Add the official result source VAD should use.');
     } else if (category === 'Sports' && sportsType === 'TRANSFER') {
-      if (!player.trim() || !destinationClub.trim() || !sourceName.trim()) return setError('Add the player, destination club and official result source.');
+      if (!player.trim() || !destinationClub.trim()) return setError('Add the player and destination club.');\n      if (resultChecking === 'AUTOMATIC' && evidencePhrase.trim().length < 4) return setError('Add a short evidence phrase that objectively confirms YES.');\n      if (resultChecking === 'VERIFIED' && !sourceName.trim()) return setError('Add the official result source.');
     } else if (category === 'Politics' && politicsType === 'ELECTION') {
-      if (!electionCountry.trim() || !electionOffice.trim() || !candidate.trim() || !sourceName.trim()) return setError('Add the country, office, candidate and official election result source.');
+      if (!electionCountry.trim() || !electionOffice.trim() || !candidate.trim()) return setError('Add the country, office and candidate.');\n      if (resultChecking === 'AUTOMATIC' && evidencePhrase.trim().length < 4) return setError('Add a short evidence phrase that objectively confirms YES.');\n      if (resultChecking === 'VERIFIED' && !sourceName.trim()) return setError('Add the official election result source.');
     } else if (!sourceName.trim()) {
       return setError('Add the authoritative result source VAD should use.');
     }
@@ -278,7 +278,7 @@ export function AdminMarketCreateWorkspace() {
   const resultLabel = guided
     ? automaticFootball
       ? `Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`
-      : `Verified result${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
+      : resultChecking === 'AUTOMATIC' ? `Automatic · ${options?.guided.evidence.automaticSourceName ?? 'VAD Evidence Gateway'}` : `Verified result${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
     : 'VAD configured result checking';
 
   if (created) {
