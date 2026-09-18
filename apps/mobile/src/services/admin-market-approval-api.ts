@@ -6,7 +6,8 @@ export type AdminMarketAutoOptions = {
   tradingMethods: { code: 'POOL' | 'ORDER_BOOK'; name: string; description: string }[];
   guided: {
     verifiedResultAvailable: boolean;
-    evidence: { automaticAvailable: boolean; broadSearchAvailable: boolean; directPublicRecordAvailable: boolean; automaticSourceName: string; secretName: string; };\n    football: {
+    evidence: { automaticAvailable: boolean; broadSearchAvailable: boolean; directPublicRecordAvailable: boolean; automaticSourceName: string; secretName: string; };
+    football: {
       automaticSourceName: string;
       automaticSandboxAvailable: boolean;
       automaticProductionAvailable: boolean;
@@ -98,7 +99,14 @@ export async function getAdminMarketAutoOptions() {
       { code: 'ORDER_BOOK', name: 'Order Book', description: 'Users place buy or sell orders for YES/NO outcome shares at chosen prices and quantities.' },
     ],
     guided: {
-      verifiedResultAvailable: guided.verifiedResultAvailable !== false,\n      evidence: {\n        automaticAvailable: (guided as any).evidence?.automaticAvailable === true,\n        broadSearchAvailable: (guided as any).evidence?.broadSearchAvailable === true,\n        directPublicRecordAvailable: (guided as any).evidence?.directPublicRecordAvailable === true,\n        automaticSourceName: String((guided as any).evidence?.automaticSourceName ?? 'VAD Evidence Gateway'),\n        secretName: String((guided as any).evidence?.secretName ?? 'TAVILY_API_KEY'),\n      },
+      verifiedResultAvailable: guided.verifiedResultAvailable !== false,
+      evidence: {
+        automaticAvailable: (guided as any).evidence?.automaticAvailable === true,
+        broadSearchAvailable: (guided as any).evidence?.broadSearchAvailable === true,
+        directPublicRecordAvailable: (guided as any).evidence?.directPublicRecordAvailable === true,
+        automaticSourceName: String((guided as any).evidence?.automaticSourceName ?? 'VAD Evidence Gateway'),
+        secretName: String((guided as any).evidence?.secretName ?? 'TAVILY_API_KEY'),
+      },
       football: {
         automaticSourceName: String(football.automaticSourceName ?? 'Football-Data.org'),
         automaticSandboxAvailable: football.automaticSandboxAvailable === true,
@@ -187,7 +195,8 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
     return {
       kind: input.kind,
       result_checking: input.resultChecking,
-      evidence_phrase: input.evidencePhrase?.trim() || null,\n      player: input.player.trim(),
+      evidence_phrase: input.evidencePhrase?.trim() || null,
+      player: input.player.trim(),
       destination_club: input.destinationClub.trim(),
       source_name: input.sourceName.trim(),
       source_url: input.sourceUrl?.trim() || null,
@@ -197,7 +206,8 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
     return {
       kind: input.kind,
       result_checking: input.resultChecking,
-      evidence_phrase: input.evidencePhrase?.trim() || null,\n      country: input.country.trim(),
+      evidence_phrase: input.evidencePhrase?.trim() || null,
+      country: input.country.trim(),
       office: input.office.trim(),
       candidate: input.candidate.trim(),
       election_label: input.electionLabel?.trim() || null,
@@ -208,7 +218,8 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
   return {
     kind: input.kind,
     result_checking: input.resultChecking,
-    evidence_phrase: input.evidencePhrase?.trim() || null,\n    condition: input.condition?.trim() || null,
+    evidence_phrase: input.evidencePhrase?.trim() || null,
+    condition: input.condition?.trim() || null,
     source_name: input.sourceName.trim(),
     source_url: input.sourceUrl?.trim() || null,
   };
