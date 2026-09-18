@@ -32,7 +32,15 @@ set resolution_scope = resolution_scope
   updated_at=statement_timestamp()
 where public_id='e63d82f5-3026-428b-a05e-1166a61f50b2';
 
-update oracle.policies p
-set consensus_rule = p.consensus_rule
-  || jsonb_build_object('finalization_mode','AUTO_AFTER_DISPUTE_WINDOW','min_agreeing_providers',1)
-where p.public_id='da18a5f7-ab70-4c98-99f4-83bd5b68fe05';
+insert into oracle.policies(name,capability_id,version,source_hierarchy,consensus_rule,close_rule,postponement_rule,cancellation_rule,void_rule,dispute_window_seconds,status,effective_at,created_by,approved_by)
+select 'VAD Automatic Official Public Record Policy',capability_id,2,'["US_SENATE"]'::jsonb,
+  '{"environment":"PRODUCTION","tie_behavior":"NO_RESOLUTION","finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":false,"min_agreeing_providers":1}'::jsonb,
+  close_rule,postponement_rule,cancellation_rule,void_rule,60,'ACTIVE',statement_timestamp(),null,approved_by
+from oracle.policies where public_id='da18a5f7-ab70-4c98-99f4-83bd5b68fe05'
+on conflict(capability_id,version) do nothing;
+
+update oracle.event_policy_bindings b
+set oracle_policy_id=p.id,bound_at=statement_timestamp()
+from oracle.policies p, market.canonical_events e
+where e.id=b.event_id and e.public_id='e63d82f5-3026-428b-a05e-1166a61f50b2'
+  and p.capability_id=1 and p.version=2;
