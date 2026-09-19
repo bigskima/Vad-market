@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, type ViewProps } from 'react-native';
 
 import { useVadTheme } from '@/providers/theme-provider';
@@ -11,7 +11,7 @@ export function VadSkeleton({
   ...props
 }: ViewProps & { width?: number | `${number}%`; height?: number; radius?: number }) {
   const theme = useVadTheme();
-  const pulse = useRef(new Animated.Value(0)).current;
+  const [pulse] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     const animation = Animated.loop(
