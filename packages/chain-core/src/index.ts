@@ -75,3 +75,12 @@ export function isSupportedClientAdapter(value: string): value is KnownClientAda
 export function supportedClientAdapters(): readonly ChainAdapterDescriptor[] {
   return Object.values(BUILTIN_ADAPTERS);
 }
+
+export type {
+  PreparedWalletTransaction,
+  SubmittedWalletTransaction,
+  WalletProviderAdapter,
+  WalletSession,
+  WalletSignatureProof,
+} from './wallet';
+export { assertWalletNetworkCompatibility } from './wallet';
