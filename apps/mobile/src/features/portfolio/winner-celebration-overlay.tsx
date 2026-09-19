@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, Image, Modal, Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -27,9 +27,9 @@ export function WinnerCelebrationOverlay({ refreshKey = '' }: { refreshKey?: str
   const { session } = useAuth();
   const theme = useVadTheme();
   const [queue, setQueue] = useState<WinCelebrationRow[]>([]);
-  const acknowledged = useRef(new Set<string>()).current;
-  const entrance = useRef(new Animated.Value(0)).current;
-  const celebration = useRef(new Animated.Value(0)).current;
+  const [acknowledged] = useState(() => new Set<string>());
+  const [entrance] = useState(() => new Animated.Value(0));
+  const [celebration] = useState(() => new Animated.Value(0));
   const current = queue[0] ?? null;
   const currentKey = current ? `${current.market_id}:${current.selected_outcome}` : null;
 
