@@ -99,19 +99,37 @@ export async function verifyWalletChallenge(input: {
 }
 
 export async function getMyWalletConnections() {
-  const { data, error } = await supabase.rpc('my_wallet_connections');
+  const token = await accessToken();
+  const { data, error } = await supabase.functions.invoke('wallet-gateway', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: { action: 'list' },
+  });
+
   if (error) {
     throw userFacingError(error, 'portfolio', 'We could not load your connected wallets.');
   }
-  return (data ?? []) as WalletConnection[];
+  if (!data?.ok || !Array.isArray(data?.wallets)) {
+    throw new Error('VAD could not load your connected wallets.');
+  }
+
+  return data.wallets as WalletConnection[];
 }
 
 export async function revokeWalletConnection(walletId: string) {
-  const { data, error } = await supabase.rpc('revoke_my_wallet_connection', {
-    p_wallet_id: walletId,
+  const token = await accessToken();
+  const { data, error } = await supabase.functions.invoke('wallet-gateway', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: { action: 'revoke', walletId },
   });
+
   if (error) {
     throw userFacingError(error, 'portfolio', 'We could not disconnect this wallet.');
   }
-  return data === true;
+  if (!data?.ok) {
+    throw new Error('VAD could not disconnect this wallet.');
+  }
+
+  return true;
 }

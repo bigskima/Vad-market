@@ -219,6 +219,38 @@ async function verifyChallenge(req: Request, body: Record<string, unknown>) {
   return json({ ok: true, wallet: completed });
 }
 
+
+async function listWallets(req: Request) {
+  const { user, admin } = await requireUser(req);
+  const { data, error } = await admin.rpc('internal_wallet_connections', {
+    p_user_id: user.id,
+  });
+  if (error) {
+    console.error('wallet list failed', { userId: user.id, code: error.code });
+    return json({ error: 'WALLET_LIST_FAILED' }, 500);
+  }
+  return json({ ok: true, wallets: data ?? [] });
+}
+
+async function revokeWallet(req: Request, body: Record<string, unknown>) {
+  const { user, admin } = await requireUser(req);
+  const walletId = String(body.walletId ?? '').trim();
+  if (!/^[0-9a-fA-F-]{36}$/.test(walletId)) {
+    return json({ error: 'INVALID_WALLET_ID' }, 400);
+  }
+
+  const { data, error } = await admin.rpc('internal_revoke_wallet_connection', {
+    p_user_id: user.id,
+    p_wallet_id: walletId,
+  });
+  if (error || data !== true) {
+    console.error('wallet revoke failed', { userId: user.id, code: error?.code });
+    return json({ error: 'WALLET_REVOKE_FAILED' }, 409);
+  }
+
+  return json({ ok: true });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'METHOD_NOT_ALLOWED' }, 405);
@@ -229,6 +261,8 @@ Deno.serve(async (req) => {
 
     if (action === 'challenge') return await createChallenge(req, body);
     if (action === 'verify') return await verifyChallenge(req, body);
+    if (action === 'list') return await listWallets(req);
+    if (action === 'revoke') return await revokeWallet(req, body);
 
     return json({ error: 'UNKNOWN_ACTION' }, 400);
   } catch (error) {
