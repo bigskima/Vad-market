@@ -12,6 +12,7 @@ import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
+import { CryptoWalletConnections } from '@/features/wallet/crypto-wallet-connections';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -135,6 +136,8 @@ export function WalletScreen({
           <WalletAction label="Activity" detail="Full ledger" icon="activity" tone="primary" onPress={onActivity} />
         </View>
       </TourTarget>
+
+      <CryptoWalletConnections />
 
       {orderedWallets.length ? (
         <VadProgressiveSection
