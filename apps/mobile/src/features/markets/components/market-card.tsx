@@ -32,7 +32,8 @@ export function MarketCard({
   const statusTone = isOpen ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral';
   const isPool = market.liquidity_mode === 'POOL';
   const tradingMethod = isPool ? 'PEER POOL' : market.liquidity_mode === 'ORDER_BOOK' ? 'ORDER BOOK' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK');
-  const marketFormat = market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type);\n  const imageUrl = market.media_path ? supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl : null;
+  const marketFormat = market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type);
+  const imageUrl = market.media_path ? supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl : null;
 
   return (
     <Pressable
