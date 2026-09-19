@@ -49,6 +49,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<Record<string, unknown> | null>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
 
   const [step, setStep] = useState<Step>(1);
   const [creationStyle, setCreationStyle] = useState<CreationStyle>('GUIDED');
@@ -97,6 +98,11 @@ export function AdminMarketCreateWorkspaceCatalog() {
     return () => { ignore = true; };
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => setClockNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
   const category = useMemo(
     () => categories.find((item) => item.code === categoryCode) ?? categories[0] ?? null,
     [categories, categoryCode],
@@ -130,7 +136,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     && Date.parse(closesAt) <= Date.parse(matchStartsAt)
     && Date.parse(resolvesAfter) >= Date.parse(matchStartsAt) + (2 * 60 * 60 * 1000)
   );
-  const canPublishNow = scheduleValid && Date.parse(opensAt) <= Date.now() && Date.parse(closesAt) > Date.now();
+  const canPublishNow = scheduleValid && Date.parse(opensAt) <= clockNow && Date.parse(closesAt) > clockNow;
 
   const suggestedTitle = useMemo(() => {
     if (!guided || !marketType) return '';
@@ -143,9 +149,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     return suggestedFromTemplate(marketType.questionTemplate, details);
   }, [awayTeam, competition, details, football, guided, homeTeam, marketType, prediction]);
 
-  useEffect(() => {
-    if (!titleEdited && suggestedTitle) setTitle(suggestedTitle);
-  }, [suggestedTitle, titleEdited]);
+  const effectiveTitle = !titleEdited && suggestedTitle ? suggestedTitle : title;
 
   function clearMarketDetails() {
     setDetails({});
@@ -196,7 +200,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function continueFromMarket() {
     setError(null);
     if (!category) return setError('Choose a market category.');
-    if (!title.trim()) return setError('Enter a clear YES/NO market question before continuing.');
+    if (!effectiveTitle.trim()) return setError('Enter a clear YES/NO market question before continuing.');
     if (!guided) return setStep(2);
     if (!marketType) return setError('Choose the kind of event you are creating.');
 
@@ -230,7 +234,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setError(null);
     try {
       const common = {
-        title,
+        title: effectiveTitle,
         description,
         opensAt: new Date(opensAt).toISOString(),
         closesAt: new Date(closesAt).toISOString(),
@@ -405,7 +409,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
             </View>
           ) : null}
 
-          <VadInput label="Market question" value={title} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write one clear YES/NO question.'} />
+          <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write one clear YES/NO question.'} />
           <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
           {error ? <VadErrorState title="Check this step" message={error} /> : null}
           <VadButton label="Continue to setup" onPress={continueFromMarket} />
@@ -475,7 +479,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
       {step === 3 ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
           <SectionTitle eyebrow="STEP 3 · REVIEW" title="Review and finish." text="Save it as a draft or publish immediately. VAD stores the technical result rules behind the scenes." />
-          <ReviewRow label="Question" value={title.trim()} />
+          <ReviewRow label="Question" value={effectiveTitle.trim()} />
           <ReviewRow label="Category" value={category?.name ?? ''} />
           {guided ? <ReviewRow label="Market type" value={marketType?.name ?? 'Guided event'} /> : null}
           {football ? <ReviewRow label="Match" value={`${homeTeam} vs ${awayTeam} · ${competition}`} /> : null}
