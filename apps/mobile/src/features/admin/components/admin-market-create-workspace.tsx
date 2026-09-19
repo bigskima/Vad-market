@@ -36,6 +36,7 @@ export function AdminMarketCreateWorkspace() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<Record<string, unknown> | null>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
 
   const [step, setStep] = useState<Step>(1);
   const [creationStyle, setCreationStyle] = useState<CreationStyle>('GUIDED');
@@ -81,6 +82,11 @@ export function AdminMarketCreateWorkspace() {
     return () => { ignore = true; };
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => setClockNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
   const resolvedCountryCode = countryCode || (options?.jurisdictions.length === 1 ? options.jurisdictions[0].countryCode : '');
   const jurisdiction = useMemo(
     () => options?.jurisdictions.find((item) => item.countryCode === resolvedCountryCode) ?? null,
@@ -105,7 +111,7 @@ export function AdminMarketCreateWorkspace() {
     && Date.parse(closesAt) <= Date.parse(matchStartsAt)
     && Date.parse(resolvesAfter) >= Date.parse(matchStartsAt) + (2 * 60 * 60 * 1000)
   );
-  const canPublishNow = scheduleValid && Date.parse(opensAt) <= Date.now() && Date.parse(closesAt) > Date.now();
+  const canPublishNow = scheduleValid && Date.parse(opensAt) <= clockNow && Date.parse(closesAt) > clockNow;
 
   const suggestedTitle = useMemo(() => {
     if (!guided) return '';
@@ -125,9 +131,7 @@ export function AdminMarketCreateWorkspace() {
     return '';
   }, [awayTeam, candidate, category, competition, destinationClub, electionCountry, electionLabel, electionOffice, guided, homeTeam, player, politicsType, prediction, sportsType]);
 
-  useEffect(() => {
-    if (!titleEdited && suggestedTitle) setTitle(suggestedTitle);
-  }, [suggestedTitle, titleEdited]);
+  const effectiveTitle = !titleEdited && suggestedTitle ? suggestedTitle : title;
 
   function clearGuidedDetails() {
     setTitle('');
@@ -186,7 +190,7 @@ export function AdminMarketCreateWorkspace() {
 
   function continueFromMarket() {
     setError(null);
-    if (!title.trim()) return setError('Enter the market question before continuing.');
+    if (!effectiveTitle.trim()) return setError('Enter the market question before continuing.');
     if (!guided) return setStep(2);
 
     if (category === 'Sports' && sportsType === 'MATCH') {
@@ -224,7 +228,7 @@ export function AdminMarketCreateWorkspace() {
     setError(null);
     try {
       const common = {
-        title,
+        title: effectiveTitle,
         description,
         category,
         opensAt: new Date(opensAt).toISOString(),
@@ -402,7 +406,7 @@ export function AdminMarketCreateWorkspace() {
 
           {guided && !['Sports', 'Politics'].includes(category) ? <ObjectiveSourceFields condition={resultCondition} setCondition={setResultCondition} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} resultChecking={resultChecking} setResultChecking={setResultChecking} evidencePhrase={evidencePhrase} setEvidencePhrase={setEvidencePhrase} automaticAvailable={options?.guided.evidence.automaticAvailable === true} /> : null}
 
-          <VadInput label="Market question" value={title} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a clear YES/NO question from the details above. You can edit it.' : 'Write one clear YES/NO question.'} />
+          <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a clear YES/NO question from the details above. You can edit it.' : 'Write one clear YES/NO question.'} />
           <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
           {error ? <VadErrorState title="Check this step" message={error} /> : null}
           <VadButton label="Continue to setup" onPress={continueFromMarket} />
@@ -455,7 +459,7 @@ export function AdminMarketCreateWorkspace() {
       {step === 3 ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
           <SectionTitle eyebrow="STEP 3 · REVIEW" title="Review and finish." text="Save it as a draft or publish immediately. VAD stores the result rules automatically." />
-          <ReviewRow label="Question" value={title.trim()} />
+          <ReviewRow label="Question" value={effectiveTitle.trim()} />
           <ReviewRow label="Category" value={category} />
           {automaticFootball ? <ReviewRow label="Match" value={`${homeTeam} vs ${awayTeam} · ${competition}`} /> : null}
           {automaticFootball ? <ReviewRow label="Kickoff" value={new Date(matchStartsAt).toLocaleString()} /> : null}
