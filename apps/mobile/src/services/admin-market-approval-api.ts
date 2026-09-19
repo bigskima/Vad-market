@@ -30,7 +30,8 @@ export type AdminGuidedMarketSetup =
     }
   | {
       kind: 'PLAYER_TRANSFER';
-      resultChecking: 'VERIFIED';
+      resultChecking: 'AUTOMATIC' | 'VERIFIED';
+      evidencePhrase?: string;
       player: string;
       destinationClub: string;
       sourceName: string;
@@ -38,7 +39,8 @@ export type AdminGuidedMarketSetup =
     }
   | {
       kind: 'ELECTION_WINNER';
-      resultChecking: 'VERIFIED';
+      resultChecking: 'AUTOMATIC' | 'VERIFIED';
+      evidencePhrase?: string;
       country: string;
       office: string;
       candidate: string;
@@ -48,7 +50,8 @@ export type AdminGuidedMarketSetup =
     }
   | {
       kind: 'SPORTS_EVENT' | 'POLITICAL_EVENT' | 'OBJECTIVE_EVENT';
-      resultChecking: 'VERIFIED';
+      resultChecking: 'AUTOMATIC' | 'VERIFIED';
+      evidencePhrase?: string;
       condition?: string;
       sourceName: string;
       sourceUrl?: string;
