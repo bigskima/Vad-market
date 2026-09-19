@@ -48,7 +48,8 @@ export function PeerMarketPortfolio({ poolStakes, marketHistory }: { poolStakes:
   const wins = useMemo(() => marketHistory.filter((row) => row.result === 'WON'), [marketHistory]);
   const losses = useMemo(() => marketHistory.filter((row) => row.result === 'LOST'), [marketHistory]);
   const other = useMemo(() => marketHistory.filter((row) => !['WON', 'LOST'].includes(row.result)), [marketHistory]);
-  const rows = tab === 'active' ? active : tab === 'wins' ? wins : tab === 'losses' ? losses : other;
+  const rows: MarketHistoryRow[] = tab === 'wins' ? wins : tab === 'losses' ? losses : tab === 'other' ? other : [];
+  const totalRows = tab === 'active' ? active.length : rows.length;
   const shareProfile: ResultCardProfile = {
     displayName: profile?.display_name?.trim() || profile?.handle?.trim() || 'VAD participant',
     handle: profile?.handle ?? null,
@@ -113,7 +114,7 @@ export function PeerMarketPortfolio({ poolStakes, marketHistory }: { poolStakes:
         )
       ) : null}
 
-      {rows.length > visible ? <VadButton label={`Show more · ${rows.length - visible} remaining`} variant="secondary" onPress={() => setVisible((value) => value + 6)} /> : null}
+      {totalRows > visible ? <VadButton label={`Show more · ${totalRows - visible} remaining`} variant="secondary" onPress={() => setVisible((value) => value + 6)} /> : null}
     </View>
   );
 }
