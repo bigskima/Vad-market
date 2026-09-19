@@ -90,7 +90,7 @@ export function AdminMarketCreateWorkspace() {
   const sandbox = resolvedAssetCode === 'TNGN';
   const guided = creationStyle === 'GUIDED' && category !== 'Crypto';
   const automaticFootball = guided && category === 'Sports' && sportsType === 'MATCH' && resultChecking === 'AUTOMATIC';
-  const automaticEvidence = guided && category !== 'Crypto' && !automaticFootball && resultChecking === 'AUTOMATIC';
+  const automaticEvidence = guided && !automaticFootball && resultChecking === 'AUTOMATIC';
   const automaticFootballAvailable = sandbox
     ? options?.guided.football.automaticSandboxAvailable === true
     : options?.guided.football.automaticProductionAvailable === true;
@@ -400,8 +400,7 @@ export function AdminMarketCreateWorkspace() {
             </View>
           ) : null}
 
-          {guided && category === 'Crypto' ? <VadCard variant="muted"><VadText tone="secondary">Existing crypto question-based automation is preserved. Nothing in this guided upgrade replaces it.</VadText></VadCard> : null}
-          {guided && !['Sports', 'Politics', 'Crypto'].includes(category) ? <ObjectiveSourceFields condition={resultCondition} setCondition={setResultCondition} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} resultChecking={resultChecking} setResultChecking={setResultChecking} evidencePhrase={evidencePhrase} setEvidencePhrase={setEvidencePhrase} automaticAvailable={options?.guided.evidence.automaticAvailable === true} /> : null}
+          {guided && !['Sports', 'Politics'].includes(category) ? <ObjectiveSourceFields condition={resultCondition} setCondition={setResultCondition} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} resultChecking={resultChecking} setResultChecking={setResultChecking} evidencePhrase={evidencePhrase} setEvidencePhrase={setEvidencePhrase} automaticAvailable={options?.guided.evidence.automaticAvailable === true} /> : null}
 
           <VadInput label="Market question" value={title} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a clear YES/NO question from the details above. You can edit it.' : 'Write one clear YES/NO question.'} />
           <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
@@ -499,8 +498,53 @@ function GenericEvidenceControls({ resultChecking, setResultChecking, evidencePh
   return <View style={{ gap: 12 }}><FieldGroup label="Result checking"><VadChip label="Automatic evidence" selected={resultChecking === 'AUTOMATIC'} tone={resultChecking === 'AUTOMATIC' ? 'brand' : 'neutral'} onPress={() => setResultChecking('AUTOMATIC')} /><VadChip label="Verified result" selected={resultChecking === 'VERIFIED'} tone={resultChecking === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => setResultChecking('VERIFIED')} /></FieldGroup>{resultChecking === 'AUTOMATIC' ? <><VadCard variant="muted" style={{ gap: 4 }}><VadText variant="bodyStrong" tone={automaticAvailable ? 'yes' : 'warning'}>{automaticAvailable ? 'VAD Evidence Gateway ready' : 'Automatic evidence route needs attention'}</VadText><VadText variant="caption" tone="secondary">VAD checks an authoritative URL when supplied and can use the broad evidence provider as fallback. Settlement still passes through the existing oracle consensus and dispute workflow.</VadText></VadCard><VadInput label="Evidence phrase that confirms YES" value={evidencePhrase} onChangeText={setEvidencePhrase} placeholder="e.g. officially declared winner" hint="Use a short objective phrase expected in the final evidence." /><SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} sourceLabel="Preferred authoritative source · optional" /></> : <SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />}</View>;
 }
 
-function ObjectiveSourceFields({ condition, setCondition, sourceName, sourceUrl, setSourceName, setSourceUrl }: { condition: string; setCondition: (value: string) => void; sourceName: string; sourceUrl: string; setSourceName: (value: string) => void; setSourceUrl: (value: string) => void }) {
-  return <View style={{ gap: 12 }}><VadInput label="What makes YES true? · optional" value={condition} onChangeText={setCondition} multiline placeholder="State the objective result condition, or leave blank to use the market question." /><SourceFields sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} /></View>;
+function ObjectiveSourceFields({
+  condition,
+  setCondition,
+  sourceName,
+  sourceUrl,
+  setSourceName,
+  setSourceUrl,
+  resultChecking,
+  setResultChecking,
+  evidencePhrase,
+  setEvidencePhrase,
+  automaticAvailable,
+}: {
+  condition: string;
+  setCondition: (value: string) => void;
+  sourceName: string;
+  sourceUrl: string;
+  setSourceName: (value: string) => void;
+  setSourceUrl: (value: string) => void;
+  resultChecking: ResultChecking;
+  setResultChecking: (value: ResultChecking) => void;
+  evidencePhrase: string;
+  setEvidencePhrase: (value: string) => void;
+  automaticAvailable: boolean;
+}) {
+  return (
+    <View style={{ gap: 12 }}>
+      <VadInput
+        label="What makes YES true? · optional"
+        value={condition}
+        onChangeText={setCondition}
+        multiline
+        placeholder="State the objective result condition, or leave blank to use the market question."
+      />
+      <GenericEvidenceControls
+        resultChecking={resultChecking}
+        setResultChecking={setResultChecking}
+        evidencePhrase={evidencePhrase}
+        setEvidencePhrase={setEvidencePhrase}
+        sourceName={sourceName}
+        sourceUrl={sourceUrl}
+        setSourceName={setSourceName}
+        setSourceUrl={setSourceUrl}
+        automaticAvailable={automaticAvailable}
+      />
+    </View>
+  );
 }
 
 function StepRail({ step }: { step: Step }) {
