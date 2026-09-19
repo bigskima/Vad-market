@@ -89,7 +89,8 @@ export function AdminMarketCreateWorkspace() {
   const resolvedAssetCode = assetCode || (jurisdiction?.assets.includes('TNGN') ? 'TNGN' : jurisdiction?.assets[0] ?? '');
   const sandbox = resolvedAssetCode === 'TNGN';
   const guided = creationStyle === 'GUIDED' && category !== 'Crypto';
-  const automaticFootball = guided && category === 'Sports' && sportsType === 'MATCH' && resultChecking === 'AUTOMATIC';\n  const automaticEvidence = guided && category !== 'Crypto' && !automaticFootball && resultChecking === 'AUTOMATIC';
+  const automaticFootball = guided && category === 'Sports' && sportsType === 'MATCH' && resultChecking === 'AUTOMATIC';
+  const automaticEvidence = guided && category !== 'Crypto' && !automaticFootball && resultChecking === 'AUTOMATIC';
   const automaticFootballAvailable = sandbox
     ? options?.guided.football.automaticSandboxAvailable === true
     : options?.guided.football.automaticProductionAvailable === true;
