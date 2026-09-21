@@ -1,0 +1,29 @@
+name: Inspect Dynamic SDK types
+
+on:
+  push:
+    branches: [dynamic-email-wallet]
+    paths:
+      - .github/workflows/inspect-dynamic-sdk.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dynamic-email-wallet
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Inspect public APIs
+        run: |
+          for term in "useSendEmailOTP" "useVerifyOTP" "useGetWalletAccounts" "useInitStatus" "useOnEvent" "DynamicProvider" "createWaasWalletAccounts" "getChainsMissingWaasWalletAccounts" "createDynamicClient" "initializeClient" "logout"; do
+            echo "===== $term ====="
+            grep -R -n -m 12 "$term" node_modules/@dynamic-labs-sdk 2>/dev/null | head -n 60 || true
+          done
