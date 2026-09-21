@@ -30,13 +30,16 @@ type OtpVerification = NonNullable<ReturnType<typeof useSendEmailOTP>['data']>;
 export function CryptoWalletConnections() {
   const theme = useVadTheme();
   const [initialized, setInitialized] = useState(false);
-  const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [initializationError, setInitializationError] = useState<string | null>(() =>
+    dynamicWalletConfiguration.ready && dynamicClient
+      ? null
+      : 'Dynamic wallet activation is not configured for this build.',
+  );
 
   useEffect(() => {
     let active = true;
 
     if (!dynamicWalletConfiguration.ready || !dynamicClient) {
-      setInitializationError('Dynamic wallet activation is not configured for this build.');
       return () => {
         active = false;
       };
@@ -105,7 +108,6 @@ function DynamicEmailWallet() {
   const [otpVerification, setOtpVerification] = useState<OtpVerification | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
-  const [sessionGuardBusy, setSessionGuardBusy] = useState(false);
 
   const walletRows = useMemo(
     () => (walletsQuery.data ?? []).map(toWalletRow).filter((wallet) => wallet.address),
@@ -117,7 +119,6 @@ function DynamicEmailWallet() {
     if (vadEmail && dynamicEmail === vadEmail) return;
 
     let active = true;
-    setSessionGuardBusy(true);
     void clearDynamicWalletSession()
       .then(() => {
         if (!active) return;
@@ -133,9 +134,7 @@ function DynamicEmailWallet() {
       .catch(() => {
         if (active) setLocalError('VAD could not safely clear the previous wallet session.');
       })
-      .finally(() => {
-        if (active) setSessionGuardBusy(false);
-      });
+      .finally(() => undefined);
 
     return () => {
       active = false;
@@ -186,7 +185,8 @@ function DynamicEmailWallet() {
   }, [otpVerification, verificationCode, verifyOtp, walletsQuery]);
 
   const authenticatedForVadUser = Boolean(vadEmail && dynamicEmail === vadEmail);
-  const busy = sessionGuardBusy || sendOtp.isPending || verifyOtp.isPending;
+  const sessionMismatch = Boolean(dynamicEmail && dynamicEmail !== vadEmail);
+  const busy = sessionMismatch || sendOtp.isPending || verifyOtp.isPending;
 
   return (
     <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
