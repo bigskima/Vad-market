@@ -21,22 +21,23 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Inspect exact public APIs
+      - name: Inspect native SDK declarations
         run: |
-          files=(
-            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/functions/useSendEmailOTP/useSendEmailOTP.d.ts"
-            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/functions/useVerifyOTP/useVerifyOTP.d.ts"
-            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/functions/useGetWalletAccounts/useGetWalletAccounts.d.ts"
-            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/functions/useOnEvent/useOnEvent.d.ts"
-            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/states/useUser/useUser.d.ts"
-            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/states/useInitStatus/useInitStatus.d.ts"
-            "node_modules/@dynamic-labs-sdk/react-hooks/dist/providers/DynamicProvider/DynamicProvider.d.ts"
-          )
-          for file in "${files[@]}"; do
-            echo "===== $file ====="
-            cat "$file" 2>/dev/null || true
-          done
-          echo "===== WAAS ====="
-          grep -R -n --include='*.d.ts' -m 10 "declare.*createWaasWalletAccounts\|declare.*getChainsMissingWaasWalletAccounts" node_modules/@dynamic-labs-sdk/client/dist || true
-          echo "===== CLIENT ====="
-          grep -R -n --include='*.d.ts' -m 10 "declare.*createDynamicClient\|declare.*initializeClient\|declare.*logout" node_modules/@dynamic-labs-sdk/client/dist || true
+          echo "===== CLIENT CONFIG ====="
+          cat node_modules/@dynamic-labs-sdk/client/dist/client/createDynamicClient/createDynamicClient.d.ts || true
+          grep -R -n --include='*.d.ts' -m 6 "interface DynamicClientConfig\|type DynamicClientConfig" node_modules/@dynamic-labs-sdk/client/dist || true
+          echo "===== USER ====="
+          find node_modules/@dynamic-labs-sdk/react-hooks/dist -path '*useUser*' -name '*.d.ts' -maxdepth 8 -print -exec cat {} \; 2>/dev/null || true
+          echo "===== INIT ====="
+          find node_modules/@dynamic-labs-sdk/react-hooks/dist -path '*useInitStatus*' -name '*.d.ts' -maxdepth 8 -print -exec cat {} \; 2>/dev/null || true
+          echo "===== PROVIDER ====="
+          cat node_modules/@dynamic-labs-sdk/react-hooks/dist/modules/DynamicContext/DynamicProvider.d.ts || true
+          echo "===== EVM WAAS ====="
+          find node_modules/@dynamic-labs-sdk/evm -path '*waas*' -name '*.d.ts' -maxdepth 8 -print -exec cat {} \; 2>/dev/null | head -n 500
+          echo "===== SOLANA WAAS ====="
+          find node_modules/@dynamic-labs-sdk/solana -path '*waas*' -name '*.d.ts' -maxdepth 8 -print -exec cat {} \; 2>/dev/null | head -n 500
+          echo "===== WAAS CREATE ====="
+          cat node_modules/@dynamic-labs-sdk/client/dist/modules/waas/createWaasWalletAccounts/createWaasWalletAccounts.d.ts || true
+          cat node_modules/@dynamic-labs-sdk/client/dist/modules/waas/getChainsMissingWaasWalletAccounts/getChainsMissingWaasWalletAccounts.d.ts || true
+          echo "===== WALLET ACCOUNT ====="
+          grep -R -n --include='*.d.ts' -m 15 "interface WalletAccount\|type WalletAccount" node_modules/@dynamic-labs-sdk/client/dist | head -n 40 || true
