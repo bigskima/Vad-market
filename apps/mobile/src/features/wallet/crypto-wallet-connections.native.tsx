@@ -19,6 +19,7 @@ import {
   clearDynamicWalletSession,
   dynamicClient,
   dynamicWalletConfiguration,
+  ensureDynamicEmbeddedWallets,
   initializeDynamicWalletClient,
 } from '@/lib/dynamic-client.native';
 import { useAuth } from '@/providers/auth-provider';
@@ -171,6 +172,7 @@ function DynamicEmailWallet() {
         otpVerification,
         verificationToken: code,
       });
+      await ensureDynamicEmbeddedWallets();
       setOtpVerification(null);
       setVerificationCode('');
       await walletsQuery.refetch();

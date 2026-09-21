@@ -3,6 +3,10 @@ import {
   initializeClient,
   logout,
 } from '@dynamic-labs-sdk/client';
+import {
+  createWaasWalletAccounts,
+  getChainsMissingWaasWalletAccounts,
+} from '@dynamic-labs-sdk/client/waas';
 import { addWaasEvmExtension } from '@dynamic-labs-sdk/evm/waas';
 import { addWaasSolanaExtension } from '@dynamic-labs-sdk/solana/waas';
 
@@ -25,8 +29,8 @@ export function initializeDynamicWalletClient() {
   }
 
   if (!initialization) {
-    addWaasEvmExtension();
-    addWaasSolanaExtension();
+    addWaasEvmExtension(dynamicClient);
+    addWaasSolanaExtension(dynamicClient);
     initialization = initializeClient(dynamicClient);
   }
 
@@ -36,4 +40,16 @@ export function initializeDynamicWalletClient() {
 export async function clearDynamicWalletSession() {
   if (!dynamicClient) return;
   await logout(dynamicClient);
+}
+
+export async function ensureDynamicEmbeddedWallets() {
+  if (!dynamicClient) {
+    throw new Error('Dynamic wallet environment is not configured.');
+  }
+
+  await initializeDynamicWalletClient();
+  const missingChains = getChainsMissingWaasWalletAccounts(dynamicClient);
+  if (missingChains.length) {
+    await createWaasWalletAccounts({ chains: missingChains }, dynamicClient);
+  }
 }
