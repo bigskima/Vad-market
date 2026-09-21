@@ -1,0 +1,33 @@
+name: Validate Dynamic Android bundle
+
+on:
+  push:
+    branches: [dynamic-email-wallet]
+    paths:
+      - .github/workflows/validate-dynamic-native.yml
+
+permissions:
+  contents: read
+
+jobs:
+  android-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dynamic-email-wallet
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Export Android bundle
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_DYNAMIC_ENVIRONMENT_ID: b7adb778-e5f7-4f7c-952d-a7daa651c030
+        run: npx expo export --platform android --output-dir /tmp/vad-dynamic-android
+      - name: Generate Android native project
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_DYNAMIC_ENVIRONMENT_ID: b7adb778-e5f7-4f7c-952d-a7daa651c030
+        run: npx expo prebuild --platform android --no-install --non-interactive
