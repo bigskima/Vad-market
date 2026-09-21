@@ -10,7 +10,11 @@ import {
 import { addWaasEvmExtension } from '@dynamic-labs-sdk/evm/waas';
 import { addWaasSolanaExtension } from '@dynamic-labs-sdk/solana/waas';
 
-const environmentId = process.env.EXPO_PUBLIC_DYNAMIC_ENVIRONMENT_ID?.trim() ?? '';
+const VAD_DYNAMIC_SANDBOX_ENVIRONMENT_ID = 'b7adb778-e5f7-4f7c-952d-a7daa651c030';
+
+const environmentId =
+  process.env.EXPO_PUBLIC_DYNAMIC_ENVIRONMENT_ID?.trim()
+  || VAD_DYNAMIC_SANDBOX_ENVIRONMENT_ID;
 
 export const dynamicWalletConfiguration = {
   environmentId,
