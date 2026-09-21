@@ -21,9 +21,22 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Inspect public APIs
+      - name: Inspect exact public APIs
         run: |
-          for term in "useSendEmailOTP" "useVerifyOTP" "useGetWalletAccounts" "useInitStatus" "useOnEvent" "DynamicProvider" "createWaasWalletAccounts" "getChainsMissingWaasWalletAccounts" "createDynamicClient" "initializeClient" "logout"; do
-            echo "===== $term ====="
-            grep -R -n -m 12 "$term" node_modules/@dynamic-labs-sdk 2>/dev/null | head -n 60 || true
+          files=(
+            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/functions/useSendEmailOTP/useSendEmailOTP.d.ts"
+            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/functions/useVerifyOTP/useVerifyOTP.d.ts"
+            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/functions/useGetWalletAccounts/useGetWalletAccounts.d.ts"
+            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/functions/useOnEvent/useOnEvent.d.ts"
+            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/states/useUser/useUser.d.ts"
+            "node_modules/@dynamic-labs-sdk/react-hooks/dist/hooks/wrappers/states/useInitStatus/useInitStatus.d.ts"
+            "node_modules/@dynamic-labs-sdk/react-hooks/dist/providers/DynamicProvider/DynamicProvider.d.ts"
+          )
+          for file in "${files[@]}"; do
+            echo "===== $file ====="
+            cat "$file" 2>/dev/null || true
           done
+          echo "===== WAAS ====="
+          grep -R -n --include='*.d.ts' -m 10 "declare.*createWaasWalletAccounts\|declare.*getChainsMissingWaasWalletAccounts" node_modules/@dynamic-labs-sdk/client/dist || true
+          echo "===== CLIENT ====="
+          grep -R -n --include='*.d.ts' -m 10 "declare.*createDynamicClient\|declare.*initializeClient\|declare.*logout" node_modules/@dynamic-labs-sdk/client/dist || true
