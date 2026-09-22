@@ -1,0 +1,33 @@
+name: Add Dynamic in-app browser peer
+
+on:
+  push:
+    branches: [dynamic-email-wallet]
+    paths:
+      - .github/workflows/add-dynamic-inappbrowser.yml
+
+permissions:
+  contents: write
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dynamic-email-wallet
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Dynamic in-app browser peer
+        run: npm install react-native-inappbrowser-reborn@^3.7.0 --workspace @vad/mobile
+      - name: Commit dependency metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/mobile/package.json package-lock.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Install Dynamic native in-app browser dependency"
+          git push origin HEAD:dynamic-email-wallet
