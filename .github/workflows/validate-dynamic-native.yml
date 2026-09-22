@@ -5,6 +5,12 @@ on:
     branches: [dynamic-email-wallet]
     paths:
       - .github/workflows/validate-dynamic-native.yml
+      - apps/mobile/package.json
+      - package-lock.json
+      - apps/mobile/app.json
+      - apps/mobile/src/lib/dynamic-client.native.ts
+      - apps/mobile/src/lib/dynamic-session.native.ts
+      - apps/mobile/src/features/wallet/crypto-wallet-connections.native.tsx
 
 permissions:
   contents: read
