@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { Linking as NativeLinking, Platform } from 'react-native';
 
+import { clearDynamicWalletSessionSafe } from '@/lib/dynamic-session';
 import { supabase } from '@/lib/supabase';
 import { userFacingErrorMessage } from '@/lib/user-facing-error';
 
@@ -177,6 +178,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         clearTimeout(bootstrapTimeout);
         setSession(nextSession);
         if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
+        if (event === 'SIGNED_OUT') void clearDynamicWalletSessionSafe();
         if (nextSession?.user.phone_confirmed_at) {
           persistPhonePrompt(false);
           setVerificationPromptPending(false);
@@ -412,7 +414,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         persistPhonePrompt(false);
         setVerificationPromptPending(false);
         setIsPasswordRecovery(false);
-        await supabase.auth.signOut({ scope: 'local' });
+        await Promise.allSettled([
+          clearDynamicWalletSessionSafe(),
+          supabase.auth.signOut({ scope: 'local' }),
+        ]);
         setSession(null);
         setIsLoading(false);
       },
