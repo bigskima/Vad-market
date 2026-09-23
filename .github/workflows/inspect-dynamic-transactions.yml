@@ -21,13 +21,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Inspect exact transaction declarations
+      - name: Inspect provider and EVM client helpers
         run: |
-          for file in             node_modules/@dynamic-labs-sdk/client/dist/modules/wallets/walletProvider/walletProvider.types.d.ts             node_modules/@dynamic-labs-sdk/client/dist/modules/wallets/walletAccount/walletAccount.types.d.ts             node_modules/@dynamic-labs-sdk/client/dist/modules/wallets/walletAccount/BaseWalletAccount.types.d.ts             node_modules/@dynamic-labs-sdk/evm/dist/EvmWalletProvider.types.d.ts             node_modules/@dynamic-labs-sdk/evm/dist/EvmWalletAccount.types.d.ts             node_modules/@dynamic-labs-sdk/solana/dist/SolanaWalletProvider.types.d.ts             node_modules/@dynamic-labs-sdk/solana/dist/SolanaWalletAccount.types.d.ts             node_modules/@dynamic-labs-sdk/solana/dist/signAndSendTransaction/signAndSendTransaction.d.ts; do
-            if [ -f "$file" ]; then
-              echo "===== $file ====="
-              cat "$file"
-            fi
+          for term in "getWalletProvider" "isEvmWalletProvider" "getViem" "WalletClient" "EvmWalletProvider"; do
+            echo "===== $term ====="
+            find node_modules/@dynamic-labs-sdk -type f \( -name '*.d.ts' -o -name '*.d.mts' \) -print0               | xargs -0 grep -n -m 40 "$term" 2>/dev/null               | head -n 180 || true
           done
-          echo "===== EVM transaction declaration files ====="
-          find node_modules/@dynamic-labs-sdk/evm/dist -type f -name '*.d.ts' -print0             | xargs -0 grep -l "sendTransaction" 2>/dev/null | head -n 20
