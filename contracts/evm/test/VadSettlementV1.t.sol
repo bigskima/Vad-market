@@ -204,8 +204,9 @@ contract VadSettlementV1Test {
             1_500_000,
             41
         );
+        bytes memory lockSignature = _signLock(lockAuth);
         vm.prank(user);
-        settlement.lockPosition(lockAuth, _signLock(lockAuth));
+        settlement.lockPosition(lockAuth, lockSignature);
 
         bytes32 evidence = keccak256("void-evidence");
         vm.prank(resolver);
@@ -226,8 +227,9 @@ contract VadSettlementV1Test {
 
         uint256 userBefore = usdc.balanceOf(user);
 
+        bytes memory settlementSignature = _signSettlement(settleAuth);
         vm.prank(user);
-        settlement.settlePosition(settleAuth, _signSettlement(settleAuth));
+        settlement.settlePosition(settleAuth, settlementSignature);
 
         _assertEq(usdc.balanceOf(user) - userBefore, 75_000_000, "refund");
         _assertEq(settlement.marketEscrow(MARKET), 0, "void escrow");
@@ -241,8 +243,9 @@ contract VadSettlementV1Test {
             0
         );
         lockAuth.outcomeId = NO;
+        bytes memory lockSignature = _signLock(lockAuth);
         vm.prank(user);
-        settlement.lockPosition(lockAuth, _signLock(lockAuth));
+        settlement.lockPosition(lockAuth, lockSignature);
 
         bytes32 evidence = keccak256("oracle-evidence");
         vm.prank(resolver);
@@ -262,8 +265,9 @@ contract VadSettlementV1Test {
             });
 
         vm.expectRevert(VadSettlementV1.InvalidAmount.selector);
+        bytes memory settlementSignature = _signSettlement(settleAuth);
         vm.prank(user);
-        settlement.settlePosition(settleAuth, _signSettlement(settleAuth));
+        settlement.settlePosition(settleAuth, settlementSignature);
     }
 
     function _lockAuthorization(
