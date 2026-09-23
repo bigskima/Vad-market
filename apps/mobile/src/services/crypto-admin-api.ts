@@ -73,6 +73,14 @@ export type AdminCryptoMarketVenue = {
   metadata: Record<string, unknown>;
 };
 
+export type UsdcMarketCandidate = {
+  instrument_public_id: string;
+  title: string;
+  status: string;
+  liquidity_mode: string | null;
+  closes_at: string | null;
+};
+
 export type AdminOnchainSignerStatus = {
   ok: boolean;
   signers: {
@@ -111,6 +119,19 @@ function asCatalog(value: unknown): AdminCryptoCatalog {
     contractDeployments: Array.isArray(row.contractDeployments) ? row.contractDeployments : [],
     marketVenues: Array.isArray(row.marketVenues) ? row.marketVenues : [],
   };
+}
+
+export async function getUsdcMarketCandidates() {
+  const { data, error } = await supabase
+    .from('market_catalog')
+    .select('instrument_public_id,title,status,liquidity_mode,closes_at')
+    .eq('asset_code', 'USDC')
+    .neq('status', 'CANCELLED')
+    .order('updated_at', { ascending: false })
+    .limit(50);
+
+  fail(error, 'We could not load USDC markets for settlement routing.');
+  return (data ?? []) as UsdcMarketCandidate[];
 }
 
 export async function getAdminOnchainSignerStatus() {
