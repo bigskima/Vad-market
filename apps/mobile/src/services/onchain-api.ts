@@ -213,3 +213,140 @@ export async function failOnchainIntent(
     );
   }
 }
+
+export type OnchainPositionRow = {
+  position_record_id: string;
+  position_id: string;
+  instrument_public_id: string;
+  market_title: string;
+  outcome_code: string;
+  chain_code: string;
+  wallet_address: string;
+  collateral_amount: number | string;
+  trading_fee_amount: number | string;
+  position_status: 'LOCKED' | 'SETTLEMENT_READY' | 'SETTLED' | 'REFUNDED' | 'LOST' | string;
+  entitlement_type: 'CLAIM' | 'REFUND' | 'LOSS' | null;
+  gross_payout: number | string | null;
+  settlement_fee: number | string | null;
+  net_payout: number | string | null;
+  entitlement_status: 'PENDING' | 'AUTHORIZED' | 'SUBMITTED' | 'CONFIRMED' | 'NO_ACTION' | null;
+  locked_at: string;
+  settled_at: string | null;
+};
+
+export type OnchainIntentReceipt = {
+  intentId: string;
+  status: string;
+  confirmations?: number;
+  finalized?: boolean;
+  eventType?: string;
+};
+
+export type SignedOnchainSettlementAuthorization = {
+  intentId: string;
+  intentStatus: string;
+  authorizationType: 'CLAIM_PAYOUT' | 'REFUND';
+  authorizationId: string;
+  positionId: string;
+  marketId: string;
+  walletAddress: string;
+  grossPayout: number | string;
+  grossPayoutAtomic: string;
+  settlementFee: number | string;
+  settlementFeeAmountAtomic: string;
+  settlementFeePolicyVersionId: number | string | null;
+  deadline: number | string;
+  chainCode: string;
+  evmChainId: number | string;
+  contractAddress: string;
+  tokenAddress: string;
+  tokenDecimals: number;
+  expectedSettlementSigner: string;
+  expectedResolver: string;
+  resolutionHash: string;
+  signature: string;
+  signerAddress?: string;
+};
+
+export type OnchainSettlementNoAction = {
+  noAction: true;
+  positionId: string;
+  result: 'LOST' | 'SETTLED' | 'REFUNDED' | string;
+  grossPayout: number | string;
+  settlementFee: number | string;
+  netPayout: number | string;
+};
+
+export async function getMyOnchainPositions() {
+  const { data, error } = await supabase.rpc('my_onchain_positions');
+  if (error) {
+    throw userFacingError(
+      error,
+      'portfolio',
+      'We could not load your self-custody USDC positions right now.',
+    );
+  }
+  return (data ?? []) as OnchainPositionRow[];
+}
+
+export async function checkOnchainIntent(intentId: string) {
+  const { data, error } = await supabase.functions.invoke('onchain-gateway', {
+    body: {
+      action: 'check_intent',
+      intentId,
+    },
+  });
+
+  const payload = data as {
+    ok?: boolean;
+    receipt?: OnchainIntentReceipt;
+    error?: string;
+    message?: string;
+  } | null;
+
+  if (error || !payload?.ok || !payload.receipt) {
+    throw gatewayError(
+      error,
+      payload,
+      'VAD could not verify this on-chain transaction yet.',
+    );
+  }
+
+  return payload.receipt;
+}
+
+export async function prepareOnchainSettlement(input: {
+  walletId: string;
+  positionId: string;
+  idempotencyKey: string;
+}) {
+  const { data, error } = await supabase.functions.invoke('onchain-gateway', {
+    body: {
+      action: 'prepare_settlement',
+      walletId: input.walletId,
+      positionId: input.positionId,
+      idempotencyKey: input.idempotencyKey,
+    },
+  });
+
+  const payload = data as {
+    ok?: boolean;
+    authorization?: SignedOnchainSettlementAuthorization;
+    settlement?: OnchainSettlementNoAction;
+    error?: string;
+    message?: string;
+  } | null;
+
+  if (error || !payload?.ok) {
+    throw gatewayError(
+      error,
+      payload,
+      'VAD could not prepare this USDC payout.',
+    );
+  }
+
+  if (payload.authorization) return payload.authorization;
+  if (payload.settlement?.noAction) return payload.settlement;
+
+  throw new Error('VAD returned an incomplete USDC settlement authorization.');
+}
