@@ -148,8 +148,9 @@ contract VadSettlementV1Test {
             2_000_000,
             41
         );
+        bytes memory lockSignature = _signLock(lockAuth);
         vm.prank(user);
-        settlement.lockPosition(lockAuth, _signLock(lockAuth));
+        settlement.lockPosition(lockAuth, lockSignature);
 
         address otherUser = vm.addr(0xD00D);
         VadSettlementV1.LockAuthorization memory other = _lockAuthorization(
@@ -187,8 +188,9 @@ contract VadSettlementV1Test {
         uint256 userBefore = usdc.balanceOf(user);
         uint256 treasuryBefore = usdc.balanceOf(treasury);
 
+        bytes memory settlementSignature = _signSettlement(settleAuth);
         vm.prank(user);
-        settlement.settlePosition(settleAuth, _signSettlement(settleAuth));
+        settlement.settlePosition(settleAuth, settlementSignature);
 
         _assertEq(usdc.balanceOf(user) - userBefore, 186_200_000, "net payout");
         _assertEq(usdc.balanceOf(treasury) - treasuryBefore, 3_800_000, "settlement fee");
