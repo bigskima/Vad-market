@@ -264,8 +264,8 @@ contract VadSettlementV1Test {
                 deadline: block.timestamp + 1 hours
             });
 
-        vm.expectRevert(VadSettlementV1.InvalidAmount.selector);
         bytes memory settlementSignature = _signSettlement(settleAuth);
+        vm.expectRevert(VadSettlementV1.InvalidAmount.selector);
         vm.prank(user);
         settlement.settlePosition(settleAuth, settlementSignature);
     }
