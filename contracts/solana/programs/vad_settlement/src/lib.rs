@@ -393,7 +393,7 @@ fn transfer_from_user<'info>(
         to: to.to_account_info(),
         authority: user.to_account_info(),
     };
-    let cpi = CpiContext::new(token_program.to_account_info(), accounts);
+    let cpi = CpiContext::new(token_program.key(), accounts);
     token_interface::transfer_checked(cpi, amount, mint.decimals)
 }
 
@@ -412,7 +412,7 @@ fn transfer_from_vault<'info>(
         to: to.to_account_info(),
         authority: market.to_account_info(),
     };
-    let cpi = CpiContext::new(token_program.to_account_info(), accounts)
+    let cpi = CpiContext::new(token_program.key(), accounts)
         .with_signer(signer_seeds);
     token_interface::transfer_checked(cpi, amount, mint.decimals)
 }
