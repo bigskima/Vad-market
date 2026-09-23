@@ -632,6 +632,12 @@ begin
 
   if not v_has_ngn then
     v_base:=jsonb_set(v_base,'{context,settlements}','[]'::jsonb,true);
+
+    select coalesce(jsonb_agg(item),'[]'::jsonb)
+      into v_filtered
+    from jsonb_array_elements(coalesce(v_base->'history','[]'::jsonb)) item
+    where not private.text_mentions_ngn(item->>'content');
+    v_base:=jsonb_set(v_base,'{history}',v_filtered,true);
   end if;
 
   v_base:=jsonb_set(
