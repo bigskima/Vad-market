@@ -20,12 +20,11 @@ interface FoundationHomeProps {
   onSignOut(): Promise<void>;
 }
 
-const actions: {
+const baseActions: {
   key: RuntimeCapabilityKey;
   label: string;
   phase: string;
 }[] = [
-  { key: 'deposit', label: 'Deposit NGN', phase: 'Wallet' },
   { key: 'submitMarketProposal', label: 'Propose a market', phase: 'Markets' },
   { key: 'trade', label: 'Take a position', phase: 'Trading' },
 ];
@@ -44,6 +43,10 @@ export function FoundationHome({
 }: FoundationHomeProps) {
   const { snapshot, isRefreshing } = runtime;
   const isConnected = snapshot.status === 'ready';
+  const activeAssets = snapshot.context.activeAssetCodes;
+  const actions = activeAssets.includes('NGN')
+    ? [{ key: 'deposit' as const, label: 'Deposit funds', phase: 'Wallet' }, ...baseActions]
+    : baseActions;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -84,8 +87,8 @@ export function FoundationHome({
         </View>
 
         <View style={styles.contextGrid}>
-          <ContextItem label="Launch market" value="Nigeria" />
-          <ContextItem label="Currency" value={snapshot.context.activeAssetCodes.includes('NGN') ? 'NGN · Available' : 'Checking availability'} />
+          <ContextItem label="Jurisdiction" value={snapshot.context.countryCode || 'Checking availability'} />
+          <ContextItem label="Currency" value={activeAssets.length ? activeAssets.join(' · ') : 'Checking availability'} />
           <ContextItem label="Account" value={isConnected ? 'Ready' : 'Limited'} />
         </View>
 
