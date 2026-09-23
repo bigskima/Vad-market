@@ -28,12 +28,14 @@ export function FundingOverview({
   depositReason,
   withdrawalReason,
   policyLoading = false,
+  activeAssetCodes,
 }: {
   depositAllowed: boolean;
   withdrawalAllowed: boolean;
   depositReason?: string;
   withdrawalReason?: string;
   policyLoading?: boolean;
+  activeAssetCodes: string[];
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -41,8 +43,16 @@ export function FundingOverview({
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasNgn = activeAssetCodes.includes('NGN');
+  const hasUsdc = activeAssetCodes.includes('USDC');
 
   const load = useCallback(async () => {
+    if (!hasNgn) {
+      setReadiness(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setError(null);
     try {
       setReadiness(await getProviderReadiness());
@@ -51,12 +61,48 @@ export function FundingOverview({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hasNgn]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
   }, [load]);
+
+  if (!hasNgn) {
+    return (
+      <View style={{ gap: density.sectionGap }}>
+        <VadCard variant="brand" style={{ gap: theme.spacing.sm }}>
+          <VadText variant="caption" tone="brand">SELF-CUSTODY FUNDING</VadText>
+          <VadText variant="heading">{hasUsdc ? 'USDC is available for your account' : 'Funding availability is limited'}</VadText>
+          <VadText variant="caption" tone="secondary">
+            {hasUsdc
+              ? 'USDC is held in your embedded self-custody wallet rather than the VAD internal payment wallet.'
+              : 'No supported funding asset is available for your account right now.'}
+          </VadText>
+        </VadCard>
+        {hasUsdc ? (
+          <VadCard style={{ gap: theme.spacing.xs }}>
+            <ReadinessRow
+              title="Manage USDC wallet"
+              detail="Open your embedded wallet, addresses and on-chain activity."
+              ready
+              statusLabel="OPEN"
+              icon="activity"
+              onPress={() => router.push('/wallet')}
+            />
+            <ReadinessRow
+              title="Identity verification"
+              detail="Complete verification when required by your account or jurisdiction."
+              ready
+              statusLabel="OPEN"
+              icon="account"
+              onPress={() => router.push('/account/verification')}
+            />
+          </VadCard>
+        ) : null}
+      </View>
+    );
+  }
 
   if (loading) {
     return (
