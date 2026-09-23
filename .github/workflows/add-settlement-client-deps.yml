@@ -23,7 +23,7 @@ jobs:
       - run: npm ci
       - name: Install direct settlement client dependencies
         working-directory: apps/mobile
-        run: npm install viem @solana/web3.js @vad/chain-core@0.1.0
+        run: npm install viem @solana/web3.js@1.98.1 @vad/chain-core@0.1.0
       - name: Commit dependency metadata
         run: |
           git config user.name "github-actions[bot]"
