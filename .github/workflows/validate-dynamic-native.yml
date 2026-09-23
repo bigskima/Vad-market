@@ -3,7 +3,7 @@ name: Validate Dynamic Android bundle
 on:
   workflow_dispatch:
   push:
-    branches: [dynamic-email-wallet]
+    branches: [main]
     paths:
       - .github/workflows/validate-dynamic-native.yml
       - apps/mobile/package.json
@@ -12,6 +12,8 @@ on:
       - apps/mobile/src/lib/dynamic-client.native.ts
       - apps/mobile/src/lib/dynamic-session.native.ts
       - apps/mobile/src/features/wallet/crypto-wallet-connections.native.tsx
+      - apps/mobile/src/providers/auth-provider.tsx
+      - apps/mobile/.env.example
 
 permissions:
   contents: read
@@ -22,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: dynamic-email-wallet
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 22
