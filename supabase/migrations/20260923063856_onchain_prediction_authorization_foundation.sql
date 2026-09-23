@@ -135,6 +135,14 @@ create index if not exists blockchain_tx_authorizations_contract_idx
 create index if not exists blockchain_tx_authorizations_position_idx
   on blockchain.transaction_authorizations(position_id,created_at desc);
 
+create index if not exists blockchain_tx_authorizations_asset_idx
+  on blockchain.transaction_authorizations(asset_id);
+create index if not exists blockchain_tx_authorizations_asset_representation_idx
+  on blockchain.transaction_authorizations(asset_representation_id);
+create index if not exists blockchain_tx_authorizations_fee_policy_version_idx
+  on blockchain.transaction_authorizations(fee_policy_version_id)
+  where fee_policy_version_id is not null;
+
 alter table blockchain.transaction_authorizations enable row level security;
 revoke all on table blockchain.transaction_authorizations from public,anon,authenticated;
 grant all on table blockchain.transaction_authorizations to service_role;
