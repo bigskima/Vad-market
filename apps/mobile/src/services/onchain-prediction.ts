@@ -1,6 +1,14 @@
-import type { OnchainMarketVenue } from '@/services/onchain-api';
+import type {
+  PreparedUsdcPrediction,
+  PrepareUsdcPredictionInput,
+  SubmittedUsdcPrediction,
+} from '@/services/onchain-prediction.types';
 
-export type PreparedUsdcPrediction = never;
+export type {
+  PreparedUsdcPrediction,
+  PrepareUsdcPredictionInput,
+  SubmittedUsdcPrediction,
+} from '@/services/onchain-prediction.types';
 
 function nativeOnly(): never {
   throw new Error(
@@ -8,19 +16,21 @@ function nativeOnly(): never {
   );
 }
 
-export async function prepareUsdcPrediction(_input: {
-  marketId: string;
-  outcomeCode: 'YES' | 'NO';
-  amount: number;
-  venue: OnchainMarketVenue;
-}): Promise<never> {
+export async function prepareUsdcPrediction(
+  _input: PrepareUsdcPredictionInput,
+): Promise<PreparedUsdcPrediction> {
   return nativeOnly();
 }
 
-export async function submitPreparedUsdcPrediction(): Promise<never> {
+export async function submitPreparedUsdcPrediction(
+  _prepared: PreparedUsdcPrediction,
+): Promise<SubmittedUsdcPrediction> {
   return nativeOnly();
 }
 
-export async function cancelPreparedUsdcPrediction(): Promise<void> {
+export async function cancelPreparedUsdcPrediction(
+  _prepared: PreparedUsdcPrediction | null,
+  _failureCode = 'USER_EDITED_AUTHORIZATION',
+): Promise<void> {
   return;
 }
