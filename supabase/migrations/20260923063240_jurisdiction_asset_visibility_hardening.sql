@@ -48,6 +48,40 @@ $$;
 revoke all on function private.asset_available_for_user(uuid,bigint)
   from public,anon,authenticated;
 
+create or replace function private.asset_code_available_for_user(
+  p_user_id uuid,
+  p_asset_code text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path=''
+as $
+  select exists(
+    select 1
+    from public.assets a
+    where a.code=upper(btrim(coalesce(p_asset_code,'')))
+      and private.asset_available_for_user(p_user_id,a.id)
+  );
+$;
+
+revoke all on function private.asset_code_available_for_user(uuid,text)
+  from public,anon,authenticated;
+
+create or replace function private.text_mentions_ngn(p_text text)
+returns boolean
+language sql
+immutable
+security invoker
+set search_path=''
+as $
+  select coalesce(p_text,'') ~* '(^|[^[:alnum:]_])(NGN|NAIRA)([^[:alnum:]_]|$)|₦';
+$;
+
+revoke all on function private.text_mentions_ngn(text)
+  from public,anon,authenticated;
+
 create or replace function private.trade_access_satisfies(
   p_user_id uuid,
   p_country_code text,
@@ -287,6 +321,11 @@ begin
     raise exception 'Confidence must be between 0 and 1' using errcode='22023';
   end if;
 
+  if not private.asset_code_available_for_user(p_user_id := auth.uid(),p_asset_code := 'NGN')
+     and private.text_mentions_ngn(p_body) then
+    raise exception 'NGN content is not available for your account location' using errcode='P0001';
+  end if;
+
   if p_instrument_public_id is not null then
     select * into instrument from market.instruments where public_id=p_instrument_public_id;
     if instrument.id is null then raise exception 'Market not found' using errcode='P0002'; end if;
@@ -380,6 +419,10 @@ as $$
   left join public.market_catalog mc on mc.instrument_public_id=i.public_id
   where p.status='PUBLISHED'
     and (i.id is null or private.asset_available_for_user(auth.uid(),i.asset_id))
+    and (
+      private.asset_code_available_for_user(auth.uid(),'NGN')
+      or not private.text_mentions_ngn(p.body)
+    )
   order by (
     case when exists(
       select 1 from social.follows f2
@@ -441,6 +484,11 @@ begin
     raise exception 'Comment must be 1-2000 characters' using errcode='22023';
   end if;
 
+  if not private.asset_code_available_for_user(auth.uid(),'NGN')
+     and private.text_mentions_ngn(p_body) then
+    raise exception 'NGN content is not available for your account location' using errcode='P0001';
+  end if;
+
   select sp.id into v_post_id
   from social.posts sp
   left join market.instruments i on i.id=sp.instrument_id
@@ -487,9 +535,123 @@ as $$
     and sp.status='PUBLISHED'
     and c.status='PUBLISHED'
     and (i.id is null or private.asset_available_for_user(auth.uid(),i.asset_id))
+    and (
+      private.asset_code_available_for_user(auth.uid(),'NGN')
+      or not private.text_mentions_ngn(c.body)
+    )
   order by c.created_at asc
   limit least(greatest(coalesce(p_limit,50),1),200);
 $$;
 
 revoke all on function public.post_comments(uuid,integer) from public,anon;
 grant execute on function public.post_comments(uuid,integer) to authenticated;
+
+
+create or replace function public.internal_prepare_user_ai_assistant_v3(
+  p_user_id uuid,
+  p_thread_public_id uuid default null,
+  p_market_public_id uuid default null,
+  p_route text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_base jsonb;
+  v_allowed_codes text[];
+  v_filtered jsonb;
+  v_market jsonb;
+  v_has_ngn boolean:=false;
+begin
+  if p_user_id is null then
+    raise exception 'Assistant account is required' using errcode='42501';
+  end if;
+
+  select coalesce(array_agg(a.code order by a.code),array[]::text[])
+    into v_allowed_codes
+  from public.user_accounts ua
+  join public.jurisdictions j
+    on j.country_code=ua.country_code
+   and j.status='ACTIVE'
+  join public.jurisdiction_assets ja
+    on ja.jurisdiction_id=j.id
+   and ja.status='ACTIVE'
+  join public.assets a
+    on a.id=ja.asset_id
+   and a.status='ACTIVE'
+  where ua.user_id=p_user_id
+    and ua.status='ACTIVE';
+
+  if coalesce(array_length(v_allowed_codes,1),0)=0 then
+    raise exception 'No active assets are available for this account' using errcode='P0001';
+  end if;
+
+  v_has_ngn:='NGN'=any(v_allowed_codes);
+  v_base:=public.internal_prepare_user_ai_assistant_v2(
+    p_user_id,p_thread_public_id,p_market_public_id,p_route
+  );
+
+  select coalesce(jsonb_agg(item),'[]'::jsonb)
+    into v_filtered
+  from jsonb_array_elements(coalesce(v_base#>'{context,wallet}','[]'::jsonb)) item
+  where upper(coalesce(item->>'assetCode',''))=any(v_allowed_codes);
+  v_base:=jsonb_set(v_base,'{context,wallet}',v_filtered,true);
+
+  select coalesce(jsonb_agg(item),'[]'::jsonb)
+    into v_filtered
+  from jsonb_array_elements(coalesce(v_base#>'{context,paymentActivity}','[]'::jsonb)) item
+  where upper(coalesce(item->>'assetCode',''))=any(v_allowed_codes);
+  v_base:=jsonb_set(v_base,'{context,paymentActivity}',v_filtered,true);
+
+  select coalesce(jsonb_agg(item),'[]'::jsonb)
+    into v_filtered
+  from jsonb_array_elements(coalesce(v_base#>'{context,positions}','[]'::jsonb)) item
+  where upper(coalesce(item->>'assetCode',''))=any(v_allowed_codes);
+  v_base:=jsonb_set(v_base,'{context,positions}',v_filtered,true);
+
+  select coalesce(jsonb_agg(item),'[]'::jsonb)
+    into v_filtered
+  from jsonb_array_elements(coalesce(v_base#>'{context,openOrders}','[]'::jsonb)) item
+  where upper(coalesce(item->>'assetCode',''))=any(v_allowed_codes);
+  v_base:=jsonb_set(v_base,'{context,openOrders}',v_filtered,true);
+
+  select coalesce(jsonb_agg(item),'[]'::jsonb)
+    into v_filtered
+  from jsonb_array_elements(coalesce(v_base#>'{context,marketDirectory}','[]'::jsonb)) item
+  where upper(coalesce(item->>'assetCode',''))=any(v_allowed_codes);
+  v_base:=jsonb_set(v_base,'{context,marketDirectory}',v_filtered,true);
+
+  v_market:=v_base#>'{context,market}';
+  if v_market is not null
+     and jsonb_typeof(v_market)='object'
+     and not upper(coalesce(v_market->>'assetCode',''))=any(v_allowed_codes) then
+    v_base:=jsonb_set(v_base,'{context,market}','null'::jsonb,true);
+  end if;
+
+  if not v_has_ngn then
+    v_base:=jsonb_set(v_base,'{context,settlements}','[]'::jsonb,true);
+  end if;
+
+  v_base:=jsonb_set(
+    v_base,
+    '{user,activeAssetCodes}',
+    to_jsonb(v_allowed_codes),
+    true
+  );
+  v_base:=jsonb_set(
+    v_base,
+    '{context,activeAssetCodes}',
+    to_jsonb(v_allowed_codes),
+    true
+  );
+
+  return v_base;
+end;
+$$;
+
+revoke all on function public.internal_prepare_user_ai_assistant_v3(uuid,uuid,uuid,text)
+  from public,anon,authenticated;
+grant execute on function public.internal_prepare_user_ai_assistant_v3(uuid,uuid,uuid,text)
+  to service_role;
