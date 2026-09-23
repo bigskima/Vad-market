@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -11,6 +11,17 @@ import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import {
+  listOnchainMarketVenues,
+  type OnchainMarketVenue,
+} from '@/services/onchain-api';
+import {
+  cancelPreparedUsdcPrediction,
+  prepareUsdcPrediction,
+  submitPreparedUsdcPrediction,
+  type PreparedUsdcPrediction,
+  type SubmittedUsdcPrediction,
+} from '@/services/onchain-prediction';
 import {
   placeOrder,
   placePoolStake,
@@ -45,6 +56,9 @@ type TicketProps = {
 };
 
 export function TradingTicket(props: TicketProps) {
+  if (props.market.asset_code === 'USDC' && props.market.liquidity_mode !== 'POOL') {
+    return <UnsupportedUsdcOrderBook />;
+  }
   if (props.market.liquidity_mode === 'POOL') return <PoolTradingTicket {...props} />;
   return <OrderBookTradingTicket {...props} />;
 }
