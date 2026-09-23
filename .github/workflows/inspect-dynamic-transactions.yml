@@ -1,0 +1,29 @@
+name: Inspect Dynamic transaction APIs
+
+on:
+  push:
+    branches: [usdc-settlement-v1]
+    paths:
+      - .github/workflows/inspect-dynamic-transactions.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: usdc-settlement-v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Inspect transaction APIs
+        run: |
+          for term in "useSendTransaction" "sendTransaction" "signTypedData" "signMessage" "getWalletAccounts" "WalletAccount" "switchNetwork" "getNetwork" "Evm" "Solana"; do
+            echo "===== $term ====="
+            grep -R -n -m 30 "$term" node_modules/@dynamic-labs-sdk/{client,react-hooks,evm,solana} 2>/dev/null               | grep -v tsbuildinfo               | head -n 120 || true
+          done
