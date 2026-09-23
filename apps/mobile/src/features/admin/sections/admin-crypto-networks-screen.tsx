@@ -14,9 +14,11 @@ import { hasAdminPermission } from '@/services/admin-control-api';
 import {
   getAdminCryptoCatalog,
   registerAdminContractDeployment,
+  setAdminAssetStatus,
   setAdminContractDeploymentStatus,
   setAdminCryptoAssetStatus,
   setAdminCryptoChainStatus,
+  setAdminJurisdictionAssetStatus,
   setAdminJurisdictionChainStatus,
   setAdminOnchainVenueStatus,
   upsertAdminOnchainVenue,
@@ -29,6 +31,8 @@ import {
 type Tab = 'networks' | 'deployments' | 'venues';
 
 const emptyCatalog: AdminCryptoCatalog = {
+  assets: [],
+  jurisdictionAssets: [],
   chains: [],
   assetRepresentations: [],
   jurisdictions: [],
@@ -72,6 +76,13 @@ export function AdminCryptoNetworksScreen() {
     () => catalog.chains.filter((chain) => environmentOf(chain.metadata) !== 'SANDBOX'),
     [catalog.chains],
   );
+
+  const usdcAsset = catalog.assets.find((asset) => asset.code === 'USDC') ?? null;
+  const ngUsdcRoute = catalog.jurisdictionAssets.find(
+    (row) => row.countryCode === 'NG' && row.assetCode === 'USDC',
+  ) ?? null;
+  const usdcSandboxOnly =
+    String(usdcAsset?.metadata?.sandbox_only ?? 'false').toLowerCase() === 'true';
 
   async function perform(key: string, task: () => Promise<unknown>, success: string) {
     if (workingKey) return;
@@ -119,7 +130,72 @@ export function AdminCryptoNetworksScreen() {
           <VadChip label={String(sandboxChains.length) + ' SANDBOX NETWORKS'} tone="brand" />
           <VadChip label={String(catalog.contractDeployments.length) + ' DEPLOYMENTS'} />
           <VadChip label={String(catalog.marketVenues.length) + ' VENUES'} />
+          <VadChip
+            label={'USDC ' + (usdcAsset?.status ?? 'UNAVAILABLE')}
+            tone={usdcAsset?.status === 'ACTIVE' ? 'yes' : 'neutral'}
+          />
+          <VadChip
+            label={'NG ROUTE ' + (ngUsdcRoute?.status ?? 'UNAVAILABLE')}
+            tone={ngUsdcRoute?.status === 'ACTIVE' ? 'yes' : 'neutral'}
+          />
+          <VadChip
+            label={usdcSandboxOnly ? 'SANDBOX ONLY' : 'PRODUCTION-CAPABLE'}
+            tone={usdcSandboxOnly ? 'warning' : 'neutral'}
+          />
         </View>
+
+        {canAssets && usdcAsset ? (
+          <View style={{ gap: theme.spacing.xs }}>
+            <VadText variant="caption" tone="secondary">
+              The sandbox toggle keeps USDC hidden from non-testers. Production release is intentionally not available from this control.
+            </VadText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+              <VadButton
+                label={usdcAsset.status === 'ACTIVE' ? 'Disable sandbox USDC' : 'Enable sandbox USDC'}
+                size="small"
+                variant={usdcAsset.status === 'ACTIVE' ? 'secondary' : 'primary'}
+                fullWidth={false}
+                loading={workingKey === 'asset:USDC'}
+                disabled={Boolean(workingKey)}
+                onPress={() => void perform(
+                  'asset:USDC',
+                  () => setAdminAssetStatus({
+                    assetCode: 'USDC',
+                    status: usdcAsset.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
+                    sandboxOnly: true,
+                  }),
+                  usdcAsset.status === 'ACTIVE'
+                    ? 'Sandbox USDC is disabled.'
+                    : 'Sandbox USDC is active for approved tester access.',
+                )}
+              />
+              {ngUsdcRoute ? (
+                <VadButton
+                  label={ngUsdcRoute.status === 'ACTIVE' ? 'Disable NG USDC' : 'Enable NG USDC'}
+                  size="small"
+                  variant="secondary"
+                  fullWidth={false}
+                  loading={workingKey === 'asset-route:NG:USDC'}
+                  disabled={
+                    Boolean(workingKey)
+                    || (usdcAsset.status !== 'ACTIVE' && ngUsdcRoute.status !== 'ACTIVE')
+                  }
+                  onPress={() => void perform(
+                    'asset-route:NG:USDC',
+                    () => setAdminJurisdictionAssetStatus({
+                      countryCode: 'NG',
+                      assetCode: 'USDC',
+                      status: ngUsdcRoute.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
+                    }),
+                    ngUsdcRoute.status === 'ACTIVE'
+                      ? 'NG sandbox USDC route is disabled.'
+                      : 'NG sandbox USDC route is active for approved testers.',
+                  )}
+                />
+              ) : null}
+            </View>
+          </View>
+        ) : null}
       </VadCard>
 
       {message ? (
