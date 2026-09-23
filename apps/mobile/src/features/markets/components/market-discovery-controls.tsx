@@ -39,8 +39,8 @@ export function MarketDiscoveryControls({
   categories: string[];
   activeCategory: string;
   onCategoryChange: (value: string) => void;
-  stage: MarketStageFilter;
-  onStageChange: (value: MarketStageFilter) => void;
+  stage?: MarketStageFilter;
+  onStageChange?: (value: MarketStageFilter) => void;
   sortMode: MarketSortMode;
   onSortModeChange: (value: MarketSortMode) => void;
   resultCount: number;
@@ -51,23 +51,25 @@ export function MarketDiscoveryControls({
 
   return (
     <View style={{ gap: theme.spacing.lg }}>
-      <View style={{ gap: theme.spacing.xs }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-          <VadText variant="caption" tone="tertiary">Stage</VadText>
-          <VadText variant="caption" tone="secondary">{resultCount} matching</VadText>
+      {stage && onStageChange ? (
+        <View style={{ gap: theme.spacing.xs }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+            <VadText variant="caption" tone="tertiary">Stage</VadText>
+            <VadText variant="caption" tone="secondary">{resultCount} matching</VadText>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
+            {STAGE_OPTIONS.map((option) => (
+              <VadChip
+                key={option.value}
+                label={option.label}
+                selected={option.value === stage}
+                tone={option.value === stage ? (option.value === 'live' ? 'yes' : 'brand') : 'neutral'}
+                onPress={() => onStageChange(option.value)}
+              />
+            ))}
+          </ScrollView>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
-          {STAGE_OPTIONS.map((option) => (
-            <VadChip
-              key={option.value}
-              label={option.label}
-              selected={option.value === stage}
-              tone={option.value === stage ? (option.value === 'live' ? 'yes' : 'brand') : 'neutral'}
-              onPress={() => onStageChange(option.value)}
-            />
-          ))}
-        </ScrollView>
-      </View>
+      ) : null}
 
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: wide ? 'flex-end' : 'stretch', gap: theme.spacing.md }}>
         <View style={{ flex: 1 }}>
