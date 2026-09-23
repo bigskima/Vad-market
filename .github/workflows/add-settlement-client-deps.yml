@@ -33,4 +33,5 @@ jobs:
             exit 0
           fi
           git commit -m "Add on-chain settlement client dependencies"
+          git pull --rebase origin usdc-settlement-v1
           git push origin HEAD:usdc-settlement-v1
