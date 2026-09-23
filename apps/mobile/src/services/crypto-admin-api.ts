@@ -73,6 +73,16 @@ export type AdminCryptoMarketVenue = {
   metadata: Record<string, unknown>;
 };
 
+export type AdminOnchainSignerStatus = {
+  ok: boolean;
+  signers: {
+    quote: { configured: boolean; address: string | null };
+    settlement: { configured: boolean; address: string | null };
+    resolver: { configured: boolean; address: string | null };
+  };
+  sharedOperator: boolean;
+};
+
 export type AdminCryptoCatalog = {
   assets: AdminCryptoAsset[];
   jurisdictionAssets: AdminJurisdictionAsset[];
@@ -101,6 +111,16 @@ function asCatalog(value: unknown): AdminCryptoCatalog {
     contractDeployments: Array.isArray(row.contractDeployments) ? row.contractDeployments : [],
     marketVenues: Array.isArray(row.marketVenues) ? row.marketVenues : [],
   };
+}
+
+export async function getAdminOnchainSignerStatus() {
+  const { data, error } = await supabase.functions.invoke<AdminOnchainSignerStatus>(
+    'onchain-gateway',
+    { body: { action: 'admin_signer_status' } },
+  );
+  fail(error, 'We could not inspect the configured VAD on-chain signers.');
+  if (!data?.ok) throw new Error('VAD signer diagnostics are unavailable.');
+  return data;
 }
 
 export async function getAdminCryptoCatalog() {
