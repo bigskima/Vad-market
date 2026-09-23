@@ -247,7 +247,7 @@ function DynamicEmailWallet() {
             </VadCard>
           ))}
           <VadText variant="caption" tone="tertiary">
-            Private keys remain with the embedded-wallet security layer. VAD&apos;s NGN balance is separate.
+            Private keys remain with the embedded-wallet security layer. Internal-ledger balances remain separate from self-custody USDC.
           </VadText>
         </View>
       ) : otpVerification ? (
