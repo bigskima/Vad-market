@@ -1,0 +1,28 @@
+name: Validate Solana settlement program
+
+on:
+  pull_request:
+    paths:
+      - contracts/solana/**
+      - .github/workflows/validate-solana-settlement.yml
+  push:
+    branches: [main, usdc-settlement-v1]
+    paths:
+      - contracts/solana/**
+      - .github/workflows/validate-solana-settlement.yml
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts/solana
+      - name: Check VAD Solana settlement program
+        working-directory: contracts/solana
+        run: cargo check --workspace --all-targets
