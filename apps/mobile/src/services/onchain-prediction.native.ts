@@ -16,20 +16,17 @@ import {
   type VerifiedVadWallet,
 } from '@/services/verified-wallet-api.native';
 
-export type PreparedUsdcPrediction = {
-  intentId: string;
-  marketId: string;
-  outcomeCode: 'YES' | 'NO';
-  chainCode: string;
-  walletId: string;
-  walletAddress: string;
-  collateralAmount: number | string;
-  tradingFee: number | string;
-  maximumWalletDebit: number;
-  expiresAtUnix: number;
-  authorization: SignedOnchainPredictionAuthorization;
-  execution: EvmLockExecution;
-};
+import type {
+  PreparedUsdcPrediction,
+  PrepareUsdcPredictionInput,
+  SubmittedUsdcPrediction,
+} from '@/services/onchain-prediction.types';
+
+export type {
+  PreparedUsdcPrediction,
+  PrepareUsdcPredictionInput,
+  SubmittedUsdcPrediction,
+} from '@/services/onchain-prediction.types';
 
 function chooseDynamicEvmWallet(wallets: VerifiedVadWallet[]) {
   const wallet = wallets.find(
@@ -68,12 +65,9 @@ function toLockAuthorization(
   };
 }
 
-export async function prepareUsdcPrediction(input: {
-  marketId: string;
-  outcomeCode: 'YES' | 'NO';
-  amount: number;
-  venue: OnchainMarketVenue;
-}) {
+export async function prepareUsdcPrediction(
+  input: PrepareUsdcPredictionInput,
+): Promise<PreparedUsdcPrediction> {
   if (input.venue.chain_family !== 'EVM' || input.venue.evm_chain_id == null) {
     throw new Error(
       'This USDC network is not available through the native EVM settlement flow.',
@@ -135,7 +129,7 @@ export async function prepareUsdcPrediction(input: {
 
 export async function submitPreparedUsdcPrediction(
   prepared: PreparedUsdcPrediction,
-) {
+): Promise<SubmittedUsdcPrediction> {
   let lockTransactionHash: string | null = null;
 
   try {
