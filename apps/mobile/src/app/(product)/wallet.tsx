@@ -31,6 +31,7 @@ export default function WalletRoute() {
             onWithdraw={() => router.push('/wallet/withdraw')}
             onActivity={() => router.push('/wallet/activity')}
             onOpenTransaction={openTransaction}
+            activeAssetCodes={data.activeAssetCodes}
           />
           {data.sectionErrors.walletActivity && !data.walletActivity.length ? (
             <VadErrorState title="Wallet ledger could not be loaded" message={data.sectionErrors.walletActivity} onRetry={() => void data.refreshPortfolio()} />
