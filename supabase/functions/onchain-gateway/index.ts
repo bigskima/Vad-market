@@ -42,6 +42,38 @@ function adminClient() {
   });
 }
 
+function userScopedClient(req: Request) {
+  const url = env('SUPABASE_URL');
+  const anon = env('SUPABASE_ANON_KEY') ?? env('SUPABASE_PUBLISHABLE_KEY');
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+  if (!url || !anon || !token) throw new Error('SUPABASE_USER_RUNTIME_CONFIGURATION_MISSING');
+
+  return createClient(url, anon, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+async function requireCryptoAdmin(req: Request) {
+  await requireUser(req);
+  const client = userScopedClient(req);
+  const { data, error } = await client.rpc('admin_my_access');
+  if (error) throw new Error('ADMIN_ACCESS_CHECK_FAILED');
+
+  const access = (data ?? {}) as {
+    isSuperAdmin?: boolean;
+    permissions?: string[];
+  };
+  const permissions = Array.isArray(access.permissions) ? access.permissions : [];
+
+  if (!access.isSuperAdmin && !permissions.includes('assets.manage')) {
+    throw new Response(JSON.stringify({ error: 'ADMIN_PERMISSION_REQUIRED' }), {
+      status: 403,
+      headers: corsHeaders,
+    });
+  }
+}
+
 async function requireUser(req: Request) {
   const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
   if (!token) throw new Response(JSON.stringify({ error: 'AUTH_REQUIRED' }), {
@@ -268,6 +300,37 @@ type IntentProbe = {
   currentConfirmations: number;
   finalized: boolean;
 };
+
+
+async function adminSignerStatus(req: Request) {
+  await requireCryptoAdmin(req);
+
+  const quote = quoteSignerAccount();
+  const settlement = settlementSignerAccount();
+  const resolver = resolverAccount();
+
+  return json({
+    ok: true,
+    signers: {
+      quote: {
+        configured: Boolean(quote),
+        address: quote?.address ?? null,
+      },
+      settlement: {
+        configured: Boolean(settlement),
+        address: settlement?.address ?? null,
+      },
+      resolver: {
+        configured: Boolean(resolver),
+        address: resolver?.address ?? null,
+      },
+    },
+    sharedOperator:
+      Boolean(quote && settlement && resolver)
+      && quote!.address.toLowerCase() === settlement!.address.toLowerCase()
+      && quote!.address.toLowerCase() === resolver!.address.toLowerCase(),
+  });
+}
 
 async function preparePrediction(req: Request, body: Record<string, unknown>) {
   const { user, admin } = await requireUser(req);
@@ -921,6 +984,7 @@ Deno.serve(async (req) => {
     const body = await req.json() as Record<string, unknown>;
     const action = String(body.action ?? '').trim().toLowerCase();
 
+    if (action === 'admin_signer_status') return await adminSignerStatus(req);
     if (action === 'prepare_prediction') return await preparePrediction(req, body);
     if (action === 'prepare_settlement') return await prepareSettlement(req, body);
     if (action === 'record_submission') return await recordSubmission(req, body);
