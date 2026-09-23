@@ -95,7 +95,7 @@ export function WalletActivityScreen({
     const totals = new Map<string, { deposits: number; withdrawals: number }>();
 
     rows.forEach((row) => {
-      const asset = row.asset_code || 'NGN';
+      const asset = row.asset_code || 'UNKNOWN';
       const current = totals.get(asset) ?? { deposits: 0, withdrawals: 0 };
       const amount = Number(row.amount ?? 0);
       if (row.operation === 'DEPOSIT') current.deposits += amount;
