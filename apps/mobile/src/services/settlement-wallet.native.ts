@@ -299,7 +299,7 @@ export async function submitSolanaPreparedSettlement(
   const { signature } = await signAndSendTransaction(
     {
       walletAccount: account,
-      transaction,
+      transaction: transaction as unknown as Parameters<typeof signAndSendTransaction>[0]['transaction'],
       sponsorshipMode: 'off',
     },
     dynamicClient,
