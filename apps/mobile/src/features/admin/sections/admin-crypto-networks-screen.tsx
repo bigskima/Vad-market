@@ -59,12 +59,15 @@ export function AdminCryptoNetworksScreen() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [nextCatalog, nextSignerStatus] = await Promise.all([
-        getAdminCryptoCatalog(),
-        canAssets ? getAdminOnchainSignerStatus() : Promise.resolve(null),
-      ]);
+      const nextCatalog = await getAdminCryptoCatalog();
       setCatalog(nextCatalog);
-      setSignerStatus(nextSignerStatus);
+
+      if (canAssets) {
+        const nextSignerStatus = await getAdminOnchainSignerStatus().catch(() => null);
+        setSignerStatus(nextSignerStatus);
+      } else {
+        setSignerStatus(null);
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Crypto controls could not be loaded.');
     } finally {
