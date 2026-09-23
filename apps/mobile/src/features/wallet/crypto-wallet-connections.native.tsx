@@ -191,6 +191,20 @@ function DynamicEmailWallet() {
     }
   }, [otpVerification, verificationCode, verifyOtp, walletsQuery]);
 
+  const ensureWalletsForAuthenticatedSession = useCallback(async () => {
+    setLocalError(null);
+    try {
+      await ensureDynamicEmbeddedWallets();
+      await walletsQuery.refetch();
+    } catch (reason) {
+      setLocalError(
+        reason instanceof Error
+          ? reason.message
+          : 'VAD could not finish creating the embedded wallets.',
+      );
+    }
+  }, [walletsQuery]);
+
   const authenticatedForVadUser = Boolean(vadEmail && dynamicEmail === vadEmail);
   const sessionMismatch = Boolean(dynamicEmail && dynamicEmail !== vadEmail);
   const busy = sessionMismatch || sendOtp.isPending || verifyOtp.isPending;
@@ -276,11 +290,11 @@ function DynamicEmailWallet() {
             <VadText variant="bodyStrong">{vadEmail || 'No email available'}</VadText>
           </VadCard>
           <VadButton
-            label={authenticatedForVadUser ? 'Refresh embedded wallets' : 'Activate USDC wallet'}
+            label={authenticatedForVadUser ? 'Finish wallet setup' : 'Activate USDC wallet'}
             loading={busy || walletsQuery.isFetching}
             disabled={!vadEmail || !vadEmailConfirmed || busy}
             onPress={() => {
-              if (authenticatedForVadUser) void walletsQuery.refetch();
+              if (authenticatedForVadUser) void ensureWalletsForAuthenticatedSession();
               else void startEmailVerification();
             }}
           />
