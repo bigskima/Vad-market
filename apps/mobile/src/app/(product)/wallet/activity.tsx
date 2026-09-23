@@ -1,5 +1,4 @@
-import { Redirect } from 'expo-router';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { View } from 'react-native';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
