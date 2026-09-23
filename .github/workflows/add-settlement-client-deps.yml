@@ -1,0 +1,36 @@
+name: Add settlement client dependencies
+
+on:
+  push:
+    branches: [usdc-settlement-v1]
+    paths:
+      - .github/workflows/add-settlement-client-deps.yml
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: usdc-settlement-v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install direct settlement client dependencies
+        working-directory: apps/mobile
+        run: npm install viem @solana/web3.js
+      - name: Commit dependency metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/mobile/package.json package-lock.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Add on-chain settlement client dependencies"
+          git push origin HEAD:usdc-settlement-v1
