@@ -7,11 +7,10 @@ import type { MarketCatalogItem } from '@/services/market-api';
 import { marketMediaPublicUrl } from '@/services/market-media-api';
 
 export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogItem; size?: number }) {
-  const legacyUrl = market.thumbnail_url ?? market.image_url ?? market.media_url ?? null;
   return (
     <MarketMediaThumbnail
       mediaPath={market.media_path}
-      legacyUrl={legacyUrl}
+      legacyUrl={null}
       title={market.title}
       category={market.category}
       size={size}
