@@ -13,6 +13,7 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { CryptoWalletConnections } from '@/features/wallet/crypto-wallet-connections';
+import { OnchainActivityPanel } from '@/features/wallet/onchain-activity-panel';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -40,6 +41,7 @@ export function WalletScreen({
   const [loading, setLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
   const hasNgn = activeAssetCodes.includes('NGN');
+  const hasUsdc = activeAssetCodes.includes('USDC');
 
   const load = useCallback(async () => {
     if (!hasNgn) {
@@ -155,6 +157,7 @@ export function WalletScreen({
       ) : null}
 
       <CryptoWalletConnections />
+      <OnchainActivityPanel enabled={hasUsdc} />
 
       {orderedWallets.length ? (
         <VadProgressiveSection
