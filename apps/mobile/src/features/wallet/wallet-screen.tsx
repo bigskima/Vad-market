@@ -84,8 +84,8 @@ export function WalletScreen({
       <VadSectionHeader
         title="Wallet"
         subtitle="Your available balance and money actions come first. Currency detail and history stay one tap away."
-        actionLabel="Activity"
-        onAction={onActivity}
+        actionLabel={hasNgn ? 'Activity' : undefined}
+        onAction={hasNgn ? onActivity : undefined}
       />
 
       {primary ? (
