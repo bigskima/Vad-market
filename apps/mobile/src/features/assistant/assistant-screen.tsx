@@ -10,6 +10,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadIconButton } from '@/components/ui/vad-icon-button';
 import { VadText } from '@/components/ui/vad-text';
+import { sanitizeAssistantAssetResponse } from '@/features/policy/asset-visibility';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -45,10 +46,14 @@ export function AssistantScreen({
   initialMarketId = null,
   initialPrompt = '',
   sourceRoute = '/assistant',
+  activeAssetCodes,
+  countryCode,
 }: {
   initialMarketId?: string | null;
   initialPrompt?: string;
   sourceRoute?: string;
+  activeAssetCodes: string[];
+  countryCode: string;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -97,7 +102,7 @@ export function AssistantScreen({
     setError(null);
     try {
       const rows = await getAssistantThread(nextThreadId);
-      setMessages(rows.map(toChatMessage));
+      setMessages(rows.map((row) => toChatMessage(row, activeAssetCodes)));
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -154,6 +159,8 @@ export function AssistantScreen({
         threadId,
         marketId: initialMarketId,
         route: sourceRoute,
+        activeAssetCodes,
+        countryCode,
       });
       setThreadId(reply.threadId);
       setMessages((current) => [
@@ -161,7 +168,7 @@ export function AssistantScreen({
         {
           id: reply.messageId,
           role: 'ASSISTANT',
-          content: reply.answer,
+          content: sanitizeAssistantAssetResponse(reply.answer, activeAssetCodes),
           createdAt: new Date().toISOString(),
           actions: reply.actions,
           notice: reply.notice,
@@ -445,11 +452,13 @@ function formatMessageTime(value: string) {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
 }
 
-function toChatMessage(row: AssistantMessageRow): ChatMessage {
+function toChatMessage(row: AssistantMessageRow, activeAssetCodes: string[]): ChatMessage {
   return {
     id: row.message_public_id,
     role: row.role,
-    content: row.content,
+    content: row.role === 'ASSISTANT'
+      ? sanitizeAssistantAssetResponse(row.content, activeAssetCodes)
+      : row.content,
     createdAt: row.created_at,
   };
 }
