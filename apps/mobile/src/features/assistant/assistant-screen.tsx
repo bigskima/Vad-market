@@ -10,7 +10,10 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadIconButton } from '@/components/ui/vad-icon-button';
 import { VadText } from '@/components/ui/vad-text';
-import { sanitizeAssistantAssetResponse } from '@/features/policy/asset-visibility';
+import {
+  isGenericContentVisible,
+  sanitizeAssistantAssetResponse,
+} from '@/features/policy/asset-visibility';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -348,10 +351,14 @@ export function AssistantScreen({
                 })}
               >
                 <VadText variant="bodyStrong" tone={thread.thread_public_id === threadId ? 'brand' : 'primary'} numberOfLines={1}>
-                  {thread.title || 'VAD conversation'}
+                  {thread.title && isGenericContentVisible([thread.title], activeAssetCodes)
+                    ? thread.title
+                    : 'VAD conversation'}
                 </VadText>
                 <VadText variant="caption" tone="secondary" numberOfLines={1}>
-                  {thread.last_message || 'Open this conversation'}
+                  {thread.last_message && isGenericContentVisible([thread.last_message], activeAssetCodes)
+                    ? thread.last_message
+                    : 'Open this conversation'}
                 </VadText>
               </Pressable>
             ))
