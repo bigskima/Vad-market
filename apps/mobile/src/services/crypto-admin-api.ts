@@ -3,6 +3,20 @@ import { supabase } from '@/lib/supabase';
 
 export type CryptoAdminStatus = 'ACTIVE' | 'DISABLED' | 'SUSPENDED';
 
+export type AdminCryptoAsset = {
+  code: string;
+  name: string;
+  assetType: string;
+  status: 'ACTIVE' | 'DISABLED';
+  metadata: Record<string, unknown>;
+};
+
+export type AdminJurisdictionAsset = {
+  countryCode: string;
+  assetCode: string;
+  status: 'ACTIVE' | 'DISABLED';
+};
+
 export type AdminCryptoChain = {
   code: string;
   name: string;
@@ -60,6 +74,8 @@ export type AdminCryptoMarketVenue = {
 };
 
 export type AdminCryptoCatalog = {
+  assets: AdminCryptoAsset[];
+  jurisdictionAssets: AdminJurisdictionAsset[];
   chains: AdminCryptoChain[];
   assetRepresentations: AdminCryptoAssetRepresentation[];
   jurisdictions: AdminCryptoJurisdiction[];
@@ -77,6 +93,8 @@ function fail(
 function asCatalog(value: unknown): AdminCryptoCatalog {
   const row = (value ?? {}) as Partial<AdminCryptoCatalog>;
   return {
+    assets: Array.isArray(row.assets) ? row.assets : [],
+    jurisdictionAssets: Array.isArray(row.jurisdictionAssets) ? row.jurisdictionAssets : [],
     chains: Array.isArray(row.chains) ? row.chains : [],
     assetRepresentations: Array.isArray(row.assetRepresentations) ? row.assetRepresentations : [],
     jurisdictions: Array.isArray(row.jurisdictions) ? row.jurisdictions : [],
@@ -89,6 +107,34 @@ export async function getAdminCryptoCatalog() {
   const { data, error } = await supabase.rpc('admin_crypto_network_catalog');
   fail(error, 'We could not load crypto network controls right now.');
   return asCatalog(data);
+}
+
+export async function setAdminAssetStatus(input: {
+  assetCode: string;
+  status: 'ACTIVE' | 'DISABLED';
+  sandboxOnly?: boolean | null;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_asset_status', {
+    p_asset_code: input.assetCode,
+    p_status: input.status,
+    p_sandbox_only: input.sandboxOnly ?? null,
+  });
+  fail(error, 'We could not update this asset availability gate.');
+  return data as Record<string, unknown>;
+}
+
+export async function setAdminJurisdictionAssetStatus(input: {
+  countryCode: string;
+  assetCode: string;
+  status: 'ACTIVE' | 'DISABLED';
+}) {
+  const { data, error } = await supabase.rpc('admin_set_jurisdiction_asset_status', {
+    p_country_code: input.countryCode,
+    p_asset_code: input.assetCode,
+    p_status: input.status,
+  });
+  fail(error, 'We could not update this jurisdiction asset gate.');
+  return data as Record<string, unknown>;
 }
 
 export async function setAdminCryptoChainStatus(
