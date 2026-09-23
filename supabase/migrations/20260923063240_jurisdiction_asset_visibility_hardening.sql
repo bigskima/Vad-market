@@ -57,14 +57,14 @@ language sql
 stable
 security definer
 set search_path=''
-as $
+as $fn$
   select exists(
     select 1
     from public.assets a
     where a.code=upper(btrim(coalesce(p_asset_code,'')))
       and private.asset_available_for_user(p_user_id,a.id)
   );
-$;
+$fn$;
 
 revoke all on function private.asset_code_available_for_user(uuid,text)
   from public,anon,authenticated;
@@ -75,9 +75,9 @@ language sql
 immutable
 security invoker
 set search_path=''
-as $
+as $fn$
   select coalesce(p_text,'') ~* '(^|[^[:alnum:]_])(NGN|NAIRA)([^[:alnum:]_]|$)|₦';
-$;
+$fn$;
 
 revoke all on function private.text_mentions_ngn(text)
   from public,anon,authenticated;
