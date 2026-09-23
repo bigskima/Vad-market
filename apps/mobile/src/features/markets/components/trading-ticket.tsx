@@ -66,6 +66,7 @@ export function TradingTicket(props: TicketProps) {
 function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = false, onPlaced }: TicketProps) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const isUsdc = market.asset_code === 'USDC';
   const [step, setStep] = useState<TradeStep>('prediction');
   const [outcome, setOutcome] = useState<'YES' | 'NO'>('YES');
   const [amount, setAmount] = useState('');
@@ -74,14 +75,75 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
   const [working, setWorking] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [placeError, setPlaceError] = useState<string | null>(null);
+  const [onchainVenues, setOnchainVenues] = useState<OnchainMarketVenue[]>([]);
+  const [venuesLoading, setVenuesLoading] = useState(isUsdc);
+  const [venueError, setVenueError] = useState<string | null>(null);
+  const [selectedChainCode, setSelectedChainCode] = useState('');
+  const [preparedUsdc, setPreparedUsdc] = useState<PreparedUsdcPrediction | null>(null);
+  const [onchainResult, setOnchainResult] = useState<SubmittedUsdcPrediction | null>(null);
 
   const tradeReady = canTrade && !capabilityLoading;
   const amountValue = Number(amount);
   const inputValid = amount.trim().length > 0 && Number.isFinite(amountValue) && amountValue > 0;
+  const selectedVenue = useMemo(
+    () => onchainVenues.find((venue) => venue.chain_code === selectedChainCode) ?? onchainVenues[0] ?? null,
+    [onchainVenues, selectedChainCode],
+  );
+
+  useEffect(() => {
+    if (!isUsdc) {
+      setOnchainVenues([]);
+      setSelectedChainCode('');
+      setVenueError(null);
+      setVenuesLoading(false);
+      return;
+    }
+
+    let active = true;
+    setVenuesLoading(true);
+    setVenueError(null);
+
+    void listOnchainMarketVenues(market.instrument_public_id)
+      .then((rows) => {
+        if (!active) return;
+        const supported = rows.filter(
+          (row) =>
+            row.chain_family === 'EVM' &&
+            row.evm_chain_id != null &&
+            row.token_standard === 'ERC20' &&
+            row.protocol_key === 'VAD_SETTLEMENT_V1' &&
+            Number(row.protocol_version) === 1,
+        );
+        setOnchainVenues(supported);
+        setSelectedChainCode((current) =>
+          supported.some((row) => row.chain_code === current)
+            ? current
+            : supported[0]?.chain_code ?? '',
+        );
+      })
+      .catch((reason) => {
+        if (!active) return;
+        setOnchainVenues([]);
+        setSelectedChainCode('');
+        setVenueError(
+          reason instanceof Error
+            ? reason.message
+            : 'We could not check the available USDC networks for this market.',
+        );
+      })
+      .finally(() => {
+        if (active) setVenuesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isUsdc, market.instrument_public_id]);
 
   function resetDownstream() {
     setQuote(null);
     setStakeStatus(null);
+    setOnchainResult(null);
     setQuoteError(null);
     setPlaceError(null);
   }
@@ -97,24 +159,83 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
     setWorking(true);
     setQuoteError(null);
     setPlaceError(null);
+
     try {
-      const next = await quotePoolStake({
-        instrumentPublicId: market.instrument_public_id,
-        outcomeCode: outcome,
-        amount: amountValue,
-      });
-      setQuote(next);
+      if (isUsdc) {
+        if (!selectedVenue) {
+          throw new Error(
+            'No VAD USDC settlement network is active for this market and your location yet.',
+          );
+        }
+
+        const prepared = await prepareUsdcPrediction({
+          marketId: market.instrument_public_id,
+          outcomeCode: outcome,
+          amount: amountValue,
+          venue: selectedVenue,
+        });
+        setPreparedUsdc(prepared);
+        setQuote(null);
+      } else {
+        const next = await quotePoolStake({
+          instrumentPublicId: market.instrument_public_id,
+          outcomeCode: outcome,
+          amount: amountValue,
+        });
+        setQuote(next);
+        setPreparedUsdc(null);
+      }
+
       setStep('review');
     } catch (error) {
       setQuote(null);
-      setQuoteError(error instanceof Error ? error.message : 'We could not prepare this prediction right now.');
+      setPreparedUsdc(null);
+      setQuoteError(
+        error instanceof Error
+          ? error.message
+          : 'We could not prepare this prediction right now.',
+      );
     } finally {
       setWorking(false);
     }
   }
 
   async function execute() {
-    if (!tradeReady || working || !quote) return;
+    if (!tradeReady || working) return;
+
+    if (isUsdc) {
+      if (!preparedUsdc) return;
+
+      if (Math.floor(Date.now() / 1000) >= preparedUsdc.expiresAtUnix) {
+        const expired = preparedUsdc;
+        setPreparedUsdc(null);
+        setStep('order');
+        setPlaceError(null);
+        setQuoteError('This USDC authorization expired. Review the stake again to get a fresh fee authorization.');
+        void cancelPreparedUsdcPrediction(expired, 'AUTHORIZATION_EXPIRED_CLIENT').catch(() => undefined);
+        return;
+      }
+
+      setWorking(true);
+      setPlaceError(null);
+      try {
+        const result = await submitPreparedUsdcPrediction(preparedUsdc);
+        setOnchainResult(result);
+        setStep('result');
+        await onPlaced();
+      } catch (error) {
+        setPlaceError(
+          error instanceof Error
+            ? error.message
+            : 'The USDC transaction was not submitted. Please review your wallet and try again.',
+        );
+      } finally {
+        setWorking(false);
+      }
+      return;
+    }
+
+    if (!quote) return;
     setWorking(true);
     setPlaceError(null);
     try {
@@ -123,15 +244,32 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       setStep('result');
       await onPlaced();
     } catch (error) {
-      setPlaceError(error instanceof Error ? error.message : 'We could not commit this prediction. Please try again.');
+      setPlaceError(
+        error instanceof Error
+          ? error.message
+          : 'We could not commit this prediction. Please try again.',
+      );
     } finally {
       setWorking(false);
+    }
+  }
+
+  function editStake() {
+    const unused = preparedUsdc;
+    setPreparedUsdc(null);
+    setPlaceError(null);
+    setStep('order');
+
+    if (unused) {
+      void cancelPreparedUsdcPrediction(unused).catch(() => undefined);
     }
   }
 
   function startAgain() {
     setStep('prediction');
     setAmount('');
+    setPreparedUsdc(null);
+    setOnchainResult(null);
     resetDownstream();
   }
 
@@ -146,7 +284,9 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
             <VadText variant="title">What do you think happens?</VadText>
             <VadText variant="caption" tone="secondary">
-              Choose YES or NO. Your stake goes into this market’s protected participant pool — VAD does not fund the other side.
+              {isUsdc
+                ? 'Choose YES or NO. Your USDC stays self-custodied until you approve the final on-chain transaction.'
+                : 'Choose YES or NO. Your stake goes into this market’s protected participant pool — VAD does not fund the other side.'}
             </VadText>
           </View>
 
@@ -155,11 +295,19 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <OutcomeChoice active={outcome === 'NO'} label="NO" title="I think it will not happen" value={probability(market.no_price)} tone="no" disabled={!tradeReady || working} onPress={() => chooseOutcome('NO')} />
           </View>
 
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <MiniMetric label="Current pool" value={assetMoney(market.total_volume ?? 0, market.asset_code)} />
-            <MiniMetric label="Participants" value={String(Number(market.participant_count ?? 0))} />
-            <MiniMetric label="Funding" value="Peer funded" />
-          </View>
+          {isUsdc ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+              <MiniMetric label="Settlement" value="On-chain" />
+              <MiniMetric label="Asset" value="USDC" />
+              <MiniMetric label="Pool stats" value="After confirmations" />
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+              <MiniMetric label="Current pool" value={assetMoney(market.total_volume ?? 0, market.asset_code)} />
+              <MiniMetric label="Participants" value={String(Number(market.participant_count ?? 0))} />
+              <MiniMetric label="Funding" value="Peer funded" />
+            </View>
+          )}
 
           <VadButton label={`Continue with ${outcome}`} disabled={!tradeReady || working} onPress={() => setStep('order')} />
         </VadCard>
@@ -172,7 +320,9 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
               <VadText variant="caption" tone="brand">STEP 2 · STAKE</VadText>
               <VadText variant="title">Choose your stake.</VadText>
               <VadText variant="caption" tone="secondary">
-                Nothing is committed on this step. VAD calculates the stake, platform fee, wallet debit and estimated winning settlement before you confirm.
+                {isUsdc
+                  ? 'Nothing is moved yet. VAD will resolve the active Admin fee policy, bind the exact fee to a short-lived authorization and ask your Dynamic wallet to approve the transaction only after review.'
+                  : 'Nothing is committed on this step. VAD calculates the stake, platform fee, wallet debit and estimated winning settlement before you confirm.'}
               </VadText>
             </View>
             <VadChip label={outcome} tone={outcome === 'YES' ? 'yes' : 'no'} />
@@ -189,22 +339,119 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             error={amount.length > 0 && !inputValid ? 'Enter an amount greater than 0.' : undefined}
           />
 
+          {isUsdc ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <View style={{ gap: 2 }}>
+                <VadText variant="caption" tone="tertiary">SETTLEMENT NETWORK</VadText>
+                <VadText variant="caption" tone="secondary">
+                  Only networks fully enabled for this market and your jurisdiction appear here.
+                </VadText>
+              </View>
+
+              {venuesLoading ? (
+                <InlineMessage tone="warning" title="Checking networks" body="VAD is checking the active USDC settlement networks for this market." />
+              ) : venueError ? (
+                <InlineMessage tone="danger" title="Networks unavailable" body={venueError} />
+              ) : onchainVenues.length ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {onchainVenues.map((venue) => (
+                    <VadChip
+                      key={venue.venue_id}
+                      label={venue.chain_name}
+                      selected={selectedVenue?.venue_id === venue.venue_id}
+                      tone={selectedVenue?.venue_id === venue.venue_id ? 'brand' : 'neutral'}
+                      onPress={() => {
+                        if (working) return;
+                        setSelectedChainCode(venue.chain_code);
+                        setQuoteError(null);
+                        setPlaceError(null);
+                      }}
+                      disabled={working}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <InlineMessage
+                  tone="warning"
+                  title="USDC settlement not active yet"
+                  body="This market does not currently have an active VAD Settlement V1 network for your location. No funds can be committed until one is enabled."
+                />
+              )}
+            </View>
+          ) : null}
+
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <MiniMetric label="Outcome" value={outcome} />
             <MiniMetric label="Stake" value={inputValid ? assetMoney(amountValue, market.asset_code) : '—'} />
-            <MiniMetric label="Currency" value={market.asset_code} />
+            <MiniMetric label={isUsdc ? 'Network' : 'Currency'} value={isUsdc ? selectedVenue?.chain_name ?? '—' : market.asset_code} />
           </View>
 
           {quoteError ? <InlineMessage tone="danger" title="Prediction review unavailable" body={quoteError} /> : null}
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Back" variant="secondary" onPress={() => setStep('prediction')} style={{ flex: 1 }} />
-            <VadButton label="Review prediction & fees" loading={working} disabled={!tradeReady || working || !inputValid} onPress={() => void prepareReview()} style={{ flex: 1.4 }} />
+            <VadButton
+              label="Review prediction & fees"
+              loading={working}
+              disabled={!tradeReady || working || !inputValid || (isUsdc && (!selectedVenue || venuesLoading))}
+              onPress={() => void prepareReview()}
+              style={{ flex: 1.4 }}
+            />
           </View>
         </VadCard>
       ) : null}
 
-      {step === 'review' && quote ? (
+      {step === 'review' && isUsdc && preparedUsdc ? (
+        <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
+          <View style={{ gap: 3 }}>
+            <VadText variant="caption" tone="brand">STEP 3 · SIGNED VAD FEE REVIEW · NOTHING LOCKED YET</VadText>
+            <VadText variant="title">Confirm your USDC prediction.</VadText>
+            <VadText variant="caption" tone="secondary">
+              VAD has resolved the live Admin fee policy and signed these exact amounts. The settlement contract accepts this authorization only until the displayed expiry.
+            </VadText>
+          </View>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            <VadChip label={preparedUsdc.outcomeCode} tone={preparedUsdc.outcomeCode === 'YES' ? 'yes' : 'no'} />
+            <VadChip label="PEER POOL" tone="brand" />
+            <VadChip label="USDC" />
+            <VadChip label={preparedUsdc.chainCode} />
+          </View>
+
+          <View style={{ gap: 2 }}>
+            <QuoteLine label="Your stake" value={assetMoney(preparedUsdc.collateralAmount, 'USDC')} />
+            <QuoteLine label="VAD trading fee" value={assetMoney(preparedUsdc.tradingFee, 'USDC')} />
+            <QuoteLine label="Maximum USDC debit" value={assetMoney(preparedUsdc.maximumWalletDebit, 'USDC')} />
+            <QuoteLine label="Network" value={selectedVenue?.chain_name ?? preparedUsdc.chainCode} />
+            <QuoteLine label="Wallet" value={shortReference(preparedUsdc.walletAddress)} />
+            <QuoteLine label="Authorization expires" value={formatAuthorizationExpiry(preparedUsdc.expiresAtUnix)} />
+          </View>
+
+          <InlineMessage
+            tone="brand"
+            title="Same VAD fee policy as NGN"
+            body="The trading fee came from VAD’s governed Admin fee policy. The blockchain contract does not choose the percentage; it only enforces the exact VAD-signed fee amount and policy version for this action."
+          />
+          <InlineMessage
+            tone="warning"
+            title="On-chain pool estimates are not shown yet"
+            body="VAD will not reuse internal-ledger pool totals for USDC. Pool size, implied share and payout estimates will appear only from confirmed on-chain positions after the indexer is enabled."
+          />
+          <InlineMessage
+            tone="brand"
+            title="Network gas is separate"
+            body="Your wallet also pays the blockchain’s network gas. Gas is not a VAD platform fee and is not included in the USDC debit shown above."
+          />
+          {placeError ? <InlineMessage tone="danger" title="USDC transaction not submitted" body={placeError} /> : null}
+
+          <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
+            <VadButton label="Edit stake" variant="secondary" disabled={working} onPress={editStake} style={{ flex: 1 }} />
+            <VadButton label="Confirm in wallet" loading={working} disabled={!tradeReady || working} onPress={() => void execute()} style={{ flex: 1.4 }} />
+          </View>
+        </VadCard>
+      ) : null}
+
+      {step === 'review' && !isUsdc && quote ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING CHARGED YET</VadText>
@@ -243,7 +490,50 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
         </VadCard>
       ) : null}
 
-      {step === 'result' && stakeStatus ? (
+      {step === 'result' && isUsdc && onchainResult ? (
+        <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+            <View style={{ flex: 1, gap: 3 }}>
+              <VadText variant="caption" tone="brand">STEP 4 · TRANSACTION SUBMITTED</VadText>
+              <VadText variant="title">Waiting for chain confirmation.</VadText>
+              <VadText variant="caption" tone="secondary">
+                Your wallet submitted the VAD Settlement V1 position-lock transaction. VAD will treat the prediction as committed only after the blockchain confirms it and the indexer verifies the event.
+              </VadText>
+            </View>
+            <VadChip label={outcome} tone={outcome === 'YES' ? 'yes' : 'no'} />
+          </View>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            <MiniMetric label="Stake" value={assetMoney(preparedUsdc?.collateralAmount ?? amountValue, 'USDC')} />
+            <MiniMetric label="VAD trading fee" value={assetMoney(preparedUsdc?.tradingFee ?? 0, 'USDC')} />
+            <MiniMetric label="Status" value="Submitted" />
+          </View>
+
+          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 4 }}>
+            <VadText variant="caption" tone="tertiary">LOCK TRANSACTION</VadText>
+            <VadText variant="caption" selectable>{onchainResult.transactionHash}</VadText>
+            {onchainResult.approvalTransactionHash ? (
+              <>
+                <VadText variant="caption" tone="tertiary">USDC APPROVAL TRANSACTION</VadText>
+                <VadText variant="caption" selectable>{onchainResult.approvalTransactionHash}</VadText>
+              </>
+            ) : null}
+          </View>
+
+          <InlineMessage
+            tone="warning"
+            title="Do not submit the same prediction again while this transaction is pending"
+            body="The blockchain transaction already has a hash. Confirmation and indexing must decide its final state."
+          />
+
+          <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
+            <VadButton label="Open Portfolio" onPress={() => router.push('/portfolio')} style={{ flex: 1.4 }} />
+            <VadButton label="New prediction" variant="secondary" onPress={startAgain} style={{ flex: 1 }} />
+          </View>
+        </VadCard>
+      ) : null}
+
+      {step === 'result' && !isUsdc && stakeStatus ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
@@ -274,6 +564,20 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
         </VadCard>
       ) : null}
     </View>
+  );
+}
+
+function UnsupportedUsdcOrderBook() {
+  const theme = useVadTheme();
+
+  return (
+    <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+      <VadText variant="caption" tone="brand">USDC · ON-CHAIN SETTLEMENT</VadText>
+      <VadText variant="heading">Order-book USDC trading is not active in Settlement V1.</VadText>
+      <VadText variant="caption" tone="secondary">
+        VAD will not route USDC through the internal NGN/TNGN ledger. USDC Peer Pool settlement is the supported on-chain path for this release.
+      </VadText>
+    </VadCard>
   );
 }
 
@@ -550,6 +854,16 @@ function InlineMessage({ tone, title, body }: { tone: 'warning' | 'danger' | 'br
       <VadText variant="caption" tone="secondary">{body}</VadText>
     </View>
   );
+}
+
+function shortReference(value: string) {
+  if (value.length <= 16) return value;
+  return `${value.slice(0, 8)}…${value.slice(-6)}`;
+}
+
+function formatAuthorizationExpiry(unixSeconds: number) {
+  const date = new Date(unixSeconds * 1000);
+  return Number.isNaN(date.getTime()) ? 'Short-lived' : date.toLocaleTimeString();
 }
 
 function priceInput(value: number | string | null) {
