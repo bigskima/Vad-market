@@ -13,6 +13,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
 import {
   getAdminCryptoCatalog,
+  getAdminOnchainSignerStatus,
   registerAdminContractDeployment,
   setAdminAssetStatus,
   setAdminContractDeploymentStatus,
@@ -26,6 +27,7 @@ import {
   type AdminCryptoChain,
   type AdminCryptoDeployment,
   type AdminCryptoMarketVenue,
+  type AdminOnchainSignerStatus,
 } from '@/services/crypto-admin-api';
 
 type Tab = 'networks' | 'deployments' | 'venues';
@@ -51,17 +53,24 @@ export function AdminCryptoNetworksScreen() {
   const [workingKey, setWorkingKey] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [signerStatus, setSignerStatus] = useState<AdminOnchainSignerStatus | null>(null);
+
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      setCatalog(await getAdminCryptoCatalog());
+      const [nextCatalog, nextSignerStatus] = await Promise.all([
+        getAdminCryptoCatalog(),
+        canAssets ? getAdminOnchainSignerStatus() : Promise.resolve(null),
+      ]);
+      setCatalog(nextCatalog);
+      setSignerStatus(nextSignerStatus);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Crypto controls could not be loaded.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canAssets]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
@@ -253,6 +262,7 @@ export function AdminCryptoNetworksScreen() {
       {tab === 'deployments' ? (
         <DeploymentsPanel
           catalog={catalog}
+          signerStatus={signerStatus}
           canManage={canAssets}
           workingKey={workingKey}
           perform={perform}
@@ -410,11 +420,13 @@ function ReadOnlyNetwork({
 
 function DeploymentsPanel({
   catalog,
+  signerStatus,
   canManage,
   workingKey,
   perform,
 }: {
   catalog: AdminCryptoCatalog;
+  signerStatus: AdminOnchainSignerStatus | null;
   canManage: boolean;
   workingKey: string;
   perform: (key: string, task: () => Promise<unknown>, success: string) => Promise<void>;
@@ -437,6 +449,52 @@ function DeploymentsPanel({
         title="Settlement deployments"
         detail="Registration records a contract or program that has already been deployed. New records default to DISABLED."
       />
+
+      <VadCard variant="muted" style={{ gap: theme.spacing.sm }}>
+        <VadText variant="bodyStrong">Backend signer readiness</VadText>
+        {signerStatus ? (
+          <>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+              <VadChip
+                label={'QUOTE ' + (signerStatus.signers.quote.configured ? 'READY' : 'MISSING')}
+                tone={signerStatus.signers.quote.configured ? 'yes' : 'warning'}
+              />
+              <VadChip
+                label={'SETTLEMENT ' + (signerStatus.signers.settlement.configured ? 'READY' : 'MISSING')}
+                tone={signerStatus.signers.settlement.configured ? 'yes' : 'warning'}
+              />
+              <VadChip
+                label={'RESOLVER ' + (signerStatus.signers.resolver.configured ? 'READY' : 'MISSING')}
+                tone={signerStatus.signers.resolver.configured ? 'yes' : 'warning'}
+              />
+            </View>
+            <VadText variant="caption" tone="secondary">
+              {signerStatus.sharedOperator
+                ? 'Sandbox is currently using one shared VAD operator signer for all three roles.'
+                : 'Signer roles are separated or only partially configured.'}
+            </VadText>
+            {signerStatus.signers.quote.address ? (
+              <VadText variant="caption" tone="tertiary">
+                {'Quote: ' + signerStatus.signers.quote.address}
+              </VadText>
+            ) : null}
+            {signerStatus.signers.settlement.address ? (
+              <VadText variant="caption" tone="tertiary">
+                {'Settlement: ' + signerStatus.signers.settlement.address}
+              </VadText>
+            ) : null}
+            {signerStatus.signers.resolver.address ? (
+              <VadText variant="caption" tone="tertiary">
+                {'Resolver: ' + signerStatus.signers.resolver.address}
+              </VadText>
+            ) : null}
+          </>
+        ) : (
+          <VadText variant="caption" tone="secondary">
+            Signer diagnostics are unavailable for this admin role.
+          </VadText>
+        )}
+      </VadCard>
 
       {catalog.contractDeployments.length ? (
         catalog.contractDeployments.map((deployment) => (
