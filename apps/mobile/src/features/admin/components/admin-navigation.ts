@@ -21,6 +21,7 @@ export type AdminHref =
   | '/admin/home-content'
   | '/admin/policies'
   | '/admin/providers'
+  | '/admin/crypto-networks'
   | '/admin/ai'
   | '/admin/roles'
   | '/admin/service-controls';
@@ -200,6 +201,13 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         href: '/admin/providers',
         description: 'Provider status and approval changes',
         permissions: ['providers.manage', 'finance.read'],
+      },
+      {
+        label: 'Crypto Networks',
+        shortLabel: 'Crypto',
+        href: '/admin/crypto-networks',
+        description: 'USDC chains, settlement deployments and market venues',
+        permissions: ['assets.manage', 'markets.manage'],
       },
       {
         label: 'AI Routing',
