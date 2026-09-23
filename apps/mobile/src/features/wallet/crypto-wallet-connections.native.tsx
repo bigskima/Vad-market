@@ -99,6 +99,9 @@ function DynamicEmailWallet() {
   const theme = useVadTheme();
   const { session } = useAuth();
   const vadEmail = session?.user.email?.trim().toLowerCase() ?? '';
+  const vadEmailConfirmed = Boolean(
+    session?.user.email_confirmed_at ?? session?.user.confirmed_at,
+  );
   const dynamicUserState: unknown = useUser();
   const dynamicEmail = readDynamicEmail(dynamicUserState);
   const walletsQuery = useGetWalletAccounts();
@@ -143,7 +146,11 @@ function DynamicEmailWallet() {
 
   const startEmailVerification = useCallback(async () => {
     if (!vadEmail) {
-      setLocalError('Your VAD account does not have a verified email address.');
+      setLocalError('Your VAD account does not have an email address.');
+      return;
+    }
+    if (!vadEmailConfirmed) {
+      setLocalError('Confirm your VAD account email before activating a USDC wallet.');
       return;
     }
 
@@ -159,7 +166,7 @@ function DynamicEmailWallet() {
           : 'VAD could not send the wallet verification code.',
       );
     }
-  }, [sendOtp, vadEmail]);
+  }, [sendOtp, vadEmail, vadEmailConfirmed]);
 
   const completeEmailVerification = useCallback(async () => {
     const code = verificationCode.trim();
@@ -271,14 +278,16 @@ function DynamicEmailWallet() {
           <VadButton
             label={authenticatedForVadUser ? 'Refresh embedded wallets' : 'Activate USDC wallet'}
             loading={busy || walletsQuery.isFetching}
-            disabled={!vadEmail || busy}
+            disabled={!vadEmail || !vadEmailConfirmed || busy}
             onPress={() => {
               if (authenticatedForVadUser) void walletsQuery.refetch();
               else void startEmailVerification();
             }}
           />
           <VadText variant="caption" tone="tertiary">
-            No Google, Apple or separate wallet app is required for this sandbox flow.
+            {vadEmailConfirmed
+              ? 'No Google, Apple or separate wallet app is required for this sandbox flow.'
+              : 'Confirm your VAD account email first. Dynamic wallet activation will use that same email.'}
           </VadText>
         </View>
       )}
