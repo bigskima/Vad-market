@@ -13,7 +13,7 @@ export const money = (value: unknown) =>
   `₦${amount(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
 export function assetMoney(value: unknown, assetCode?: string | null) {
-  const code = String(assetCode ?? 'NGN').trim().toUpperCase();
+  const code = String(assetCode ?? '').trim().toUpperCase();
   const numeric = amount(value);
   const formatted = numeric.toLocaleString(undefined, {
     minimumFractionDigits: code === 'USDC' ? 2 : 0,
