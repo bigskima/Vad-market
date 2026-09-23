@@ -131,6 +131,39 @@ function validateOutput(value: unknown): AssistantOutput {
   return { answer, actions, notice };
 }
 
+const NGN_REFERENCE = /(?:\bNGN\b|\bnaira\b|₦)/i;
+
+function activeAssetCodes(context: AssistantContext) {
+  const fromUser = Array.isArray(context.user?.activeAssetCodes)
+    ? context.user.activeAssetCodes
+    : [];
+  const fromContext = Array.isArray(context.context?.activeAssetCodes)
+    ? context.context.activeAssetCodes
+    : [];
+  return [...new Set([...fromUser, ...fromContext]
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean))];
+}
+
+function enforceAssistantAssetScope(
+  output: AssistantOutput,
+  codes: string[],
+): AssistantOutput {
+  if (codes.includes('NGN') || !NGN_REFERENCE.test(
+    [output.answer, output.notice ?? '', ...output.actions.map((action) => action.label)].join('\n'),
+  )) {
+    return output;
+  }
+
+  const allowed = codes.length ? codes.join(' and ') : 'the assets available to your account';
+  return {
+    answer: `That currency is not available for your account location. I can help with ${allowed} and the VAD features enabled for your account.`,
+    actions: output.actions.filter((action) => action.route !== '/account/funding'),
+    notice: null,
+  };
+}
+
 function endpointWithModel(endpoint: string, model: string) {
   return endpoint.replaceAll('{model}', encodeURIComponent(model));
 }
@@ -313,6 +346,13 @@ function buildUserPrompt(context: AssistantContext, message: string) {
       'When explaining potential profit or loss, show it as a scenario based on the supplied quantities/prices and state the assumptions.',
       'If the answer needs current account or market data that is absent, say that the information is not available in this conversation.',
       'Keep answers clear and useful. Use product language rather than internal architecture terms.',
+      `Only discuss or display settlement currencies in vadContext.activeAssetCodes: ${activeAssetCodes(context).join(', ') || 'none'}.`,
+      ...(activeAssetCodes(context).includes('NGN')
+        ? []
+        : [
+            'Do not mention NGN, Naira, the Naira symbol, NGN balances, NGN funding, NGN withdrawals, or compare available assets to NGN.',
+            'If the user asks about a currency that is not enabled for this account, say only that the currency is unavailable for their account location and continue with available assets.',
+          ]),
       'Only return action routes from allowedRoutes.',
     ],
   });
@@ -338,7 +378,7 @@ async function handleRequest(req: Request) {
 
   if (!message) return json({ error: 'MESSAGE_REQUIRED', message: 'Ask VAD Assistant a question to continue.' }, 400);
 
-  const { data: prepared, error: prepareError } = await admin.rpc('internal_prepare_user_ai_assistant_v2', {
+  const { data: prepared, error: prepareError } = await admin.rpc('internal_prepare_user_ai_assistant_v3', {
     p_user_id: user.id,
     p_thread_public_id: threadId,
     p_market_public_id: marketId,
@@ -374,7 +414,10 @@ async function handleRequest(req: Request) {
   for (const provider of context.providers) {
     try {
       const raw = await invokeProvider(provider, context.prompt.systemPrompt, userPrompt, context.policy);
-      output = validateOutput(parseJsonText(raw));
+      output = enforceAssistantAssetScope(
+        validateOutput(parseJsonText(raw)),
+        activeAssetCodes(context),
+      );
       providerId = provider.aiProviderId;
       break;
     } catch (reason) {

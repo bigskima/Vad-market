@@ -2,8 +2,10 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { AssistantScreen } from '@/features/assistant/assistant-screen';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
+import { useProductDataContext } from '@/providers/product-data-provider';
 
 export default function AssistantRoute() {
+  const data = useProductDataContext();
   const params = useLocalSearchParams<{
     marketId?: string;
     prompt?: string;
@@ -19,6 +21,8 @@ export default function AssistantRoute() {
         initialMarketId={marketId ?? null}
         initialPrompt={prompt ?? ''}
         sourceRoute={from ?? '/assistant'}
+        activeAssetCodes={data.activeAssetCodes}
+        countryCode={data.countryCode}
       />
     </ProductSubpage>
   );

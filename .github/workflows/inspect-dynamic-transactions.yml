@@ -1,0 +1,37 @@
+name: Inspect Dynamic transaction APIs
+
+on:
+  push:
+    branches: [usdc-settlement-v1]
+    paths:
+      - .github/workflows/inspect-dynamic-transactions.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: usdc-settlement-v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Inspect installed Dynamic wallet APIs
+        run: |
+          for term in "signMessage" "sendTransaction" "switchActiveNetwork" "getActiveNetworkId" "getWalletProviderFromWalletAccount" "createWalletClientForWalletAccount"; do
+            echo "===== $term ====="
+            find node_modules/@dynamic-labs-sdk -type f \( -name '*.d.ts' -o -name '*.d.mts' \) -print0 \
+              | xargs -0 grep -n -m 80 "$term" 2>/dev/null \
+              | head -n 260 || true
+          done
+          echo "===== EVM PROVIDER TYPE ====="
+          cat node_modules/@dynamic-labs-sdk/evm/dist/EvmWalletProvider.types.d.ts || true
+          echo "===== WALLET ACCOUNT TYPES ====="
+          find node_modules/@dynamic-labs-sdk/client -type f -name '*.d.ts' -print0 \
+            | xargs -0 grep -n -m 80 "type WalletAccount\|interface WalletAccount" 2>/dev/null \
+            | head -n 200 || true

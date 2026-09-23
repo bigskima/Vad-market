@@ -36,7 +36,7 @@ const POLICY_DEFINITIONS: PolicyDefinition[] = [
   {
     name: 'trading_fee',
     label: 'Trading fees',
-    description: 'Fees recognized when eligible market executions are posted.',
+    description: 'Shared execution fee policy for eligible NGN ledger and USDC on-chain market activity.',
     fields: [
       {
         key: 'maker_rate_bps',
@@ -53,7 +53,7 @@ const POLICY_DEFINITIONS: PolicyDefinition[] = [
   {
     name: 'settlement_fee',
     label: 'Settlement fee',
-    description: 'Fee recognized from eligible settlement proceeds.',
+    description: 'Shared settlement fee policy for eligible NGN and USDC market proceeds.',
     fields: [
       {
         key: 'rate_bps',
@@ -256,6 +256,14 @@ export function AdminFeeControlsScreen() {
             : 'Finance operators can prepare fee changes, but they cannot activate them. A Super Admin must review and approve each proposal.'}
         </VadText>
       </View>
+
+      <VadCard variant="brand" style={{ gap: theme.spacing.xs }}>
+        <VadText variant="caption" tone="brand">ONE VAD FEE POLICY · ALL SETTLEMENT RAILS</VadText>
+        <VadText variant="bodyStrong">NGN and USDC use these governed trading and settlement fee settings.</VadText>
+        <VadText variant="caption" tone="secondary">
+          USDC smart contracts receive the exact VAD-authorized fee amount and fee-policy version for each action. Fee percentages, minimums and maximums are changed here in Admin, not on-chain.
+        </VadText>
+      </VadCard>
 
       <VadCard
         variant="raised"

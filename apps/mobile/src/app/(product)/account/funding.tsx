@@ -21,6 +21,7 @@ export default function AccountFundingScreen() {
         depositReason={depositReason}
         withdrawalReason={withdrawalReason}
         policyLoading={policyLoading}
+        activeAssetCodes={runtime.snapshot.context.activeAssetCodes}
       />
     </ProductSubpage>
   );

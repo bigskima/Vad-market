@@ -24,6 +24,11 @@ import {
 } from '@/lib/dynamic-client.native';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import {
+  ensureDynamicWalletConnectionsVerified,
+  listVadWalletConnections,
+  type VerifiedVadWallet,
+} from '@/services/verified-wallet-api.native';
 
 type OtpVerification = NonNullable<ReturnType<typeof useSendEmailOTP>['data']>;
 
@@ -111,11 +116,33 @@ function DynamicEmailWallet() {
   const [otpVerification, setOtpVerification] = useState<OtpVerification | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [vadWallets, setVadWallets] = useState<VerifiedVadWallet[]>([]);
+  const [vadWalletOwnerId, setVadWalletOwnerId] = useState('');
+  const [vadVerificationBusy, setVadVerificationBusy] = useState(false);
 
   const walletRows = useMemo(
     () => (walletsQuery.data ?? []).map(toWalletRow).filter((wallet) => wallet.address),
     [walletsQuery.data],
   );
+
+  const authenticatedForVadUser = Boolean(vadEmail && dynamicEmail === vadEmail);
+  const sessionMismatch = Boolean(dynamicEmail && dynamicEmail !== vadEmail);
+  const vadUserId = session?.user.id ?? '';
+  const visibleVadWallets = vadWalletOwnerId === vadUserId ? vadWallets : [];
+
+  const vadWalletKeys = useMemo(
+    () => new Set(
+      visibleVadWallets
+        .filter((wallet) => wallet.status === 'VERIFIED')
+        .map((wallet) => verifiedWalletKey(wallet.chain_family, wallet.wallet_address)),
+    ),
+    [visibleVadWallets],
+  );
+
+  const hasUnverifiedWallet = walletRows.some((wallet) => {
+    const family = walletChainFamily(wallet.chain);
+    return !vadWalletKeys.has(verifiedWalletKey(family, wallet.address));
+  });
 
   useEffect(() => {
     if (!dynamicEmail) return;
@@ -143,6 +170,47 @@ function DynamicEmailWallet() {
       active = false;
     };
   }, [dynamicEmail, vadEmail, walletsQuery]);
+
+  useEffect(() => {
+    if (!authenticatedForVadUser || !vadUserId) return;
+
+    let active = true;
+    void listVadWalletConnections()
+      .then((wallets) => {
+        if (!active) return;
+        setVadWallets(wallets);
+        setVadWalletOwnerId(vadUserId);
+      })
+      .catch(() => {
+        if (!active) return;
+        setVadWallets([]);
+        setVadWalletOwnerId(vadUserId);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authenticatedForVadUser, vadUserId]);
+
+  const syncVadWalletVerification = useCallback(async () => {
+    setVadVerificationBusy(true);
+    setLocalError(null);
+    try {
+      const wallets = await ensureDynamicWalletConnectionsVerified();
+      setVadWallets(wallets);
+      setVadWalletOwnerId(vadUserId);
+      return wallets;
+    } catch (reason) {
+      setLocalError(
+        reason instanceof Error
+          ? reason.message
+          : 'VAD could not verify ownership of the embedded wallet.',
+      );
+      throw reason;
+    } finally {
+      setVadVerificationBusy(false);
+    }
+  }, [vadUserId]);
 
   const startEmailVerification = useCallback(async () => {
     if (!vadEmail) {
@@ -182,6 +250,7 @@ function DynamicEmailWallet() {
       setOtpVerification(null);
       setVerificationCode('');
       await walletsQuery.refetch();
+      await syncVadWalletVerification();
     } catch (reason) {
       setLocalError(
         reason instanceof Error
@@ -189,13 +258,14 @@ function DynamicEmailWallet() {
           : 'The verification code could not be confirmed.',
       );
     }
-  }, [otpVerification, verificationCode, verifyOtp, walletsQuery]);
+  }, [otpVerification, verificationCode, verifyOtp, walletsQuery, syncVadWalletVerification]);
 
   const ensureWalletsForAuthenticatedSession = useCallback(async () => {
     setLocalError(null);
     try {
       await ensureDynamicEmbeddedWallets();
       await walletsQuery.refetch();
+      await syncVadWalletVerification();
     } catch (reason) {
       setLocalError(
         reason instanceof Error
@@ -203,11 +273,9 @@ function DynamicEmailWallet() {
           : 'VAD could not finish creating the embedded wallets.',
       );
     }
-  }, [walletsQuery]);
+  }, [walletsQuery, syncVadWalletVerification]);
 
-  const authenticatedForVadUser = Boolean(vadEmail && dynamicEmail === vadEmail);
-  const sessionMismatch = Boolean(dynamicEmail && dynamicEmail !== vadEmail);
-  const busy = sessionMismatch || sendOtp.isPending || verifyOtp.isPending;
+  const busy = sessionMismatch || sendOtp.isPending || verifyOtp.isPending || vadVerificationBusy;
 
   return (
     <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
@@ -221,33 +289,50 @@ function DynamicEmailWallet() {
 
       {authenticatedForVadUser && walletRows.length ? (
         <View style={{ gap: theme.spacing.sm }}>
-          {walletRows.map((wallet, index) => (
-            <VadCard
-              key={wallet.id || `${wallet.chain}-${wallet.address}-${index}`}
-              variant="muted"
-              style={{ gap: theme.spacing.xs }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: theme.spacing.sm,
-                }}
+          {walletRows.map((wallet, index) => {
+            const family = walletChainFamily(wallet.chain);
+            const vadVerified = vadWalletKeys.has(verifiedWalletKey(family, wallet.address));
+
+            return (
+              <VadCard
+                key={wallet.id || `${wallet.chain}-${wallet.address}-${index}`}
+                variant="muted"
+                style={{ gap: theme.spacing.xs }}
               >
-                <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                  <VadText variant="bodyStrong">{walletLabel(wallet.chain)}</VadText>
-                  <VadText variant="caption" tone="tertiary" numberOfLines={1}>
-                    {shortAddress(wallet.address)}
-                  </VadText>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: theme.spacing.sm,
+                  }}
+                >
+                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                    <VadText variant="bodyStrong">{walletLabel(wallet.chain)}</VadText>
+                    <VadText variant="caption" tone="tertiary" numberOfLines={1}>
+                      {shortAddress(wallet.address)}
+                    </VadText>
+                  </View>
+                  <VadChip label="EMBEDDED" tone="brand" />
+                  <VadChip
+                    label={vadVerified ? 'VAD VERIFIED' : 'VERIFY'}
+                    tone={vadVerified ? 'yes' : 'warning'}
+                  />
                 </View>
-                <VadChip label="EMBEDDED" tone="brand" />
-                <VadChip label="ACTIVE" tone="yes" />
-              </View>
-            </VadCard>
-          ))}
+              </VadCard>
+            );
+          })}
+          {hasUnverifiedWallet ? (
+            <VadButton
+              label="Verify wallet ownership"
+              variant="secondary"
+              loading={vadVerificationBusy}
+              disabled={busy}
+              onPress={() => void syncVadWalletVerification()}
+            />
+          ) : null}
           <VadText variant="caption" tone="tertiary">
-            Private keys remain with the embedded-wallet security layer. VAD&apos;s NGN balance is separate.
+            Private keys remain with the embedded-wallet security layer. Internal-ledger balances remain separate from self-custody USDC.
           </VadText>
         </View>
       ) : otpVerification ? (
@@ -357,6 +442,14 @@ function toWalletRow(value: unknown) {
         ? row.chainName
         : '',
   };
+}
+
+function walletChainFamily(chain: string): 'EVM' | 'SOLANA' {
+  return chain.toUpperCase().includes('SOL') ? 'SOLANA' : 'EVM';
+}
+
+function verifiedWalletKey(chainFamily: 'EVM' | 'SOLANA', address: string) {
+  return `${chainFamily}:${chainFamily === 'EVM' ? address.trim().toLowerCase() : address.trim()}`;
 }
 
 function walletLabel(chain: string) {

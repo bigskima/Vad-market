@@ -13,6 +13,7 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { CryptoWalletConnections } from '@/features/wallet/crypto-wallet-connections';
+import { OnchainActivityPanel } from '@/features/wallet/onchain-activity-panel';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -25,20 +26,30 @@ export function WalletScreen({
   onWithdraw,
   onActivity,
   onOpenTransaction,
+  activeAssetCodes,
 }: {
   wallets: WalletRow[];
   onDeposit: () => void;
   onWithdraw: () => void;
   onActivity: () => void;
   onOpenTransaction: (intent: PaymentIntentRow) => void;
+  activeAssetCodes: string[];
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const [intents, setIntents] = useState<PaymentIntentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
+  const hasNgn = activeAssetCodes.includes('NGN');
+  const hasUsdc = activeAssetCodes.includes('USDC');
 
   const load = useCallback(async () => {
+    if (!hasNgn) {
+      setIntents([]);
+      setLoading(false);
+      setActivityError(null);
+      return;
+    }
     setActivityError(null);
     try {
       setIntents(await getMyPaymentIntents(6));
@@ -47,7 +58,7 @@ export function WalletScreen({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hasNgn]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
@@ -55,15 +66,19 @@ export function WalletScreen({
   }, [load]);
 
   const orderedWallets = useMemo(
-    () => [...wallets].sort((a, b) => assetRank(a.asset_code) - assetRank(b.asset_code)),
+    () => wallets
+      .filter((wallet) => wallet.asset_code !== 'USDC')
+      .sort((a, b) => assetRank(a.asset_code) - assetRank(b.asset_code)),
     [wallets],
   );
-  const primary = orderedWallets.find((row) => row.asset_code === 'NGN') ?? orderedWallets[0];
+  const primary = hasNgn
+    ? orderedWallets.find((row) => row.asset_code === 'NGN') ?? orderedWallets[0]
+    : orderedWallets[0];
   const available = Number(primary?.available ?? 0);
   const reserved = Number(primary?.reserved ?? 0);
   const pending = Number(primary?.withdrawal_pending ?? 0);
   const total = available + reserved + pending;
-  const primaryCode = primary?.asset_code ?? 'NGN';
+  const primaryCode = primary?.asset_code ?? '';
   const recentIntents = intents.slice(0, density.phone ? 3 : 4);
 
   return (
@@ -71,12 +86,13 @@ export function WalletScreen({
       <VadSectionHeader
         title="Wallet"
         subtitle="Your available balance and money actions come first. Currency detail and history stay one tap away."
-        actionLabel="Activity"
-        onAction={onActivity}
+        actionLabel={hasNgn ? 'Activity' : undefined}
+        onAction={hasNgn ? onActivity : undefined}
       />
 
-      <TourTarget id="wallet-balance">
-        <VadCard
+      {primary ? (
+        <TourTarget id="wallet-balance">
+          <VadCard
           variant="brand"
           style={{
             gap: density.phone ? theme.spacing.md : theme.spacing.lg,
@@ -127,17 +143,21 @@ export function WalletScreen({
             <VadMetricTile label="Pending" value={assetMoney(pending, primaryCode)} detail="Withdrawal processing" tone="brand" />
           </View>
         </VadCard>
-      </TourTarget>
+        </TourTarget>
+      ) : null}
 
-      <TourTarget id="wallet-actions">
+      {hasNgn ? (
+        <TourTarget id="wallet-actions">
         <View style={{ flexDirection: 'row', gap: density.phone ? 8 : theme.spacing.sm }}>
           <WalletAction label="Deposit" detail="Add NGN" icon="arrowDown" tone="yes" onPress={onDeposit} />
           <WalletAction label="Withdraw" detail="Move NGN out" icon="arrowUp" tone="brand" onPress={onWithdraw} />
           <WalletAction label="Activity" detail="Full ledger" icon="activity" tone="primary" onPress={onActivity} />
         </View>
-      </TourTarget>
+        </TourTarget>
+      ) : null}
 
       <CryptoWalletConnections />
+      <OnchainActivityPanel enabled={hasUsdc} />
 
       {orderedWallets.length ? (
         <VadProgressiveSection
@@ -164,8 +184,9 @@ export function WalletScreen({
         />
       )}
 
-      <TourTarget id="wallet-activity">
-        <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
+      {hasNgn ? (
+        <TourTarget id="wallet-activity">
+          <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
           <VadSectionHeader
             title="Recent payment activity"
             subtitle="A short preview only. Open Activity for deposits, withdrawals and market-ledger movements."
@@ -209,8 +230,9 @@ export function WalletScreen({
               )}
             </>
           )}
-        </View>
-      </TourTarget>
+          </View>
+        </TourTarget>
+      ) : null}
     </View>
   );
 }

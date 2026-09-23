@@ -84,3 +84,18 @@ export type {
   WalletSignatureProof,
 } from './wallet';
 export { assertWalletNetworkCompatibility } from './wallet';
+
+export type {
+  OnchainPositionLockAuthorization,
+  OnchainSettlementAuthorization,
+  SettlementProtocolDescriptor,
+  VadFeeAuthorization,
+  VadFeePolicyName,
+} from './settlement';
+export {
+  VAD_SETTLEMENT_V1,
+  assertFeeAuthorization,
+  assertPositionLockAuthorization,
+  assertSettlementAuthorization,
+  parseAtomicAmount,
+} from './settlement';

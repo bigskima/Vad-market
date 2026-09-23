@@ -1,0 +1,27 @@
+name: Audit global asset presentation
+
+on:
+  push:
+    branches: [usdc-settlement-v1]
+    paths:
+      - .github/workflows/audit-global-assets.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: usdc-settlement-v1
+      - name: User-facing NGN references
+        run: |
+          echo "=== PRODUCT / COMPONENT REFERENCES ==="
+          grep -R -n -E 'NGN|Naira|₦|formatNaira' apps/mobile/src             --include='*.ts' --include='*.tsx'             | grep -v '/features/admin/'             | grep -v '/services/.*admin'             || true
+      - name: Typecheck
+        run: |
+          npm ci
+          npm run typecheck

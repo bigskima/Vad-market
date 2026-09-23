@@ -79,7 +79,7 @@ export function HomeScreen({
   const leadDetail = trendingRail[0]
     ? `${formatAcceleration(Math.max(trendingRail[0].entry.volume_acceleration, trendingRail[0].entry.trade_acceleration))} · ${trendingRail[0].entry.unique_traders} traders`
     : featuredRail[0]
-      ? `${formatNairaCompact(featuredRail[0].entry.volume_ngn)} completed activity`
+      ? `${formatAssetCompact(featuredRail[0].market.total_volume, featuredRail[0].market.asset_code)} completed activity`
       : leadMarket
         ? `${leadMarket.category ?? 'General'} · ${leadMarket.asset_code}`
         : '';
@@ -255,7 +255,7 @@ export function HomeScreen({
                   <SignalCard
                     key={market.instrument_public_id}
                     market={market}
-                    detail={`${formatNairaCompact(entry.volume_ngn)} activity`}
+                    detail={`${formatAssetCompact(market.total_volume, market.asset_code)} activity`}
                     onPress={() => onOpenMarket(market)}
                   />
                 ))}
@@ -441,12 +441,13 @@ function SignalCard({ market, detail, onPress }: { market: MarketCatalogItem; de
   );
 }
 
-function formatNairaCompact(value: number) {
+function formatAssetCompact(value: number | string | null | undefined, assetCode: string) {
   const amount = Number(value) || 0;
-  if (amount >= 1_000_000_000) return `₦${(amount / 1_000_000_000).toFixed(amount >= 10_000_000_000 ? 0 : 1)}B`;
-  if (amount >= 1_000_000) return `₦${(amount / 1_000_000).toFixed(amount >= 10_000_000 ? 0 : 1)}M`;
-  if (amount >= 1_000) return `₦${(amount / 1_000).toFixed(amount >= 10_000 ? 0 : 1)}K`;
-  return `₦${Math.round(amount).toLocaleString('en-NG')}`;
+  const prefix = assetCode === 'NGN' ? '₦' : `${assetCode} `;
+  if (amount >= 1_000_000_000) return `${prefix}${(amount / 1_000_000_000).toFixed(amount >= 10_000_000_000 ? 0 : 1)}B`;
+  if (amount >= 1_000_000) return `${prefix}${(amount / 1_000_000).toFixed(amount >= 10_000_000 ? 0 : 1)}M`;
+  if (amount >= 1_000) return `${prefix}${(amount / 1_000).toFixed(amount >= 10_000 ? 0 : 1)}K`;
+  return `${prefix}${Math.round(amount).toLocaleString(assetCode === 'NGN' ? 'en-NG' : 'en-US')}`;
 }
 
 function formatWindow(hours: number) {

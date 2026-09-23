@@ -1,3 +1,4 @@
+import { Redirect } from 'expo-router';
 import { PaymentReadinessCard } from '@/components/payment-readiness-card';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
@@ -7,6 +8,9 @@ export default function WithdrawRoute() {
   const { session } = useAuth();
   const runtime = useRuntimeCapabilities(session);
   const reason = runtime.snapshot.reasons.withdraw;
+  const hasNgn = runtime.snapshot.context.activeAssetCodes.includes('NGN');
+
+  if (!hasNgn) return <Redirect href="/wallet" />;
 
   return (
     <ProductSubpage title="Withdraw NGN" maxWidth={980}>
