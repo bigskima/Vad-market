@@ -117,6 +117,7 @@ function DynamicEmailWallet() {
   const [verificationCode, setVerificationCode] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [vadWallets, setVadWallets] = useState<VerifiedVadWallet[]>([]);
+  const [vadWalletOwnerId, setVadWalletOwnerId] = useState('');
   const [vadVerificationBusy, setVadVerificationBusy] = useState(false);
 
   const walletRows = useMemo(
@@ -126,14 +127,16 @@ function DynamicEmailWallet() {
 
   const authenticatedForVadUser = Boolean(vadEmail && dynamicEmail === vadEmail);
   const sessionMismatch = Boolean(dynamicEmail && dynamicEmail !== vadEmail);
+  const vadUserId = session?.user.id ?? '';
+  const visibleVadWallets = vadWalletOwnerId === vadUserId ? vadWallets : [];
 
   const vadWalletKeys = useMemo(
     () => new Set(
-      vadWallets
+      visibleVadWallets
         .filter((wallet) => wallet.status === 'VERIFIED')
         .map((wallet) => verifiedWalletKey(wallet.chain_family, wallet.wallet_address)),
     ),
-    [vadWallets],
+    [visibleVadWallets],
   );
 
   const hasUnverifiedWallet = walletRows.some((wallet) => {
@@ -169,24 +172,25 @@ function DynamicEmailWallet() {
   }, [dynamicEmail, vadEmail, walletsQuery]);
 
   useEffect(() => {
-    if (!authenticatedForVadUser) {
-      setVadWallets([]);
-      return;
-    }
+    if (!authenticatedForVadUser || !vadUserId) return;
 
     let active = true;
     void listVadWalletConnections()
       .then((wallets) => {
-        if (active) setVadWallets(wallets);
+        if (!active) return;
+        setVadWallets(wallets);
+        setVadWalletOwnerId(vadUserId);
       })
       .catch(() => {
-        if (active) setVadWallets([]);
+        if (!active) return;
+        setVadWallets([]);
+        setVadWalletOwnerId(vadUserId);
       });
 
     return () => {
       active = false;
     };
-  }, [authenticatedForVadUser]);
+  }, [authenticatedForVadUser, vadUserId]);
 
   const syncVadWalletVerification = useCallback(async () => {
     setVadVerificationBusy(true);
@@ -194,6 +198,7 @@ function DynamicEmailWallet() {
     try {
       const wallets = await ensureDynamicWalletConnectionsVerified();
       setVadWallets(wallets);
+      setVadWalletOwnerId(vadUserId);
       return wallets;
     } catch (reason) {
       setLocalError(
@@ -205,7 +210,7 @@ function DynamicEmailWallet() {
     } finally {
       setVadVerificationBusy(false);
     }
-  }, []);
+  }, [vadUserId]);
 
   const startEmailVerification = useCallback(async () => {
     if (!vadEmail) {
