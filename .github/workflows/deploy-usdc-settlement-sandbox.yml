@@ -8,6 +8,7 @@ on:
         required: true
         type: choice
         options:
+          - arc-testnet
           - base-sepolia
           - polygon-amoy
       quote_signer_address:
@@ -56,6 +57,12 @@ jobs:
           set -euo pipefail
 
           case "${{ inputs.network }}" in
+            arc-testnet)
+              echo "RPC_URL=https://rpc.testnet.arc.network" >> "$GITHUB_ENV"
+              echo "EXPECTED_CHAIN_ID=5042002" >> "$GITHUB_ENV"
+              echo "CHAIN_CODE=ARC_TESTNET" >> "$GITHUB_ENV"
+              echo "USDC_ADDRESS=0x3600000000000000000000000000000000000000" >> "$GITHUB_ENV"
+              ;;
             base-sepolia)
               echo "RPC_URL=https://sepolia.base.org" >> "$GITHUB_ENV"
               echo "EXPECTED_CHAIN_ID=84532" >> "$GITHUB_ENV"
