@@ -79,11 +79,13 @@ export function supportedClientAdapters(): readonly ChainAdapterDescriptor[] {
 export type {
   PreparedWalletTransaction,
   SubmittedWalletTransaction,
+  WalletCustodyModel,
   WalletProviderAdapter,
+  WalletProviderMode,
   WalletSession,
   WalletSignatureProof,
 } from './wallet';
-export { assertWalletNetworkCompatibility } from './wallet';
+export { assertWalletNetworkCompatibility, createWalletSession } from './wallet';
 
 export type {
   OnchainPositionLockAuthorization,

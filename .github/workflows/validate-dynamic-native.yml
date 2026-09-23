@@ -2,6 +2,19 @@ name: Validate Dynamic Android bundle
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/validate-dynamic-native.yml
+      - apps/mobile/package.json
+      - package-lock.json
+      - packages/chain-core/**
+      - apps/mobile/app.json
+      - apps/mobile/src/lib/dynamic-client.native.ts
+      - apps/mobile/src/lib/dynamic-session.native.ts
+      - apps/mobile/src/services/dynamic-wallet-adapter.native.ts
+      - apps/mobile/src/features/wallet/crypto-wallet-connections.native.tsx
+      - apps/mobile/src/providers/auth-provider.tsx
+      - apps/mobile/.env.example
   push:
     branches: [main]
     paths:
@@ -23,8 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 22
