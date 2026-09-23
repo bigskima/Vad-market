@@ -91,21 +91,21 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
   );
 
   useEffect(() => {
-    if (!isUsdc) {
-      setOnchainVenues([]);
-      setSelectedChainCode('');
-      setVenueError(null);
-      setVenuesLoading(false);
-      return;
-    }
+    if (!isUsdc) return;
 
     let active = true;
-    setVenuesLoading(true);
-    setVenueError(null);
 
-    void listOnchainMarketVenues(market.instrument_public_id)
-      .then((rows) => {
+    void (async () => {
+      await Promise.resolve();
+      if (!active) return;
+
+      setVenuesLoading(true);
+      setVenueError(null);
+
+      try {
+        const rows = await listOnchainMarketVenues(market.instrument_public_id);
         if (!active) return;
+
         const supported = rows.filter(
           (row) =>
             row.chain_family === 'EVM' &&
@@ -120,8 +120,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             ? current
             : supported[0]?.chain_code ?? '',
         );
-      })
-      .catch((reason) => {
+      } catch (reason) {
         if (!active) return;
         setOnchainVenues([]);
         setSelectedChainCode('');
@@ -130,10 +129,10 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             ? reason.message
             : 'We could not check the available USDC networks for this market.',
         );
-      })
-      .finally(() => {
+      } finally {
         if (active) setVenuesLoading(false);
-      });
+      }
+    })();
 
     return () => {
       active = false;
