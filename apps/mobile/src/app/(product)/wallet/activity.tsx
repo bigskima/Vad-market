@@ -1,3 +1,4 @@
+import { Redirect } from 'expo-router';
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
@@ -12,6 +13,9 @@ import type { PaymentIntentRow } from '@/services/payment-api';
 export default function WalletActivityRoute() {
   const data = useProductDataContext();
   const theme = useVadTheme();
+  const hasNgn = data.activeAssetCodes.includes('NGN');
+
+  if (!hasNgn) return <Redirect href="/wallet" />;
   const openTransaction = (intent: PaymentIntentRow) => {
     router.push({ pathname: '/wallet/transaction/[intentId]', params: { intentId: intent.intent_public_id } });
   };
