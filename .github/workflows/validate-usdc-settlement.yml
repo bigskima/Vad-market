@@ -1,0 +1,32 @@
+name: Validate USDC settlement contract
+
+on:
+  pull_request:
+    paths:
+      - contracts/evm/**
+      - packages/chain-core/**
+      - .github/workflows/validate-usdc-settlement.yml
+  push:
+    branches: [main, usdc-settlement-v1]
+    paths:
+      - contracts/evm/**
+      - packages/chain-core/**
+      - .github/workflows/validate-usdc-settlement.yml
+
+permissions:
+  contents: read
+
+jobs:
+  forge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Build
+        working-directory: contracts/evm
+        run: forge build
+      - name: Test
+        working-directory: contracts/evm
+        run: forge test -vvv
