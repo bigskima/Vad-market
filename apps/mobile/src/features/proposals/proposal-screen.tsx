@@ -216,7 +216,7 @@ export function ProposalScreen({
                       }}
                     />
                     <VadText variant="caption" tone="secondary">
-                      This is the currency used for trading and payouts. NGN and USDC balances stay separate.
+                      This is the currency used for trading and payouts. Each settlement currency remains separate.
                     </VadText>
                   </View>
                 ) : (
