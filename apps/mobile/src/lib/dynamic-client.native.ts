@@ -19,7 +19,7 @@ export const dynamicWalletConfiguration = {
 } as const;
 
 export const dynamicClient = dynamicWalletConfiguration.ready
-  ? createDynamicClient({ environmentId })
+  ? createDynamicClient({ environmentId, autoInitialize: false })
   : null;
 
 let initialization: Promise<void> | null = null;
