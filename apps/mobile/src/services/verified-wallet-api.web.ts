@@ -6,7 +6,7 @@ import {
 import {
   dynamicClient,
   initializeDynamicWalletClient,
-} from '@/lib/dynamic-client.native';
+} from '@/lib/dynamic-client.web';
 import { supabase } from '@/lib/supabase';
 
 export type VerifiedVadWallet = {
