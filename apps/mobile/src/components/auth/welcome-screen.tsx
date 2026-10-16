@@ -38,11 +38,11 @@ export function WelcomeScreen({ onContinue }: Props) {
           flexGrow: 1,
           alignSelf: 'center',
           width: '100%',
-          maxWidth: 1180,
+          maxWidth: 1240,
           paddingHorizontal: compact ? theme.spacing.md : theme.spacing.xl,
           paddingTop: compact ? theme.spacing.md : theme.spacing.lg,
           paddingBottom: compact ? theme.spacing.lg : theme.spacing.xl,
-          gap: compact ? theme.spacing.lg : theme.spacing.xl,
+          gap: compact ? theme.spacing.lg : theme.spacing.xxl,
         }}
       >
         <View
@@ -139,7 +139,7 @@ function WelcomeHero({ compact, wide }: { compact: boolean; wide: boolean }) {
       style={{
         flex: wide ? 1.1 : undefined,
         minHeight: wide ? 560 : compact ? 340 : 410,
-        borderRadius: theme.radius.xl,
+        borderRadius: theme.radius.xxl,
         borderWidth: 1,
         borderColor: theme.colors.borderStrong,
         backgroundColor: '#050813',
@@ -183,7 +183,7 @@ function WelcomeHero({ compact, wide }: { compact: boolean; wide: boolean }) {
             paddingHorizontal: 10,
             paddingVertical: 5,
             borderRadius: theme.radius.pill,
-            backgroundColor: 'rgba(91, 91, 247, 0.9)',
+            backgroundColor: theme.colors.brandPrimary,
             borderWidth: 1,
             borderColor: 'rgba(255, 255, 255, 0.16)',
           }}

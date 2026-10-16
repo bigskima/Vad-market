@@ -82,7 +82,7 @@ export function AdminSidebar({ onExit }: { onExit: () => void }) {
                     accessibilityLabel={item.label}
                     onPress={() => router.replace(item.href)}
                     style={({ pressed }) => ({
-                      minHeight: compact ? 48 : 46,
+                      minHeight: compact ? 46 : 44,
                       borderRadius: theme.radius.md,
                       paddingHorizontal: compact
                         ? theme.spacing.xs

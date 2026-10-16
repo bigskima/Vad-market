@@ -32,7 +32,7 @@ export function AdminWorkspaceHeader({
         paddingTop: insets.top + theme.spacing.xs,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.surface,
       }}
     >
       <View
@@ -45,8 +45,8 @@ export function AdminWorkspaceHeader({
             : compact
               ? theme.spacing.md
               : theme.spacing.lg,
-          paddingBottom: theme.spacing.sm,
-          minHeight: desktop ? 64 : 54,
+          paddingBottom: theme.spacing.md,
+          minHeight: desktop ? 72 : 60,
           flexDirection: 'row',
           alignItems: 'center',
           gap: compact ? theme.spacing.xs : theme.spacing.md,

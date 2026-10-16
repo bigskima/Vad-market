@@ -26,8 +26,8 @@ export function ProductRightRail({
   const categories = new Set(markets.map((market) => market.category).filter(Boolean)).size;
 
   return (
-    <View style={{ width: 292, minWidth: 292, gap: theme.spacing.md, paddingVertical: theme.spacing.lg, paddingRight: theme.spacing.lg }}>
-      <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+    <View style={{ width: 292, minWidth: 292, gap: theme.spacing.sm, paddingVertical: theme.spacing.md, paddingRight: theme.spacing.lg }}>
+      <VadCard variant="surface" style={{ gap: theme.spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="bodyStrong">Market pulse</VadText>

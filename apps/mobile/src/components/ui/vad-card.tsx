@@ -18,11 +18,7 @@ export function VadCard({ variant = 'surface', style, children, ...props }: Prop
         : variant === 'brand'
           ? theme.colors.brandSoft
           : theme.colors.surface;
-  const shadow = variant === 'floating'
-    ? theme.shadows.floating
-    : variant === 'raised'
-      ? theme.shadows.subtle
-      : undefined;
+  const shadow = variant === 'floating' ? theme.shadows.card : undefined;
 
   return (
     <View
@@ -31,8 +27,8 @@ export function VadCard({ variant = 'surface', style, children, ...props }: Prop
         shadow,
         {
           backgroundColor: variant === 'outlined' ? 'transparent' : backgroundColor,
-          borderColor: variant === 'brand' ? theme.colors.brandPrimary : theme.colors.border,
-          borderRadius: density.cardRadius,
+          borderColor: theme.colors.border,
+          borderRadius: Math.min(density.cardRadius, theme.radius.xl),
           borderWidth: 1,
           padding: density.cardPadding,
         },

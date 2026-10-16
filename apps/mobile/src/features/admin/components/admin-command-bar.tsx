@@ -45,7 +45,7 @@ export function AdminCommandBar({ onExit }: { onExit: () => void }) {
         minHeight: responsive.desktop ? 72 : 60 + insets.top,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.surface,
         paddingHorizontal: responsive.desktop
           ? theme.spacing.xl
           : theme.spacing.md,

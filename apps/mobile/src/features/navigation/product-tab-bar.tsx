@@ -41,26 +41,25 @@ export function ProductTabBar({
       pointerEvents="box-none"
       style={{
         backgroundColor: theme.colors.background,
-        paddingHorizontal: 10,
-        paddingTop: 7,
-        paddingBottom: Math.max(insets.bottom, 7),
+        paddingHorizontal: 12,
+        paddingTop: 5,
+        paddingBottom: Math.max(insets.bottom, 5),
       }}
     >
       <View
         accessibilityRole="tablist"
         style={[
-          theme.shadows.floating,
           {
             width: '100%',
             maxWidth: 620,
             alignSelf: 'center',
             flexDirection: 'row',
             alignItems: 'stretch',
-            paddingHorizontal: 5,
-            paddingVertical: 4,
-            borderRadius: theme.radius.xxl,
+            paddingHorizontal: 4,
+            paddingVertical: 3,
+            borderRadius: theme.radius.xl,
             borderWidth: 1,
-            borderColor: theme.colors.borderStrong,
+            borderColor: theme.colors.border,
             backgroundColor: theme.colors.surface,
           },
         ]}
@@ -77,11 +76,11 @@ export function ProductTabBar({
               onPress={() => onChange(tab.value)}
               style={({ pressed }) => ({
                 flex: 1,
-                minHeight: density.compact ? 50 : 54,
+                minHeight: density.compact ? 46 : 50,
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 2,
-                borderRadius: theme.radius.xl,
+                borderRadius: theme.radius.md,
                 backgroundColor: selected ? theme.colors.brandSoft : pressed ? theme.colors.surfaceRaised : 'transparent',
                 opacity: pressed ? 0.78 : 1,
                 transform: [{ scale: pressed ? 0.96 : 1 }],
@@ -89,8 +88,8 @@ export function ProductTabBar({
             >
               <View
                 style={{
-                  minWidth: density.compact ? 34 : 38,
-                  height: density.compact ? 28 : 30,
+                  minWidth: density.compact ? 30 : 34,
+                  height: density.compact ? 24 : 26,
                   borderRadius: theme.radius.pill,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -104,7 +103,7 @@ export function ProductTabBar({
                 variant="caption"
                 tone={selected ? 'brand' : 'tertiary'}
                 numberOfLines={1}
-                style={{ fontWeight: selected ? '800' : '500', fontSize: density.compact ? 10 : 11 }}
+                style={{ fontWeight: selected ? '700' : '500', fontSize: density.compact ? 10 : 11 }}
               >
                 {tab.label}
               </VadText>

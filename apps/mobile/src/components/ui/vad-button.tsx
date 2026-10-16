@@ -98,7 +98,7 @@ export function VadButton({
           flexDirection: 'row',
           gap: density.phone ? 7 : theme.spacing.xs,
           paddingHorizontal: paddings[size],
-          borderRadius: theme.radius.pill,
+          borderRadius: size === 'small' ? theme.radius.sm : theme.radius.md,
           borderWidth: variant === 'secondary' || variant === 'tonal' ? 1 : 0,
           borderColor: variant === 'tonal' ? theme.colors.brandPrimary : borderColor,
           backgroundColor,

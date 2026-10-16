@@ -242,7 +242,7 @@ function Overview({
           )}
         </VadCard>
 
-        <VadCard variant="raised" style={{ flex: 0.9, gap: theme.spacing.xs }}>
+        <VadCard variant="surface" style={{ flex: 0.9, gap: theme.spacing.sm }}>
           <VadText variant="bodyStrong">Market timing</VadText>
           {market.opens_at ? <Fact label="Opens" value={timing.openCountdown ? `In ${timing.openCountdown}` : 'Opened'} /> : null}
           <Fact label="Trading" value={timing.stage === 'OPEN' && timing.closeCountdown ? `Closes in ${timing.closeCountdown}` : timing.tradingOpen ? 'Open' : 'Closed'} />
@@ -281,8 +281,8 @@ function Lifecycle({ market, timing }: { market: MarketCatalogItem; timing: Mark
   const settlementActive = timing.stage === 'SETTLEMENT_PENDING';
 
   return (
-    <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
-      <View style={{ gap: 2 }}>
+    <VadCard variant="surface" style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: 3 }}>
         <VadText variant="bodyStrong">Market lifecycle</VadText>
         <VadText variant="caption" tone="secondary">The countdown changes stages automatically; realtime backend events then confirm each transition.</VadText>
       </View>
