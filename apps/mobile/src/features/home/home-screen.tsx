@@ -102,11 +102,11 @@ export function HomeScreen({
     <View style={{ gap: sectionGap }}>
       <TourTarget id="home-overview">
         <VadCard
-          variant="brand"
+          variant="surface"
           style={{
             padding: density.phone ? theme.spacing.md : theme.spacing.lg,
-            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-            borderColor: theme.colors.brandPrimary,
+            gap: density.phone ? theme.spacing.sm : theme.spacing.md,
+            borderColor: theme.colors.border,
             overflow: 'hidden',
           }}
         >
@@ -114,20 +114,20 @@ export function HomeScreen({
             pointerEvents="none"
             style={{
               position: 'absolute',
-              width: density.phone ? 190 : 270,
-              height: density.phone ? 190 : 270,
-              borderRadius: density.phone ? 95 : 135,
-              right: density.phone ? -88 : -108,
-              top: density.phone ? -98 : -132,
+              width: density.phone ? 138 : 180,
+              height: density.phone ? 138 : 180,
+              borderRadius: density.phone ? 69 : 90,
+              right: density.phone ? -60 : -72,
+              top: density.phone ? -66 : -86,
               backgroundColor: theme.colors.surface,
-              opacity: theme.mode === 'dark' ? 0.05 : 0.38,
+              opacity: theme.mode === 'dark' ? 0.025 : 0.14,
             }}
           />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
               <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.yes }} />
-              <VadText variant="caption" tone="brand" style={{ letterSpacing: 1 }}>MARKET PULSE</VadText>
+              <VadText variant="caption" tone="brand" style={{ letterSpacing: 0.7 }}>MARKET PULSE</VadText>
             </View>
             <VadChip label={`${active.length} LIVE`} tone="yes" />
           </View>
