@@ -168,41 +168,9 @@ function Overview({
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'stretch', gap: theme.spacing.md }}>
         <VadCard style={{ flex: 1.1, gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
-            <VadText variant="caption" tone="brand">MARKET OVERVIEW</VadText>
-            <VadText variant="heading">{poolMarket ? 'The pool shows participant conviction. The rules decide the result.' : 'Prices show what traders think. The rules decide the result.'}</VadText>
-            <VadText variant="caption" tone="secondary">
-              {poolMarket
-                ? 'YES and NO percentages show how participant stakes are distributed. The final result follows the published rules and evidence, not whichever side has more money.'
-                : 'YES and NO prices show how people are trading. The final result follows the published market rules and the evidence used to verify what happened, not whichever side has the higher price.'}
-            </VadText>
+            <VadText variant="heading">{poolMarket ? 'Participant stakes show conviction.' : 'Prices show trader conviction.'}</VadText>
+            <VadText variant="caption" tone="secondary">Published market rules decide the result.</VadText>
           </View>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <StatePill label="Trading" value={timing.tradingOpen ? 'Open' : timing.stage === 'SCHEDULED' ? 'Not open yet' : 'Closed'} tone={timing.tradingOpen ? 'yes' : 'secondary'} />
-            <StatePill label="Stage" value={timing.statusLabel} tone={timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'secondary'} />
-            {timing.resolutionOutcome ? <StatePill label="Result" value={timing.resolutionOutcome} tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'secondary'} /> : null}
-            <StatePill label="Currency" value={market.asset_code} tone="brand" />
-          </View>
-
-          <VadCard variant={timing.stage === 'SETTLED' ? 'raised' : 'brand'} style={{ gap: 3 }}>
-            <VadText variant="caption" tone={timing.stage === 'SETTLED' ? 'yes' : 'brand'}>{timing.primaryTiming.toUpperCase()}</VadText>
-            <VadText variant="bodyStrong">
-              {timing.stage === 'OPEN' ? 'Trading is live'
-                : timing.stage === 'CLOSED' ? 'Trading has closed'
-                  : timing.stage === 'RESOLVING' ? 'VAD is verifying the result'
-                    : timing.stage === 'SETTLEMENT_PENDING' ? 'Result final — payout processing'
-                      : timing.stage === 'SETTLED' ? 'Market completed'
-                        : timing.statusLabel}
-            </VadText>
-            <VadText variant="caption" tone="secondary">
-              {timing.stage === 'OPEN' && timing.closeCountdown ? `${poolMarket ? 'New predictions' : 'New orders'} stop in ${timing.closeCountdown}.`
-                : timing.stage === 'CLOSED' && timing.resolutionCountdown ? `Result check begins in ${timing.resolutionCountdown}.`
-                  : timing.stage === 'RESOLVING' ? 'The market stays closed while oracle evidence and finalization complete.'
-                    : timing.stage === 'SETTLEMENT_PENDING' ? `Eligible ${market.asset_code} payouts are being settled automatically.`
-                      : timing.stage === 'SETTLED' ? `Final result${timing.resolutionOutcome ? `: ${timing.resolutionOutcome}` : ''}. Settlement is complete.`
-                        : 'Lifecycle timing updates automatically.'}
-            </VadText>
-          </VadCard>
 
           {poolMarket ? (
             <VadCard variant="brand" style={{ gap: 3 }}>
@@ -232,31 +200,10 @@ function Overview({
           )}
         </VadCard>
 
-        <VadCard variant="surface" style={{ flex: 0.9, gap: theme.spacing.sm }}>
-          <VadText variant="bodyStrong">Market timing</VadText>
-          {market.opens_at ? <Fact label="Opens" value={timing.openCountdown ? `In ${timing.openCountdown}` : 'Opened'} /> : null}
-          <Fact label="Trading" value={timing.stage === 'OPEN' && timing.closeCountdown ? `Closes in ${timing.closeCountdown}` : timing.tradingOpen ? 'Open' : 'Closed'} />
-          <Fact label="Result" value={timing.resolutionOutcome ? `Final · ${timing.resolutionOutcome}` : timing.resolutionCountdown ? `Check in ${timing.resolutionCountdown}` : timing.stage === 'RESOLVING' ? 'Processing' : timing.stage === 'SETTLEMENT_PENDING' ? 'Finalized' : timing.stage === 'SETTLED' ? 'Finalized' : 'Pending'} />
-          {poolMarket ? <Fact label="Participant pool" value={`${Number(market.total_volume ?? 0).toLocaleString()} ${market.asset_code}`} /> : null}
-          {poolMarket ? <Fact label="Participants" value={String(Number(market.participant_count ?? 0))} /> : null}
-          <Fact label="Currency" value={market.asset_code} />
-          <Fact label="Market format" value={market.market_type === 'BINARY' ? 'Yes / No' : friendlyEnum(market.market_type)} />
-          <Fact label="Trading method" value={poolMarket ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')} />
-          <Fact label={poolMarket ? 'Last stake' : 'Last trade'} value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : poolMarket ? 'No stakes yet' : 'No trades yet'} />
-        </VadCard>
       </View>
 
       <Lifecycle market={market} timing={timing} />
 
-      <VadCard variant="brand" style={{ gap: theme.spacing.xs }}>
-        <VadText variant="caption" tone="brand">HOW TO READ THE MARKET</VadText>
-        <VadText variant="bodyStrong">{poolMarket ? 'The stake split is not the final result.' : 'A market price is not the final result.'}</VadText>
-        <VadText variant="caption" tone="secondary">
-          {poolMarket
-            ? 'For example, 90% of the pool backing YES means participant money strongly favours YES. The confirmed result can still be NO if the published rules and evidence support NO.'
-            : 'For example, a 90% YES price means traders strongly favour YES. The final result can still be NO if the published rules and evidence support NO.'}
-        </VadText>
-      </VadCard>
     </View>
   );
 }
@@ -274,8 +221,7 @@ function Lifecycle({ market, timing }: { market: MarketCatalogItem; timing: Mark
     <VadCard variant="surface" style={{ gap: theme.spacing.md }}>
       <View style={{ gap: 3 }}>
         <VadText variant="bodyStrong">Market lifecycle</VadText>
-        <VadText variant="caption" tone="secondary">The countdown changes stages automatically; realtime backend events then confirm each transition.</VadText>
-      </View>
+              </View>
       <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', gap: theme.spacing.xs }}>
         <LifecycleStep
           number="1"
@@ -356,7 +302,6 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
       <View style={{ gap: 2 }}>
         <VadText variant="caption" tone="brand">MARKET RULES</VadText>
         <VadText variant="heading">How this market works</VadText>
-        <VadText variant="caption" tone="secondary">What to understand before committing funds.</VadText>
       </View>
 
       <View style={{ flexDirection: wide ? 'row' : 'column', flexWrap: wide ? 'wrap' : 'nowrap', gap: theme.spacing.sm }}>
@@ -369,34 +314,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
         ))}
       </View>
 
-      <VadCard variant="brand" style={{ gap: 2 }}>
-        <VadText variant="bodyStrong">Trading → Result → Payout</VadText>
-        <VadText variant="caption" tone="secondary">Market popularity and community discussion can inform your view, but the published market rules determine the final result.</VadText>
-      </VadCard>
     </View>
   );
 }
 
-function friendlyEnum(value: string) {
-  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function StatePill({ label, value, tone = 'secondary' }: { label: string; value: string; tone?: 'secondary' | 'yes' | 'brand' }) {
-  const theme = useVadTheme();
-  return (
-    <View style={{ flexGrow: 1, flexBasis: 120, minHeight: 52, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: theme.spacing.sm, paddingVertical: 7, gap: 1 }}>
-      <VadText variant="caption" tone="tertiary">{label}</VadText>
-      <VadText variant="caption" tone={tone} numberOfLines={1}>{value}</VadText>
-    </View>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  const theme = useVadTheme();
-  return (
-    <View style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-      <VadText variant="caption" tone="tertiary" style={{ flex: 1 }}>{label}</VadText>
-      <VadText variant="bodyStrong" style={{ flex: 1.35, textAlign: 'right' }} numberOfLines={2}>{value}</VadText>
-    </View>
-  );
-}

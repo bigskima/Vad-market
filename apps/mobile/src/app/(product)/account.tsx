@@ -60,7 +60,6 @@ export default function AccountScreen() {
       <View style={{ gap: density.sectionGap }}>
         <VadSectionHeader
           title="Account"
-          subtitle="Identity, access and preferences."
         />
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
@@ -78,13 +77,11 @@ export default function AccountScreen() {
         <View style={{ gap: theme.spacing.sm }}>
           <VadSectionHeader
             title="Account essentials"
-            subtitle="Your most-used account actions."
           />
           <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.sm }}>
             <TourTarget id="account-verification">
               <EssentialAction
                 icon="operations"
-                eyebrow="IDENTITY"
                 title="Verification"
                 body="Check your verification status."
                 onPress={() => router.push('/account/verification')}
@@ -94,7 +91,6 @@ export default function AccountScreen() {
             <TourTarget id="account-funding">
               <EssentialAction
                 icon="wallet"
-                eyebrow="MONEY"
                 title="Funding"
                 body="Deposits, withdrawals and limits."
                 onPress={() => router.push('/account/funding')}
@@ -104,7 +100,6 @@ export default function AccountScreen() {
             <TourTarget id="account-guidance">
               <EssentialAction
                 icon="activity"
-                eyebrow="GUIDANCE"
                 title="VAD tour"
                 body="Quick product walkthrough."
                 onPress={() => router.push('/account/app-tour')}
@@ -115,8 +110,6 @@ export default function AccountScreen() {
 
         <VadProgressiveSection
           title="Profile & experience"
-          eyebrow="PERSONALISE VAD"
-          description="Profile, rewards and appearance."
           icon="account"
           defaultExpanded
           summary={<VadText variant="caption" tone="tertiary">Profile · Rewards · Appearance</VadText>}
@@ -145,8 +138,6 @@ export default function AccountScreen() {
 
         <VadProgressiveSection
           title="Safety, legal & access"
-          eyebrow="ACCOUNT CONTROLS"
-          description="Privacy, policies and admin access."
           icon="operations"
           summary={<VadText variant="caption" tone="tertiary">Policies{hasAdminAccess ? ' · Admin' : ''}</VadText>}
         >
@@ -154,14 +145,14 @@ export default function AccountScreen() {
             <AccountRow
               icon="operations"
               title="Policies & privacy"
-              subtitle="Terms, privacy information and important notices"
+              subtitle="Terms and privacy"
               onPress={() => router.push('/account/policies')}
             />
             {hasAdminAccess ? (
               <AccountRow
                 icon="operations"
                 title="Admin operations"
-                subtitle="Open the VAD operations dashboard with your assigned access"
+                subtitle="Operations dashboard"
                 onPress={() => router.push('/admin')}
               />
             ) : null}
@@ -178,39 +169,31 @@ export default function AccountScreen() {
 
 function EssentialAction({
   icon,
-  eyebrow,
   title,
   body,
   onPress,
 }: {
   icon: VadIconName;
-  eyebrow: string;
   title: string;
   body: string;
   onPress: () => void;
 }) {
   const theme = useVadTheme();
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={body}
       onPress={onPress}
-      style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.76 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}
+      style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.76 : 1 })}
     >
-      <VadCard variant="surface" style={{ minHeight: 76, paddingVertical: theme.spacing.sm, gap: theme.spacing.xs }}>
+      <VadCard variant="surface" style={{ minHeight: 56, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
         <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
           <VadIcon name={icon} size={16} tone="brand" />
         </View>
-        <View style={{ gap: 2 }}>
-          <VadText variant="caption" tone="brand">{eyebrow}</VadText>
-          <VadText variant="bodyStrong">{title}</VadText>
-          <VadText variant="caption" tone="secondary">{body}</VadText>
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 3, marginTop: 'auto' }}>
-          <VadText variant="caption" tone="brand">Open</VadText>
-          <VadIcon name="chevronRight" size={14} tone="brand" />
-        </View>
+        <VadText variant="bodyStrong" style={{ flex: 1 }}>{title}</VadText>
+        <VadIcon name="chevronRight" size={15} tone="tertiary" />
       </VadCard>
     </Pressable>
   );
