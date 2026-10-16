@@ -103,7 +103,7 @@ export function PortfolioScreen({
         <VadProgressiveSection
           title="Exposure by currency"
           eyebrow="EXPOSURE DETAILS"
-          description="Open the currency-by-currency breakdown only when you need to inspect invested value and outstanding order exposure."
+          description="Invested value and open-order exposure by currency."
           icon="wallet"
           summary={<VadText variant="caption" tone="tertiary">{exposure.map((item) => item.assetCode).join(' · ')}</VadText>}
         >
@@ -146,7 +146,7 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No matched positions" body="When an order-book order matches another participant, your YES or NO holding appears here. Peer-pool stakes are tracked in Predictions above." />
+          <VadEmptyState title="No matched positions" body="Matched order-book holdings appear here. Peer-pool stakes stay in Predictions." />
         )
       ) : null}
 
