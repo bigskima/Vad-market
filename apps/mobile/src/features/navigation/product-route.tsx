@@ -254,9 +254,9 @@ export function ProductRoute({
               width: '100%',
               maxWidth: density.desktop ? 900 : 820,
               paddingHorizontal: density.horizontalPadding,
-              paddingTop: density.pageTopPadding,
+              paddingTop: density.compact ? theme.spacing.sm : Math.max(theme.spacing.md, density.pageTopPadding - 4),
               paddingBottom: density.contentBottomPadding,
-              gap: density.compact ? theme.spacing.sm : theme.spacing.lg,
+              gap: density.compact ? theme.spacing.sm : theme.spacing.md,
             }}
           >
             {data.error ? (
