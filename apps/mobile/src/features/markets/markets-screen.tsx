@@ -84,43 +84,17 @@ export function MarketsScreen({
 
   return (
     <View style={{ gap: density.sectionGap }}>
-      <VadCard
-        variant="surface"
-        style={{
-          gap: theme.spacing.md,
-          padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-          borderRadius: theme.radius.xxl,
-          overflow: 'hidden',
-        }}
-      >
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            width: 130,
-            height: 130,
-            borderRadius: 65,
-            right: -56,
-            top: -62,
-            backgroundColor: theme.colors.brandSoft,
-            opacity: theme.mode === 'dark' ? 0.24 : 0.8,
-          }}
-        />
-        <View style={{ gap: theme.spacing.sm, maxWidth: 680 }}>
-          <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.1 }}>MARKET DISCOVERY</VadText>
-          <VadText variant={density.phone ? 'title' : 'display'}>
-            {category === 'All' ? 'Explore markets' : `${category} markets`}
-          </VadText>
-          <VadText variant="body" tone="secondary">
-            Find active questions, compare YES/NO prices, and follow market outcomes.
-          </VadText>
+      <View style={{ gap: theme.spacing.xs, paddingBottom: theme.spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+          <VadText variant="title">{category === 'All' ? 'Markets' : category}</VadText>
+          <VadText variant="caption" tone="secondary">{orderedMarkets.length} markets</VadText>
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-          <VadChip label={`${live} LIVE`} tone="yes" />
-          <VadChip label={`${results} RESULT / PAYOUT`} tone="brand" />
-          <VadChip label={`${complete} COMPLETE`} />
+          <VadChip label={`${live} live`} tone="yes" />
+          <VadChip label={`${results} resolving`} tone="brand" />
+          <VadChip label={`${complete} complete`} />
         </View>
-      </VadCard>
+      </View>
 
       <TourTarget id="markets-discovery">
         <MarketDiscoveryControls
@@ -139,8 +113,8 @@ export function MarketsScreen({
         <VadSectionHeader
           title={category === 'All' ? 'Market catalogue' : `${category} catalogue`}
           subtitle={orderedMarkets.length
-            ? `Showing ${progressive.visibleCount} of ${progressive.totalCount}. Reveal more only when you want them.`
-            : 'Try another search, category or sorting option.'}
+            ? `Showing ${progressive.visibleCount} of ${progressive.totalCount}`
+            : 'Try another search or topic.'}
         />
         {orderedMarkets.length ? (
           <View
@@ -188,7 +162,7 @@ export function MarketsScreen({
             {progressive.hasMore ? (
               <VadCard variant="raised" style={{ gap: theme.spacing.sm, alignItems: 'center' }}>
                 <View style={{ gap: 2, alignItems: 'center' }}>
-                  <VadText variant="bodyStrong">Keep exploring when you are ready</VadText>
+                  <VadText variant="bodyStrong">More markets</VadText>
                   <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>
                     {progressive.remainingCount} more {progressive.remainingCount === 1 ? 'market' : 'markets'} match this view.
                   </VadText>
