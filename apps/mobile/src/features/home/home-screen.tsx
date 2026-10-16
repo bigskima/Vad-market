@@ -91,7 +91,7 @@ export function HomeScreen({
       : active;
 
   const boardSubtitle = lens === 'LIVE'
-    ? 'Open markets you can evaluate now.'
+    ? 'Open markets now.'
     : lens === 'VAD'
       ? 'Markets published or selected by VAD.'
       : `Markets accelerating over ${formatMinutes(trendingSettings.windowMinutes)}.`;
@@ -173,8 +173,8 @@ export function HomeScreen({
       <TourTarget id="home-categories">
         <View style={{ gap: 8 }}>
           <VadSectionHeader
-            title="Explore a theme"
-            subtitle="Jump straight to the questions you care about."
+            title="Topics"
+            subtitle="Browse by topic."
             actionLabel="All"
             onAction={() => onExploreMarkets()}
           />
@@ -193,9 +193,9 @@ export function HomeScreen({
 
       <TourTarget id="home-community">
         <VadProgressiveSection
-          title="More market intelligence"
+          title="Market insights"
           eyebrow="DEPTH ON DEMAND"
-          description="Open conviction signals and a small community sample only when you want more context."
+          description="Signals and community insights."
           icon="activity"
           summary={<VadText variant="caption" tone="tertiary">{featuredSettings.enabled ? `${featuredRail.length} signals` : 'Signals'} · Community</VadText>}
         >
@@ -203,7 +203,7 @@ export function HomeScreen({
             <View style={{ gap: theme.spacing.sm }}>
               <View style={{ gap: 2 }}>
                 <VadText variant="caption" tone="brand">CONVICTION SIGNALS</VadText>
-                <VadText variant="caption" tone="secondary">Strong completed activity over {formatWindow(featuredSettings.windowHours)}.</VadText>
+                <VadText variant="caption" tone="secondary">Activity over {formatWindow(featuredSettings.windowHours)}.</VadText>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: theme.spacing.sm }}>
                 {featuredRail.slice(0, 4).map(({ market, entry }) => (
@@ -220,8 +220,8 @@ export function HomeScreen({
 
           <View style={{ gap: theme.spacing.sm }}>
             <VadSectionHeader
-              title="Community conviction"
-              subtitle="A small sample of reasoning around VAD markets."
+              title="Community"
+              subtitle="What people think."
               actionLabel="Open feed"
               onAction={onOpenCommunity}
             />
