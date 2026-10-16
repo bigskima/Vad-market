@@ -116,29 +116,6 @@ export function MarketsScreen({
             ? `Showing ${progressive.visibleCount} of ${progressive.totalCount}`
             : 'Try another search or topic.'}
         />
-        {orderedMarkets.length ? (
-          <View
-            style={{
-              minHeight: 44,
-              borderRadius: theme.radius.lg,
-              backgroundColor: theme.colors.surfaceRaised,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              paddingHorizontal: theme.spacing.sm,
-              paddingVertical: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: theme.spacing.sm,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-              <VadIcon name="markets" size={16} tone="brand" />
-              <VadText variant="caption" tone="secondary">{progressive.visibleCount} visible</VadText>
-            </View>
-            <VadText variant="caption" tone={live ? 'yes' : 'brand'}>{live ? `${live} live now` : 'Lifecycle history'}</VadText>
-          </View>
-        ) : null}
       </View>
 
       <TourTarget id="markets-results">
