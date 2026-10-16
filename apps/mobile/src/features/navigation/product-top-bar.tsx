@@ -165,7 +165,7 @@ export function ProductTopBar({
             style={({ pressed }) => ({
               width: 44,
               height: 44,
-              borderRadius: 22,
+              borderRadius: theme.radius.md,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1,
