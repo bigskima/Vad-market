@@ -226,7 +226,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
         setPlaceError(
           error instanceof Error
             ? error.message
-            : 'The USDC transaction was not submitted. Please review your wallet and try again.',
+            : 'Transaction not submitted. Check your wallet and try again.',
         );
       } finally {
         setWorking(false);
@@ -246,7 +246,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       setPlaceError(
         error instanceof Error
           ? error.message
-          : 'We could not commit this prediction. Please try again.',
+          : 'Could not place prediction. Try again.',
       );
     } finally {
       setWorking(false);
@@ -278,14 +278,14 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
 
       {step === 'prediction' ? (
-        <VadCard variant="raised" style={{ gap: theme.spacing.lg }}>
+        <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
-            <VadText variant="title">What do you think happens?</VadText>
+            <VadText variant="title">Choose an outcome</VadText>
             <VadText variant="caption" tone="secondary">
               {isUsdc
-                ? 'Choose YES or NO. Your USDC stays self-custodied until you approve the final on-chain transaction.'
-                : 'Choose YES or NO. Your stake goes into this market’s protected participant pool — VAD does not fund the other side.'}
+                ? 'Select YES or NO. Funds stay self-custodied until you approve.'
+                : 'Select YES or NO. The participant pool funds both sides; VAD does not.'}
             </VadText>
           </View>
 
@@ -313,15 +313,15 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'order' ? (
-        <VadCard variant="raised" style={{ gap: theme.spacing.lg }}>
+        <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 2 · STAKE</VadText>
-              <VadText variant="title">Choose your stake.</VadText>
+              <VadText variant="title">Stake amount</VadText>
               <VadText variant="caption" tone="secondary">
                 {isUsdc
-                  ? 'Nothing is moved yet. VAD will resolve the active Admin fee policy, bind the exact fee to a short-lived authorization and ask your Dynamic wallet to approve the transaction only after review.'
-                  : 'Nothing is committed on this step. VAD calculates the stake, platform fee, wallet debit and estimated winning settlement before you confirm.'}
+                  ? 'Nothing moves yet. Review the network, fee and authorization before signing.'
+                  : 'Nothing is committed yet. Review the stake, fee, debit and estimated payout.'}
               </VadText>
             </View>
             <VadChip label={outcome} tone={outcome === 'YES' ? 'yes' : 'no'} />
@@ -329,7 +329,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
           <VadInput
             label={`Stake amount · ${market.asset_code}`}
-            hint="Enter the amount you want to commit. The backend enforces the market minimum."
+            hint="Market minimum applies."
             value={amount}
             editable={tradeReady && !working}
             onChangeText={(value) => { setAmount(value); resetDownstream(); }}
@@ -343,12 +343,12 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
               <View style={{ gap: 2 }}>
                 <VadText variant="caption" tone="tertiary">SETTLEMENT NETWORK</VadText>
                 <VadText variant="caption" tone="secondary">
-                  Only networks fully enabled for this market and your jurisdiction appear here.
+                  Only eligible networks are shown.
                 </VadText>
               </View>
 
               {venuesLoading ? (
-                <InlineMessage tone="warning" title="Checking networks" body="VAD is checking the active USDC settlement networks for this market." />
+                <InlineMessage tone="warning" title="Checking networks" body="Checking eligible networks." />
               ) : venueError ? (
                 <InlineMessage tone="danger" title="Networks unavailable" body={venueError} />
               ) : onchainVenues.length ? (
@@ -401,7 +401,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'review' && isUsdc && preparedUsdc ? (
-        <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
+        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · SIGNED VAD FEE REVIEW · NOTHING LOCKED YET</VadText>
             <VadText variant="title">Confirm your USDC prediction.</VadText>
@@ -451,7 +451,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'review' && !isUsdc && quote ? (
-        <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
+        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING CHARGED YET</VadText>
             <VadText variant="title">Confirm your prediction.</VadText>
@@ -490,7 +490,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'result' && isUsdc && onchainResult ? (
-        <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
+        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 4 · TRANSACTION SUBMITTED</VadText>
@@ -533,7 +533,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'result' && !isUsdc && stakeStatus ? (
-        <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
+        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="yes">STEP 4 · STAKE COMMITTED</VadText>
@@ -653,7 +653,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
 
       {step === 'prediction' ? (
-        <VadCard variant="raised" style={{ gap: theme.spacing.lg }}>
+        <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
             <VadText variant="title">Choose an outcome.</VadText>
@@ -668,7 +668,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
 
       {step === 'order' ? (
-        <VadCard variant="raised" style={{ gap: theme.spacing.lg }}>
+        <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 2 · ORDER</VadText>
@@ -707,7 +707,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
 
       {step === 'review' && quote ? (
-        <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
+        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING PLACED YET</VadText>
             <VadText variant="title">Confirm before placing.</VadText>
@@ -740,7 +740,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
 
       {step === 'result' && orderStatus ? (
-        <VadCard variant={orderStatus.status === 'FILLED' ? 'brand' : 'raised'} style={{ gap: theme.spacing.lg }}>
+        <VadCard variant={orderStatus.status === 'FILLED' ? 'brand' : 'raised'} style={{ gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 4 · ORDER STATUS</VadText>
