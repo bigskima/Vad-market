@@ -105,8 +105,9 @@ export function HomeScreen({
           variant="surface"
           style={{
             padding: density.phone ? theme.spacing.md : theme.spacing.lg,
-            gap: density.phone ? theme.spacing.sm : theme.spacing.md,
+            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
             borderColor: theme.colors.border,
+            borderRadius: theme.radius.xxl,
             overflow: 'hidden',
           }}
         >
@@ -119,8 +120,8 @@ export function HomeScreen({
               borderRadius: density.phone ? 69 : 90,
               right: density.phone ? -60 : -72,
               top: density.phone ? -66 : -86,
-              backgroundColor: theme.colors.surface,
-              opacity: theme.mode === 'dark' ? 0.025 : 0.14,
+              backgroundColor: theme.colors.brandSoft,
+              opacity: theme.mode === 'dark' ? 0.32 : 0.82,
             }}
           />
 
@@ -170,7 +171,7 @@ export function HomeScreen({
       <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
 
       <TourTarget id="home-featured-markets">
-        <View style={{ gap: theme.spacing.sm }}>
+        <View style={{ gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
               <VadText variant="caption" tone="brand">DISCOVERY BOARD</VadText>
