@@ -84,7 +84,6 @@ export function WalletScreen({
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Wallet"
-        subtitle="Balance and money actions."
         actionLabel={hasNgn ? 'Activity' : undefined}
         onAction={hasNgn ? onActivity : undefined}
       />
@@ -159,7 +158,6 @@ export function WalletScreen({
           <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
           <VadSectionHeader
             title="Recent payment activity"
-            subtitle="Recent deposits and withdrawals."
             actionLabel="See all"
             onAction={onActivity}
           />
@@ -193,7 +191,7 @@ export function WalletScreen({
               ) : (
                 <VadEmptyState
                   title="No payment activity yet"
-                  body="Your deposits and withdrawals will appear here after you start them."
+                  body="Deposits and withdrawals appear here."
                   actionLabel="Deposit NGN"
                   onAction={onDeposit}
                 />
@@ -358,7 +356,6 @@ function WalletAction({
       >
         <VadIcon name={icon} size={density.compact ? 19 : 22} tone={iconTone} />
         <VadText variant="label" numberOfLines={1}>{label}</VadText>
-        {!density.compact ? <VadText variant="caption" tone="tertiary" numberOfLines={1}>{detail}</VadText> : null}
       </View>
     </Pressable>
   );

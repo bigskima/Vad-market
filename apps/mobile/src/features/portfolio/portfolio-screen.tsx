@@ -73,7 +73,6 @@ export function PortfolioScreen({
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Exchange positions"
-        subtitle="Positions, orders and payouts."
       />
 
       <TourTarget id="portfolio-summary">
@@ -102,8 +101,6 @@ export function PortfolioScreen({
       {exposure.length ? (
         <VadProgressiveSection
           title="Exposure by currency"
-          eyebrow="EXPOSURE DETAILS"
-          description="Invested value and open-order exposure by currency."
           icon="wallet"
           summary={<VadText variant="caption" tone="tertiary">{exposure.map((item) => item.assetCode).join(' · ')}</VadText>}
         >
@@ -146,7 +143,7 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No matched positions" body="Matched order-book holdings appear here. Peer-pool stakes stay in Predictions." />
+          <VadEmptyState title="No matched positions" body="Peer-pool stakes appear in Predictions." />
         )
       ) : null}
 
@@ -166,7 +163,7 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No open orders" body="Only orders still waiting to fill appear here. Filled orders move into Positions instead of lingering as matching requests." />
+          <VadEmptyState title="No open orders" body="Filled orders move to Positions." />
         )
       ) : null}
 
@@ -186,7 +183,7 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No payouts yet" body="After a market is finalized and an eligible winning position settles, its receipt appears here with gross payout, fee and net credit." />
+          <VadEmptyState title="No payouts yet" body="Settled winning payouts appear here with fees and net credit." />
         )
       ) : null}
     </View>
@@ -213,10 +210,16 @@ function ProgressiveGrid({
     <View style={{ gap: theme.spacing.md }}>
       <CardGrid grid={grid}>{children}</CardGrid>
       {remaining > 0 ? (
-        <VadCard variant="raised" style={{ alignItems: 'center', gap: theme.spacing.sm }}>
-          <VadText variant="caption" tone="secondary">{remaining} more {noun} available.</VadText>
-          <VadButton label={`Show next ${next}`} variant="secondary" size="small" fullWidth={false} onPress={onMore} />
-        </VadCard>
+        <View style={{ alignItems: 'center' }}>
+          <VadButton
+            label={`Show next ${next}`}
+            accessibilityLabel={`Show next ${next} ${noun}`}
+            variant="secondary"
+            size="small"
+            fullWidth={false}
+            onPress={onMore}
+          />
+        </View>
       ) : null}
     </View>
   );

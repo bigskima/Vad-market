@@ -43,11 +43,8 @@ export function ProductSidebar({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.xs }}>
-        <VadLogo size={38} />
-        <View style={{ minWidth: 0, gap: 1 }}>
-          <VadText variant="bodyStrong">VAD</VadText>
-          <VadText variant="caption" tone="tertiary" numberOfLines={1}>Value Asset Depot</VadText>
-        </View>
+        <VadLogo size={34} />
+        <VadText variant="bodyStrong">VAD</VadText>
       </View>
 
       {canCreate ? (

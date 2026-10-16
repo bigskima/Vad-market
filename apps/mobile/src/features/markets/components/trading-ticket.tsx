@@ -373,7 +373,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
                 <InlineMessage
                   tone="warning"
                   title="USDC settlement not active yet"
-                  body="This market does not currently have an active VAD Settlement V1 network for your location. No funds can be committed until one is enabled."
+                  body="No settlement network is enabled for your location. You cannot commit funds until one is enabled."
                 />
               )}
             </View>
@@ -403,10 +403,10 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       {step === 'review' && isUsdc && preparedUsdc ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 3 }}>
-            <VadText variant="caption" tone="brand">STEP 3 · SIGNED VAD FEE REVIEW · NOTHING LOCKED YET</VadText>
+            <VadText variant="caption" tone="brand">STEP 3 · FEE REVIEW · NOTHING LOCKED</VadText>
             <VadText variant="title">Confirm your USDC prediction.</VadText>
             <VadText variant="caption" tone="secondary">
-              VAD has resolved the live Admin fee policy and signed these exact amounts. The settlement contract accepts this authorization only until the displayed expiry.
+              VAD signed these amounts using the active fee policy. Authorization expires at the time shown.
             </VadText>
           </View>
 
@@ -429,17 +429,17 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           <InlineMessage
             tone="brand"
             title="Same VAD fee policy as NGN"
-            body="The trading fee came from VAD’s governed Admin fee policy. The blockchain contract does not choose the percentage; it only enforces the exact VAD-signed fee amount and policy version for this action."
+            body="VAD sets fees through its approved policy. The contract enforces the signed fee and policy version."
           />
           <InlineMessage
             tone="warning"
             title="On-chain pool estimates are not shown yet"
-            body="VAD will not reuse internal-ledger pool totals for USDC. Pool size, implied share and payout estimates will appear only from confirmed on-chain positions after the indexer is enabled."
+            body="USDC pool size and payout estimates will appear after on-chain positions are indexed. Internal-ledger totals are not reused."
           />
           <InlineMessage
             tone="brand"
             title="Network gas is separate"
-            body="Your wallet also pays the blockchain’s network gas. Gas is not a VAD platform fee and is not included in the USDC debit shown above."
+            body="Wallet gas is paid to the network separately. It is not a VAD fee or part of the debit above."
           />
           {placeError ? <InlineMessage tone="danger" title="USDC transaction not submitted" body={placeError} /> : null}
 
@@ -453,10 +453,10 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       {step === 'review' && !isUsdc && quote ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 3 }}>
-            <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING CHARGED YET</VadText>
+            <VadText variant="caption" tone="brand">STEP 3 · REVIEW · NOT CHARGED YET</VadText>
             <VadText variant="title">Confirm your prediction.</VadText>
             <VadText variant="caption" tone="secondary">
-              Every current VAD charge is shown below before commitment. Estimated payout can still change as other users add stakes before the market closes.
+              Review fees and debit before committing. Payout estimates can change until market close.
             </VadText>
           </View>
 
@@ -478,8 +478,8 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <QuoteLine label="Estimated net payout if you win" value={assetMoney(quote.estimatedNetPayout, market.asset_code)} />
           </View>
 
-          <InlineMessage tone="brand" title="Fee transparency" body="The trading fee is charged with this stake. The settlement fee is only an estimate now and is charged from an eligible winning payout at settlement. VAD shows both before you commit." />
-          <InlineMessage tone="brand" title="Peer-funded payout" body="Winning payouts can only come from the participant pool for this market. VAD does not inject company money to complete the payout." />
+          <InlineMessage tone="brand" title="Fee transparency" body="The trading fee is charged now. The estimated settlement fee is deducted from eligible winning payouts. Both are shown before commitment." />
+          <InlineMessage tone="brand" title="Peer-funded payout" body="Winners share this participant pool after fees; VAD does not add company funds." />
           {placeError ? <InlineMessage tone="danger" title="Prediction not committed" body={placeError} /> : null}
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
@@ -522,7 +522,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           <InlineMessage
             tone="warning"
             title="Do not submit the same prediction again while this transaction is pending"
-            body="The blockchain transaction already has a hash. Confirmation and indexing must decide its final state."
+            body="Wait for chain confirmation and indexing. Do not resubmit."
           />
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
@@ -572,7 +572,7 @@ function UnsupportedUsdcOrderBook() {
   return (
     <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
       <VadText variant="caption" tone="brand">USDC · ON-CHAIN SETTLEMENT</VadText>
-      <VadText variant="heading">Order-book USDC trading is not active in Settlement V1.</VadText>
+      <VadText variant="heading">Order-book USDC is not active in Settlement V1.</VadText>
       <VadText variant="caption" tone="secondary">
         VAD will not route USDC through the internal NGN/TNGN ledger. USDC Peer Pool settlement is the supported on-chain path for this release.
       </VadText>
