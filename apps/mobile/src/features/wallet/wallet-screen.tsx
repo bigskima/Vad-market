@@ -6,7 +6,6 @@ import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
-import { VadMetricTile } from '@/components/ui/vad-metric-tile';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -85,65 +84,35 @@ export function WalletScreen({
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Wallet"
-        subtitle="Your available balance and money actions come first. Currency detail and history stay one tap away."
+        subtitle="Balance and money actions."
         actionLabel={hasNgn ? 'Activity' : undefined}
         onAction={hasNgn ? onActivity : undefined}
       />
 
       {primary ? (
         <TourTarget id="wallet-balance">
-          <VadCard
-          variant="surface"
-          style={{
-            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-            borderRadius: theme.radius.xxl,
-            overflow: 'hidden',
-          }}
-        >
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              width: 124,
-              height: 124,
-              borderRadius: 62,
-              right: -42,
-              top: -54,
-              backgroundColor: theme.colors.brandSoft,
-              opacity: theme.mode === 'dark' ? 0.28 : 0.72,
-            }}
-          />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
-            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <VadText variant="caption" tone="brand">{primaryCode} LIQUIDITY</VadText>
-              <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
-                {assetMoney(total, primaryCode)}
-              </VadText>
-              <VadText variant="caption" tone="secondary">Available + committed + withdrawal pending</VadText>
+          <View style={{ gap: theme.spacing.sm, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+          <View style={{ gap: 2 }}>
+            <VadText variant="caption" tone="brand">{primaryCode} BALANCE</VadText>
+            <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
+              {assetMoney(total, primaryCode)}
+            </VadText>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md }}>
+            <View style={{ flex: 1, minWidth: 84, gap: 2 }}>
+              <VadText variant="caption" tone="secondary">Available</VadText>
+              <VadText variant="bodyStrong" tone="yes">{assetMoney(available, primaryCode)}</VadText>
             </View>
-            <View
-              style={{
-                width: density.phone ? 48 : 56,
-                height: density.phone ? 48 : 56,
-                borderRadius: 28,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: theme.colors.surface,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-              }}
-            >
-              <VadIcon name="wallet" size={density.phone ? 22 : 26} tone="brand" />
+            <View style={{ flex: 1, minWidth: 84, gap: 2 }}>
+              <VadText variant="caption" tone="secondary">Committed</VadText>
+              <VadText variant="bodyStrong">{assetMoney(reserved, primaryCode)}</VadText>
+            </View>
+            <View style={{ flex: 1, minWidth: 84, gap: 2 }}>
+              <VadText variant="caption" tone="secondary">Pending</VadText>
+              <VadText variant="bodyStrong" tone="brand">{assetMoney(pending, primaryCode)}</VadText>
             </View>
           </View>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-            <VadMetricTile label="Available" value={assetMoney(available, primaryCode)} detail="Ready to use" tone="yes" />
-            <VadMetricTile label="Committed" value={assetMoney(reserved, primaryCode)} detail="Held for active market activity" />
-            <VadMetricTile label="Pending" value={assetMoney(pending, primaryCode)} detail="Withdrawal processing" tone="brand" />
-          </View>
-        </VadCard>
+        </View>
         </TourTarget>
       ) : null}
 
@@ -190,7 +159,7 @@ export function WalletScreen({
           <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
           <VadSectionHeader
             title="Recent payment activity"
-            subtitle="A short preview only. Open Activity for deposits, withdrawals and market-ledger movements."
+            subtitle="Recent deposits and withdrawals."
             actionLabel="See all"
             onAction={onActivity}
           />
