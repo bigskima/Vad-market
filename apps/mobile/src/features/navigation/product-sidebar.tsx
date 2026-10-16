@@ -39,7 +39,7 @@ export function ProductSidebar({
         borderRightColor: theme.colors.border,
         backgroundColor: theme.colors.surface,
         padding: theme.spacing.md,
-        gap: theme.spacing.lg,
+        gap: theme.spacing.md,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.xs }}>
@@ -68,12 +68,12 @@ export function ProductSidebar({
               accessibilityState={{ selected }}
               onPress={() => onNavigate(tab.value)}
               style={({ pressed }) => ({
-                minHeight: 48,
+                minHeight: 44,
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: theme.spacing.sm,
                 paddingHorizontal: theme.spacing.md,
-                borderRadius: theme.radius.lg,
+                borderRadius: theme.radius.md,
                 backgroundColor: selected ? theme.colors.brandSoft : pressed ? theme.colors.surfaceRaised : 'transparent',
                 borderWidth: selected ? 1 : 0,
                 borderColor: selected ? theme.colors.brandPrimary : 'transparent',
