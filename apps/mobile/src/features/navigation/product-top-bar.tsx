@@ -56,8 +56,8 @@ export function ProductTopBar({
       <View
         style={{
           width: '100%',
-          minHeight: density.phone ? 56 : 64,
-          paddingHorizontal: density.phone ? theme.spacing.md : theme.spacing.lg,
+          minHeight: density.phone ? 54 : 60,
+          paddingHorizontal: density.phone ? theme.spacing.sm : theme.spacing.lg,
           flexDirection: 'row',
           alignItems: 'center',
           gap: density.phone ? theme.spacing.sm : theme.spacing.md,
@@ -91,7 +91,7 @@ export function ProductTopBar({
             width: density.phone || !roomy ? undefined : Math.min(420, Math.max(280, density.width * 0.29)),
             minWidth: density.phone ? 38 : 180,
             maxWidth: density.phone ? undefined : 420,
-            minHeight: 44,
+            minHeight: 42,
             flexDirection: 'row',
             alignItems: 'center',
             gap: theme.spacing.sm,
@@ -170,7 +170,7 @@ export function ProductTopBar({
               justifyContent: 'center',
               borderWidth: 1,
               borderColor: active === 'Account' ? theme.colors.brandPrimary : theme.colors.border,
-              backgroundColor: active === 'Account' ? theme.colors.brandSoft : theme.colors.surfaceRaised,
+              backgroundColor: active === 'Account' ? theme.colors.brandSoft : theme.colors.surface,
               opacity: pressed ? 0.7 : 1,
               transform: [{ scale: pressed ? 0.96 : 1 }],
             })}
@@ -221,7 +221,7 @@ function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'a
         borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surfaceRaised,
+        backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
         borderWidth: 1,
         borderColor: theme.colors.border,
       })}
