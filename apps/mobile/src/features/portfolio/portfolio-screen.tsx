@@ -6,7 +6,6 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadIcon } from '@/components/ui/vad-icon';
-import { VadMetricTile } from '@/components/ui/vad-metric-tile';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
@@ -74,54 +73,30 @@ export function PortfolioScreen({
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Exchange positions"
-        subtitle="Matched order-book positions, open matching orders and completed payouts stay separate from peer-pool predictions."
+        subtitle="Positions, orders and payouts."
       />
 
       <TourTarget id="portfolio-summary">
-        <VadCard
-          variant="surface"
-          style={{
-            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-            borderRadius: theme.radius.xxl,
-            overflow: 'hidden',
-          }}
-        >
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              width: 120,
-              height: 120,
-              borderRadius: 60,
-              right: -42,
-              top: -52,
-              backgroundColor: theme.colors.brandSoft,
-              opacity: theme.mode === 'dark' ? 0.28 : 0.72,
-            }}
-          />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
-            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <VadText variant="caption" tone="brand">ORDER-BOOK ACTIVITY</VadText>
-              <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
-                {positions.length} matched {positions.length === 1 ? 'position' : 'positions'}
-              </VadText>
-              <VadText variant="caption" tone="secondary">
-                Only real matched orders become positions here. Peer-pool predictions remain in the Predictions section above.
-              </VadText>
+        <View style={{ gap: theme.spacing.sm, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+            <VadText variant="heading">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
+            <VadText variant="caption" tone="secondary">{Number(totalShares).toLocaleString()} shares</VadText>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md }}>
+            <View style={{ flex: 1, minWidth: 88, gap: 2 }}>
+              <VadText variant="caption" tone="secondary">Open orders</VadText>
+              <VadText variant="bodyStrong">{orders.length}</VadText>
             </View>
-            <View style={{ width: density.phone ? 48 : 56, height: density.phone ? 48 : 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
-              <VadIcon name="portfolio" size={density.phone ? 22 : 26} tone="brand" />
+            <View style={{ flex: 1, minWidth: 88, gap: 2 }}>
+              <VadText variant="caption" tone="secondary">Payouts</VadText>
+              <VadText variant="bodyStrong">{settlements.length}</VadText>
+            </View>
+            <View style={{ flex: 1, minWidth: 88, gap: 2 }}>
+              <VadText variant="caption" tone="secondary">Net paid out</VadText>
+              <VadText variant="bodyStrong">{Number(totalPayouts).toLocaleString()}</VadText>
             </View>
           </View>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <VadMetricTile label="Positions" value={String(positions.length)} detail="Matched holdings" tone="brand" />
-            <VadMetricTile label="Shares held" value={Number(totalShares).toLocaleString()} detail="Across outcomes" />
-            <VadMetricTile label="Open orders" value={String(orders.length)} detail="Waiting to fill" />
-            <VadMetricTile label="Payouts" value={String(settlements.length)} detail={settlements.length ? `${Number(totalPayouts).toLocaleString()} total net` : 'No settled wins yet'} />
-          </View>
-        </VadCard>
+        </View>
       </TourTarget>
 
       {exposure.length ? (
@@ -150,7 +125,7 @@ export function PortfolioScreen({
             onChange={setTab}
           />
           <VadText variant="caption" tone="tertiary">
-            Showing {activeList.visibleCount} of {activeList.totalCount} {tab === 'positions' ? 'positions' : tab === 'orders' ? 'open orders' : 'payouts'}.
+            {activeList.visibleCount} of {activeList.totalCount}
           </VadText>
         </View>
       </TourTarget>
