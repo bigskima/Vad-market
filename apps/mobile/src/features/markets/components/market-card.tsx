@@ -10,6 +10,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { probability } from '../format';
 import { MarketProbabilityBar } from './market-probability-bar';
+import { MarketThumbnail } from './market-thumbnail';
 
 export function MarketCard({
   market,
@@ -78,9 +79,14 @@ export function MarketCard({
           </VadText>
         </View>
 
-        <VadText variant={tight ? 'bodyStrong' : 'heading'} numberOfLines={2}>
-          {market.title}
-        </VadText>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <MarketThumbnail market={market} size={tight ? 42 : 52} />
+          <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
+            <VadText variant={tight ? 'bodyStrong' : 'heading'} numberOfLines={3}>
+              {market.title}
+            </VadText>
+          </View>
+        </View>
 
         <View style={{ flexDirection: 'row', gap: compact ? 6 : 8 }}>
           <PriceTile label="YES" value={yes} positive compact={tight} />
