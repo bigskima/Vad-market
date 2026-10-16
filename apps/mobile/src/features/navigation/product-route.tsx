@@ -101,8 +101,8 @@ export function ProductRoute({
               maxWidth: density.wide ? 840 : 800,
               alignSelf: 'center',
               paddingHorizontal: density.horizontalPadding,
-              paddingTop: density.pageTopPadding,
-              gap: density.compact ? theme.spacing.sm : theme.spacing.lg,
+              paddingTop: density.compact ? theme.spacing.sm : Math.max(theme.spacing.md, density.pageTopPadding - 4),
+              gap: density.compact ? theme.spacing.sm : theme.spacing.md,
             }}
           >
             <VadSkeleton width="38%" height={20} />
@@ -252,7 +252,7 @@ export function ProductRoute({
             contentContainerStyle={{
               alignSelf: 'center',
               width: '100%',
-              maxWidth: density.desktop ? 820 : 760,
+              maxWidth: density.desktop ? 900 : 820,
               paddingHorizontal: density.horizontalPadding,
               paddingTop: density.pageTopPadding,
               paddingBottom: density.contentBottomPadding,
