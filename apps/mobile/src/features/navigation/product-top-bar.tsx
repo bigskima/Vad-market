@@ -75,7 +75,6 @@ export function ProductTopBar({
           </View>
         ) : (
           <View style={{ minWidth: roomy ? 152 : 116, gap: 1 }}>
-            {roomy ? <VadText variant="caption" tone="tertiary">VAD MARKET</VadText> : null}
             <VadText variant="heading" numberOfLines={1}>{active}</VadText>
           </View>
         )}
