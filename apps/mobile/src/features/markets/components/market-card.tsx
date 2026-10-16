@@ -47,20 +47,20 @@ export function MarketCard({
       accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
       accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
       style={({ pressed }) => ({
-        minHeight: compact ? 124 : density.compact ? 142 : density.phone ? 156 : 168,
+        minHeight: compact ? 104 : density.compact ? 112 : density.phone ? 120 : 132,
         borderWidth: 1,
         borderLeftWidth: 3,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
         borderLeftColor: isOpen ? theme.colors.yes : theme.colors.borderStrong,
         borderRadius: compact ? theme.radius.md : theme.radius.xl,
         backgroundColor: theme.colors.surface,
-        padding: compact ? 11 : density.compact ? 13 : 16,
-        gap: compact ? 9 : theme.spacing.md,
+        padding: compact ? 9 : density.compact ? 10 : 12,
+        gap: compact ? 6 : theme.spacing.sm,
         justifyContent: 'space-between',
         opacity: pressed ? 0.88 : 1,
       })}
     >
-      <View style={{ gap: compact ? 8 : theme.spacing.md }}>
+      <View style={{ gap: compact ? 6 : theme.spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
             <VadChip label={timing.statusLabel.toUpperCase()} tone={statusTone} />
@@ -80,9 +80,9 @@ export function MarketCard({
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <MarketThumbnail market={market} size={tight ? 42 : 52} />
+          <MarketThumbnail market={market} size={tight ? 34 : 42} />
           <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
-            <VadText variant={tight ? 'bodyStrong' : 'heading'} numberOfLines={3}>
+            <VadText variant={tight ? 'bodyStrong' : 'heading'} numberOfLines={2}>
               {market.title}
             </VadText>
           </View>
@@ -101,7 +101,7 @@ export function MarketCard({
         style={{
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          paddingTop: 9,
+          paddingTop: 5,
           flexDirection: 'row',
           justifyContent: 'space-between',
           gap: 8,
@@ -173,8 +173,8 @@ function PriceTile({
         justifyContent: 'space-between',
         gap: 6,
         borderRadius: theme.radius.md,
-        paddingHorizontal: compact ? 10 : 12,
-        paddingVertical: compact ? 8 : 10,
+        paddingHorizontal: compact ? 7 : 9,
+        paddingVertical: compact ? 5 : 6,
         backgroundColor: positive ? theme.colors.yesSoft : theme.colors.noSoft,
       }}
     >
