@@ -85,10 +85,10 @@ export function MarketsScreen({
   return (
     <View style={{ gap: density.sectionGap }}>
       <VadCard
-        variant="brand"
+        variant="surface"
         style={{
-          gap: theme.spacing.md,
-          padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+          gap: theme.spacing.sm,
+          padding: density.phone ? theme.spacing.md : theme.spacing.lg,
           overflow: 'hidden',
         }}
       >
@@ -96,13 +96,13 @@ export function MarketsScreen({
           pointerEvents="none"
           style={{
             position: 'absolute',
-            width: 190,
-            height: 190,
-            borderRadius: 95,
-            right: -74,
-            top: -90,
+            width: 130,
+            height: 130,
+            borderRadius: 65,
+            right: -56,
+            top: -62,
             backgroundColor: theme.colors.surface,
-            opacity: theme.mode === 'dark' ? 0.06 : 0.45,
+            opacity: theme.mode === 'dark' ? 0.025 : 0.16,
           }}
         />
         <View style={{ gap: 4, maxWidth: 680 }}>
@@ -111,7 +111,7 @@ export function MarketsScreen({
             {category === 'All' ? 'Explore markets' : `${category} markets`}
           </VadText>
           <VadText variant="body" tone="secondary">
-            Compare live probabilities, follow result processing and review completed markets without loading the whole catalogue at once.
+            Find active questions, compare YES/NO prices, and follow market outcomes.
           </VadText>
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
