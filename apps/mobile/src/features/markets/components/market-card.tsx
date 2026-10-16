@@ -46,18 +46,20 @@ export function MarketCard({
       accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
       accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
       style={({ pressed }) => ({
-        minHeight: compact ? 120 : density.compact ? 136 : density.phone ? 148 : 160,
+        minHeight: compact ? 124 : density.compact ? 142 : density.phone ? 156 : 168,
         borderWidth: 1,
+        borderLeftWidth: 3,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
-        borderRadius: compact ? theme.radius.md : theme.radius.lg,
+        borderLeftColor: isOpen ? theme.colors.yes : theme.colors.borderStrong,
+        borderRadius: compact ? theme.radius.md : theme.radius.xl,
         backgroundColor: theme.colors.surface,
-        padding: compact ? 10 : density.compact ? 12 : 14,
-        gap: compact ? 8 : theme.spacing.sm,
+        padding: compact ? 11 : density.compact ? 13 : 16,
+        gap: compact ? 9 : theme.spacing.md,
         justifyContent: 'space-between',
         opacity: pressed ? 0.88 : 1,
       })}
     >
-      <View style={{ gap: compact ? 7 : theme.spacing.sm }}>
+      <View style={{ gap: compact ? 8 : theme.spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
             <VadChip label={timing.statusLabel.toUpperCase()} tone={statusTone} />
@@ -93,7 +95,7 @@ export function MarketCard({
         style={{
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          paddingTop: 7,
+          paddingTop: 9,
           flexDirection: 'row',
           justifyContent: 'space-between',
           gap: 8,
@@ -164,9 +166,9 @@ function PriceTile({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 6,
-        borderRadius: theme.radius.sm,
-        paddingHorizontal: compact ? 9 : 11,
-        paddingVertical: compact ? 7 : 9,
+        borderRadius: theme.radius.md,
+        paddingHorizontal: compact ? 10 : 12,
+        paddingVertical: compact ? 8 : 10,
         backgroundColor: positive ? theme.colors.yesSoft : theme.colors.noSoft,
       }}
     >
