@@ -101,62 +101,27 @@ export function HomeScreen({
   return (
     <View style={{ gap: sectionGap }}>
       <TourTarget id="home-overview">
-        <VadCard
-          variant="surface"
-          style={{
-            padding: density.phone ? theme.spacing.md : theme.spacing.lg,
-            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-            borderColor: theme.colors.border,
-            borderRadius: theme.radius.xxl,
-            overflow: 'hidden',
-          }}
-        >
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              width: density.phone ? 138 : 180,
-              height: density.phone ? 138 : 180,
-              borderRadius: density.phone ? 69 : 90,
-              right: density.phone ? -60 : -72,
-              top: density.phone ? -66 : -86,
-              backgroundColor: theme.colors.brandSoft,
-              opacity: theme.mode === 'dark' ? 0.32 : 0.82,
-            }}
-          />
-
+        <View style={{ gap: theme.spacing.sm, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
               <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.yes }} />
-              <VadText variant="caption" tone="brand" style={{ letterSpacing: 0.7 }}>MARKET PULSE</VadText>
+              <VadText variant="caption" tone="brand">MARKET PULSE</VadText>
             </View>
-            <VadChip label={`${active.length} LIVE`} tone="yes" />
+            <VadText variant="caption" tone={active.length ? 'yes' : 'tertiary'}>{active.length} live</VadText>
           </View>
-
           {leadMarket ? (
             <FocusMarket market={leadMarket} detail={leadDetail} now={now} onPress={() => onOpenMarket(leadMarket)} />
           ) : (
-            <View style={{ gap: 3, paddingVertical: theme.spacing.md }}>
-              <VadText variant="heading">No market is live right now.</VadText>
-              <VadText variant="caption" tone="secondary">Use Market discovery to inspect the full catalogue.</VadText>
-            </View>
+            <VadText variant="bodyStrong">No live markets. Browse the catalogue.</VadText>
           )}
-
-          <View style={{ flexDirection: 'row', gap: 7 }}>
-            <PulseMetric value={`${active.length}`} label="Live" tone="yes" />
-            <PulseMetric value={`${traded}`} label="Traded" />
-            <PulseMetric value={`${trendingRail.length}`} label="Moving" tone="brand" />
-          </View>
-
-          <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.xs }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+            <VadText variant="caption" tone="secondary">{traded} traded · {trendingRail.length} moving</VadText>
             <TourTarget id="home-explore-markets">
-              <VadButton
-                label="Explore markets"
-                fullWidth={density.narrow}
-                onPress={() => onExploreMarkets()}
-                leading={<VadIcon name="markets" size={17} tone="inverse" />}
-              />
+              <VadButton label="Explore markets" variant="secondary" size="small" fullWidth={false} onPress={() => onExploreMarkets()} trailing={<VadIcon name="chevronRight" size={14} tone="primary" />} />
             </TourTarget>
+          </View>
+        </View>
+      </TourTarget>
             <VadButton
               label="Community"
               variant="secondary"
@@ -298,12 +263,12 @@ function FocusMarket({ market, detail, now, onPress }: { market: MarketCatalogIt
       accessibilityLabel={`Open ${market.title}. YES ${yes}. NO ${no}. ${timing.statusLabel}.`}
       onPress={onPress}
       style={({ pressed }) => ({
-        borderRadius: theme.radius.xl,
-        borderWidth: 1,
-        borderColor: pressed ? theme.colors.brandPrimary : theme.colors.borderStrong,
-        backgroundColor: theme.colors.surface,
-        padding: density.phone ? theme.spacing.md : theme.spacing.lg,
-        gap: theme.spacing.sm,
+        borderRadius: theme.radius.md,
+        borderWidth: 0,
+        borderColor: 'transparent',
+        backgroundColor: 'transparent',
+        padding: 0,
+        gap: theme.spacing.xs,
         opacity: pressed ? 0.82 : 1,
         transform: [{ scale: pressed ? 0.992 : 1 }],
       })}
@@ -313,7 +278,7 @@ function FocusMarket({ market, detail, now, onPress }: { market: MarketCatalogIt
         <VadChip label={timing.statusLabel.toUpperCase()} tone={timing.tradingOpen ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
       </View>
 
-      <VadText variant={density.phone ? 'heading' : 'title'} numberOfLines={3}>{market.title}</VadText>
+      <VadText variant={density.phone ? 'heading' : 'title'} numberOfLines={2}>{market.title}</VadText>
       <VadText variant="caption" tone="tertiary" numberOfLines={1}>{detail}</VadText>
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -344,22 +309,12 @@ function ProbabilityTile({ label, value, positive }: { label: string; value: str
         borderColor: positive ? theme.colors.yes : theme.colors.no,
         backgroundColor: positive ? theme.colors.yesSoft : theme.colors.noSoft,
         paddingHorizontal: theme.spacing.sm,
-        paddingVertical: 9,
+        paddingVertical: 6,
         gap: 2,
       }}
     >
       <VadText variant="caption" tone={positive ? 'yes' : 'no'}>{label}</VadText>
       <VadText variant="heading" tone={positive ? 'yes' : 'no'}>{value}</VadText>
-    </View>
-  );
-}
-
-function PulseMetric({ value, label, tone = 'primary' }: { value: string; label: string; tone?: 'primary' | 'yes' | 'brand' }) {
-  const theme = useVadTheme();
-  return (
-    <View style={{ flex: 1, minWidth: 0, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, paddingHorizontal: 10, paddingVertical: 9, gap: 2 }}>
-      <VadText variant="heading" tone={tone}>{value}</VadText>
-      <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
     </View>
   );
 }
