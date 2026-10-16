@@ -31,7 +31,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <VadChip label={market.asset_code} tone="brand" />
         
         
-        <VadText variant="caption" tone="secondary">{market.category ?? 'General'}</VadText>
+        <VadText variant="caption" tone="secondary">{market.category ?? 'General'} · {market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type)} · {isPool ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')}</VadText>
       </View>
 
       {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={`${market.title} market image`} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} resizeMode="cover" /> : null}
