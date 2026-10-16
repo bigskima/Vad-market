@@ -25,7 +25,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const imageUrl = market.media_path ? supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl : null;
 
   return (
-    <View style={{ gap: theme.spacing.md }}>
+    <View style={{ gap: theme.spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <VadChip label={timing.statusLabel.toUpperCase()} tone={live ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
         <VadChip label={market.asset_code} tone="brand" />
@@ -37,7 +37,6 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
       {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={`${market.title} market image`} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.xxl, backgroundColor: theme.colors.surfaceMuted }} resizeMode="cover" /> : null}
 
       <View style={{ gap: theme.spacing.xs, paddingVertical: theme.spacing.xs }}>
-        <VadText variant="caption" tone="brand">MARKET QUESTION</VadText>
         <VadText variant={density.compact ? 'heading' : 'title'}>{market.title}</VadText>
       </View>
 
@@ -55,7 +54,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         </VadCard>
       ) : null}
 
-      <VadCard accessibilityRole="summary" variant="surface" style={{ gap: theme.spacing.md, padding: theme.spacing.lg }}>
+      <VadCard accessibilityRole="summary" variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           <SignalTile label="YES" value={yes} positive available={market.yes_price != null} />
           <SignalTile label="NO" value={no} positive={false} available={market.no_price != null} />
@@ -64,11 +63,11 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <VadText variant="caption" tone="tertiary">
           {isPool
             ? hasSignal
-              ? 'This split reflects how participant stakes are distributed across YES and NO. It is not the final result.'
-              : 'The YES/NO split will reflect participant stakes after the first prediction is committed.'
+              ? 'Stake split only; not the final result.'
+              : 'The split appears after the first prediction.'
             : hasSignal
-              ? 'These prices show current trader conviction. The published market rules still determine the final YES or NO.'
-              : 'No trade price is available yet. Conviction signals appear after trading begins.'}
+              ? 'Current conviction. Market rules decide the result.'
+              : 'Prices appear after trading begins.'}
         </VadText>
         {isPool ? (
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
@@ -79,14 +78,11 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
       </VadCard>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-        <MetaChip label="Currency" value={market.asset_code} />
-        <MetaChip label="Lifecycle" value={timing.primaryTiming} />
+        <MetaChip label="Status" value={timing.primaryTiming} />
         {timing.stage === 'SCHEDULED' && market.opens_at ? <MetaChip label="Opens" value={`In ${timing.openCountdown ?? '—'}`} /> : null}
         {timing.stage === 'OPEN' ? <MetaChip label="Trading closes" value={timing.closeCountdown ? `In ${timing.closeCountdown}` : 'Closing time unavailable'} /> : null}
         {(timing.stage === 'CLOSED' || timing.stage === 'RESOLVING') ? <MetaChip label="Result" value={timing.resolutionCountdown ? `Check in ${timing.resolutionCountdown}` : timing.resolutionOutcome ? `Final · ${timing.resolutionOutcome}` : 'Processing'} /> : null}
-        <MetaChip label="Market format" value={market.market_type === 'BINARY' ? 'Yes / No' : friendlyEnum(market.market_type)} />
-        <MetaChip label="Trading method" value={isPool ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')} />
-      </View>
+              </View>
 
       {(market.opens_at || market.closes_at || market.resolves_after) ? (
         <VadText variant="caption" tone="tertiary">
