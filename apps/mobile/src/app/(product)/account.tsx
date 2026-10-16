@@ -60,73 +60,25 @@ export default function AccountScreen() {
       <View style={{ gap: density.sectionGap }}>
         <VadSectionHeader
           title="Account"
-          subtitle="Your identity, access and preferences in one place."
+          subtitle="Identity, access and preferences."
         />
 
-        <VadCard
-          variant="brand"
-          style={{
-            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-            gap: theme.spacing.lg,
-            overflow: 'hidden',
-          }}
-        >
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              width: 190,
-              height: 190,
-              borderRadius: 95,
-              right: -72,
-              top: -96,
-              backgroundColor: theme.colors.surface,
-              opacity: theme.mode === 'dark' ? 0.06 : 0.38,
-            }}
-          />
-
-          <View style={{ flexDirection: density.narrow ? 'column' : 'row', alignItems: density.narrow ? 'flex-start' : 'center', gap: theme.spacing.md }}>
-            <View
-              style={{
-                width: density.phone ? 66 : 76,
-                height: density.phone ? 66 : 76,
-                borderRadius: 40,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: theme.colors.surface,
-                borderWidth: 1,
-                borderColor: theme.colors.brandPrimary,
-              }}
-            >
-              <VadText variant="title" tone="brand">{initial}</VadText>
-            </View>
-
-            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <VadText variant="caption" tone="brand">YOUR VAD IDENTITY</VadText>
-              <VadText variant={density.phone ? 'heading' : 'title'} numberOfLines={2}>{displayName || 'Your VAD account'}</VadText>
-              <VadText variant="caption" tone="secondary" numberOfLines={1}>{email}</VadText>
-            </View>
-
-            <VadButton
-              label="Edit profile"
-              variant="secondary"
-              size="small"
-              fullWidth={density.narrow}
-              onPress={() => router.push('/account/profile')}
-            />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+          <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+            <VadText variant="heading" tone="brand">{initial}</VadText>
           </View>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
-            <IdentityFact icon="account" label={displayName ? 'Profile identity set' : 'Complete your profile'} />
-            <IdentityFact icon="markets" label={appearance} />
-            <IdentityFact icon="operations" label={hasAdminAccess ? 'Admin access enabled' : 'Standard account access'} />
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <VadText variant="bodyStrong" numberOfLines={1}>{displayName || 'Your VAD account'}</VadText>
+            <VadText variant="caption" tone="secondary" numberOfLines={1}>{email}</VadText>
+            <VadText variant="caption" tone="tertiary" numberOfLines={1}>{displayName ? 'Profile ready' : 'Complete profile'} · {appearance} · {hasAdminAccess ? 'Admin' : 'Member'}</VadText>
           </View>
-        </VadCard>
+          <VadButton label="Edit" variant="secondary" size="small" fullWidth={false} onPress={() => router.push('/account/profile')} />
+        </View>
 
         <View style={{ gap: theme.spacing.sm }}>
           <VadSectionHeader
             title="Account essentials"
-            subtitle="The actions you are most likely to need stay visible; deeper settings remain below."
+            subtitle="Your most-used account actions."
           />
           <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.sm }}>
             <TourTarget id="account-verification">
@@ -134,7 +86,7 @@ export default function AccountScreen() {
                 icon="operations"
                 eyebrow="IDENTITY"
                 title="Verification"
-                body="See your verification status and next step."
+                body="Check your verification status."
                 onPress={() => router.push('/account/verification')}
               />
             </TourTarget>
@@ -144,7 +96,7 @@ export default function AccountScreen() {
                 icon="wallet"
                 eyebrow="MONEY"
                 title="Funding"
-                body="Deposits, withdrawals, limits and availability."
+                body="Deposits, withdrawals and limits."
                 onPress={() => router.push('/account/funding')}
               />
             </TourTarget>
@@ -154,7 +106,7 @@ export default function AccountScreen() {
                 icon="activity"
                 eyebrow="GUIDANCE"
                 title="VAD tour"
-                body="Take the guided product tour again at any time."
+                body="Quick product walkthrough."
                 onPress={() => router.push('/account/app-tour')}
               />
             </TourTarget>
@@ -164,7 +116,7 @@ export default function AccountScreen() {
         <VadProgressiveSection
           title="Profile & experience"
           eyebrow="PERSONALISE VAD"
-          description="Public identity, rewards and how VAD looks on this device."
+          description="Profile, rewards and appearance."
           icon="account"
           defaultExpanded
           summary={<VadText variant="caption" tone="tertiary">Profile · Rewards · Appearance</VadText>}
@@ -194,7 +146,7 @@ export default function AccountScreen() {
         <VadProgressiveSection
           title="Safety, legal & access"
           eyebrow="ACCOUNT CONTROLS"
-          description="Policies, platform access and administration controls."
+          description="Privacy, policies and admin access."
           icon="operations"
           summary={<VadText variant="caption" tone="tertiary">Policies{hasAdminAccess ? ' · Admin' : ''}</VadText>}
         >
@@ -268,9 +220,9 @@ function EssentialAction({
       onPress={onPress}
       style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.76 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}
     >
-      <VadCard variant="raised" style={{ minHeight: 128, gap: theme.spacing.sm }}>
-        <View style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
-          <VadIcon name={icon} size={19} tone="brand" />
+      <VadCard variant="surface" style={{ minHeight: 76, paddingVertical: theme.spacing.sm, gap: theme.spacing.xs }}>
+        <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+          <VadIcon name={icon} size={16} tone="brand" />
         </View>
         <View style={{ gap: 2 }}>
           <VadText variant="caption" tone="brand">{eyebrow}</VadText>
