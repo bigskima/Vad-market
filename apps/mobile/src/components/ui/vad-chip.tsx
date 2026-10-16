@@ -82,7 +82,7 @@ export function VadChip({
           paddingHorizontal: staticPadding,
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: theme.radius.pill,
+          borderRadius: theme.radius.sm,
           backgroundColor: colors.background,
           borderWidth: 1,
           borderColor: colors.border,
