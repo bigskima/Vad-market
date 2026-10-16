@@ -87,8 +87,9 @@ export function MarketsScreen({
       <VadCard
         variant="surface"
         style={{
-          gap: theme.spacing.sm,
-          padding: density.phone ? theme.spacing.md : theme.spacing.lg,
+          gap: theme.spacing.md,
+          padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+          borderRadius: theme.radius.xxl,
           overflow: 'hidden',
         }}
       >
@@ -101,11 +102,11 @@ export function MarketsScreen({
             borderRadius: 65,
             right: -56,
             top: -62,
-            backgroundColor: theme.colors.surface,
-            opacity: theme.mode === 'dark' ? 0.025 : 0.16,
+            backgroundColor: theme.colors.brandSoft,
+            opacity: theme.mode === 'dark' ? 0.24 : 0.8,
           }}
         />
-        <View style={{ gap: 4, maxWidth: 680 }}>
+        <View style={{ gap: theme.spacing.sm, maxWidth: 680 }}>
           <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.1 }}>MARKET DISCOVERY</VadText>
           <VadText variant={density.phone ? 'title' : 'display'}>
             {category === 'All' ? 'Explore markets' : `${category} markets`}
