@@ -86,10 +86,10 @@ export function MarketDetailScreen({
       <MarketDetailHeader market={market} />
 
       <AssistantEntry
-        label="Ask AI about this market"
+        label="Ask VAD AI"
         detail={market.liquidity_mode === 'POOL'
-          ? 'Understand the question, peer pool, current split, fees, result rules and settlement.'
-          : 'Understand the question, order book, prices, matching, fees, result rules and settlement.'}
+          ? 'Summary, odds, fees and settlement.'
+          : 'Prices, order book, fees and settlement.'}
         prompt="Explain this market to me clearly. Tell me what the question asks, whether it is Yes/No or another format, whether it uses Peer Pool or Order Book, how I participate, what the current market signal means, how fees and payouts work, how the result is verified, and what happens at settlement. Use this market’s actual current data."
         marketId={market.instrument_public_id}
         sourceRoute="/markets"
@@ -98,17 +98,7 @@ export function MarketDetailScreen({
 
       <View style={{ gap: theme.spacing.xs }}>
         <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
-        <VadText variant="caption" tone="tertiary">
-          {tab === 'Overview'
-            ? 'Market details, timing and current stage.'
-            : tab === 'Trade'
-              ? timing.tradingOpen
-                ? poolMarket ? 'Choose an outcome and commit a peer-funded stake.' : 'Build or reduce your matched position.'
-                : timing.primaryTiming
-              : tab === 'Discussion'
-                ? 'See what the community thinks about this market.'
-                : 'See how the result is decided and how payouts work.'}
-        </VadText>
+        
       </View>
 
       {tab === 'Overview' ? (
