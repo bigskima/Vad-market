@@ -79,10 +79,10 @@ export function PortfolioScreen({
 
       <TourTarget id="portfolio-summary">
         <VadCard
-          variant="brand"
+          variant="surface"
           style={{
-            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+            gap: density.phone ? theme.spacing.sm : theme.spacing.md,
+            padding: density.phone ? theme.spacing.md : theme.spacing.lg,
             overflow: 'hidden',
           }}
         >
@@ -90,13 +90,13 @@ export function PortfolioScreen({
             pointerEvents="none"
             style={{
               position: 'absolute',
-              width: 176,
-              height: 176,
-              borderRadius: 88,
-              right: -62,
-              top: -84,
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              right: -42,
+              top: -52,
               backgroundColor: theme.colors.surface,
-              opacity: theme.mode === 'dark' ? 0.06 : 0.42,
+              opacity: theme.mode === 'dark' ? 0.025 : 0.14,
             }}
           />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
@@ -114,7 +114,7 @@ export function PortfolioScreen({
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
             <VadMetricTile label="Positions" value={String(positions.length)} detail="Matched holdings" tone="brand" />
             <VadMetricTile label="Shares held" value={Number(totalShares).toLocaleString()} detail="Across outcomes" />
             <VadMetricTile label="Open orders" value={String(orders.length)} detail="Waiting to fill" />
