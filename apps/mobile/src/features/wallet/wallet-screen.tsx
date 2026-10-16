@@ -95,8 +95,9 @@ export function WalletScreen({
           <VadCard
           variant="surface"
           style={{
-            gap: density.phone ? theme.spacing.sm : theme.spacing.md,
-            padding: density.phone ? theme.spacing.md : theme.spacing.lg,
+            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
+            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+            borderRadius: theme.radius.xxl,
             overflow: 'hidden',
           }}
         >
@@ -109,8 +110,8 @@ export function WalletScreen({
               borderRadius: 62,
               right: -42,
               top: -54,
-              backgroundColor: theme.colors.surface,
-              opacity: theme.mode === 'dark' ? 0.025 : 0.14,
+              backgroundColor: theme.colors.brandSoft,
+              opacity: theme.mode === 'dark' ? 0.28 : 0.72,
             }}
           />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
