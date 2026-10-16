@@ -42,7 +42,7 @@ export function VadSectionHeader({
             flexDirection: 'row',
             gap: 4,
             paddingHorizontal: theme.spacing.sm,
-            borderRadius: theme.radius.pill,
+            borderRadius: theme.radius.md,
             borderWidth: 1,
             borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
             backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surface,
