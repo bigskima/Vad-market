@@ -80,7 +80,7 @@ export function ProductTabBar({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 2,
-                borderRadius: theme.radius.xl,
+                borderRadius: theme.radius.md,
                 backgroundColor: selected ? theme.colors.brandSoft : pressed ? theme.colors.surfaceRaised : 'transparent',
                 opacity: pressed ? 0.78 : 1,
                 transform: [{ scale: pressed ? 0.96 : 1 }],
