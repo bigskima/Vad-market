@@ -143,7 +143,7 @@ export function AdminDashboardScreen() {
   const releaseExceptions = releaseGates.filter((gate) => gate.status !== 'READY');
 
   return (
-    <View style={{ gap: theme.spacing.xxxl }}>
+    <View style={{ gap: theme.spacing.xl }}>
       <View
         style={{
           flexDirection: responsive.desktop ? 'row' : 'column',
@@ -171,7 +171,7 @@ export function AdminDashboardScreen() {
           })}
         >
           <VadCard
-            variant="raised"
+            variant="surface"
             style={{
               gap: theme.spacing.xs,
               borderColor:
