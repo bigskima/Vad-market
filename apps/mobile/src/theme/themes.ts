@@ -1,9 +1,9 @@
 import { breakpoints, motion, radius, spacing, typography, type VadThemeMode } from './tokens';
 
 export const brand = {
-  primary: '#5B5BF7',
-  strong: '#4949DD',
-  accent: '#7C6CFF',
+  primary: '#5656E8',
+  strong: '#4141C7',
+  accent: '#7770F5',
 } as const;
 
 const shared = {
@@ -40,16 +40,16 @@ export const darkColors = {
 
 export const lightColors = {
   ...shared,
-  background: '#F7F8FC',
+  background: '#F6F7FB',
   surface: '#FFFFFF',
-  surfaceRaised: '#F0F2F8',
-  surfaceMuted: '#E8EBF3',
+  surfaceRaised: '#F8F9FC',
+  surfaceMuted: '#EFF1F6',
   textPrimary: '#0F1220',
   textSecondary: '#60677A',
   textTertiary: '#858CA0',
   textInverse: '#FFFFFF',
-  border: '#E1E4EC',
-  borderStrong: '#C9CEDB',
+  border: '#E7E9F0',
+  borderStrong: '#D6DAE5',
   brandSoft: '#E8E8FF',
   onBrand: '#FFFFFF',
   yesSoft: '#E1F8EE',
@@ -63,23 +63,23 @@ const shadows = {
   subtle: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 2,
+    shadowOpacity: 0.035,
+    shadowRadius: 10,
+    elevation: 1,
   },
   card: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 2,
   },
   floating: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 34,
-    elevation: 8,
+    shadowOpacity: 0.09,
+    shadowRadius: 22,
+    elevation: 3,
   },
 } as const;
 
