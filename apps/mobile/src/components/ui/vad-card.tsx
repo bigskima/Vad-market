@@ -19,7 +19,7 @@ export function VadCard({ variant = 'surface', style, children, ...props }: Prop
           ? theme.colors.brandSoft
           : theme.colors.surface;
   const shadow = variant === 'floating'
-    ? theme.shadows.floating
+    ? theme.shadows.subtle
     : variant === 'raised'
       ? theme.shadows.subtle
       : undefined;
