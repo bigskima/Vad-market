@@ -111,8 +111,8 @@ export function VadInput({
           alignItems: multiline ? 'flex-start' : 'center',
           borderWidth: focused ? 1.5 : 1,
           borderColor,
-          borderRadius: density.phone ? theme.radius.lg : theme.radius.xl,
-          backgroundColor: focused ? theme.colors.surfaceRaised : theme.colors.surface,
+          borderRadius: theme.radius.md,
+          backgroundColor: theme.colors.surface,
           paddingHorizontal: density.phone ? 13 : theme.spacing.md,
           opacity: editable ? 1 : 0.55,
         }}
