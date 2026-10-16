@@ -93,10 +93,10 @@ export function WalletScreen({
       {primary ? (
         <TourTarget id="wallet-balance">
           <VadCard
-          variant="brand"
+          variant="surface"
           style={{
-            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
+            gap: density.phone ? theme.spacing.sm : theme.spacing.md,
+            padding: density.phone ? theme.spacing.md : theme.spacing.lg,
             overflow: 'hidden',
           }}
         >
@@ -104,13 +104,13 @@ export function WalletScreen({
             pointerEvents="none"
             style={{
               position: 'absolute',
-              width: 180,
-              height: 180,
-              borderRadius: 90,
-              right: -64,
-              top: -84,
+              width: 124,
+              height: 124,
+              borderRadius: 62,
+              right: -42,
+              top: -54,
               backgroundColor: theme.colors.surface,
-              opacity: theme.mode === 'dark' ? 0.06 : 0.42,
+              opacity: theme.mode === 'dark' ? 0.025 : 0.14,
             }}
           />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
