@@ -50,7 +50,7 @@ export function MarketDiscoveryControls({
   const wide = width >= 820;
 
   return (
-    <View style={{ gap: theme.spacing.lg }}>
+    <View style={{ gap: theme.spacing.md }}>
       {stage && onStageChange ? (
         <View style={{ gap: theme.spacing.xs }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
@@ -85,7 +85,7 @@ export function MarketDiscoveryControls({
           />
         </View>
 
-        <View style={{ gap: theme.spacing.xs, minWidth: wide ? 360 : undefined }}>
+        <View style={{ gap: theme.spacing.xs, minWidth: wide ? 340 : undefined }}>
           <VadText variant="caption" tone="tertiary">Prioritise</VadText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
             {SORT_OPTIONS.map((option) => (
@@ -102,7 +102,7 @@ export function MarketDiscoveryControls({
       </View>
 
       <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="caption" tone="tertiary">Theme</VadText>
+        <VadText variant="caption" tone="tertiary">Topics</VadText>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
           {['All', ...categories].map((category) => (
             <VadChip
