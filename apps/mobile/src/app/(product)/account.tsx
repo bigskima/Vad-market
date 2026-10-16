@@ -176,28 +176,6 @@ export default function AccountScreen() {
   );
 }
 
-function IdentityFact({ icon, label }: { icon: VadIconName; label: string }) {
-  const theme = useVadTheme();
-  return (
-    <View
-      style={{
-        minHeight: 32,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 10,
-        borderRadius: theme.radius.pill,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
-      }}
-    >
-      <VadIcon name={icon} size={14} tone="brand" />
-      <VadText variant="caption" tone="secondary" numberOfLines={1}>{label}</VadText>
-    </View>
-  );
-}
-
 function EssentialAction({
   icon,
   eyebrow,
