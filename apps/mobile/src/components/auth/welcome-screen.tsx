@@ -42,7 +42,7 @@ export function WelcomeScreen({ onContinue }: Props) {
           paddingHorizontal: compact ? theme.spacing.md : theme.spacing.xl,
           paddingTop: compact ? theme.spacing.md : theme.spacing.lg,
           paddingBottom: compact ? theme.spacing.lg : theme.spacing.xl,
-          gap: compact ? theme.spacing.lg : theme.spacing.xxl,
+          gap: compact ? theme.spacing.md : theme.spacing.lg,
         }}
       >
         <View
@@ -106,10 +106,10 @@ export function WelcomeScreen({ onContinue }: Props) {
                 REAL PEOPLE. REAL PREDICTIONS.
               </VadText>
               <VadText variant={compact ? 'title' : 'display'}>
-                A more informed world together.
+                See what the world thinks.
               </VadText>
               <VadText tone="secondary" style={{ maxWidth: 560 }}>
-                Explore real-world outcome markets, understand what the market believes, and back your own conviction when your view is different.
+                Explore markets, compare odds and follow real-world outcomes.
               </VadText>
             </View>
 
@@ -138,7 +138,7 @@ function WelcomeHero({ compact, wide }: { compact: boolean; wide: boolean }) {
     <View
       style={{
         flex: wide ? 1.1 : undefined,
-        minHeight: wide ? 560 : compact ? 340 : 410,
+        minHeight: wide ? 440 : compact ? 220 : 280,
         borderRadius: theme.radius.xxl,
         borderWidth: 1,
         borderColor: theme.colors.borderStrong,
@@ -189,7 +189,7 @@ function WelcomeHero({ compact, wide }: { compact: boolean; wide: boolean }) {
           }}
         >
           <VadText variant="caption" tone="inverse" style={{ letterSpacing: 1.1 }}>
-            PREDICT • TRADE • BELONG
+            PREDICT · FOLLOW · DISCUSS
           </VadText>
         </View>
         <VadText variant={compact ? 'heading' : 'title'} tone="inverse" style={{ maxWidth: 420 }}>
