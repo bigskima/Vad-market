@@ -269,11 +269,6 @@ export function SocialConvictionFeed({
         <View style={{ flexDirection: density.narrow ? 'column' : 'row', justifyContent: 'space-between', alignItems: density.narrow ? 'stretch' : 'center', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, gap: 1 }}>
             <VadText variant="bodyStrong">{marketFilter ? 'Market discussion' : 'Community feed'}</VadText>
-            <VadText variant="caption" tone="secondary" numberOfLines={2}>
-              {canCreatePost
-                ? marketFilter ? 'Share your reasoning or prediction for this market.' : 'Share analysis and conviction without turning the feed into one endless wall.'
-                : 'Read what other people are saying about the markets.'}
-            </VadText>
           </View>
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
             <VadButton label="Refresh" fullWidth={false} size="small" variant="ghost" loading={refreshing} disabled={composerWorking} onPress={() => void load(true)} />
@@ -315,7 +310,7 @@ export function SocialConvictionFeed({
       ) : !visiblePosts.length ? (
         <VadEmptyState
           title={marketFilter ? 'No discussion yet' : 'No posts yet'}
-          body={marketFilter ? 'Be the first to share a view or prediction about this market.' : 'Be the first to share a view and start the conversation.'}
+          body={marketFilter ? 'Start the discussion.' : 'Be the first to post.'}
           actionLabel={showComposer && canCreatePost ? 'Create post' : undefined}
           onAction={showComposer && canCreatePost ? () => setComposerOpen(true) : undefined}
         />
@@ -344,13 +339,7 @@ export function SocialConvictionFeed({
           })}
 
           {!fixedPreview && progressivePosts.hasMore ? (
-            <VadCard variant="raised" style={{ alignItems: 'center', gap: theme.spacing.sm }}>
-              <View style={{ alignItems: 'center', gap: 2 }}>
-                <VadText variant="bodyStrong">Continue the conviction feed</VadText>
-                <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>
-                  {progressivePosts.remainingCount} more {progressivePosts.remainingCount === 1 ? 'post is' : 'posts are'} available without loading the whole feed at once.
-                </VadText>
-              </View>
+            <View style={{ alignItems: 'center' }}>
               <VadButton
                 label={`Show next ${progressivePosts.nextCount}`}
                 variant="secondary"
@@ -358,7 +347,7 @@ export function SocialConvictionFeed({
                 fullWidth={false}
                 onPress={progressivePosts.showMore}
               />
-            </VadCard>
+            </View>
           ) : null}
         </View>
       )}

@@ -90,12 +90,6 @@ export function HomeScreen({
       ? trendingSettings.enabled ? trendingRail.map((row) => row.market) : []
       : active;
 
-  const boardSubtitle = lens === 'LIVE'
-    ? 'Open markets now.'
-    : lens === 'VAD'
-      ? 'Markets published or selected by VAD.'
-      : `Markets accelerating over ${formatMinutes(trendingSettings.windowMinutes)}.`;
-
   const sectionGap = density.compact ? theme.spacing.md : theme.spacing.lg;
 
   return (
@@ -125,15 +119,8 @@ export function HomeScreen({
       <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
 
       <TourTarget id="home-featured-markets">
-        <View style={{ gap: theme.spacing.md }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-              <VadText variant="caption" tone="brand">DISCOVERY BOARD</VadText>
-              <VadText variant="heading">Markets at a glance</VadText>
-              <VadText variant="caption" tone="secondary" numberOfLines={2}>{boardSubtitle}</VadText>
-            </View>
-            {!density.narrow ? <VadButton label="All markets" variant="ghost" size="small" fullWidth={false} onPress={() => onExploreMarkets()} /> : null}
-          </View>
+        <View style={{ gap: theme.spacing.sm }}>
+          <VadText variant="heading">Markets</VadText>
 
           <View style={{ flexDirection: 'row', gap: 6 }}>
             <LensButton label="Live" selected={lens === 'LIVE'} onPress={() => setLens('LIVE')} />
@@ -164,7 +151,6 @@ export function HomeScreen({
               <VadText variant="bodyStrong">
                 {lens === 'MOMENTUM' ? 'Momentum is quiet right now.' : lens === 'VAD' ? 'No VAD selections are live right now.' : 'No live markets right now.'}
               </VadText>
-              <VadText variant="caption" tone="secondary">Switch views or open the full market catalogue.</VadText>
             </VadCard>
           )}
         </View>
@@ -194,17 +180,10 @@ export function HomeScreen({
       <TourTarget id="home-community">
         <VadProgressiveSection
           title="Market insights"
-          eyebrow="DEPTH ON DEMAND"
-          description="Signals and community insights."
           icon="activity"
-          summary={<VadText variant="caption" tone="tertiary">{featuredSettings.enabled ? `${featuredRail.length} signals` : 'Signals'} · Community</VadText>}
         >
           {featuredSettings.enabled && featuredRail.length ? (
             <View style={{ gap: theme.spacing.sm }}>
-              <View style={{ gap: 2 }}>
-                <VadText variant="caption" tone="brand">CONVICTION SIGNALS</VadText>
-                <VadText variant="caption" tone="secondary">Activity over {formatWindow(featuredSettings.windowHours)}.</VadText>
-              </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: theme.spacing.sm }}>
                 {featuredRail.slice(0, 4).map(({ market, entry }) => (
                   <SignalCard
@@ -221,7 +200,6 @@ export function HomeScreen({
           <View style={{ gap: theme.spacing.sm }}>
             <VadSectionHeader
               title="Community"
-              subtitle="What people think."
               actionLabel="Open feed"
               onAction={onOpenCommunity}
             />
@@ -263,8 +241,7 @@ function FocusMarket({ market, detail, now, onPress }: { market: MarketCatalogIt
       })}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-        <VadText variant="caption" tone="brand">IN FOCUS</VadText>
-        <VadChip label={timing.statusLabel.toUpperCase()} tone={timing.tradingOpen ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
+          <VadChip label={timing.statusLabel.toUpperCase()} tone={timing.tradingOpen ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
       </View>
 
       <VadText variant={density.phone ? 'heading' : 'title'} numberOfLines={2}>{market.title}</VadText>
@@ -375,7 +352,6 @@ function SignalCard({ market, detail, onPress }: { market: MarketCatalogItem; de
         opacity: pressed ? 0.8 : 1,
       })}
     >
-      <VadText variant="caption" tone="brand">ACTIVITY SIGNAL</VadText>
       <VadText variant="bodyStrong" numberOfLines={2}>{market.title}</VadText>
       <VadText variant="caption" tone="tertiary" numberOfLines={1}>{detail}</VadText>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
@@ -393,18 +369,6 @@ function formatAssetCompact(value: number | string | null | undefined, assetCode
   if (amount >= 1_000_000) return `${prefix}${(amount / 1_000_000).toFixed(amount >= 10_000_000 ? 0 : 1)}M`;
   if (amount >= 1_000) return `${prefix}${(amount / 1_000).toFixed(amount >= 10_000 ? 0 : 1)}K`;
   return `${prefix}${Math.round(amount).toLocaleString(assetCode === 'NGN' ? 'en-NG' : 'en-US')}`;
-}
-
-function formatWindow(hours: number) {
-  if (hours === 24) return '24 hours';
-  if (hours % 24 === 0) return `${hours / 24} days`;
-  return `${hours} hours`;
-}
-
-function formatMinutes(minutes: number) {
-  if (minutes < 60) return `${minutes} minutes`;
-  if (minutes % 60 === 0) return `${minutes / 60} ${minutes === 60 ? 'hour' : 'hours'}`;
-  return `${minutes} minutes`;
 }
 
 function formatAcceleration(value: number) {

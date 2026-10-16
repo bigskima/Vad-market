@@ -64,7 +64,6 @@ export function ProposalScreen({
     ? preferredAssetCode
     : activeAssetCodes[0] ?? '';
   const questionReady = Boolean(question.trim());
-  const looksLikeQuestion = question.trim().endsWith('?');
   const hasAsset = Boolean(assetCode);
 
   function resetComposer() {
@@ -111,7 +110,7 @@ export function ProposalScreen({
       setAdmission(result);
       await onReload();
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'We could not submit this proposal right now. Please try again.');
+      setSubmitError(error instanceof Error ? error.message : 'Could not submit. Try again.');
     } finally {
       setWorking(false);
     }
@@ -133,22 +132,12 @@ export function ProposalScreen({
 
   return (
     <View style={{ gap: density.compact ? theme.spacing.lg : theme.spacing.xl }}>
-      <View style={{ flexDirection: wide ? 'row' : 'column', justifyContent: 'space-between', gap: density.compact ? theme.spacing.sm : theme.spacing.md, alignItems: wide ? 'flex-end' : 'stretch' }}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <VadText variant="caption" tone="brand">CREATE MARKET</VadText>
-          <VadText variant={density.compact ? 'heading' : 'title'}>Propose one clear outcome.</VadText>
-          <VadText variant="caption" tone="secondary">
-            VAD checks that your question is clear, is not already available, and can be decided fairly before it goes live. Some proposals may need an extra review.
-          </VadText>
-        </View>
-
-        <View style={{ minWidth: wide ? 280 : undefined }}>
-          <VadSegmentedControl
-            value={view}
-            options={VIEWS.map((item) => item.value === 'history' ? { ...item, label: `History ${proposals.length}` } : item)}
-            onChange={setView}
-          />
-        </View>
+      <View style={{ maxWidth: wide ? 320 : undefined, alignSelf: wide ? 'flex-end' : 'stretch' }}>
+        <VadSegmentedControl
+          value={view}
+          options={VIEWS.map((item) => item.value === 'history' ? { ...item, label: `History ${proposals.length}` } : item)}
+          onChange={setView}
+        />
       </View>
 
       {view === 'history' ? (
@@ -163,19 +152,12 @@ export function ProposalScreen({
           }}
         />
       ) : (
-        <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
+        <View style={{ width: '100%' }}>
           <VadCard variant="raised" style={{ flex: 1.35, width: '100%', gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
             <Progress step={step} />
 
             {step === 0 ? (
               <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-                <View style={{ gap: 2 }}>
-                  <VadText variant="heading">What should the market ask?</VadText>
-                  <VadText variant="caption" tone="secondary">
-                    Write one clear YES/NO question. Include a deadline or condition that makes the final result easy to check.
-                  </VadText>
-                </View>
-
                 <VadInput
                   label="Market question"
                   value={question}
@@ -185,25 +167,14 @@ export function ProposalScreen({
                   }}
                   multiline
                   placeholder="Will … happen before …?"
-                  hint={`${question.trim().length} characters · VAD will check your question before submission`}
+                  hint={`${question.trim().length} characters`}
                 />
 
-                <View style={{ gap: 6 }}>
-                  <QualityRow label="Question entered" ready={questionReady} />
-                  <QualityRow label="Written as a question" ready={looksLikeQuestion} advisory />
-                </View>
               </View>
             ) : null}
 
             {step === 1 ? (
               <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-                <View style={{ gap: 2 }}>
-                  <VadText variant="heading">Explain how the result should be decided.</VadText>
-                  <VadText variant="caption" tone="secondary">
-                    Add the deadline, the exact YES condition and the source that can confirm what happened.
-                  </VadText>
-                </View>
-
                 {activeAssetCodes.length > 0 ? (
                   <View style={{ gap: 6 }}>
                     <VadText variant="caption" tone="tertiary">MARKET CURRENCY</VadText>
@@ -216,7 +187,7 @@ export function ProposalScreen({
                       }}
                     />
                     <VadText variant="caption" tone="secondary">
-                      This is the currency used for trading and payouts. Each settlement currency remains separate.
+                      Used for trading and payouts.
                     </VadText>
                   </View>
                 ) : (
@@ -242,20 +213,13 @@ export function ProposalScreen({
                   }}
                   multiline
                   placeholder="Add the deadline, exact YES condition and a trusted source that can confirm the result."
-                  hint={context.trim() ? `${context.trim().length} characters` : 'Adding these details can make the review faster and clearer'}
+                  hint={context.trim() ? `${context.trim().length} characters` : undefined}
                 />
               </View>
             ) : null}
 
             {step === 2 ? (
               <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-                <View style={{ gap: 2 }}>
-                  <VadText variant="heading">Ready to submit.</VadText>
-                  <VadText variant="caption" tone="secondary">
-                    VAD will check whether the question is clear, already exists, and has enough information to decide the result fairly.
-                  </VadText>
-                </View>
-
                 <View>
                   <ReviewRow label="Question" value={question.trim()} />
                   <ReviewRow label="Currency" value={assetCode || 'Unavailable'} />
@@ -302,16 +266,6 @@ export function ProposalScreen({
             </View>
           </VadCard>
 
-          <VadCard variant="muted" style={{ width: wide ? 310 : '100%', gap: theme.spacing.sm }}>
-            <View style={{ gap: 1 }}>
-              <VadText variant="caption" tone="brand">BEFORE A MARKET GOES LIVE</VadText>
-              <VadText variant="bodyStrong">What VAD checks</VadText>
-            </View>
-            <Guide number="1" title="Clear question" body="The market needs one clear outcome and a clear time frame." />
-            <Guide number="2" title="Clear result" body="There must be enough information and evidence to decide YES or NO fairly." />
-            <Guide number="3" title="Existing market" body="If the same market already exists, VAD links you to it instead of creating a duplicate." />
-            <Guide number="4" title="Final review" body="Clear proposals may publish quickly. Others may need more details or an extra review first." />
-          </VadCard>
         </View>
       )}
     </View>
@@ -479,16 +433,6 @@ function Progress({ step }: { step: ProposalStep }) {
   );
 }
 
-function QualityRow({ label, ready, advisory = false }: { label: string; ready: boolean; advisory?: boolean }) {
-  const theme = useVadTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, minHeight: 34 }}>
-      <VadChip label={ready ? 'READY' : advisory ? 'RECOMMENDED' : 'NEEDED'} tone={ready ? 'yes' : 'neutral'} />
-      <VadText variant="caption" tone={ready ? 'primary' : 'secondary'} style={{ flex: 1 }}>{label}</VadText>
-    </View>
-  );
-}
-
 function ReviewRow({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -496,21 +440,6 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
     <View style={{ paddingVertical: density.compact ? 8 : theme.spacing.sm, gap: 3, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
       <VadText variant="caption" tone="tertiary">{label}</VadText>
       <VadText variant="bodyStrong">{value}</VadText>
-    </View>
-  );
-}
-
-function Guide({ number, title, body }: { number: string; title: string; body: string }) {
-  const theme = useVadTheme();
-  return (
-    <View style={{ flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'flex-start', paddingTop: 6 }}>
-      <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: theme.colors.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
-        <VadText variant="caption" tone="brand">{number}</VadText>
-      </View>
-      <View style={{ flex: 1, gap: 1 }}>
-        <VadText variant="caption" tone="primary" style={{ fontWeight: '700' }}>{title}</VadText>
-        <VadText variant="caption" tone="secondary">{body}</VadText>
-      </View>
     </View>
   );
 }

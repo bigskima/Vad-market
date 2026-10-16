@@ -144,53 +144,20 @@ export function AdminDashboardScreen() {
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
-      <View
-        style={{
-          flexDirection: responsive.desktop ? 'row' : 'column',
-          alignItems: responsive.desktop ? 'flex-end' : 'stretch',
-          gap: theme.spacing.xl,
-        }}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open operations queue"
+        onPress={() => router.push('/admin/queue')}
+        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
       >
-        <View style={{ flex: 1, gap: theme.spacing.xs }}>
-          <VadText variant="label" tone="brand">COMMAND CENTRE</VadText>
-          <VadText variant="title">Run VAD from what needs action.</VadText>
-          <VadText tone="secondary">
-            Live operational signals are grouped by markets, money, trust and
-            infrastructure. Your role determines which areas and actions are
-            available to you.
-          </VadText>
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open unified work queue"
-          onPress={() => router.push('/admin/queue')}
-          style={({ pressed }) => ({
-            minWidth: responsive.desktop ? 260 : undefined,
-            opacity: pressed ? 0.65 : 1,
-          })}
-        >
-          <VadCard
-            variant="surface"
-            style={{
-              gap: theme.spacing.xs,
-              borderColor:
-                attention > 0 ? theme.colors.warning : theme.colors.yes,
-            }}
-          >
-            <VadText
-              variant="caption"
-              tone={attention > 0 ? 'warning' : 'yes'}
-            >
-              REQUIRES ATTENTION
-            </VadText>
-            <VadText variant="display">{attention}</VadText>
-            <VadText variant="caption" tone="secondary">
-              Open the unified queue →
-            </VadText>
-          </VadCard>
-        </Pressable>
-      </View>
+        <VadCard variant="surface" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, paddingVertical: theme.spacing.sm }}>
+          <View style={{ gap: 2 }}>
+            <VadText variant="bodyStrong">Operations queue</VadText>
+            <VadText variant="caption" tone="secondary">{attention} items need attention</VadText>
+          </View>
+          <VadText variant="caption" tone="brand">Open →</VadText>
+        </VadCard>
+      </Pressable>
 
       {data.warning ? (
         <VadErrorState title="Some operations data is stale" message={data.warning} onRetry={() => void data.refresh()} />
@@ -219,9 +186,9 @@ export function AdminDashboardScreen() {
           >
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">PRODUCTION READINESS</VadText>
-              <VadText variant="heading">Release gates are measured from live platform state.</VadText>
+              <VadText variant="heading">Launch readiness</VadText>
               <VadText variant="caption" tone="secondary">
-                This does not activate providers or money movement. It shows what is ready, paused or still blocking a production market lifecycle.
+                Live platform checks. This does not activate payments or providers.
               </VadText>
             </View>
             <VadChip
@@ -302,8 +269,8 @@ export function AdminDashboardScreen() {
               <VadText variant="heading">{roleLabel}</VadText>
               <VadText variant="caption" tone="secondary">
                 {data.access.isSuperAdmin
-                  ? 'Full VAD administrative access. Service controls and role management remain restricted to Super Admin.'
-                  : `${data.access.permissions.length} permission${data.access.permissions.length === 1 ? '' : 's'} assigned. Only matching operational areas and actions are available.`}
+                  ? 'Can manage roles and service controls.'
+                  : `${data.access.permissions.length} permissions assigned.`}
               </VadText>
             </View>
             {data.access.isSuperAdmin ? (
@@ -327,13 +294,13 @@ export function AdminDashboardScreen() {
             <ServiceStatusRow
               label="Non-money services"
               enabled={nonMoneyServices.length > 0 && enabledNonMoney === nonMoneyServices.length}
-              detail={nonMoneyServices.length ? `${enabledNonMoney}/${nonMoneyServices.length} available` : 'Status unavailable'}
+              detail={nonMoneyServices.length ? `${enabledNonMoney}/${nonMoneyServices.length} enabled` : 'Unknown'}
             />
             <ServiceStatusRow
               label="Trading & money movement"
               enabled={!moneyPaused}
               paused={moneyPaused}
-              detail={moneyPaused ? 'Intentionally disabled for launch' : 'At least one money service is available'}
+              detail={moneyPaused ? 'Paused for launch' : 'Available'}
             />
             {data.access.isSuperAdmin ? (
               <VadText variant="caption" tone="brand">Open service controls →</VadText>
@@ -345,9 +312,6 @@ export function AdminDashboardScreen() {
       <View style={{ gap: theme.spacing.md }}>
         <View style={{ gap: 2 }}>
           <VadText variant="heading">Platform status</VadText>
-          <VadText variant="caption" tone="secondary">
-            Current market, payment, provider and operations indicators.
-          </VadText>
         </View>
 
         <View
@@ -415,9 +379,6 @@ export function AdminDashboardScreen() {
         <View style={{ flex: 1.05, gap: theme.spacing.md }}>
           <View style={{ gap: 2 }}>
             <VadText variant="heading">Requires attention</VadText>
-            <VadText variant="caption" tone="secondary">
-              Prioritized queues visible to this operator.
-            </VadText>
           </View>
 
           <View
@@ -429,7 +390,7 @@ export function AdminDashboardScreen() {
             {canPayments && paymentFailed > 0 ? (
               <AttentionRow
                 label="Failed payments"
-                detail="Failed payments may require provider or support review."
+                detail="Needs review."
                 count={paymentFailed}
                 tone="danger"
                 href="/admin/payments"
@@ -438,7 +399,7 @@ export function AdminDashboardScreen() {
             {data.access.isSuperAdmin ? (
               <AttentionRow
                 label="Fee proposals"
-                detail="Finance fee changes waiting for Super Admin approval."
+                detail="Awaiting approval."
                 count={feeProposalAttention}
                 href="/admin/fees"
               />
@@ -447,13 +408,13 @@ export function AdminDashboardScreen() {
               <>
                 <AttentionRow
                   label="Market reviews"
-                  detail="Market proposals awaiting an operations decision."
+                  detail="Awaiting decision."
                   count={marketAttention}
                   href="/admin/governance"
                 />
                 <AttentionRow
                   label="Oracle decisions"
-                  detail="Events awaiting resolution or dispute review."
+                  detail="Awaiting resolution."
                   count={oracleAttention}
                   href="/admin/governance"
                 />
@@ -462,7 +423,7 @@ export function AdminDashboardScreen() {
             {canPayments ? (
               <AttentionRow
                 label="Payments pending"
-                detail="Payments waiting for provider confirmation."
+                detail="Awaiting confirmation."
                 count={paymentPending}
                 href="/admin/payments"
               />
@@ -470,7 +431,7 @@ export function AdminDashboardScreen() {
             {canCompliance ? (
               <AttentionRow
                 label="KYC in review"
-                detail="Identity cases waiting for compliance review."
+                detail="Awaiting review."
                 count={kycAttention}
                 href="/admin/compliance"
               />
@@ -478,7 +439,7 @@ export function AdminDashboardScreen() {
             {canProviders ? (
               <AttentionRow
                 label="Provider approvals"
-                detail="Provider changes waiting for approval."
+                detail="Awaiting approval."
                 count={providerAttention}
                 href="/admin/providers"
               />
