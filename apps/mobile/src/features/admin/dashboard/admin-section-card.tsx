@@ -18,7 +18,7 @@ export function AdminSectionCard({
 }) {
   const theme = useVadTheme();
 
-  return <VadCard style={{ gap: theme.spacing.md, borderRadius: theme.radius.xl }}>
+  return <VadCard style={{ gap: theme.spacing.sm, borderRadius: theme.radius.lg }}>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, alignItems: 'flex-start' }}>
       <View style={{ flex: 1, gap: theme.spacing.xxs }}>
         <VadText variant="heading">{title}</VadText>
