@@ -26,11 +26,11 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
 
   return (
     <View style={{ gap: theme.spacing.sm }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <VadChip label={timing.statusLabel.toUpperCase()} tone={live ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
         <VadChip label={market.asset_code} tone="brand" />
-        <VadChip label={market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type)} tone="brand" />
-        <VadChip label={isPool ? 'PEER POOL' : market.liquidity_mode === 'ORDER_BOOK' ? 'ORDER BOOK' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')} tone={isPool ? 'brand' : 'warning'} />
+        
+        
         <VadText variant="caption" tone="secondary">{market.category ?? 'General'}</VadText>
       </View>
 
@@ -55,7 +55,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         </VadCard>
       ) : null}
 
-      <VadCard accessibilityRole="summary" variant="raised" style={{ gap: theme.spacing.sm }}>
+      <VadCard accessibilityRole="summary" variant="surface" style={{ gap: theme.spacing.sm }}>
         <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
           <SignalTile label="YES" value={yes} positive available={market.yes_price != null} />
           <SignalTile label="NO" value={no} positive={false} available={market.no_price != null} />
