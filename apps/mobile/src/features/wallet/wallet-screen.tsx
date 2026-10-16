@@ -133,7 +133,7 @@ export function WalletScreen({
         <VadProgressiveSection
           title="Currency balances"
           eyebrow="BALANCE BREAKDOWN"
-          description="Open the detailed breakdown only when you need to inspect available, committed and pending balances by currency."
+          description="Balances by currency."
           icon="wallet"
           summary={(
             <VadText variant="caption" tone="tertiary">
@@ -150,7 +150,7 @@ export function WalletScreen({
       ) : (
         <VadEmptyState
           title="No wallet balances yet"
-          body="Your balances will appear here when funds become available in your account."
+          body="Balances appear when funds are available."
         />
       )}
 
@@ -172,7 +172,7 @@ export function WalletScreen({
             </View>
           ) : activityError && !intents.length ? (
             <VadErrorState
-              title="Wallet activity unavailable"
+              title="Activity unavailable"
               message={activityError}
               onRetry={() => {
                 setLoading(true);
