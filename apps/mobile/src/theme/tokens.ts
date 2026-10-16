@@ -11,11 +11,11 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  xxl: 28,
+  sm: 7,
+  md: 11,
+  lg: 15,
+  xl: 19,
+  xxl: 24,
   pill: 999,
 } as const;
 
@@ -35,20 +35,20 @@ export const motion = {
 
 export const typography = {
   display: {
-    fontSize: 36,
-    lineHeight: 42,
+    fontSize: 34,
+    lineHeight: 40,
     fontWeight: '800' as const,
-    letterSpacing: -0.8,
+    letterSpacing: -1,
   },
   title: {
-    fontSize: 26,
-    lineHeight: 32,
+    fontSize: 25,
+    lineHeight: 31,
     fontWeight: '800' as const,
-    letterSpacing: -0.35,
+    letterSpacing: -0.55,
   },
   heading: {
-    fontSize: 19,
-    lineHeight: 25,
+    fontSize: 18,
+    lineHeight: 24,
     fontWeight: '700' as const,
     letterSpacing: -0.1,
   },
