@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
-import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { HomePromotionCarousel } from '@/features/home/components/home-promotion-carousel';
 import { MarketCard } from '@/features/markets/components/market-card';
-import { probability } from '@/features/markets/format';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useLiveNow } from '@/hooks/use-live-now';
@@ -74,15 +72,6 @@ export function HomeScreen({
   const trendingRail = trendingMarkets
     .map((entry) => ({ entry, market: markets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
     .filter((row): row is { entry: TrendingMarketRow; market: MarketCatalogItem } => Boolean(row.market));
-
-  const leadMarket = trendingRail[0]?.market ?? featuredRail[0]?.market ?? vadRail[0]?.market ?? active[0];
-  const leadDetail = trendingRail[0]
-    ? `${formatAcceleration(Math.max(trendingRail[0].entry.volume_acceleration, trendingRail[0].entry.trade_acceleration))} · ${trendingRail[0].entry.unique_traders} traders`
-    : featuredRail[0]
-      ? `${formatAssetCompact(featuredRail[0].market.total_volume, featuredRail[0].market.asset_code)} completed activity`
-      : leadMarket
-        ? `${leadMarket.category ?? 'General'} · ${leadMarket.asset_code}`
-        : '';
 
   const lensMarkets = lens === 'VAD'
     ? vadRail.map((row) => row.market)
@@ -197,74 +186,6 @@ export function HomeScreen({
           </View>
         </VadProgressiveSection>
       </TourTarget>
-    </View>
-  );
-}
-
-function FocusMarket({ market, detail, now, onPress }: { market: MarketCatalogItem; detail: string; now: number; onPress: () => void }) {
-  const theme = useVadTheme();
-  const density = useProductDensity();
-  const timing = getMarketTiming(market, now);
-  const yes = probability(market.yes_price);
-  const no = probability(market.no_price);
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open ${market.title}. YES ${yes}. NO ${no}. ${timing.statusLabel}.`}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        borderRadius: theme.radius.md,
-        borderWidth: 0,
-        borderColor: 'transparent',
-        backgroundColor: 'transparent',
-        padding: 0,
-        gap: theme.spacing.xs,
-        opacity: pressed ? 0.82 : 1,
-        transform: [{ scale: pressed ? 0.992 : 1 }],
-      })}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-          <VadChip label={timing.statusLabel.toUpperCase()} tone={timing.tradingOpen ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
-      </View>
-
-      <VadText variant={density.phone ? 'heading' : 'title'} numberOfLines={2}>{market.title}</VadText>
-      <VadText variant="caption" tone="tertiary" numberOfLines={1}>{detail}</VadText>
-
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <ProbabilityTile label="YES" value={yes} positive />
-        <ProbabilityTile label="NO" value={no} positive={false} />
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-        <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ flex: 1 }}>{timing.primaryTiming}</VadText>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-          <VadText variant="caption" tone="brand">{timing.tradingOpen ? 'Trade' : 'Details'}</VadText>
-          <VadIcon name="chevronRight" size={14} tone="brand" />
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
-function ProbabilityTile({ label, value, positive }: { label: string; value: string; positive: boolean }) {
-  const theme = useVadTheme();
-  return (
-    <View
-      style={{
-        flex: 1,
-        minWidth: 0,
-        borderRadius: theme.radius.lg,
-        borderWidth: 1,
-        borderColor: positive ? theme.colors.yes : theme.colors.no,
-        backgroundColor: positive ? theme.colors.yesSoft : theme.colors.noSoft,
-        paddingHorizontal: theme.spacing.sm,
-        paddingVertical: 6,
-        gap: 2,
-      }}
-    >
-      <VadText variant="caption" tone={positive ? 'yes' : 'no'}>{label}</VadText>
-      <VadText variant="heading" tone={positive ? 'yes' : 'no'}>{value}</VadText>
     </View>
   );
 }
