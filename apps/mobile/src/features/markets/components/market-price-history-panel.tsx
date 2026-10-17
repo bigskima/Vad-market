@@ -68,10 +68,13 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
   const min = allPrices.length ? Math.max(0, Math.floor((Math.min(...allPrices) * 100 - 5) / 5) * 5 / 100) : 0;
   const max = allPrices.length ? Math.min(1, Math.ceil((Math.max(...allPrices) * 100 + 5) / 5) * 5 / 100) : 1;
   const span = Math.max(0.1, max - min);
+  const timeStart = visiblePoints.length ? Date.parse(visiblePoints[0].observed_at) : 0;
+  const timeEnd = visiblePoints.length ? Date.parse(visiblePoints[visiblePoints.length - 1].observed_at) : timeStart;
+  const timeSpan = Math.max(1, timeEnd - timeStart);
 
   function coordinates(values: { at: number; value: number }[]) {
     return values.map((point, index) => ({
-      x: values.length <= 1 ? 0 : (index / (values.length - 1)) * usableWidth,
+      x: timeEnd === timeStart ? usableWidth / 2 : ((point.at - timeStart) / timeSpan) * usableWidth,
       y: chartHeight - 12 - ((point.value - min) / span) * (chartHeight - 24),
       value: point.value,
       at: point.at,
