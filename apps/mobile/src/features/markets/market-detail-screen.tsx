@@ -15,6 +15,7 @@ import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
+import { MarketDepthPanel } from './components/market-depth-panel';
 import { TradingTicket } from './components/trading-ticket';
 
 type DetailTab = 'Overview' | 'Trade' | 'Discussion' | 'Rules';
@@ -84,6 +85,7 @@ export function MarketDetailScreen({
   return (
     <View style={{ gap: density.sectionGap }}>
       <MarketDetailHeader market={market} />
+      {market.liquidity_mode !== 'POOL' ? <MarketDepthPanel instrumentId={market.instrument_public_id} /> : null}
 
       <View style={{ gap: 6 }}>
         <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
