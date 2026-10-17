@@ -175,11 +175,11 @@ function PriceTile({
         borderRadius: theme.radius.md,
         paddingHorizontal: compact ? 10 : 12,
         paddingVertical: compact ? 8 : 10,
-        backgroundColor: positive ? theme.colors.yesSoft : theme.colors.noSoft,
+        backgroundColor: positive ? theme.colors.infoSoft : theme.colors.noSoft,
       }}
     >
-      <VadText variant="caption" tone={positive ? 'yes' : 'no'}>{label}</VadText>
-      <VadText variant={compact ? 'bodyStrong' : 'bodyStrong'} tone={positive ? 'yes' : 'no'}>{value}</VadText>
+      <VadText variant="caption" tone={positive ? 'brand' : 'no'}>{label}</VadText>
+      <VadText variant="bodyStrong" tone={positive ? 'brand' : 'no'}>{value}</VadText>
     </View>
   );
 }
