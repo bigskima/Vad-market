@@ -85,12 +85,11 @@ export function MarketDetailScreen({
   const poolMarket = isPoolMarket(market);
 
   return (
-    <View style={{ gap: density.sectionGap }}>
+    <View style={{ gap: density.compact ? 9 : density.sectionGap }}>
       <MarketDetailHeader market={market} />
 
-      <View style={{ gap: 6 }}>
+      <View style={{ gap: 4 }}>
         <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
-        
       </View>
 
       {tab === 'Overview' ? (
