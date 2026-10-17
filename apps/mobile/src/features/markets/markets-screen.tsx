@@ -12,11 +12,13 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useLiveNow } from '@/hooks/use-live-now';
 import { useVadTheme } from '@/providers/theme-provider';
+import { getMarketTiming } from '@/lib/market-timing';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketCard } from './components/market-card';
 import {
   MarketDiscoveryControls,
   type MarketSortMode,
+  type MarketStageFilter,
 } from './components/market-discovery-controls';
 
 export function MarketsScreen({
@@ -40,17 +42,39 @@ export function MarketsScreen({
       : 'All',
   );
   const [sortMode, setSortMode] = useState<MarketSortMode>('activity');
+  const [stage, setStage] = useState<MarketStageFilter>('all');
 
   const categories = useMemo(
     () => [...new Set(markets.map((market) => market.category).filter((value): value is string => Boolean(value)))].sort(),
     [markets],
   );
 
-  const orderedMarkets = useMemo(() => {
+  const baseFilteredMarkets = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const filtered = markets
+    return markets
       .filter((market) => category === 'All' || market.category === category)
       .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status].some((value) => String(value ?? '').toLowerCase().includes(needle)));
+  }, [markets, category, query]);
+
+  const stageCounts = useMemo(() => {
+    const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
+    for (const market of baseFilteredMarkets) {
+      const timing = getMarketTiming(market, now);
+      if (timing.tradingOpen) counts.live += 1;
+      else if (['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING'].includes(timing.stage)) counts.result += 1;
+      else if (['SETTLED', 'VOIDED'].includes(timing.stage)) counts.complete += 1;
+    }
+    return counts;
+  }, [baseFilteredMarkets, now]);
+
+  const orderedMarkets = useMemo(() => {
+    const filtered = baseFilteredMarkets.filter((market) => {
+      const timing = getMarketTiming(market, now);
+      if (stage === 'live') return timing.tradingOpen;
+      if (stage === 'result') return ['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING'].includes(timing.stage);
+      if (stage === 'complete') return ['SETTLED', 'VOIDED'].includes(timing.stage);
+      return true;
+    });
 
     return [...filtered].sort((a, b) => {
       if (sortMode === 'closing') {
@@ -66,7 +90,7 @@ export function MarketsScreen({
       }
       return Number(Boolean(b.last_trade_at)) - Number(Boolean(a.last_trade_at)) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
-  }, [markets, category, query, sortMode, now]);
+  }, [baseFilteredMarkets, stage, sortMode, now]);
 
   const cardWidth = columns === 2 ? '48.9%' : '100%';
   const pageSize = columns === 2 ? 8 : 5;
@@ -74,11 +98,10 @@ export function MarketsScreen({
     items: orderedMarkets,
     initialCount: pageSize,
     step: pageSize,
-    resetKey: `${query.trim().toLowerCase()}|${category}|${sortMode}|${columns}`,
+    resetKey: `${query.trim().toLowerCase()}|${category}|${sortMode}|${stage}|${columns}`,
   });
 
-  const featuredMarket = orderedMarkets[0] ?? null;
-  const remainingMarkets = progressive.visibleItems.filter((market) => market.instrument_public_id !== featuredMarket?.instrument_public_id);
+  const visibleMarkets = progressive.visibleItems;
 
   return (
     <View style={{ gap: density.sectionGap }}>
@@ -98,6 +121,9 @@ export function MarketsScreen({
           categories={categories}
           activeCategory={category}
           onCategoryChange={setCategory}
+          stage={stage}
+          onStageChange={setStage}
+          stageCounts={stageCounts}
           sortMode={sortMode}
           onSortModeChange={setSortMode}
           resultCount={orderedMarkets.length}
@@ -124,15 +150,7 @@ export function MarketsScreen({
                 alignItems: 'stretch',
               }}
             >
-              {featuredMarket ? (
-                <View style={{ width: '100%' }}>
-                  <View style={{ borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.brandPrimary, padding: theme.spacing.xs, gap: theme.spacing.xs, backgroundColor: theme.colors.brandSoft }}>
-                    <VadText variant="caption" tone="brand">IN FOCUS</VadText>
-                    <MarketCard market={featuredMarket} onPress={() => onOpenMarket(featuredMarket)} />
-                  </View>
-                </View>
-              ) : null}
-              {remainingMarkets.map((market) => (
+              {visibleMarkets.map((market) => (
                 <View key={market.instrument_public_id} style={{ width: cardWidth }}>
                   <MarketCard market={market} onPress={() => onOpenMarket(market)} compact />
                 </View>
@@ -169,6 +187,7 @@ export function MarketsScreen({
               setQuery('');
               setCategory('All');
               setSortMode('activity');
+              setStage('all');
             }}
           />
         )}
