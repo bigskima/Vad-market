@@ -39,87 +39,93 @@ export function MarketCard({
       accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
       accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
       style={({ pressed }) => ({
-        minHeight: compact ? 148 : density.compact ? 154 : density.phone ? 166 : 176,
         width: '100%',
+        minHeight: 0,
         borderWidth: 1,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
-        borderRadius: density.phone ? 14 : 16,
+        borderRadius: density.phone ? 12 : 14,
         backgroundColor: theme.colors.surface,
-        padding: tight ? 9 : density.phone ? 10 : 12,
-        gap: tight ? 7 : 9,
-        justifyContent: 'space-between',
+        padding: tight ? 9 : 11,
+        gap: 9,
         opacity: pressed ? 0.92 : 1,
         ...theme.shadows.subtle,
       })}
     >
-      <View style={{ gap: tight ? 7 : 9 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <MarketThumbnail market={market} size={tight ? 34 : 38} />
-          <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-            <VadText variant="caption" tone="tertiary" numberOfLines={1}>
-              {(market.category ?? 'General').toUpperCase()}  ·  {market.asset_code}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+        <MarketThumbnail market={market} size={tight ? 34 : 38} />
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13, flexShrink: 1 }}>
+              {(market.category ?? 'General').toUpperCase()}
             </VadText>
-            <VadText variant="bodyStrong" numberOfLines={2} style={{ lineHeight: tight ? 18 : 20 }}>
-              {market.title}
+            <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: theme.colors.borderStrong }} />
+            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
+              {market.asset_code}
             </VadText>
           </View>
-          <View style={{ alignItems: 'flex-end', justifyContent: 'center', gap: 5, maxWidth: density.phone ? 88 : 116 }}>
+          <VadText
+            variant="bodyStrong"
+            numberOfLines={2}
+            ellipsizeMode="tail"
+            style={{ fontSize: 13, lineHeight: 16, letterSpacing: -0.15, fontWeight: '600' }}
+          >
+            {market.title}
+          </VadText>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: density.phone ? 74 : 100 }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 999,
+            backgroundColor: isOpen ? theme.colors.yesSoft : theme.colors.surfaceRaised,
+          }}>
             <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 999,
-              backgroundColor: isOpen ? theme.colors.yesSoft : theme.colors.surfaceRaised,
-            }}>
-              <View style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: isOpen ? theme.colors.yes : theme.colors.textTertiary,
-              }} />
-              <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={1}>
-                {isOpen ? 'Live' : timing.statusLabel}
-              </VadText>
-            </View>
-            <VadText variant="caption" tone={isOpen ? 'no' : 'tertiary'} numberOfLines={1} style={{ textAlign: 'right' }}>
-              {timing.primaryTiming}
+              width: 5,
+              height: 5,
+              borderRadius: 3,
+              backgroundColor: isOpen ? theme.colors.yes : theme.colors.textTertiary,
+            }} />
+            <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
+              {isOpen ? 'Live' : timing.statusLabel}
             </VadText>
           </View>
+          <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ textAlign: 'right', fontSize: 10, lineHeight: 13 }}>
+            {timing.primaryTiming}
+          </VadText>
         </View>
+      </View>
 
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          <PriceTile label="YES" value={yes} positive compact={tight} />
-          <PriceTile label="NO" value={no} positive={false} compact={tight} />
-        </View>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        <PriceTile label="YES" value={yes} positive compact={tight} />
+        <PriceTile label="NO" value={no} positive={false} compact={tight} />
       </View>
 
       <View
         style={{
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          paddingTop: tight ? 6 : 7,
+          paddingTop: 7,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 10,
+          gap: 8,
         }}
       >
-        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-          <VadIcon name="activity" size={13} tone="tertiary" />
-          <VadText variant="caption" tone="secondary" numberOfLines={1}>
-            {hasVolume ? `${formatVolume(volume)} ${market.asset_code}` : 'No volume yet'}
+        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <VadIcon name="activity" size={12} tone="tertiary" />
+          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
+            {hasVolume ? `${formatVolume(volume)} ${market.asset_code}` : 'No volume'}
           </VadText>
         </View>
-        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-          <VadIcon name="community" size={13} tone="tertiary" />
-          <VadText variant="caption" tone="secondary" numberOfLines={1}>
-            {hasParticipants ? `${participants.toLocaleString()} traders` : 'No traders yet'}
+        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+          <VadIcon name="community" size={12} tone="tertiary" />
+          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
+            {hasParticipants ? `${participants.toLocaleString()} traders` : 'No traders'}
           </VadText>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-          <VadIcon name="chevronRight" size={13} tone="brand" />
-        </View>
+        <VadIcon name="chevronRight" size={12} tone="tertiary" />
       </View>
     </Pressable>
   );
@@ -151,23 +157,22 @@ function PriceTile({
       style={{
         flex: 1,
         minWidth: 0,
-        minHeight: compact ? 32 : 36,
+        minHeight: compact ? 29 : 32,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         gap: 5,
         borderRadius: 7,
-        paddingHorizontal: compact ? 6 : 8,
-        paddingVertical: compact ? 4 : 5,
+        paddingHorizontal: compact ? 8 : 10,
+        paddingVertical: 4,
         backgroundColor: background,
         borderWidth: 1,
         borderColor: positive ? 'rgba(77,163,255,0.12)' : 'rgba(240,91,106,0.12)',
       }}
     >
-      <VadText variant="label" style={{ color: foreground }}>{label}</VadText>
-      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 13 : 14 }}>
+      <VadText variant="caption" style={{ color: foreground, fontSize: 10, lineHeight: 13, fontWeight: '700' }}>{label}</VadText>
+      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 12 : 13, lineHeight: 16, fontWeight: '700' }}>
         {value}
       </VadText>
     </View>
-  );
 }
