@@ -33,16 +33,6 @@ export default function PortfolioRoute() {
   return (
     <ProductRoute active="Portfolio">
       <View style={{ gap: theme.spacing.md }}>
-        {peerReadFailed ? (
-          <VadErrorState
-            title="Prediction history could not be fully loaded"
-            message={data.sectionErrors.poolStakes ?? data.sectionErrors.marketHistory ?? 'Prediction history is unavailable.'}
-            onRetry={() => void data.refreshPortfolio()}
-          />
-        ) : (
-          <PeerMarketPortfolio poolStakes={data.poolStakes} marketHistory={data.marketHistory} />
-        )}
-
         {portfolioReadBlocked ? (
           <View style={{ gap: theme.spacing.sm }}>
             {positionsReadFailedWithoutData ? <VadErrorState title="Positions could not be loaded" message={data.sectionErrors.positions ?? 'Position data is unavailable.'} onRetry={() => void data.refreshPortfolio()} /> : null}
@@ -53,6 +43,16 @@ export default function PortfolioRoute() {
             {settlementsReadFailedWithoutData ? <VadErrorState title="Payout history could not be loaded" message={data.sectionErrors.settlements ?? 'Payout history is unavailable.'} onRetry={() => void data.refreshPortfolio()} /> : null}
             <PortfolioScreen positions={data.positions} orders={data.orders} settlements={data.settlements} onOpenPosition={openPosition} onOpenOrder={openOrder} />
           </View>
+        )}
+
+        {peerReadFailed ? (
+          <VadErrorState
+            title="Prediction history could not be fully loaded"
+            message={data.sectionErrors.poolStakes ?? data.sectionErrors.marketHistory ?? 'Prediction history is unavailable.'}
+            onRetry={() => void data.refreshPortfolio()}
+          />
+        ) : (
+          <PeerMarketPortfolio poolStakes={data.poolStakes} marketHistory={data.marketHistory} />
         )}
       </View>
     </ProductRoute>
