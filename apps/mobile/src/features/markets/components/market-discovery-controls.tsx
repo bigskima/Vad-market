@@ -16,10 +16,10 @@ const SORT_OPTIONS: { value: MarketSortMode; label: string }[] = [
 ];
 
 const STAGE_OPTIONS: { value: MarketStageFilter; label: string }[] = [
-  { value: 'live', label: 'Live now' },
-  { value: 'result', label: 'Result / payout' },
+  { value: 'live', label: 'Live' },
+  { value: 'result', label: 'Resolving' },
   { value: 'complete', label: 'Completed' },
-  { value: 'all', label: 'All stages' },
+  { value: 'all', label: 'All' },
 ];
 
 export function MarketDiscoveryControls({
@@ -30,6 +30,7 @@ export function MarketDiscoveryControls({
   onCategoryChange,
   stage,
   onStageChange,
+  stageCounts,
   sortMode,
   onSortModeChange,
   resultCount,
@@ -41,6 +42,7 @@ export function MarketDiscoveryControls({
   onCategoryChange: (value: string) => void;
   stage?: MarketStageFilter;
   onStageChange?: (value: MarketStageFilter) => void;
+  stageCounts?: { live: number; result: number; complete: number; all: number };
   sortMode: MarketSortMode;
   onSortModeChange: (value: MarketSortMode) => void;
   resultCount: number;
@@ -54,14 +56,14 @@ export function MarketDiscoveryControls({
       {stage && onStageChange ? (
         <View style={{ gap: theme.spacing.xs }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <VadText variant="caption" tone="tertiary">Stage</VadText>
+            <VadText variant="caption" tone="tertiary">Status</VadText>
             <VadText variant="caption" tone="secondary">{resultCount} matching</VadText>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
             {STAGE_OPTIONS.map((option) => (
               <VadChip
                 key={option.value}
-                label={option.label}
+                label={stageCounts ? `${option.label} ${stageCounts[option.value]}` : option.label}
                 selected={option.value === stage}
                 tone={option.value === stage ? (option.value === 'live' ? 'yes' : 'brand') : 'neutral'}
                 onPress={() => onStageChange(option.value)}
