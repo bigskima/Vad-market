@@ -47,15 +47,13 @@ export function MarketCard({
       accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
       accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
       style={({ pressed }) => ({
-        minHeight: compact ? 104 : density.compact ? 112 : density.phone ? 120 : 132,
+        minHeight: compact ? 112 : density.compact ? 126 : density.phone ? 138 : 148,
         borderWidth: 1,
-        borderLeftWidth: 3,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
-        borderLeftColor: isOpen ? theme.colors.yes : theme.colors.borderStrong,
-        borderRadius: compact ? theme.radius.md : theme.radius.xl,
+        borderRadius: theme.radius.xl,
         backgroundColor: theme.colors.surface,
-        padding: compact ? 9 : density.compact ? 10 : 12,
-        gap: compact ? 6 : theme.spacing.sm,
+        padding: compact ? 12 : density.compact ? 13 : 16,
+        gap: compact ? 8 : theme.spacing.sm,
         justifyContent: 'space-between',
         opacity: pressed ? 0.88 : 1,
       })}
@@ -101,7 +99,7 @@ export function MarketCard({
         style={{
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          paddingTop: 5,
+          paddingTop: 8,
           flexDirection: 'row',
           justifyContent: 'space-between',
           gap: 8,
