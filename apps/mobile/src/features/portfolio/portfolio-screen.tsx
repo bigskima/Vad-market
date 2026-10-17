@@ -15,6 +15,7 @@ import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import type { OrderRow, PositionRow, SettlementReceiptRow } from '@/services/market-api';
 
 type PortfolioTab = 'positions' | 'orders' | 'payouts';
@@ -28,9 +29,9 @@ type AssetExposure = {
 };
 
 export function PortfolioScreen({
-  positions,
-  orders,
-  settlements,
+  positions: allPositions,
+  orders: allOrders,
+  settlements: allSettlements,
   onOpenPosition,
   onOpenOrder,
 }: {
@@ -42,6 +43,10 @@ export function PortfolioScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const { enabledCurrencies } = useCurrencyPreference();
+  const positions = allPositions.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
+  const orders = allOrders.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
+  const settlements = allSettlements.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
   const [tab, setTab] = useState<PortfolioTab>('positions');
 
   const totalShares = positions.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
