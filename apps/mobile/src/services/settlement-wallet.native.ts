@@ -213,7 +213,7 @@ export async function submitEvmSettlement(
   const contractAddress = asAddress(execution.network.contractAddress, 'VAD settlement contract');
   const userAddress = asAddress(execution.authorization.userAddress, 'wallet');
   const signature = asHex(execution.vadSignature, 'VAD settlement signature');
-  const wallet = await getEvmWallet(execution.network.networkId);
+  const wallet = await getEvmWallet(execution.network.networkId, userAddress);
 
   if (wallet.account.address.toLowerCase() !== userAddress.toLowerCase()) {
     throw new Error('The active Dynamic wallet does not match this VAD settlement authorization.');
