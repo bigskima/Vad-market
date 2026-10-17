@@ -14,8 +14,8 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const imageUrl = market.media_path ? supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl : null;
 
   return (
-    <View style={{ gap: 9 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
         <VadChip label={(market.status ?? 'MARKET').toString().replaceAll('_', ' ').toUpperCase()} tone="neutral" />
         <VadChip label={market.asset_code} tone="brand" />
         
