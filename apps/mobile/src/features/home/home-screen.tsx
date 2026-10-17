@@ -73,7 +73,7 @@ export function HomeScreen({
     .map((entry) => ({ entry, market: markets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
     .filter((row): row is { entry: TrendingMarketRow; market: MarketCatalogItem } => Boolean(row.market));
 
-  const leadMarket = trendingRail[0]?.market ?? featuredRail[0]?.market ?? vadRail[0]?.market ?? active[0];
+  const leadMarket = active[0];
   const lensMarkets = lens === 'VAD'
     ? vadRail.map((row) => row.market)
     : lens === 'MOMENTUM'
