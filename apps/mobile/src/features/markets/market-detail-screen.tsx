@@ -180,15 +180,15 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
             <VadText variant="bodyStrong" tone={hasSignal ? 'no' : 'tertiary'}>{no}</VadText>
           </View>
         </View>
-        <VadText variant="caption" tone="tertiary">{pool ? 'Participant stake split only; not the final result.' : 'Current conviction; published rules decide the result.'}</VadText>
+        <VadText variant="caption" tone="tertiary">{pool ? 'Pool split, not the final result.' : 'Current conviction; published rules decide the result.'}</VadText>
         {pool ? (
           <View style={{ flexDirection: 'row', gap: 6 }}>
             <View style={{ flex: 1, backgroundColor: theme.colors.surfaceMuted, borderRadius: 8, padding: 7, gap: 1 }}>
-              <VadText variant="caption" tone="tertiary">Participant pool</VadText>
+              <VadText variant="caption" tone="tertiary">Pool volume</VadText>
               <VadText variant="caption">{assetMoney(market.total_volume ?? 0, market.asset_code)}</VadText>
             </View>
             <View style={{ flex: 1, backgroundColor: theme.colors.surfaceMuted, borderRadius: 8, padding: 7, gap: 1 }}>
-              <VadText variant="caption" tone="tertiary">Participants</VadText>
+              <VadText variant="caption" tone="tertiary">Traders</VadText>
               <VadText variant="caption">{String(Number(market.participant_count ?? 0))}</VadText>
             </View>
           </View>
