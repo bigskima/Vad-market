@@ -111,7 +111,6 @@ export default function AccountScreen() {
         <VadProgressiveSection
           title="Profile & experience"
           icon="account"
-          defaultExpanded
           summary={<VadText variant="caption" tone="tertiary">Profile · Rewards · Appearance</VadText>}
         >
           <SettingsList>
@@ -228,14 +227,14 @@ function AccountRow({
       <VadCard
         variant="raised"
         style={{
-          minHeight: density.phone ? 74 : 82,
+          minHeight: density.phone ? 64 : 72,
           paddingVertical: theme.spacing.sm,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: theme.spacing.md,
+          gap: theme.spacing.sm,
         }}
       >
-        <View style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+        <View style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
           <VadIcon name={icon} size={19} tone="brand" />
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
