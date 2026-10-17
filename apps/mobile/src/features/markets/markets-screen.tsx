@@ -91,7 +91,7 @@ export function MarketsScreen({
     });
   }, [baseFilteredMarkets, stage, sortMode, now]);
 
-  const cardWidth = columns === 2 ? '48.9%' : '100%';
+  const cardWidth = columns === 2 ? '48.7%' : '100%';
   const pageSize = columns === 2 ? 8 : 5;
   const progressive = useProgressiveList({
     items: orderedMarkets,
@@ -103,7 +103,7 @@ export function MarketsScreen({
   const visibleMarkets = progressive.visibleItems;
 
   return (
-    <View style={{ gap: density.sectionGap }}>
+    <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
       <View style={{ gap: 4, paddingBottom: theme.spacing.xs }}>
         <VadText variant="caption" tone="brand">VAD EXCHANGE</VadText>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: theme.spacing.sm }}>
