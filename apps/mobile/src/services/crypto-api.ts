@@ -13,9 +13,9 @@ export type CryptoNetworkRow = {
   asset_code: string;
   token_address: string;
   token_decimals: number;
-  contract_address: string;
-  protocol_key: string;
-  protocol_version: number;
+  contract_address: string | null;
+  protocol_key: string | null;
+  protocol_version: number | null;
 };
 
 export async function getCryptoNetworks() {
