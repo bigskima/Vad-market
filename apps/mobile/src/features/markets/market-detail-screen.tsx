@@ -13,6 +13,7 @@ import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { MarketDepthPanel } from './components/market-depth-panel';
@@ -53,6 +54,7 @@ export function MarketDetailScreen({
   onRefreshMarket?: () => Promise<void>;
 }) {
   const density = useProductDensity();
+  const currencyPreference = useCurrencyPreference();
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
   const [tab, setTab] = useState<DetailTab>('Overview');
@@ -76,12 +78,32 @@ export function MarketDetailScreen({
     }
   }, [now, onRefreshMarket, timing.closesAt, timing.resolvesAt]);
 
-  const effectiveCanTrade = canTrade && timing.tradingOpen;
-  const effectiveTradeReason = timing.tradingOpen
-    ? tradeReason
-    : timing.stage === 'SCHEDULED'
-      ? 'MARKET_NOT_OPEN'
-      : 'MARKET_CLOSED';
+  const marketCurrency = market.asset_code as 'NGN' | 'USDC';
+  const currencyAllowed = currencyPreference.isCurrencyEligible(marketCurrency)
+    && currencyPreference.isCurrencyEnabled(marketCurrency);
+  const effectiveCanTrade = canTrade && timing.tradingOpen && currencyAllowed;
+  const effectiveTradeReason = !currencyAllowed
+    ? 'CURRENCY_NOT_ENABLED'
+    : timing.tradingOpen
+      ? tradeReason
+      : timing.stage === 'SCHEDULED'
+        ? 'MARKET_NOT_OPEN'
+        : 'MARKET_CLOSED';
+
+  if (!currencyAllowed) {
+    return (
+      <View style={{ gap: 10 }}>
+        <VadCard variant="surface" style={{ padding: 16, gap: 8 }}>
+          <VadIcon name="wallet" size={22} tone="secondary" />
+          <VadText variant="bodyStrong">Market unavailable for your currency settings</VadText>
+          <VadText variant="caption" tone="secondary">
+            This market is hidden because its settlement currency is not enabled or is not supported in your region.
+          </VadText>
+        </VadCard>
+      </View>
+    );
+  }
+
   return (
     <View style={{ gap: density.compact ? 12 : density.sectionGap }}>
       <MarketDetailHeader market={market} />
