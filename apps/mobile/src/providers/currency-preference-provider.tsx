@@ -107,26 +107,25 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
 
   const toggleCurrency = useCallback((currency: VADCurrency) => {
     if (!eligibleCurrencies.includes(currency)) return;
-    setEnabledState((current) => {
-      const next = current.includes(currency)
-        ? current.filter((item) => item !== currency)
-        : [...current, currency];
-      if (!next.length) return current;
-      try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
-      void (async () => {
-        if (!supabaseConfiguration.ready) return;
-        const { data } = await supabase.auth.getUser();
-        if (!data.user) return;
-        const { error } = await supabase.from('user_currency_preferences').upsert({
-          user_id: data.user.id,
-          enabled_asset_codes: next,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-        if (!error) await refresh();
-      })();
-      return next;
-    });
-  }, [eligibleCurrencies, refresh]);
+    const next = enabledCurrencies.includes(currency)
+      ? enabledCurrencies.filter((item) => item !== currency)
+      : [...enabledCurrencies, currency];
+    if (!next.length) return;
+
+    setEnabledState(next);
+    try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
+    void (async () => {
+      if (!supabaseConfiguration.ready) return;
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) return;
+      const { error } = await supabase.from('user_currency_preferences').upsert({
+        user_id: data.user.id,
+        enabled_asset_codes: next,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+      if (!error) await refresh();
+    })();
+  }, [eligibleCurrencies, enabledCurrencies, refresh]);
 
   const isCurrencyEligible = useCallback((currency: VADCurrency) => eligibleCurrencies.includes(currency), [eligibleCurrencies]);
   const isCurrencyEnabled = useCallback((currency: VADCurrency) => eligibleCurrencies.includes(currency) && enabledCurrencies.includes(currency), [eligibleCurrencies, enabledCurrencies]);
