@@ -25,18 +25,6 @@ const STORAGE_KEY = 'vad:enabled-currencies';
 const CurrencyPreferenceContext = createContext<CurrencyPreferenceValue | null>(null);
 const SUPPORTED: VADCurrency[] = ['NGN', 'USDC'];
 
-function readInitialCurrencies(): VADCurrency[] {
-  try {
-    const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : null;
-    if (!Array.isArray(parsed)) return SUPPORTED;
-    const valid = parsed.filter((item): item is VADCurrency => SUPPORTED.includes(item));
-    return valid.length ? [...new Set(valid)] : SUPPORTED;
-  } catch {
-    return SUPPORTED;
-  }
-}
-
 function asCurrencies(value: unknown): VADCurrency[] {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.filter((item): item is VADCurrency => SUPPORTED.includes(item)))];
