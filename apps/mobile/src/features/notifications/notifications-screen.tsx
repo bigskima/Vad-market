@@ -75,8 +75,8 @@ export function NotificationsScreen({
   });
 
   return (
-    <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-      <View style={{ gap: theme.spacing.sm }}>
+    <View style={{ gap: density.compact ? 14 : 20 }}>
+      <View style={{ gap: theme.spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
           <VadText variant="caption" tone={unread ? 'brand' : 'tertiary'}>{unread ? `${unread} unread` : 'All caught up'}</VadText>
           {unread > 0 ? <VadButton label="Mark all read" size="small" variant="plain" fullWidth={false} onPress={onMarkAllRead} /> : null}
@@ -102,7 +102,7 @@ export function NotificationsScreen({
           </VadText>
         </VadCard>
       ) : (
-        <View style={{ gap: theme.spacing.sm }}>
+        <View style={{ gap: 9 }}>
           {progressive.visibleItems.map((item) => {
             const unreadItem = !item.read_at;
             return (
@@ -115,7 +115,10 @@ export function NotificationsScreen({
                 <VadCard
                   variant={unreadItem ? 'raised' : 'muted'}
                   style={{
-                    gap: theme.spacing.xs,
+                    gap: theme.spacing.sm,
+                    paddingVertical: density.phone ? 13 : 16,
+                    paddingHorizontal: density.phone ? 13 : 17,
+                    borderRadius: 18,
                     borderLeftWidth: unreadItem ? 3 : 1,
                     borderLeftColor: unreadItem ? theme.colors.brandPrimary : theme.colors.border,
                   }}
