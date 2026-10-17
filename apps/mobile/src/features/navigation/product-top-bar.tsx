@@ -66,7 +66,7 @@ export function ProductTopBar({
           gap: 7,
         }}>
           <VadLogo size={38} />
-          {!density.narrow ? (
+          {density.width >= 340 ? (
             <View style={{ gap: 0, minWidth: 42 }}>
               <VadText variant="label">VAD</VadText>
               <VadText variant="caption" tone="tertiary">MARKET</VadText>
