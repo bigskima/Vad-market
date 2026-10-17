@@ -85,7 +85,7 @@ export function WalletScreen({
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <View style={{ gap: 2 }}>
           <VadText variant="title">Wallet</VadText>
-          <VadText variant="caption" tone="secondary">Your money, in one place</VadText>
+          <VadText variant="caption" tone="secondary">Balances and transfers</VadText>
         </View>
         {hasNgn ? (
           <Pressable accessibilityRole="button" accessibilityLabel="View all wallet activity" onPress={onActivity} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 9, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
@@ -97,10 +97,10 @@ export function WalletScreen({
 
       {primary ? (
         <TourTarget id="wallet-balance">
-          <VadCard variant="brand" style={{ gap: theme.spacing.md, padding: density.phone ? 18 : theme.spacing.lg, borderRadius: 26 }}>
+          <VadCard variant="brand" style={{ gap: theme.spacing.sm, padding: density.phone ? 15 : theme.spacing.lg, borderRadius: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
               <View style={{ gap: 4 }}>
-                <VadText variant="caption" tone="secondary">TOTAL BALANCE</VadText>
+                <VadText variant="caption" tone="secondary">TOTAL WALLET VALUE</VadText>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.yes }} />
                   <VadText variant="caption" tone="secondary">{primaryCode} wallet</VadText>
@@ -111,7 +111,7 @@ export function WalletScreen({
               </View>
             </View>
             <VadText variant={density.phone ? 'display' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{assetMoney(total, primaryCode)}</VadText>
-            <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+            <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.xs, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
               <View style={{ flex: 1, minWidth: 0, gap: 5, paddingRight: 8 }}>
                 <VadText variant="caption" tone="secondary">Available</VadText>
                 <VadText variant="bodyStrong" tone="yes" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(available, primaryCode)}</VadText>
@@ -375,14 +375,14 @@ function WalletAction({
     >
       <View
         style={{
-          minHeight: density.phone ? 68 : 78,
+          minHeight: density.phone ? 62 : 70,
           borderRadius: theme.radius.xl,
           backgroundColor: soft,
           borderWidth: 1,
           borderColor: theme.colors.border,
           alignItems: 'center',
           justifyContent: 'center',
-          padding: density.compact ? 6 : theme.spacing.sm,
+          padding: density.compact ? 5 : theme.spacing.sm,
           gap: 4,
         }}
       >
