@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=3&addressdetails=1`,
         { headers: { 'User-Agent': 'VADMarket/1.0 location-jurisdiction-check' } },
       ),
-      fetch(`https://iplocate.io/api/lookup/${encodeURIComponent(ip)}?include=country_code,privacy.is_vpn,privacy.is_proxy,privacy.is_tor,privacy.is_hosting,privacy.is_icloud_relay`),
+      fetch(`https://iplocate.io/api/lookup/${encodeURIComponent(ip)}?include=country_code,privacy.is_anonymous,privacy.is_vpn,privacy.is_proxy,privacy.is_tor,privacy.is_hosting,privacy.is_icloud_relay`),
     ]);
 
     if (!geoResponse.ok || !ipResponse.ok) {
@@ -77,6 +77,15 @@ Deno.serve(async (req) => {
     const geo = await geoResponse.json();
     const ipInfo = await ipResponse.json() as IpInfo;
     const privacy = ipInfo.privacy;
+    const privacySignalsComplete = Boolean(privacy)
+      && typeof privacy?.is_vpn === 'boolean'
+      && typeof privacy?.is_proxy === 'boolean'
+      && typeof privacy?.is_tor === 'boolean'
+      && typeof privacy?.is_hosting === 'boolean'
+      && typeof privacy?.is_icloud_relay === 'boolean';
+    if (!privacySignalsComplete) {
+      return json({ error: 'Network risk signals are unavailable', code: 'NETWORK_RISK_UNRESOLVED' }, 503);
+    }
     const deviceCountry = String(geo?.address?.country_code || '').toUpperCase();
     const ipCountry = String(ipInfo.country_code || '').toUpperCase();
     if (!deviceCountry || !ipCountry) {
