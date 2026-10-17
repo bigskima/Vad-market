@@ -13,12 +13,14 @@ import { assetMoney, pct } from '@/features/markets/format';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 
 export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrumentId: string; outcomeCode: string }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const wide = density.width >= 820;
   const data = useProductDataContext();
+  const currencyPreference = useCurrencyPreference();
 
   const position = data.positions.find((row) => String(row.instrument_id) === instrumentId && row.outcome_code === outcomeCode);
 
