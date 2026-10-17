@@ -90,30 +90,39 @@ export function WalletScreen({
 
       {primary ? (
         <TourTarget id="wallet-balance">
-          <View style={{ gap: theme.spacing.sm, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-          <View style={{ gap: 2 }}>
-            <VadText variant="caption" tone="brand">{primaryCode} BALANCE</VadText>
+          <VadCard variant="brand" style={{ gap: theme.spacing.md, padding: density.phone ? theme.spacing.md : theme.spacing.lg }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+              <View style={{ gap: 3 }}>
+                <VadText variant="caption" tone="secondary">TOTAL WALLET VALUE</VadText>
+                <VadText variant="caption" tone="secondary">{primaryCode} · Personal wallet</VadText>
+              </View>
+              <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
+                <VadIcon name="wallet" size={20} tone="brand" />
+              </View>
+            </View>
             <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
               {assetMoney(total, primaryCode)}
             </VadText>
-          </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md }}>
-            <View style={{ flex: 1, minWidth: 84, gap: 2 }}>
-              <VadText variant="caption" tone="secondary">Available</VadText>
-              <VadText variant="bodyStrong" tone="yes">{assetMoney(available, primaryCode)}</VadText>
+            <View style={{ height: 1, backgroundColor: theme.colors.border }} />
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                <VadText variant="caption" tone="secondary">Available</VadText>
+                <VadText variant="bodyStrong" tone="yes" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(available, primaryCode)}</VadText>
+              </View>
+              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                <VadText variant="caption" tone="secondary">Committed</VadText>
+                <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(reserved, primaryCode)}</VadText>
+              </View>
+              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                <VadText variant="caption" tone="secondary">Pending</VadText>
+                <VadText variant="bodyStrong" tone="brand" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(pending, primaryCode)}</VadText>
+              </View>
             </View>
-            <View style={{ flex: 1, minWidth: 84, gap: 2 }}>
-              <VadText variant="caption" tone="secondary">Committed</VadText>
-              <VadText variant="bodyStrong">{assetMoney(reserved, primaryCode)}</VadText>
-            </View>
-            <View style={{ flex: 1, minWidth: 84, gap: 2 }}>
-              <VadText variant="caption" tone="secondary">Pending</VadText>
-              <VadText variant="bodyStrong" tone="brand">{assetMoney(pending, primaryCode)}</VadText>
-            </View>
-          </View>
-        </View>
+          </VadCard>
         </TourTarget>
-      ) : null}
+      ) : (
+        <VadEmptyState title="Your wallet is ready" body="Balances will appear here when funds are available." />
+      )}
 
       {hasNgn ? (
         <TourTarget id="wallet-actions">
