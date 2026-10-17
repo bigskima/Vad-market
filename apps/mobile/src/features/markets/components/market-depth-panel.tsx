@@ -16,15 +16,21 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
   const density = useProductDensity();
   const [book, setBook] = useState<MarketOrderBook | null>(null);
   const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    setBook(null);
-    setFailed(false);
-    void getMarketOrderBook(instrumentId).then((next) => {
-      if (active) setBook(next);
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      setLoading(true);
+      setFailed(false);
+      return getMarketOrderBook(instrumentId);
+    }).then((next) => {
+      if (active && next) setBook(next);
     }).catch(() => {
       if (active) setFailed(true);
+    }).finally(() => {
+      if (active) setLoading(false);
     });
     return () => { active = false; };
   }, [instrumentId]);
@@ -53,7 +59,7 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
 
       {failed ? (
         <VadText variant="caption" tone="secondary">Order book is temporarily unavailable.</VadText>
-      ) : !book ? (
+      ) : loading || !book ? (
         <View style={{ height: 54, justifyContent: 'center' }}>
           <VadText variant="caption" tone="tertiary">Loading current bids…</VadText>
         </View>
