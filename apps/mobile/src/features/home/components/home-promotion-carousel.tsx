@@ -81,7 +81,7 @@ export function HomePromotionCarousel({
     if (next === 0) directionRef.current = 1;
   }
 
-  const bannerHeight = density.compact ? 88 : density.phone ? 98 : 118;
+  const bannerHeight = density.compact ? 138 : density.phone ? 158 : density.desktop ? 204 : 176;
 
   return (
     <View
@@ -109,7 +109,7 @@ export function HomePromotionCarousel({
               width: width || Math.max(260, density.width - density.horizontalPadding * 2),
               height: bannerHeight,
               overflow: 'hidden',
-              borderRadius: density.cardRadius,
+              borderRadius: density.phone ? 22 : 26,
               borderWidth: 1,
               borderColor:
                 promotion.banner_kind === 'TEXT'
@@ -134,8 +134,8 @@ export function HomePromotionCarousel({
                   flex: 1,
                   justifyContent: 'center',
                   paddingHorizontal: density.cardPadding,
-                  paddingVertical: density.compact ? 10 : 12,
-                  gap: 3,
+                  paddingVertical: density.compact ? 14 : 18,
+                  gap: 7,
                 }}
               >
                 <VadText variant="caption" tone="brand">
