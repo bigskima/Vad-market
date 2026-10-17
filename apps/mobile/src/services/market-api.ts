@@ -431,3 +431,12 @@ export async function getMarketPriceHistory(instrumentPublicId: string, limit = 
   assertNoError(error, 'markets', 'We could not load executed market prices right now.');
   return (Array.isArray(data) ? data : []) as MarketPriceHistoryPoint[];
 }
+
+export async function getPeerPoolStakeHistory(instrumentPublicId: string, limit = 120) {
+  const { data, error } = await supabase.rpc('peer_pool_stake_history', {
+    p_instrument_public_id: instrumentPublicId,
+    p_limit: limit,
+  });
+  assertNoError(error, 'markets', 'We could not load historical participant allocation right now.');
+  return (Array.isArray(data) ? data : []) as MarketPriceHistoryPoint[];
+}
