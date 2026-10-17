@@ -220,7 +220,7 @@ export function HomeScreen({
         <View style={{ gap: 8 }}>
           <VadSectionHeader
             title="Explore a theme"
-            subtitle="Jump straight to the questions you care about."
+            subtitle="Find markets by topic."
             actionLabel="All"
             onAction={() => onExploreMarkets()}
           />
@@ -241,7 +241,7 @@ export function HomeScreen({
         <VadProgressiveSection
           title="More market intelligence"
           eyebrow="DEPTH ON DEMAND"
-          description="Open conviction signals and a small community sample only when you want more context."
+          description="Explore market signals and community views."
           icon="activity"
           summary={<VadText variant="caption" tone="tertiary">{featuredSettings.enabled ? `${featuredRail.length} signals` : 'Signals'} · Community</VadText>}
         >
@@ -267,7 +267,7 @@ export function HomeScreen({
           <View style={{ gap: theme.spacing.sm }}>
             <VadSectionHeader
               title="Community conviction"
-              subtitle="A small sample of reasoning around VAD markets."
+              subtitle="What the community thinks."
               actionLabel="Open feed"
               onAction={onOpenCommunity}
             />
