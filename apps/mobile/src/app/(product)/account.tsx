@@ -58,32 +58,42 @@ export default function AccountScreen() {
   return (
     <ProductRoute active="Account">
       <View style={{ gap: density.sectionGap }}>
-        <VadSectionHeader
-          title="Account"
-        />
+        <View style={{ gap: 3 }}>
+          <VadText variant="title">Account</VadText>
+          <VadText variant="caption" tone="secondary">Your profile and preferences</VadText>
+        </View>
 
-        <VadCard variant="brand" style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
+        <VadCard variant="brand" style={{ padding: density.phone ? 16 : theme.spacing.lg, gap: theme.spacing.md, borderRadius: 26 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-            <View style={{ width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
+            <View style={{ width: 60, height: 60, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border }}>
               <VadText variant="title" tone="brand">{initial}</VadText>
             </View>
-            <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
               <VadText variant="heading" numberOfLines={1}>{displayName || 'Welcome to VAD'}</VadText>
               <VadText variant="caption" tone="secondary" numberOfLines={1}>{email}</VadText>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: hasAdminAccess ? theme.colors.brandPrimary : theme.colors.yes }} />
-                <VadText variant="caption" tone="secondary">{hasAdminAccess ? 'Admin account' : 'Member account'} · {appearance}</VadText>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: theme.colors.surface, borderRadius: theme.radius.pill, paddingHorizontal: 8, paddingVertical: 4 }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: hasAdminAccess ? theme.colors.brandPrimary : theme.colors.yes }} />
+                  <VadText variant="caption" tone="secondary">{hasAdminAccess ? 'Admin' : 'Member'}</VadText>
+                </View>
+                <VadText variant="caption" tone="secondary">{appearance} mode</VadText>
               </View>
             </View>
           </View>
-          <VadButton label="Manage profile" variant="secondary" onPress={() => router.push('/account/profile')} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Manage profile" onPress={() => router.push('/account/profile')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <VadIcon name="account" size={17} tone="brand" />
+              <VadText variant="bodyStrong" tone="brand">Edit profile</VadText>
+            </View>
+            <VadIcon name="chevronRight" size={17} tone="brand" />
+          </Pressable>
         </VadCard>
 
         <View style={{ gap: theme.spacing.sm }}>
           <VadSectionHeader
             title="Quick actions"
           />
-          <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <TourTarget id="account-verification">
               <EssentialAction
                 icon="operations"
@@ -184,12 +194,14 @@ function EssentialAction({
       onPress={onPress}
       style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.76 : 1 })}
     >
-      <VadCard variant="surface" style={{ minHeight: 56, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-        <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
-          <VadIcon name={icon} size={16} tone="brand" />
+      <VadCard variant="surface" style={{ minHeight: 88, paddingHorizontal: 10, paddingVertical: 12, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, borderRadius: 18 }}>
+        <View style={{ width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+          <VadIcon name={icon} size={17} tone="brand" />
         </View>
-        <VadText variant="bodyStrong" style={{ flex: 1 }}>{title}</VadText>
-        <VadIcon name="chevronRight" size={15} tone="tertiary" />
+        <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+          <VadText variant="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>{title}</VadText>
+          <VadIcon name="chevronRight" size={15} tone="tertiary" />
+        </View>
       </VadCard>
     </Pressable>
   );
