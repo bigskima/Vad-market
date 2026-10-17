@@ -44,15 +44,15 @@ export function MarketCard({
         minHeight: 0,
         borderWidth: 1,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
-        borderRadius: density.phone ? 10 : 12,
+        borderRadius: density.phone ? 12 : 14,
         backgroundColor: theme.colors.surface,
-        padding: tight ? 7 : 8,
-        gap: 10,
+        padding: tight ? 8 : 10,
+        gap: 7,
         opacity: pressed ? 0.92 : 1,
         ...theme.shadows.subtle,
       })}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 9 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
         <MarketThumbnail market={market} size={tight ? 38 : 42} />
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
