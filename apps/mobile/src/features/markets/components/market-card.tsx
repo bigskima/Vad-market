@@ -154,8 +154,8 @@ function PriceTile({
   compact: boolean;
 }) {
   const theme = useVadTheme();
-  const foreground = positive ? theme.colors.info : theme.colors.no;
-  const background = positive ? theme.colors.infoSoft : theme.colors.noSoft;
+  const foreground = positive ? theme.colors.yes : theme.colors.no;
+  const background = positive ? theme.colors.yesSoft : theme.colors.noSoft;
   return (
     <View
       style={{
@@ -171,7 +171,7 @@ function PriceTile({
         paddingVertical: 2,
         backgroundColor: background,
         borderWidth: 1,
-        borderColor: positive ? 'rgba(77,163,255,0.12)' : 'rgba(240,91,106,0.12)',
+        borderColor: positive ? theme.colors.yes : theme.colors.no,
       }}
     >
       <VadText variant="caption" style={{ color: foreground, fontSize: 9, lineHeight: 11, fontWeight: '700' }}>{label}</VadText>
