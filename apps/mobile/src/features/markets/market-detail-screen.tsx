@@ -83,10 +83,10 @@ export function MarketDetailScreen({
       ? 'MARKET_NOT_OPEN'
       : 'MARKET_CLOSED';
   return (
-    <View style={{ gap: density.compact ? 8 : density.sectionGap }}>
+    <View style={{ gap: density.compact ? 12 : density.sectionGap }}>
       <MarketDetailHeader market={market} />
 
-      <View style={{ gap: 4 }}>
+      <View style={{ gap: 6 }}>
         <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
       </View>
 
@@ -159,8 +159,8 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
   ].filter(Boolean).join(' · ');
 
   return (
-    <View style={{ gap: density.compact ? 7 : 9 }}>
-      <VadCard variant="surface" accessibilityRole="summary" style={{ gap: 6, padding: density.compact ? 8 : 10 }}>
+    <View style={{ gap: density.compact ? 10 : 13 }}>
+      <VadCard variant="surface" accessibilityRole="summary" style={{ gap: 9, padding: density.compact ? 12 : 16, borderRadius: density.phone ? 20 : 24 }}>
         {timing.resolutionOutcome ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
             <View style={{ flex: 1, gap: 1 }}>
