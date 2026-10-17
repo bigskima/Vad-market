@@ -73,7 +73,7 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
   const timeSpan = Math.max(1, timeEnd - timeStart);
 
   function coordinates(values: { at: number; value: number }[]) {
-    return values.map((point, index) => ({
+    return values.map((point) => ({
       x: timeEnd === timeStart ? usableWidth / 2 : ((point.at - timeStart) / timeSpan) * usableWidth,
       y: chartHeight - 12 - ((point.value - min) / span) * (chartHeight - 24),
       value: point.value,
