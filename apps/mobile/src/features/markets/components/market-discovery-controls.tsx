@@ -16,10 +16,10 @@ const SORT_OPTIONS: { value: MarketSortMode; label: string }[] = [
 ];
 
 const STAGE_OPTIONS: { value: MarketStageFilter; label: string }[] = [
-  { value: 'live', label: 'Live now' },
-  { value: 'result', label: 'Result / payout' },
+  { value: 'live', label: 'Live' },
+  { value: 'result', label: 'Resolving' },
   { value: 'complete', label: 'Completed' },
-  { value: 'all', label: 'All stages' },
+  { value: 'all', label: 'All' },
 ];
 
 export function MarketDiscoveryControls({
@@ -50,12 +50,12 @@ export function MarketDiscoveryControls({
   const wide = width >= 820;
 
   return (
-    <View style={{ gap: theme.spacing.md }}>
+    <View style={{ gap: theme.spacing.sm }}>
       {stage && onStageChange ? (
         <View style={{ gap: theme.spacing.xs }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <VadText variant="caption" tone="tertiary">Stage</VadText>
-            <VadText variant="caption" tone="secondary">{resultCount} matching</VadText>
+            <VadText variant="caption" tone="tertiary">Status</VadText>
+            <VadText variant="caption" tone="secondary">{resultCount} results</VadText>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
             {STAGE_OPTIONS.map((option) => (
