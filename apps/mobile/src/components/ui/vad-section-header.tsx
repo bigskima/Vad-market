@@ -23,10 +23,10 @@ export function VadSectionHeader({
   const density = useProductDensity();
 
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
-      <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: 220, gap: 3 }}>
-        <VadText variant="heading" style={{ letterSpacing: -0.35, fontSize: density.compact ? 17 : 19, lineHeight: density.compact ? 21 : 24 }}>{title}</VadText>
-        {subtitle ? <VadText variant="caption" tone="secondary" style={{ maxWidth: 620 }}>{subtitle}</VadText> : null}
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: density.compact ? 6 : 8 }}>
+      <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: 180, gap: 2 }}>
+        <VadText variant="heading" style={{ letterSpacing: -0.35, fontSize: density.compact ? 14 : 16, lineHeight: density.compact ? 17 : 20 }}>{title}</VadText>
+        {subtitle ? <VadText variant="caption" tone="secondary" style={{ maxWidth: 620, fontSize: 10, lineHeight: 13 }}>{subtitle}</VadText> : null}
       </View>
 
       {trailing ?? (actionLabel && onAction ? (
@@ -36,12 +36,12 @@ export function VadSectionHeader({
           onPress={onAction}
           hitSlop={4}
           style={({ pressed }) => ({
-            minHeight: density.compact ? 30 : 34,
+            minHeight: density.compact ? 25 : 28,
             justifyContent: 'center',
             alignItems: 'center',
             flexDirection: 'row',
             gap: 4,
-            paddingHorizontal: density.compact ? theme.spacing.xs : theme.spacing.sm,
+            paddingHorizontal: density.compact ? 6 : 8,
             borderRadius: theme.radius.sm,
             borderWidth: 1,
             borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
@@ -51,7 +51,7 @@ export function VadSectionHeader({
           })}
         >
           <VadText variant="label" tone="brand">{actionLabel}</VadText>
-          <VadIcon name="chevronRight" size={13} tone="brand" />
+          <VadIcon name="chevronRight" size={11} tone="brand" />
         </Pressable>
       ) : null)}
     </View>
