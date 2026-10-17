@@ -93,7 +93,7 @@ export function MarketDetailScreen({
       {tab === 'Overview' ? (
         <Overview market={market} timing={timing} onTrade={() => setTab('Trade')} />
       ) : null}
-      {tab === 'Chart' ? <Activity market={market} timing={timing} /> : null}
+      {tab === 'Chart' ? <Activity market={market} /> : null}
       {tab === 'Trade' ? (
         <TradingTicket
           market={market}
@@ -130,7 +130,7 @@ function Overview({ market, timing, onTrade }: { market: MarketCatalogItem; timi
   );
 }
 
-function Activity({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
+function Activity({ market }: { market: MarketCatalogItem }) {
   const density = useProductDensity();
   const poolMarket = isPoolMarket(market);
   return (
