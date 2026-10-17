@@ -31,7 +31,6 @@ export function ProductRightRail({
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="bodyStrong">Market pulse</VadText>
-            <VadText variant="caption" tone="tertiary">What&apos;s happening now</VadText>
           </View>
           <VadIcon name="activity" size={20} tone="brand" />
         </View>
@@ -55,16 +54,12 @@ export function ProductRightRail({
 
       <VadCard style={{ gap: theme.spacing.xs }}>
         <VadText variant="bodyStrong">Quick access</VadText>
-        <VadText variant="caption" tone="tertiary">Go straight to what you need.</VadText>
         <View style={{ marginTop: theme.spacing.xs, gap: theme.spacing.xxs }}>
           <RailLink label="Wallet" icon="wallet" onPress={onOpenWallet} />
           <RailLink label="Community" icon="community" onPress={onOpenCommunity} />
         </View>
       </VadCard>
 
-      <VadText variant="caption" tone="tertiary" style={{ paddingHorizontal: theme.spacing.xs }}>
-        Prices show what traders currently think. Each market is decided by its published rules.
-      </VadText>
     </View>
   );
 }

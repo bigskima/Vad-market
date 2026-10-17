@@ -16,10 +16,10 @@ const SORT_OPTIONS: { value: MarketSortMode; label: string }[] = [
 ];
 
 const STAGE_OPTIONS: { value: MarketStageFilter; label: string }[] = [
-  { value: 'live', label: 'Live now' },
-  { value: 'result', label: 'Result / payout' },
+  { value: 'live', label: 'Live' },
+  { value: 'result', label: 'Resolving' },
   { value: 'complete', label: 'Completed' },
-  { value: 'all', label: 'All stages' },
+  { value: 'all', label: 'All' },
 ];
 
 export function MarketDiscoveryControls({
@@ -30,6 +30,7 @@ export function MarketDiscoveryControls({
   onCategoryChange,
   stage,
   onStageChange,
+  stageCounts,
   sortMode,
   onSortModeChange,
   resultCount,
@@ -41,6 +42,7 @@ export function MarketDiscoveryControls({
   onCategoryChange: (value: string) => void;
   stage?: MarketStageFilter;
   onStageChange?: (value: MarketStageFilter) => void;
+  stageCounts?: { live: number; result: number; complete: number; all: number };
   sortMode: MarketSortMode;
   onSortModeChange: (value: MarketSortMode) => void;
   resultCount: number;
@@ -52,16 +54,16 @@ export function MarketDiscoveryControls({
   return (
     <View style={{ gap: theme.spacing.md }}>
       {stage && onStageChange ? (
-        <View style={{ gap: theme.spacing.xs }}>
+        <View style={{ gap: theme.spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <VadText variant="caption" tone="tertiary">Stage</VadText>
+            <VadText variant="caption" tone="tertiary">Status</VadText>
             <VadText variant="caption" tone="secondary">{resultCount} matching</VadText>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingRight: theme.spacing.md }}>
             {STAGE_OPTIONS.map((option) => (
               <VadChip
                 key={option.value}
-                label={option.label}
+                label={stageCounts ? `${option.label} ${stageCounts[option.value]}` : option.label}
                 selected={option.value === stage}
                 tone={option.value === stage ? (option.value === 'live' ? 'yes' : 'brand') : 'neutral'}
                 onPress={() => onStageChange(option.value)}
@@ -71,12 +73,12 @@ export function MarketDiscoveryControls({
         </View>
       ) : null}
 
-      <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: wide ? 'flex-end' : 'stretch', gap: theme.spacing.md }}>
+      <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: wide ? 'flex-end' : 'stretch', gap: theme.spacing.sm }}>
         <View style={{ flex: 1 }}>
           <VadInput
             value={query}
             onChangeText={onQueryChange}
-            placeholder="Search this stage"
+            placeholder="Search markets"
             returnKeyType="search"
             autoCorrect={false}
             accessibilityLabel="Search markets"
@@ -86,7 +88,7 @@ export function MarketDiscoveryControls({
         </View>
 
         <View style={{ gap: theme.spacing.xs, minWidth: wide ? 340 : undefined }}>
-          <VadText variant="caption" tone="tertiary">Prioritise</VadText>
+          <VadText variant="caption" tone="tertiary">Sort</VadText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
             {SORT_OPTIONS.map((option) => (
               <VadChip

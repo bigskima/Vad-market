@@ -84,7 +84,7 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
     <View
       accessibilityRole="alert"
       style={{
-        minHeight: 44,
+        minHeight: 32,
         flexDirection: 'row',
         alignItems: 'center',
         overflow: 'hidden',
@@ -100,7 +100,7 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
         onHoverOut={() => setPaused(false)}
         onPressIn={() => setPaused(true)}
         onPressOut={() => setPaused(false)}
-        style={{ flex: 1, minHeight: 44, justifyContent: 'center', overflow: 'hidden' }}
+        style={{ flex: 1, minHeight: 32, justifyContent: 'center', overflow: 'hidden' }}
       >
         <Animated.View
           style={{
@@ -114,7 +114,7 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
               const width = event.nativeEvent.layout.width;
               if (width > 0 && Math.abs(width - contentWidth) > 1) setContentWidth(width);
             }}
-            style={{ paddingHorizontal: theme.spacing.xl, flexDirection: 'row', alignItems: 'center' }}
+            style={{ paddingHorizontal: theme.spacing.sm, flexDirection: 'row', alignItems: 'center' }}
           >
             <VadText variant="label" tone={textTone} numberOfLines={1}>{repeated}</VadText>
           </View>
@@ -131,7 +131,7 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
         onPress={() => setDismissedId(notice.public_id)}
         style={({ pressed }) => ({
           width: 44,
-          height: 44,
+          height: 32,
           alignItems: 'center',
           justifyContent: 'center',
           borderLeftWidth: 1,

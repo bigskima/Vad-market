@@ -16,6 +16,7 @@ import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import { cancelOrder } from '@/services/market-api';
 
 export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string; onCancelled?: () => void }) {
@@ -24,6 +25,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   const now = useLiveNow();
   const wide = density.width >= 840;
   const data = useProductDataContext();
+  const currencyPreference = useCurrencyPreference();
   const [cancelling, setCancelling] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -42,6 +44,9 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
 
   if (!order && data.sectionErrors.orders) return <VadErrorState title="Order could not be loaded" message={data.sectionErrors.orders} onRetry={() => void data.load()} />;
   if (!order) return <VadEmptyState title="Order unavailable" body="This order is no longer open. It may have filled, been cancelled or completed." />;
+  if (!currencyPreference.isCurrencyEnabled(order.asset_code as 'NGN' | 'USDC')) {
+    return <VadEmptyState title="Order hidden" body="This order uses a currency that is not enabled for your account or region." />;
+  }
 
   const currentOrder = order;
   const quantity = Number(currentOrder.quantity);

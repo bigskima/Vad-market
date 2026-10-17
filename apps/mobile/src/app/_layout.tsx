@@ -12,6 +12,7 @@ import { GrowthAttributionBridge } from '@/features/growth/growth-attribution-br
 import { supabaseConfiguration } from '@/lib/supabase';
 import { AuthProvider } from '@/providers/auth-provider';
 import { VadThemeProvider, useVadTheme } from '@/providers/theme-provider';
+import { CurrencyPreferenceProvider } from '@/providers/currency-preference-provider';
 
 function ThemedNavigation() {
   const theme = useVadTheme();
@@ -69,6 +70,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider style={{ flex: 1 }}>
       <VadThemeProvider>
+        <CurrencyPreferenceProvider>
         {supabaseConfiguration.ready ? (
           <AuthProvider>
             <GrowthAttributionBridge>
@@ -76,6 +78,7 @@ export default function RootLayout() {
             </GrowthAttributionBridge>
           </AuthProvider>
         ) : <ServiceUnavailableScreen />}
+        </CurrencyPreferenceProvider>
       </VadThemeProvider>
     </SafeAreaProvider>
   );

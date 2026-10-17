@@ -81,7 +81,7 @@ export function HomePromotionCarousel({
     if (next === 0) directionRef.current = 1;
   }
 
-  const bannerHeight = density.compact ? 88 : density.phone ? 98 : 118;
+  const bannerHeight = density.compact ? 116 : density.phone ? 128 : density.desktop ? 176 : 148;
 
   return (
     <View
@@ -109,7 +109,7 @@ export function HomePromotionCarousel({
               width: width || Math.max(260, density.width - density.horizontalPadding * 2),
               height: bannerHeight,
               overflow: 'hidden',
-              borderRadius: density.cardRadius,
+              borderRadius: density.phone ? 14 : 18,
               borderWidth: 1,
               borderColor:
                 promotion.banner_kind === 'TEXT'
@@ -134,25 +134,18 @@ export function HomePromotionCarousel({
                   flex: 1,
                   justifyContent: 'center',
                   paddingHorizontal: density.cardPadding,
-                  paddingVertical: density.compact ? 10 : 12,
+                  paddingVertical: density.compact ? 8 : 10,
                   gap: 3,
                 }}
               >
-                <VadText variant="caption" tone="brand">
-                  VAD HIGHLIGHT
-                </VadText>
                 <VadText
                   variant="heading"
-                  numberOfLines={2}
+                  style={{ fontSize: density.compact ? 13 : 15, lineHeight: density.compact ? 16 : 18 }}
+                  numberOfLines={1}
                   adjustsFontSizeToFit
                 >
                   {promotion.title}
                 </VadText>
-                {promotion.body ? (
-                  <VadText variant="caption" tone="secondary" numberOfLines={1}>
-                    {promotion.body}
-                  </VadText>
-                ) : null}
               </View>
             )}
           </Pressable>

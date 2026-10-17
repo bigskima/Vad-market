@@ -42,7 +42,7 @@ export function WelcomeScreen({ onContinue }: Props) {
           paddingHorizontal: compact ? theme.spacing.md : theme.spacing.xl,
           paddingTop: compact ? theme.spacing.md : theme.spacing.lg,
           paddingBottom: compact ? theme.spacing.lg : theme.spacing.xl,
-          gap: compact ? theme.spacing.lg : theme.spacing.xxl,
+          gap: compact ? theme.spacing.md : theme.spacing.lg,
         }}
       >
         <View
@@ -102,21 +102,12 @@ export function WelcomeScreen({ onContinue }: Props) {
             }}
           >
             <View style={{ gap: theme.spacing.sm }}>
-              <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.5 }}>
-                REAL PEOPLE. REAL PREDICTIONS.
-              </VadText>
               <VadText variant={compact ? 'title' : 'display'}>
-                A more informed world together.
+                See what the world thinks.
               </VadText>
               <VadText tone="secondary" style={{ maxWidth: 560 }}>
-                Explore real-world outcome markets, understand what the market believes, and back your own conviction when your view is different.
+                Clear odds. Real-world outcomes.
               </VadText>
-            </View>
-
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-              <FeaturePoint symbol="↗" label="Real outcomes" />
-              <FeaturePoint symbol="◎" label="Market probabilities" />
-              <FeaturePoint symbol="✓" label="Published rules" />
             </View>
 
             {wide ? <WelcomeActions onContinue={onContinue} /> : null}
@@ -138,13 +129,12 @@ function WelcomeHero({ compact, wide }: { compact: boolean; wide: boolean }) {
     <View
       style={{
         flex: wide ? 1.1 : undefined,
-        minHeight: wide ? 560 : compact ? 340 : 410,
+        minHeight: wide ? 440 : compact ? 220 : 280,
         borderRadius: theme.radius.xxl,
         borderWidth: 1,
         borderColor: theme.colors.borderStrong,
         backgroundColor: '#050813',
         overflow: 'hidden',
-        justifyContent: 'space-between',
         ...theme.shadows.card,
       }}
     >
@@ -161,65 +151,9 @@ function WelcomeHero({ compact, wide }: { compact: boolean; wide: boolean }) {
           right: 0,
           bottom: 0,
           left: 0,
-          backgroundColor: 'rgba(3, 7, 18, 0.28)',
+          backgroundColor: 'rgba(3, 7, 18, 0.18)',
         }}
       />
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          right: 0,
-          bottom: 0,
-          left: 0,
-          height: '48%',
-          backgroundColor: 'rgba(3, 7, 18, 0.5)',
-        }}
-      />
-
-      <View style={{ padding: compact ? theme.spacing.md : theme.spacing.lg, gap: 7 }}>
-        <View
-          style={{
-            alignSelf: 'flex-start',
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            borderRadius: theme.radius.pill,
-            backgroundColor: theme.colors.brandPrimary,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.16)',
-          }}
-        >
-          <VadText variant="caption" tone="inverse" style={{ letterSpacing: 1.1 }}>
-            PREDICT • TRADE • BELONG
-          </VadText>
-        </View>
-        <VadText variant={compact ? 'heading' : 'title'} tone="inverse" style={{ maxWidth: 420 }}>
-          See the world through probability.
-        </VadText>
-        <VadText variant="caption" tone="inverse" style={{ maxWidth: 430, opacity: 0.82 }}>
-          Markets turn uncertainty into a clear signal you can understand and act on.
-        </VadText>
-      </View>
-
-      <View style={{ padding: compact ? theme.spacing.md : theme.spacing.lg, gap: theme.spacing.sm }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: 7,
-            padding: 8,
-            borderRadius: theme.radius.xl,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.18)',
-            backgroundColor: 'rgba(8, 10, 18, 0.78)',
-          }}
-        >
-          <HeroPoint symbol="↗" label="Real markets" />
-          <HeroPoint symbol="◎" label="Global view" />
-          <HeroPoint symbol="✓" label="Clear rules" />
-        </View>
-        <VadText variant="caption" tone="inverse" style={{ textAlign: 'center', opacity: 0.7 }}>
-          Ideas today. A brighter tomorrow.
-        </VadText>
-      </View>
     </View>
   );
 }
@@ -237,46 +171,3 @@ function WelcomeActions({ onContinue }: Props) {
   );
 }
 
-function FeaturePoint({ symbol, label }: { symbol: string; label: string }) {
-  const theme = useVadTheme();
-  return (
-    <View
-      style={{
-        minHeight: 42,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-        paddingHorizontal: theme.spacing.sm,
-        borderRadius: theme.radius.pill,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
-      }}
-    >
-      <View
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: 12,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: theme.colors.brandSoft,
-        }}
-      >
-        <VadText variant="caption" tone="brand">{symbol}</VadText>
-      </View>
-      <VadText variant="caption" tone="secondary">{label}</VadText>
-    </View>
-  );
-}
-
-function HeroPoint({ symbol, label }: { symbol: string; label: string }) {
-  return (
-    <View style={{ flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 7 }}>
-      <VadText variant="heading" tone="brand">{symbol}</VadText>
-      <VadText variant="caption" tone="inverse" numberOfLines={1} style={{ textAlign: 'center' }}>
-        {label}
-      </VadText>
-    </View>
-  );
-}

@@ -3,22 +3,22 @@ import { useWindowDimensions, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
-import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadIcon } from '@/components/ui/vad-icon';
-import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { TourTarget } from '@/features/tour/tour-provider';
-import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
-import { getMarketTiming } from '@/lib/market-timing';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
+import { getMarketTiming } from '@/lib/market-timing';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketCard } from './components/market-card';
 import {
   MarketDiscoveryControls,
   type MarketSortMode,
+  type MarketStageFilter,
 } from './components/market-discovery-controls';
 
 export function MarketsScreen({
@@ -32,6 +32,7 @@ export function MarketsScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const { enabledCurrencies } = useCurrencyPreference();
   const now = useLiveNow();
   const { width } = useWindowDimensions();
   const columns = width >= 920 ? 2 : 1;
@@ -42,17 +43,40 @@ export function MarketsScreen({
       : 'All',
   );
   const [sortMode, setSortMode] = useState<MarketSortMode>('activity');
+  const [stage, setStage] = useState<MarketStageFilter>('all');
 
   const categories = useMemo(
     () => [...new Set(markets.map((market) => market.category).filter((value): value is string => Boolean(value)))].sort(),
     [markets],
   );
 
-  const orderedMarkets = useMemo(() => {
+  const baseFilteredMarkets = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const filtered = markets
+    return markets
+      .filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency))
       .filter((market) => category === 'All' || market.category === category)
       .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status].some((value) => String(value ?? '').toLowerCase().includes(needle)));
+  }, [markets, category, query, enabledCurrencies]);
+
+  const stageCounts = useMemo(() => {
+    const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
+    for (const market of baseFilteredMarkets) {
+      const timing = getMarketTiming(market, now);
+      if (timing.tradingOpen) counts.live += 1;
+      else if (['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING'].includes(timing.stage)) counts.result += 1;
+      else if (['SETTLED', 'VOIDED'].includes(timing.stage)) counts.complete += 1;
+    }
+    return counts;
+  }, [baseFilteredMarkets, now]);
+
+  const orderedMarkets = useMemo(() => {
+    const filtered = baseFilteredMarkets.filter((market) => {
+      const timing = getMarketTiming(market, now);
+      if (stage === 'live') return timing.tradingOpen;
+      if (stage === 'result') return ['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING'].includes(timing.stage);
+      if (stage === 'complete') return ['SETTLED', 'VOIDED'].includes(timing.stage);
+      return true;
+    });
 
     return [...filtered].sort((a, b) => {
       if (sortMode === 'closing') {
@@ -68,59 +92,28 @@ export function MarketsScreen({
       }
       return Number(Boolean(b.last_trade_at)) - Number(Boolean(a.last_trade_at)) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
-  }, [markets, category, query, sortMode, now]);
+  }, [baseFilteredMarkets, stage, sortMode, now]);
 
-  const live = markets.filter((market) => getMarketTiming(market, now).tradingOpen).length;
-  const results = markets.filter((market) => ['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING'].includes(getMarketTiming(market, now).stage)).length;
-  const complete = markets.filter((market) => ['SETTLED', 'VOIDED'].includes(getMarketTiming(market, now).stage)).length;
-  const cardWidth = columns === 2 ? '48.9%' : '100%';
-  const pageSize = columns === 2 ? 8 : 6;
+  const cardWidth = columns === 2 ? '48.7%' : '100%';
+  const pageSize = columns === 2 ? 8 : 5;
   const progressive = useProgressiveList({
     items: orderedMarkets,
     initialCount: pageSize,
     step: pageSize,
-    resetKey: `${query.trim().toLowerCase()}|${category}|${sortMode}|${columns}`,
+    resetKey: `${query.trim().toLowerCase()}|${category}|${sortMode}|${stage}|${columns}`,
   });
 
+  const visibleMarkets = progressive.visibleItems;
+
   return (
-    <View style={{ gap: density.sectionGap }}>
-      <VadCard
-        variant="surface"
-        style={{
-          gap: theme.spacing.md,
-          padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-          borderRadius: theme.radius.xxl,
-          overflow: 'hidden',
-        }}
-      >
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            width: 130,
-            height: 130,
-            borderRadius: 65,
-            right: -56,
-            top: -62,
-            backgroundColor: theme.colors.brandSoft,
-            opacity: theme.mode === 'dark' ? 0.24 : 0.8,
-          }}
-        />
-        <View style={{ gap: theme.spacing.sm, maxWidth: 680 }}>
-          <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.1 }}>MARKET DISCOVERY</VadText>
-          <VadText variant={density.phone ? 'title' : 'display'}>
-            {category === 'All' ? 'Explore markets' : `${category} markets`}
-          </VadText>
-          <VadText variant="body" tone="secondary">
-            Find active questions, compare YES/NO prices, and follow market outcomes.
-          </VadText>
+    <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
+      <View style={{ gap: 4, paddingBottom: theme.spacing.xs }}>
+        <VadText variant="caption" tone="brand">VAD EXCHANGE</VadText>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+          <VadText variant="title">{category === 'All' ? 'Markets' : category}</VadText>
+          <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-          <VadChip label={`${live} LIVE`} tone="yes" />
-          <VadChip label={`${results} RESULT / PAYOUT`} tone="brand" />
-          <VadChip label={`${complete} COMPLETE`} />
-        </View>
-      </VadCard>
+      </View>
 
       <TourTarget id="markets-discovery">
         <MarketDiscoveryControls
@@ -129,58 +122,29 @@ export function MarketsScreen({
           categories={categories}
           activeCategory={category}
           onCategoryChange={setCategory}
+          stage={stage}
+          onStageChange={setStage}
+          stageCounts={stageCounts}
           sortMode={sortMode}
           onSortModeChange={setSortMode}
           resultCount={orderedMarkets.length}
         />
       </TourTarget>
 
-      <View style={{ gap: theme.spacing.sm }}>
-        <VadSectionHeader
-          title={category === 'All' ? 'Market catalogue' : `${category} catalogue`}
-          subtitle={orderedMarkets.length
-            ? `Showing ${progressive.visibleCount} of ${progressive.totalCount}. Reveal more only when you want them.`
-            : 'Try another search, category or sorting option.'}
-        />
-        {orderedMarkets.length ? (
-          <View
-            style={{
-              minHeight: 44,
-              borderRadius: theme.radius.lg,
-              backgroundColor: theme.colors.surfaceRaised,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              paddingHorizontal: theme.spacing.sm,
-              paddingVertical: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: theme.spacing.sm,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-              <VadIcon name="markets" size={16} tone="brand" />
-              <VadText variant="caption" tone="secondary">{progressive.visibleCount} visible</VadText>
-            </View>
-            <VadText variant="caption" tone={live ? 'yes' : 'brand'}>{live ? `${live} live now` : 'Lifecycle history'}</VadText>
-          </View>
-        ) : null}
-      </View>
-
       <TourTarget id="markets-results">
         {orderedMarkets.length ? (
-          <View style={{ gap: theme.spacing.md }}>
+          <View style={{ gap: theme.spacing.sm }}>
             <View
               style={{
                 flexDirection: columns > 1 ? 'row' : 'column',
                 flexWrap: columns > 1 ? 'wrap' : 'nowrap',
-                gap: theme.spacing.md,
+                gap: theme.spacing.sm,
                 alignItems: 'stretch',
               }}
             >
-              {progressive.visibleItems.map((market) => (
+              {visibleMarkets.map((market) => (
                 <View key={market.instrument_public_id} style={{ width: cardWidth }}>
-                  <MarketCard market={market} onPress={() => onOpenMarket(market)} />
+                  <MarketCard market={market} onPress={() => onOpenMarket(market)} compact />
                 </View>
               ))}
             </View>
@@ -188,7 +152,7 @@ export function MarketsScreen({
             {progressive.hasMore ? (
               <VadCard variant="raised" style={{ gap: theme.spacing.sm, alignItems: 'center' }}>
                 <View style={{ gap: 2, alignItems: 'center' }}>
-                  <VadText variant="bodyStrong">Keep exploring when you are ready</VadText>
+                  <VadText variant="bodyStrong">More markets</VadText>
                   <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>
                     {progressive.remainingCount} more {progressive.remainingCount === 1 ? 'market' : 'markets'} match this view.
                   </VadText>
@@ -215,6 +179,7 @@ export function MarketsScreen({
               setQuery('');
               setCategory('All');
               setSortMode('activity');
+              setStage('all');
             }}
           />
         )}

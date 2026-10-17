@@ -6,7 +6,6 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadIcon } from '@/components/ui/vad-icon';
-import { VadMetricTile } from '@/components/ui/vad-metric-tile';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
@@ -16,6 +15,7 @@ import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import type { OrderRow, PositionRow, SettlementReceiptRow } from '@/services/market-api';
 
 type PortfolioTab = 'positions' | 'orders' | 'payouts';
@@ -29,9 +29,9 @@ type AssetExposure = {
 };
 
 export function PortfolioScreen({
-  positions,
-  orders,
-  settlements,
+  positions: allPositions,
+  orders: allOrders,
+  settlements: allSettlements,
   onOpenPosition,
   onOpenOrder,
 }: {
@@ -43,10 +43,13 @@ export function PortfolioScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const { enabledCurrencies } = useCurrencyPreference();
+  const positions = allPositions.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
+  const orders = allOrders.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
+  const settlements = allSettlements.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
   const [tab, setTab] = useState<PortfolioTab>('positions');
 
   const totalShares = positions.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
-  const totalPayouts = settlements.reduce((sum, row) => sum + Number(row.net_amount ?? 0), 0);
   const exposure = useMemo(() => buildAssetExposure(positions, orders), [positions, orders]);
   const grid = density.wide;
   const pageSize = grid ? 8 : 5;
@@ -71,64 +74,42 @@ export function PortfolioScreen({
   const activeList = tab === 'positions' ? visiblePositions : tab === 'orders' ? visibleOrders : visiblePayouts;
 
   return (
-    <View style={{ gap: density.sectionGap }}>
-      <VadSectionHeader
-        title="Exchange positions"
-        subtitle="Matched order-book positions, open matching orders and completed payouts stay separate from peer-pool predictions."
-      />
-
+    <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
+      <View style={{ gap: 3 }}>
+        <VadText variant="title">Portfolio</VadText>
+        <VadText variant="caption" tone="secondary">Your positions, orders and settled markets.</VadText>
+      </View>
       <TourTarget id="portfolio-summary">
-        <VadCard
-          variant="surface"
-          style={{
-            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-            borderRadius: theme.radius.xxl,
-            overflow: 'hidden',
-          }}
-        >
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              width: 120,
-              height: 120,
-              borderRadius: 60,
-              right: -42,
-              top: -52,
-              backgroundColor: theme.colors.brandSoft,
-              opacity: theme.mode === 'dark' ? 0.28 : 0.72,
-            }}
-          />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
-            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <VadText variant="caption" tone="brand">ORDER-BOOK ACTIVITY</VadText>
-              <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
-                {positions.length} matched {positions.length === 1 ? 'position' : 'positions'}
-              </VadText>
-              <VadText variant="caption" tone="secondary">
-                Only real matched orders become positions here. Peer-pool predictions remain in the Predictions section above.
-              </VadText>
+        <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.xl, gap: theme.spacing.md, borderRadius: 26, borderWidth: 1, borderColor: theme.colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+            <View style={{ gap: 4 }}>
+              <VadText variant="caption" tone="secondary">YOUR MARKET EXPOSURE</VadText>
+              <VadText variant="heading">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
             </View>
-            <View style={{ width: density.phone ? 48 : 56, height: density.phone ? 48 : 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
-              <VadIcon name="portfolio" size={density.phone ? 22 : 26} tone="brand" />
+            <View style={{ width: 46, height: 46, borderRadius: 17, backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
+              <VadIcon name="wallet" size={21} tone="brand" />
             </View>
           </View>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <VadMetricTile label="Positions" value={String(positions.length)} detail="Matched holdings" tone="brand" />
-            <VadMetricTile label="Shares held" value={Number(totalShares).toLocaleString()} detail="Across outcomes" />
-            <VadMetricTile label="Open orders" value={String(orders.length)} detail="Waiting to fill" />
-            <VadMetricTile label="Payouts" value={String(settlements.length)} detail={settlements.length ? `${Number(totalPayouts).toLocaleString()} total net` : 'No settled wins yet'} />
+          <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.lg, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+            <View style={{ flex: 1, gap: 3, paddingRight: 8 }}>
+              <VadText variant="caption" tone="secondary">Shares held</VadText>
+              <VadText variant="heading">{Number(totalShares).toLocaleString()}</VadText>
+            </View>
+            <View style={{ flex: 1, gap: 3, paddingHorizontal: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
+              <VadText variant="caption" tone="secondary">Open orders</VadText>
+              <VadText variant="heading">{orders.filter((order) => Number(order.remaining_quantity ?? 0) > 0).length}</VadText>
+            </View>
+            <View style={{ flex: 1, gap: 3, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
+              <VadText variant="caption" tone="secondary">Payouts</VadText>
+              <VadText variant="heading">{settlements.length}</VadText>
+            </View>
           </View>
         </VadCard>
       </TourTarget>
 
       {exposure.length ? (
         <VadProgressiveSection
-          title="Exposure by currency"
-          eyebrow="EXPOSURE DETAILS"
-          description="Open the currency-by-currency breakdown only when you need to inspect invested value and outstanding order exposure."
+          title="Capital at work"
           icon="wallet"
           summary={<VadText variant="caption" tone="tertiary">{exposure.map((item) => item.assetCode).join(' · ')}</VadText>}
         >
@@ -149,9 +130,12 @@ export function PortfolioScreen({
             ] as const}
             onChange={setTab}
           />
-          <VadText variant="caption" tone="tertiary">
-            Showing {activeList.visibleCount} of {activeList.totalCount} {tab === 'positions' ? 'positions' : tab === 'orders' ? 'open orders' : 'payouts'}.
-          </VadText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <VadText variant="caption" tone="tertiary">
+              {activeList.visibleCount} of {activeList.totalCount} shown
+            </VadText>
+            <VadText variant="caption" tone="secondary">Tap an item for details</VadText>
+          </View>
         </View>
       </TourTarget>
 
@@ -171,7 +155,7 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No matched positions" body="When an order-book order matches another participant, your YES or NO holding appears here. Peer-pool stakes are tracked in Predictions above." />
+          <VadEmptyState title="No matched positions" body="Peer-pool stakes appear in Predictions." />
         )
       ) : null}
 
@@ -191,7 +175,7 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No open orders" body="Only orders still waiting to fill appear here. Filled orders move into Positions instead of lingering as matching requests." />
+          <VadEmptyState title="No open orders" body="Filled orders move to Positions." />
         )
       ) : null}
 
@@ -211,7 +195,7 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No payouts yet" body="After a market is finalized and an eligible winning position settles, its receipt appears here with gross payout, fee and net credit." />
+          <VadEmptyState title="No payouts yet" body="Settled winning payouts appear here with fees and net credit." />
         )
       ) : null}
     </View>
@@ -238,10 +222,16 @@ function ProgressiveGrid({
     <View style={{ gap: theme.spacing.md }}>
       <CardGrid grid={grid}>{children}</CardGrid>
       {remaining > 0 ? (
-        <VadCard variant="raised" style={{ alignItems: 'center', gap: theme.spacing.sm }}>
-          <VadText variant="caption" tone="secondary">{remaining} more {noun} available.</VadText>
-          <VadButton label={`Show next ${next}`} variant="secondary" size="small" fullWidth={false} onPress={onMore} />
-        </VadCard>
+        <View style={{ alignItems: 'center' }}>
+          <VadButton
+            label={`Show next ${next}`}
+            accessibilityLabel={`Show next ${next} ${noun}`}
+            variant="secondary"
+            size="small"
+            fullWidth={false}
+            onPress={onMore}
+          />
+        </View>
       ) : null}
     </View>
   );
@@ -278,23 +268,30 @@ function PositionCard({ position, onPress }: { position: PositionRow; onPress: (
   const yes = position.outcome_code === 'YES';
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open ${position.market_title} ${position.outcome_code} position`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.74 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}>
-      <VadCard variant="raised" style={{ gap: theme.spacing.md, minHeight: 218 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+      <VadCard variant="raised" style={{ padding: theme.spacing.sm, gap: theme.spacing.xs, borderRadius: 18 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-            <VadText variant="caption" tone="brand">MATCHED POSITION</VadText>
-            <VadText variant="bodyStrong" numberOfLines={3}>{position.market_title}</VadText>
-            <VadText variant="caption" tone="tertiary">{position.asset_code} · {positionStatusLabel(position.status)}</VadText>
+            <VadText variant="bodyStrong" numberOfLines={2}>{position.market_title}</VadText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
+              <VadChip label={position.outcome_code} tone={yes ? 'yes' : 'no'} />
+              <VadText variant="caption" tone="tertiary">{position.asset_code} · {positionStatusLabel(position.status)}</VadText>
+            </View>
           </View>
-          <VadChip label={position.outcome_code} tone={yes ? 'yes' : 'no'} />
+          <VadIcon name="chevronRight" size={18} tone="tertiary" />
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-          <MiniMetric label="Shares" value={Number(position.quantity).toLocaleString()} />
-          <MiniMetric label="Avg. entry" value={pct(position.average_price)} />
-          <MiniMetric label="Invested" value={assetMoney(position.total_cost_basis, position.asset_code)} />
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
-          <VadText variant="caption" tone="brand">View position</VadText>
-          <VadIcon name="chevronRight" size={16} tone="brand" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <VadText variant="caption" tone="tertiary">Shares</VadText>
+            <VadText variant="bodyStrong">{Number(position.quantity).toLocaleString()}</VadText>
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <VadText variant="caption" tone="tertiary">Avg. entry</VadText>
+            <VadText variant="bodyStrong">{pct(position.average_price)}</VadText>
+          </View>
+          <View style={{ flex: 1, alignItems: 'flex-end', gap: 2 }}>
+            <VadText variant="caption" tone="tertiary">Invested</VadText>
+            <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(position.total_cost_basis, position.asset_code)}</VadText>
+          </View>
         </View>
       </VadCard>
     </Pressable>
@@ -308,7 +305,7 @@ function OrderCard({ order, onPress }: { order: OrderRow; onPress: () => void })
   const outcomeYes = order.outcome_code === 'YES';
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open ${order.market_title} ${order.outcome_code} ${order.side.toLowerCase()} order`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.74 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}>
-      <VadCard variant="raised" style={{ gap: theme.spacing.md, minHeight: 218 }}>
+      <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.md }}>
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
             <VadText variant="caption" tone="brand">MATCHING</VadText>
@@ -347,10 +344,10 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
   const theme = useVadTheme();
   const yes = receipt.outcome_code === 'YES';
   return (
-    <VadCard variant="brand" style={{ gap: theme.spacing.md, minHeight: 218 }}>
+    <VadCard variant="brand" style={{ gap: theme.spacing.sm }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
         <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-          <VadText variant="caption" tone="yes">PAYOUT COMPLETE</VadText>
+          <VadText variant="caption" tone="yes">PAYOUT</VadText>
           <VadText variant="bodyStrong" numberOfLines={3}>{receipt.market_title}</VadText>
           <VadText variant="caption" tone="secondary">{new Date(receipt.settled_at).toLocaleString()}</VadText>
         </View>
@@ -363,7 +360,7 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
       </View>
       <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <VadText variant="bodyStrong">Net credited</VadText>
-        <VadText variant="heading" tone="yes">{assetMoney(receipt.net_amount, receipt.asset_code)}</VadText>
+        <VadText variant="bodyStrong" tone="yes">{assetMoney(receipt.net_amount, receipt.asset_code)}</VadText>
       </View>
       <VadText variant="caption" tone="tertiary" selectable>{receipt.settlement_id}</VadText>
     </VadCard>
@@ -373,7 +370,7 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
 function MiniMetric({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ flexGrow: 1, flexBasis: 96, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 10, paddingVertical: 9, gap: 1 }}>
+    <View style={{ flexGrow: 1, flexBasis: 96, minWidth: 0, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 10, paddingVertical: 9, gap: 2 }}>
       <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
       <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{value}</VadText>
     </View>
