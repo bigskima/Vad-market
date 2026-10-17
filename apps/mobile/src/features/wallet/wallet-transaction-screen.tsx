@@ -54,7 +54,7 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
   }, [load]);
 
   if (intent && !currencyPreference.isCurrencyEnabled(intent.asset_code as 'NGN' | 'USDC')) {
-    return <VadEmptyState title="Transaction hidden" description="This transaction uses a currency that is not enabled for your account or region." />;
+    return <VadEmptyState title="Transaction hidden" body="This transaction uses a currency that is not enabled for your account or region." />;
   }
 
   if (loading) {
