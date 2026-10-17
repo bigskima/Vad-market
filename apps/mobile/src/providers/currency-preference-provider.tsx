@@ -80,7 +80,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
   }, [applyPolicy]);
 
   useEffect(() => {
-    void refresh();
+    void Promise.resolve().then(() => refresh());
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
       // Defer Supabase reads until after its auth-state callback releases its lock.
       setTimeout(() => void refresh(), 0);
