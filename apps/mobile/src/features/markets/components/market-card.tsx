@@ -112,7 +112,7 @@ export function MarketCard({
           </VadText>
         </View>
         <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-          <VadIcon name="users" size={15} tone="tertiary" />
+          <VadIcon name="community" size={15} tone="tertiary" />
           <VadText variant="caption" tone="secondary" numberOfLines={1}>
             {hasParticipants ? `${participants.toLocaleString()} traders` : 'No traders yet'}
           </VadText>
