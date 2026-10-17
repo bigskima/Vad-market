@@ -43,9 +43,9 @@ function asCurrencies(value: unknown): VADCurrency[] {
 }
 
 export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
-  const [enabledCurrencies, setEnabledState] = useState<VADCurrency[]>(readInitialCurrencies);
-  const [eligibleCurrencies, setEligibleState] = useState<VADCurrency[]>(SUPPORTED);
-  const [countryCode, setCountryCode] = useState('NG');
+  const [enabledCurrencies, setEnabledState] = useState<VADCurrency[]>(['USDC']);
+  const [eligibleCurrencies, setEligibleState] = useState<VADCurrency[]>(['USDC']);
+  const [countryCode, setCountryCode] = useState('');
   const [loading, setLoading] = useState(true);
 
   const applyPolicy = useCallback((policy: CurrencyPolicy) => {
@@ -73,9 +73,9 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData.user) {
         // Do not trust a prior account's cached preference on a signed-out screen.
-        setCountryCode('NG');
-        setEligibleState(SUPPORTED);
-        setEnabledState(readInitialCurrencies());
+        setCountryCode('');
+        setEligibleState(['USDC']);
+        setEnabledState(['USDC']);
         return;
       }
       const { data, error } = await supabase.rpc('get_my_currency_policy');
