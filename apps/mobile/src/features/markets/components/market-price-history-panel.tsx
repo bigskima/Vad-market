@@ -17,7 +17,7 @@ const ranges: { value: RangeKey; label: string; ms: number | null }[] = [
   { value: 'ALL', label: 'All', ms: null },
 ];
 
-export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string }) {
+export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instrumentId: string; liquidityMode?: string | null }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const now = useLiveNow();
@@ -29,6 +29,7 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
   const [plotWidth, setPlotWidth] = useState(0);
 
   useEffect(() => {
+    if (liquidityMode === 'POOL') return;
     let active = true;
     void Promise.resolve().then(() => {
       if (!active) return;
@@ -44,7 +45,7 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [instrumentId]);
+  }, [instrumentId, liquidityMode]);
 
   const visiblePoints = useMemo(() => {
     const selected = ranges.find((item) => item.value === range);
@@ -90,8 +91,8 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
     <VadCard variant="surface" style={{ gap: density.compact ? 9 : 11, padding: density.compact ? 10 : 13 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <View style={{ flex: 1, gap: 2 }}>
-          <VadText variant="bodyStrong">Price action</VadText>
-          <VadText variant="caption" tone="secondary">Executed prices · latest 240 fills</VadText>
+          <VadText variant="bodyStrong">{liquidityMode === 'POOL' ? 'Stake movement' : 'Price action'}</VadText>
+          <VadText variant="caption" tone="secondary">{liquidityMode === 'POOL' ? 'Peer Pool · historical stake allocation' : 'Executed prices · latest 240 fills'}</VadText>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 2 }}>
           <VadText variant="caption" tone="tertiary">LATEST</VadText>
@@ -128,7 +129,12 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
         })}
       </View>
 
-      {failed ? (
+      {liquidityMode === 'POOL' ? (
+        <View style={{ minHeight: chartHeight, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', padding: 14, gap: 4 }}>
+          <VadText variant="bodyStrong">Historical stake data unavailable</VadText>
+          <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>Peer Pool markets track participant stakes rather than executed YES/NO prices. The current split is shown below; historical snapshots are not available yet.</VadText>
+        </View>
+      ) : failed ? (
         <View style={{ height: chartHeight, alignItems: 'center', justifyContent: 'center', gap: 5 }}>
           <VadText variant="bodyStrong">Price history unavailable</VadText>
           <VadText variant="caption" tone="secondary">Try again when market data is available.</VadText>
@@ -168,13 +174,13 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
         </View>
       )}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+      {liquidityMode !== 'POOL' ? <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
           <LegendDot color={theme.colors.yes} label="YES price" />
           <LegendDot color={theme.colors.no} label="NO price" />
         </View>
         <VadText variant="caption" tone={change == null ? 'tertiary' : change >= 0 ? 'yes' : 'no'}>{change == null ? '—' : `${change >= 0 ? '+' : ''}${change.toFixed(1)} pts`}</VadText>
-      </View>
+      </View> : null}
     </VadCard>
   );
 }
