@@ -278,10 +278,10 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
 
       {step === 'prediction' ? (
-        <VadCard variant="raised" style={{ gap: 12 }}>
+        <VadCard variant="raised" style={{ gap: 9, padding: 12 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
-            <VadText variant="title">Choose an outcome</VadText>
+            <VadText variant="heading">Choose an outcome</VadText>
             <VadText variant="caption" tone="secondary">
               {isUsdc
                 ? 'Select YES or NO. Funds stay self-custodied until you approve.'
@@ -313,11 +313,11 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'order' ? (
-        <VadCard variant="raised" style={{ gap: 12 }}>
+        <VadCard variant="raised" style={{ gap: 9, padding: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 2 · STAKE</VadText>
-              <VadText variant="title">Stake amount</VadText>
+              <VadText variant="heading">Stake amount</VadText>
               <VadText variant="caption" tone="secondary">
                 {isUsdc
                   ? 'Nothing moves yet. Review the network, fee and authorization before signing.'
@@ -401,10 +401,10 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'review' && isUsdc && preparedUsdc ? (
-        <VadCard variant="brand" style={{ gap: 12 }}>
+        <VadCard variant="brand" style={{ gap: 9, padding: 12 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · FEE REVIEW · NOTHING LOCKED</VadText>
-            <VadText variant="title">Confirm your USDC prediction.</VadText>
+            <VadText variant="heading">Confirm your USDC prediction.</VadText>
             <VadText variant="caption" tone="secondary">
               VAD signed these amounts using the active fee policy. Authorization expires at the time shown.
             </VadText>
@@ -451,10 +451,10 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'review' && !isUsdc && quote ? (
-        <VadCard variant="brand" style={{ gap: 12 }}>
+        <VadCard variant="brand" style={{ gap: 9, padding: 12 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · REVIEW · NOT CHARGED YET</VadText>
-            <VadText variant="title">Confirm your prediction.</VadText>
+            <VadText variant="heading">Confirm your prediction.</VadText>
             <VadText variant="caption" tone="secondary">
               Review fees and debit before committing. Payout estimates can change until market close.
             </VadText>
@@ -490,11 +490,11 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'result' && isUsdc && onchainResult ? (
-        <VadCard variant="brand" style={{ gap: 12 }}>
+        <VadCard variant="brand" style={{ gap: 9, padding: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 4 · TRANSACTION SUBMITTED</VadText>
-              <VadText variant="title">Waiting for chain confirmation.</VadText>
+              <VadText variant="heading">Waiting for chain confirmation.</VadText>
               <VadText variant="caption" tone="secondary">
                 Your wallet submitted the VAD Settlement V1 position-lock transaction. VAD will treat the prediction as committed only after the blockchain confirms it and the indexer verifies the event.
               </VadText>
@@ -533,11 +533,11 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'result' && !isUsdc && stakeStatus ? (
-        <VadCard variant="brand" style={{ gap: 12 }}>
+        <VadCard variant="brand" style={{ gap: 9, padding: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="yes">STEP 4 · STAKE COMMITTED</VadText>
-              <VadText variant="title">Your prediction is live.</VadText>
+              <VadText variant="heading">Your prediction is live.</VadText>
               <VadText variant="caption" tone="secondary">
                 Your funds moved from your available wallet balance into this market’s protected peer pool. Result and settlement will update automatically.
               </VadText>
@@ -570,7 +570,7 @@ function UnsupportedUsdcOrderBook() {
   const theme = useVadTheme();
 
   return (
-    <VadCard variant="raised" style={{ gap: 12 }}>
+    <VadCard variant="raised" style={{ gap: 9, padding: 12 }}>
       <VadText variant="caption" tone="brand">USDC · ON-CHAIN SETTLEMENT</VadText>
       <VadText variant="heading">Order-book USDC is not active in Settlement V1.</VadText>
       <VadText variant="caption" tone="secondary">
@@ -653,10 +653,10 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
 
       {step === 'prediction' ? (
-        <VadCard variant="raised" style={{ gap: 12 }}>
+        <VadCard variant="raised" style={{ gap: 9, padding: 12 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
-            <VadText variant="title">Choose an outcome.</VadText>
+            <VadText variant="heading">Choose an outcome.</VadText>
             <VadText variant="caption" tone="secondary">This market uses the order book. A position exists only when your order actually matches another participant.</VadText>
           </View>
           <View accessibilityRole="radiogroup" style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
@@ -668,11 +668,11 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
 
       {step === 'order' ? (
-        <VadCard variant="raised" style={{ gap: 12 }}>
+        <VadCard variant="raised" style={{ gap: 9, padding: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 2 · ORDER</VadText>
-              <VadText variant="title">Set your limit order.</VadText>
+              <VadText variant="heading">Set your limit order.</VadText>
               <VadText variant="caption" tone="secondary">Choose whether to build or reduce a position, then VAD will preview the order value and every applicable platform fee before placement.</VadText>
             </View>
             <VadChip label={outcome} tone={outcome === 'YES' ? 'yes' : 'no'} />
@@ -707,10 +707,10 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
 
       {step === 'review' && quote ? (
-        <VadCard variant="brand" style={{ gap: 12 }}>
+        <VadCard variant="brand" style={{ gap: 9, padding: 12 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING PLACED YET</VadText>
-            <VadText variant="title">Confirm before placing.</VadText>
+            <VadText variant="heading">Confirm before placing.</VadText>
             <VadText variant="caption" tone="secondary">An order can remain unmatched. Only filled quantity becomes a real position. Maker/taker treatment depends on how the order fills.</VadText>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -740,11 +740,11 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
 
       {step === 'result' && orderStatus ? (
-        <VadCard variant={orderStatus.status === 'FILLED' ? 'brand' : 'raised'} style={{ gap: 12 }}>
+        <VadCard variant={orderStatus.status === 'FILLED' ? 'brand' : 'raised'} style={{ gap: 9, padding: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 4 · ORDER STATUS</VadText>
-              <VadText variant="title">{orderStatus.status === 'FILLED' ? 'Your order matched.' : orderStatus.status === 'PARTIALLY_FILLED' ? 'Your order partially matched.' : 'Your order is waiting for a match.'}</VadText>
+              <VadText variant="heading">{orderStatus.status === 'FILLED' ? 'Your order matched.' : orderStatus.status === 'PARTIALLY_FILLED' ? 'Your order partially matched.' : 'Your order is waiting for a match.'}</VadText>
               <VadText variant="caption" tone="secondary">Portfolio shows filled positions separately from still-open orders.</VadText>
             </View>
             <VadChip label={orderStatus.outcomeCode} tone={orderStatus.outcomeCode === 'YES' ? 'yes' : 'no'} />
@@ -812,10 +812,10 @@ function OutcomeChoice({ active, label, title, value, tone, disabled = false, on
   const color = tone === 'yes' ? theme.colors.yes : theme.colors.no;
   const background = tone === 'yes' ? theme.colors.yesSoft : theme.colors.noSoft;
   return (
-    <Pressable accessibilityRole="radio" accessibilityState={{ selected: active, disabled }} accessibilityLabel={`${label}: ${title}, current share ${value}`} disabled={disabled} onPress={onPress} style={({ pressed }) => ({ flex: 1, minHeight: density.compact ? 76 : 88, borderWidth: active ? 1.5 : 1, borderColor: active ? color : theme.colors.border, backgroundColor: active ? background : theme.colors.surface, borderRadius: theme.radius.md, padding: density.compact ? 9 : 11, justifyContent: 'center', gap: 5, opacity: disabled ? 0.5 : pressed ? 0.74 : 1 })}>
+    <Pressable accessibilityRole="radio" accessibilityState={{ selected: active, disabled }} accessibilityLabel={`${label}: ${title}, current share ${value}`} disabled={disabled} onPress={onPress} style={({ pressed }) => ({ flex: 1, minHeight: density.compact ? 66 : 76, borderWidth: active ? 1.5 : 1, borderColor: active ? color : theme.colors.border, backgroundColor: active ? background : theme.colors.surface, borderRadius: theme.radius.md, padding: density.compact ? 8 : 9, justifyContent: 'center', gap: 4, opacity: disabled ? 0.5 : pressed ? 0.74 : 1 })}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <VadChip label={label} tone={tone} />
-        <VadText variant="bodyStrong" tone={tone} style={{ fontSize: 15, lineHeight: 18 }}>{value}</VadText>
+        <VadText variant="bodyStrong" tone={tone} style={{ fontSize: 14, lineHeight: 17 }}>{value}</VadText>
       </View>
       <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: 12, lineHeight: 15 }}>{title}</VadText>
     </Pressable>
@@ -825,7 +825,7 @@ function OutcomeChoice({ active, label, title, value, tone, disabled = false, on
 function MiniMetric({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ flexGrow: 1, flexBasis: 105, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: 8, gap: 1 }}>
+    <View style={{ flexGrow: 1, flexBasis: 105, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: 6, gap: 1 }}>
       <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
       <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{value}</VadText>
     </View>
@@ -835,7 +835,7 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
 function QuoteLine({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ minHeight: 34, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+    <View style={{ minHeight: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
       <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>{label}</VadText>
       <VadText variant="bodyStrong" numberOfLines={1}>{value}</VadText>
     </View>
@@ -847,7 +847,7 @@ function InlineMessage({ tone, title, body }: { tone: 'warning' | 'danger' | 'br
   const borderColor = tone === 'danger' ? theme.colors.danger : tone === 'warning' ? theme.colors.warning : theme.colors.brandPrimary;
   const backgroundColor = tone === 'danger' ? theme.colors.noSoft : tone === 'warning' ? theme.colors.warningSoft : theme.colors.brandSoft;
   return (
-    <View style={{ width: '100%', borderWidth: 1, borderColor, backgroundColor, borderRadius: theme.radius.md, padding: 9, gap: 2 }}>
+    <View style={{ width: '100%', borderWidth: 1, borderColor, backgroundColor, borderRadius: theme.radius.md, padding: 8, gap: 2 }}>
       <VadText variant="bodyStrong">{title}</VadText>
       <VadText variant="caption" tone="secondary">{body}</VadText>
     </View>
