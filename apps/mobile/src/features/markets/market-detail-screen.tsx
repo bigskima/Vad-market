@@ -205,6 +205,8 @@ function Overview({
 
       </View>
 
+      {!poolMarket ? <MarketDepthPanel instrumentId={market.instrument_public_id} /> : null}
+
       <Lifecycle market={market} timing={timing} />
 
     </View>
