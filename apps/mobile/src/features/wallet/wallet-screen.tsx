@@ -106,6 +106,7 @@ export function WalletScreen({
                 <CurrencyToggle
                   key={currency}
                   currency={currency}
+                  displayName={currencyPreference.isCurrencyEnabled(currency) ? currency : 'Additional currency'}
                   enabled={currencyPreference.isCurrencyEnabled(currency)}
                   available={activeAssetCodes.includes(currency)}
                   onToggle={() => currencyPreference.toggleCurrency(currency)}
@@ -118,7 +119,7 @@ export function WalletScreen({
               <CompactCurrencyBalance key={wallet.asset_code} wallet={wallet} />
             ))}
             {!orderedWallets.some((wallet) => currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency)) ? (
-              <VadEmptyState title="No enabled balances" body="Turn on NGN or USDC above to show that currency across VAD." />
+              <VadEmptyState title="No enabled balances" body="Enable an eligible currency above to show its balance across VAD." />
             ) : null}
           </View>
         </View>
@@ -190,13 +191,13 @@ export function WalletScreen({
   );
 }
 
-function CurrencyToggle({ currency, enabled, available, onToggle }: { currency: VADCurrency; enabled: boolean; available: boolean; onToggle: () => void }) {
+function CurrencyToggle({ currency, displayName, enabled, available, onToggle }: { currency: VADCurrency; displayName: string; enabled: boolean; available: boolean; onToggle: () => void }) {
   const theme = useVadTheme();
   return (
     <Pressable
       accessibilityRole="switch"
       accessibilityState={{ checked: enabled, disabled: !available }}
-      accessibilityLabel={`Use ${currency} across VAD`}
+      accessibilityLabel={enabled ? `Use ${currency} across VAD` : 'Enable an additional currency across VAD'}
       disabled={!available}
       onPress={onToggle}
       style={({ pressed }) => ({
@@ -209,7 +210,7 @@ function CurrencyToggle({ currency, enabled, available, onToggle }: { currency: 
       })}
     >
       <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
-        <VadText variant="bodyStrong">{currency}</VadText>
+        <VadText variant="bodyStrong">{displayName}</VadText>
         <VadText variant="caption" tone="secondary">{available ? (enabled ? 'On across VAD' : 'Hidden across VAD') : 'Not available'}</VadText>
       </View>
       <View style={{ width: 30, height: 18, borderRadius: 9, padding: 2, justifyContent: 'center', alignItems: enabled ? 'flex-end' : 'flex-start', backgroundColor: enabled ? theme.colors.brandPrimary : theme.colors.border }}>
