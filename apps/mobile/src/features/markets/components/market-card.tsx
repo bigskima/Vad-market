@@ -44,15 +44,15 @@ export function MarketCard({
         minHeight: 0,
         borderWidth: 1,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
-        borderRadius: density.phone ? 12 : 14,
+        borderRadius: density.phone ? 16 : 18,
         backgroundColor: theme.colors.surface,
-        padding: tight ? 8 : 10,
-        gap: 7,
+        padding: tight ? 11 : 13,
+        gap: 9,
         opacity: pressed ? 0.92 : 1,
         ...theme.shadows.subtle,
       })}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
         <MarketThumbnail market={market} size={tight ? 38 : 42} />
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
@@ -99,7 +99,7 @@ export function MarketCard({
         </View>
       </View>
 
-      <View style={{ gap: 5 }}>
+      <View style={{ gap: 7 }}>
         <View style={{ flexDirection: 'row', gap: 5 }}>
           <PriceTile label="YES" value={yes} positive compact={tight} />
           <PriceTile label="NO" value={no} positive={false} compact={tight} />
