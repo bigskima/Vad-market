@@ -30,10 +30,24 @@ as $$
       coalesce(
         array(
           select a.code
-          from public.jurisdictions j
-          join public.jurisdiction_assets ja on ja.jurisdiction_id = j.id and ja.status = 'ACTIVE'
-          join public.assets a on a.id = ja.asset_id and a.status = 'ACTIVE'
-          where j.country_code = ac.country_code and j.status = 'ACTIVE'
+          from public.assets a
+          where a.status = 'ACTIVE'
+            and (
+              a.code = 'USDC'
+              or (
+                ac.country_code = 'NG'
+                and a.code = 'NGN'
+                and exists (
+                  select 1
+                  from public.jurisdictions j
+                  join public.jurisdiction_assets ja on ja.jurisdiction_id = j.id
+                  where j.country_code = ac.country_code
+                    and j.status = 'ACTIVE'
+                    and ja.asset_id = a.id
+                    and ja.status = 'ACTIVE'
+                )
+              )
+            )
           order by a.code
         ),
         array[]::text[]
