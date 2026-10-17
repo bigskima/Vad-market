@@ -81,7 +81,7 @@ export function WalletScreen({
   const recentIntents = intents.slice(0, density.phone ? 3 : 4);
 
   return (
-    <View style={{ gap: density.sectionGap }}>
+    <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <View style={{ gap: 2 }}>
           <VadText variant="title">Wallet</VadText>
@@ -97,16 +97,16 @@ export function WalletScreen({
 
       {primary ? (
         <TourTarget id="wallet-balance">
-          <VadCard variant="brand" style={{ gap: theme.spacing.sm, padding: density.phone ? 15 : theme.spacing.lg, borderRadius: 20 }}>
+          <VadCard variant="brand" style={{ gap: theme.spacing.md, padding: density.phone ? 18 : theme.spacing.xl, borderRadius: 26, borderWidth: 1, borderColor: theme.colors.border }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
               <View style={{ gap: 4 }}>
-                <VadText variant="caption" tone="secondary">TOTAL WALLET VALUE</VadText>
+                <VadText variant="caption" tone="secondary">TOTAL BALANCE</VadText>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.yes }} />
                   <VadText variant="caption" tone="secondary">{primaryCode} wallet</VadText>
                 </View>
               </View>
-              <View style={{ width: 42, height: 42, borderRadius: 15, backgroundColor: theme.colors.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 46, height: 46, borderRadius: 17, backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
                 <VadIcon name="wallet" size={21} tone="brand" />
               </View>
             </View>
@@ -375,15 +375,15 @@ function WalletAction({
     >
       <View
         style={{
-          minHeight: density.phone ? 62 : 70,
-          borderRadius: theme.radius.xl,
+          minHeight: density.phone ? 76 : 84,
+          borderRadius: 20,
           backgroundColor: soft,
           borderWidth: 1,
           borderColor: theme.colors.border,
           alignItems: 'center',
           justifyContent: 'center',
-          padding: density.compact ? 5 : theme.spacing.sm,
-          gap: 4,
+          padding: density.compact ? 8 : theme.spacing.sm,
+          gap: 7,
         }}
       >
         <VadIcon name={icon} size={density.compact ? 19 : 22} tone={iconTone} />
