@@ -188,7 +188,7 @@ function Overview({
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            <StatePill label="Trading" value={timing.tradingOpen ? 'Open' : timing.stage === 'SCHEDULED' ? 'Not open yet' : 'Closed'} tone={timing.tradingOpen ? 'yes' : 'secondary'} />
+            <StatePill label="Trading" value={timing.tradingOpen ? 'Open' : timing.stage === 'SCHEDULED' ? 'Scheduled' : 'Closed'} tone={timing.tradingOpen ? 'yes' : 'secondary'} />
             <StatePill label="Stage" value={timing.statusLabel} tone={timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'secondary'} />
             {timing.resolutionOutcome ? <StatePill label="Result" value={timing.resolutionOutcome} tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'secondary'} /> : null}
             <StatePill label="Currency" value={market.asset_code} tone="brand" />
@@ -227,7 +227,7 @@ function Overview({
           {!density.phone ? (
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
               <VadButton
-                label={tradeCapabilityLoading ? 'Checking availability' : canTrade ? (poolMarket ? 'Make a prediction' : 'Trade this market') : tradeDone ? 'Trading closed' : 'View trade availability'}
+                label={tradeCapabilityLoading ? 'Checking availability' : canTrade ? (poolMarket ? 'Make a prediction' : 'Trade this market') : tradeDone ? 'Trading closed' : 'Trading status'}
                 onPress={onTrade}
                 style={{ flex: 1 }}
                 leading={<VadIcon name="markets" size={17} tone="inverse" />}
@@ -247,11 +247,11 @@ function Overview({
           {market.opens_at ? <Fact label="Opens" value={timing.openCountdown ? `In ${timing.openCountdown}` : 'Opened'} /> : null}
           <Fact label="Trading" value={timing.stage === 'OPEN' && timing.closeCountdown ? `Closes in ${timing.closeCountdown}` : timing.tradingOpen ? 'Open' : 'Closed'} />
           <Fact label="Result" value={timing.resolutionOutcome ? `Final · ${timing.resolutionOutcome}` : timing.resolutionCountdown ? `Check in ${timing.resolutionCountdown}` : timing.stage === 'RESOLVING' ? 'Processing' : timing.stage === 'SETTLEMENT_PENDING' ? 'Finalized' : timing.stage === 'SETTLED' ? 'Finalized' : 'Pending'} />
-          {poolMarket ? <Fact label="Participant pool" value={`${Number(market.total_volume ?? 0).toLocaleString()} ${market.asset_code}`} /> : null}
+          {poolMarket ? <Fact label="Pool" value={`${Number(market.total_volume ?? 0).toLocaleString()} ${market.asset_code}`} /> : null}
           {poolMarket ? <Fact label="Participants" value={String(Number(market.participant_count ?? 0))} /> : null}
           <Fact label="Currency" value={market.asset_code} />
-          <Fact label="Market format" value={market.market_type === 'BINARY' ? 'Yes / No' : friendlyEnum(market.market_type)} />
-          <Fact label="Trading method" value={poolMarket ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')} />
+          <Fact label="Format" value={market.market_type === 'BINARY' ? 'Yes / No' : friendlyEnum(market.market_type)} />
+          <Fact label="Method" value={poolMarket ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')} />
           <Fact label={poolMarket ? 'Last stake' : 'Last trade'} value={market.last_trade_at ? new Date(market.last_trade_at).toLocaleString() : poolMarket ? 'No stakes yet' : 'No trades yet'} />
         </VadCard>
       </View>
@@ -296,13 +296,13 @@ function Lifecycle({ market, timing }: { market: MarketCatalogItem; timing: Mark
         <LifecycleStep
           number="2"
           title="Result"
-          body={resolutionDone ? `Final result${timing.resolutionOutcome ? `: ${timing.resolutionOutcome}` : ''}.` : timing.resolutionCountdown ? `Result check in ${timing.resolutionCountdown}.` : resolutionActive ? 'Result verification is in progress.' : 'Result verification starts after trading closes.'}
+          body={resolutionDone ? `Final result${timing.resolutionOutcome ? `: ${timing.resolutionOutcome}` : ''}.` : timing.resolutionCountdown ? `Result check in ${timing.resolutionCountdown}.` : resolutionActive ? 'Verifying result.' : 'Verification starts after trading closes.'}
           state={resolutionDone ? 'complete' : resolutionActive ? 'active' : 'waiting'}
         />
         <LifecycleStep
           number="3"
           title="Payout"
-          body={settlementDone ? `Settlement is complete in ${market.asset_code}.` : settlementActive ? `Eligible ${market.asset_code} payouts are being processed automatically.` : `Eligible winning positions are paid in ${market.asset_code} after the result is final.`}
+          body={settlementDone ? `Settlement is complete in ${market.asset_code}.` : settlementActive ? `Processing ${market.asset_code} payouts.` : `Winning positions are paid in ${market.asset_code} after finalization.`}
           state={settlementDone ? 'complete' : settlementActive ? 'active' : 'waiting'}
         />
       </View>
