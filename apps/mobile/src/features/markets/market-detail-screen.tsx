@@ -137,7 +137,6 @@ function Activity({ market, timing }: { market: MarketCatalogItem; timing: Marke
     <View style={{ gap: density.compact ? 8 : 12 }}>
       <MarketPriceHistoryPanel instrumentId={market.instrument_public_id} liquidityMode={market.liquidity_mode} />
       {!poolMarket ? <MarketDepthPanel instrumentId={market.instrument_public_id} /> : null}
-      <Lifecycle market={market} timing={timing} />
     </View>
   );
 }
@@ -254,55 +253,53 @@ function Lifecycle({ market, timing }: { market: MarketCatalogItem; timing: Mark
 function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const wide = density.width >= 820;
   const poolMarket = isPoolMarket(market);
   const rules = [
     {
       number: '1',
-      title: 'Trading closes automatically',
+      title: 'Trading window',
       body: timing.tradingOpen && timing.closeCountdown
-        ? `New ${poolMarket ? 'predictions' : 'orders'} stop in ${timing.closeCountdown}. The configured close is ${exactTime(market.closes_at) ?? 'set by the market'}.`
-        : `Trading is ${timing.stage === 'SCHEDULED' ? 'not open yet' : 'closed'}. ${poolMarket ? 'Stakes' : 'Orders'} are accepted only inside the configured trading window.`,
+        ? `Trading closes in ${timing.closeCountdown}. Scheduled close: ${exactTime(market.closes_at) ?? 'market rules'}.`
+        : `Trading is ${timing.stage === 'SCHEDULED' ? 'not open yet' : 'closed'}; participation is limited to the configured window.`,
     },
     {
       number: '2',
-      title: poolMarket ? 'Pool share does not decide the outcome' : 'Price does not decide the outcome',
+      title: poolMarket ? 'Stake split is not the result' : 'Price is not the result',
       body: poolMarket
-        ? 'YES and NO percentages show where participant stakes are allocated. They do not decide the final result.'
-        : 'YES and NO prices show what traders currently think. They do not decide the final result.',
+        ? 'YES/NO percentages show participant stake allocation, not the final outcome.'
+        : 'YES/NO prices reflect market activity, not the final outcome.',
     },
     {
       number: '3',
-      title: 'The result follows the rules',
-      body: timing.resolutionOutcome ? `This market finalized ${timing.resolutionOutcome}.` : 'The final result comes from the market’s published criteria and supporting evidence. Community posts and creator opinions do not decide the outcome.',
+      title: 'Resolution criteria',
+      body: timing.resolutionOutcome
+        ? `Final result: ${timing.resolutionOutcome}.`
+        : 'The outcome follows the published criteria and supporting evidence, not community opinions.',
     },
     {
       number: '4',
-      title: 'Payouts use this market’s currency',
-      body: poolMarket
-        ? `Eligible winning stakes receive payouts from this market's pool in ${market.asset_code}, according to the published settlement rules.`
-        : `Eligible winning positions are paid in ${market.asset_code}, according to the published settlement rules.`,
+      title: 'Settlement',
+      body: `Eligible payouts use ${market.asset_code} and follow the published settlement rules.`,
     },
   ];
 
   return (
-    <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-      <View style={{ gap: 2 }}>
-        <VadText variant="caption" tone="brand">MARKET RULES</VadText>
-        <VadText variant="heading">How this market works</VadText>
-      </View>
-
-      <View style={{ flexDirection: wide ? 'row' : 'column', flexWrap: wide ? 'wrap' : 'nowrap', gap: theme.spacing.sm }}>
-        {rules.map((rule) => (
-          <VadCard key={rule.number} variant="raised" style={{ width: wide ? '48.9%' : '100%', minHeight: wide ? 150 : undefined, gap: theme.spacing.xs }}>
-            <VadChip label={rule.number} tone="brand" />
-            <VadText variant="bodyStrong">{rule.title}</VadText>
-            <VadText variant="caption" tone="secondary">{rule.body}</VadText>
-          </VadCard>
+    <View style={{ gap: density.compact ? 8 : 12 }}>
+      <Lifecycle market={market} timing={timing} />
+      <VadCard variant="surface" style={{ padding: 10, gap: 0 }}>
+        <VadText variant="bodyStrong" style={{ paddingBottom: 7 }}>Market rules</VadText>
+        {rules.map((rule, index) => (
+          <View key={rule.number} style={{ flexDirection: 'row', gap: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: theme.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' }}>
+              <VadText variant="caption" tone="secondary">{rule.number}</VadText>
+            </View>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <VadText variant="caption" style={{ fontWeight: '700' }}>{rule.title}</VadText>
+              <VadText variant="caption" tone="secondary">{rule.body}</VadText>
+            </View>
+          </View>
         ))}
-      </View>
-
+      </VadCard>
     </View>
   );
 }
-
