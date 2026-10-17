@@ -3,7 +3,6 @@ import { useWindowDimensions, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
-import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
@@ -18,6 +17,7 @@ import { MarketCard } from './components/market-card';
 import {
   MarketDiscoveryControls,
   type MarketSortMode,
+  type MarketStageFilter,
 } from './components/market-discovery-controls';
 
 
@@ -55,6 +55,7 @@ export function MarketsScreen({
       : 'All',
   );
   const [sortMode, setSortMode] = useState<MarketSortMode>('activity');
+  const [stage, setStage] = useState<MarketStageFilter>('all');
 
   const categories = useMemo(
     () => [...new Set(markets.map((market) => market.category).filter((value): value is string => Boolean(value)))].sort(),
@@ -65,6 +66,13 @@ export function MarketsScreen({
     const needle = query.trim().toLowerCase();
     const filtered = markets
       .filter((market) => category === 'All' || market.category === category)
+      .filter((market) => {
+        const lifecycle = getMarketTiming(market, now).stage;
+        if (stage === 'live') return getMarketTiming(market, now).tradingOpen;
+        if (stage === 'result') return ['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING'].includes(lifecycle);
+        if (stage === 'complete') return ['SETTLED', 'VOIDED'].includes(lifecycle);
+        return true;
+      })
       .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status].some((value) => String(value ?? '').toLowerCase().includes(needle)));
 
     return [...filtered].sort((a, b) => {
@@ -81,7 +89,7 @@ export function MarketsScreen({
       }
       return Number(Boolean(b.last_trade_at)) - Number(Boolean(a.last_trade_at)) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
-  }, [markets, category, query, sortMode, now]);
+  }, [markets, category, query, sortMode, stage, now]);
 
   const live = markets.filter((market) => getMarketTiming(market, now).tradingOpen).length;
   const results = markets.filter((market) => ['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING'].includes(getMarketTiming(market, now).stage)).length;
@@ -92,7 +100,7 @@ export function MarketsScreen({
     items: orderedMarkets,
     initialCount: pageSize,
     step: pageSize,
-    resetKey: `${query.trim().toLowerCase()}|${category}|${sortMode}|${columns}`,
+    resetKey: `${query.trim().toLowerCase()}|${category}|${sortMode}|${stage}|${columns}`,
   });
 
   return (
@@ -127,6 +135,8 @@ export function MarketsScreen({
           categories={categories}
           activeCategory={category}
           onCategoryChange={setCategory}
+          stage={stage}
+          onStageChange={setStage}
           sortMode={sortMode}
           onSortModeChange={setSortMode}
           resultCount={orderedMarkets.length}
@@ -191,6 +201,7 @@ export function MarketsScreen({
               setQuery('');
               setCategory('All');
               setSortMode('activity');
+              setStage('all');
             }}
           />
         )}
