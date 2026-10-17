@@ -68,7 +68,7 @@ export function MarketCard({
             variant="bodyStrong"
             numberOfLines={2}
             ellipsizeMode="tail"
-            style={{ fontSize: 12, lineHeight: 15, letterSpacing: -0.12, fontWeight: '650' }}
+            style={{ fontSize: 12, lineHeight: 15, letterSpacing: -0.12, fontWeight: '600' }}
           >
             {market.title}
           </VadText>
