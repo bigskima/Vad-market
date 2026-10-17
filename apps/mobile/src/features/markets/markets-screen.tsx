@@ -103,10 +103,6 @@ export function MarketsScreen({
               {markets.length} {markets.length === 1 ? 'market' : 'markets'} across the catalogue
             </VadText>
           </View>
-          <View style={{ alignItems: 'flex-end', paddingBottom: 3 }}>
-            <VadText variant="heading">{live}</VadText>
-            <VadText variant="caption" tone="tertiary">live now</VadText>
-          </View>
         </View>
       </View>
 
