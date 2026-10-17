@@ -81,8 +81,15 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       }
       applyPolicy(row, ngnLocationAllowed);
     } catch {
-      // Keep the app usable if the network is temporarily unavailable. Never
-      // allow a cached NGN preference to leak into a known non-Nigerian session.
+      // A stale verification must never keep NGN visible after a policy/network failure.
+      setEnabledState((current) => current.filter((code) => code !== 'NGN'));
+      try {
+        const cached = globalThis.localStorage?.getItem(STORAGE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached) as unknown;
+          globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(asCurrencies(parsed).filter((code) => code !== 'NGN')));
+        }
+      } catch { /* storage is only a display cache */ }
     } finally {
       setLoading(false);
     }
@@ -94,12 +101,14 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
     const initialRefresh = setTimeout(() => {
       void refresh();
     }, 0);
+    const refreshInterval = setInterval(() => void refresh(), 60_000);
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
       // Defer Supabase reads until after its auth-state callback releases its lock.
       setTimeout(() => void refresh(), 0);
     });
     return () => {
       clearTimeout(initialRefresh);
+      clearInterval(refreshInterval);
       listener.subscription.unsubscribe();
     };
   }, [refresh]);
