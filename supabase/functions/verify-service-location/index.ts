@@ -10,8 +10,14 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: corsHeaders });
 
 type IpInfo = {
-  country?: string;
-  privacy?: { vpn?: boolean; proxy?: boolean; tor?: boolean; hosting?: boolean; relay?: boolean };
+  country_code?: string;
+  privacy?: {
+    is_vpn?: boolean;
+    is_proxy?: boolean;
+    is_tor?: boolean;
+    is_hosting?: boolean;
+    is_icloud_relay?: boolean;
+  };
 };
 
 Deno.serve(async (req) => {
@@ -21,15 +27,11 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
-  const ipInfoToken = Deno.env.get('IPINFO_TOKEN');
   const authorization = req.headers.get('Authorization') ?? '';
   const token = authorization.replace(/^Bearer\s+/i, '');
 
   if (!supabaseUrl || !serviceKey || !anonKey || !token) {
     return json({ error: 'Authentication required', code: 'AUTH_REQUIRED' }, 401);
-  }
-  if (!ipInfoToken) {
-    return json({ error: 'Location risk verification is not configured', code: 'LOCATION_PROVIDER_NOT_CONFIGURED' }, 503);
   }
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
@@ -58,31 +60,30 @@ Deno.serve(async (req) => {
   if (!ip) return json({ error: 'Unable to verify network location', code: 'CLIENT_IP_UNAVAILABLE' }, 503);
 
   try {
-    const [geoResponse, ipResponse, privacyResponse] = await Promise.all([
+    const [geoResponse, ipResponse] = await Promise.all([
       fetch(
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=3&addressdetails=1`,
         { headers: { 'User-Agent': 'VADMarket/1.0 location-jurisdiction-check' } },
       ),
-      fetch(`https://ipinfo.io/${encodeURIComponent(ip)}/json?token=${encodeURIComponent(ipInfoToken)}`),
-      fetch(`https://ipinfo.io/${encodeURIComponent(ip)}/privacy?token=${encodeURIComponent(ipInfoToken)}`),
+      fetch(`https://iplocate.io/api/lookup/${encodeURIComponent(ip)}?include=country_code,privacy.is_vpn,privacy.is_proxy,privacy.is_tor,privacy.is_hosting,privacy.is_icloud_relay`),
     ]);
 
-    if (!geoResponse.ok || !ipResponse.ok || !privacyResponse.ok) {
+    if (!geoResponse.ok || !ipResponse.ok) {
       return json({ error: 'Location verification provider unavailable', code: 'LOCATION_PROVIDER_ERROR' }, 503);
     }
     const geo = await geoResponse.json();
     const ipInfo = await ipResponse.json() as IpInfo;
-    const privacy = await privacyResponse.json() as IpInfo['privacy'];
+    const privacy = ipInfo.privacy;
     const deviceCountry = String(geo?.address?.country_code || '').toUpperCase();
-    const ipCountry = String(ipInfo.country || '').toUpperCase();
+    const ipCountry = String(ipInfo.country_code || '').toUpperCase();
     if (!deviceCountry || !ipCountry) {
       return json({ error: 'Unable to establish current country', code: 'COUNTRY_UNRESOLVED' }, 503);
     }
 
-    const vpn = privacy?.vpn === true || privacy?.relay === true;
-    const proxy = privacy?.proxy === true;
-    const tor = privacy?.tor === true;
-    const hosting = privacy?.hosting === true;
+    const vpn = privacy?.is_vpn === true || privacy?.is_icloud_relay === true;
+    const proxy = privacy?.is_proxy === true;
+    const tor = privacy?.is_tor === true;
+    const hosting = privacy?.is_hosting === true;
     const riskDetected = vpn || proxy || tor || hosting;
     const { data: account } = await admin
       .from('user_accounts')
