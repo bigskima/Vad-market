@@ -27,7 +27,7 @@ const tabs = [
   { value: 'Overview', label: 'Overview' },
   { value: 'Trade', label: 'Trade' },
   { value: 'Activity', label: 'Activity' },
-  { value: 'Discussion', label: 'Discuss' },
+  { value: 'Discussion', label: 'Chat' },
   { value: 'Rules', label: 'Rules' },
 ] as const;
 
@@ -52,7 +52,6 @@ export function MarketDetailScreen({
   onOpenMarket: (market: MarketCatalogItem) => void;
   onRefreshMarket?: () => Promise<void>;
 }) {
-  const theme = useVadTheme();
   const density = useProductDensity();
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
@@ -83,10 +82,8 @@ export function MarketDetailScreen({
     : timing.stage === 'SCHEDULED'
       ? 'MARKET_NOT_OPEN'
       : 'MARKET_CLOSED';
-  const poolMarket = isPoolMarket(market);
-
   return (
-    <View style={{ gap: density.compact ? 9 : density.sectionGap }}>
+    <View style={{ gap: density.compact ? 8 : density.sectionGap }}>
       <MarketDetailHeader market={market} />
 
       <View style={{ gap: 4 }}>
