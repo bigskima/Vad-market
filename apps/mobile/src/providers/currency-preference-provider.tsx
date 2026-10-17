@@ -31,8 +31,8 @@ function asCurrencies(value: unknown): VADCurrency[] {
 }
 
 export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
-  const [enabledCurrencies, setEnabledState] = useState<VADCurrency[]>(['USDC']);
-  const [eligibleCurrencies, setEligibleState] = useState<VADCurrency[]>(['USDC']);
+  const [enabledCurrencies, setEnabledState] = useState<VADCurrency[]>([]);
+  const [eligibleCurrencies, setEligibleState] = useState<VADCurrency[]>([]);
   const [countryCode, setCountryCode] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -44,9 +44,9 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
     const safeEnabled = policy.country_code === 'NG' ? enabled : enabled.filter((code) => code !== 'NGN');
     setCountryCode(policy.country_code);
     setEligibleState(safeEligible);
-    setEnabledState(safeEnabled.length ? safeEnabled : safeEligible);
+    setEnabledState(safeEnabled);
     try {
-      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(safeEnabled.length ? safeEnabled : safeEligible));
+      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(safeEnabled));
     } catch {
       // Supabase remains the source of truth when local storage is unavailable.
     }
@@ -62,8 +62,8 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       if (!authData.user) {
         // Do not trust a prior account's cached preference on a signed-out screen.
         setCountryCode('');
-        setEligibleState(['USDC']);
-        setEnabledState(['USDC']);
+        setEligibleState([]);
+        setEnabledState([]);
         return;
       }
       const { data, error } = await supabase.rpc('get_my_currency_policy');
