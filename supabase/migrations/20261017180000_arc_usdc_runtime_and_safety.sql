@@ -123,11 +123,12 @@ begin
     on c.id = jc.chain_id and c.status = 'ACTIVE'
   join blockchain.asset_representations ar
     on ar.chain_id = c.id and ar.asset_id = a.id and ar.status = 'ACTIVE'
-  left join blockchain.contract_deployments cd
+  join blockchain.contract_deployments cd
     on cd.chain_id = c.id
    and cd.protocol_key = 'VAD_SETTLEMENT_V1'
    and cd.protocol_version = 1
    and cd.status = 'ACTIVE'
+   and nullif(btrim(cd.contract_address), '') is not null
   where j.country_code = v_account.country_code
     and j.status = 'ACTIVE'
     and a.code = 'USDC'
