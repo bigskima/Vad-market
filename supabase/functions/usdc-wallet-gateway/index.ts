@@ -152,7 +152,8 @@ Deno.serve(async (req) => {
             };
           }
         }));
-        return { ...base, balances, readStatus: 'OK' as const };
+        const allReadsFailed = balances.every((balance) => balance.balance === null);
+        return { ...base, balances, readStatus: allReadsFailed ? 'RPC_UNAVAILABLE' as const : 'OK' as const };
       } catch {
         return { ...base, balances: [], readStatus: 'RPC_UNAVAILABLE' as const };
       }
