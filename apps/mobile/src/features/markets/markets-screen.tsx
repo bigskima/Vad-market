@@ -1,12 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
-import { VadButton } from '@/components/ui/vad-button';
-import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
-import { VadIcon } from '@/components/ui/vad-icon';
-import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useLiveNow } from '@/hooks/use-live-now';
@@ -70,9 +66,6 @@ export function MarketsScreen({
     });
   }, [markets, category, query, sortMode, now]);
 
-  const live = markets.filter((market) => getMarketTiming(market, now).tradingOpen).length;
-  const results = markets.filter((market) => ['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING'].includes(getMarketTiming(market, now).stage)).length;
-  const complete = markets.filter((market) => ['SETTLED', 'VOIDED'].includes(getMarketTiming(market, now).stage)).length;
   const cardWidth = columns === 2 ? '48.9%' : '100%';
   const pageSize = columns === 2 ? 8 : 5;
   const progressive = useProgressiveList({
