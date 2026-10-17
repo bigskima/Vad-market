@@ -38,5 +38,6 @@ jobs:
               body: `### VAD CI lint report\n\n\`\`\`text\n${output}\n\`\`\``
             });
       - run: npm test --if-present
+      - run: npm run build:web
       - if: steps.lint.outcome == 'failure'
         run: exit 1
