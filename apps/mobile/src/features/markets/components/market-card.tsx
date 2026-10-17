@@ -154,8 +154,10 @@ function PriceTile({
   compact: boolean;
 }) {
   const theme = useVadTheme();
-  const foreground = positive ? theme.colors.yes : theme.colors.no;
-  const background = positive ? theme.colors.yesSoft : theme.colors.noSoft;
+  // The catalogue reference uses blue for YES and red for NO; reserve green for
+  // positive account/settlement states so outcome colours stay visually distinct.
+  const foreground = positive ? theme.colors.info : theme.colors.no;
+  const background = positive ? theme.colors.infoSoft : theme.colors.noSoft;
   return (
     <View
       style={{
@@ -171,7 +173,7 @@ function PriceTile({
         paddingVertical: 4,
         backgroundColor: background,
         borderWidth: 1,
-        borderColor: positive ? theme.colors.yes : theme.colors.no,
+        borderColor: positive ? theme.colors.info : theme.colors.no,
       }}
     >
       <VadText variant="caption" style={{ color: foreground, fontSize: 11, lineHeight: 14, fontWeight: '700' }}>{label}</VadText>
