@@ -19,6 +19,7 @@ const ranges: { value: RangeKey; label: string; ms: number | null }[] = [
 
 export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instrumentId: string; liquidityMode?: string | null }) {
   const theme = useVadTheme();
+  const poolMode = String(liquidityMode ?? '').toUpperCase().includes('POOL');
   const density = useProductDensity();
   const now = useLiveNow();
   const [points, setPoints] = useState<MarketPriceHistoryPoint[]>([]);
@@ -29,7 +30,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
   const [plotWidth, setPlotWidth] = useState(0);
 
   useEffect(() => {
-    if (liquidityMode === 'POOL') return;
+    if (poolMode) return;
     let active = true;
     void Promise.resolve().then(() => {
       if (!active) return;
@@ -45,7 +46,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [instrumentId, liquidityMode]);
+  }, [instrumentId, poolMode]);
 
   const visiblePoints = useMemo(() => {
     const selected = ranges.find((item) => item.value === range);
@@ -91,10 +92,10 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
     <VadCard variant="surface" style={{ gap: density.compact ? 9 : 11, padding: density.compact ? 10 : 13 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <View style={{ flex: 1, gap: 2 }}>
-          <VadText variant="bodyStrong">{liquidityMode === 'POOL' ? 'Stake movement' : 'Price action'}</VadText>
-          <VadText variant="caption" tone="secondary">{liquidityMode === 'POOL' ? 'Peer Pool · historical stake allocation' : 'Executed prices · latest 240 fills'}</VadText>
+          <VadText variant="bodyStrong">{poolMode ? 'Stake movement' : 'Price action'}</VadText>
+          <VadText variant="caption" tone="secondary">{poolMode ? 'Peer Pool · participant allocation' : 'Executed prices · latest 240 fills'}</VadText>
         </View>
-        {liquidityMode !== 'POOL' ? (
+        {!poolMode ? (
           <View style={{ alignItems: 'flex-end', gap: 2 }}>
             <VadText variant="caption" tone="tertiary">LATEST</VadText>
             <VadText variant="bodyStrong" style={{ color: series === 'NO' ? theme.colors.no : theme.colors.yes }}>
@@ -108,7 +109,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
         ) : null}
       </View>
 
-      {liquidityMode !== 'POOL' ? <View style={{ flexDirection: 'row', gap: 5, flexWrap: 'wrap' }}>
+      {!poolMode && points.length > 0 && !loading && !failed ? <View style={{ flexDirection: 'row', gap: 5, flexWrap: 'wrap' }}>
         {(['YES', 'NO', 'BOTH'] as SeriesKey[]).map((item) => {
           const active = series === item;
           const tint = item === 'NO' ? theme.colors.no : theme.colors.yes;
@@ -131,15 +132,13 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
         })}
       </View> : null}
 
-      {liquidityMode === 'POOL' ? (
-        <View style={{ minHeight: chartHeight, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', padding: 14, gap: 4 }}>
-          <VadText variant="bodyStrong">Historical stake data unavailable</VadText>
-          <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>Peer Pool markets track participant stakes rather than executed YES/NO prices. The current split is shown below; historical snapshots are not available yet.</VadText>
+      {poolMode ? (
+        <View style={{ borderRadius: 9, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 9, paddingVertical: 8 }}>
+          <VadText variant="caption" tone="secondary">Historical stake snapshots are not available yet. The current participant split is shown above.</VadText>
         </View>
       ) : failed ? (
-        <View style={{ height: chartHeight, alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-          <VadText variant="bodyStrong">Price history unavailable</VadText>
-          <VadText variant="caption" tone="secondary">Try again when market data is available.</VadText>
+        <View style={{ borderRadius: 9, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 9, paddingVertical: 8 }}>
+          <VadText variant="caption" tone="secondary">Price history unavailable right now.</VadText>
         </View>
       ) : loading ? (
         <View style={{ height: chartHeight, justifyContent: 'center', gap: 8 }}>
@@ -149,9 +148,8 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
           <VadText variant="caption" tone="tertiary">Loading executed prices…</VadText>
         </View>
       ) : visiblePoints.length === 0 || (series === 'YES' && yesValues.length === 0) || (series === 'NO' && noValues.length === 0) || (series === 'BOTH' && yesValues.length === 0 && noValues.length === 0) ? (
-        <View style={{ minHeight: chartHeight, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', padding: 14, gap: 4 }}>
-          <VadText variant="bodyStrong">{points.length === 0 ? 'No executed prices yet' : 'No trades in this range'}</VadText>
-          <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>{points.length === 0 ? 'The chart appears after real trades execute. Current bids and market prices remain available above.' : 'Choose a wider range to see earlier executions.'}</VadText>
+        <View style={{ borderRadius: 9, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 9, paddingVertical: 8 }}>
+          <VadText variant="caption" tone="secondary">{points.length === 0 ? 'No executed prices yet. Price history appears after real trades execute.' : 'No trades in this range. Choose a wider range.'}</VadText>
         </View>
       ) : (
         <View onLayout={(event) => setPlotWidth(event.nativeEvent.layout.width)} style={{ gap: 4 }}>
@@ -176,7 +174,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
         </View>
       )}
 
-      {liquidityMode !== 'POOL' ? <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+      {!poolMode && points.length > 0 && !loading && !failed ? <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
           <LegendDot color={theme.colors.yes} label="YES price" />
           <LegendDot color={theme.colors.no} label="NO price" />
