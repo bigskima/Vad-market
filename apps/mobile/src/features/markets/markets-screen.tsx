@@ -108,10 +108,9 @@ export function MarketsScreen({
       <View style={{ gap: 4, paddingBottom: theme.spacing.xs }}>
         <VadText variant="caption" tone="brand">VAD EXCHANGE</VadText>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-          <VadText variant="title">{category === 'All' ? 'Discover' : category}</VadText>
+          <VadText variant="title">{category === 'All' ? 'Markets' : category}</VadText>
           <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
         </View>
-        <VadText variant="caption" tone="secondary">Trade what you think happens next.</VadText>
       </View>
 
       <TourTarget id="markets-discovery">
