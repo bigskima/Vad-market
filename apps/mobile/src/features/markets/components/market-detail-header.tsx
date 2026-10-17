@@ -54,7 +54,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         </VadCard>
       ) : null}
 
-      <VadCard accessibilityRole="summary" variant="surface" style={{ gap: 8, padding: 10 }}>
+      <VadCard accessibilityRole="summary" variant="surface" style={{ gap: 7, padding: density.compact ? 9 : 11 }}>
         <View style={{ flexDirection: 'row', gap: 7 }}>
           <SignalTile label="YES" value={yes} positive available={market.yes_price != null} />
           <SignalTile label="NO" value={no} positive={false} available={market.no_price != null} />
@@ -105,9 +105,9 @@ function SignalTile({ label, value, positive, available }: { label: string; valu
   const theme = useVadTheme();
   const density = useProductDensity();
   return (
-    <View style={{ flex: 1, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: available ? (positive ? theme.colors.yesSoft : theme.colors.noSoft) : theme.colors.surfaceMuted, paddingHorizontal: 8, paddingVertical: 6, gap: 2 }}>
+    <View style={{ flex: 1, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: available ? (positive ? theme.colors.yesSoft : theme.colors.noSoft) : theme.colors.surfaceMuted, paddingHorizontal: 7, paddingVertical: 5, gap: 2 }}>
       <VadText variant="caption" tone={available ? (positive ? 'yes' : 'no') : 'tertiary'}>{label}</VadText>
-      <VadText variant={density.compact ? 'bodyStrong' : 'heading'} tone={available ? (positive ? 'yes' : 'no') : 'tertiary'} numberOfLines={1} style={{ fontSize: density.compact ? 16 : 18, lineHeight: density.compact ? 19 : 22 }}>{value}</VadText>
+      <VadText variant={density.compact ? 'bodyStrong' : 'heading'} tone={available ? (positive ? 'yes' : 'no') : 'tertiary'} numberOfLines={1} style={{ fontSize: density.compact ? 14 : 16, lineHeight: density.compact ? 17 : 19 }}>{value}</VadText>
     </View>
   );
 }
@@ -115,7 +115,7 @@ function SignalTile({ label, value, positive, available }: { label: string; valu
 function MetaChip({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ minHeight: 32, flexGrow: 1, flexBasis: 112, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 7, paddingVertical: 4, gap: 1 }}>
+    <View style={{ minHeight: 28, flexGrow: 1, flexBasis: 96, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 7, paddingVertical: 3, gap: 1 }}>
       <VadText variant="caption" tone="tertiary">{label}</VadText>
       <VadText variant="caption" numberOfLines={2}>{value}</VadText>
     </View>
