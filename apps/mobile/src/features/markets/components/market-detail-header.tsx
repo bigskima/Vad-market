@@ -41,7 +41,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <VadText variant={density.compact ? 'heading' : 'title'} style={{ fontSize: density.compact ? 18 : 22, lineHeight: density.compact ? 24 : 29, letterSpacing: -0.35 }}>{market.title}</VadText>
       </View>
 
-      <MarketPriceHistoryPanel instrumentId={market.instrument_public_id} />
+      <MarketPriceHistoryPanel instrumentId={market.instrument_public_id} liquidityMode={market.liquidity_mode} />
 
       {timing.resolutionOutcome ? (
         <VadCard variant="brand" accessibilityRole="summary" style={{ gap: theme.spacing.sm, paddingVertical: theme.spacing.md }}>
