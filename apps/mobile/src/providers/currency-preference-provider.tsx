@@ -80,12 +80,19 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
   }, [applyPolicy]);
 
   useEffect(() => {
-    void Promise.resolve().then(() => refresh());
+    // Start the initial refresh after the effect has returned. This also keeps
+    // React's set-state-in-effect lint rule happy while policy state is loaded.
+    const initialRefresh = setTimeout(() => {
+      void refresh();
+    }, 0);
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
       // Defer Supabase reads until after its auth-state callback releases its lock.
       setTimeout(() => void refresh(), 0);
     });
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      clearTimeout(initialRefresh);
+      listener.subscription.unsubscribe();
+    };
   }, [refresh]);
 
   const setEnabledCurrencies = useCallback((currencies: VADCurrency[]) => {
