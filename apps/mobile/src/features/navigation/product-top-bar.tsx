@@ -50,22 +50,22 @@ export function ProductTopBar({
       <View
         style={{
           paddingTop: insets.top,
-          paddingBottom: theme.spacing.sm,
+          paddingBottom: 6,
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
           backgroundColor: theme.colors.surface,
-          gap: theme.spacing.sm,
+          gap: 6,
           zIndex: 20,
         }}
       >
         <View style={{
-          minHeight: 40,
+          minHeight: 34,
           paddingHorizontal: density.horizontalPadding,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 7,
         }}>
-          <VadLogo size={32} />
+          <VadLogo size={28} />
           {density.width >= 340 ? (
             <View style={{ gap: 0, minWidth: 42 }}>
               <VadText variant="label">VAD</VadText>
@@ -104,9 +104,9 @@ export function ProductTopBar({
             accessibilityLabel="Open account"
             onPress={onAccount}
             style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: 11,
+              width: 32,
+              height: 32,
+              borderRadius: 9,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1,
@@ -129,19 +129,19 @@ export function ProductTopBar({
             style={({ pressed }) => ({
               flex: 1,
               minWidth: 0,
-              minHeight: 38,
+              minHeight: 32,
               flexDirection: 'row',
               alignItems: 'center',
               gap: 7,
-              paddingHorizontal: 11,
-              borderRadius: 12,
+              paddingHorizontal: 9,
+              borderRadius: 9,
               borderWidth: 1,
               borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
               backgroundColor: theme.colors.background,
               opacity: pressed ? 0.8 : 1,
             })}
           >
-            <VadIcon name="search" size={17} tone="brand" />
+            <VadIcon name="search" size={15} tone="brand" />
             <VadText variant="body" tone="tertiary" numberOfLines={1} style={{ flex: 1 }}>
               Search markets, events or assets…
             </VadText>
@@ -301,12 +301,12 @@ function WalletAction({ onPress }: { onPress: () => void }) {
       accessibilityLabel="Open wallet"
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 34,
+        minHeight: 29,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 5,
-        paddingHorizontal: 9,
+        gap: 4,
+        paddingHorizontal: 7,
         borderRadius: 11,
         borderWidth: 1,
         borderColor: theme.colors.border,
@@ -314,7 +314,7 @@ function WalletAction({ onPress }: { onPress: () => void }) {
         opacity: pressed ? 0.78 : 1,
       })}
     >
-      <VadIcon name="wallet" size={19} tone="brand" />
+      <VadIcon name="wallet" size={16} tone="brand" />
       <VadText variant="label" tone="primary">Wallet</VadText>
     </Pressable>
   );
@@ -328,9 +328,9 @@ function CompactCreateAction({ onPress }: { onPress: () => void }) {
       accessibilityLabel="Create market"
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: theme.colors.brandPrimary,
@@ -340,7 +340,7 @@ function CompactCreateAction({ onPress }: { onPress: () => void }) {
         transform: [{ scale: pressed ? 0.96 : 1 }],
       })}
     >
-      <VadIcon name="plus" size={19} tone="inverse" />
+      <VadIcon name="plus" size={16} tone="inverse" />
     </Pressable>
   );
 }
@@ -363,7 +363,7 @@ function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'a
         borderColor: theme.colors.border,
       })}
     >
-      <VadIcon name={icon} size={19} tone={icon === 'activity' || icon === 'operations' ? 'brand' : 'secondary'} />
+      <VadIcon name={icon} size={16} tone={icon === 'activity' || icon === 'operations' ? 'brand' : 'secondary'} />
     </Pressable>
   );
 }
@@ -376,7 +376,7 @@ function HeaderAction({ label, icon, brand = false, onPress }: { label: string; 
       accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 36,
+        minHeight: 31,
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing.xs,
@@ -388,7 +388,7 @@ function HeaderAction({ label, icon, brand = false, onPress }: { label: string; 
         opacity: pressed ? 0.75 : 1,
       })}
     >
-      <VadIcon name={icon} size={17} tone={brand ? 'inverse' : 'secondary'} />
+      <VadIcon name={icon} size={15} tone={brand ? 'inverse' : 'secondary'} />
       <VadText variant="label" tone={brand ? 'inverse' : 'primary'}>{label}</VadText>
     </Pressable>
   );
