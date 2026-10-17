@@ -16,6 +16,7 @@ import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import { cancelOrder } from '@/services/market-api';
 
 export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string; onCancelled?: () => void }) {
@@ -24,6 +25,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   const now = useLiveNow();
   const wide = density.width >= 840;
   const data = useProductDataContext();
+  const currencyPreference = useCurrencyPreference();
   const [cancelling, setCancelling] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
