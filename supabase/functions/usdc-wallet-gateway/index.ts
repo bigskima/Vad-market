@@ -15,11 +15,9 @@ const corsHeaders = {
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: corsHeaders });
-const erc20Abi = parseAbi([
-  'function balanceOf(address owner) view returns (uint256)',
-]);
+const erc20Abi = parseAbi(['function balanceOf(address owner) view returns (uint256)']);
 
-type ChainRow = {
+type NetworkConfig = {
   id: number;
   code: string;
   name: string;
@@ -28,9 +26,10 @@ type ChainRow = {
   explorer_url: string | null;
   status: string;
   metadata: Record<string, unknown> | null;
-};
-type WalletRow = {
-  wallet_address: string;
+  token_address: string | null;
+  token_decimals: number | null;
+  representation_status: string | null;
+  settlement_ready: boolean;
 };
 
 Deno.serve(async (req) => {
@@ -56,103 +55,106 @@ Deno.serve(async (req) => {
   if (body.action !== 'balances') return json({ error: 'UNSUPPORTED_ACTION' }, 400);
 
   try {
-    const [{ data: wallets, error: walletError }, { data: chains, error: chainError }, { data: asset, error: assetError }] = await Promise.all([
-      admin.schema('blockchain').from('wallet_connections')
-        .select('wallet_address')
-        .eq('user_id', authData.user.id)
-        .eq('chain_family', 'EVM')
-        .eq('status', 'VERIFIED')
-        .limit(10),
-      admin.schema('blockchain').from('chains')
-        .select('id,code,name,evm_chain_id,native_symbol,explorer_url,status,metadata')
-        .in('code', ['ARC', 'POLYGON']),
-      admin.from('assets').select('id').eq('code', 'USDC').maybeSingle(),
-    ]);
-    if (walletError || chainError || assetError || !asset?.id) {
+    const { data, error } = await admin.rpc('internal_usdc_wallet_balance_config', {
+      p_user_id: authData.user.id,
+    });
+    if (error || !data || typeof data !== 'object') {
       return json({ error: 'USDC_NETWORK_CONFIGURATION_UNAVAILABLE' }, 503);
     }
 
-    const uniqueWallets = [...new Set(((wallets ?? []) as WalletRow[])
-      .map((row) => String(row.wallet_address ?? '').trim())
+    const config = data as { wallets?: unknown; networks?: unknown };
+    const wallets = [...new Set((Array.isArray(config.wallets) ? config.wallets : [])
+      .map((value) => String(value ?? '').trim())
       .filter((address) => /^0x[0-9a-fA-F]{40}$/.test(address)))].slice(0, 10);
-    if (!uniqueWallets.length) return json({ ok: true, wallets: [], networks: [] });
+    const networks = (Array.isArray(config.networks) ? config.networks : []) as NetworkConfig[];
+    if (!wallets.length) return json({ ok: true, wallets: [], networks: [] });
 
-    const { data: representations, error: representationError } = await admin.schema('blockchain')
-      .from('asset_representations')
-      .select('chain_id,asset_id,token_address,decimals,status')
-      .eq('asset_id', asset.id)
-      .in('chain_id', ((chains ?? []) as ChainRow[]).map((chain) => chain.id));
-    const { data: deployments, error: deploymentError } = await admin.schema('blockchain')
-      .from('contract_deployments')
-      .select('chain_id,status,protocol_key,protocol_version')
-      .eq('protocol_key', 'VAD_SETTLEMENT_V1')
-      .eq('protocol_version', 1)
-      .in('chain_id', ((chains ?? []) as ChainRow[]).map((chain) => chain.id));
-    if (representationError || deploymentError) return json({ error: 'USDC_NETWORK_CONFIGURATION_UNAVAILABLE' }, 503);
-
-    const networks = await Promise.all(((chains ?? []) as ChainRow[]).map(async (chain) => {
-      const metadata = chain.metadata ?? {};
+    const results = await Promise.all(networks.map(async (network) => {
+      const metadata = network.metadata ?? {};
       const rpcUrl = typeof metadata.rpc_url === 'string' ? metadata.rpc_url : '';
-      const representation = (representations ?? []).find((row: any) => row.chain_id === chain.id);
-      const hasDeployment = (deployments ?? []).some((row: any) =>
-        row.chain_id === chain.id && row.status === 'ACTIVE');
-      const ready = chain.status === 'ACTIVE' && representation?.status === 'ACTIVE' && hasDeployment;
+      const tokenAddress = String(network.token_address ?? '');
+      const tokenDecimals = Number(network.token_decimals ?? 6);
       const base = {
-        chainCode: chain.code,
-        chainName: chain.name,
-        chainId: Number(chain.evm_chain_id),
-        nativeSymbol: chain.native_symbol,
-        explorerUrl: chain.explorer_url,
-        tradingReady: ready,
-        tokenAddress: typeof representation?.token_address === 'string' ? representation.token_address : null,
+        chainCode: network.code,
+        chainName: network.name,
+        chainId: Number(network.evm_chain_id),
+        nativeSymbol: network.native_symbol,
+        explorerUrl: network.explorer_url,
+        tradingReady: network.status === 'ACTIVE'
+          && network.representation_status === 'ACTIVE'
+          && network.settlement_ready,
+        tokenAddress: /^0x[0-9a-fA-F]{40}$/.test(tokenAddress) ? tokenAddress : null,
       };
-      if (!rpcUrl.startsWith('https://') || !/^0x[0-9a-fA-F]{40}$/.test(String(representation?.token_address ?? ''))) {
+
+      if (
+        !rpcUrl.startsWith('https://') ||
+        !Number.isSafeInteger(Number(network.evm_chain_id)) ||
+        !/^0x[0-9a-fA-F]{40}$/.test(tokenAddress) ||
+        !Number.isInteger(tokenDecimals) || tokenDecimals < 0 || tokenDecimals > 18
+      ) {
         return { ...base, balances: [], readStatus: 'NOT_CONFIGURED' as const };
       }
 
-      const clientChain = defineChain({
-        id: Number(chain.evm_chain_id),
-        name: chain.name,
-        nativeCurrency: {
-          name: chain.code === 'ARC' ? 'USDC' : chain.native_symbol,
-          symbol: chain.native_symbol,
-          decimals: Number(metadata.native_gas_decimals ?? 18),
-        },
-        rpcUrls: { default: { http: [rpcUrl] } },
-        blockExplorers: chain.explorer_url
-          ? { default: { name: chain.name + ' Explorer', url: chain.explorer_url } }
-          : undefined,
-      });
-      const client = createPublicClient({ chain: clientChain, transport: http(rpcUrl, { timeout: 8000, retryCount: 1 }) });
-      const balances = await Promise.all(uniqueWallets.map(async (walletAddress) => {
-        try {
-          const [tokenBalance, nativeBalance] = await Promise.all([
-            client.readContract({
-              address: representation.token_address as `0x${string}`,
-              abi: erc20Abi,
-              functionName: 'balanceOf',
-              args: [walletAddress as `0x${string}`],
-            }),
-            client.getBalance({ address: walletAddress as `0x${string}` }),
-          ]);
-          const decimals = Number(representation.decimals ?? 6);
-          const nativeDecimals = Number(metadata.native_gas_decimals ?? 18);
-          return {
-            walletAddress,
-            balance: formatUnits(tokenBalance, decimals),
-            tokenDecimals: decimals,
-            gasReady: nativeBalance > 0n,
-            gasBalance: chain.code === 'ARC' ? null : formatUnits(nativeBalance, nativeDecimals),
-            gasSymbol: chain.code === 'ARC' ? 'USDC' : chain.native_symbol,
-          };
-        } catch {
-          return { walletAddress, balance: null, tokenDecimals: Number(representation.decimals ?? 6), gasReady: false, gasBalance: null, gasSymbol: chain.native_symbol, readError: 'RPC_UNAVAILABLE' };
-        }
-      }));
-      return { ...base, balances, readStatus: 'OK' as const };
+      try {
+        const nativeDecimals = Number(metadata.native_gas_decimals ?? 18);
+        const clientChain = defineChain({
+          id: Number(network.evm_chain_id),
+          name: network.name,
+          nativeCurrency: {
+            name: network.code === 'ARC' ? 'USDC' : network.native_symbol,
+            symbol: network.native_symbol,
+            decimals: nativeDecimals,
+          },
+          rpcUrls: { default: { http: [rpcUrl] } },
+          blockExplorers: network.explorer_url
+            ? { default: { name: network.name + ' Explorer', url: network.explorer_url } }
+            : undefined,
+        });
+        const client = createPublicClient({
+          chain: clientChain,
+          transport: http(rpcUrl, { timeout: 8000, retryCount: 1 }),
+        });
+
+        const balances = await Promise.all(wallets.map(async (walletAddress) => {
+          try {
+            const [tokenBalance, nativeBalance] = await Promise.all([
+              client.readContract({
+                address: tokenAddress as `0x${string}`,
+                abi: erc20Abi,
+                functionName: 'balanceOf',
+                args: [walletAddress as `0x${string}`],
+              }),
+              client.getBalance({ address: walletAddress as `0x${string}` }),
+            ]);
+            return {
+              walletAddress,
+              balance: formatUnits(tokenBalance, tokenDecimals),
+              tokenDecimals,
+              gasReady: nativeBalance > 0n,
+              // Arc exposes the same USDC asset as native gas and an ERC-20 interface.
+              // Do not add those two representations or display them as separate balances.
+              gasBalance: network.code === 'ARC' ? null : formatUnits(nativeBalance, nativeDecimals),
+              gasSymbol: network.code === 'ARC' ? 'USDC' : network.native_symbol,
+            };
+          } catch {
+            return {
+              walletAddress,
+              balance: null,
+              tokenDecimals,
+              gasReady: false,
+              gasBalance: null,
+              gasSymbol: network.native_symbol,
+              readError: 'RPC_UNAVAILABLE',
+            };
+          }
+        }));
+        return { ...base, balances, readStatus: 'OK' as const };
+      } catch {
+        return { ...base, balances: [], readStatus: 'RPC_UNAVAILABLE' as const };
+      }
     }));
 
-    return json({ ok: true, wallets: uniqueWallets, networks });
+    return json({ ok: true, wallets, networks: results });
   } catch {
     return json({ error: 'USDC_BALANCE_LOOKUP_FAILED' }, 503);
   }
