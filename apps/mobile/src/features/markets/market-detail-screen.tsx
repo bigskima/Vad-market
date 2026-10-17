@@ -179,9 +179,9 @@ function Overview({
         <VadCard style={{ flex: 1.1, gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="caption" tone="brand">MARKET OVERVIEW</VadText>
-            <VadText variant="heading">'Prices show sentiment, not outcome.'</VadText>
+            <VadText variant="heading">Prices show sentiment, not outcome.</VadText>
             <VadText variant="caption" tone="secondary">
-              'Published rules and evidence determine the final result.'
+              Published rules and evidence determine the final result.
             </VadText>
           </View>
 
