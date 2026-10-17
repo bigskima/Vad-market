@@ -79,7 +79,7 @@ export function HomeScreen({
       ? trendingSettings.enabled ? trendingRail.map((row) => row.market) : []
       : active;
 
-  const sectionGap = density.compact ? 8 : 10;
+  const sectionGap = density.compact ? 12 : 16;
 
   return (
     <View style={{ gap: sectionGap, width: '100%' }}>
@@ -88,7 +88,7 @@ export function HomeScreen({
       </TourTarget>
 
       <TourTarget id="home-categories">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingRight: theme.spacing.sm }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: theme.spacing.sm }}>
           <ThemeChip label="🔥 For you" selected={lens === 'LIVE'} onPress={() => setLens('LIVE')} />
           <ThemeChip label="↗ Trending" selected={lens === 'MOMENTUM'} onPress={() => setLens('MOMENTUM')} />
           <ThemeChip label="VAD Select" selected={lens === 'VAD'} onPress={() => setLens('VAD')} />
@@ -99,7 +99,7 @@ export function HomeScreen({
       </TourTarget>
 
       <TourTarget id="home-featured-markets">
-        <View style={{ gap: 7 }}>
+        <View style={{ gap: 10 }}>
           <VadSectionHeader
             title={lens === 'VAD' ? 'VAD Select' : 'Trending markets'}
             subtitle={lens === 'VAD' ? 'Markets selected by VAD.' : lens === 'MOMENTUM' ? 'Markets gaining activity right now.' : 'The most active markets right now.'}
@@ -112,7 +112,7 @@ export function HomeScreen({
               flexDirection: density.desktop ? 'row' : 'column',
               flexWrap: density.desktop ? 'wrap' : 'nowrap',
               alignItems: 'stretch',
-              gap: 8,
+              gap: 10,
             }}>
               {lensMarkets.slice(0, density.desktop ? 6 : 4).map((market) => (
                 <View key={`${lens}-${market.instrument_public_id}`} style={{ width: density.desktop ? '48.5%' : '100%', minWidth: 0 }}>
@@ -195,12 +195,12 @@ function SignalCard({ market, detail, onPress }: { market: MarketCatalogItem; de
       style={({ pressed }) => ({
         width: density.desktop ? 220 : Math.min(Math.max(density.width * 0.68, 180), 210),
         minHeight: 72,
-        borderRadius: 10,
+        borderRadius: 15,
         borderWidth: 1,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
         backgroundColor: theme.colors.surface,
-        padding: 8,
-        gap: 3,
+        padding: 11,
+        gap: 5,
         opacity: pressed ? 0.8 : 1,
       })}
     >
