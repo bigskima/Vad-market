@@ -105,7 +105,7 @@ export default function AccountScreen() {
               <EssentialAction
                 icon="wallet"
                 title="Funding"
-                body="Deposits, withdrawals and limits."
+                body="Deposits, withdrawals and limits"
                 onPress={() => router.push('/account/funding')}
               />
             </TourTarget>
@@ -122,13 +122,13 @@ export default function AccountScreen() {
             <AccountRow
               icon="account"
               title="Public profile"
-              subtitle="Name, username, photo, banner and bio"
+              subtitle="Name, username and profile photo"
               onPress={() => router.push('/account/profile')}
             />
             <AccountRow
               icon="community"
               title="Rewards & campaigns"
-              subtitle="Invite code, campaigns, challenges and reward history"
+              subtitle="Invites and reward history"
               onPress={() => router.push('/account/growth')}
             />
             <AccountRow
