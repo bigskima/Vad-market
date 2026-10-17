@@ -85,18 +85,7 @@ export function MarketDetailScreen({
     <View style={{ gap: density.sectionGap }}>
       <MarketDetailHeader market={market} />
 
-      <AssistantEntry
-        label="Ask VAD AI"
-        detail={market.liquidity_mode === 'POOL'
-          ? 'Summary, odds, fees and settlement.'
-          : 'Prices, order book, fees and settlement.'}
-        prompt="Explain this market to me clearly. Tell me what the question asks, whether it is Yes/No or another format, whether it uses Peer Pool or Order Book, how I participate, what the current market signal means, how fees and payouts work, how the result is verified, and what happens at settlement. Use this market’s actual current data."
-        marketId={market.instrument_public_id}
-        sourceRoute="/markets"
-        compact={density.compact}
-      />
-
-      <View style={{ gap: theme.spacing.xs }}>
+      <View style={{ gap: 6 }}>
         <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
         
       </View>
@@ -125,6 +114,17 @@ export function MarketDetailScreen({
         <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} marketFilter={market} />
       ) : null}
       {tab === 'Rules' ? <Rules market={market} timing={timing} /> : null}
+
+      <AssistantEntry
+        label="Ask VAD AI"
+        detail={market.liquidity_mode === 'POOL'
+          ? 'Odds, fees and settlement.'
+          : 'Price action, order book and settlement.'}
+        prompt="Explain this market using its current data, published resolution criteria, trading model, prices, fees and settlement rules."
+        marketId={market.instrument_public_id}
+        sourceRoute="/markets"
+        compact={density.compact}
+      />
 
       {density.phone && tab !== 'Trade' ? (
         <View style={{ paddingTop: theme.spacing.xs }}>
