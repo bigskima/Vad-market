@@ -1,6 +1,5 @@
 import { Pressable, View } from 'react-native';
 
-import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useLiveNow } from '@/hooks/use-live-now';
@@ -9,7 +8,6 @@ import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { probability } from '../format';
-import { MarketProbabilityBar } from './market-probability-bar';
 import { MarketThumbnail } from './market-thumbnail';
 
 export function MarketCard({
@@ -29,16 +27,10 @@ export function MarketCard({
   const isOpen = timing.tradingOpen;
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
-  const statusTone =
-    isOpen
-      ? 'yes'
-      : timing.stage === 'SETTLED'
-        ? 'yes'
-        : timing.stage === 'SETTLEMENT_PENDING'
-          ? 'brand'
-          : 'neutral';
   const volume = Number(market.total_volume ?? 0);
+  const participants = Number(market.participant_count ?? 0);
   const hasVolume = Number.isFinite(volume) && volume > 0;
+  const hasParticipants = Number.isFinite(participants) && participants > 0;
 
   return (
     <Pressable
@@ -47,99 +39,90 @@ export function MarketCard({
       accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
       accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
       style={({ pressed }) => ({
-        minHeight: compact ? 112 : density.compact ? 126 : density.phone ? 138 : 148,
+        minHeight: compact ? 176 : density.compact ? 188 : density.phone ? 204 : 214,
+        width: '100%',
         borderWidth: 1,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
-        borderRadius: theme.radius.xl,
+        borderRadius: density.phone ? 20 : 24,
         backgroundColor: theme.colors.surface,
-        padding: compact ? 12 : density.compact ? 13 : 16,
-        gap: compact ? 8 : theme.spacing.sm,
+        padding: tight ? 12 : density.phone ? 14 : 18,
+        gap: tight ? 10 : 12,
         justifyContent: 'space-between',
-        opacity: pressed ? 0.88 : 1,
+        opacity: pressed ? 0.92 : 1,
+        ...theme.shadows.subtle,
       })}
     >
-      <View style={{ gap: compact ? 6 : theme.spacing.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
-            <VadChip label={timing.statusLabel.toUpperCase()} tone={statusTone} />
+      <View style={{ gap: tight ? 9 : 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
+          <MarketThumbnail market={market} size={tight ? 42 : 50} />
+          <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
             <VadText variant="caption" tone="tertiary" numberOfLines={1}>
-              {market.category ?? 'General'}
+              {(market.category ?? 'General').toUpperCase()}  ·  {market.asset_code}
             </VadText>
-            <VadText variant="caption" tone="tertiary">· {market.asset_code}</VadText>
-          </View>
-          <VadText
-            variant="caption"
-            tone={isOpen ? 'yes' : 'tertiary'}
-            numberOfLines={1}
-            style={{ maxWidth: compact ? 76 : 108, textAlign: 'right' }}
-          >
-            {timing.primaryTiming}
-          </VadText>
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <MarketThumbnail market={market} size={tight ? 34 : 42} />
-          <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
-            <VadText variant={tight ? 'bodyStrong' : 'heading'} numberOfLines={2}>
+            <VadText variant="heading" numberOfLines={2} style={{ lineHeight: tight ? 21 : 23 }}>
               {market.title}
             </VadText>
           </View>
+          <View style={{ alignItems: 'flex-end', justifyContent: 'center', gap: 5, maxWidth: density.phone ? 88 : 116 }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              paddingHorizontal: 7,
+              paddingVertical: 4,
+              borderRadius: 999,
+              backgroundColor: isOpen ? theme.colors.yesSoft : theme.colors.surfaceRaised,
+            }}>
+              <View style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: isOpen ? theme.colors.yes : theme.colors.textTertiary,
+              }} />
+              <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={1}>
+                {isOpen ? 'Live' : timing.statusLabel}
+              </VadText>
+            </View>
+            <VadText variant="caption" tone={isOpen ? 'no' : 'tertiary'} numberOfLines={1} style={{ textAlign: 'right' }}>
+              {timing.primaryTiming}
+            </VadText>
+          </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: compact ? 6 : 8 }}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
           <PriceTile label="YES" value={yes} positive compact={tight} />
           <PriceTile label="NO" value={no} positive={false} compact={tight} />
         </View>
-        {!compact && !density.compact ? (
-          <MarketProbabilityBar yes={market.yes_price} no={market.no_price} />
-        ) : null}
       </View>
 
       <View
         style={{
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          paddingTop: 8,
+          paddingTop: tight ? 8 : 10,
           flexDirection: 'row',
-          justifyContent: 'space-between',
-          gap: 8,
           alignItems: 'center',
+          gap: 10,
         }}
       >
-        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {hasVolume ? (
-            <VadText variant="caption" tone="secondary" numberOfLines={1}>
-              Vol. {formatVolume(volume)} {market.asset_code}
-            </VadText>
-          ) : null}
-          <VadText variant="caption" tone="tertiary" numberOfLines={1}>
-            {market.last_trade_at
-              ? relativeTradeLabel(market.last_trade_at, now)
-              : hasVolume
-                ? ''
-                : 'No trades yet'}
+        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+          <VadIcon name="activity" size={15} tone="tertiary" />
+          <VadText variant="caption" tone="secondary" numberOfLines={1}>
+            {hasVolume ? `${formatVolume(volume)} ${market.asset_code}` : 'No volume yet'}
           </VadText>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <VadText variant="caption" tone="brand">{isOpen ? 'Trade' : 'Details'}</VadText>
-          <VadIcon name="chevronRight" size={14} tone="brand" />
+        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+          <VadIcon name="users" size={15} tone="tertiary" />
+          <VadText variant="caption" tone="secondary" numberOfLines={1}>
+            {hasParticipants ? `${participants.toLocaleString()} traders` : 'No traders yet'}
+          </VadText>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <VadIcon name="chevronRight" size={15} tone="brand" />
         </View>
       </View>
     </Pressable>
   );
-}
-
-function relativeTradeLabel(value: string, now: number) {
-  const timestamp = new Date(value).getTime();
-  if (!Number.isFinite(timestamp)) return 'Recently traded';
-  const elapsed = Math.max(0, now - timestamp);
-  const minutes = Math.floor(elapsed / 60_000);
-  if (minutes < 1) return 'Traded just now';
-  if (minutes < 60) return `Traded ${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Traded ${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `Traded ${days}d ago`;
 }
 
 function formatVolume(value: number) {
@@ -161,23 +144,30 @@ function PriceTile({
   compact: boolean;
 }) {
   const theme = useVadTheme();
+  const foreground = positive ? theme.colors.info : theme.colors.no;
+  const background = positive ? theme.colors.infoSoft : theme.colors.noSoft;
   return (
     <View
       style={{
         flex: 1,
         minWidth: 0,
+        minHeight: compact ? 42 : 48,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 6,
-        borderRadius: theme.radius.md,
-        paddingHorizontal: compact ? 7 : 9,
-        paddingVertical: compact ? 5 : 6,
-        backgroundColor: positive ? theme.colors.yesSoft : theme.colors.noSoft,
+        justifyContent: 'center',
+        gap: 7,
+        borderRadius: 9,
+        paddingHorizontal: compact ? 8 : 12,
+        paddingVertical: compact ? 7 : 9,
+        backgroundColor: background,
+        borderWidth: 1,
+        borderColor: positive ? 'rgba(77,163,255,0.12)' : 'rgba(240,91,106,0.12)',
       }}
     >
-      <VadText variant="caption" tone={positive ? 'yes' : 'no'}>{label}</VadText>
-      <VadText variant={compact ? 'bodyStrong' : 'bodyStrong'} tone={positive ? 'yes' : 'no'}>{value}</VadText>
+      <VadText variant="label" style={{ color: foreground }}>{label}</VadText>
+      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 14 : 16 }}>
+        {value}
+      </VadText>
     </View>
   );
 }
