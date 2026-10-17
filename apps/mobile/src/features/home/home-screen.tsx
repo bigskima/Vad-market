@@ -79,7 +79,7 @@ export function HomeScreen({
       ? trendingSettings.enabled ? trendingRail.map((row) => row.market) : []
       : active;
 
-  const sectionGap = density.compact ? theme.spacing.sm : theme.spacing.md;
+  const sectionGap = density.compact ? 7 : 9;
 
   return (
     <View style={{ gap: sectionGap, width: '100%' }}>
@@ -99,7 +99,7 @@ export function HomeScreen({
       </TourTarget>
 
       <TourTarget id="home-featured-markets">
-        <View style={{ gap: theme.spacing.sm }}>
+        <View style={{ gap: 7 }}>
           <VadSectionHeader
             title={lens === 'VAD' ? 'VAD Select' : 'Trending markets'}
             subtitle={lens === 'VAD' ? 'Markets selected by VAD.' : lens === 'MOMENTUM' ? 'Markets gaining activity right now.' : 'The most active markets right now.'}
@@ -112,16 +112,16 @@ export function HomeScreen({
               flexDirection: density.desktop ? 'row' : 'column',
               flexWrap: density.desktop ? 'wrap' : 'nowrap',
               alignItems: 'stretch',
-              gap: theme.spacing.sm,
+              gap: 7,
             }}>
               {lensMarkets.slice(0, density.desktop ? 8 : 6).map((market) => (
-                <View key={`${lens}-${market.instrument_public_id}`} style={{ width: density.desktop ? '48%' : '100%', minWidth: 0 }}>
+                <View key={`${lens}-${market.instrument_public_id}`} style={{ width: density.desktop ? '48.5%' : '100%', minWidth: 0 }}>
                   <MarketCard market={market} onPress={() => onOpenMarket(market)} />
                 </View>
               ))}
             </View>
           ) : (
-            <VadCard variant="muted" style={{ minHeight: 104, justifyContent: 'center', gap: 5, padding: theme.spacing.md }}>
+            <VadCard variant="muted" style={{ minHeight: 76, justifyContent: 'center', gap: 3, padding: theme.spacing.sm }}>
               <VadText variant="bodyStrong">
                 {lens === 'MOMENTUM' ? 'Momentum is quiet right now.' : lens === 'VAD' ? 'No VAD selections are live right now.' : 'No live markets right now.'}
               </VadText>
@@ -170,9 +170,9 @@ function ThemeChip({ label, selected = false, onPress }: { label: string; select
       accessibilityState={{ selected }}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 32,
+        minHeight: 26,
         justifyContent: 'center',
-        paddingHorizontal: theme.spacing.sm,
+        paddingHorizontal: 9,
         borderRadius: theme.radius.pill,
         borderWidth: 1,
         borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
@@ -193,21 +193,21 @@ function SignalCard({ market, detail, onPress }: { market: MarketCatalogItem; de
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({
-        width: density.desktop ? 252 : Math.min(Math.max(density.width * 0.68, 208), 248),
-        minHeight: 96,
-        borderRadius: theme.radius.xl,
+        width: density.desktop ? 220 : Math.min(Math.max(density.width * 0.68, 180), 210),
+        minHeight: 72,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
         backgroundColor: theme.colors.surface,
-        padding: theme.spacing.sm,
-        gap: 4,
+        padding: 8,
+        gap: 3,
         opacity: pressed ? 0.8 : 1,
       })}
     >
-      <VadText variant="bodyStrong" numberOfLines={2}>{market.title}</VadText>
-      <VadText variant="caption" tone="tertiary" numberOfLines={1}>{detail}</VadText>
+      <VadText variant="bodyStrong" numberOfLines={2} style={{ fontSize: 11, lineHeight: 14 }}>{market.title}</VadText>
+      <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11 }}>{detail}</VadText>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-        <VadChip label={market.asset_code} />
+        <VadChip label={market.asset_code} size="small" />
         <VadText variant="caption" tone="brand">Open →</VadText>
       </View>
     </Pressable>
