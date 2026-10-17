@@ -25,8 +25,8 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const imageUrl = market.media_path ? supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl : null;
 
   return (
-    <View style={{ gap: theme.spacing.sm }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+    <View style={{ gap: 9 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
         <VadChip label={timing.statusLabel.toUpperCase()} tone={live ? 'yes' : timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'neutral'} />
         <VadChip label={market.asset_code} tone="brand" />
         
@@ -34,14 +34,14 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <VadText variant="caption" tone="secondary">{market.category ?? 'General'} · {market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type)} · {isPool ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')}</VadText>
       </View>
 
-      {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={`${market.title} market image`} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.xxl, backgroundColor: theme.colors.surfaceMuted }} resizeMode="cover" /> : null}
+      {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={`${market.title} market image`} style={{ width: '100%', aspectRatio: 16 / 7, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} resizeMode="cover" /> : null}
 
-      <View style={{ gap: theme.spacing.xs, paddingVertical: theme.spacing.xs }}>
-        <VadText variant={density.compact ? 'heading' : 'title'}>{market.title}</VadText>
+      <View style={{ gap: 3, paddingVertical: 2 }}>
+        <VadText variant={density.compact ? 'heading' : 'title'} numberOfLines={3} style={{ fontSize: density.compact ? 18 : 22, lineHeight: density.compact ? 23 : 28, letterSpacing: -0.35 }}>{market.title}</VadText>
       </View>
 
       {timing.resolutionOutcome ? (
-        <VadCard variant="brand" accessibilityRole="summary" style={{ gap: theme.spacing.sm, paddingVertical: theme.spacing.lg }}>
+        <VadCard variant="brand" accessibilityRole="summary" style={{ gap: theme.spacing.sm, paddingVertical: theme.spacing.md }}>
           <VadText variant="caption" tone="brand">FINAL RESULT</VadText>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
             <VadText variant="display" tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'}>{timing.resolutionOutcome}</VadText>
@@ -54,8 +54,8 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         </VadCard>
       ) : null}
 
-      <VadCard accessibilityRole="summary" variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
-        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+      <VadCard accessibilityRole="summary" variant="surface" style={{ gap: 8, padding: 10 }}>
+        <View style={{ flexDirection: 'row', gap: 7 }}>
           <SignalTile label="YES" value={yes} positive available={market.yes_price != null} />
           <SignalTile label="NO" value={no} positive={false} available={market.no_price != null} />
         </View>
@@ -105,7 +105,7 @@ function SignalTile({ label, value, positive, available }: { label: string; valu
   const theme = useVadTheme();
   const density = useProductDensity();
   return (
-    <View style={{ flex: 1, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: available ? (positive ? theme.colors.yesSoft : theme.colors.noSoft) : theme.colors.surfaceMuted, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, gap: 2 }}>
+    <View style={{ flex: 1, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: available ? (positive ? theme.colors.yesSoft : theme.colors.noSoft) : theme.colors.surfaceMuted, paddingHorizontal: 9, paddingVertical: 7, gap: 2 }}>
       <VadText variant="caption" tone={available ? (positive ? 'yes' : 'no') : 'tertiary'}>{label}</VadText>
       <VadText variant={density.compact ? 'bodyStrong' : 'heading'} tone={available ? (positive ? 'yes' : 'no') : 'tertiary'} numberOfLines={1}>{value}</VadText>
     </View>
@@ -115,7 +115,7 @@ function SignalTile({ label, value, positive, available }: { label: string; valu
 function MetaChip({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ minHeight: 48, flexGrow: 1, flexBasis: 145, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: theme.spacing.sm, paddingVertical: 7, gap: 1 }}>
+    <View style={{ minHeight: 39, flexGrow: 1, flexBasis: 125, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 8, paddingVertical: 5, gap: 1 }}>
       <VadText variant="caption" tone="tertiary">{label}</VadText>
       <VadText variant="caption" numberOfLines={2}>{value}</VadText>
     </View>
