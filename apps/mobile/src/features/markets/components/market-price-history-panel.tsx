@@ -93,8 +93,8 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
     <VadCard variant="surface" style={{ gap: density.compact ? 7 : 9, padding: density.compact ? 8 : 11 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <View style={{ flex: 1, gap: 2 }}>
-          <VadText variant="bodyStrong">{poolMode ? 'Stake movement' : 'Price action'}</VadText>
-          <VadText variant="caption" tone="secondary">{poolMode ? 'Historical participant allocation' : 'Executed prices · latest 240 fills'}</VadText>
+          <VadText variant="bodyStrong">{poolMode ? 'Pool split history' : 'Price history'}</VadText>
+          <VadText variant="caption" tone="secondary">{poolMode ? 'Recorded YES / NO share over time' : 'Recorded executions · latest 240 fills'}</VadText>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 2 }}>
           <VadText variant="caption" tone="tertiary">LATEST</VadText>
