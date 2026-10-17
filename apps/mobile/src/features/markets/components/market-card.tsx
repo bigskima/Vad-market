@@ -47,15 +47,15 @@ export function MarketCard({
       accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
       accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
       style={({ pressed }) => ({
-        minHeight: compact ? 124 : density.compact ? 142 : density.phone ? 156 : 168,
+        minHeight: compact ? 112 : density.compact ? 124 : density.phone ? 136 : 148,
         borderWidth: 1,
         borderLeftWidth: 3,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
         borderLeftColor: isOpen ? theme.colors.yes : theme.colors.borderStrong,
-        borderRadius: compact ? theme.radius.md : theme.radius.xl,
+        borderRadius: compact ? theme.radius.lg : theme.radius.xl,
         backgroundColor: theme.colors.surface,
-        padding: compact ? 11 : density.compact ? 13 : 16,
-        gap: compact ? 9 : theme.spacing.md,
+        padding: compact ? 12 : density.compact ? 14 : 16,
+        gap: compact ? 10 : theme.spacing.md,
         justifyContent: 'space-between',
         opacity: pressed ? 0.88 : 1,
       })}
@@ -88,13 +88,7 @@ export function MarketCard({
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: compact ? 6 : 8 }}>
-          <PriceTile label="YES" value={yes} positive compact={tight} />
-          <PriceTile label="NO" value={no} positive={false} compact={tight} />
-        </View>
-        {!compact && !density.compact ? (
-          <MarketProbabilityBar yes={market.yes_price} no={market.no_price} />
-        ) : null}
+        <MarketProbabilityBar yes={market.yes_price} no={market.no_price} />
       </View>
 
       <View
@@ -151,35 +145,3 @@ function formatVolume(value: number) {
   }).format(value);
 }
 
-function PriceTile({
-  label,
-  value,
-  positive,
-  compact,
-}: {
-  label: string;
-  value: string;
-  positive: boolean;
-  compact: boolean;
-}) {
-  const theme = useVadTheme();
-  return (
-    <View
-      style={{
-        flex: 1,
-        minWidth: 0,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 6,
-        borderRadius: theme.radius.md,
-        paddingHorizontal: compact ? 10 : 12,
-        paddingVertical: compact ? 8 : 10,
-        backgroundColor: positive ? theme.colors.yesSoft : theme.colors.noSoft,
-      }}
-    >
-      <VadText variant="caption" tone={positive ? 'yes' : 'no'}>{label}</VadText>
-      <VadText variant={compact ? 'bodyStrong' : 'bodyStrong'} tone={positive ? 'yes' : 'no'}>{value}</VadText>
-    </View>
-  );
-}
