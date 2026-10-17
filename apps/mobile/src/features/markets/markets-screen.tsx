@@ -74,7 +74,7 @@ export function MarketsScreen({
   const results = markets.filter((market) => ['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING'].includes(getMarketTiming(market, now).stage)).length;
   const complete = markets.filter((market) => ['SETTLED', 'VOIDED'].includes(getMarketTiming(market, now).stage)).length;
   const cardWidth = columns === 2 ? '48.9%' : '100%';
-  const pageSize = columns === 2 ? 8 : 6;
+  const pageSize = columns === 2 ? 8 : 5;
   const progressive = useProgressiveList({
     items: orderedMarkets,
     initialCount: pageSize,
@@ -120,12 +120,12 @@ export function MarketsScreen({
 
       <TourTarget id="markets-results">
         {orderedMarkets.length ? (
-          <View style={{ gap: theme.spacing.md }}>
+          <View style={{ gap: theme.spacing.sm }}>
             <View
               style={{
                 flexDirection: columns > 1 ? 'row' : 'column',
                 flexWrap: columns > 1 ? 'wrap' : 'nowrap',
-                gap: theme.spacing.md,
+                gap: theme.spacing.sm,
                 alignItems: 'stretch',
               }}
             >
