@@ -428,7 +428,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
           <InlineMessage
             tone="brand"
-            title="Same VAD fee policy as NGN"
+            title="Same VAD fee policy across supported currencies"
             body="VAD sets fees through its approved policy. The contract enforces the signed fee and policy version."
           />
           <InlineMessage
@@ -574,7 +574,7 @@ function UnsupportedUsdcOrderBook() {
       <VadText variant="caption" tone="brand">USDC · ON-CHAIN SETTLEMENT</VadText>
       <VadText variant="heading">Order-book USDC is not active in Settlement V1.</VadText>
       <VadText variant="caption" tone="secondary">
-        VAD will not route USDC through the internal NGN/TNGN ledger. USDC Peer Pool settlement is the supported on-chain path for this release.
+        USDC does not use the internal fiat ledger. Peer Pool settlement is the supported on-chain path for this release.
       </VadText>
     </VadCard>
   );
