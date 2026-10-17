@@ -175,4 +175,5 @@ function PriceTile({
         {value}
       </VadText>
     </View>
+  );
 }
