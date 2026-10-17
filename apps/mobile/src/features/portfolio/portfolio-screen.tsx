@@ -72,13 +72,13 @@ export function PortfolioScreen({
     <View style={{ gap: density.sectionGap }}>
       <View style={{ gap: 3 }}>
         <VadText variant="title">Portfolio</VadText>
-        <VadText variant="caption" tone="secondary">Track your positions, open orders and payouts.</VadText>
+        <VadText variant="caption" tone="secondary">Your positions, orders and settled markets.</VadText>
       </View>
       <TourTarget id="portfolio-summary">
-        <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.lg, gap: theme.spacing.md, borderRadius: 26 }}>
+        <VadCard variant="brand" style={{ padding: density.phone ? 15 : theme.spacing.lg, gap: theme.spacing.sm, borderRadius: 20 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ gap: 4 }}>
-              <VadText variant="caption" tone="secondary">YOUR ACTIVITY</VadText>
+              <VadText variant="caption" tone="secondary">PORTFOLIO OVERVIEW</VadText>
               <VadText variant="heading">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
             </View>
             <View style={{ width: 42, height: 42, borderRadius: 15, backgroundColor: theme.colors.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
@@ -104,7 +104,7 @@ export function PortfolioScreen({
 
       {exposure.length ? (
         <VadProgressiveSection
-          title="Exposure by currency"
+          title="Capital at work"
           icon="wallet"
           summary={<VadText variant="caption" tone="tertiary">{exposure.map((item) => item.assetCode).join(' · ')}</VadText>}
         >
