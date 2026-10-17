@@ -87,27 +87,24 @@ export function HomeScreen({
       </TourTarget>
 
       <TourTarget id="home-categories">
-        <View style={{ gap: 8 }}>
-          <VadSectionHeader title="Explore a theme" subtitle="Find markets by topic." actionLabel="All markets" onAction={() => onExploreMarkets()} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: theme.spacing.md }}>
-            <ThemeChip label="All markets" selected onPress={() => onExploreMarkets()} />
-            {categories.map((category) => (
-              <ThemeChip key={category} label={category} onPress={() => onExploreMarkets(category)} />
-            ))}
-          </ScrollView>
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: theme.spacing.md }}>
+          <ThemeChip label="🔥 For you" selected={lens === 'LIVE'} onPress={() => setLens('LIVE')} />
+          <ThemeChip label="↗ Trending" selected={lens === 'MOMENTUM'} onPress={() => setLens('MOMENTUM')} />
+          <ThemeChip label="VAD Select" selected={lens === 'VAD'} onPress={() => setLens('VAD')} />
+          {categories.map((category) => (
+            <ThemeChip key={category} label={category} onPress={() => onExploreMarkets(category)} />
+          ))}
+        </ScrollView>
       </TourTarget>
 
       <TourTarget id="home-featured-markets">
         <View style={{ gap: theme.spacing.sm }}>
-          <VadSectionHeader title="Trending markets" subtitle="The most active markets right now." actionLabel="See all" onAction={() => onExploreMarkets()} />
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            <LensButton label="Live" selected={lens === 'LIVE'} onPress={() => setLens('LIVE')} />
-            <LensButton label="VAD Select" selected={lens === 'VAD'} onPress={() => setLens('VAD')} />
-            <TourTarget id="home-trending">
-              <LensButton label="Momentum" selected={lens === 'MOMENTUM'} onPress={() => setLens('MOMENTUM')} />
-            </TourTarget>
-          </View>
+          <VadSectionHeader
+            title={lens === 'VAD' ? 'VAD Select' : 'Trending markets'}
+            subtitle={lens === 'VAD' ? 'Markets selected by VAD.' : lens === 'MOMENTUM' ? 'Markets gaining activity right now.' : 'The most active markets right now.'}
+            actionLabel="See all"
+            onAction={() => onExploreMarkets()}
+          />
 
           {lensMarkets.length ? (
             <View style={{
@@ -161,31 +158,6 @@ export function HomeScreen({
         </VadProgressiveSection>
       </TourTarget>
     </View>
-  );
-}
-
-function LensButton({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const theme = useVadTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        minHeight: 42,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 10,
-        borderRadius: theme.radius.lg,
-        borderWidth: 1,
-        borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
-        backgroundColor: selected ? theme.colors.brandSoft : pressed ? theme.colors.surfaceRaised : theme.colors.surface,
-        opacity: pressed ? 0.8 : 1,
-      })}
-    >
-      <VadText variant="caption" tone={selected ? 'brand' : 'secondary'}>{label}</VadText>
-    </Pressable>
   );
 }
 
