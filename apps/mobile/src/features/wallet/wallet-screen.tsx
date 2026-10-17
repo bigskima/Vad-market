@@ -117,7 +117,7 @@ export function WalletScreen({
                 <VadText variant="bodyStrong" tone="yes" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(available, primaryCode)}</VadText>
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: 5, paddingHorizontal: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
-                <VadText variant="caption" tone="secondary">In positions</VadText>
+                <VadText variant="caption" tone="secondary">Reserved</VadText>
                 <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(reserved, primaryCode)}</VadText>
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: 5, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
