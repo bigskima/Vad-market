@@ -6,7 +6,6 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
-import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { TourTarget } from '@/features/tour/tour-provider';
@@ -30,7 +29,6 @@ export default function AccountScreen() {
   const appearance = theme.preference === 'system'
     ? `System · currently ${theme.mode}`
     : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1);
-  const wide = density.width >= 860;
 
   useEffect(() => {
     let ignore = false;
