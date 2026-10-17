@@ -50,7 +50,7 @@ export function ProductTopBar({
       <View
         style={{
           paddingTop: insets.top,
-          paddingBottom: 6,
+          paddingBottom: 9,
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
           backgroundColor: theme.colors.surface,
@@ -59,13 +59,13 @@ export function ProductTopBar({
         }}
       >
         <View style={{
-          minHeight: 34,
+          minHeight: 40,
           paddingHorizontal: density.horizontalPadding,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 7,
         }}>
-          <VadLogo size={28} />
+          <VadLogo size={30} />
           {density.width >= 340 ? (
             <View style={{ gap: 0, minWidth: 42 }}>
               <VadText variant="label">VAD</VadText>
