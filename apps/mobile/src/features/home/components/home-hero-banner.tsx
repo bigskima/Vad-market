@@ -1,117 +1,75 @@
-import { useEffect, useState } from 'react';
-import { ImageBackground, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
-import { getHomeHeroImage } from '@/services/home-hero-api';
-
-const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imageVersion, setImageVersion] = useState<string | null>(null);
-  const [imageFailed, setImageFailed] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    let timer: ReturnType<typeof setInterval> | undefined;
-
-    const refresh = async () => {
-      try {
-        const result = await getHomeHeroImage();
-        if (!mounted) return;
-        setImageUrl(result.imageUrl);
-        setImageVersion(result.generatedAt);
-        setImageFailed(false);
-      } catch {
-        // Keep bundled artwork visible when generation or connectivity fails.
-      }
-    };
-
-    void refresh();
-    timer = setInterval(() => void refresh(), REFRESH_INTERVAL_MS);
-    return () => {
-      mounted = false;
-      if (timer) clearInterval(timer);
-    };
-  }, []);
-
-  const source = imageUrl && !imageFailed
-    ? { uri: `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}v=${encodeURIComponent(imageVersion ?? '')}` }
-    : require('../../../../assets/images/vad-welcome-world.jpg');
 
   return (
-    <ImageBackground
-      source={source}
-      resizeMode="cover"
-      onError={() => setImageFailed(true)}
-      imageStyle={{ borderRadius: density.phone ? 12 : 14 }}
+    <View
+      accessibilityLabel="Discover VAD markets"
       style={{
         width: '100%',
-        height: density.phone ? 126 : density.desktop ? 170 : 146,
+        minHeight: density.phone ? 124 : density.desktop ? 150 : 136,
         overflow: 'hidden',
-        borderRadius: density.phone ? 12 : 14,
+        borderRadius: density.phone ? 13 : 16,
+        borderWidth: 1,
+        borderColor: theme.colors.brandPrimary,
         backgroundColor: theme.colors.brandStrong,
         justifyContent: 'flex-end',
-        padding: density.phone ? 10 : 14,
+        alignItems: 'flex-start',
+        paddingHorizontal: density.phone ? 14 : 18,
+        paddingVertical: density.phone ? 13 : 16,
+        gap: 7,
       }}
-      accessibilityRole="image"
-      accessibilityLabel="VAD global markets hero artwork"
     >
-      {/* Generated artwork is background-only. Copy and CTA are native UI overlays. */}
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(10, 8, 50, 0.24)',
-        }}
-      />
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: '78%',
-          backgroundColor: 'rgba(12, 9, 54, 0.46)',
-        }}
-      />
-      <View style={{ alignItems: 'flex-start', gap: 4, maxWidth: 520 }}>
-        <VadText variant={density.phone ? 'title' : 'heading'} tone="inverse" numberOfLines={1} style={{ fontSize: density.phone ? 15 : 17, lineHeight: density.phone ? 19 : 21, letterSpacing: -0.2, maxWidth: 460 }}>
+      <View style={{ gap: 3, maxWidth: 540 }}>
+        <VadText
+          variant={density.phone ? 'title' : 'heading'}
+          tone="inverse"
+          numberOfLines={2}
+          style={{
+            fontSize: density.phone ? 17 : 20,
+            lineHeight: density.phone ? 21 : 25,
+            letterSpacing: -0.35,
+          }}
+        >
           Discover what happens next.
         </VadText>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Explore markets"
-          onPress={onExplore}
-          style={({ pressed }) => ({
-            marginTop: 1,
-            minHeight: 26,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-            paddingHorizontal: 9,
-            borderRadius: 999,
-            backgroundColor: '#FFFFFF',
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.82)',
-            opacity: pressed ? 0.82 : 1,
-          })}
+        <VadText
+          variant="caption"
+          tone="inverse"
+          numberOfLines={2}
+          style={{ opacity: 0.82, lineHeight: 16 }}
         >
-          <VadText variant="caption" style={{ color: theme.colors.brandStrong, fontWeight: '700' }}>Explore markets</VadText>
-          <VadIcon name="chevronRight" size={12} tone="brand" />
-        </Pressable>
+          Explore live questions and follow the outcomes.
+        </VadText>
       </View>
-    </ImageBackground>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Explore markets"
+        onPress={onExplore}
+        style={({ pressed }) => ({
+          minHeight: 30,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 5,
+          paddingHorizontal: 11,
+          borderRadius: 9,
+          backgroundColor: theme.colors.surface,
+          opacity: pressed ? 0.82 : 1,
+        })}
+      >
+        <VadText variant="caption" style={{ color: theme.colors.brandPrimary, fontWeight: '700' }}>
+          Explore markets
+        </VadText>
+        <VadIcon name="chevronRight" size={13} tone="brand" />
+      </Pressable>
+    </View>
   );
 }
