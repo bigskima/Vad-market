@@ -79,7 +79,7 @@ export function HomeScreen({
       ? trendingSettings.enabled ? trendingRail.map((row) => row.market) : []
       : active;
 
-  const sectionGap = density.compact ? theme.spacing.md : theme.spacing.lg;
+  const sectionGap = density.compact ? theme.spacing.sm : theme.spacing.md;
 
   return (
     <View style={{ gap: sectionGap, width: '100%' }}>
@@ -88,7 +88,7 @@ export function HomeScreen({
       </TourTarget>
 
       <TourTarget id="home-categories">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: theme.spacing.md }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingRight: theme.spacing.sm }}>
           <ThemeChip label="🔥 For you" selected={lens === 'LIVE'} onPress={() => setLens('LIVE')} />
           <ThemeChip label="↗ Trending" selected={lens === 'MOMENTUM'} onPress={() => setLens('MOMENTUM')} />
           <ThemeChip label="VAD Select" selected={lens === 'VAD'} onPress={() => setLens('VAD')} />
@@ -170,9 +170,9 @@ function ThemeChip({ label, selected = false, onPress }: { label: string; select
       accessibilityState={{ selected }}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 42,
+        minHeight: 32,
         justifyContent: 'center',
-        paddingHorizontal: theme.spacing.md,
+        paddingHorizontal: theme.spacing.sm,
         borderRadius: theme.radius.pill,
         borderWidth: 1,
         borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
@@ -193,14 +193,14 @@ function SignalCard({ market, detail, onPress }: { market: MarketCatalogItem; de
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({
-        width: density.desktop ? 280 : Math.min(Math.max(density.width * 0.72, 232), 272),
-        minHeight: 116,
+        width: density.desktop ? 252 : Math.min(Math.max(density.width * 0.68, 208), 248),
+        minHeight: 96,
         borderRadius: theme.radius.xl,
         borderWidth: 1,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
         backgroundColor: theme.colors.surface,
-        padding: theme.spacing.md,
-        gap: 6,
+        padding: theme.spacing.sm,
+        gap: 4,
         opacity: pressed ? 0.8 : 1,
       })}
     >
