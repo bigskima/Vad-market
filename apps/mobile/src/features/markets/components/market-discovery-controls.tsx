@@ -52,14 +52,14 @@ export function MarketDiscoveryControls({
   const wide = width >= 820;
 
   return (
-    <View style={{ gap: theme.spacing.sm }}>
+    <View style={{ gap: theme.spacing.md }}>
       {stage && onStageChange ? (
-        <View style={{ gap: theme.spacing.xs }}>
+        <View style={{ gap: theme.spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <VadText variant="caption" tone="tertiary">Status</VadText>
             <VadText variant="caption" tone="secondary">{resultCount} matching</VadText>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingRight: theme.spacing.md }}>
             {STAGE_OPTIONS.map((option) => (
               <VadChip
                 key={option.value}
