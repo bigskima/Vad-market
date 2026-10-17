@@ -215,7 +215,7 @@ function LineSeries({ points, color }: { points: { x: number; y: number }[]; col
         const length = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
         return (
-          <View key={`${index}-${point.x}`} style={{ position: 'absolute', left: previous.x, top: previous.y, width: length, height: 2.5, borderRadius: 2, backgroundColor: color, transform: [{ translateY: -1.25 }, { rotate: `${angle}rad` }], transformOrigin: 'left center' as never }} />
+          <View key={`${index}-${point.x}`} style={{ position: 'absolute', left: (previous.x + point.x) / 2 - length / 2, top: (previous.y + point.y) / 2 - 1.25, width: length, height: 2.5, borderRadius: 2, backgroundColor: color, transform: [{ rotate: `${angle}rad` }] }} />
         );
       })}
       {points.map((point, index) => (
