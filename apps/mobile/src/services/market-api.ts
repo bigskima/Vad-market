@@ -416,3 +416,18 @@ export async function getMarketOrderBook(instrumentPublicId: string) {
     noBids: Array.isArray(payload.noBids) ? payload.noBids : [],
   } as MarketOrderBook;
 }
+
+export type MarketPriceHistoryPoint = {
+  observed_at: string;
+  outcome_code: 'YES' | 'NO' | string;
+  price: number | string;
+};
+
+export async function getMarketPriceHistory(instrumentPublicId: string, limit = 120) {
+  const { data, error } = await supabase.rpc('market_price_history', {
+    p_instrument_public_id: instrumentPublicId,
+    p_limit: limit,
+  });
+  assertNoError(error, 'markets', 'We could not load executed market prices right now.');
+  return (Array.isArray(data) ? data : []) as MarketPriceHistoryPoint[];
+}
