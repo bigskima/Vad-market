@@ -20,12 +20,13 @@ import { TradingTicket } from './components/trading-ticket';
 import { MarketPriceHistoryPanel } from './components/market-price-history-panel';
 import { assetMoney, probability } from './format';
 
-type DetailTab = 'Overview' | 'Trade' | 'Discussion' | 'Rules';
+type DetailTab = 'Overview' | 'Trade' | 'Activity' | 'Discussion' | 'Rules';
 type MarketTiming = ReturnType<typeof getMarketTiming>;
 
 const tabs = [
   { value: 'Overview', label: 'Overview' },
   { value: 'Trade', label: 'Trade' },
+  { value: 'Activity', label: 'Activity' },
   { value: 'Discussion', label: 'Discuss' },
   { value: 'Rules', label: 'Rules' },
 ] as const;
@@ -93,8 +94,9 @@ export function MarketDetailScreen({
       </View>
 
       {tab === 'Overview' ? (
-        <Overview market={market} timing={timing} />
+        <Overview market={market} timing={timing} onTrade={() => setTab('Trade')} />
       ) : null}
+      {tab === 'Activity' ? <Activity market={market} timing={timing} /> : null}
       {tab === 'Trade' ? (
         <TradingTicket
           market={market}
@@ -109,38 +111,50 @@ export function MarketDetailScreen({
       ) : null}
       {tab === 'Rules' ? <Rules market={market} timing={timing} /> : null}
 
-      <AssistantEntry
-        label="Ask VAD AI"
-        detail={market.liquidity_mode === 'POOL'
-          ? 'Odds, fees and settlement.'
-          : 'Price action, order book and settlement.'}
-        prompt="Explain this market using its current data, published resolution criteria, trading model, prices, fees and settlement rules."
-        marketId={market.instrument_public_id}
-        sourceRoute="/markets"
-        compact={density.compact}
-      />
-
-      {density.phone && tab !== 'Trade' ? (
-        <View style={{ paddingTop: theme.spacing.xs }}>
-          <VadButton
-            label={tradeCapabilityLoading ? 'Checking trade availability' : effectiveCanTrade ? (poolMarket ? 'Make a prediction' : 'Trade this market') : timing.primaryTiming}
-            size="small"
-            onPress={() => setTab('Trade')}
-            leading={<VadIcon name="markets" size={16} tone="inverse" />}
-          />
-        </View>
-      ) : null}
     </View>
   );
 }
 
-function Overview({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
+function Overview({ market, timing, onTrade }: { market: MarketCatalogItem; timing: MarketTiming; onTrade: () => void }) {
   const density = useProductDensity();
-  const poolMarket = isPoolMarket(market);
+  const theme = useVadTheme();
+  const pool = isPoolMarket(market);
+  const yes = probability(market.yes_price);
+  const no = probability(market.no_price);
+  const hasSignal = market.yes_price != null || market.no_price != null;
 
   return (
     <View style={{ gap: density.compact ? 8 : 12 }}>
       <MarketSnapshot market={market} timing={timing} />
+      <View style={{ flexDirection: 'row', gap: 7 }}>
+        <VadButton label="Trade" onPress={onTrade} size="small" style={{ flex: 1 }} leading={<VadIcon name="markets" size={15} tone="inverse" />} />
+        <VadButton label="Ask VAD AI" variant="secondary" onPress={() => {}} size="small" style={{ flex: 1 }} />
+      </View>
+      <VadCard variant="surface" style={{ padding: 10, gap: 7 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <VadText variant="bodyStrong">{pool ? 'Participant split' : 'Market prices'}</VadText>
+          <VadText variant="caption" tone="tertiary">{hasSignal ? 'Current' : 'Awaiting data'}</VadText>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <View style={{ height: 5, borderRadius: 3, backgroundColor: theme.colors.surfaceMuted, overflow: 'hidden', flexDirection: 'row' }}>
+              <View style={{ width: hasSignal ? yes : '0%', backgroundColor: theme.colors.yes, borderRadius: 3 }} />
+              <View style={{ flex: 1, backgroundColor: theme.colors.no }} />
+            </View>
+            <VadText variant="caption" tone="tertiary">{pool ? 'Stake allocation' : 'Price signal'}</VadText>
+          </View>
+          <VadText variant="caption" tone="secondary">{yes} / {no}</VadText>
+        </View>
+      </VadCard>
+    </View>
+  );
+}
+
+function Activity({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
+  const density = useProductDensity();
+  const poolMarket = isPoolMarket(market);
+  return (
+    <View style={{ gap: density.compact ? 8 : 12 }}>
       <MarketPriceHistoryPanel instrumentId={market.instrument_public_id} liquidityMode={market.liquidity_mode} />
       {!poolMarket ? <MarketDepthPanel instrumentId={market.instrument_public_id} /> : null}
       <Lifecycle market={market} timing={timing} />
