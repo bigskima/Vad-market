@@ -16,6 +16,7 @@ import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import type {
   FeaturedMarketRow,
   FeaturedMarketSettings,
@@ -56,13 +57,15 @@ export function HomeScreen({
   const theme = useVadTheme();
   const density = useProductDensity();
   const now = useLiveNow();
+  const { enabledCurrencies } = useCurrencyPreference();
+  const visibleMarkets = markets.filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency));
   const [lens, setLens] = useState<MarketLens>('LIVE');
 
-  const active = markets.filter((market) => getMarketTiming(market, now).tradingOpen);
-  const categories = [...new Set(markets.map((market) => market.category).filter(Boolean))].slice(0, 8) as string[];
+  const active = visibleMarkets.filter((market) => getMarketTiming(market, now).tradingOpen);
+  const categories = [...new Set(visibleMarkets.map((market) => market.category).filter(Boolean))].slice(0, 8) as string[];
 
   const vadRail = vadMarkets
-    .map((entry) => ({ entry, market: markets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
+    .map((entry) => ({ entry, market: visibleMarkets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
     .filter((row): row is { entry: VadMarketRow; market: MarketCatalogItem } => Boolean(row.market));
 
   const featuredRail = featuredMarkets
@@ -154,7 +157,7 @@ export function HomeScreen({
           ) : null}
           <View style={{ gap: theme.spacing.sm }}>
             <VadSectionHeader title="Community" actionLabel="Open feed" onAction={onOpenCommunity} />
-            <SocialConvictionFeed markets={markets} canCreatePost={false} showComposer={false} maxPosts={1} onOpenMarket={onOpenMarket} />
+            <SocialConvictionFeed markets={visibleMarkets} canCreatePost={false} showComposer={false} maxPosts={1} onOpenMarket={onOpenMarket} />
           </View>
         </VadProgressiveSection>
       </TourTarget>
