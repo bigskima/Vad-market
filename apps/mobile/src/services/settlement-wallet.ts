@@ -42,7 +42,7 @@ export async function submitEvmSettlement(execution: EvmSettlementExecution) {
   const contractAddress = asAddress(execution.network.contractAddress, 'VAD settlement contract');
   const userAddress = asAddress(execution.authorization.userAddress, 'wallet');
   const signature = asHex(execution.vadSignature, 'VAD settlement signature');
-  const wallet = await getEvmWallet(execution.network.networkId);
+  const wallet = await getEvmWallet(execution.network.networkId, userAddress);
   if (wallet.account.address.toLowerCase() !== userAddress.toLowerCase()) throw new Error('The active Dynamic wallet does not match this VAD settlement authorization.');
   const data = encodeFunctionData({ abi: settlementAbi, functionName: 'settlePosition', args: [{ authorizationId: asBytes32(execution.authorization.authorizationId, 'authorizationId'), positionId: asBytes32(execution.authorization.positionId, 'positionId'), marketId: asBytes32(execution.authorization.marketId, 'marketId'), user: userAddress, grossPayout: parseAtomicAmount(execution.authorization.grossPayoutAtomic), settlementFeeAmount: parseAtomicAmount(execution.authorization.settlementFee.amountAtomic), settlementFeePolicyVersion: BigInt(execution.authorization.settlementFee.policyVersionId || '0'), resolutionHash: asBytes32(execution.authorization.resolutionHash, 'resolutionHash'), deadline: BigInt(execution.authorization.deadlineUnix) }, signature] });
   const transactionHash = await wallet.client.sendTransaction({ account: wallet.client.account, chain: wallet.client.chain, to: contractAddress, data, value: 0n });
