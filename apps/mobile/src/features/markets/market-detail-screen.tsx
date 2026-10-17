@@ -17,6 +17,8 @@ import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { MarketDepthPanel } from './components/market-depth-panel';
 import { TradingTicket } from './components/trading-ticket';
+import { MarketPriceHistoryPanel } from './components/market-price-history-panel';
+import { assetMoney, probability } from './format';
 
 type DetailTab = 'Overview' | 'Trade' | 'Discussion' | 'Rules';
 type MarketTiming = ReturnType<typeof getMarketTiming>;
@@ -80,7 +82,7 @@ export function MarketDetailScreen({
     : timing.stage === 'SCHEDULED'
       ? 'MARKET_NOT_OPEN'
       : 'MARKET_CLOSED';
-  const poolMarket = market.liquidity_mode === 'POOL';
+  const poolMarket = isPoolMarket(market);
 
   return (
     <View style={{ gap: density.sectionGap }}>
@@ -162,10 +164,12 @@ function Overview({
   const density = useProductDensity();
   const wide = density.width >= 780;
   const tradeDone = !timing.tradingOpen && timing.stage !== 'SCHEDULED';
-  const poolMarket = market.liquidity_mode === 'POOL';
+  const poolMarket = isPoolMarket(market);
 
   return (
-    <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
+    <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
+      <MarketSnapshot market={market} timing={timing} />
+      <MarketPriceHistoryPanel instrumentId={market.instrument_public_id} liquidityMode={market.liquidity_mode} />
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'stretch', gap: theme.spacing.md }}>
         <VadCard style={{ flex: 1.1, gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
@@ -207,6 +211,70 @@ function Overview({
 
       <Lifecycle market={market} timing={timing} />
 
+    </View>
+  );
+}
+
+function isPoolMarket(market: MarketCatalogItem) {
+  return String(market.liquidity_mode ?? '').toUpperCase().includes('POOL');
+}
+
+function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
+  const theme = useVadTheme();
+  const density = useProductDensity();
+  const pool = isPoolMarket(market);
+  const yes = probability(market.yes_price);
+  const no = probability(market.no_price);
+  const hasSignal = market.yes_price != null || market.no_price != null;
+  const schedule = [
+    market.opens_at ? `Opens ${exactTime(market.opens_at)}` : null,
+    market.closes_at ? `Closes ${exactTime(market.closes_at)}` : null,
+    market.resolves_after ? `Result check ${exactTime(market.resolves_after)}` : null,
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <View style={{ gap: density.compact ? 7 : 9 }}>
+      {timing.resolutionOutcome ? (
+        <VadCard variant="brand" accessibilityRole="summary" style={{ gap: 5, padding: density.compact ? 10 : 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <VadText variant="caption" tone="brand">FINAL RESULT</VadText>
+            <VadChip label="CONFIRMED" tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'} />
+          </View>
+          <VadText variant="heading" tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'}>{timing.resolutionOutcome}</VadText>
+          <VadText variant="caption" tone="secondary">Confirmed settlement outcome. The earlier YES/NO split does not determine payouts.</VadText>
+        </VadCard>
+      ) : null}
+      <VadCard variant="surface" accessibilityRole="summary" style={{ gap: 6, padding: density.compact ? 8 : 10 }}>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <View style={{ flex: 1, minWidth: 0, borderRadius: 9, backgroundColor: theme.colors.yesSoft, paddingHorizontal: 8, paddingVertical: 5, gap: 1 }}>
+            <VadText variant="caption" tone="yes">YES</VadText>
+            <VadText variant="bodyStrong" tone={hasSignal ? 'yes' : 'tertiary'}>{yes}</VadText>
+          </View>
+          <View style={{ flex: 1, minWidth: 0, borderRadius: 9, backgroundColor: theme.colors.noSoft, paddingHorizontal: 8, paddingVertical: 5, gap: 1 }}>
+            <VadText variant="caption" tone="no">NO</VadText>
+            <VadText variant="bodyStrong" tone={hasSignal ? 'no' : 'tertiary'}>{no}</VadText>
+          </View>
+        </View>
+        <VadText variant="caption" tone="tertiary">{pool ? 'Participant stake split only; not the final result.' : 'Current conviction; published rules decide the result.'}</VadText>
+        {pool ? (
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <View style={{ flex: 1, backgroundColor: theme.colors.surfaceMuted, borderRadius: 8, padding: 7, gap: 1 }}>
+              <VadText variant="caption" tone="tertiary">Participant pool</VadText>
+              <VadText variant="caption">{assetMoney(market.total_volume ?? 0, market.asset_code)}</VadText>
+            </View>
+            <View style={{ flex: 1, backgroundColor: theme.colors.surfaceMuted, borderRadius: 8, padding: 7, gap: 1 }}>
+              <VadText variant="caption" tone="tertiary">Participants</VadText>
+              <VadText variant="caption">{String(Number(market.participant_count ?? 0))}</VadText>
+            </View>
+          </View>
+        ) : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <VadChip label={timing.primaryTiming} tone="neutral" />
+          {timing.stage === 'OPEN' && timing.closeCountdown ? <VadText variant="caption" tone="tertiary">Closes in {timing.closeCountdown}</VadText> : null}
+          {timing.stage === 'SCHEDULED' && timing.openCountdown ? <VadText variant="caption" tone="tertiary">Opens in {timing.openCountdown}</VadText> : null}
+        </View>
+      </VadCard>
+      {schedule ? <VadText variant="caption" tone="tertiary">{schedule}</VadText> : null}
     </View>
   );
 }
