@@ -60,7 +60,6 @@ export function HomeScreen({
 
   const active = markets.filter((market) => getMarketTiming(market, now).tradingOpen);
   const categories = [...new Set(markets.map((market) => market.category).filter(Boolean))].slice(0, 8) as string[];
-  const traded = markets.filter((market) => Boolean(market.last_trade_at)).length;
 
   const vadRail = vadMarkets
     .map((entry) => ({ entry, market: markets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
@@ -75,14 +74,6 @@ export function HomeScreen({
     .filter((row): row is { entry: TrendingMarketRow; market: MarketCatalogItem } => Boolean(row.market));
 
   const leadMarket = trendingRail[0]?.market ?? featuredRail[0]?.market ?? vadRail[0]?.market ?? active[0];
-  const leadDetail = trendingRail[0]
-    ? `${formatAcceleration(Math.max(trendingRail[0].entry.volume_acceleration, trendingRail[0].entry.trade_acceleration))} · ${trendingRail[0].entry.unique_traders} traders`
-    : featuredRail[0]
-      ? `${formatAssetCompact(featuredRail[0].market.total_volume, featuredRail[0].market.asset_code)} completed activity`
-      : leadMarket
-        ? `${leadMarket.category ?? 'General'} · ${leadMarket.asset_code}`
-        : '';
-
   const lensMarkets = lens === 'VAD'
     ? vadRail.map((row) => row.market)
     : lens === 'MOMENTUM'
