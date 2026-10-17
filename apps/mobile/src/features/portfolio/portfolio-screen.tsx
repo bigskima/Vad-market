@@ -286,7 +286,7 @@ function OrderCard({ order, onPress }: { order: OrderRow; onPress: () => void })
   const outcomeYes = order.outcome_code === 'YES';
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open ${order.market_title} ${order.outcome_code} ${order.side.toLowerCase()} order`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.74 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}>
-      <VadCard variant="raised" style={{ gap: theme.spacing.md, minHeight: 218 }}>
+      <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.md }}>
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
             <VadText variant="caption" tone="brand">MATCHING</VadText>
@@ -325,10 +325,10 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
   const theme = useVadTheme();
   const yes = receipt.outcome_code === 'YES';
   return (
-    <VadCard variant="brand" style={{ gap: theme.spacing.md, minHeight: 218 }}>
+    <VadCard variant="brand" style={{ gap: theme.spacing.sm }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
         <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-          <VadText variant="caption" tone="yes">PAYOUT COMPLETE</VadText>
+          <VadText variant="caption" tone="yes">PAYOUT</VadText>
           <VadText variant="bodyStrong" numberOfLines={3}>{receipt.market_title}</VadText>
           <VadText variant="caption" tone="secondary">{new Date(receipt.settled_at).toLocaleString()}</VadText>
         </View>
