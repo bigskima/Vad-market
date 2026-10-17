@@ -12,6 +12,7 @@ const json = (body: unknown, status = 200) =>
 type IpInfo = {
   country_code?: string;
   privacy?: {
+    is_anonymous?: boolean;
     is_vpn?: boolean;
     is_proxy?: boolean;
     is_tor?: boolean;
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
     const proxy = privacy?.is_proxy === true;
     const tor = privacy?.is_tor === true;
     const hosting = privacy?.is_hosting === true;
-    const riskDetected = vpn || proxy || tor || hosting;
+    const riskDetected = privacy?.is_anonymous === true || vpn || proxy || tor || hosting;
     const { data: account } = await admin
       .from('user_accounts')
       .select('country_code')
