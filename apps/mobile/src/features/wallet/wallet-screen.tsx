@@ -111,16 +111,16 @@ export function WalletScreen({
               </View>
             </View>
             <VadText variant={density.phone ? 'display' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{assetMoney(total, primaryCode)}</VadText>
-            <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.xs, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-              <View style={{ flex: 1, minWidth: 0, gap: 5, paddingRight: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 4, paddingRight: 8 }}>
                 <VadText variant="caption" tone="secondary">Available</VadText>
                 <VadText variant="bodyStrong" tone="yes" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(available, primaryCode)}</VadText>
               </View>
-              <View style={{ flex: 1, minWidth: 0, gap: 5, paddingHorizontal: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 4, paddingHorizontal: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
                 <VadText variant="caption" tone="secondary">Reserved</VadText>
                 <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(reserved, primaryCode)}</VadText>
               </View>
-              <View style={{ flex: 1, minWidth: 0, gap: 5, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 4, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
                 <VadText variant="caption" tone="secondary">Pending</VadText>
                 <VadText variant="bodyStrong" tone="brand" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(pending, primaryCode)}</VadText>
               </View>
@@ -302,7 +302,7 @@ export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPr
       <VadCard
         variant="raised"
         style={{
-          minHeight: density.compact ? 64 : 72,
+          minHeight: density.compact ? 60 : 66,
           flexDirection: 'row',
           alignItems: 'center',
           gap: density.compact ? theme.spacing.sm : theme.spacing.md,
@@ -313,7 +313,7 @@ export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPr
           style={{
             width: density.compact ? 32 : 36,
             height: density.compact ? 32 : 36,
-            borderRadius: 21,
+            borderRadius: 14,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: incoming ? theme.colors.yesSoft : theme.colors.brandSoft,
