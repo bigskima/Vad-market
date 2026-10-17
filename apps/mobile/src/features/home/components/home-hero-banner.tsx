@@ -1,13 +1,25 @@
-import { Pressable, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, Pressable, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { supabase, supabaseConfiguration } from '@/lib/supabase';
 
 export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!supabaseConfiguration.ready) return;
+    void supabase.functions.invoke('home-hero-image-runtime', { body: {} }).then(({ data, error }) => {
+      if (!cancelled && !error && typeof data?.imageUrl === 'string') setHeroImageUrl(data.imageUrl);
+    }).catch(() => { /* Keep the designed gradient fallback if AI artwork is unavailable. */ });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <View
@@ -27,6 +39,14 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
         gap: 12,
       }}
     >
+      {heroImageUrl ? (
+        <Image
+          source={{ uri: heroImageUrl }}
+          resizeMode="cover"
+          accessibilityLabel="AI-generated VAD discovery artwork"
+          style={{ position: 'absolute', width: '100%', height: '100%', left: 0, top: 0, opacity: 0.72 }}
+        />
+      ) : null}
       <View style={{ gap: 3, maxWidth: 540 }}>
         <VadText
           variant={density.phone ? 'title' : 'heading'}
