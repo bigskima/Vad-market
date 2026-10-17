@@ -43,7 +43,7 @@ export async function settleUsdcPosition(position: OnchainPositionRow): Promise<
   }
   const wallets = await ensureDynamicWalletConnectionsVerified();
   const wallet = findWallet(wallets, position.wallet_address);
-  const idempotencyKey = ['usdc-settlement', position.position_record_id, Date.now(), Math.random().toString(36).slice(2)].join(':');
+  const idempotencyKey = `usdc-settlement:${position.position_record_id}`;
   const result = await prepareOnchainSettlement({
     walletId: wallet.wallet_id,
     positionId: position.position_record_id,
