@@ -117,7 +117,7 @@ export function HomeScreen({
               gap: theme.spacing.sm,
             }}>
               {lensMarkets.slice(0, density.desktop ? 8 : 6).map((market) => (
-                <View key={`${lens}-${market.instrument_public_id}`} style={{ width: density.desktop ? '49%' : '100%', minWidth: 0 }}>
+                <View key={`${lens}-${market.instrument_public_id}`} style={{ width: density.desktop ? '48%' : '100%', minWidth: 0 }}>
                   <MarketCard market={market} onPress={() => onOpenMarket(market)} />
                 </View>
               ))}
