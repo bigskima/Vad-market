@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
-import { VadIcon } from '@/components/ui/vad-icon';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
@@ -60,7 +59,6 @@ export function HomeScreen({
 
   const active = markets.filter((market) => getMarketTiming(market, now).tradingOpen);
   const categories = [...new Set(markets.map((market) => market.category).filter(Boolean))].slice(0, 8) as string[];
-  const traded = markets.filter((market) => Boolean(market.last_trade_at)).length;
 
   const vadRail = vadMarkets
     .map((entry) => ({ entry, market: markets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
@@ -112,9 +110,14 @@ export function HomeScreen({
           </View>
 
           {lensMarkets.length ? (
-            <View style={{ gap: theme.spacing.sm }}>
+            <View style={{
+              flexDirection: density.desktop ? 'row' : 'column',
+              flexWrap: density.desktop ? 'wrap' : 'nowrap',
+              alignItems: 'stretch',
+              gap: theme.spacing.sm,
+            }}>
               {lensMarkets.slice(0, density.desktop ? 8 : 6).map((market) => (
-                <View key={`${lens}-${market.instrument_public_id}`}>
+                <View key={`${lens}-${market.instrument_public_id}`} style={{ width: density.desktop ? '49%' : '100%', minWidth: 0 }}>
                   <MarketCard market={market} onPress={() => onOpenMarket(market)} />
                 </View>
               ))}
