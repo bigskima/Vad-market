@@ -62,17 +62,22 @@ export default function AccountScreen() {
           title="Account"
         />
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-          <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
-            <VadText variant="heading" tone="brand">{initial}</VadText>
+        <VadCard variant="brand" style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+            <View style={{ width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
+              <VadText variant="title" tone="brand">{initial}</VadText>
+            </View>
+            <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+              <VadText variant="heading" numberOfLines={1}>{displayName || 'Welcome to VAD'}</VadText>
+              <VadText variant="caption" tone="secondary" numberOfLines={1}>{email}</VadText>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: hasAdminAccess ? theme.colors.brandPrimary : theme.colors.yes }} />
+                <VadText variant="caption" tone="secondary">{hasAdminAccess ? 'Admin account' : 'Member account'} · {appearance}</VadText>
+              </View>
+            </View>
           </View>
-          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-            <VadText variant="bodyStrong" numberOfLines={1}>{displayName || 'Your VAD account'}</VadText>
-            <VadText variant="caption" tone="secondary" numberOfLines={1}>{email}</VadText>
-            <VadText variant="caption" tone="tertiary" numberOfLines={1}>{displayName ? 'Profile ready' : 'Complete profile'} · {appearance} · {hasAdminAccess ? 'Admin' : 'Member'}</VadText>
-          </View>
-          <VadButton label="Edit" variant="secondary" size="small" fullWidth={false} onPress={() => router.push('/account/profile')} />
-        </View>
+          <VadButton label="Manage profile" variant="secondary" onPress={() => router.push('/account/profile')} />
+        </VadCard>
 
         <View style={{ gap: theme.spacing.sm }}>
           <VadSectionHeader
@@ -216,25 +221,16 @@ function AccountRow({
       onPress={onPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}
     >
-      <VadCard
-        variant="raised"
-        style={{
-          minHeight: density.phone ? 64 : 72,
-          paddingVertical: theme.spacing.sm,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.spacing.sm,
-        }}
-      >
-        <View style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
-          <VadIcon name={icon} size={19} tone="brand" />
+      <View style={{ minHeight: density.phone ? 58 : 64, paddingVertical: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+        <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted }}>
+          <VadIcon name={icon} size={18} tone="secondary" />
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <VadText variant="bodyStrong">{title}</VadText>
-          <VadText variant="caption" tone="secondary">{subtitle}</VadText>
+          <VadText variant="caption" tone="secondary" numberOfLines={1}>{subtitle}</VadText>
         </View>
-        <VadIcon name="chevronRight" size={18} tone="tertiary" />
-      </VadCard>
+        <VadIcon name="chevronRight" size={17} tone="tertiary" />
+      </View>
     </Pressable>
   );
 }
