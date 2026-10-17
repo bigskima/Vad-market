@@ -396,3 +396,23 @@ export async function getAdminOracleQueue() {
   if (error) return [];
   return (data ?? []) as Record<string, unknown>[];
 }
+
+export type MarketOrderBookLevel = { price: number | string; quantity: number | string };
+export type MarketOrderBook = {
+  instrumentId: string;
+  yesBids: MarketOrderBookLevel[];
+  noBids: MarketOrderBookLevel[];
+};
+
+export async function getMarketOrderBook(instrumentPublicId: string) {
+  const { data, error } = await supabase.rpc('order_book', {
+    p_instrument_public_id: instrumentPublicId,
+  });
+  assertNoError(error, 'markets', 'We could not load the live order book right now.');
+  const payload = (data ?? {}) as Partial<MarketOrderBook>;
+  return {
+    instrumentId: String(payload.instrumentId ?? instrumentPublicId),
+    yesBids: Array.isArray(payload.yesBids) ? payload.yesBids : [],
+    noBids: Array.isArray(payload.noBids) ? payload.noBids : [],
+  } as MarketOrderBook;
+}
