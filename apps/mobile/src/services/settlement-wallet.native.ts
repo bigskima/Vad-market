@@ -133,7 +133,7 @@ export async function submitEvmPositionLock(
   );
   const userAddress = asAddress(execution.authorization.userAddress, 'wallet');
   const signature = asHex(execution.vadSignature, 'VAD quote signature');
-  const wallet = await getEvmWallet(execution.network.networkId);
+  const wallet = await getEvmWallet(execution.network.networkId, userAddress);
 
   if (wallet.account.address.toLowerCase() !== userAddress.toLowerCase()) {
     throw new Error('The active Dynamic wallet does not match this VAD authorization.');
@@ -311,15 +311,15 @@ export async function submitSolanaPreparedSettlement(
   };
 }
 
-async function getEvmWallet(networkId: string) {
+async function getEvmWallet(networkId: string, expectedAddress: string) {
   await initializeDynamicWalletClient();
   if (!dynamicClient) throw new Error('Dynamic wallet is not configured.');
 
   const account = getWalletAccounts(dynamicClient).find(
-    (candidate) => candidate.chain === 'EVM',
+    (candidate) => candidate.chain === 'EVM' && candidate.address.toLowerCase() === expectedAddress.toLowerCase(),
   );
   if (!account || account.chain !== 'EVM') {
-    throw new Error('A Dynamic EVM embedded wallet is required.');
+    throw new Error('The verified Dynamic EVM wallet for this authorization is not available in this session.');
   }
 
   const provider = getWalletProviderFromWalletAccount(

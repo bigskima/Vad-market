@@ -14,6 +14,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { CryptoWalletConnections } from '@/features/wallet/crypto-wallet-connections';
 import { OnchainActivityPanel } from '@/features/wallet/onchain-activity-panel';
+import { OnchainPositionsPanel } from '@/features/wallet/onchain-positions-panel';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -159,6 +160,7 @@ export function WalletScreen({
 
       <CryptoWalletConnections />
       <OnchainActivityPanel enabled={hasUsdc} />
+      <OnchainPositionsPanel enabled={hasUsdc} />
 
       {orderedWallets.length ? (
         <VadProgressiveSection

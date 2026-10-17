@@ -15,6 +15,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { CryptoWalletBalance } from '@/features/wallet/crypto-wallet-balance';
 import {
   clearDynamicWalletSession,
   dynamicClient,
@@ -319,6 +320,7 @@ function DynamicEmailWallet() {
                     tone={vadVerified ? 'yes' : 'warning'}
                   />
                 </View>
+                <CryptoWalletBalance walletAddress={wallet.address} chainFamily={family} />
               </VadCard>
             );
           })}
