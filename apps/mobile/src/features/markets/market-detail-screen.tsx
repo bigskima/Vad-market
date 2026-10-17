@@ -93,13 +93,7 @@ export function MarketDetailScreen({
       </View>
 
       {tab === 'Overview' ? (
-        <Overview
-          market={market}
-          timing={timing}
-          canTrade={effectiveCanTrade}
-          tradeCapabilityLoading={tradeCapabilityLoading}
-          onTrade={() => setTab('Trade')}
-        />
+        <Overview market={market} timing={timing} />
       ) : null}
       {tab === 'Trade' ? (
         <TradingTicket
@@ -140,35 +134,16 @@ export function MarketDetailScreen({
   );
 }
 
-function Overview({
-  market,
-  timing,
-  canTrade,
-  tradeCapabilityLoading,
-  onTrade,
-  onTrade,
-}: {
-  market: MarketCatalogItem;
-  timing: MarketTiming;
-  canTrade: boolean;
-  tradeCapabilityLoading: boolean;
-  onTrade: () => void;
-}) {
-  const theme = useVadTheme();
+function Overview({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
   const density = useProductDensity();
-  const wide = density.width >= 780;
-  const tradeDone = !timing.tradingOpen && timing.stage !== 'SCHEDULED';
   const poolMarket = isPoolMarket(market);
 
   return (
-    <View style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
+    <View style={{ gap: density.compact ? 8 : 12 }}>
       <MarketSnapshot market={market} timing={timing} />
       <MarketPriceHistoryPanel instrumentId={market.instrument_public_id} liquidityMode={market.liquidity_mode} />
-
       {!poolMarket ? <MarketDepthPanel instrumentId={market.instrument_public_id} /> : null}
-
       <Lifecycle market={market} timing={timing} />
-
     </View>
   );
 }
@@ -287,7 +262,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
   const theme = useVadTheme();
   const density = useProductDensity();
   const wide = density.width >= 820;
-  const poolMarket = market.liquidity_mode === 'POOL';
+  const poolMarket = isPoolMarket(market);
   const rules = [
     {
       number: '1',
