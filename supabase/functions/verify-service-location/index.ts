@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     }
 
     const checkedAt = new Date();
-    const expiresAt = new Date(checkedAt.getTime() + (decision === 'VERIFIED' ? 10 : 2) * 60 * 1000);
+    const expiresAt = new Date(checkedAt.getTime() + 2 * 60 * 1000);
     const { error: saveError } = await admin.from('user_location_verifications').upsert({
       user_id: authData.user.id,
       device_country_code: deviceCountry,
