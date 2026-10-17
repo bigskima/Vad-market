@@ -13,12 +13,14 @@ import { assetMoney, pct } from '@/features/markets/format';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 
 export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrumentId: string; outcomeCode: string }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const wide = density.width >= 820;
   const data = useProductDataContext();
+  const currencyPreference = useCurrencyPreference();
 
   const position = data.positions.find((row) => String(row.instrument_id) === instrumentId && row.outcome_code === outcomeCode);
 
@@ -34,6 +36,9 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
 
   if (!position && data.sectionErrors.positions) return <VadErrorState title="Position could not be loaded" message={data.sectionErrors.positions} onRetry={() => void data.load()} />;
   if (!position) return <VadEmptyState title="Position unavailable" body="This position is no longer present in your active portfolio." />;
+  if (!currencyPreference.isCurrencyEnabled(position.asset_code as 'NGN' | 'USDC')) {
+    return <VadEmptyState title="Position hidden" body="This position uses a currency that is not enabled for your account or region." />;
+  }
 
   const yes = position.outcome_code === 'YES';
   const shares = Number(position.quantity);

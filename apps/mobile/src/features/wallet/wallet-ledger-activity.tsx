@@ -11,22 +11,25 @@ import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { useLiveNow } from '@/hooks/use-live-now';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import type { WalletActivityRow } from '@/services/market-api';
 
 type Filter = 'all' | 'markets' | 'payouts' | 'other';
 
 export function WalletLedgerActivity({ rows, compact = false }: { rows: WalletActivityRow[]; compact?: boolean }) {
   const theme = useVadTheme();
+  const currencyPreference = useCurrencyPreference();
   const now = useLiveNow();
   const [filter, setFilter] = useState<Filter>('all');
   const [visible, setVisible] = useState(compact ? 5 : 10);
 
-  const filtered = useMemo(() => rows.filter((row) => {
+  const eligibleRows = useMemo(() => rows.filter((row) => currencyPreference.isCurrencyEnabled(row.asset_code as 'NGN' | 'USDC')), [rows, currencyPreference]);
+  const filtered = useMemo(() => eligibleRows.filter((row) => {
     if (filter === 'all') return true;
     if (filter === 'markets') return isMarketMovement(row) && row.activity_type !== 'MARKET_SETTLEMENT';
     if (filter === 'payouts') return row.activity_type === 'MARKET_SETTLEMENT';
     return !isMarketMovement(row);
-  }), [filter, rows]);
+  }), [filter, eligibleRows]);
 
   return (
     <View style={{ gap: theme.spacing.md }}>

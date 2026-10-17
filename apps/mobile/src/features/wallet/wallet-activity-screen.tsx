@@ -15,6 +15,7 @@ import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import {
   getMyPaymentIntents,
   type PaymentIntentRow,
@@ -36,6 +37,7 @@ export function WalletActivityScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const currencyPreference = useCurrencyPreference();
   const now = useLiveNow();
   const desktopTable = density.width >= 920;
   const [rows, setRows] = useState<PaymentIntentRow[]>([]);
@@ -76,25 +78,27 @@ export function WalletActivityScreen({
     return () => clearTimeout(timer);
   }, [load]);
 
+  const visibleRows = useMemo(() => rows.filter((row) => currencyPreference.isCurrencyEnabled(row.asset_code as 'NGN' | 'USDC')), [rows, currencyPreference]);
+
   const counts = useMemo(() => {
     const next = {
-      all: rows.length,
+      all: visibleRows.length,
       processing: 0,
       settled: 0,
       failed: 0,
     };
 
-    rows.forEach((row) => {
+    visibleRows.forEach((row) => {
       next[classify(row)] += 1;
     });
 
     return next;
-  }, [rows]);
+  }, [visibleRows]);
 
   const totalsByAsset = useMemo(() => {
     const totals = new Map<string, { deposits: number; withdrawals: number }>();
 
-    rows.forEach((row) => {
+    visibleRows.forEach((row) => {
       const asset = row.asset_code || 'UNKNOWN';
       const current = totals.get(asset) ?? { deposits: 0, withdrawals: 0 };
       const amount = Number(row.amount ?? 0);
@@ -104,14 +108,14 @@ export function WalletActivityScreen({
     });
 
     return [...totals.entries()].sort(([a], [b]) => assetRank(a) - assetRank(b));
-  }, [rows]);
+  }, [visibleRows]);
 
   const filteredRows = useMemo(
     () =>
       filter === 'all'
-        ? rows
-        : rows.filter((row) => classify(row) === filter),
-    [filter, rows],
+        ? visibleRows
+        : visibleRows.filter((row) => classify(row) === filter),
+    [filter, visibleRows],
   );
 
   const pageSize = desktopTable ? 12 : density.phone ? 7 : 9;

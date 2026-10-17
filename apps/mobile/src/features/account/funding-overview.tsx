@@ -11,6 +11,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import { getProviderReadiness } from '@/services/payment-api';
 
 type Readiness = {
@@ -39,12 +40,13 @@ export function FundingOverview({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const currencyPreference = useCurrencyPreference();
   const wide = density.width >= 760;
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const hasNgn = activeAssetCodes.includes('NGN');
-  const hasUsdc = activeAssetCodes.includes('USDC');
+  const hasNgn = activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
+  const hasUsdc = activeAssetCodes.includes('USDC') && currencyPreference.isCurrencyEnabled('USDC');
 
   const load = useCallback(async () => {
     if (!hasNgn) {

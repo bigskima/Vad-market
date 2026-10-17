@@ -1,5 +1,6 @@
 import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
+import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 export type MarketCatalogItem = {
   instrument_public_id: string;
@@ -295,6 +296,25 @@ export async function getMyProposals() {
   return (data ?? []) as ProposalRow[];
 }
 
+
+async function ensureNgnLocationForInstrument(instrumentPublicId: string) {
+  const { data, error } = await supabase
+    .from('market_catalog')
+    .select('asset_code')
+    .eq('instrument_public_id', instrumentPublicId)
+    .maybeSingle();
+  assertNoError(error, 'trading', 'We could not verify the market currency. Please try again.');
+  if (data?.asset_code !== 'NGN') return;
+
+  const result = await verifyCurrentServiceLocation().catch(() => ({
+    allowed: false,
+    reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE',
+  }));
+  if (!result.allowed) {
+    throw new Error('NGN trading is available only when your current location and network are verified in Nigeria.');
+  }
+}
+
 export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; amount: number }) {
   const { data, error } = await supabase.rpc('pool_quote', {
     p_instrument_public_id: input.instrumentPublicId,
@@ -306,6 +326,7 @@ export async function quotePoolStake(input: { instrumentPublicId: string; outcom
 }
 
 export async function placePoolStake(quote: PoolQuote) {
+  await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `pool:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_pool_stake', {
     p_instrument_public_id: quote.instrumentPublicId,
@@ -338,6 +359,7 @@ export async function getOrderStatus(orderPublicId: string) {
 }
 
 export async function placeOrder(quote: TradeQuote) {
+  await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `mobile:${quote.instrumentPublicId}:${quote.outcomeCode}:${quote.side}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_order', {
     p_market_id: quote.instrumentId,
@@ -395,4 +417,48 @@ export async function getAdminOracleQueue() {
   const { data, error } = await supabase.rpc('admin_oracle_queue');
   if (error) return [];
   return (data ?? []) as Record<string, unknown>[];
+}
+
+export type MarketOrderBookLevel = { price: number | string; quantity: number | string };
+export type MarketOrderBook = {
+  instrumentId: string;
+  yesBids: MarketOrderBookLevel[];
+  noBids: MarketOrderBookLevel[];
+};
+
+export async function getMarketOrderBook(instrumentPublicId: string) {
+  const { data, error } = await supabase.rpc('order_book', {
+    p_instrument_public_id: instrumentPublicId,
+  });
+  assertNoError(error, 'markets', 'We could not load the live order book right now.');
+  const payload = (data ?? {}) as Partial<MarketOrderBook>;
+  return {
+    instrumentId: String(payload.instrumentId ?? instrumentPublicId),
+    yesBids: Array.isArray(payload.yesBids) ? payload.yesBids : [],
+    noBids: Array.isArray(payload.noBids) ? payload.noBids : [],
+  } as MarketOrderBook;
+}
+
+export type MarketPriceHistoryPoint = {
+  observed_at: string;
+  outcome_code: 'YES' | 'NO' | string;
+  price: number | string;
+};
+
+export async function getMarketPriceHistory(instrumentPublicId: string, limit = 120) {
+  const { data, error } = await supabase.rpc('market_price_history', {
+    p_instrument_public_id: instrumentPublicId,
+    p_limit: limit,
+  });
+  assertNoError(error, 'markets', 'We could not load executed market prices right now.');
+  return (Array.isArray(data) ? data : []) as MarketPriceHistoryPoint[];
+}
+
+export async function getPeerPoolStakeHistory(instrumentPublicId: string, limit = 120) {
+  const { data, error } = await supabase.rpc('peer_pool_stake_history', {
+    p_instrument_public_id: instrumentPublicId,
+    p_limit: limit,
+  });
+  assertNoError(error, 'markets', 'We could not load historical participant allocation right now.');
+  return (Array.isArray(data) ? data : []) as MarketPriceHistoryPoint[];
 }

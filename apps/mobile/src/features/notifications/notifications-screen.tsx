@@ -75,53 +75,14 @@ export function NotificationsScreen({
   });
 
   return (
-    <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
-      <VadCard
-        variant="brand"
-        style={{
-          padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-          gap: theme.spacing.md,
-          overflow: 'hidden',
-        }}
-      >
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            width: 180,
-            height: 180,
-            borderRadius: 90,
-            right: -72,
-            top: -88,
-            backgroundColor: theme.colors.surface,
-            opacity: theme.mode === 'dark' ? 0.06 : 0.4,
-          }}
-        />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-          <View style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
-            <VadIcon name="bell" size={21} tone="brand" />
-          </View>
-          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-            <VadText variant="caption" tone="brand">VAD UPDATES</VadText>
-            <VadText variant={density.phone ? 'heading' : 'title'}>Notifications that matter</VadText>
-            <VadText variant="caption" tone="secondary">
-              Market changes, predictions, orders, results and payouts stay here without interrupting what you are doing.
-            </VadText>
-          </View>
+    <View style={{ gap: density.compact ? 14 : 20 }}>
+      <View style={{ gap: theme.spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+          <VadText variant="caption" tone={unread ? 'brand' : 'tertiary'}>{unread ? `${unread} unread` : 'All caught up'}</VadText>
+          {unread > 0 ? <VadButton label="Mark all read" size="small" variant="plain" fullWidth={false} onPress={onMarkAllRead} /> : null}
         </View>
-
-        <View style={{ flexDirection: density.narrow ? 'column' : 'row', alignItems: density.narrow ? 'stretch' : 'center', gap: theme.spacing.sm }}>
-          <VadChip label={unread ? `${unread} unread` : 'All caught up'} tone={unread ? 'brand' : 'yes'} />
-          <View style={{ flex: 1 }} />
-          {unread > 0 ? <VadButton label="Mark all as read" size="small" variant="secondary" fullWidth={density.narrow} onPress={onMarkAllRead} /> : null}
-        </View>
-      </VadCard>
-
-      <View style={{ gap: theme.spacing.xs }}>
         <VadSegmentedControl value={filter} options={filters} onChange={setFilter} />
-        <VadText variant="caption" tone="tertiary">
-          Showing {progressive.visibleCount} of {progressive.totalCount} {filter === 'ALL' ? 'notifications' : filter.toLowerCase()}.
-        </VadText>
+        <VadText variant="caption" tone="tertiary">{progressive.visibleCount} shown</VadText>
       </View>
 
       {error ? (
@@ -137,11 +98,11 @@ export function NotificationsScreen({
           <VadIcon name="bell" size={24} tone="tertiary" />
           <VadText variant="bodyStrong">No notifications here yet</VadText>
           <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>
-            VAD will surface relevant market, prediction, trade, result and payout activity here.
+            New activity will appear here.
           </VadText>
         </VadCard>
       ) : (
-        <View style={{ gap: theme.spacing.sm }}>
+        <View style={{ gap: 9 }}>
           {progressive.visibleItems.map((item) => {
             const unreadItem = !item.read_at;
             return (
@@ -154,7 +115,10 @@ export function NotificationsScreen({
                 <VadCard
                   variant={unreadItem ? 'raised' : 'muted'}
                   style={{
-                    gap: theme.spacing.xs,
+                    gap: theme.spacing.sm,
+                    paddingVertical: density.phone ? 13 : 16,
+                    paddingHorizontal: density.phone ? 13 : 17,
+                    borderRadius: 18,
                     borderLeftWidth: unreadItem ? 3 : 1,
                     borderLeftColor: unreadItem ? theme.colors.brandPrimary : theme.colors.border,
                   }}
@@ -179,7 +143,7 @@ export function NotificationsScreen({
 
           {progressive.hasMore ? (
             <VadCard variant="raised" style={{ alignItems: 'center', gap: theme.spacing.sm }}>
-              <VadText variant="caption" tone="secondary">{progressive.remainingCount} more notifications available.</VadText>
+              <VadText variant="caption" tone="secondary">{progressive.remainingCount} more</VadText>
               <VadButton label={`Show next ${progressive.nextCount}`} size="small" variant="secondary" fullWidth={false} onPress={progressive.showMore} />
             </VadCard>
           ) : null}

@@ -13,6 +13,7 @@ import { assetMoney } from '@/features/markets/format';
 import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import {
   getMyPaymentIntents,
   type PaymentIntentRow,
@@ -21,6 +22,7 @@ import {
 export function WalletTransactionScreen({ intentId }: { intentId: string }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const currencyPreference = useCurrencyPreference();
   const now = useLiveNow();
   const [intent, setIntent] = useState<PaymentIntentRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +52,10 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
   }, [load]);
+
+  if (intent && !currencyPreference.isCurrencyEnabled(intent.asset_code as 'NGN' | 'USDC')) {
+    return <VadEmptyState title="Transaction hidden" body="This transaction uses a currency that is not enabled for your account or region." />;
+  }
 
   if (loading) {
     return (

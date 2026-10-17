@@ -11,6 +11,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import { getMyGrowthDashboard } from '@/services/growth-api';
 import type { MarketHistoryRow, PoolStakeRow } from '@/services/market-api';
 import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
@@ -26,6 +27,9 @@ type Tab = 'active' | 'wins' | 'losses' | 'other';
 export function PeerMarketPortfolio({ poolStakes, marketHistory }: { poolStakes: PoolStakeRow[]; marketHistory: MarketHistoryRow[] }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const { enabledCurrencies } = useCurrencyPreference();
+  const currencyPoolStakes = useMemo(() => poolStakes.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency)), [poolStakes, enabledCurrencies]);
+  const currencyMarketHistory = useMemo(() => marketHistory.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency)), [marketHistory, enabledCurrencies]);
   const [tab, setTab] = useState<Tab>('active');
   const [visible, setVisible] = useState(6);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -42,12 +46,12 @@ export function PeerMarketPortfolio({ poolStakes, marketHistory }: { poolStakes:
   }, []);
 
   const active = useMemo(
-    () => poolStakes.filter((row) => !['SETTLED', 'VOIDED', 'CANCELLED'].includes(row.market_status)),
-    [poolStakes],
+    () => currencyPoolStakes.filter((row) => !['SETTLED', 'VOIDED', 'CANCELLED'].includes(row.market_status)),
+    [currencyPoolStakes],
   );
-  const wins = useMemo(() => marketHistory.filter((row) => row.result === 'WON'), [marketHistory]);
-  const losses = useMemo(() => marketHistory.filter((row) => row.result === 'LOST'), [marketHistory]);
-  const other = useMemo(() => marketHistory.filter((row) => !['WON', 'LOST'].includes(row.result)), [marketHistory]);
+  const wins = useMemo(() => currencyMarketHistory.filter((row) => row.result === 'WON'), [currencyMarketHistory]);
+  const losses = useMemo(() => currencyMarketHistory.filter((row) => row.result === 'LOST'), [currencyMarketHistory]);
+  const other = useMemo(() => currencyMarketHistory.filter((row) => !['WON', 'LOST'].includes(row.result)), [currencyMarketHistory]);
   const rows: MarketHistoryRow[] = tab === 'wins' ? wins : tab === 'losses' ? losses : tab === 'other' ? other : [];
   const totalRows = tab === 'active' ? active.length : rows.length;
   const shareProfile: ResultCardProfile = {

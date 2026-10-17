@@ -14,9 +14,11 @@ import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { CryptoWalletConnections } from '@/features/wallet/crypto-wallet-connections';
 import { OnchainActivityPanel } from '@/features/wallet/onchain-activity-panel';
+import { UsdcWalletBalances } from '@/features/wallet/usdc-wallet-balances';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import { getMyPaymentIntents, type PaymentIntentRow } from '@/services/payment-api';
 import type { WalletRow } from '@/services/market-api';
 
@@ -37,11 +39,12 @@ export function WalletScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const currencyPreference = useCurrencyPreference();
   const [intents, setIntents] = useState<PaymentIntentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
-  const hasNgn = activeAssetCodes.includes('NGN');
-  const hasUsdc = activeAssetCodes.includes('USDC');
+  const hasNgn = activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
+  const hasUsdc = activeAssetCodes.includes('USDC') && currencyPreference.isCurrencyEnabled('USDC');
 
   const load = useCallback(async () => {
     if (!hasNgn) {
@@ -66,10 +69,9 @@ export function WalletScreen({
   }, [load]);
 
   const orderedWallets = useMemo(
-    () => wallets
-      .filter((wallet) => wallet.asset_code !== 'USDC')
+    () => wallets.filter((wallet) => (wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC') && currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency))
       .sort((a, b) => assetRank(a.asset_code) - assetRank(b.asset_code)),
-    [wallets],
+    [wallets, currencyPreference],
   );
   const primary = hasNgn
     ? orderedWallets.find((row) => row.asset_code === 'NGN') ?? orderedWallets[0]
@@ -90,62 +92,39 @@ export function WalletScreen({
         onAction={hasNgn ? onActivity : undefined}
       />
 
-      {primary ? (
-        <TourTarget id="wallet-balance">
-          <VadCard
-          variant="surface"
-          style={{
-            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-            padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-            borderRadius: theme.radius.xxl,
-            overflow: 'hidden',
-          }}
-        >
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              width: 124,
-              height: 124,
-              borderRadius: 62,
-              right: -42,
-              top: -54,
-              backgroundColor: theme.colors.brandSoft,
-              opacity: theme.mode === 'dark' ? 0.28 : 0.72,
-            }}
-          />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
-            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <VadText variant="caption" tone="brand">{primaryCode} LIQUIDITY</VadText>
-              <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
-                {assetMoney(total, primaryCode)}
-              </VadText>
-              <VadText variant="caption" tone="secondary">Available + committed + withdrawal pending</VadText>
+      <TourTarget id="wallet-balance">
+        <View style={{ gap: theme.spacing.sm }}>
+          <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <VadText variant="bodyStrong">Your currencies</VadText>
+                <VadText variant="caption" tone="secondary">Choose which currencies to use across VAD.</VadText>
+              </View>
+              <VadIcon name="wallet" size={18} tone="secondary" />
             </View>
-            <View
-              style={{
-                width: density.phone ? 48 : 56,
-                height: density.phone ? 48 : 56,
-                borderRadius: 28,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: theme.colors.surface,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-              }}
-            >
-              <VadIcon name="wallet" size={density.phone ? 22 : 26} tone="brand" />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {currencyPreference.eligibleCurrencies.map((currency) => (
+                <CurrencyToggle
+                  key={currency}
+                  currency={currency}
+                  displayName={currencyPreference.isCurrencyEnabled(currency) ? currency : 'Additional currency'}
+                  enabled={currencyPreference.isCurrencyEnabled(currency)}
+                  available={activeAssetCodes.includes(currency)}
+                  onToggle={() => currencyPreference.toggleCurrency(currency)}
+                />
+              ))}
             </View>
+          </VadCard>
+          <View style={{ gap: 7 }}>
+            {orderedWallets.filter((wallet) => currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency)).map((wallet) => (
+              <CompactCurrencyBalance key={wallet.asset_code} wallet={wallet} />
+            ))}
+            {!orderedWallets.some((wallet) => currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency)) ? (
+              <VadEmptyState title="No enabled balances" body="Enable an eligible currency above to show its balance across VAD." />
+            ) : null}
           </View>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-            <VadMetricTile label="Available" value={assetMoney(available, primaryCode)} detail="Ready to use" tone="yes" />
-            <VadMetricTile label="Committed" value={assetMoney(reserved, primaryCode)} detail="Held for active market activity" />
-            <VadMetricTile label="Pending" value={assetMoney(pending, primaryCode)} detail="Withdrawal processing" tone="brand" />
-          </View>
-        </VadCard>
-        </TourTarget>
-      ) : null}
+        </View>
+      </TourTarget>
 
       {hasNgn ? (
         <TourTarget id="wallet-actions">
@@ -158,32 +137,8 @@ export function WalletScreen({
       ) : null}
 
       <CryptoWalletConnections />
+      {currencyPreference.isCurrencyEnabled('USDC') ? <UsdcWalletBalances /> : null}
       <OnchainActivityPanel enabled={hasUsdc} />
-
-      {orderedWallets.length ? (
-        <VadProgressiveSection
-          title="Currency balances"
-          eyebrow="BALANCE BREAKDOWN"
-          description="Open the detailed breakdown only when you need to inspect available, committed and pending balances by currency."
-          icon="wallet"
-          summary={(
-            <VadText variant="caption" tone="tertiary">
-              {orderedWallets.map((wallet) => wallet.asset_code).join(' · ')}
-            </VadText>
-          )}
-        >
-          <View style={{ flexDirection: density.width >= 720 ? 'row' : 'column', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-            {orderedWallets.map((wallet) => (
-              <AssetBalanceCard key={wallet.asset_code} wallet={wallet} />
-            ))}
-          </View>
-        </VadProgressiveSection>
-      ) : (
-        <VadEmptyState
-          title="No wallet balances yet"
-          body="Your balances will appear here when funds become available in your account."
-        />
-      )}
 
       {hasNgn ? (
         <TourTarget id="wallet-activity">
@@ -238,44 +193,71 @@ export function WalletScreen({
   );
 }
 
-function AssetBalanceCard({ wallet }: { wallet: WalletRow }) {
+function CurrencyToggle({ currency, displayName, enabled, available, onToggle }: { currency: VADCurrency; displayName: string; enabled: boolean; available: boolean; onToggle: () => void }) {
   const theme = useVadTheme();
-  const density = useProductDensity();
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: enabled, disabled: !available }}
+      accessibilityLabel={enabled ? `Use ${currency} across VAD` : 'Enable an additional currency across VAD'}
+      disabled={!available}
+      onPress={onToggle}
+      style={({ pressed }) => ({
+        flex: 1, minWidth: 0, minHeight: 48, flexDirection: 'row', alignItems: 'center',
+        justifyContent: 'space-between', gap: 7, paddingHorizontal: 10, paddingVertical: 8,
+        borderRadius: 13, borderWidth: 1,
+        borderColor: enabled ? theme.colors.brandPrimary : theme.colors.border,
+        backgroundColor: enabled ? theme.colors.brandSoft : theme.colors.surfaceMuted,
+        opacity: !available ? 0.45 : pressed ? 0.78 : 1,
+      })}
+    >
+      <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+        <VadText variant="bodyStrong">{displayName}</VadText>
+        <VadText variant="caption" tone="secondary">{available ? (enabled ? 'On across VAD' : 'Hidden across VAD') : 'Not available'}</VadText>
+      </View>
+      <View style={{ width: 30, height: 18, borderRadius: 9, padding: 2, justifyContent: 'center', alignItems: enabled ? 'flex-end' : 'flex-start', backgroundColor: enabled ? theme.colors.brandPrimary : theme.colors.border }}>
+        <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: theme.colors.surface }} />
+      </View>
+    </Pressable>
+  );
+}
+
+function CompactCurrencyBalance({ wallet }: { wallet: WalletRow }) {
+  const theme = useVadTheme();
   const available = Number(wallet.available ?? 0);
   const reserved = Number(wallet.reserved ?? 0);
   const pending = Number(wallet.withdrawal_pending ?? 0);
   const total = available + reserved + pending;
+  const currency = wallet.asset_code === 'NGN' ? 'Naira' : 'USD Coin';
 
   return (
-    <VadCard
-      variant="raised"
-      style={{
-        flexGrow: 1,
-        flexBasis: density.width >= 720 ? 260 : undefined,
-        minWidth: 0,
-        gap: theme.spacing.sm,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-        <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
-          <VadText variant="caption" tone="tertiary">{wallet.asset_code}</VadText>
-          <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(total, wallet.asset_code)}</VadText>
+    <VadCard variant="raised" style={{ paddingVertical: 12, paddingHorizontal: 14, gap: 10, borderRadius: 17 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted }}>
+          <VadText variant="caption" tone="brand" style={{ fontWeight: '800' }}>{wallet.asset_code === 'NGN' ? '₦' : '$'}</VadText>
         </View>
-        <VadChip label={wallet.asset_code === 'NGN' ? 'Naira' : wallet.asset_code === 'USDC' ? 'USDC' : 'Currency'} tone={wallet.asset_code === 'USDC' ? 'brand' : 'neutral'} />
+        <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+          <VadText variant="bodyStrong">{wallet.asset_code}</VadText>
+          <VadText variant="caption" tone="secondary">{currency}</VadText>
+        </View>
+        <View style={{ alignItems: 'flex-end', minWidth: 0, maxWidth: '54%', gap: 2 }}>
+          <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(total, wallet.asset_code)}</VadText>
+          <VadText variant="caption" tone="tertiary">Total balance</VadText>
+        </View>
       </View>
-
-      <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-        <AssetFact label="Available" value={assetMoney(available, wallet.asset_code)} tone="yes" />
-        <AssetFact label="Committed" value={assetMoney(reserved, wallet.asset_code)} />
-        <AssetFact label="Pending" value={assetMoney(pending, wallet.asset_code)} />
+      <View style={{ flexDirection: 'row', gap: 0, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 9 }}>
+        <BalanceFact label="Available" value={assetMoney(available, wallet.asset_code)} tone="yes" />
+        <BalanceFact label="Reserved" value={assetMoney(reserved, wallet.asset_code)} />
+        <BalanceFact label="Pending" value={assetMoney(pending, wallet.asset_code)} />
       </View>
     </VadCard>
   );
 }
 
-function AssetFact({ label, value, tone = 'primary' }: { label: string; value: string; tone?: 'primary' | 'yes' }) {
+function BalanceFact({ label, value, tone = 'primary' }: { label: string; value: string; tone?: 'primary' | 'yes' }) {
+  const theme = useVadTheme();
   return (
-    <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+    <View style={{ flex: 1, minWidth: 0, gap: 2, paddingHorizontal: 7, borderLeftWidth: label === 'Available' ? 0 : 1, borderLeftColor: theme.colors.border }}>
       <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
       <VadText variant="caption" tone={tone} numberOfLines={1} adjustsFontSizeToFit>{value}</VadText>
     </View>
