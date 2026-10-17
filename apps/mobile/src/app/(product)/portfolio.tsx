@@ -32,7 +32,7 @@ export default function PortfolioRoute() {
 
   return (
     <ProductRoute active="Portfolio">
-      <View style={{ gap: theme.spacing.lg }}>
+      <View style={{ gap: theme.spacing.md }}>
         {peerReadFailed ? (
           <VadErrorState
             title="Prediction history could not be fully loaded"
@@ -44,7 +44,7 @@ export default function PortfolioRoute() {
         )}
 
         {portfolioReadBlocked ? (
-          <View style={{ gap: theme.spacing.md }}>
+          <View style={{ gap: theme.spacing.sm }}>
             {positionsReadFailedWithoutData ? <VadErrorState title="Positions could not be loaded" message={data.sectionErrors.positions ?? 'Position data is unavailable.'} onRetry={() => void data.refreshPortfolio()} /> : null}
             {ordersReadFailedWithoutData ? <VadErrorState title="Open orders could not be loaded" message={data.sectionErrors.orders ?? 'Order data is unavailable.'} onRetry={() => void data.refreshPortfolio()} /> : null}
           </View>
