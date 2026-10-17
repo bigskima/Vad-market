@@ -137,7 +137,7 @@ export function WalletScreen({
       ) : null}
 
       <CryptoWalletConnections />
-      {hasUsdc ? <UsdcWalletBalances /> : null}
+      {currencyPreference.isCurrencyEnabled('USDC') ? <UsdcWalletBalances /> : null}
       <OnchainActivityPanel enabled={hasUsdc} />
 
       {hasNgn ? (
