@@ -1,5 +1,6 @@
 import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
+import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 export type MarketCatalogItem = {
   instrument_public_id: string;
@@ -295,7 +296,27 @@ export async function getMyProposals() {
   return (data ?? []) as ProposalRow[];
 }
 
+
+async function ensureNgnLocationForInstrument(instrumentPublicId: string) {
+  const { data, error } = await supabase
+    .from('market_catalog')
+    .select('asset_code')
+    .eq('instrument_public_id', instrumentPublicId)
+    .maybeSingle();
+  assertNoError(error, 'trading', 'We could not verify the market currency. Please try again.');
+  if (data?.asset_code !== 'NGN') return;
+
+  const result = await verifyCurrentServiceLocation().catch(() => ({
+    allowed: false,
+    reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE',
+  }));
+  if (!result.allowed) {
+    throw new Error('NGN trading is available only when your current location and network are verified in Nigeria.');
+  }
+}
+
 export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; amount: number }) {
+  await ensureNgnLocationForInstrument(input.instrumentPublicId);
   const { data, error } = await supabase.rpc('pool_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
@@ -306,6 +327,7 @@ export async function quotePoolStake(input: { instrumentPublicId: string; outcom
 }
 
 export async function placePoolStake(quote: PoolQuote) {
+  await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `pool:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_pool_stake', {
     p_instrument_public_id: quote.instrumentPublicId,
@@ -318,6 +340,7 @@ export async function placePoolStake(quote: PoolQuote) {
 }
 
 export async function quoteTrade(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; side: 'BUY' | 'SELL'; price: number; quantity: number }) {
+  await ensureNgnLocationForInstrument(input.instrumentPublicId);
   const { data, error } = await supabase.rpc('trade_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
@@ -338,6 +361,7 @@ export async function getOrderStatus(orderPublicId: string) {
 }
 
 export async function placeOrder(quote: TradeQuote) {
+  await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `mobile:${quote.instrumentPublicId}:${quote.outcomeCode}:${quote.side}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_order', {
     p_market_id: quote.instrumentId,
