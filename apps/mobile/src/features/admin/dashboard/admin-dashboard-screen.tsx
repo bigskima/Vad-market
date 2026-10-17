@@ -333,7 +333,7 @@ export function AdminDashboardScreen() {
               label="Trading & money movement"
               enabled={!moneyPaused}
               paused={moneyPaused}
-              detail={moneyPaused ? 'Intentionally disabled for launch' : 'At least one money service is available'}
+              detail={moneyPaused ? 'Intentionally disabled for launch' : 'A money service is available'}
             />
             {data.access.isSuperAdmin ? (
               <VadText variant="caption" tone="brand">Open service controls →</VadText>
@@ -429,7 +429,7 @@ export function AdminDashboardScreen() {
             {canPayments && paymentFailed > 0 ? (
               <AttentionRow
                 label="Failed payments"
-                detail="Failed payments may require provider or support review."
+                detail="Review failed payments."
                 count={paymentFailed}
                 tone="danger"
                 href="/admin/payments"
@@ -438,7 +438,7 @@ export function AdminDashboardScreen() {
             {data.access.isSuperAdmin ? (
               <AttentionRow
                 label="Fee proposals"
-                detail="Finance fee changes waiting for Super Admin approval."
+                detail="Fee changes awaiting Super Admin approval."
                 count={feeProposalAttention}
                 href="/admin/fees"
               />
@@ -447,13 +447,13 @@ export function AdminDashboardScreen() {
               <>
                 <AttentionRow
                   label="Market reviews"
-                  detail="Market proposals awaiting an operations decision."
+                  detail="Market proposals to review."
                   count={marketAttention}
                   href="/admin/governance"
                 />
                 <AttentionRow
                   label="Oracle decisions"
-                  detail="Events awaiting resolution or dispute review."
+                  detail="Events to resolve or review."
                   count={oracleAttention}
                   href="/admin/governance"
                 />
@@ -462,7 +462,7 @@ export function AdminDashboardScreen() {
             {canPayments ? (
               <AttentionRow
                 label="Payments pending"
-                detail="Payments waiting for provider confirmation."
+                detail="Awaiting provider confirmation."
                 count={paymentPending}
                 href="/admin/payments"
               />
@@ -470,7 +470,7 @@ export function AdminDashboardScreen() {
             {canCompliance ? (
               <AttentionRow
                 label="KYC in review"
-                detail="Identity cases waiting for compliance review."
+                detail="Identity cases to review."
                 count={kycAttention}
                 href="/admin/compliance"
               />
@@ -478,7 +478,7 @@ export function AdminDashboardScreen() {
             {canProviders ? (
               <AttentionRow
                 label="Provider approvals"
-                detail="Provider changes waiting for approval."
+                detail="Provider changes to approve."
                 count={providerAttention}
                 href="/admin/providers"
               />
