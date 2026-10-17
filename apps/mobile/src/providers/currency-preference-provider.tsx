@@ -1,10 +1,21 @@
 import 'expo-sqlite/localStorage/install';
 
-import { createContext, type PropsWithChildren, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+
+import { supabase, supabaseConfiguration } from '@/lib/supabase';
 
 export type VADCurrency = 'NGN' | 'USDC';
+type CurrencyPolicy = {
+  country_code: string;
+  eligible_asset_codes: VADCurrency[];
+  enabled_asset_codes: VADCurrency[];
+};
 type CurrencyPreferenceValue = {
   enabledCurrencies: VADCurrency[];
+  eligibleCurrencies: VADCurrency[];
+  countryCode: string;
+  loading: boolean;
+  isCurrencyEligible: (currency: VADCurrency) => boolean;
   isCurrencyEnabled: (currency: VADCurrency) => boolean;
   toggleCurrency: (currency: VADCurrency) => void;
   setEnabledCurrencies: (currencies: VADCurrency[]) => void;
@@ -12,51 +23,129 @@ type CurrencyPreferenceValue = {
 
 const STORAGE_KEY = 'vad:enabled-currencies';
 const CurrencyPreferenceContext = createContext<CurrencyPreferenceValue | null>(null);
+const SUPPORTED: VADCurrency[] = ['NGN', 'USDC'];
 
 function readInitialCurrencies(): VADCurrency[] {
   try {
     const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
-    if (!raw) return ['NGN', 'USDC'];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return ['NGN', 'USDC'];
-    const valid = parsed.filter((item): item is VADCurrency => item === 'NGN' || item === 'USDC');
-    return valid.length ? [...new Set(valid)] : ['NGN', 'USDC'];
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    if (!Array.isArray(parsed)) return SUPPORTED;
+    const valid = parsed.filter((item): item is VADCurrency => SUPPORTED.includes(item));
+    return valid.length ? [...new Set(valid)] : SUPPORTED;
   } catch {
-    return ['NGN', 'USDC'];
+    return SUPPORTED;
   }
+}
+
+function asCurrencies(value: unknown): VADCurrency[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((item): item is VADCurrency => SUPPORTED.includes(item)))];
 }
 
 export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
   const [enabledCurrencies, setEnabledState] = useState<VADCurrency[]>(readInitialCurrencies);
+  const [eligibleCurrencies, setEligibleState] = useState<VADCurrency[]>(SUPPORTED);
+  const [countryCode, setCountryCode] = useState('NG');
+  const [loading, setLoading] = useState(true);
 
-  const setEnabledCurrencies = useCallback((currencies: VADCurrency[]) => {
-    const next = [...new Set(currencies.filter((currency): currency is VADCurrency => currency === 'NGN' || currency === 'USDC'))];
-    if (!next.length) return;
-    setEnabledState(next);
+  const applyPolicy = useCallback((policy: CurrencyPolicy) => {
+    const eligible = asCurrencies(policy.eligible_asset_codes);
+    const enabled = asCurrencies(policy.enabled_asset_codes).filter((code) => eligible.includes(code));
+    // Non-Nigerian jurisdictions must never render NGN, even if a stale preference exists.
+    const safeEligible = policy.country_code === 'NG' ? eligible : eligible.filter((code) => code !== 'NGN');
+    const safeEnabled = policy.country_code === 'NG' ? enabled : enabled.filter((code) => code !== 'NGN');
+    setCountryCode(policy.country_code);
+    setEligibleState(safeEligible);
+    setEnabledState(safeEnabled.length ? safeEnabled : safeEligible);
     try {
-      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next));
+      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(safeEnabled.length ? safeEnabled : safeEligible));
     } catch {
-      // Keep the preference for the current session when storage is unavailable.
+      // Supabase remains the source of truth when local storage is unavailable.
     }
   }, []);
 
+  const refresh = useCallback(async () => {
+    if (!supabaseConfiguration.ready) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) {
+        // Do not trust a prior account's cached preference on a signed-out screen.
+        setCountryCode('NG');
+        setEligibleState(SUPPORTED);
+        setEnabledState(readInitialCurrencies());
+        return;
+      }
+      const { data, error } = await supabase.rpc('get_my_currency_policy');
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as CurrencyPolicy | null;
+      if (!row) throw new Error('Currency policy is unavailable.');
+      applyPolicy(row);
+    } catch {
+      // Keep the app usable if the network is temporarily unavailable. Never
+      // allow a cached NGN preference to leak into a known non-Nigerian session.
+    } finally {
+      setLoading(false);
+    }
+  }, [applyPolicy]);
+
+  useEffect(() => {
+    void refresh();
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      void refresh();
+    });
+    return () => listener.subscription.unsubscribe();
+  }, [refresh]);
+
+  const setEnabledCurrencies = useCallback((currencies: VADCurrency[]) => {
+    const next = [...new Set(currencies.filter((currency) => eligibleCurrencies.includes(currency)))];
+    if (!next.length) return;
+    setEnabledState(next);
+    try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
+    void (async () => {
+      if (!supabaseConfiguration.ready) return;
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) return;
+      await supabase.from('user_currency_preferences').upsert({
+        user_id: data.user.id,
+        enabled_asset_codes: next,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+      await refresh();
+    })();
+  }, [eligibleCurrencies, refresh]);
+
   const toggleCurrency = useCallback((currency: VADCurrency) => {
+    if (!eligibleCurrencies.includes(currency)) return;
     setEnabledState((current) => {
       const next = current.includes(currency)
         ? current.filter((item) => item !== currency)
         : [...current, currency];
       if (!next.length) return current;
-      try {
-        globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // Keep the preference for the current session when storage is unavailable.
-      }
+      try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
+      void (async () => {
+        if (!supabaseConfiguration.ready) return;
+        const { data } = await supabase.auth.getUser();
+        if (!data.user) return;
+        const { error } = await supabase.from('user_currency_preferences').upsert({
+          user_id: data.user.id,
+          enabled_asset_codes: next,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+        if (!error) await refresh();
+      })();
       return next;
     });
-  }, []);
+  }, [eligibleCurrencies, refresh]);
 
-  const isCurrencyEnabled = useCallback((currency: VADCurrency) => enabledCurrencies.includes(currency), [enabledCurrencies]);
-  const value = useMemo(() => ({ enabledCurrencies, isCurrencyEnabled, toggleCurrency, setEnabledCurrencies }), [enabledCurrencies, isCurrencyEnabled, toggleCurrency, setEnabledCurrencies]);
+  const isCurrencyEligible = useCallback((currency: VADCurrency) => eligibleCurrencies.includes(currency), [eligibleCurrencies]);
+  const isCurrencyEnabled = useCallback((currency: VADCurrency) => eligibleCurrencies.includes(currency) && enabledCurrencies.includes(currency), [eligibleCurrencies, enabledCurrencies]);
+  const value = useMemo(() => ({
+    enabledCurrencies: enabledCurrencies.filter((code) => eligibleCurrencies.includes(code)),
+    eligibleCurrencies, countryCode, loading, isCurrencyEligible, isCurrencyEnabled, toggleCurrency, setEnabledCurrencies,
+  }), [enabledCurrencies, eligibleCurrencies, countryCode, loading, isCurrencyEligible, isCurrencyEnabled, toggleCurrency, setEnabledCurrencies]);
 
   return <CurrencyPreferenceContext.Provider value={value}>{children}</CurrencyPreferenceContext.Provider>;
 }
