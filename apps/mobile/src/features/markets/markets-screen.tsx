@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
+import { VadButton } from '@/components/ui/vad-button';
+import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
+import { VadIcon } from '@/components/ui/vad-icon';
+import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
