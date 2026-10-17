@@ -16,7 +16,6 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { MarketDepthPanel } from './components/market-depth-panel';
-import { MarketPriceHistoryPanel } from './components/market-price-history-panel';
 import { TradingTicket } from './components/trading-ticket';
 
 type DetailTab = 'Overview' | 'Trade' | 'Discussion' | 'Rules';
@@ -86,7 +85,6 @@ export function MarketDetailScreen({
   return (
     <View style={{ gap: density.sectionGap }}>
       <MarketDetailHeader market={market} />
-      <MarketPriceHistoryPanel instrumentId={market.instrument_public_id} />
 
       <View style={{ gap: 6 }}>
         <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
