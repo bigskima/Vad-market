@@ -99,7 +99,7 @@ export function WalletScreen({
                 <VadText variant="bodyStrong">Your currencies</VadText>
                 <VadText variant="caption" tone="secondary">Choose which currencies to use across VAD.</VadText>
               </View>
-              <VadIcon name="sliders" size={18} tone="secondary" />
+              <VadIcon name="wallet" size={18} tone="secondary" />
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <CurrencyToggle currency="NGN" enabled={currencyPreference.isCurrencyEnabled('NGN')} available={activeAssetCodes.includes('NGN')} onToggle={() => currencyPreference.toggleCurrency('NGN')} />
