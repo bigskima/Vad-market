@@ -101,71 +101,72 @@ export function HomeScreen({
   return (
     <View style={{ gap: sectionGap }}>
       <TourTarget id="home-overview">
-        <VadCard
-          variant="surface"
-          style={{
-            padding: density.phone ? theme.spacing.md : theme.spacing.lg,
-            gap: density.phone ? theme.spacing.md : theme.spacing.lg,
-            borderColor: theme.colors.border,
-            borderRadius: theme.radius.xxl,
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Explore global events and markets"
+          onPress={() => onExploreMarkets()}
+          style={({ pressed }) => ({
+            minHeight: density.phone ? 202 : 228,
+            padding: density.phone ? 20 : 26,
+            borderRadius: 24,
             overflow: 'hidden',
-          }}
+            justifyContent: 'space-between',
+            backgroundColor: theme.mode === 'dark' ? '#30259C' : '#3927B8',
+            opacity: pressed ? 0.92 : 1,
+          })}
         >
           <View
             pointerEvents="none"
             style={{
               position: 'absolute',
-              width: density.phone ? 138 : 180,
-              height: density.phone ? 138 : 180,
-              borderRadius: density.phone ? 69 : 90,
-              right: density.phone ? -60 : -72,
-              top: density.phone ? -66 : -86,
-              backgroundColor: theme.colors.brandSoft,
-              opacity: theme.mode === 'dark' ? 0.32 : 0.82,
+              width: density.phone ? 186 : 240,
+              height: density.phone ? 186 : 240,
+              borderRadius: 120,
+              right: density.phone ? -42 : -24,
+              top: density.phone ? 12 : -6,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.22)',
+              backgroundColor: 'rgba(126,108,255,0.22)',
             }}
           />
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.yes }} />
-              <VadText variant="caption" tone="brand" style={{ letterSpacing: 0.7 }}>MARKET PULSE</VadText>
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              width: density.phone ? 142 : 184,
+              height: density.phone ? 142 : 184,
+              borderRadius: 100,
+              right: density.phone ? -20 : 8,
+              top: density.phone ? 34 : 22,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.15)',
+              backgroundColor: 'rgba(20,17,95,0.25)',
+            }}
+          />
+          <View style={{ gap: 8, maxWidth: density.phone ? '82%' : '72%' }}>
+            <VadText variant="caption" style={{ color: '#D8D3FF', letterSpacing: 1 }}>TRADE WHAT HAPPENS NEXT</VadText>
+            <VadText variant={density.phone ? 'title' : 'title'} style={{ color: '#FFFFFF', fontSize: density.phone ? 29 : 34, lineHeight: density.phone ? 34 : 40 }} numberOfLines={3}>
+              Global events. Real markets.
+            </VadText>
+            <VadText variant="body" style={{ color: '#E5E2FF' }} numberOfLines={2}>
+              From finance to sports, Nigeria and beyond.
+            </VadText>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 14 }}>
+            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, paddingHorizontal: 16, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <VadText variant="label" style={{ color: '#3927B8' }}>Explore markets</VadText>
+              <VadIcon name="chevronRight" size={16} tone="brand" />
             </View>
-            <VadChip label={`${active.length} LIVE`} tone="yes" />
-          </View>
-
-          {leadMarket ? (
-            <FocusMarket market={leadMarket} detail={leadDetail} now={now} onPress={() => onOpenMarket(leadMarket)} />
-          ) : (
-            <View style={{ gap: 3, paddingVertical: theme.spacing.md }}>
-              <VadText variant="heading">No market is live right now.</VadText>
-              <VadText variant="caption" tone="secondary">Use Market discovery to inspect the full catalogue.</VadText>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', marginRight: density.phone ? 0 : 12 }}>
+              <View style={{ width: 34, height: 34, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.95)', alignItems: 'center', justifyContent: 'center' }}>
+                <VadText style={{ color: '#E99A24', fontSize: 18, fontWeight: '800' }}>₿</VadText>
+              </View>
+              <View style={{ width: 34, height: 34, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.95)', alignItems: 'center', justifyContent: 'center' }}>
+                <VadIcon name="activity" size={18} tone="brand" />
+              </View>
             </View>
-          )}
-
-          <View style={{ flexDirection: 'row', gap: 7 }}>
-            <PulseMetric value={`${active.length}`} label="Live" tone="yes" />
-            <PulseMetric value={`${traded}`} label="Traded" />
-            <PulseMetric value={`${trendingRail.length}`} label="Moving" tone="brand" />
           </View>
-
-          <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.xs }}>
-            <TourTarget id="home-explore-markets">
-              <VadButton
-                label="Explore markets"
-                fullWidth={density.narrow}
-                onPress={() => onExploreMarkets()}
-                leading={<VadIcon name="markets" size={17} tone="inverse" />}
-              />
-            </TourTarget>
-            <VadButton
-              label="Community"
-              variant="secondary"
-              fullWidth={density.narrow}
-              onPress={onOpenCommunity}
-              leading={<VadIcon name="community" size={16} tone="brand" />}
-            />
-          </View>
-        </VadCard>
+        </Pressable>
       </TourTarget>
 
       <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
@@ -173,44 +174,36 @@ export function HomeScreen({
       <TourTarget id="home-featured-markets">
         <View style={{ gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-              <VadText variant="caption" tone="brand">DISCOVERY BOARD</VadText>
-              <VadText variant="heading">Markets at a glance</VadText>
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <VadText variant="heading">Trending markets</VadText>
               <VadText variant="caption" tone="secondary" numberOfLines={2}>{boardSubtitle}</VadText>
             </View>
-            {!density.narrow ? <VadButton label="All markets" variant="ghost" size="small" fullWidth={false} onPress={() => onExploreMarkets()} /> : null}
+            <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => onExploreMarkets()} />
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            <LensButton label="Live" selected={lens === 'LIVE'} onPress={() => setLens('LIVE')} />
-            <LensButton label="VAD Select" selected={lens === 'VAD'} onPress={() => setLens('VAD')} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingRight: theme.spacing.md }}>
+            <ThemeChip label="For you" selected={lens === 'LIVE'} onPress={() => setLens('LIVE')} />
+            <ThemeChip label="VAD Select" selected={lens === 'VAD'} onPress={() => setLens('VAD')} />
             <TourTarget id="home-trending">
-              <LensButton label="Momentum" selected={lens === 'MOMENTUM'} onPress={() => setLens('MOMENTUM')} />
+              <ThemeChip label="Trending" selected={lens === 'MOMENTUM'} onPress={() => setLens('MOMENTUM')} />
             </TourTarget>
-          </View>
+          </ScrollView>
 
           {lensMarkets.length ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              decelerationRate="fast"
-              contentContainerStyle={{ gap: 10, paddingRight: theme.spacing.md }}
-            >
+            <View style={{ gap: theme.spacing.sm }}>
               {lensMarkets.slice(0, 6).map((market) => (
-                <View
-                  key={`${lens}-${market.instrument_public_id}`}
-                  style={{ width: density.desktop ? 308 : Math.min(Math.max(density.width * 0.78, 246), 292) }}
-                >
-                  <MarketCard market={market} compact onPress={() => onOpenMarket(market)} />
-                </View>
+                <MarketCard key={`${lens}-${market.instrument_public_id}`} market={market} onPress={() => onOpenMarket(market)} />
               ))}
-            </ScrollView>
+            </View>
           ) : (
-            <VadCard variant="muted" style={{ minHeight: 84, justifyContent: 'center', gap: 2 }}>
+            <VadCard variant="muted" style={{ minHeight: 88, justifyContent: 'center', gap: 4, borderRadius: theme.radius.xl }}>
               <VadText variant="bodyStrong">
-                {lens === 'MOMENTUM' ? 'Momentum is quiet right now.' : lens === 'VAD' ? 'No VAD selections are live right now.' : 'No live markets right now.'}
+                {lens === 'MOMENTUM' ? 'No strong momentum signals yet.' : lens === 'VAD' ? 'No VAD selections are live right now.' : 'No markets are live right now.'}
               </VadText>
-              <VadText variant="caption" tone="secondary">Switch views or open the full market catalogue.</VadText>
+              <VadText variant="caption" tone="secondary">Browse all markets to explore the full catalogue.</VadText>
+              <View style={{ alignSelf: 'flex-start', marginTop: 4 }}>
+                <VadButton label="Browse markets" size="small" fullWidth={false} onPress={() => onExploreMarkets()} />
+              </View>
             </VadCard>
           )}
         </View>
