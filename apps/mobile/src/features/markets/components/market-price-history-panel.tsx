@@ -61,7 +61,7 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
   const firstSelected = (series === 'NO' ? noValues : yesValues)[0]?.value;
   const lastSelected = (series === 'NO' ? noValues : yesValues).slice(-1)[0]?.value;
   const change = firstSelected != null && lastSelected != null ? (lastSelected - firstSelected) * 100 : null;
-  const chartHeight = density.compact ? 132 : 160;
+  const chartHeight = density.compact ? 116 : 142;
   const horizontalInset = 34;
   const usableWidth = Math.max(0, plotWidth - horizontalInset - 6);
   const allPrices = selectedValues.map((point) => point.value);
@@ -84,7 +84,7 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
   const renderNo = series === 'NO' || series === 'BOTH';
 
   return (
-    <VadCard variant="surface" style={{ gap: 12, padding: density.compact ? 11 : 15 }}>
+    <VadCard variant="surface" style={{ gap: density.compact ? 9 : 11, padding: density.compact ? 10 : 13 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="bodyStrong">Price action</VadText>
@@ -108,7 +108,7 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
           const tint = item === 'NO' ? theme.colors.no : theme.colors.yes;
           return (
             <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => setSeries(item)}
-              style={{ borderRadius: 8, borderWidth: 1, borderColor: active ? tint : theme.colors.border, backgroundColor: active ? (item === 'NO' ? theme.colors.noSoft : theme.colors.yesSoft) : theme.colors.surface, paddingHorizontal: 9, paddingVertical: 5 }}>
+              style={{ borderRadius: 8, borderWidth: 1, borderColor: active ? tint : theme.colors.border, backgroundColor: active ? (item === 'NO' ? theme.colors.noSoft : theme.colors.yesSoft) : theme.colors.surface, paddingHorizontal: 8, paddingVertical: 4 }}>
               <VadText variant="caption" style={{ color: active ? tint : theme.colors.textSecondary, fontWeight: '600' }}>{item === 'BOTH' ? 'YES + NO' : item}</VadText>
             </Pressable>
           );
@@ -118,7 +118,7 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
           const active = range === item.value;
           return (
             <Pressable key={item.value} accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => setRange(item.value)}
-              style={{ borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, backgroundColor: active ? theme.colors.brandSoft : 'transparent' }}>
+              style={{ borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: active ? theme.colors.brandSoft : 'transparent' }}>
               <VadText variant="caption" tone={active ? 'brand' : 'tertiary'}>{item.label}</VadText>
             </Pressable>
           );
@@ -223,11 +223,11 @@ function LineSeries({ points, color }: { points: { x: number; y: number }[]; col
         const length = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
         return (
-          <View key={`${index}-${point.x}`} style={{ position: 'absolute', left: (previous.x + point.x) / 2 - length / 2, top: (previous.y + point.y) / 2 - 1.25, width: length, height: 2.5, borderRadius: 2, backgroundColor: color, transform: [{ rotate: `${angle}rad` }] }} />
+          <View key={`${index}-${point.x}`} style={{ position: 'absolute', left: (previous.x + point.x) / 2 - length / 2, top: (previous.y + point.y) / 2 - 1.25, width: length, height: 2, borderRadius: 2, backgroundColor: color, transform: [{ rotate: `${angle}rad` }] }} />
         );
       })}
       {points.map((point, index) => (
-        <View key={`point-${index}`} style={{ position: 'absolute', left: point.x - 2.5, top: point.y - 2.5, width: 5, height: 5, borderRadius: 3, backgroundColor: color, borderWidth: 1, borderColor: color }} />
+        <View key={`point-${index}`} style={{ position: 'absolute', left: point.x - 2.5, top: point.y - 2.5, width: 4, height: 4, borderRadius: 2, backgroundColor: color, borderWidth: 1, borderColor: color }} />
       ))}
     </>
   );
