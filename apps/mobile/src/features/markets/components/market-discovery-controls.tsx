@@ -30,6 +30,7 @@ export function MarketDiscoveryControls({
   onCategoryChange,
   stage,
   onStageChange,
+  stageCounts,
   sortMode,
   onSortModeChange,
   resultCount,
@@ -41,6 +42,7 @@ export function MarketDiscoveryControls({
   onCategoryChange: (value: string) => void;
   stage?: MarketStageFilter;
   onStageChange?: (value: MarketStageFilter) => void;
+  stageCounts?: { live: number; result: number; complete: number; all: number };
   sortMode: MarketSortMode;
   onSortModeChange: (value: MarketSortMode) => void;
   resultCount: number;
@@ -61,7 +63,7 @@ export function MarketDiscoveryControls({
             {STAGE_OPTIONS.map((option) => (
               <VadChip
                 key={option.value}
-                label={option.label}
+                label={`${option.label}${stageCounts ? ` ${stageCounts[option.value]}` : ''}`}
                 selected={option.value === stage}
                 tone={option.value === stage ? (option.value === 'live' ? 'yes' : 'brand') : 'neutral'}
                 onPress={() => onStageChange(option.value)}
