@@ -20,13 +20,13 @@ import { TradingTicket } from './components/trading-ticket';
 import { MarketPriceHistoryPanel } from './components/market-price-history-panel';
 import { assetMoney, probability } from './format';
 
-type DetailTab = 'Overview' | 'Trade' | 'Activity' | 'Discussion' | 'Rules';
+type DetailTab = 'Overview' | 'Trade' | 'Chart' | 'Discussion' | 'Rules';
 type MarketTiming = ReturnType<typeof getMarketTiming>;
 
 const tabs = [
   { value: 'Overview', label: 'Overview' },
   { value: 'Trade', label: 'Trade' },
-  { value: 'Activity', label: 'Activity' },
+  { value: 'Chart', label: 'Chart' },
   { value: 'Discussion', label: 'Chat' },
   { value: 'Rules', label: 'Rules' },
 ] as const;
@@ -93,7 +93,7 @@ export function MarketDetailScreen({
       {tab === 'Overview' ? (
         <Overview market={market} timing={timing} onTrade={() => setTab('Trade')} />
       ) : null}
-      {tab === 'Activity' ? <Activity market={market} timing={timing} /> : null}
+      {tab === 'Chart' ? <Activity market={market} timing={timing} /> : null}
       {tab === 'Trade' ? (
         <TradingTicket
           market={market}
