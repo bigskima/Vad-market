@@ -43,23 +43,23 @@ export function MarketCard({
         minHeight: 0,
         borderWidth: 1,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
-        borderRadius: density.phone ? 12 : 14,
+        borderRadius: density.phone ? 10 : 12,
         backgroundColor: theme.colors.surface,
-        padding: tight ? 9 : 11,
-        gap: 9,
+        padding: tight ? 7 : 8,
+        gap: 6,
         opacity: pressed ? 0.92 : 1,
         ...theme.shadows.subtle,
       })}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-        <MarketThumbnail market={market} size={tight ? 34 : 38} />
-        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+        <MarketThumbnail market={market} size={tight ? 28 : 30} />
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13, flexShrink: 1 }}>
+            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11, flexShrink: 1 }}>
               {(market.category ?? 'General').toUpperCase()}
             </VadText>
             <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: theme.colors.borderStrong }} />
-            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
+            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11 }}>
               {market.asset_code}
             </VadText>
           </View>
@@ -67,38 +67,38 @@ export function MarketCard({
             variant="bodyStrong"
             numberOfLines={2}
             ellipsizeMode="tail"
-            style={{ fontSize: 13, lineHeight: 16, letterSpacing: -0.15, fontWeight: '600' }}
+            style={{ fontSize: 11.5, lineHeight: 14, letterSpacing: -0.12, fontWeight: '600' }}
           >
             {market.title}
           </VadText>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: density.phone ? 74 : 100 }}>
+        <View style={{ alignItems: 'flex-end', gap: 2, maxWidth: density.phone ? 68 : 88 }}>
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
             gap: 4,
-            paddingHorizontal: 6,
-            paddingVertical: 2,
+            paddingHorizontal: 5,
+            paddingVertical: 1,
             borderRadius: 999,
             backgroundColor: isOpen ? theme.colors.yesSoft : theme.colors.surfaceRaised,
           }}>
             <View style={{
-              width: 5,
-              height: 5,
+              width: 4,
+              height: 4,
               borderRadius: 3,
               backgroundColor: isOpen ? theme.colors.yes : theme.colors.textTertiary,
             }} />
-            <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
+            <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={1} style={{ fontSize: 9, lineHeight: 11 }}>
               {isOpen ? 'Live' : timing.statusLabel}
             </VadText>
           </View>
-          <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ textAlign: 'right', fontSize: 10, lineHeight: 13 }}>
+          <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ textAlign: 'right', fontSize: 9, lineHeight: 11 }}>
             {timing.primaryTiming}
           </VadText>
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 6 }}>
+      <View style={{ flexDirection: 'row', gap: 5 }}>
         <PriceTile label="YES" value={yes} positive compact={tight} />
         <PriceTile label="NO" value={no} positive={false} compact={tight} />
       </View>
@@ -107,25 +107,25 @@ export function MarketCard({
         style={{
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          paddingTop: 7,
+          paddingTop: 5,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 8,
+          gap: 5,
         }}
       >
-        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <VadIcon name="activity" size={12} tone="tertiary" />
-          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
+        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <VadIcon name="activity" size={10} tone="tertiary" />
+          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11 }}>
             {hasVolume ? `${formatVolume(volume)} ${market.asset_code}` : 'No volume'}
           </VadText>
         </View>
-        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
           <VadIcon name="community" size={12} tone="tertiary" />
           <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
             {hasParticipants ? `${participants.toLocaleString()} traders` : 'No traders'}
           </VadText>
         </View>
-        <VadIcon name="chevronRight" size={12} tone="tertiary" />
+        <VadIcon name="chevronRight" size={10} tone="tertiary" />
       </View>
     </Pressable>
   );
@@ -157,21 +157,21 @@ function PriceTile({
       style={{
         flex: 1,
         minWidth: 0,
-        minHeight: compact ? 29 : 32,
+        minHeight: compact ? 24 : 26,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 5,
-        borderRadius: 7,
-        paddingHorizontal: compact ? 8 : 10,
-        paddingVertical: 4,
+        gap: 4,
+        borderRadius: 6,
+        paddingHorizontal: compact ? 6 : 7,
+        paddingVertical: 2,
         backgroundColor: background,
         borderWidth: 1,
         borderColor: positive ? 'rgba(77,163,255,0.12)' : 'rgba(240,91,106,0.12)',
       }}
     >
-      <VadText variant="caption" style={{ color: foreground, fontSize: 10, lineHeight: 13, fontWeight: '700' }}>{label}</VadText>
-      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 12 : 13, lineHeight: 16, fontWeight: '700' }}>
+      <VadText variant="caption" style={{ color: foreground, fontSize: 9, lineHeight: 11, fontWeight: '700' }}>{label}</VadText>
+      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 11 : 12, lineHeight: 14, fontWeight: '700' }}>
         {value}
       </VadText>
     </View>
