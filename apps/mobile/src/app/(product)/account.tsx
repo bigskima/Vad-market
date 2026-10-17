@@ -58,12 +58,12 @@ export default function AccountScreen() {
       <View style={{ gap: density.sectionGap }}>
         <View style={{ gap: 3 }}>
           <VadText variant="title">Account</VadText>
-          <VadText variant="caption" tone="secondary">Your profile and preferences</VadText>
+          <VadText variant="caption" tone="secondary">Profile, settings and access</VadText>
         </View>
 
-        <VadCard variant="brand" style={{ padding: density.phone ? 16 : theme.spacing.lg, gap: theme.spacing.md, borderRadius: 26 }}>
+        <VadCard variant="brand" style={{ padding: density.phone ? 14 : theme.spacing.lg, gap: theme.spacing.sm, borderRadius: 20 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-            <View style={{ width: 60, height: 60, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border }}>
+            <View style={{ width: 52, height: 52, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border }}>
               <VadText variant="title" tone="brand">{initial}</VadText>
             </View>
             <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
@@ -78,7 +78,7 @@ export default function AccountScreen() {
               </View>
             </View>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Manage profile" onPress={() => router.push('/account/profile')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Manage profile" onPress={() => router.push('/account/profile')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <VadIcon name="account" size={17} tone="brand" />
               <VadText variant="bodyStrong" tone="brand">Edit profile</VadText>
@@ -89,7 +89,7 @@ export default function AccountScreen() {
 
         <View style={{ gap: theme.spacing.sm }}>
           <VadSectionHeader
-            title="Quick actions"
+            title="Shortcuts"
           />
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <TourTarget id="account-verification">
@@ -114,7 +114,7 @@ export default function AccountScreen() {
         </View>
 
         <VadProgressiveSection
-          title="Profile & experience"
+          title="Personalize"
           icon="account"
           summary={<VadText variant="caption" tone="tertiary">Profile · Rewards · Appearance</VadText>}
         >
@@ -141,7 +141,7 @@ export default function AccountScreen() {
         </VadProgressiveSection>
 
         <VadProgressiveSection
-          title="Safety, legal & access"
+          title="Security & access"
           icon="operations"
           summary={<VadText variant="caption" tone="tertiary">Policies{hasAdminAccess ? ' · Admin' : ''}</VadText>}
         >
@@ -192,7 +192,7 @@ function EssentialAction({
       onPress={onPress}
       style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.76 : 1 })}
     >
-      <VadCard variant="surface" style={{ minHeight: 88, paddingHorizontal: 10, paddingVertical: 12, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, borderRadius: 18 }}>
+      <VadCard variant="surface" style={{ minHeight: 76, paddingHorizontal: 10, paddingVertical: 10, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, borderRadius: 18 }}>
         <View style={{ width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
           <VadIcon name={icon} size={17} tone="brand" />
         </View>
