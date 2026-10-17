@@ -123,16 +123,6 @@ export function HomeScreen({
           )}
         </View>
       </TourTarget>
-            <VadButton
-              label="Community"
-              variant="secondary"
-              fullWidth={density.narrow}
-              onPress={onOpenCommunity}
-              leading={<VadIcon name="community" size={16} tone="brand" />}
-            />
-          </View>
-        </VadCard>
-      </TourTarget>
 
       <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
 
