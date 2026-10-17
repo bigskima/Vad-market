@@ -161,6 +161,27 @@ export function HomeScreen({
 
       <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
 
+      <TourTarget id="home-categories">
+        <View style={{ gap: 8 }}>
+          <VadSectionHeader
+            title="Explore a theme"
+            subtitle="Find markets by topic."
+            actionLabel="All"
+            onAction={() => onExploreMarkets()}
+          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 7, paddingRight: theme.spacing.md }}
+          >
+            <ThemeChip label="All markets" selected onPress={() => onExploreMarkets()} />
+            {categories.map((category) => (
+              <ThemeChip key={category} label={category} onPress={() => onExploreMarkets(category)} />
+            ))}
+          </ScrollView>
+        </View>
+      </TourTarget>
+
       <TourTarget id="home-featured-markets">
         <View style={{ gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: theme.spacing.sm }}>
@@ -196,27 +217,6 @@ export function HomeScreen({
               </View>
             </VadCard>
           )}
-        </View>
-      </TourTarget>
-
-      <TourTarget id="home-categories">
-        <View style={{ gap: 8 }}>
-          <VadSectionHeader
-            title="Explore a theme"
-            subtitle="Find markets by topic."
-            actionLabel="All"
-            onAction={() => onExploreMarkets()}
-          />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 7, paddingRight: theme.spacing.md }}
-          >
-            <ThemeChip label="All markets" selected onPress={() => onExploreMarkets()} />
-            {categories.map((category) => (
-              <ThemeChip key={category} label={category} onPress={() => onExploreMarkets(category)} />
-            ))}
-          </ScrollView>
         </View>
       </TourTarget>
 
