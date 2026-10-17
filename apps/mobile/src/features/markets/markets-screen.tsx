@@ -5,7 +5,6 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadIcon } from '@/components/ui/vad-icon';
-import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -128,15 +127,6 @@ export function MarketsScreen({
           resultCount={orderedMarkets.length}
         />
       </TourTarget>
-
-      <View style={{ gap: theme.spacing.sm }}>
-        <VadSectionHeader
-          title={category === 'All' ? 'Market catalogue' : `${category} catalogue`}
-          subtitle={orderedMarkets.length
-            ? `Showing ${progressive.visibleCount} of ${progressive.totalCount}`
-            : 'Try another search or topic.'}
-        />
-      </View>
 
       <TourTarget id="markets-results">
         {orderedMarkets.length ? (
