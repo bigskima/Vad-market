@@ -120,6 +120,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
         const location = await verifyCurrentServiceLocation().catch(() => ({ allowed: false, reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE' }));
         if (!location.allowed) {
           next = next.filter((currency) => currency !== 'NGN');
+          if (!next.length && eligibleCurrencies.includes('USDC')) next = ['USDC'];
           Alert.alert('NGN access unavailable', location.reasonCode === 'LOCATION_PERMISSION_REQUIRED'
             ? 'Allow location access to verify that you are currently in Nigeria.'
             : 'VAD could not verify your current location and network. NGN services remain restricted.');
