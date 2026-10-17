@@ -10,6 +10,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { assetMoney, probability } from '../format';
 import { MarketProbabilityBar } from './market-probability-bar';
+import { MarketPriceHistoryPanel } from './market-price-history-panel';
 import { supabase } from '@/lib/supabase';
 
 export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
@@ -37,8 +38,10 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
       {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={`${market.title} market image`} style={{ width: '100%', aspectRatio: 16 / 7, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} resizeMode="cover" /> : null}
 
       <View style={{ gap: 3, paddingVertical: 2 }}>
-        <VadText variant={density.compact ? 'heading' : 'title'} numberOfLines={3} style={{ fontSize: density.compact ? 18 : 22, lineHeight: density.compact ? 23 : 28, letterSpacing: -0.35 }}>{market.title}</VadText>
+        <VadText variant={density.compact ? 'heading' : 'title'} style={{ fontSize: density.compact ? 18 : 22, lineHeight: density.compact ? 24 : 29, letterSpacing: -0.35 }}>{market.title}</VadText>
       </View>
+
+      <MarketPriceHistoryPanel instrumentId={market.instrument_public_id} />
 
       {timing.resolutionOutcome ? (
         <VadCard variant="brand" accessibilityRole="summary" style={{ gap: theme.spacing.sm, paddingVertical: theme.spacing.md }}>
