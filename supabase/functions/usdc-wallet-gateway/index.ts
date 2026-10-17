@@ -30,6 +30,8 @@ type NetworkConfig = {
   token_decimals: number | null;
   representation_status: string | null;
   settlement_ready: boolean;
+  venue_ready: boolean;
+  jurisdiction_ready: boolean;
 };
 
 Deno.serve(async (req) => {
@@ -82,7 +84,9 @@ Deno.serve(async (req) => {
         explorerUrl: network.explorer_url,
         tradingReady: network.status === 'ACTIVE'
           && network.representation_status === 'ACTIVE'
-          && network.settlement_ready,
+          && network.settlement_ready
+          && network.venue_ready
+          && network.jurisdiction_ready,
         tokenAddress: /^0x[0-9a-fA-F]{40}$/.test(tokenAddress) ? tokenAddress : null,
       };
 
