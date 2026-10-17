@@ -70,28 +70,31 @@ export function PortfolioScreen({
 
   return (
     <View style={{ gap: density.sectionGap }}>
+      <View style={{ gap: 3 }}>
+        <VadText variant="title">Portfolio</VadText>
+        <VadText variant="caption" tone="secondary">Track your positions, open orders and payouts.</VadText>
+      </View>
       <TourTarget id="portfolio-summary">
-        <VadCard variant="brand" style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
+        <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.lg, gap: theme.spacing.md, borderRadius: 26 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <View style={{ gap: 3 }}>
-              <VadText variant="caption" tone="secondary">YOUR PORTFOLIO</VadText>
-              <VadText variant="title">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
+            <View style={{ gap: 4 }}>
+              <VadText variant="caption" tone="secondary">YOUR ACTIVITY</VadText>
+              <VadText variant="heading">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
             </View>
-            <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
-              <VadIcon name="wallet" size={21} tone="brand" />
+            <View style={{ width: 42, height: 42, borderRadius: 15, backgroundColor: theme.colors.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
+              <VadIcon name="portfolio" size={21} tone="brand" />
             </View>
           </View>
-          <View style={{ height: 1, backgroundColor: theme.colors.border }} />
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-            <View style={{ flex: 1, gap: 3 }}>
-              <VadText variant="caption" tone="secondary">Total shares</VadText>
+          <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+            <View style={{ flex: 1, gap: 4, paddingRight: 8 }}>
+              <VadText variant="caption" tone="secondary">Shares held</VadText>
               <VadText variant="heading">{Number(totalShares).toLocaleString()}</VadText>
             </View>
-            <View style={{ flex: 1, gap: 3 }}>
+            <View style={{ flex: 1, gap: 4, paddingHorizontal: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
               <VadText variant="caption" tone="secondary">Open orders</VadText>
               <VadText variant="heading">{orders.filter((order) => Number(order.remaining_quantity ?? 0) > 0).length}</VadText>
             </View>
-            <View style={{ flex: 1, gap: 3 }}>
+            <View style={{ flex: 1, gap: 4, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
               <VadText variant="caption" tone="secondary">Payouts</VadText>
               <VadText variant="heading">{settlements.length}</VadText>
             </View>
@@ -122,9 +125,12 @@ export function PortfolioScreen({
             ] as const}
             onChange={setTab}
           />
-          <VadText variant="caption" tone="tertiary">
-            {activeList.visibleCount} of {activeList.totalCount}
-          </VadText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <VadText variant="caption" tone="tertiary">
+              Showing {activeList.visibleCount} of {activeList.totalCount}
+            </VadText>
+            <VadText variant="caption" tone="secondary">Tap an item for details</VadText>
+          </View>
         </View>
       </TourTarget>
 
@@ -257,7 +263,7 @@ function PositionCard({ position, onPress }: { position: PositionRow; onPress: (
   const yes = position.outcome_code === 'YES';
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open ${position.market_title} ${position.outcome_code} position`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.74 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}>
-      <VadCard variant="raised" style={{ padding: theme.spacing.sm, gap: theme.spacing.sm }}>
+      <VadCard variant="raised" style={{ padding: theme.spacing.sm, gap: theme.spacing.xs, borderRadius: 18 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
             <VadText variant="bodyStrong" numberOfLines={2}>{position.market_title}</VadText>
