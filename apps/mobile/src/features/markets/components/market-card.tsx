@@ -39,27 +39,27 @@ export function MarketCard({
       accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
       accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
       style={({ pressed }) => ({
-        minHeight: compact ? 176 : density.compact ? 188 : density.phone ? 204 : 214,
+        minHeight: compact ? 148 : density.compact ? 154 : density.phone ? 166 : 176,
         width: '100%',
         borderWidth: 1,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
-        borderRadius: density.phone ? 20 : 24,
+        borderRadius: density.phone ? 14 : 16,
         backgroundColor: theme.colors.surface,
-        padding: tight ? 12 : density.phone ? 14 : 18,
-        gap: tight ? 10 : 12,
+        padding: tight ? 9 : density.phone ? 10 : 12,
+        gap: tight ? 7 : 9,
         justifyContent: 'space-between',
         opacity: pressed ? 0.92 : 1,
         ...theme.shadows.subtle,
       })}
     >
-      <View style={{ gap: tight ? 9 : 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
-          <MarketThumbnail market={market} size={tight ? 42 : 50} />
+      <View style={{ gap: tight ? 7 : 9 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <MarketThumbnail market={market} size={tight ? 34 : 38} />
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
             <VadText variant="caption" tone="tertiary" numberOfLines={1}>
               {(market.category ?? 'General').toUpperCase()}  ·  {market.asset_code}
             </VadText>
-            <VadText variant="heading" numberOfLines={2} style={{ lineHeight: tight ? 21 : 23 }}>
+            <VadText variant="bodyStrong" numberOfLines={2} style={{ lineHeight: tight ? 18 : 20 }}>
               {market.title}
             </VadText>
           </View>
@@ -68,8 +68,8 @@ export function MarketCard({
               flexDirection: 'row',
               alignItems: 'center',
               gap: 4,
-              paddingHorizontal: 7,
-              paddingVertical: 4,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
               borderRadius: 999,
               backgroundColor: isOpen ? theme.colors.yesSoft : theme.colors.surfaceRaised,
             }}>
@@ -89,7 +89,7 @@ export function MarketCard({
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
           <PriceTile label="YES" value={yes} positive compact={tight} />
           <PriceTile label="NO" value={no} positive={false} compact={tight} />
         </View>
@@ -99,26 +99,26 @@ export function MarketCard({
         style={{
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          paddingTop: tight ? 8 : 10,
+          paddingTop: tight ? 6 : 7,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 10,
         }}
       >
         <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-          <VadIcon name="activity" size={15} tone="tertiary" />
+          <VadIcon name="activity" size={13} tone="tertiary" />
           <VadText variant="caption" tone="secondary" numberOfLines={1}>
             {hasVolume ? `${formatVolume(volume)} ${market.asset_code}` : 'No volume yet'}
           </VadText>
         </View>
         <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-          <VadIcon name="community" size={15} tone="tertiary" />
+          <VadIcon name="community" size={13} tone="tertiary" />
           <VadText variant="caption" tone="secondary" numberOfLines={1}>
             {hasParticipants ? `${participants.toLocaleString()} traders` : 'No traders yet'}
           </VadText>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-          <VadIcon name="chevronRight" size={15} tone="brand" />
+          <VadIcon name="chevronRight" size={13} tone="brand" />
         </View>
       </View>
     </Pressable>
@@ -151,21 +151,21 @@ function PriceTile({
       style={{
         flex: 1,
         minWidth: 0,
-        minHeight: compact ? 42 : 48,
+        minHeight: compact ? 32 : 36,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 7,
-        borderRadius: 9,
-        paddingHorizontal: compact ? 8 : 12,
-        paddingVertical: compact ? 7 : 9,
+        gap: 5,
+        borderRadius: 7,
+        paddingHorizontal: compact ? 6 : 8,
+        paddingVertical: compact ? 4 : 5,
         backgroundColor: background,
         borderWidth: 1,
         borderColor: positive ? 'rgba(77,163,255,0.12)' : 'rgba(240,91,106,0.12)',
       }}
     >
       <VadText variant="label" style={{ color: foreground }}>{label}</VadText>
-      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 14 : 16 }}>
+      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 13 : 14 }}>
         {value}
       </VadText>
     </View>
