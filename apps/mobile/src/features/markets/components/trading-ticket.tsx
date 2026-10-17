@@ -290,8 +290,8 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           </View>
 
           <View accessibilityRole="radiogroup" style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
-            <OutcomeChoice active={outcome === 'YES'} label="YES" title="I think it will happen" value={probability(market.yes_price)} tone="yes" disabled={!tradeReady || working} onPress={() => chooseOutcome('YES')} />
-            <OutcomeChoice active={outcome === 'NO'} label="NO" title="I think it will not happen" value={probability(market.no_price)} tone="no" disabled={!tradeReady || working} onPress={() => chooseOutcome('NO')} />
+            <OutcomeChoice active={outcome === 'YES'} label="YES" title="Predict YES" value={probability(market.yes_price)} tone="yes" disabled={!tradeReady || working} onPress={() => chooseOutcome('YES')} />
+            <OutcomeChoice active={outcome === 'NO'} label="NO" title="Predict NO" value={probability(market.no_price)} tone="no" disabled={!tradeReady || working} onPress={() => chooseOutcome('NO')} />
           </View>
 
           {isUsdc ? (
@@ -390,7 +390,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Back" variant="secondary" onPress={() => setStep('prediction')} style={{ flex: 1 }} />
             <VadButton
-              label="Review prediction & fees"
+              label="Review prediction"
               loading={working}
               disabled={!tradeReady || working || !inputValid || (isUsdc && (!selectedVenue || venuesLoading))}
               onPress={() => void prepareReview()}
@@ -403,7 +403,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       {step === 'review' && isUsdc && preparedUsdc ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: 3 }}>
-            <VadText variant="caption" tone="brand">STEP 3 · SIGNED VAD FEE REVIEW · NOTHING LOCKED YET</VadText>
+            <VadText variant="caption" tone="brand">STEP 3 · REVIEW</VadText>
             <VadText variant="title">Confirm your USDC prediction.</VadText>
             <VadText variant="caption" tone="secondary">
               VAD has resolved the live Admin fee policy and signed these exact amounts. The settlement contract accepts this authorization only until the displayed expiry.
@@ -420,10 +420,10 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           <View style={{ gap: 2 }}>
             <QuoteLine label="Your stake" value={assetMoney(preparedUsdc.collateralAmount, 'USDC')} />
             <QuoteLine label="VAD trading fee" value={assetMoney(preparedUsdc.tradingFee, 'USDC')} />
-            <QuoteLine label="Maximum USDC debit" value={assetMoney(preparedUsdc.maximumWalletDebit, 'USDC')} />
+            <QuoteLine label="Max USDC debit" value={assetMoney(preparedUsdc.maximumWalletDebit, 'USDC')} />
             <QuoteLine label="Network" value={selectedVenue?.chain_name ?? preparedUsdc.chainCode} />
             <QuoteLine label="Wallet" value={shortReference(preparedUsdc.walletAddress)} />
-            <QuoteLine label="Authorization expires" value={formatAuthorizationExpiry(preparedUsdc.expiresAtUnix)} />
+            <QuoteLine label="Expires" value={formatAuthorizationExpiry(preparedUsdc.expiresAtUnix)} />
           </View>
 
           <InlineMessage
@@ -453,7 +453,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       {step === 'review' && !isUsdc && quote ? (
         <VadCard variant="brand" style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: 3 }}>
-            <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING CHARGED YET</VadText>
+            <VadText variant="caption" tone="brand">STEP 3 · REVIEW</VadText>
             <VadText variant="title">Confirm your prediction.</VadText>
             <VadText variant="caption" tone="secondary">
               Every current VAD charge is shown below before commitment. Estimated payout can still change as other users add stakes before the market closes.
@@ -478,8 +478,8 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <QuoteLine label="Estimated net payout if you win" value={assetMoney(quote.estimatedNetPayout, market.asset_code)} />
           </View>
 
-          <InlineMessage tone="brand" title="Fee transparency" body="The trading fee is charged with this stake. The settlement fee is only an estimate now and is charged from an eligible winning payout at settlement. VAD shows both before you commit." />
-          <InlineMessage tone="brand" title="Peer-funded payout" body="Winning payouts can only come from the participant pool for this market. VAD does not inject company money to complete the payout." />
+          <InlineMessage tone="brand" title="Fee transparency" body="Trading fee applies now. Settlement fee is an estimate deducted only from eligible winning payouts." />
+          <InlineMessage tone="brand" title="Peer-funded payout" body="Winning payouts come from this market’s participant pool." />
           {placeError ? <InlineMessage tone="danger" title="Prediction not committed" body={placeError} /> : null}
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
@@ -521,7 +521,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
           <InlineMessage
             tone="warning"
-            title="Do not submit the same prediction again while this transaction is pending"
+            title="Wait for this transaction to finish before retrying."
             body="The blockchain transaction already has a hash. Confirmation and indexing must decide its final state."
           />
 
@@ -657,11 +657,11 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
             <VadText variant="title">Choose an outcome.</VadText>
-            <VadText variant="caption" tone="secondary">This market uses the order book. A position exists only when your order actually matches another participant.</VadText>
+            <VadText variant="caption" tone="secondary">An order-book position appears only after a match.</VadText>
           </View>
           <View accessibilityRole="radiogroup" style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
-            <OutcomeChoice active={outcome === 'YES'} label="YES" title="I think it will happen" value={probability(market.yes_price)} tone="yes" disabled={!tradeReady || working} onPress={() => chooseOutcome('YES')} />
-            <OutcomeChoice active={outcome === 'NO'} label="NO" title="I think it will not happen" value={probability(market.no_price)} tone="no" disabled={!tradeReady || working} onPress={() => chooseOutcome('NO')} />
+            <OutcomeChoice active={outcome === 'YES'} label="YES" title="Predict YES" value={probability(market.yes_price)} tone="yes" disabled={!tradeReady || working} onPress={() => chooseOutcome('YES')} />
+            <OutcomeChoice active={outcome === 'NO'} label="NO" title="Predict NO" value={probability(market.no_price)} tone="no" disabled={!tradeReady || working} onPress={() => chooseOutcome('NO')} />
           </View>
           <VadButton label={`Continue with ${outcome}`} disabled={!tradeReady || working} onPress={() => setStep('order')} />
         </VadCard>
@@ -673,7 +673,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 2 · ORDER</VadText>
               <VadText variant="title">Set your limit order.</VadText>
-              <VadText variant="caption" tone="secondary">Choose whether to build or reduce a position, then VAD will preview the order value and every applicable platform fee before placement.</VadText>
+              <VadText variant="caption" tone="secondary">Choose buy or sell. Review value and fees before placing the order.</VadText>
             </View>
             <VadChip label={outcome} tone={outcome === 'YES' ? 'yes' : 'no'} />
           </View>
@@ -701,7 +701,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
           {quoteError ? <InlineMessage tone="danger" title="Order review unavailable" body={quoteError} /> : null}
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Back" variant="secondary" onPress={() => setStep('prediction')} style={{ flex: 1 }} />
-            <VadButton label="Review order & fees" loading={working} disabled={!tradeReady || working || !inputValid} onPress={() => void prepareReview()} style={{ flex: 1.4 }} />
+            <VadButton label="Review order" loading={working} disabled={!tradeReady || working || !inputValid} onPress={() => void prepareReview()} style={{ flex: 1.4 }} />
           </View>
         </VadCard>
       ) : null}
@@ -711,7 +711,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING PLACED YET</VadText>
             <VadText variant="title">Confirm before placing.</VadText>
-            <VadText variant="caption" tone="secondary">An order can remain unmatched. Only filled quantity becomes a real position. Maker/taker treatment depends on how the order fills.</VadText>
+            <VadText variant="caption" tone="secondary">Orders may remain unmatched. Only filled quantity becomes a position; fees depend on each fill.</VadText>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             <VadChip label={quote.outcomeCode} tone={quote.outcomeCode === 'YES' ? 'yes' : 'no'} />
@@ -730,7 +730,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
             <QuoteLine label="Estimated VAD settlement fee if you win" value={assetMoney(completeQuote?.estimatedSettlementFee ?? 0, market.asset_code)} />
             <QuoteLine label="Estimated net settlement if you win" value={assetMoney(completeQuote?.estimatedNetSettlement ?? quote.potentialGrossSettlement, market.asset_code)} />
           </View>
-          <InlineMessage tone="brand" title="Fee transparency" body="VAD reserves up to the displayed trading-fee amount for a BUY. The actual maker/taker fee follows the way each fill executes. The settlement fee applies only to an eligible winning payout and is shown here as an estimate before placement." />
+          <InlineMessage tone="brand" title="Fee transparency" body="BUY orders reserve up to the shown trading fee. Actual maker/taker fees depend on fills; settlement fees apply only to eligible winning payouts." />
           {placeError ? <InlineMessage tone="danger" title="Order not placed" body={placeError} /> : null}
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Edit order" variant="secondary" disabled={working} onPress={() => setStep('order')} style={{ flex: 1 }} />
@@ -818,7 +818,7 @@ function OutcomeChoice({ active, label, title, value, tone, disabled = false, on
         <VadText variant="heading" tone={tone}>{value}</VadText>
       </View>
       <VadText variant="bodyStrong">{title}</VadText>
-      <VadText variant="caption" tone="secondary">Select {label}, then continue.</VadText>
+      <VadText variant="caption" tone="secondary">Choose {label} to continue.</VadText>
     </Pressable>
   );
 }
