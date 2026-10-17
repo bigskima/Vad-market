@@ -170,21 +170,11 @@ function Overview({
       <MarketSnapshot market={market} timing={timing} />
       <MarketPriceHistoryPanel instrumentId={market.instrument_public_id} liquidityMode={market.liquidity_mode} />
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'stretch', gap: theme.spacing.md }}>
-        <VadCard style={{ flex: 1.1, gap: theme.spacing.sm }}>
+        <VadCard style={{ flex: 1.1, gap: theme.spacing.sm, padding: density.compact ? 10 : 13 }}>
           <View style={{ gap: 2 }}>
-            <VadText variant="heading">{poolMarket ? 'Participant stakes show conviction.' : 'Prices show trader conviction.'}</VadText>
-            <VadText variant="caption" tone="secondary">Published market rules decide the result.</VadText>
+            <VadText variant="bodyStrong">Market overview</VadText>
+            <VadText variant="caption" tone="secondary">Check the market rules and result details before participating.</VadText>
           </View>
-
-          {poolMarket ? (
-            <VadCard variant="brand" style={{ gap: 3 }}>
-              <VadChip label="PEER FUNDED" tone="brand" />
-              <VadText variant="bodyStrong">Participants fund the market pool</VadText>
-              <VadText variant="caption" tone="secondary">
-                Stakes move into protected market collateral. Winning payouts are redistributed from that participant pool after fees; VAD does not supply the opposing stake.
-              </VadText>
-            </VadCard>
-          ) : null}
 
           {!density.phone ? (
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
