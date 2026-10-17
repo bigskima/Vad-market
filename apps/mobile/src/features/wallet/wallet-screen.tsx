@@ -68,9 +68,9 @@ export function WalletScreen({
   }, [load]);
 
   const orderedWallets = useMemo(
-    () => wallets.filter((wallet) => wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC')
+    () => wallets.filter((wallet) => (wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC') && currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency))
       .sort((a, b) => assetRank(a.asset_code) - assetRank(b.asset_code)),
-    [wallets],
+    [wallets, currencyPreference],
   );
   const primary = hasNgn
     ? orderedWallets.find((row) => row.asset_code === 'NGN') ?? orderedWallets[0]
