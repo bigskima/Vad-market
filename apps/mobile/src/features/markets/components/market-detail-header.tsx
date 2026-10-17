@@ -72,7 +72,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         </VadText>
         {isPool ? (
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
-            <MetaChip label="Participant pool" value={assetMoney(market.total_volume ?? 0, market.asset_code)} />
+            <MetaChip label="Pool" value={assetMoney(market.total_volume ?? 0, market.asset_code)} />
             <MetaChip label="Participants" value={String(Number(market.participant_count ?? 0))} />
           </View>
         ) : null}
@@ -82,10 +82,10 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <MetaChip label="Currency" value={market.asset_code} />
         <MetaChip label="Lifecycle" value={timing.primaryTiming} />
         {timing.stage === 'SCHEDULED' && market.opens_at ? <MetaChip label="Opens" value={`In ${timing.openCountdown ?? '—'}`} /> : null}
-        {timing.stage === 'OPEN' ? <MetaChip label="Trading closes" value={timing.closeCountdown ? `In ${timing.closeCountdown}` : 'Closing time unavailable'} /> : null}
+        {timing.stage === 'OPEN' ? <MetaChip label="Closes" value={timing.closeCountdown ? `In ${timing.closeCountdown}` : 'Unknown'} /> : null}
         {(timing.stage === 'CLOSED' || timing.stage === 'RESOLVING') ? <MetaChip label="Result" value={timing.resolutionCountdown ? `Check in ${timing.resolutionCountdown}` : timing.resolutionOutcome ? `Final · ${timing.resolutionOutcome}` : 'Processing'} /> : null}
-        <MetaChip label="Market format" value={market.market_type === 'BINARY' ? 'Yes / No' : friendlyEnum(market.market_type)} />
-        <MetaChip label="Trading method" value={isPool ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')} />
+        <MetaChip label="Format" value={market.market_type === 'BINARY' ? 'Yes / No' : friendlyEnum(market.market_type)} />
+        <MetaChip label="Method" value={isPool ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')} />
       </View>
 
       {(market.opens_at || market.closes_at || market.resolves_after) ? (
