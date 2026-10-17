@@ -21,19 +21,6 @@ import {
 } from './components/market-discovery-controls';
 
 
-function StatusPill({ label, value, tone }: { label: string; value: number; tone: 'yes' | 'brand' | 'neutral' }) {
-  const theme = useVadTheme();
-  const selected = tone === 'yes' ? value > 0 : false;
-  const color = tone === 'yes' ? theme.colors.yes : tone === 'brand' ? theme.colors.brandPrimary : theme.colors.textSecondary;
-  const background = tone === 'yes' ? theme.colors.yesSoft : tone === 'brand' ? theme.colors.brandSoft : theme.colors.surface;
-  return (
-    <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 9, borderRadius: theme.radius.md, backgroundColor: background, borderWidth: 1, borderColor: tone === 'neutral' ? theme.colors.border : color + '55' }}>
-      <VadText variant="bodyStrong" tone={tone === 'yes' && selected ? 'yes' : tone === 'brand' ? 'brand' : 'secondary'}>{value}</VadText>
-      <VadText variant="caption" tone="secondary" numberOfLines={1}>{label}</VadText>
-    </View>
-  );
-}
-
 export function MarketsScreen({
   markets,
   onOpenMarket,
@@ -121,11 +108,6 @@ export function MarketsScreen({
             <VadText variant="caption" tone="tertiary">live now</VadText>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', gap: 7 }}>
-          <StatusPill label="Live" value={live} tone="yes" />
-          <StatusPill label="Resolving" value={results} tone="brand" />
-          <StatusPill label="Completed" value={complete} tone="neutral" />
-        </View>
       </View>
 
       <TourTarget id="markets-discovery">
@@ -137,6 +119,7 @@ export function MarketsScreen({
           onCategoryChange={setCategory}
           stage={stage}
           onStageChange={setStage}
+          stageCounts={{ live, result: results, complete, all: markets.length }}
           sortMode={sortMode}
           onSortModeChange={setSortMode}
           resultCount={orderedMarkets.length}
