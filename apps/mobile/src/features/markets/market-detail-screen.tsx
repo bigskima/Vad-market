@@ -167,17 +167,16 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
 
   return (
     <View style={{ gap: density.compact ? 7 : 9 }}>
-      {timing.resolutionOutcome ? (
-        <VadCard variant="brand" accessibilityRole="summary" style={{ gap: 5, padding: density.compact ? 10 : 12 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-            <VadText variant="caption" tone="brand">FINAL RESULT</VadText>
+      <VadCard variant="surface" accessibilityRole="summary" style={{ gap: 6, padding: density.compact ? 8 : 10 }}>
+        {timing.resolutionOutcome ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+            <View style={{ flex: 1, gap: 1 }}>
+              <VadText variant="caption" tone="tertiary">FINAL RESULT</VadText>
+              <VadText variant="bodyStrong" tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'}>{timing.resolutionOutcome}</VadText>
+            </View>
             <VadChip label="CONFIRMED" tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'} />
           </View>
-          <VadText variant="heading" tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'}>{timing.resolutionOutcome}</VadText>
-          <VadText variant="caption" tone="secondary">Confirmed settlement outcome. The earlier YES/NO split does not determine payouts.</VadText>
-        </VadCard>
-      ) : null}
-      <VadCard variant="surface" accessibilityRole="summary" style={{ gap: 6, padding: density.compact ? 8 : 10 }}>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: 6 }}>
           <View style={{ flex: 1, minWidth: 0, borderRadius: 9, backgroundColor: theme.colors.yesSoft, paddingHorizontal: 8, paddingVertical: 5, gap: 1 }}>
             <VadText variant="caption" tone="yes">YES</VadText>
@@ -228,8 +227,8 @@ function Lifecycle({ market, timing }: { market: MarketCatalogItem; timing: Mark
   return (
     <VadCard variant="surface" style={{ gap: 8, padding: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <VadText variant="bodyStrong">Market status</VadText>
-        <VadText variant="caption" tone="tertiary">{timing.primaryTiming}</VadText>
+        <VadText variant="bodyStrong">Market progress</VadText>
+        <VadText variant="caption" tone="tertiary">Trading · result · payout</VadText>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 6 }}>
         {steps.map((step, index) => (
