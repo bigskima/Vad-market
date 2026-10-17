@@ -85,16 +85,16 @@ export function PortfolioScreen({
               <VadIcon name="portfolio" size={21} tone="brand" />
             </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-            <View style={{ flex: 1, gap: 4, paddingRight: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.lg, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+            <View style={{ flex: 1, gap: 3, paddingRight: 8 }}>
               <VadText variant="caption" tone="secondary">Shares held</VadText>
               <VadText variant="heading">{Number(totalShares).toLocaleString()}</VadText>
             </View>
-            <View style={{ flex: 1, gap: 4, paddingHorizontal: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
+            <View style={{ flex: 1, gap: 3, paddingHorizontal: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
               <VadText variant="caption" tone="secondary">Open orders</VadText>
               <VadText variant="heading">{orders.filter((order) => Number(order.remaining_quantity ?? 0) > 0).length}</VadText>
             </View>
-            <View style={{ flex: 1, gap: 4, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
+            <View style={{ flex: 1, gap: 3, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
               <VadText variant="caption" tone="secondary">Payouts</VadText>
               <VadText variant="heading">{settlements.length}</VadText>
             </View>
@@ -365,7 +365,7 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
 function MiniMetric({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ flexGrow: 1, flexBasis: 96, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 8, paddingVertical: 7, gap: 1 }}>
+    <View style={{ flexGrow: 1, flexBasis: 96, minWidth: 0, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 10, paddingVertical: 9, gap: 2 }}>
       <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
       <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{value}</VadText>
     </View>
