@@ -74,7 +74,7 @@ export function PortfolioScreen({
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Exchange positions"
-        subtitle="Matched order-book positions, open matching orders and completed payouts stay separate from peer-pool predictions."
+        subtitle="Matched positions, open orders and payouts. Peer-pool predictions are separate."
       />
 
       <TourTarget id="portfolio-summary">
@@ -107,7 +107,7 @@ export function PortfolioScreen({
                 {positions.length} matched {positions.length === 1 ? 'position' : 'positions'}
               </VadText>
               <VadText variant="caption" tone="secondary">
-                Only real matched orders become positions here. Peer-pool predictions remain in the Predictions section above.
+                Matched orders only. Peer-pool predictions are in Predictions.
               </VadText>
             </View>
             <View style={{ width: density.phone ? 48 : 56, height: density.phone ? 48 : 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
@@ -117,8 +117,8 @@ export function PortfolioScreen({
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
             <VadMetricTile label="Positions" value={String(positions.length)} detail="Matched holdings" tone="brand" />
-            <VadMetricTile label="Shares held" value={Number(totalShares).toLocaleString()} detail="Across outcomes" />
-            <VadMetricTile label="Open orders" value={String(orders.length)} detail="Waiting to fill" />
+            <VadMetricTile label="Shares held" value={Number(totalShares).toLocaleString()} detail="All outcomes" />
+            <VadMetricTile label="Open orders" value={String(orders.length)} detail="Awaiting fill" />
             <VadMetricTile label="Payouts" value={String(settlements.length)} detail={settlements.length ? `${Number(totalPayouts).toLocaleString()} total net` : 'No settled wins yet'} />
           </View>
         </VadCard>
@@ -128,7 +128,7 @@ export function PortfolioScreen({
         <VadProgressiveSection
           title="Exposure by currency"
           eyebrow="EXPOSURE DETAILS"
-          description="Open the currency-by-currency breakdown only when you need to inspect invested value and outstanding order exposure."
+          description="Invested value and open-order exposure by currency."
           icon="wallet"
           summary={<VadText variant="caption" tone="tertiary">{exposure.map((item) => item.assetCode).join(' · ')}</VadText>}
         >
@@ -171,7 +171,7 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No matched positions" body="When an order-book order matches another participant, your YES or NO holding appears here. Peer-pool stakes are tracked in Predictions above." />
+          <VadEmptyState title="No matched positions" body="A YES or NO holding appears after your order matches. Peer-pool stakes are in Predictions." />
         )
       ) : null}
 
@@ -191,7 +191,7 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No open orders" body="Only orders still waiting to fill appear here. Filled orders move into Positions instead of lingering as matching requests." />
+          <VadEmptyState title="No open orders" body="Orders awaiting a match appear here. Filled orders move to Positions." />
         )
       ) : null}
 
@@ -211,7 +211,7 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No payouts yet" body="After a market is finalized and an eligible winning position settles, its receipt appears here with gross payout, fee and net credit." />
+          <VadEmptyState title="No payouts yet" body="Settled winning positions appear here with payout, fee and net credit." />
         )
       ) : null}
     </View>
