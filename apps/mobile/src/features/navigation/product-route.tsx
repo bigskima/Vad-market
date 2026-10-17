@@ -208,6 +208,7 @@ export function ProductRoute({
         isAdmin={Boolean(data.adminSummary)}
         canCreate={canCreate}
         onCreate={() => router.push('/create-market')}
+        onWallet={() => router.push('/wallet')}
         onAdmin={() => router.push('/admin')}
         onAssistant={() => router.push('/assistant')}
         onAccount={() => router.replace('/account')}
