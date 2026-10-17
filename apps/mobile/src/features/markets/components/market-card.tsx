@@ -9,6 +9,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { probability } from '../format';
 import { MarketThumbnail } from './market-thumbnail';
+import { MarketProbabilityBar } from './market-probability-bar';
 
 export function MarketCard({
   market,
@@ -46,13 +47,13 @@ export function MarketCard({
         borderRadius: density.phone ? 10 : 12,
         backgroundColor: theme.colors.surface,
         padding: tight ? 7 : 8,
-        gap: 6,
+        gap: 7,
         opacity: pressed ? 0.92 : 1,
         ...theme.shadows.subtle,
       })}
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-        <MarketThumbnail market={market} size={tight ? 28 : 30} />
+        <MarketThumbnail market={market} size={tight ? 30 : 34} />
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11, flexShrink: 1 }}>
@@ -67,7 +68,7 @@ export function MarketCard({
             variant="bodyStrong"
             numberOfLines={2}
             ellipsizeMode="tail"
-            style={{ fontSize: 11.5, lineHeight: 14, letterSpacing: -0.12, fontWeight: '600' }}
+            style={{ fontSize: 12, lineHeight: 15, letterSpacing: -0.12, fontWeight: '650' }}
           >
             {market.title}
           </VadText>
@@ -98,16 +99,19 @@ export function MarketCard({
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 5 }}>
-        <PriceTile label="YES" value={yes} positive compact={tight} />
-        <PriceTile label="NO" value={no} positive={false} compact={tight} />
+      <View style={{ gap: 5 }}>
+        <View style={{ flexDirection: 'row', gap: 5 }}>
+          <PriceTile label="YES" value={yes} positive compact={tight} />
+          <PriceTile label="NO" value={no} positive={false} compact={tight} />
+        </View>
+        <MarketProbabilityBar yes={market.yes_price} no={market.no_price} />
       </View>
 
       <View
         style={{
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          paddingTop: 5,
+          paddingTop: 4,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 5,
@@ -120,8 +124,8 @@ export function MarketCard({
           </VadText>
         </View>
         <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
-          <VadIcon name="community" size={12} tone="tertiary" />
-          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
+          <VadIcon name="community" size={10} tone="tertiary" />
+          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11 }}>
             {hasParticipants ? `${participants.toLocaleString()} traders` : 'No traders'}
           </VadText>
         </View>
@@ -157,13 +161,13 @@ function PriceTile({
       style={{
         flex: 1,
         minWidth: 0,
-        minHeight: compact ? 24 : 26,
+        minHeight: compact ? 26 : 29,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 4,
-        borderRadius: 6,
-        paddingHorizontal: compact ? 6 : 7,
+        borderRadius: 7,
+        paddingHorizontal: compact ? 7 : 8,
         paddingVertical: 2,
         backgroundColor: background,
         borderWidth: 1,
@@ -171,7 +175,7 @@ function PriceTile({
       }}
     >
       <VadText variant="caption" style={{ color: foreground, fontSize: 9, lineHeight: 11, fontWeight: '700' }}>{label}</VadText>
-      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 11 : 12, lineHeight: 14, fontWeight: '700' }}>
+      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 12 : 13, lineHeight: 15, fontWeight: '700' }}>
         {value}
       </VadText>
     </View>
