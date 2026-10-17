@@ -5,7 +5,6 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
-import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { TourTarget } from '@/features/tour/tour-provider';
@@ -20,6 +19,20 @@ import {
   MarketDiscoveryControls,
   type MarketSortMode,
 } from './components/market-discovery-controls';
+
+
+function StatusPill({ label, value, tone }: { label: string; value: number; tone: 'yes' | 'brand' | 'neutral' }) {
+  const theme = useVadTheme();
+  const selected = tone === 'yes' ? value > 0 : false;
+  const color = tone === 'yes' ? theme.colors.yes : tone === 'brand' ? theme.colors.brandPrimary : theme.colors.textSecondary;
+  const background = tone === 'yes' ? theme.colors.yesSoft : tone === 'brand' ? theme.colors.brandSoft : theme.colors.surface;
+  return (
+    <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 9, borderRadius: theme.radius.md, backgroundColor: background, borderWidth: 1, borderColor: tone === 'neutral' ? theme.colors.border : color + '55' }}>
+      <VadText variant="bodyStrong" tone={tone === 'yes' && selected ? 'yes' : tone === 'brand' ? 'brand' : 'secondary'}>{value}</VadText>
+      <VadText variant="caption" tone="secondary" numberOfLines={1}>{label}</VadText>
+    </View>
+  );
+}
 
 export function MarketsScreen({
   markets,
@@ -84,43 +97,28 @@ export function MarketsScreen({
 
   return (
     <View style={{ gap: density.sectionGap }}>
-      <VadCard
-        variant="surface"
-        style={{
-          gap: theme.spacing.md,
-          padding: density.phone ? theme.spacing.lg : theme.spacing.xl,
-          borderRadius: theme.radius.xxl,
-          overflow: 'hidden',
-        }}
-      >
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            width: 130,
-            height: 130,
-            borderRadius: 65,
-            right: -56,
-            top: -62,
-            backgroundColor: theme.colors.brandSoft,
-            opacity: theme.mode === 'dark' ? 0.24 : 0.8,
-          }}
-        />
-        <View style={{ gap: theme.spacing.sm, maxWidth: 680 }}>
-          <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.1 }}>MARKET DISCOVERY</VadText>
-          <VadText variant={density.phone ? 'title' : 'display'}>
-            {category === 'All' ? 'Explore markets' : `${category} markets`}
-          </VadText>
-          <VadText variant="body" tone="secondary">
-            Find active questions, compare YES/NO prices, and follow market outcomes.
-          </VadText>
+      <View style={{ gap: theme.spacing.sm, paddingTop: theme.spacing.xs }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+            <VadText variant="caption" tone="brand" style={{ letterSpacing: 1 }}>DISCOVER</VadText>
+            <VadText variant={density.phone ? 'title' : 'display'}>
+              {category === 'All' ? 'Markets' : category}
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              {markets.length} {markets.length === 1 ? 'market' : 'markets'} across the catalogue
+            </VadText>
+          </View>
+          <View style={{ alignItems: 'flex-end', paddingBottom: 3 }}>
+            <VadText variant="heading">{live}</VadText>
+            <VadText variant="caption" tone="tertiary">live now</VadText>
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-          <VadChip label={`${live} LIVE`} tone="yes" />
-          <VadChip label={`${results} RESULT / PAYOUT`} tone="brand" />
-          <VadChip label={`${complete} COMPLETE`} />
+        <View style={{ flexDirection: 'row', gap: 7 }}>
+          <StatusPill label="Live" value={live} tone="yes" />
+          <StatusPill label="Resolving" value={results} tone="brand" />
+          <StatusPill label="Completed" value={complete} tone="neutral" />
         </View>
-      </VadCard>
+      </View>
 
       <TourTarget id="markets-discovery">
         <MarketDiscoveryControls
@@ -142,29 +140,7 @@ export function MarketsScreen({
             ? `Showing ${progressive.visibleCount} of ${progressive.totalCount}. Reveal more only when you want them.`
             : 'Try another search, category or sorting option.'}
         />
-        {orderedMarkets.length ? (
-          <View
-            style={{
-              minHeight: 44,
-              borderRadius: theme.radius.lg,
-              backgroundColor: theme.colors.surfaceRaised,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              paddingHorizontal: theme.spacing.sm,
-              paddingVertical: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: theme.spacing.sm,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-              <VadIcon name="markets" size={16} tone="brand" />
-              <VadText variant="caption" tone="secondary">{progressive.visibleCount} visible</VadText>
-            </View>
-            <VadText variant="caption" tone={live ? 'yes' : 'brand'}>{live ? `${live} live now` : 'Lifecycle history'}</VadText>
-          </View>
-        ) : null}
+
       </View>
 
       <TourTarget id="markets-results">
