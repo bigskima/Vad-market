@@ -14,17 +14,17 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
       accessibilityLabel="Discover VAD markets"
       style={{
         width: '100%',
-        minHeight: density.phone ? 124 : density.desktop ? 150 : 136,
+        minHeight: density.phone ? 154 : density.desktop ? 176 : 164,
         overflow: 'hidden',
-        borderRadius: density.phone ? 13 : 16,
+        borderRadius: density.phone ? 22 : 26,
         borderWidth: 1,
         borderColor: theme.colors.brandPrimary,
         backgroundColor: theme.colors.brandStrong,
         justifyContent: 'flex-end',
         alignItems: 'flex-start',
-        paddingHorizontal: density.phone ? 14 : 18,
-        paddingVertical: density.phone ? 13 : 16,
-        gap: 7,
+        paddingHorizontal: density.phone ? 19 : 24,
+        paddingVertical: density.phone ? 19 : 23,
+        gap: 12,
       }}
     >
       <View style={{ gap: 3, maxWidth: 540 }}>
@@ -33,8 +33,8 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
           tone="inverse"
           numberOfLines={2}
           style={{
-            fontSize: density.phone ? 17 : 20,
-            lineHeight: density.phone ? 21 : 25,
+            fontSize: density.phone ? 23 : 28,
+            lineHeight: density.phone ? 28 : 34,
             letterSpacing: -0.35,
           }}
         >
@@ -54,13 +54,13 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
         accessibilityLabel="Explore markets"
         onPress={onExplore}
         style={({ pressed }) => ({
-          minHeight: 30,
+          minHeight: 38,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 5,
-          paddingHorizontal: 11,
-          borderRadius: 9,
+          paddingHorizontal: 15,
+          borderRadius: 12,
           backgroundColor: theme.colors.surface,
           opacity: pressed ? 0.82 : 1,
         })}
