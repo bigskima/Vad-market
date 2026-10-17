@@ -256,7 +256,7 @@ function PositionCard({ position, onPress }: { position: PositionRow; onPress: (
   const yes = position.outcome_code === 'YES';
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open ${position.market_title} ${position.outcome_code} position`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.74 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}>
-      <VadCard variant="raised" style={{ gap: theme.spacing.md, minHeight: 218 }}>
+      <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
             <VadText variant="caption" tone="brand">MATCHED POSITION</VadText>
@@ -341,7 +341,7 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
       </View>
       <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <VadText variant="bodyStrong">Net credited</VadText>
-        <VadText variant="heading" tone="yes">{assetMoney(receipt.net_amount, receipt.asset_code)}</VadText>
+        <VadText variant="bodyStrong" tone="yes">{assetMoney(receipt.net_amount, receipt.asset_code)}</VadText>
       </View>
       <VadText variant="caption" tone="tertiary" selectable>{receipt.settlement_id}</VadText>
     </VadCard>
@@ -351,7 +351,7 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
 function MiniMetric({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ flexGrow: 1, flexBasis: 96, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 10, paddingVertical: 9, gap: 1 }}>
+    <View style={{ flexGrow: 1, flexBasis: 96, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 8, paddingVertical: 7, gap: 1 }}>
       <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
       <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{value}</VadText>
     </View>
