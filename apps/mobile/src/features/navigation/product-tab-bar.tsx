@@ -42,7 +42,7 @@ export function ProductTabBar({
       style={{
         backgroundColor: theme.colors.background,
         paddingHorizontal: 12,
-        paddingTop: 5,
+        paddingTop: 4,
         paddingBottom: Math.max(insets.bottom, 5),
       }}
     >
@@ -57,7 +57,7 @@ export function ProductTabBar({
             alignItems: 'stretch',
             paddingHorizontal: 4,
             paddingVertical: 3,
-            borderRadius: theme.radius.xl,
+            borderRadius: theme.radius.lg,
             borderWidth: 1,
             borderColor: theme.colors.border,
             backgroundColor: theme.colors.surface,
@@ -76,7 +76,7 @@ export function ProductTabBar({
               onPress={() => onChange(tab.value)}
               style={({ pressed }) => ({
                 flex: 1,
-                minHeight: density.compact ? 46 : 50,
+                minHeight: density.compact ? 44 : 48,
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 2,
@@ -88,15 +88,13 @@ export function ProductTabBar({
             >
               <View
                 style={{
-                  minWidth: density.compact ? 30 : 34,
-                  height: density.compact ? 24 : 26,
-                  borderRadius: theme.radius.pill,
+                  minWidth: density.compact ? 26 : 28,
+                  height: density.compact ? 22 : 24,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: selected ? theme.colors.brandPrimary : 'transparent',
                 }}
               >
-                <VadIcon name={tab.icon} size={density.compact ? 17 : 18} tone={selected ? 'inverse' : 'tertiary'} />
+                <VadIcon name={tab.icon} size={density.compact ? 17 : 18} tone={selected ? 'brand' : 'tertiary'} />
               </View>
 
               <VadText
