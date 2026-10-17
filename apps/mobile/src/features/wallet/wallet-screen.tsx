@@ -155,7 +155,7 @@ export function WalletScreen({
 
       {hasNgn ? (
         <TourTarget id="wallet-activity">
-          <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
+          <View style={{ gap: density.phone ? theme.spacing.xs : theme.spacing.sm }}>
           <VadSectionHeader
             title="Recent payment activity"
             actionLabel="See all"
@@ -279,8 +279,8 @@ export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPr
       >
         <View
           style={{
-            width: density.compact ? 36 : 42,
-            height: density.compact ? 36 : 42,
+            width: density.compact ? 32 : 36,
+            height: density.compact ? 32 : 36,
             borderRadius: 21,
             alignItems: 'center',
             justifyContent: 'center',
@@ -343,14 +343,14 @@ function WalletAction({
     >
       <View
         style={{
-          minHeight: density.phone ? 78 : 96,
+          minHeight: density.phone ? 68 : 78,
           borderRadius: theme.radius.xl,
           backgroundColor: soft,
           borderWidth: 1,
           borderColor: theme.colors.border,
           alignItems: 'center',
           justifyContent: 'center',
-          padding: density.compact ? 8 : theme.spacing.sm,
+          padding: density.compact ? 6 : theme.spacing.sm,
           gap: 4,
         }}
       >
