@@ -227,6 +227,8 @@ export function ProductTopBar({
         {roomy ? <View style={{ flex: 1 }} /> : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
+          {roomy ? <HeaderAction label="Wallet" icon="wallet" onPress={onWallet} /> : null}
+
           {canCreate ? (
             roomy ? (
               <HeaderAction label="Create" icon="plus" brand onPress={onCreate} />
@@ -366,7 +368,7 @@ function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'a
   );
 }
 
-function HeaderAction({ label, icon, brand = false, onPress }: { label: string; icon: 'plus' | 'operations'; brand?: boolean; onPress: () => void }) {
+function HeaderAction({ label, icon, brand = false, onPress }: { label: string; icon: 'plus' | 'operations' | 'wallet'; brand?: boolean; onPress: () => void }) {
   const theme = useVadTheme();
   return (
     <Pressable
