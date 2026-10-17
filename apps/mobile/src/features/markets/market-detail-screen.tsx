@@ -87,7 +87,6 @@ export function MarketDetailScreen({
     <View style={{ gap: density.sectionGap }}>
       <MarketDetailHeader market={market} />
       <MarketPriceHistoryPanel instrumentId={market.instrument_public_id} />
-      {market.liquidity_mode !== 'POOL' ? <MarketDepthPanel instrumentId={market.instrument_public_id} /> : null}
 
       <View style={{ gap: 6 }}>
         <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
