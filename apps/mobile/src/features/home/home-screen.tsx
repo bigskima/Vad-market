@@ -207,7 +207,7 @@ function SignalCard({ market, detail, onPress }: { market: MarketCatalogItem; de
       <VadText variant="bodyStrong" numberOfLines={2} style={{ fontSize: 11, lineHeight: 14 }}>{market.title}</VadText>
       <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11 }}>{detail}</VadText>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-        <VadChip label={market.asset_code} size="small" />
+        <VadChip label={market.asset_code} />
         <VadText variant="caption" tone="brand">Open →</VadText>
       </View>
     </Pressable>
