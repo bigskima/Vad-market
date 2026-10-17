@@ -273,12 +273,12 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
   }
 
   return (
-    <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
+    <View style={{ gap: density.compact ? 10 : 12 }}>
       <TradeStepRail step={step} secondLabel="Stake" />
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
 
       {step === 'prediction' ? (
-        <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+        <VadCard variant="raised" style={{ gap: 12 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
             <VadText variant="title">Choose an outcome</VadText>
@@ -313,7 +313,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'order' ? (
-        <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+        <VadCard variant="raised" style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 2 · STAKE</VadText>
@@ -401,7 +401,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'review' && isUsdc && preparedUsdc ? (
-        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
+        <VadCard variant="brand" style={{ gap: 12 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · FEE REVIEW · NOTHING LOCKED</VadText>
             <VadText variant="title">Confirm your USDC prediction.</VadText>
@@ -451,7 +451,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'review' && !isUsdc && quote ? (
-        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
+        <VadCard variant="brand" style={{ gap: 12 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · REVIEW · NOT CHARGED YET</VadText>
             <VadText variant="title">Confirm your prediction.</VadText>
@@ -490,7 +490,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'result' && isUsdc && onchainResult ? (
-        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
+        <VadCard variant="brand" style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 4 · TRANSACTION SUBMITTED</VadText>
@@ -533,7 +533,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'result' && !isUsdc && stakeStatus ? (
-        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
+        <VadCard variant="brand" style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="yes">STEP 4 · STAKE COMMITTED</VadText>
@@ -570,7 +570,7 @@ function UnsupportedUsdcOrderBook() {
   const theme = useVadTheme();
 
   return (
-    <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+    <VadCard variant="raised" style={{ gap: 12 }}>
       <VadText variant="caption" tone="brand">USDC · ON-CHAIN SETTLEMENT</VadText>
       <VadText variant="heading">Order-book USDC is not active in Settlement V1.</VadText>
       <VadText variant="caption" tone="secondary">
@@ -648,12 +648,12 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   const completeQuote = quote as CompleteTradeQuote | null;
 
   return (
-    <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
+    <View style={{ gap: density.compact ? 10 : 12 }}>
       <TradeStepRail step={step} secondLabel="Order" />
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
 
       {step === 'prediction' ? (
-        <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+        <VadCard variant="raised" style={{ gap: 12 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
             <VadText variant="title">Choose an outcome.</VadText>
@@ -668,7 +668,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
 
       {step === 'order' ? (
-        <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+        <VadCard variant="raised" style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 2 · ORDER</VadText>
@@ -707,7 +707,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
 
       {step === 'review' && quote ? (
-        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
+        <VadCard variant="brand" style={{ gap: 12 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING PLACED YET</VadText>
             <VadText variant="title">Confirm before placing.</VadText>
@@ -740,7 +740,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
 
       {step === 'result' && orderStatus ? (
-        <VadCard variant={orderStatus.status === 'FILLED' ? 'brand' : 'raised'} style={{ gap: theme.spacing.md }}>
+        <VadCard variant={orderStatus.status === 'FILLED' ? 'brand' : 'raised'} style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ flex: 1, gap: 3 }}>
               <VadText variant="caption" tone="brand">STEP 4 · ORDER STATUS</VadText>
@@ -784,17 +784,17 @@ function TradeStepRail({ step, secondLabel }: { step: TradeStep; secondLabel: st
   ];
   const current = steps.findIndex((item) => item.key === step);
   return (
-    <VadCard variant="muted" style={{ paddingVertical: 10, gap: 7 }}>
+    <VadCard variant="muted" style={{ paddingVertical: 8, gap: 5 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         {steps.map((item, index) => {
           const complete = index < current;
           const active = index === current;
           return (
             <View key={item.key} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ width: active ? 24 : 18, height: active ? 24 : 18, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: complete ? theme.colors.yesSoft : active ? theme.colors.brandSoft : theme.colors.surface, borderWidth: 1, borderColor: complete ? theme.colors.yes : active ? theme.colors.brandPrimary : theme.colors.border }}>
+              <View style={{ width: active ? 21 : 16, height: active ? 21 : 16, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: complete ? theme.colors.yesSoft : active ? theme.colors.brandSoft : theme.colors.surface, borderWidth: 1, borderColor: complete ? theme.colors.yes : active ? theme.colors.brandPrimary : theme.colors.border }}>
                 <VadText variant="caption" tone={complete ? 'yes' : active ? 'brand' : 'tertiary'}>{index + 1}</VadText>
               </View>
-              {index < steps.length - 1 ? <View style={{ height: 1, flex: 1, backgroundColor: index < current ? theme.colors.yes : theme.colors.border, marginHorizontal: 5 }} /> : null}
+              {index < steps.length - 1 ? <View style={{ height: 1, flex: 1, backgroundColor: index < current ? theme.colors.yes : theme.colors.border, marginHorizontal: 4 }} /> : null}
             </View>
           );
         })}
@@ -812,13 +812,12 @@ function OutcomeChoice({ active, label, title, value, tone, disabled = false, on
   const color = tone === 'yes' ? theme.colors.yes : theme.colors.no;
   const background = tone === 'yes' ? theme.colors.yesSoft : theme.colors.noSoft;
   return (
-    <Pressable accessibilityRole="radio" accessibilityState={{ selected: active, disabled }} accessibilityLabel={`${label}: ${title}, current share ${value}`} disabled={disabled} onPress={onPress} style={({ pressed }) => ({ flex: 1, minHeight: density.compact ? 110 : 130, borderWidth: active ? 2 : 1, borderColor: active ? color : theme.colors.border, backgroundColor: active ? background : theme.colors.surface, borderRadius: theme.radius.lg, padding: density.compact ? 14 : 18, justifyContent: 'space-between', gap: 8, opacity: disabled ? 0.5 : pressed ? 0.74 : 1 })}>
+    <Pressable accessibilityRole="radio" accessibilityState={{ selected: active, disabled }} accessibilityLabel={`${label}: ${title}, current share ${value}`} disabled={disabled} onPress={onPress} style={({ pressed }) => ({ flex: 1, minHeight: density.compact ? 76 : 88, borderWidth: active ? 1.5 : 1, borderColor: active ? color : theme.colors.border, backgroundColor: active ? background : theme.colors.surface, borderRadius: theme.radius.md, padding: density.compact ? 9 : 11, justifyContent: 'center', gap: 5, opacity: disabled ? 0.5 : pressed ? 0.74 : 1 })}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <VadChip label={label} tone={tone} />
-        <VadText variant="heading" tone={tone}>{value}</VadText>
+        <VadText variant="bodyStrong" tone={tone} style={{ fontSize: 15, lineHeight: 18 }}>{value}</VadText>
       </View>
-      <VadText variant="bodyStrong">{title}</VadText>
-      <VadText variant="caption" tone="secondary">Select {label}, then continue.</VadText>
+      <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: 12, lineHeight: 15 }}>{title}</VadText>
     </Pressable>
   );
 }
@@ -826,7 +825,7 @@ function OutcomeChoice({ active, label, title, value, tone, disabled = false, on
 function MiniMetric({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ flexGrow: 1, flexBasis: 105, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: 10, gap: 1 }}>
+    <View style={{ flexGrow: 1, flexBasis: 105, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: 8, gap: 1 }}>
       <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
       <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{value}</VadText>
     </View>
@@ -836,7 +835,7 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
 function QuoteLine({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
-    <View style={{ minHeight: 42, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+    <View style={{ minHeight: 34, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
       <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>{label}</VadText>
       <VadText variant="bodyStrong" numberOfLines={1}>{value}</VadText>
     </View>
@@ -848,7 +847,7 @@ function InlineMessage({ tone, title, body }: { tone: 'warning' | 'danger' | 'br
   const borderColor = tone === 'danger' ? theme.colors.danger : tone === 'warning' ? theme.colors.warning : theme.colors.brandPrimary;
   const backgroundColor = tone === 'danger' ? theme.colors.noSoft : tone === 'warning' ? theme.colors.warningSoft : theme.colors.brandSoft;
   return (
-    <View style={{ width: '100%', borderWidth: 1, borderColor, backgroundColor, borderRadius: theme.radius.md, padding: theme.spacing.sm, gap: 2 }}>
+    <View style={{ width: '100%', borderWidth: 1, borderColor, backgroundColor, borderRadius: theme.radius.md, padding: 9, gap: 2 }}>
       <VadText variant="bodyStrong">{title}</VadText>
       <VadText variant="caption" tone="secondary">{body}</VadText>
     </View>
