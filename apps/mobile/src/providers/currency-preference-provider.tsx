@@ -119,12 +119,12 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       if (!supabaseConfiguration.ready) return;
       const { data } = await supabase.auth.getUser();
       if (!data.user) return;
-      const { error } = await supabase.from('user_currency_preferences').upsert({
+      await supabase.from('user_currency_preferences').upsert({
         user_id: data.user.id,
         enabled_asset_codes: next,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
-      if (!error) await refresh();
+      await refresh();
     })();
   }, [eligibleCurrencies, enabledCurrencies, refresh]);
 
