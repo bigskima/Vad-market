@@ -22,7 +22,7 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
   const [points, setPoints] = useState<MarketPriceHistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [range, setRange] = useState<RangeKey>('1W');
+  const [range, setRange] = useState<RangeKey>('ALL');
   const [series, setSeries] = useState<SeriesKey>('YES');
   const [plotWidth, setPlotWidth] = useState(0);
 
@@ -172,10 +172,13 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
 }
 
 function makeSeries(points: MarketPriceHistoryPoint[], outcome: 'YES' | 'NO') {
-  return points
+  const actualPoints = points
     .filter((point) => point.outcome_code.toUpperCase() === outcome)
     .map((point) => ({ at: Date.parse(point.observed_at), value: clamp(Number(point.price)) }))
     .filter((point) => Number.isFinite(point.at) && Number.isFinite(point.value));
+  if (actualPoints.length <= 80) return actualPoints;
+  const sampled = Array.from({ length: 80 }, (_, index) => actualPoints[Math.round(index * (actualPoints.length - 1) / 79)]);
+  return sampled.filter((point, index) => index === 0 || point.at !== sampled[index - 1]?.at || point.value !== sampled[index - 1]?.value);
 }
 
 function clamp(value: number) {
