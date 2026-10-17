@@ -76,7 +76,7 @@ export default function AccountScreen() {
 
         <View style={{ gap: theme.spacing.sm }}>
           <VadSectionHeader
-            title="Account essentials"
+            title="Quick actions"
           />
           <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.sm }}>
             <TourTarget id="account-verification">
@@ -97,14 +97,6 @@ export default function AccountScreen() {
               />
             </TourTarget>
 
-            <TourTarget id="account-guidance">
-              <EssentialAction
-                icon="activity"
-                title="VAD tour"
-                body="Quick product walkthrough."
-                onPress={() => router.push('/account/app-tour')}
-              />
-            </TourTarget>
           </View>
         </View>
 
