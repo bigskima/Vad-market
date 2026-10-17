@@ -204,52 +204,6 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
   );
 }
 
-function Lifecycle({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
-  const theme = useVadTheme();
-  const tradeDone = ['CLOSED', 'RESOLVING', 'SETTLEMENT_PENDING', 'SETTLED', 'VOIDED'].includes(timing.stage);
-  const resolutionDone = ['SETTLEMENT_PENDING', 'SETTLED', 'VOIDED'].includes(timing.stage);
-  const settlementDone = timing.stage === 'SETTLED' || timing.stage === 'VOIDED';
-  const resolutionActive = timing.stage === 'RESOLVING' || timing.stage === 'CLOSED';
-  const settlementActive = timing.stage === 'SETTLEMENT_PENDING';
-  const steps = [
-    { title: 'Trading', state: tradeDone ? 'Done' : timing.stage === 'SCHEDULED' ? 'Upcoming' : 'Open', tone: tradeDone ? theme.colors.yes : timing.stage === 'SCHEDULED' ? theme.colors.textTertiary : theme.colors.brandPrimary },
-    { title: 'Result', state: resolutionDone ? (timing.resolutionOutcome ?? 'Confirmed') : resolutionActive ? 'Checking' : 'Pending', tone: resolutionDone ? theme.colors.yes : resolutionActive ? theme.colors.brandPrimary : theme.colors.textTertiary },
-    { title: 'Payout', state: settlementDone ? 'Complete' : settlementActive ? 'Processing' : 'Pending', tone: settlementDone ? theme.colors.yes : settlementActive ? theme.colors.brandPrimary : theme.colors.textTertiary },
-  ];
-
-  return (
-    <VadCard variant="surface" style={{ gap: 8, padding: 10 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <VadText variant="bodyStrong">Market progress</VadText>
-        <VadText variant="caption" tone="tertiary">Trading · result · payout</VadText>
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 6 }}>
-        {steps.map((step, index) => (
-          <View key={step.title} style={{ flex: 1, minWidth: 0, gap: 4, paddingHorizontal: 7, paddingVertical: 6, borderRadius: 8, backgroundColor: theme.colors.surfaceMuted }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: step.tone }} />
-              <VadText variant="caption" tone="tertiary">{index + 1}</VadText>
-            </View>
-            <VadText variant="caption" style={{ fontWeight: '700' }}>{step.title}</VadText>
-            <VadText variant="caption" style={{ color: step.tone }} numberOfLines={1}>{step.state}</VadText>
-          </View>
-        ))}
-      </View>
-      <VadText variant="caption" tone="secondary">
-        {settlementDone
-          ? 'Settlement completed in ' + market.asset_code + '.'
-          : settlementActive
-            ? 'Eligible ' + market.asset_code + ' payouts are being processed.'
-            : resolutionDone
-              ? 'Result confirmed' + (timing.resolutionOutcome ? ': ' + timing.resolutionOutcome : '') + '; payout status is shown here.'
-              : timing.resolutionCountdown
-                ? 'Result check expected in ' + timing.resolutionCountdown + '.'
-                : 'Trading, result verification and payout status are tracked here.'}
-      </VadText>
-    </VadCard>
-  );
-}
-
 function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -285,7 +239,6 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
 
   return (
     <View style={{ gap: density.compact ? 8 : 12 }}>
-      <Lifecycle market={market} timing={timing} />
       <VadCard variant="surface" style={{ padding: 10, gap: 0 }}>
         <VadText variant="bodyStrong" style={{ paddingBottom: 7 }}>Market rules</VadText>
         {rules.map((rule, index) => (
