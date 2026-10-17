@@ -87,7 +87,7 @@ export function PortfolioScreen({
               <VadText variant="heading">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
             </View>
             <View style={{ width: 46, height: 46, borderRadius: 17, backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
-              <VadIcon name="portfolio" size={21} tone="brand" />
+              <VadIcon name="wallet" size={21} tone="brand" />
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.lg, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
