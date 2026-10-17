@@ -81,12 +81,12 @@ export function HomePromotionCarousel({
     if (next === 0) directionRef.current = 1;
   }
 
-  const bannerHeight = density.compact ? 88 : density.phone ? 98 : 118;
+  const bannerHeight = density.compact ? 72 : density.phone ? 82 : 96;
 
   return (
     <View
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-      style={{ gap: 7 }}
+      style={{ gap: 5 }}
     >
       <ScrollView
         ref={scrollRef}
