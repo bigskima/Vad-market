@@ -79,7 +79,7 @@ export function HomeScreen({
       ? trendingSettings.enabled ? trendingRail.map((row) => row.market) : []
       : active;
 
-  const sectionGap = density.compact ? 7 : 9;
+  const sectionGap = density.compact ? 8 : 10;
 
   return (
     <View style={{ gap: sectionGap, width: '100%' }}>
@@ -112,9 +112,9 @@ export function HomeScreen({
               flexDirection: density.desktop ? 'row' : 'column',
               flexWrap: density.desktop ? 'wrap' : 'nowrap',
               alignItems: 'stretch',
-              gap: 7,
+              gap: 8,
             }}>
-              {lensMarkets.slice(0, density.desktop ? 8 : 6).map((market) => (
+              {lensMarkets.slice(0, density.desktop ? 6 : 4).map((market) => (
                 <View key={`${lens}-${market.instrument_public_id}`} style={{ width: density.desktop ? '48.5%' : '100%', minWidth: 0 }}>
                   <MarketCard market={market} onPress={() => onOpenMarket(market)} />
                 </View>
