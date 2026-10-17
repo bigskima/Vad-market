@@ -69,19 +69,19 @@ export function PortfolioScreen({
   const activeList = tab === 'positions' ? visiblePositions : tab === 'orders' ? visibleOrders : visiblePayouts;
 
   return (
-    <View style={{ gap: density.sectionGap }}>
+    <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
       <View style={{ gap: 3 }}>
         <VadText variant="title">Portfolio</VadText>
         <VadText variant="caption" tone="secondary">Your positions, orders and settled markets.</VadText>
       </View>
       <TourTarget id="portfolio-summary">
-        <VadCard variant="brand" style={{ padding: density.phone ? 15 : theme.spacing.lg, gap: theme.spacing.sm, borderRadius: 20 }}>
+        <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.xl, gap: theme.spacing.md, borderRadius: 26, borderWidth: 1, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ gap: 4 }}>
-              <VadText variant="caption" tone="secondary">PORTFOLIO OVERVIEW</VadText>
+              <VadText variant="caption" tone="secondary">YOUR MARKET EXPOSURE</VadText>
               <VadText variant="heading">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
             </View>
-            <View style={{ width: 42, height: 42, borderRadius: 15, backgroundColor: theme.colors.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 46, height: 46, borderRadius: 17, backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
               <VadIcon name="portfolio" size={21} tone="brand" />
             </View>
           </View>
@@ -127,7 +127,7 @@ export function PortfolioScreen({
           />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <VadText variant="caption" tone="tertiary">
-              Showing {activeList.visibleCount} of {activeList.totalCount}
+              {activeList.visibleCount} of {activeList.totalCount} shown
             </VadText>
             <VadText variant="caption" tone="secondary">Tap an item for details</VadText>
           </View>
