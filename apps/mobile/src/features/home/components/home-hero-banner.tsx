@@ -46,7 +46,7 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
           numberOfLines={2}
           style={{ opacity: 0.82, lineHeight: 16 }}
         >
-          Explore live questions and follow the outcomes.
+          Explore market questions and follow the outcomes.
         </VadText>
       </View>
       <Pressable
