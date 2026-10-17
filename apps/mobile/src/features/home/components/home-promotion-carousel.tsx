@@ -134,26 +134,18 @@ export function HomePromotionCarousel({
                   flex: 1,
                   justifyContent: 'center',
                   paddingHorizontal: density.cardPadding,
-                  paddingVertical: density.compact ? 10 : 14,
-                  gap: 5,
+                  paddingVertical: density.compact ? 8 : 10,
+                  gap: 3,
                 }}
               >
-                <VadText variant="caption" tone="brand">
-                  VAD HIGHLIGHT
-                </VadText>
                 <VadText
                   variant="heading"
-                  style={{ fontSize: density.compact ? 17 : 19, lineHeight: density.compact ? 21 : 24 }}
-                  numberOfLines={2}
+                  style={{ fontSize: density.compact ? 13 : 15, lineHeight: density.compact ? 16 : 18 }}
+                  numberOfLines={1}
                   adjustsFontSizeToFit
                 >
                   {promotion.title}
                 </VadText>
-                {promotion.body ? (
-                  <VadText variant="caption" tone="secondary" numberOfLines={1}>
-                    {promotion.body}
-                  </VadText>
-                ) : null}
               </View>
             )}
           </Pressable>
