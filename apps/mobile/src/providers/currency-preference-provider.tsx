@@ -1,8 +1,10 @@
 import 'expo-sqlite/localStorage/install';
 
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Alert } from 'react-native';
 
 import { supabase, supabaseConfiguration } from '@/lib/supabase';
+import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 export type VADCurrency = 'NGN' | 'USDC';
 type CurrencyPolicy = {
@@ -36,17 +38,18 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
   const [countryCode, setCountryCode] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const applyPolicy = useCallback((policy: CurrencyPolicy) => {
+  const applyPolicy = useCallback((policy: CurrencyPolicy, ngnLocationAllowed: boolean) => {
     const eligible = asCurrencies(policy.eligible_asset_codes);
     const enabled = asCurrencies(policy.enabled_asset_codes).filter((code) => eligible.includes(code));
     // Non-Nigerian jurisdictions must never render NGN, even if a stale preference exists.
     const safeEligible = policy.country_code === 'NG' ? eligible : eligible.filter((code) => code !== 'NGN');
     const safeEnabled = policy.country_code === 'NG' ? enabled : enabled.filter((code) => code !== 'NGN');
+    const locationCheckedEnabled = ngnLocationAllowed ? safeEnabled : safeEnabled.filter((code) => code !== 'NGN');
     setCountryCode(policy.country_code);
     setEligibleState(safeEligible);
-    setEnabledState(safeEnabled);
+    setEnabledState(locationCheckedEnabled);
     try {
-      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(safeEnabled));
+      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(locationCheckedEnabled));
     } catch {
       // Supabase remains the source of truth when local storage is unavailable.
     }
@@ -70,7 +73,13 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       if (error) throw error;
       const row = (Array.isArray(data) ? data[0] : data) as CurrencyPolicy | null;
       if (!row) throw new Error('Currency policy is unavailable.');
-      applyPolicy(row);
+      let ngnLocationAllowed = false;
+      if (row.country_code === 'NG') {
+        const { data: accessData, error: accessError } = await supabase.rpc('can_access_ngn_services');
+        const accessRow = (Array.isArray(accessData) ? accessData[0] : accessData) as { allowed?: boolean } | null;
+        ngnLocationAllowed = !accessError && accessRow?.allowed === true;
+      }
+      applyPolicy(row, ngnLocationAllowed);
     } catch {
       // Keep the app usable if the network is temporarily unavailable. Never
       // allow a cached NGN preference to leak into a known non-Nigerian session.
@@ -96,11 +105,20 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
   }, [refresh]);
 
   const setEnabledCurrencies = useCallback((currencies: VADCurrency[]) => {
-    const next = [...new Set(currencies.filter((currency) => eligibleCurrencies.includes(currency)))];
-    if (!next.length) return;
-    setEnabledState(next);
-    try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
     void (async () => {
+      let next = [...new Set(currencies.filter((currency) => eligibleCurrencies.includes(currency)))];
+      if (next.includes('NGN')) {
+        const location = await verifyCurrentServiceLocation().catch(() => ({ allowed: false, reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE' }));
+        if (!location.allowed) {
+          next = next.filter((currency) => currency !== 'NGN');
+          Alert.alert('NGN access unavailable', location.reasonCode === 'LOCATION_PERMISSION_REQUIRED'
+            ? 'Allow location access to verify that you are currently in Nigeria.'
+            : 'VAD could not verify your current location and network. NGN services remain restricted.');
+        }
+      }
+      if (!next.length) return;
+      setEnabledState(next);
+      try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
       if (!supabaseConfiguration.ready) return;
       const { data } = await supabase.auth.getUser();
       if (!data.user) return;
@@ -120,9 +138,18 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       : [...enabledCurrencies, currency];
     if (!next.length) return;
 
-    setEnabledState(next);
-    try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
     void (async () => {
+      if (currency === 'NGN' && !enabledCurrencies.includes('NGN')) {
+        const location = await verifyCurrentServiceLocation().catch(() => ({ allowed: false, reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE' }));
+        if (!location.allowed) {
+          Alert.alert('NGN access unavailable', location.reasonCode === 'LOCATION_PERMISSION_REQUIRED'
+            ? 'Allow location access to verify that you are currently in Nigeria.'
+            : 'VAD could not verify your current location and network. NGN services remain restricted.');
+          return;
+        }
+      }
+      setEnabledState(next);
+      try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
       if (!supabaseConfiguration.ready) return;
       const { data } = await supabase.auth.getUser();
       if (!data.user) return;
