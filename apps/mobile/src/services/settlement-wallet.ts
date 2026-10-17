@@ -56,8 +56,8 @@ export async function submitSolanaPreparedSettlement(_execution: SolanaPreparedE
 async function getEvmWallet(networkId: string, expectedAddress: string) {
   await initializeDynamicWalletClient();
   if (!dynamicClient) throw new Error('Dynamic wallet is not configured.');
-  const account = getWalletAccounts(dynamicClient).find((candidate) => candidate.chain === 'EVM');
-  if (!account || account.chain !== 'EVM') throw new Error('A Dynamic EVM embedded wallet is required.');
+  const account = getWalletAccounts(dynamicClient).find((candidate) => candidate.chain === 'EVM' && candidate.address.toLowerCase() === expectedAddress.toLowerCase());
+  if (!account || account.chain !== 'EVM') throw new Error('The verified Dynamic EVM wallet for this authorization is not available in this session.');
   const provider = getWalletProviderFromWalletAccount({ walletAccount: account }, dynamicClient);
   const activeNetwork = await provider.getActiveNetworkId();
   if (String(activeNetwork.networkId) !== networkId) {
