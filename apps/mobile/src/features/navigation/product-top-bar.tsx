@@ -59,13 +59,13 @@ export function ProductTopBar({
         }}
       >
         <View style={{
-          minHeight: 48,
+          minHeight: 40,
           paddingHorizontal: density.horizontalPadding,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 7,
         }}>
-          <VadLogo size={38} />
+          <VadLogo size={32} />
           {density.width >= 340 ? (
             <View style={{ gap: 0, minWidth: 42 }}>
               <VadText variant="label">VAD</VadText>
@@ -104,9 +104,9 @@ export function ProductTopBar({
             accessibilityLabel="Open account"
             onPress={onAccount}
             style={({ pressed }) => ({
-              width: 42,
-              height: 42,
-              borderRadius: 14,
+              width: 36,
+              height: 36,
+              borderRadius: 11,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1,
@@ -129,19 +129,19 @@ export function ProductTopBar({
             style={({ pressed }) => ({
               flex: 1,
               minWidth: 0,
-              minHeight: 46,
+              minHeight: 38,
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 10,
-              paddingHorizontal: 14,
-              borderRadius: 16,
+              gap: 7,
+              paddingHorizontal: 11,
+              borderRadius: 12,
               borderWidth: 1,
               borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
               backgroundColor: theme.colors.background,
               opacity: pressed ? 0.8 : 1,
             })}
           >
-            <VadIcon name="search" size={20} tone="brand" />
+            <VadIcon name="search" size={17} tone="brand" />
             <VadText variant="body" tone="tertiary" numberOfLines={1} style={{ flex: 1 }}>
               Search markets, events or assets…
             </VadText>
@@ -174,7 +174,7 @@ export function ProductTopBar({
       >
         {density.phone ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, minWidth: density.narrow ? 42 : 88 }}>
-            <VadLogo size={34} />
+            <VadLogo size={30} />
             {!density.narrow ? (
               <View style={{ gap: 0 }}>
                 <VadText variant="label">VAD</VadText>
@@ -199,7 +199,7 @@ export function ProductTopBar({
             width: density.phone || !roomy ? undefined : Math.min(420, Math.max(280, density.width * 0.29)),
             minWidth: density.phone ? 38 : 180,
             maxWidth: density.phone ? undefined : 420,
-            minHeight: 42,
+            minHeight: 36,
             flexDirection: 'row',
             alignItems: 'center',
             gap: theme.spacing.sm,
@@ -273,9 +273,9 @@ export function ProductTopBar({
             accessibilityLabel="Open account"
             onPress={onAccount}
             style={({ pressed }) => ({
-              width: 44,
-              height: 44,
-              borderRadius: theme.radius.md,
+              width: 36,
+              height: 36,
+              borderRadius: theme.radius.sm,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1,
@@ -301,13 +301,13 @@ function WalletAction({ onPress }: { onPress: () => void }) {
       accessibilityLabel="Open wallet"
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 42,
+        minHeight: 34,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 7,
-        paddingHorizontal: 11,
-        borderRadius: 15,
+        gap: 5,
+        paddingHorizontal: 9,
+        borderRadius: 11,
         borderWidth: 1,
         borderColor: theme.colors.border,
         backgroundColor: theme.colors.surface,
@@ -328,9 +328,9 @@ function CompactCreateAction({ onPress }: { onPress: () => void }) {
       accessibilityLabel="Create market"
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: theme.colors.brandPrimary,
@@ -353,9 +353,9 @@ function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'a
       accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
@@ -376,11 +376,11 @@ function HeaderAction({ label, icon, brand = false, onPress }: { label: string; 
       accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 44,
+        minHeight: 36,
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing.xs,
-        paddingHorizontal: theme.spacing.md,
+        paddingHorizontal: theme.spacing.sm,
         borderRadius: theme.radius.pill,
         backgroundColor: brand ? theme.colors.brandPrimary : theme.colors.surfaceRaised,
         borderWidth: 1,
