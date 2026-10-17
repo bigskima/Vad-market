@@ -102,8 +102,15 @@ export function WalletScreen({
               <VadIcon name="wallet" size={18} tone="secondary" />
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <CurrencyToggle currency="NGN" enabled={currencyPreference.isCurrencyEnabled('NGN')} available={activeAssetCodes.includes('NGN')} onToggle={() => currencyPreference.toggleCurrency('NGN')} />
-              <CurrencyToggle currency="USDC" enabled={currencyPreference.isCurrencyEnabled('USDC')} available={activeAssetCodes.includes('USDC')} onToggle={() => currencyPreference.toggleCurrency('USDC')} />
+              {currencyPreference.eligibleCurrencies.map((currency) => (
+                <CurrencyToggle
+                  key={currency}
+                  currency={currency}
+                  enabled={currencyPreference.isCurrencyEnabled(currency)}
+                  available={activeAssetCodes.includes(currency)}
+                  onToggle={() => currencyPreference.toggleCurrency(currency)}
+                />
+              ))}
             </View>
           </VadCard>
           <View style={{ gap: 7 }}>
