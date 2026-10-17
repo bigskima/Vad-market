@@ -25,7 +25,7 @@ export function VadSectionHeader({
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
       <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: 220, gap: 3 }}>
-        <VadText variant="heading" style={{ letterSpacing: -0.2 }}>{title}</VadText>
+        <VadText variant="heading" style={{ letterSpacing: -0.35, fontSize: density.compact ? 17 : 19, lineHeight: density.compact ? 21 : 24 }}>{title}</VadText>
         {subtitle ? <VadText variant="caption" tone="secondary" style={{ maxWidth: 620 }}>{subtitle}</VadText> : null}
       </View>
 
@@ -36,13 +36,13 @@ export function VadSectionHeader({
           onPress={onAction}
           hitSlop={4}
           style={({ pressed }) => ({
-            minHeight: 38,
+            minHeight: density.compact ? 30 : 34,
             justifyContent: 'center',
             alignItems: 'center',
             flexDirection: 'row',
             gap: 4,
-            paddingHorizontal: theme.spacing.sm,
-            borderRadius: theme.radius.md,
+            paddingHorizontal: density.compact ? theme.spacing.xs : theme.spacing.sm,
+            borderRadius: theme.radius.sm,
             borderWidth: 1,
             borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
             backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surface,
