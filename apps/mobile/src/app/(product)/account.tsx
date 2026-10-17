@@ -6,6 +6,7 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
+import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { TourTarget } from '@/features/tour/tour-provider';
