@@ -83,7 +83,7 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="bodyStrong">Price action</VadText>
-          <VadText variant="caption" tone="secondary">Executed trades · historical prices</VadText>
+          <VadText variant="caption" tone="secondary">Executed prices · latest 240 fills</VadText>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 2 }}>
           <VadText variant="caption" tone="tertiary">LATEST</VadText>
@@ -134,8 +134,8 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
         </View>
       ) : visiblePoints.length === 0 || (series === 'YES' && yesValues.length === 0) || (series === 'NO' && noValues.length === 0) || (series === 'BOTH' && yesValues.length === 0 && noValues.length === 0) ? (
         <View style={{ minHeight: chartHeight, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', padding: 14, gap: 4 }}>
-          <VadText variant="bodyStrong">No executed prices yet</VadText>
-          <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>The chart appears after real trades execute. Current bids and market prices remain available above.</VadText>
+          <VadText variant="bodyStrong">{points.length === 0 ? 'No executed prices yet' : 'No trades in this range'}</VadText>
+          <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>{points.length === 0 ? 'The chart appears after real trades execute. Current bids and market prices remain available above.' : 'Choose a wider range to see earlier executions.'}</VadText>
         </View>
       ) : (
         <View onLayout={(event) => setPlotWidth(event.nativeEvent.layout.width)} style={{ gap: 4 }}>
