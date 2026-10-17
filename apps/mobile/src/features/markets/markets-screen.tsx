@@ -11,6 +11,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useLiveNow } from '@/hooks/use-live-now';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import { getMarketTiming } from '@/lib/market-timing';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketCard } from './components/market-card';
@@ -31,6 +32,7 @@ export function MarketsScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const { enabledCurrencies } = useCurrencyPreference();
   const now = useLiveNow();
   const { width } = useWindowDimensions();
   const columns = width >= 920 ? 2 : 1;
@@ -51,9 +53,10 @@ export function MarketsScreen({
   const baseFilteredMarkets = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return markets
+      .filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency))
       .filter((market) => category === 'All' || market.category === category)
       .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status].some((value) => String(value ?? '').toLowerCase().includes(needle)));
-  }, [markets, category, query]);
+  }, [markets, category, query, enabledCurrencies]);
 
   const stageCounts = useMemo(() => {
     const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
