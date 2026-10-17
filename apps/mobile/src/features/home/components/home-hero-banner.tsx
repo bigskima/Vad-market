@@ -49,15 +49,15 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
       source={source}
       resizeMode="cover"
       onError={() => setImageFailed(true)}
-      imageStyle={{ borderRadius: density.phone ? 16 : 20 }}
+      imageStyle={{ borderRadius: density.phone ? 12 : 14 }}
       style={{
         width: '100%',
-        height: density.phone ? 166 : density.desktop ? 218 : 188,
+        height: density.phone ? 126 : density.desktop ? 170 : 146,
         overflow: 'hidden',
-        borderRadius: density.phone ? 16 : 20,
+        borderRadius: density.phone ? 12 : 14,
         backgroundColor: theme.colors.brandStrong,
         justifyContent: 'flex-end',
-        padding: density.phone ? theme.spacing.md : theme.spacing.lg,
+        padding: density.phone ? 10 : 14,
       }}
       accessibilityRole="image"
       accessibilityLabel="VAD global markets hero artwork"
@@ -85,14 +85,14 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
           backgroundColor: 'rgba(12, 9, 54, 0.46)',
         }}
       />
-      <View style={{ alignItems: 'flex-start', gap: density.phone ? 5 : 7, maxWidth: 520 }}>
-        <VadText variant="caption" tone="inverse" style={{ letterSpacing: 1.1, fontWeight: '700' }} numberOfLines={1}>
+      <View style={{ alignItems: 'flex-start', gap: density.phone ? 3 : 4, maxWidth: 520 }}>
+        <VadText variant="caption" tone="inverse" style={{ letterSpacing: 0.7, fontWeight: '700', fontSize: 9, lineHeight: 11 }} numberOfLines={1}>
           THE WORLD, IN PROBABILITIES
         </VadText>
-        <VadText variant={density.phone ? 'title' : 'heading'} tone="inverse" numberOfLines={2} style={{ lineHeight: density.phone ? 25 : 29, maxWidth: 460 }}>
+        <VadText variant={density.phone ? 'title' : 'heading'} tone="inverse" numberOfLines={2} style={{ fontSize: density.phone ? 16 : 18, lineHeight: density.phone ? 19 : 22, letterSpacing: -0.2, maxWidth: 460 }}>
           Discover what happens next.
         </VadText>
-        <VadText variant="caption" tone="inverse" numberOfLines={2} style={{ opacity: 0.9, maxWidth: 440 }}>
+        <VadText variant="caption" tone="inverse" numberOfLines={2} style={{ opacity: 0.9, fontSize: 10, lineHeight: 13, maxWidth: 440 }}>
           Explore real-world outcomes and trade your view.
         </VadText>
         <Pressable
@@ -100,13 +100,13 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
           accessibilityLabel="Explore markets"
           onPress={onExplore}
           style={({ pressed }) => ({
-            marginTop: 3,
-            minHeight: 32,
+            marginTop: 1,
+            minHeight: 26,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 5,
-            paddingHorizontal: 12,
+            gap: 4,
+            paddingHorizontal: 9,
             borderRadius: 999,
             backgroundColor: '#FFFFFF',
             borderWidth: 1,
@@ -115,7 +115,7 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
           })}
         >
           <VadText variant="caption" style={{ color: theme.colors.brandStrong, fontWeight: '700' }}>Explore markets</VadText>
-          <VadIcon name="chevronRight" size={14} tone="brand" />
+          <VadIcon name="chevronRight" size={12} tone="brand" />
         </Pressable>
       </View>
     </ImageBackground>
