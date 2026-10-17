@@ -56,7 +56,9 @@ Deno.serve(async (req) => {
   }
 
   // Use a proxy-injected client IP only; never accept an IP address from the request body.
-  const ip = req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip');
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  const forwardedClientIp = forwardedFor?.split(',').map((value) => value.trim()).filter(Boolean).at(-1);
+  const ip = req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || forwardedClientIp;
   if (!ip) return json({ error: 'Unable to verify network location', code: 'CLIENT_IP_UNAVAILABLE' }, 503);
 
   try {
