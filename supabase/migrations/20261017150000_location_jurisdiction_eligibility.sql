@@ -52,9 +52,9 @@ as $$
       else 'ALLOWED'
     end as reason_code,
     lv.expires_at
-  from (select auth.uid() as user_id) current_user
-  left join public.user_accounts ua on ua.user_id = current_user.user_id
-  left join public.user_location_verifications lv on lv.user_id = current_user.user_id;
+  from (select auth.uid() as user_id) request_user
+  left join public.user_accounts ua on ua.user_id = request_user.user_id
+  left join public.user_location_verifications lv on lv.user_id = request_user.user_id;
 $$;
 
 revoke all on function public.can_access_ngn_services() from public, anon;
