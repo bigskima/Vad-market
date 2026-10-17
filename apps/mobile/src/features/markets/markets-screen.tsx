@@ -1,14 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
-import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadText } from '@/components/ui/vad-text';
 import { TourTarget } from '@/features/tour/tour-provider';
-import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
-import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketCard } from './components/market-card';
@@ -28,7 +25,6 @@ export function MarketsScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const now = useLiveNow();
   const { width } = useWindowDimensions();
   const columns = width >= 920 ? 2 : 1;
   const [query, setQuery] = useState('');
@@ -75,18 +71,18 @@ export function MarketsScreen({
     resetKey: `${query.trim().toLowerCase()}|${category}|${sortMode}|${columns}`,
   });
 
+  const featuredMarket = orderedMarkets[0] ?? null;
+  const remainingMarkets = progressive.visibleItems.filter((market) => market.instrument_public_id !== featuredMarket?.instrument_public_id);
+
   return (
     <View style={{ gap: density.sectionGap }}>
-      <View style={{ gap: theme.spacing.xs, paddingBottom: theme.spacing.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-          <VadText variant="title">{category === 'All' ? 'Markets' : category}</VadText>
-          <VadText variant="caption" tone="secondary">{orderedMarkets.length} markets</VadText>
+      <View style={{ gap: 4, paddingBottom: theme.spacing.xs }}>
+        <VadText variant="caption" tone="brand">VAD EXCHANGE</VadText>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+          <VadText variant="title">{category === 'All' ? 'Discover' : category}</VadText>
+          <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-          <VadChip label={`${live} live`} tone="yes" />
-          <VadChip label={`${results} resolving`} tone="brand" />
-          <VadChip label={`${complete} complete`} />
-        </View>
+        <VadText variant="caption" tone="secondary">Trade what you think happens next.</VadText>
       </View>
 
       <TourTarget id="markets-discovery">
@@ -122,9 +118,17 @@ export function MarketsScreen({
                 alignItems: 'stretch',
               }}
             >
-              {progressive.visibleItems.map((market) => (
+              {featuredMarket ? (
+                <View style={{ width: '100%' }}>
+                  <View style={{ borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.brandPrimary, padding: theme.spacing.xs, gap: theme.spacing.xs, backgroundColor: theme.colors.brandSoft }}>
+                    <VadText variant="caption" tone="brand">IN FOCUS</VadText>
+                    <MarketCard market={featuredMarket} onPress={() => onOpenMarket(featuredMarket)} />
+                  </View>
+                </View>
+              ) : null}
+              {remainingMarkets.map((market) => (
                 <View key={market.instrument_public_id} style={{ width: cardWidth }}>
-                  <MarketCard market={market} onPress={() => onOpenMarket(market)} />
+                  <MarketCard market={market} onPress={() => onOpenMarket(market)} compact />
                 </View>
               ))}
             </View>
