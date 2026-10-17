@@ -71,13 +71,32 @@ export function PortfolioScreen({
   return (
     <View style={{ gap: density.sectionGap }}>
       <TourTarget id="portfolio-summary">
-        <View style={{ gap: theme.spacing.xs, paddingBottom: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-          <VadText variant="caption" tone="secondary">YOUR PORTFOLIO</VadText>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <VadText variant="title">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
-            <VadText variant="caption" tone="secondary">{Number(totalShares).toLocaleString()} shares</VadText>
+        <VadCard variant="brand" style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+            <View style={{ gap: 3 }}>
+              <VadText variant="caption" tone="secondary">YOUR PORTFOLIO</VadText>
+              <VadText variant="title">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
+            </View>
+            <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
+              <VadIcon name="portfolio" size={21} tone="brand" />
+            </View>
           </View>
-        </View>
+          <View style={{ height: 1, backgroundColor: theme.colors.border }} />
+          <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+            <View style={{ flex: 1, gap: 3 }}>
+              <VadText variant="caption" tone="secondary">Total shares</VadText>
+              <VadText variant="heading">{Number(totalShares).toLocaleString()}</VadText>
+            </View>
+            <View style={{ flex: 1, gap: 3 }}>
+              <VadText variant="caption" tone="secondary">Open orders</VadText>
+              <VadText variant="heading">{orders.filter((order) => Number(order.remaining_quantity ?? 0) > 0).length}</VadText>
+            </View>
+            <View style={{ flex: 1, gap: 3 }}>
+              <VadText variant="caption" tone="secondary">Payouts</VadText>
+              <VadText variant="heading">{settlements.length}</VadText>
+            </View>
+          </View>
+        </VadCard>
       </TourTarget>
 
       {exposure.length ? (
@@ -238,23 +257,30 @@ function PositionCard({ position, onPress }: { position: PositionRow; onPress: (
   const yes = position.outcome_code === 'YES';
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open ${position.market_title} ${position.outcome_code} position`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.74 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}>
-      <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+      <VadCard variant="raised" style={{ padding: theme.spacing.sm, gap: theme.spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-            <VadText variant="caption" tone="brand">MATCHED POSITION</VadText>
-            <VadText variant="bodyStrong" numberOfLines={3}>{position.market_title}</VadText>
-            <VadText variant="caption" tone="tertiary">{position.asset_code} · {positionStatusLabel(position.status)}</VadText>
+            <VadText variant="bodyStrong" numberOfLines={2}>{position.market_title}</VadText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
+              <VadChip label={position.outcome_code} tone={yes ? 'yes' : 'no'} />
+              <VadText variant="caption" tone="tertiary">{position.asset_code} · {positionStatusLabel(position.status)}</VadText>
+            </View>
           </View>
-          <VadChip label={position.outcome_code} tone={yes ? 'yes' : 'no'} />
+          <VadIcon name="chevronRight" size={18} tone="tertiary" />
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-          <MiniMetric label="Shares" value={Number(position.quantity).toLocaleString()} />
-          <MiniMetric label="Avg. entry" value={pct(position.average_price)} />
-          <MiniMetric label="Invested" value={assetMoney(position.total_cost_basis, position.asset_code)} />
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
-          <VadText variant="caption" tone="brand">View position</VadText>
-          <VadIcon name="chevronRight" size={16} tone="brand" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <VadText variant="caption" tone="tertiary">Shares</VadText>
+            <VadText variant="bodyStrong">{Number(position.quantity).toLocaleString()}</VadText>
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <VadText variant="caption" tone="tertiary">Avg. entry</VadText>
+            <VadText variant="bodyStrong">{pct(position.average_price)}</VadText>
+          </View>
+          <View style={{ flex: 1, alignItems: 'flex-end', gap: 2 }}>
+            <VadText variant="caption" tone="tertiary">Invested</VadText>
+            <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(position.total_cost_basis, position.asset_code)}</VadText>
+          </View>
         </View>
       </VadCard>
     </Pressable>
