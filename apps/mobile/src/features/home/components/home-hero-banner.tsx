@@ -85,15 +85,9 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
           backgroundColor: 'rgba(12, 9, 54, 0.46)',
         }}
       />
-      <View style={{ alignItems: 'flex-start', gap: density.phone ? 3 : 4, maxWidth: 520 }}>
-        <VadText variant="caption" tone="inverse" style={{ letterSpacing: 0.7, fontWeight: '700', fontSize: 9, lineHeight: 11 }} numberOfLines={1}>
-          THE WORLD, IN PROBABILITIES
-        </VadText>
-        <VadText variant={density.phone ? 'title' : 'heading'} tone="inverse" numberOfLines={2} style={{ fontSize: density.phone ? 16 : 18, lineHeight: density.phone ? 19 : 22, letterSpacing: -0.2, maxWidth: 460 }}>
+      <View style={{ alignItems: 'flex-start', gap: 4, maxWidth: 520 }}>
+        <VadText variant={density.phone ? 'title' : 'heading'} tone="inverse" numberOfLines={1} style={{ fontSize: density.phone ? 15 : 17, lineHeight: density.phone ? 19 : 21, letterSpacing: -0.2, maxWidth: 460 }}>
           Discover what happens next.
-        </VadText>
-        <VadText variant="caption" tone="inverse" numberOfLines={2} style={{ opacity: 0.9, fontSize: 10, lineHeight: 13, maxWidth: 440 }}>
-          Explore real-world outcomes and trade your view.
         </VadText>
         <Pressable
           accessibilityRole="button"
