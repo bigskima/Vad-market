@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
+import { VadChip } from '@/components/ui/vad-chip';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
