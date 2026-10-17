@@ -179,11 +179,9 @@ function Overview({
         <VadCard style={{ flex: 1.1, gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="caption" tone="brand">MARKET OVERVIEW</VadText>
-            <VadText variant="heading">{poolMarket ? 'The pool shows participant conviction. The rules decide the result.' : 'Prices show what traders think. The rules decide the result.'}</VadText>
+            <VadText variant="heading">'Prices show sentiment, not outcome.'</VadText>
             <VadText variant="caption" tone="secondary">
-              {poolMarket
-                ? 'YES and NO percentages show how participant stakes are distributed. The final result follows the published rules and evidence, not whichever side has more money.'
-                : 'YES and NO prices show how people are trading. The final result follows the published market rules and the evidence used to verify what happened, not whichever side has the higher price.'}
+              'Published rules and evidence determine the final result.'
             </VadText>
           </View>
 
@@ -191,7 +189,6 @@ function Overview({
             <StatePill label="Trading" value={timing.tradingOpen ? 'Open' : timing.stage === 'SCHEDULED' ? 'Scheduled' : 'Closed'} tone={timing.tradingOpen ? 'yes' : 'secondary'} />
             <StatePill label="Stage" value={timing.statusLabel} tone={timing.stage === 'SETTLED' ? 'yes' : timing.stage === 'SETTLEMENT_PENDING' ? 'brand' : 'secondary'} />
             {timing.resolutionOutcome ? <StatePill label="Result" value={timing.resolutionOutcome} tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'secondary'} /> : null}
-            <StatePill label="Currency" value={market.asset_code} tone="brand" />
           </View>
 
           <VadCard variant={timing.stage === 'SETTLED' ? 'raised' : 'brand'} style={{ gap: 3 }}>
@@ -258,15 +255,6 @@ function Overview({
 
       <Lifecycle market={market} timing={timing} />
 
-      <VadCard variant="brand" style={{ gap: theme.spacing.xs }}>
-        <VadText variant="caption" tone="brand">HOW TO READ THE MARKET</VadText>
-        <VadText variant="bodyStrong">{poolMarket ? 'The stake split is not the final result.' : 'A market price is not the final result.'}</VadText>
-        <VadText variant="caption" tone="secondary">
-          {poolMarket
-            ? 'For example, 90% of the pool backing YES means participant money strongly favours YES. The confirmed result can still be NO if the published rules and evidence support NO.'
-            : 'For example, a 90% YES price means traders strongly favour YES. The final result can still be NO if the published rules and evidence support NO.'}
-        </VadText>
-      </VadCard>
     </View>
   );
 }
@@ -284,7 +272,7 @@ function Lifecycle({ market, timing }: { market: MarketCatalogItem; timing: Mark
     <VadCard variant="surface" style={{ gap: theme.spacing.md }}>
       <View style={{ gap: 3 }}>
         <VadText variant="bodyStrong">Market lifecycle</VadText>
-        <VadText variant="caption" tone="secondary">The countdown changes stages automatically; realtime backend events then confirm each transition.</VadText>
+        <VadText variant="caption" tone="secondary">Stages update automatically.</VadText>
       </View>
       <View style={{ flexDirection: density.width >= 620 ? 'row' : 'column', gap: theme.spacing.xs }}>
         <LifecycleStep
