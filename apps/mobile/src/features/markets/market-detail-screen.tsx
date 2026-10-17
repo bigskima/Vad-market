@@ -117,35 +117,18 @@ export function MarketDetailScreen({
 
 function Overview({ market, timing, onTrade }: { market: MarketCatalogItem; timing: MarketTiming; onTrade: () => void }) {
   const density = useProductDensity();
-  const theme = useVadTheme();
-  const pool = isPoolMarket(market);
-  const yes = probability(market.yes_price);
-  const no = probability(market.no_price);
-  const hasSignal = market.yes_price != null || market.no_price != null;
-
   return (
     <View style={{ gap: density.compact ? 8 : 12 }}>
       <MarketSnapshot market={market} timing={timing} />
-      <View style={{ flexDirection: 'row', gap: 7 }}>
-        <VadButton label="Trade" onPress={onTrade} size="small" style={{ flex: 1 }} leading={<VadIcon name="markets" size={15} tone="inverse" />} />
-        <VadButton label="Ask VAD AI" variant="secondary" onPress={() => {}} size="small" style={{ flex: 1 }} />
-      </View>
-      <VadCard variant="surface" style={{ padding: 10, gap: 7 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-          <VadText variant="bodyStrong">{pool ? 'Participant split' : 'Market prices'}</VadText>
-          <VadText variant="caption" tone="tertiary">{hasSignal ? 'Current' : 'Awaiting data'}</VadText>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-          <View style={{ flex: 1, gap: 4 }}>
-            <View style={{ height: 5, borderRadius: 3, backgroundColor: theme.colors.surfaceMuted, overflow: 'hidden', flexDirection: 'row' }}>
-              <View style={{ width: hasSignal ? yes : '0%', backgroundColor: theme.colors.yes, borderRadius: 3 }} />
-              <View style={{ flex: 1, backgroundColor: theme.colors.no }} />
-            </View>
-            <VadText variant="caption" tone="tertiary">{pool ? 'Stake allocation' : 'Price signal'}</VadText>
-          </View>
-          <VadText variant="caption" tone="secondary">{yes} / {no}</VadText>
-        </View>
-      </VadCard>
+      <VadButton label="Trade this market" onPress={onTrade} size="small" leading={<VadIcon name="markets" size={15} tone="inverse" />} />
+      <AssistantEntry
+        label="Ask VAD AI about this market"
+        detail="Understand the market and its published rules."
+        prompt="Explain this market using its current data, published resolution criteria, trading model, prices and settlement rules."
+        marketId={market.instrument_public_id}
+        sourceRoute="/markets"
+        compact
+      />
     </View>
   );
 }
