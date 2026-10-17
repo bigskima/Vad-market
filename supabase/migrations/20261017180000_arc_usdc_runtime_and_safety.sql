@@ -123,7 +123,7 @@ begin
     on c.id = jc.chain_id and c.status = 'ACTIVE'
   join blockchain.asset_representations ar
     on ar.chain_id = c.id and ar.asset_id = a.id and ar.status = 'ACTIVE'
-  join blockchain.contract_deployments cd
+  left join blockchain.contract_deployments cd
     on cd.chain_id = c.id
    and cd.protocol_key = 'VAD_SETTLEMENT_V1'
    and cd.protocol_version = 1
