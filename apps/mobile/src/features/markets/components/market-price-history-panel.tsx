@@ -94,19 +94,21 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
           <VadText variant="bodyStrong">{liquidityMode === 'POOL' ? 'Stake movement' : 'Price action'}</VadText>
           <VadText variant="caption" tone="secondary">{liquidityMode === 'POOL' ? 'Peer Pool · historical stake allocation' : 'Executed prices · latest 240 fills'}</VadText>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 2 }}>
-          <VadText variant="caption" tone="tertiary">LATEST</VadText>
-          <VadText variant="bodyStrong" style={{ color: series === 'NO' ? theme.colors.no : theme.colors.yes }}>
-            {series === 'NO'
-              ? formatPercent(latestNo)
-              : series === 'BOTH'
-                ? `Y ${formatPercent(latestYes)} · N ${formatPercent(latestNo)}`
-                : formatPercent(latestYes)}
-          </VadText>
-        </View>
+        {liquidityMode !== 'POOL' ? (
+          <View style={{ alignItems: 'flex-end', gap: 2 }}>
+            <VadText variant="caption" tone="tertiary">LATEST</VadText>
+            <VadText variant="bodyStrong" style={{ color: series === 'NO' ? theme.colors.no : theme.colors.yes }}>
+              {series === 'NO'
+                ? formatPercent(latestNo)
+                : series === 'BOTH'
+                  ? `Y ${formatPercent(latestYes)} · N ${formatPercent(latestNo)}`
+                  : formatPercent(latestYes)}
+            </VadText>
+          </View>
+        ) : null}
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 5, flexWrap: 'wrap' }}>
+      {liquidityMode !== 'POOL' ? <View style={{ flexDirection: 'row', gap: 5, flexWrap: 'wrap' }}>
         {(['YES', 'NO', 'BOTH'] as SeriesKey[]).map((item) => {
           const active = series === item;
           const tint = item === 'NO' ? theme.colors.no : theme.colors.yes;
@@ -127,7 +129,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
             </Pressable>
           );
         })}
-      </View>
+      </View> : null}
 
       {liquidityMode === 'POOL' ? (
         <View style={{ minHeight: chartHeight, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', padding: 14, gap: 4 }}>
