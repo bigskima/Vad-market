@@ -89,7 +89,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
   const renderNo = series === 'NO' || series === 'BOTH';
 
   return (
-    <VadCard variant="surface" style={{ gap: density.compact ? 9 : 11, padding: density.compact ? 10 : 13 }}>
+    <VadCard variant="surface" style={{ gap: density.compact ? 7 : 9, padding: density.compact ? 8 : 11 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="bodyStrong">{poolMode ? 'Stake movement' : 'Price action'}</VadText>
