@@ -7,6 +7,7 @@ import { VadIcon } from '@/components/ui/vad-icon';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
+import { HomeHeroBanner } from '@/features/home/components/home-hero-banner';
 import { HomePromotionCarousel } from '@/features/home/components/home-promotion-carousel';
 import { MarketCard } from '@/features/markets/components/market-card';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
@@ -84,45 +85,8 @@ export function HomeScreen({
   return (
     <View style={{ gap: sectionGap, width: '100%' }}>
       <TourTarget id="home-overview">
-        <View style={{
-          overflow: 'hidden',
-          borderRadius: theme.radius.xl,
-          backgroundColor: theme.colors.brandPrimary,
-          padding: density.phone ? theme.spacing.md : theme.spacing.xl,
-          gap: theme.spacing.md,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <View style={{ gap: 4, flex: 1 }}>
-              <VadText variant="caption" tone="inverse">TRADE WHAT HAPPENS NEXT</VadText>
-              <VadText variant={density.phone ? 'title' : 'title'} tone="inverse">Global events.{"\n"}Real markets.</VadText>
-              <VadText variant="caption" tone="inverse">From finance to sports, Nigeria and beyond.</VadText>
-            </View>
-            <View style={{
-              width: density.phone ? 76 : 112,
-              height: density.phone ? 76 : 112,
-              borderRadius: 100,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'rgba(255,255,255,0.13)',
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.22)',
-            }}>
-              <VadIcon name="markets" size={density.phone ? 36 : 48} tone="inverse" />
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <TourTarget id="home-explore-markets">
-              <VadButton label="Explore markets" variant="secondary" size="small" fullWidth={false} onPress={() => onExploreMarkets()} trailing={<VadIcon name="chevronRight" size={14} tone="primary" />} />
-            </TourTarget>
-            <View style={{ alignItems: 'flex-end', gap: 4 }}>
-              <VadText variant="caption" tone="inverse">{active.length} live</VadText>
-              <VadText variant="caption" tone="inverse">{traded} traded · {trendingRail.length} moving</VadText>
-            </View>
-          </View>
-        </View>
+        <HomeHeroBanner onExplore={() => onExploreMarkets()} />
       </TourTarget>
-
-      <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
 
       <TourTarget id="home-categories">
         <View style={{ gap: 8 }}>
@@ -168,6 +132,13 @@ export function HomeScreen({
           )}
         </View>
       </TourTarget>
+
+      {promotions.length ? (
+        <View style={{ gap: theme.spacing.sm }}>
+          <VadSectionHeader title="Highlights" subtitle="Updates from across VAD." />
+          <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
+        </View>
+      ) : null}
 
       <TourTarget id="home-community">
         <VadProgressiveSection title="Market insights" icon="activity">
