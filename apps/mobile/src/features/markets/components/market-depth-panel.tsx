@@ -43,7 +43,7 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="bodyStrong">Order book</VadText>
-          <VadText variant="caption" tone="secondary">Live resting bids · updates when reopened</VadText>
+          <VadText variant="caption" tone="secondary">Current resting bids · snapshot</VadText>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 999, backgroundColor: theme.colors.surfaceRaised }}>
           <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: theme.colors.yes }} />
