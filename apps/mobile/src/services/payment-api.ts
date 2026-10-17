@@ -47,7 +47,6 @@ async function ensureNgnPaymentLocation(assetCode: string) {
 }
 
 export async function quotePayment(operation: 'DEPOSIT' | 'WITHDRAWAL', amount: number, assetCode = 'NGN') {
-  await ensureNgnPaymentLocation(assetCode);
   const { data, error } = await supabase.rpc('payment_quote', { p_operation: operation, p_asset_code: assetCode, p_amount: amount });
   fail(
     error,
