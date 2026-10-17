@@ -41,9 +41,9 @@ export function ProductTabBar({
       pointerEvents="box-none"
       style={{
         backgroundColor: theme.colors.background,
-        paddingHorizontal: 14,
-        paddingTop: 5,
-        paddingBottom: Math.max(insets.bottom, 5),
+        paddingHorizontal: 12,
+        paddingTop: 7,
+        paddingBottom: Math.max(insets.bottom, 7),
       }}
     >
       <View
@@ -55,9 +55,9 @@ export function ProductTabBar({
             alignSelf: 'center',
             flexDirection: 'row',
             alignItems: 'stretch',
-            paddingHorizontal: 4,
-            paddingVertical: 3,
-            borderRadius: 24,
+            paddingHorizontal: 5,
+            paddingVertical: 5,
+            borderRadius: 27,
             borderWidth: 1,
             borderColor: theme.colors.border,
             backgroundColor: theme.colors.surface,
@@ -76,11 +76,11 @@ export function ProductTabBar({
               onPress={() => onChange(tab.value)}
               style={({ pressed }) => ({
                 flex: 1,
-                minHeight: density.compact ? 43 : 46,
+                minHeight: density.compact ? 48 : 52,
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 2,
-                borderRadius: 17,
+                borderRadius: 19,
                 backgroundColor: selected ? theme.colors.brandSoft : pressed ? theme.colors.surfaceRaised : 'transparent',
                 opacity: pressed ? 0.78 : 1,
                 transform: [{ scale: pressed ? 0.96 : 1 }],
