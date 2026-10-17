@@ -5,12 +5,13 @@ import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
+import { supabase } from '@/lib/supabase';
 
 export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const isPool = market.liquidity_mode === 'POOL' || String(market.liquidity_mode ?? '').toUpperCase().includes('POOL');
-  const imageUrl = null;
+  const imageUrl = market.media_path ? supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl : null;
 
   return (
     <View style={{ gap: 9 }}>
@@ -33,25 +34,4 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
 
 function friendlyEnum(value: string) {
   return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function SignalTile({ label, value, positive, available }: { label: string; value: string; positive: boolean; available: boolean }) {
-  const theme = useVadTheme();
-  const density = useProductDensity();
-  return (
-    <View style={{ flex: 1, minWidth: 0, borderRadius: theme.radius.md, backgroundColor: available ? (positive ? theme.colors.yesSoft : theme.colors.noSoft) : theme.colors.surfaceMuted, paddingHorizontal: 7, paddingVertical: 5, gap: 2 }}>
-      <VadText variant="caption" tone={available ? (positive ? 'yes' : 'no') : 'tertiary'}>{label}</VadText>
-      <VadText variant={density.compact ? 'bodyStrong' : 'heading'} tone={available ? (positive ? 'yes' : 'no') : 'tertiary'} numberOfLines={1} style={{ fontSize: density.compact ? 14 : 16, lineHeight: density.compact ? 17 : 19 }}>{value}</VadText>
-    </View>
-  );
-}
-
-function MetaChip({ label, value }: { label: string; value: string }) {
-  const theme = useVadTheme();
-  return (
-    <View style={{ minHeight: 28, flexGrow: 1, flexBasis: 96, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 7, paddingVertical: 3, gap: 1 }}>
-      <VadText variant="caption" tone="tertiary">{label}</VadText>
-      <VadText variant="caption" numberOfLines={2}>{value}</VadText>
-    </View>
-  );
 }
