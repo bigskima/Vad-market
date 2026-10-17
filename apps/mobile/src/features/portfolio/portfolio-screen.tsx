@@ -45,7 +45,6 @@ export function PortfolioScreen({
   const [tab, setTab] = useState<PortfolioTab>('positions');
 
   const totalShares = positions.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
-  const totalPayouts = settlements.reduce((sum, row) => sum + Number(row.net_amount ?? 0), 0);
   const exposure = useMemo(() => buildAssetExposure(positions, orders), [positions, orders]);
   const grid = density.wide;
   const pageSize = grid ? 8 : 5;
@@ -71,29 +70,12 @@ export function PortfolioScreen({
 
   return (
     <View style={{ gap: density.sectionGap }}>
-      <VadSectionHeader
-        title="Exchange positions"
-      />
-
       <TourTarget id="portfolio-summary">
-        <View style={{ gap: theme.spacing.sm, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+        <View style={{ gap: theme.spacing.xs, paddingBottom: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+          <VadText variant="caption" tone="secondary">YOUR PORTFOLIO</VadText>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <VadText variant="heading">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
+            <VadText variant="title">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
             <VadText variant="caption" tone="secondary">{Number(totalShares).toLocaleString()} shares</VadText>
-          </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md }}>
-            <View style={{ flex: 1, minWidth: 88, gap: 2 }}>
-              <VadText variant="caption" tone="secondary">Open orders</VadText>
-              <VadText variant="bodyStrong">{orders.length}</VadText>
-            </View>
-            <View style={{ flex: 1, minWidth: 88, gap: 2 }}>
-              <VadText variant="caption" tone="secondary">Payouts</VadText>
-              <VadText variant="bodyStrong">{settlements.length}</VadText>
-            </View>
-            <View style={{ flex: 1, minWidth: 88, gap: 2 }}>
-              <VadText variant="caption" tone="secondary">Net paid out</VadText>
-              <VadText variant="bodyStrong">{Number(totalPayouts).toLocaleString()}</VadText>
-            </View>
           </View>
         </View>
       </TourTarget>
