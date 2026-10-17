@@ -14,6 +14,7 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
   const density = useProductDensity();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageVersion, setImageVersion] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -25,6 +26,7 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
         if (!mounted) return;
         setImageUrl(result.imageUrl);
         setImageVersion(result.generatedAt);
+        setImageFailed(false);
       } catch {
         // Keep the bundled artwork visible if AI generation or connectivity
         // is temporarily unavailable. The next refresh retries the same cache.
@@ -40,7 +42,7 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
     };
   }, []);
 
-  const source = imageUrl
+  const source = imageUrl && !imageFailed
     ? { uri: `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}v=${encodeURIComponent(imageVersion ?? '')}` }
     : require('../../../../assets/images/vad-welcome-world.jpg');
 
@@ -48,6 +50,7 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
     <ImageBackground
       source={source}
       resizeMode="cover"
+      onError={() => setImageFailed(true)}
       imageStyle={{ borderRadius: density.phone ? 22 : 28 }}
       style={{
         width: '100%',
