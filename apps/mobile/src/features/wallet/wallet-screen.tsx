@@ -82,38 +82,45 @@ export function WalletScreen({
 
   return (
     <View style={{ gap: density.sectionGap }}>
-      <VadSectionHeader
-        title="Wallet"
-        actionLabel={hasNgn ? 'Activity' : undefined}
-        onAction={hasNgn ? onActivity : undefined}
-      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+        <View style={{ gap: 2 }}>
+          <VadText variant="title">Wallet</VadText>
+          <VadText variant="caption" tone="secondary">Your money, in one place</VadText>
+        </View>
+        {hasNgn ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="View all wallet activity" onPress={onActivity} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 9, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
+            <VadIcon name="activity" size={15} tone="brand" />
+            <VadText variant="label" tone="brand">Activity</VadText>
+          </Pressable>
+        ) : null}
+      </View>
 
       {primary ? (
         <TourTarget id="wallet-balance">
-          <VadCard variant="brand" style={{ gap: theme.spacing.md, padding: density.phone ? theme.spacing.md : theme.spacing.lg }}>
+          <VadCard variant="brand" style={{ gap: theme.spacing.md, padding: density.phone ? 18 : theme.spacing.lg, borderRadius: 26 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-              <View style={{ gap: 3 }}>
-                <VadText variant="caption" tone="secondary">TOTAL WALLET VALUE</VadText>
-                <VadText variant="caption" tone="secondary">{primaryCode} · Personal wallet</VadText>
+              <View style={{ gap: 4 }}>
+                <VadText variant="caption" tone="secondary">TOTAL BALANCE</VadText>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.yes }} />
+                  <VadText variant="caption" tone="secondary">{primaryCode} wallet</VadText>
+                </View>
               </View>
-              <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
-                <VadIcon name="wallet" size={20} tone="brand" />
+              <View style={{ width: 42, height: 42, borderRadius: 15, backgroundColor: theme.colors.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
+                <VadIcon name="wallet" size={21} tone="brand" />
               </View>
             </View>
-            <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>
-              {assetMoney(total, primaryCode)}
-            </VadText>
-            <View style={{ height: 1, backgroundColor: theme.colors.border }} />
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+            <VadText variant={density.phone ? 'display' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{assetMoney(total, primaryCode)}</VadText>
+            <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 5, paddingRight: 8 }}>
                 <VadText variant="caption" tone="secondary">Available</VadText>
                 <VadText variant="bodyStrong" tone="yes" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(available, primaryCode)}</VadText>
               </View>
-              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <VadText variant="caption" tone="secondary">Committed</VadText>
+              <View style={{ flex: 1, minWidth: 0, gap: 5, paddingHorizontal: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
+                <VadText variant="caption" tone="secondary">In positions</VadText>
                 <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(reserved, primaryCode)}</VadText>
               </View>
-              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 5, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
                 <VadText variant="caption" tone="secondary">Pending</VadText>
                 <VadText variant="bodyStrong" tone="brand" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(pending, primaryCode)}</VadText>
               </View>
@@ -134,14 +141,30 @@ export function WalletScreen({
         </TourTarget>
       ) : null}
 
-      <CryptoWalletConnections />
-      <OnchainActivityPanel enabled={hasUsdc} />
+      <VadProgressiveSection
+        title="Crypto wallet"
+        eyebrow="ON-CHAIN"
+        description="Connect and manage your supported crypto wallet."
+        icon="wallet"
+        summary={<VadText variant="caption" tone="tertiary">{hasUsdc ? 'USDC enabled' : 'Wallet connections'}</VadText>}
+      >
+        <CryptoWalletConnections />
+      </VadProgressiveSection>
+      {hasUsdc ? (
+        <VadProgressiveSection
+          title="On-chain activity"
+          icon="activity"
+          description="Recent activity for your connected crypto assets."
+        >
+          <OnchainActivityPanel enabled={hasUsdc} />
+        </VadProgressiveSection>
+      ) : null}
 
       {orderedWallets.length ? (
         <VadProgressiveSection
-          title="Currency balances"
-          eyebrow="BALANCE BREAKDOWN"
-          description="Balances by currency."
+          title="Other balances"
+          eyebrow="ASSETS"
+          description="Your balances across supported currencies."
           icon="wallet"
           summary={(
             <VadText variant="caption" tone="tertiary">
