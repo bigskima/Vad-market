@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { useLiveNow } from '@/hooks/use-live-now';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getMarketPriceHistory, type MarketPriceHistoryPoint } from '@/services/market-api';
 
@@ -19,6 +20,7 @@ const ranges: { value: RangeKey; label: string; ms: number | null }[] = [
 export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const [points, setPoints] = useState<MarketPriceHistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -28,10 +30,13 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setFailed(false);
-    void getMarketPriceHistory(instrumentId, 240).then((result) => {
+    void Promise.resolve().then(() => {
       if (!active) return;
+      setLoading(true);
+      setFailed(false);
+      return getMarketPriceHistory(instrumentId, 240);
+    }).then((result) => {
+      if (!active || !result) return;
       setPoints([...result].sort((a, b) => Date.parse(a.observed_at) - Date.parse(b.observed_at)));
     }).catch(() => {
       if (active) setFailed(true);
@@ -44,9 +49,9 @@ export function MarketPriceHistoryPanel({ instrumentId }: { instrumentId: string
   const visiblePoints = useMemo(() => {
     const selected = ranges.find((item) => item.value === range);
     if (!selected?.ms || points.length === 0) return points;
-    const cutoff = Date.now() - selected.ms;
+    const cutoff = now - selected.ms;
     return points.filter((point) => Date.parse(point.observed_at) >= cutoff);
-  }, [points, range]);
+  }, [points, range, now]);
 
   const yesValues = useMemo(() => makeSeries(visiblePoints, 'YES'), [visiblePoints]);
   const noValues = useMemo(() => makeSeries(visiblePoints, 'NO'), [visiblePoints]);
