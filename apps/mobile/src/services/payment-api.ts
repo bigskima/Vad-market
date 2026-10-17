@@ -1,5 +1,6 @@
 import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
+import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 export type PaymentQuote = {
   enabled: boolean;
@@ -37,7 +38,16 @@ function fail(
   if (error) throw userFacingError(error, context, fallback);
 }
 
+async function ensureNgnPaymentLocation(assetCode: string) {
+  if (assetCode.trim().toUpperCase() !== 'NGN') return;
+  const result = await verifyCurrentServiceLocation().catch(() => ({ allowed: false, reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE' }));
+  if (!result.allowed) {
+    throw new Error('NGN deposits and withdrawals require your current location and network to be verified in Nigeria.');
+  }
+}
+
 export async function quotePayment(operation: 'DEPOSIT' | 'WITHDRAWAL', amount: number, assetCode = 'NGN') {
+  await ensureNgnPaymentLocation(assetCode);
   const { data, error } = await supabase.rpc('payment_quote', { p_operation: operation, p_asset_code: assetCode, p_amount: amount });
   fail(
     error,
@@ -50,6 +60,7 @@ export async function quotePayment(operation: 'DEPOSIT' | 'WITHDRAWAL', amount: 
 }
 
 export async function createPaymentIntent(operation: 'DEPOSIT' | 'WITHDRAWAL', amount: number, assetCode = 'NGN') {
+  await ensureNgnPaymentLocation(assetCode);
   const idempotencyKey = `mobile:${operation.toLowerCase()}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('create_payment_intent', {
     p_operation: operation,
