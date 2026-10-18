@@ -281,9 +281,10 @@ contract VadSettlementV1Test {
         );
         auth.deadline = 999;
 
+        bytes memory signature = _signLock(auth);
         vm.expectRevert(VadSettlementV1.AuthorizationExpired.selector);
         vm.prank(user);
-        settlement.lockPosition(auth, _signLock(auth));
+        settlement.lockPosition(auth, signature);
     }
 
     function testLockAuthorizationCannotBeReplayed() public {
@@ -311,9 +312,10 @@ contract VadSettlementV1Test {
             0
         );
 
+        bytes memory signature = _signLock(auth);
         vm.expectRevert(VadSettlementV1.InvalidState.selector);
         vm.prank(user);
-        settlement.lockPosition(auth, _signLock(auth));
+        settlement.lockPosition(auth, signature);
     }
 
     function testOnlyResolverCanResolveMarket() public {
@@ -348,9 +350,10 @@ contract VadSettlementV1Test {
             0,
             0
         );
+        bytes memory blockedSignature = _signLock(blockedAuth);
         vm.expectRevert(VadSettlementV1.NewLocksPaused.selector);
         vm.prank(user);
-        settlement.lockPosition(blockedAuth, _signLock(blockedAuth));
+        settlement.lockPosition(blockedAuth, blockedSignature);
 
         vm.prank(resolver);
         bytes32 resolvedHash = settlement.resolveMarket(MARKET, YES, false, keccak256("pause-test-evidence"));
@@ -367,8 +370,9 @@ contract VadSettlementV1Test {
                 deadline: block.timestamp + 1 hours
             });
 
+        bytes memory settlementSignature = _signSettlement(settleAuth);
         vm.prank(user);
-        settlement.settlePosition(settleAuth, _signSettlement(settleAuth));
+        settlement.settlePosition(settleAuth, settlementSignature);
 
         (, , , , , , VadSettlementV1.PositionStatus status) = settlement.positions(POSITION);
         _assertEq(uint256(status), uint256(VadSettlementV1.PositionStatus.SETTLED), "existing position settles while paused");
@@ -399,9 +403,10 @@ contract VadSettlementV1Test {
                 deadline: block.timestamp + 1 hours
             });
 
+        bytes memory settlementSignature = _signSettlement(settleAuth);
         vm.expectRevert(VadSettlementV1.InvalidAmount.selector);
         vm.prank(user);
-        settlement.settlePosition(settleAuth, _signSettlement(settleAuth));
+        settlement.settlePosition(settleAuth, settlementSignature);
     }
 
     function testSettlementTokenCannotBeRecovered() public {
