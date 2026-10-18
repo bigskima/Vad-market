@@ -28,6 +28,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
   const [range, setRange] = useState<RangeKey>('ALL');
   const [series, setSeries] = useState<SeriesKey>('YES');
   const [plotWidth, setPlotWidth] = useState(0);
+  const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -35,6 +36,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
       if (!active) return;
       setLoading(true);
       setFailed(false);
+      setSelectedTimestamp(null);
       return poolMode
         ? getPeerPoolStakeHistory(instrumentId, 120)
         : getMarketPriceHistory(instrumentId, 240);
@@ -74,6 +76,9 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
   const timeStart = visiblePoints.length ? Date.parse(visiblePoints[0].observed_at) : 0;
   const timeEnd = visiblePoints.length ? Date.parse(visiblePoints[visiblePoints.length - 1].observed_at) : timeStart;
   const timeSpan = Math.max(1, timeEnd - timeStart);
+  const selectedAt = selectedTimestamp != null && selectedTimestamp >= timeStart && selectedTimestamp <= timeEnd
+    ? selectedTimestamp
+    : null;
 
   function coordinates(values: { at: number; value: number }[]) {
     return values.map((point) => ({
@@ -88,6 +93,26 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
   const noCoords = coordinates(noValues);
   const renderYes = series === 'YES' || series === 'BOTH';
   const renderNo = series === 'NO' || series === 'BOTH';
+  const selectedYes = selectedAt == null ? null : nearestHistoryPoint(visiblePoints, 'YES', selectedAt);
+  const selectedNo = selectedAt == null ? null : nearestHistoryPoint(visiblePoints, 'NO', selectedAt);
+  const selectedYesCoord = selectedAt == null ? null : nearestCoordinate(yesCoords, selectedAt);
+  const selectedNoCoord = selectedAt == null ? null : nearestCoordinate(noCoords, selectedAt);
+  const cursorX = selectedAt == null
+    ? null
+    : timeEnd === timeStart ? usableWidth / 2 : ((selectedAt - timeStart) / timeSpan) * usableWidth;
+
+  function inspectAt(x: number) {
+    if (usableWidth <= 0 || visiblePoints.length === 0) return;
+    const ratio = Math.max(0, Math.min(1, x / usableWidth));
+    const targetAt = timeStart + ratio * timeSpan;
+    const source = series === 'YES'
+      ? visiblePoints.filter((point) => point.outcome_code.toUpperCase() === 'YES')
+      : series === 'NO'
+        ? visiblePoints.filter((point) => point.outcome_code.toUpperCase() === 'NO')
+        : visiblePoints;
+    const nearestAt = nearestHistoryTimestamp(source, targetAt);
+    if (nearestAt != null) setSelectedTimestamp(nearestAt);
+  }
 
   return (
     <VadCard variant="surface" style={{ gap: density.compact ? 7 : 9, padding: density.compact ? 8 : 11 }}>
@@ -123,7 +148,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
         {ranges.map((item) => {
           const active = range === item.value;
           return (
-            <Pressable key={item.value} accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => setRange(item.value)}
+            <Pressable key={item.value} accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => { setRange(item.value); setSelectedTimestamp(null); }}
               style={{ borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: active ? theme.colors.brandSoft : 'transparent' }}>
               <VadText variant="caption" tone={active ? 'brand' : 'tertiary'}>{item.label}</VadText>
             </Pressable>
@@ -154,12 +179,22 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
                 <VadText key={value.toFixed(3)} variant="caption" tone="tertiary" style={{ fontSize: 9, lineHeight: 11 }}>{Math.round(value * 100)}%</VadText>
               ))}
             </View>
-            <View style={{ flex: 1, height: chartHeight, overflow: 'hidden' }}>
+            <View
+              accessibilityLabel="Interactive chart. Touch or drag to inspect recorded market prices."
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderGrant={(event) => inspectAt(event.nativeEvent.locationX)}
+              onResponderMove={(event) => inspectAt(event.nativeEvent.locationX)}
+              style={{ flex: 1, height: chartHeight, overflow: 'hidden' }}
+            >
               {[0, 1, 2, 3].map((line) => (
                 <View key={line} style={{ position: 'absolute', left: 0, right: 0, top: (chartHeight - 12) * line / 3 + 4, height: 1, backgroundColor: theme.colors.border, opacity: 0.7 }} />
               ))}
               {plotWidth > 0 && renderYes ? <LineSeries points={yesCoords} color={theme.colors.yes} /> : null}
               {plotWidth > 0 && renderNo ? <LineSeries points={noCoords} color={theme.colors.no} /> : null}
+              {cursorX != null ? <View pointerEvents="none" style={{ position: 'absolute', left: cursorX, top: 4, bottom: 8, width: 1, backgroundColor: theme.colors.textTertiary, opacity: 0.9 }} /> : null}
+              {selectedYesCoord && renderYes ? <View pointerEvents="none" style={{ position: 'absolute', left: selectedYesCoord.x - 4, top: selectedYesCoord.y - 4, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.yes, borderWidth: 2, borderColor: theme.colors.surface }} /> : null}
+              {selectedNoCoord && renderNo ? <View pointerEvents="none" style={{ position: 'absolute', left: selectedNoCoord.x - 4, top: selectedNoCoord.y - 4, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.no, borderWidth: 2, borderColor: theme.colors.surface }} /> : null}
             </View>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 34 }}>
@@ -168,6 +203,17 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
           </View>
         </View>
       )}
+
+      {selectedAt != null ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, paddingHorizontal: 8, paddingVertical: 7, borderRadius: 9, backgroundColor: theme.colors.surfaceMuted }}>
+          <View style={{ flex: 1, minWidth: 120, gap: 2 }}>
+            <VadText variant="caption" tone="tertiary">NEAREST RECORDED VALUES</VadText>
+            <VadText variant="caption" tone="secondary">{formatTime(new Date(selectedAt).toISOString())}</VadText>
+          </View>
+          {renderYes && selectedYes ? <VadText variant="caption" style={{ color: theme.colors.yes, fontWeight: '700' }}>{poolMode ? 'YES share' : 'YES'} {formatPercent(clamp(Number(selectedYes.price)))} · {formatTime(selectedYes.observed_at)}</VadText> : null}
+          {renderNo && selectedNo ? <VadText variant="caption" style={{ color: theme.colors.no, fontWeight: '700' }}>{poolMode ? 'NO share' : 'NO'} {formatPercent(clamp(Number(selectedNo.price)))} · {formatTime(selectedNo.observed_at)}</VadText> : null}
+        </View>
+      ) : null}
 
       {points.length > 0 && !loading && !failed ? <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
@@ -178,6 +224,50 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
       </View> : null}
     </VadCard>
   );
+}
+
+function nearestHistoryTimestamp(points: MarketPriceHistoryPoint[], targetAt: number) {
+  let nearestAt: number | null = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const point of points) {
+    const at = Date.parse(point.observed_at);
+    if (!Number.isFinite(at)) continue;
+    const distance = Math.abs(at - targetAt);
+    if (distance < nearestDistance) {
+      nearestAt = at;
+      nearestDistance = distance;
+    }
+  }
+  return nearestAt;
+}
+
+function nearestHistoryPoint(points: MarketPriceHistoryPoint[], outcome: 'YES' | 'NO', targetAt: number) {
+  let nearest: MarketPriceHistoryPoint | null = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const point of points) {
+    if (point.outcome_code.toUpperCase() !== outcome) continue;
+    const at = Date.parse(point.observed_at);
+    if (!Number.isFinite(at)) continue;
+    const distance = Math.abs(at - targetAt);
+    if (distance < nearestDistance) {
+      nearest = point;
+      nearestDistance = distance;
+    }
+  }
+  return nearest;
+}
+
+function nearestCoordinate(points: { at: number; x: number; y: number; value: number }[], targetAt: number) {
+  let nearest: { at: number; x: number; y: number; value: number } | null = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const point of points) {
+    const distance = Math.abs(point.at - targetAt);
+    if (distance < nearestDistance) {
+      nearest = point;
+      nearestDistance = distance;
+    }
+  }
+  return nearest;
 }
 
 function makeSeries(points: MarketPriceHistoryPoint[], outcome: 'YES' | 'NO') {
