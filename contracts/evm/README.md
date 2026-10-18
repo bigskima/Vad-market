@@ -28,3 +28,40 @@ The user signs/submits the resulting transaction. Changing any amount, fee, or p
 - A positive fee must carry a non-zero VAD fee-policy version ID.
 - Direct callers cannot lower a fee after VAD signs the authorization.
 - The configured settlement token cannot be recovered through the admin recovery path.
+
+## Build and test
+
+Run from the repository root:
+
+```sh
+forge build --root contracts/evm
+forge test --root contracts/evm -vvv
+```
+
+The EVM contract workflow runs these commands on changes to `contracts/evm/**`.
+
+## Guarded Arc Mainnet deployment
+
+`script/DeployVadSettlementV1.s.sol` is a guarded deployment script. On Arc Mainnet it requires chain ID `5042` and the configured settlement token to equal `0x3600000000000000000000000000000000000000`. Non-mainnet deployment is blocked unless `ALLOW_NON_MAINNET_DEPLOY=true` is explicitly set; the override does not bypass the Arc Mainnet token-address check.
+
+Required environment values (keep these in a secure local environment or secret manager; never commit them):
+
+- `VAD_DEPLOYER_PRIVATE_KEY`
+- `ARC_USDC_TOKEN_ADDRESS`
+- `VAD_ADMIN` — preferably a controlled multisig
+- `VAD_QUOTE_SIGNER`
+- `VAD_SETTLEMENT_SIGNER`
+- `VAD_RESOLVER`
+- `VAD_TREASURY`
+- `ARC_MAINNET_RPC_URL` for the RPC endpoint used by Foundry
+
+After a formal security review and testnet lifecycle run, deploy with:
+
+```sh
+forge script script/DeployVadSettlementV1.s.sol:DeployVadSettlementV1 \
+  --root contracts/evm \
+  --rpc-url "$ARC_MAINNET_RPC_URL" \
+  --broadcast
+```
+
+**Do not deploy or enable the production database switches yet.** Before mainnet deployment, confirm the official Arc documentation for chain ID and native USDC representation, fund the deployment account, review signer/admin custody, verify the source code using the currently supported official Arc explorer process, and complete end-to-end deposit/lock/resolve/claim/refund/reconciliation tests. The script intentionally does not store or print private keys.
