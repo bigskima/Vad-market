@@ -8,6 +8,7 @@ interface Vm {
     function sign(uint256 privateKey, bytes32 digest) external returns (uint8 v, bytes32 r, bytes32 s);
     function prank(address sender) external;
     function expectRevert(bytes4 selector) external;
+    function warp(uint256 timestamp) external;
 }
 
 contract MockUsdc is IERC20 {
@@ -268,6 +269,158 @@ contract VadSettlementV1Test {
         vm.expectRevert(VadSettlementV1.InvalidAmount.selector);
         vm.prank(user);
         settlement.settlePosition(settleAuth, settlementSignature);
+    }
+
+    function testExpiredLockAuthorizationRejected() public {
+        vm.warp(1_000);
+        VadSettlementV1.LockAuthorization memory auth = _lockAuthorization(
+            POSITION,
+            100_000_000,
+            0,
+            0
+        );
+        auth.deadline = 999;
+
+        bytes memory signature = _signLock(auth);
+        vm.expectRevert(VadSettlementV1.AuthorizationExpired.selector);
+        vm.prank(user);
+        settlement.lockPosition(auth, signature);
+    }
+
+    function testLockAuthorizationCannotBeReplayed() public {
+        VadSettlementV1.LockAuthorization memory auth = _lockAuthorization(
+            POSITION,
+            100_000_000,
+            0,
+            0
+        );
+        bytes memory signature = _signLock(auth);
+
+        vm.prank(user);
+        settlement.lockPosition(auth, signature);
+
+        vm.expectRevert(VadSettlementV1.AuthorizationAlreadyUsed.selector);
+        vm.prank(user);
+        settlement.lockPosition(auth, signature);
+    }
+
+    function testPositiveTradingFeeRequiresPolicyVersion() public {
+        VadSettlementV1.LockAuthorization memory auth = _lockAuthorization(
+            POSITION,
+            100_000_000,
+            1_000_000,
+            0
+        );
+
+        bytes memory signature = _signLock(auth);
+        vm.expectRevert(VadSettlementV1.InvalidState.selector);
+        vm.prank(user);
+        settlement.lockPosition(auth, signature);
+    }
+
+    function testOnlyResolverCanResolveMarket() public {
+        vm.expectRevert(VadSettlementV1.Unauthorized.selector);
+        vm.prank(address(0xBAD));
+        settlement.resolveMarket(MARKET, YES, false, keccak256("evidence"));
+    }
+
+    function testMarketCannotBeResolvedTwice() public {
+        vm.prank(resolver);
+        settlement.resolveMarket(MARKET, YES, false, keccak256("first-evidence"));
+
+        vm.expectRevert(VadSettlementV1.InvalidState.selector);
+        vm.prank(resolver);
+        settlement.resolveMarket(MARKET, YES, false, keccak256("second-evidence"));
+    }
+
+    function testPauseBlocksNewLocksButNotExistingSettlement() public {
+        VadSettlementV1.LockAuthorization memory lockAuth = _lockAuthorization(
+            POSITION,
+            100_000_000,
+            0,
+            0
+        );
+        bytes memory lockSignature = _signLock(lockAuth);
+        vm.prank(user);
+        settlement.lockPosition(lockAuth, lockSignature);
+
+        settlement.setNewLocksPaused(true);
+        VadSettlementV1.LockAuthorization memory blockedAuth = _lockAuthorization(
+            keccak256("paused-position"),
+            50_000_000,
+            0,
+            0
+        );
+        bytes memory blockedSignature = _signLock(blockedAuth);
+        vm.expectRevert(VadSettlementV1.NewLocksPaused.selector);
+        vm.prank(user);
+        settlement.lockPosition(blockedAuth, blockedSignature);
+
+        vm.prank(resolver);
+        bytes32 resolvedHash = settlement.resolveMarket(MARKET, YES, false, keccak256("pause-test-evidence"));
+        VadSettlementV1.SettlementAuthorization memory settleAuth =
+            VadSettlementV1.SettlementAuthorization({
+                authorizationId: keccak256("pause-settlement"),
+                positionId: POSITION,
+                marketId: MARKET,
+                user: user,
+                grossPayout: 100_000_000,
+                settlementFeeAmount: 0,
+                settlementFeePolicyVersion: 0,
+                resolutionHash: resolvedHash,
+                deadline: block.timestamp + 1 hours
+            });
+
+        bytes memory settlementSignature = _signSettlement(settleAuth);
+        vm.prank(user);
+        settlement.settlePosition(settleAuth, settlementSignature);
+
+        (, , , , , , VadSettlementV1.PositionStatus status) = settlement.positions(POSITION);
+        _assertEq(uint256(status), uint256(VadSettlementV1.PositionStatus.SETTLED), "existing position settles while paused");
+    }
+
+    function testSettlementFeeCannotExceedGrossPayout() public {
+        VadSettlementV1.LockAuthorization memory lockAuth = _lockAuthorization(
+            POSITION,
+            100_000_000,
+            0,
+            0
+        );
+        bytes memory lockSignature = _signLock(lockAuth);
+        vm.prank(user);
+        settlement.lockPosition(lockAuth, lockSignature);
+
+        vm.prank(resolver);
+        bytes32 resolvedHash = settlement.resolveMarket(MARKET, YES, false, keccak256("fee-bound-evidence"));
+        VadSettlementV1.SettlementAuthorization memory settleAuth =
+            VadSettlementV1.SettlementAuthorization({
+                authorizationId: keccak256("fee-over-gross"),
+                positionId: POSITION,
+                marketId: MARKET,
+                user: user,
+                grossPayout: 50_000_000,
+                settlementFeeAmount: 50_000_001,
+                settlementFeePolicyVersion: 52,
+                resolutionHash: resolvedHash,
+                deadline: block.timestamp + 1 hours
+            });
+
+        bytes memory settlementSignature = _signSettlement(settleAuth);
+        vm.expectRevert(VadSettlementV1.InvalidAmount.selector);
+        vm.prank(user);
+        settlement.settlePosition(settleAuth, settlementSignature);
+    }
+
+    function testSettlementTokenCannotBeRecovered() public {
+        vm.expectRevert(VadSettlementV1.SettlementTokenRecoveryForbidden.selector);
+        settlement.recoverNonSettlementToken(address(usdc), address(this), 1);
+    }
+
+    function testUnrelatedTokenCanBeRecovered() public {
+        MockUsdc unrelated = new MockUsdc();
+        unrelated.mint(address(settlement), 25);
+        settlement.recoverNonSettlementToken(address(unrelated), address(this), 25);
+        _assertEq(unrelated.balanceOf(address(this)), 25, "unrelated token recovered");
     }
 
     function _lockAuthorization(
