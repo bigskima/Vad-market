@@ -340,8 +340,9 @@ contract VadSettlementV1Test {
             0,
             0
         );
+        bytes memory lockSignature = _signLock(lockAuth);
         vm.prank(user);
-        settlement.lockPosition(lockAuth, _signLock(lockAuth));
+        settlement.lockPosition(lockAuth, lockSignature);
 
         settlement.setNewLocksPaused(true);
         VadSettlementV1.LockAuthorization memory blockedAuth = _lockAuthorization(
