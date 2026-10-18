@@ -296,21 +296,7 @@ contract VadSettlementV1 {
         });
         marketEscrow[authorization.marketId] += authorization.collateralAmount;
 
-        uint256 totalDebit =
-            authorization.collateralAmount + authorization.tradingFeeAmount;
-        _safeTransferFrom(
-            settlementToken,
-            authorization.user,
-            address(this),
-            totalDebit
-        );
-
         if (authorization.tradingFeeAmount > 0) {
-            _safeTransfer(
-                settlementToken,
-                treasury,
-                authorization.tradingFeeAmount
-            );
             emit TradingFeeCollected(
                 authorization.positionId,
                 authorization.user,
@@ -318,7 +304,6 @@ contract VadSettlementV1 {
                 authorization.tradingFeePolicyVersion
             );
         }
-
         emit PositionLocked(
             authorization.positionId,
             authorization.marketId,
@@ -328,6 +313,22 @@ contract VadSettlementV1 {
             authorization.tradingFeeAmount,
             authorization.tradingFeePolicyVersion
         );
+
+        uint256 totalDebit =
+            authorization.collateralAmount + authorization.tradingFeeAmount;
+        _safeTransferFrom(
+            settlementToken,
+            authorization.user,
+            address(this),
+            totalDebit
+        );
+        if (authorization.tradingFeeAmount > 0) {
+            _safeTransfer(
+                settlementToken,
+                treasury,
+                authorization.tradingFeeAmount
+            );
+        }
     }
 
     function resolveMarket(
@@ -441,11 +442,6 @@ contract VadSettlementV1 {
             authorization.grossPayout - authorization.settlementFeeAmount;
 
         if (authorization.settlementFeeAmount > 0) {
-            _safeTransfer(
-                settlementToken,
-                treasury,
-                authorization.settlementFeeAmount
-            );
             emit SettlementFeeCollected(
                 authorization.positionId,
                 authorization.user,
@@ -453,10 +449,6 @@ contract VadSettlementV1 {
                 authorization.settlementFeePolicyVersion
             );
         }
-        if (netPayout > 0) {
-            _safeTransfer(settlementToken, authorization.user, netPayout);
-        }
-
         emit PositionSettled(
             authorization.positionId,
             authorization.marketId,
@@ -467,6 +459,17 @@ contract VadSettlementV1 {
             authorization.settlementFeePolicyVersion,
             expectedResolutionHash
         );
+
+        if (authorization.settlementFeeAmount > 0) {
+            _safeTransfer(
+                settlementToken,
+                treasury,
+                authorization.settlementFeeAmount
+            );
+        }
+        if (netPayout > 0) {
+            _safeTransfer(settlementToken, authorization.user, netPayout);
+        }
     }
 
     function startAdminTransfer(address nextAdmin) external onlyAdmin {
@@ -523,7 +526,7 @@ contract VadSettlementV1 {
         address token,
         address recipient,
         uint256 amount
-    ) external onlyAdmin nonReentrant {
+    ) external nonReentrant onlyAdmin {
         if (token == address(settlementToken)) revert SettlementTokenRecoveryForbidden();
         if (token == address(0) || recipient == address(0)) revert ZeroAddress();
         _safeTransfer(IERC20(token), recipient, amount);
