@@ -386,8 +386,9 @@ contract VadSettlementV1Test {
             0,
             0
         );
+        bytes memory lockSignature = _signLock(lockAuth);
         vm.prank(user);
-        settlement.lockPosition(lockAuth, _signLock(lockAuth));
+        settlement.lockPosition(lockAuth, lockSignature);
 
         vm.prank(resolver);
         bytes32 resolvedHash = settlement.resolveMarket(MARKET, YES, false, keccak256("fee-bound-evidence"));
