@@ -9,23 +9,19 @@ export type CryptoNetworkRow = {
   evm_chain_id: number | string | null;
   native_symbol: string;
   explorer_url: string | null;
+  rpc_url: string;
   asset_code: string;
-  token_standard: string;
   token_address: string;
-  asset_decimals: number;
-  representation_type: 'NATIVE' | 'BRIDGED' | 'WRAPPED' | 'THIRD_PARTY' | string;
+  token_decimals: number;
+  contract_address: string | null;
+  protocol_key: string | null;
+  protocol_version: number | null;
 };
 
 export async function getCryptoNetworks() {
-  const { data, error } = await supabase.rpc('my_crypto_networks');
-
+  const { data, error } = await supabase.rpc('my_crypto_network_runtime');
   if (error) {
-    throw userFacingError(
-      error,
-      'portfolio',
-      'We could not load available crypto networks right now. Please try again.',
-    );
+    throw userFacingError(error, 'portfolio', 'We could not load active USDC networks right now. Please try again.');
   }
-
   return (data ?? []) as CryptoNetworkRow[];
 }
