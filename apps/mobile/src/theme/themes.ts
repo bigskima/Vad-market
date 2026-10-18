@@ -10,7 +10,7 @@ const shared = {
   brandPrimary: brand.primary,
   brandStrong: brand.strong,
   brandAccent: brand.accent,
-  yes: '#20C77A',
+  yes: '#3B82F6',
   no: '#F05B6A',
   warning: '#F5B942',
   info: '#4DA3FF',
@@ -19,6 +19,8 @@ const shared = {
 
 export const darkColors = {
   ...shared,
+  yes: '#60A5FA',
+  no: '#FB7185',
   background: '#0D1017',
   surface: '#141923',
   surfaceRaised: '#1A202C',
@@ -31,7 +33,7 @@ export const darkColors = {
   borderStrong: '#3A4558',
   brandSoft: '#25234D',
   onBrand: '#FFFFFF',
-  yesSoft: '#15392F',
+  yesSoft: '#172554',
   noSoft: '#3D222B',
   warningSoft: '#463717',
   infoSoft: '#142E4E',
@@ -40,6 +42,8 @@ export const darkColors = {
 
 export const lightColors = {
   ...shared,
+  yes: '#1D4ED8',
+  no: '#DC2626',
   background: '#F3F6FF',
   surface: '#FFFFFF',
   surfaceRaised: '#F7F8FE',
@@ -52,8 +56,8 @@ export const lightColors = {
   borderStrong: '#D5DDF0',
   brandSoft: '#EFEDFF',
   onBrand: '#FFFFFF',
-  yesSoft: '#E3F5EC',
-  noSoft: '#FBE9EC',
+  yesSoft: '#DBEAFE',
+  noSoft: '#FEE2E2',
   warningSoft: '#FFF4D8',
   infoSoft: '#E6F2FF',
   overlay: 'rgba(15,18,32,0.42)',
