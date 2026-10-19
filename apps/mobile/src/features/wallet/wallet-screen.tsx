@@ -90,14 +90,14 @@ export function WalletScreen({
     <View style={{ gap: density.sectionGap }}>
       <VadSectionHeader
         title="Wallet"
-        subtitle="Your available balance and money actions come first. Currency detail and history stay one tap away."
+        subtitle="Balances, deposits and withdrawals."
         actionLabel={hasNgn ? 'Activity' : undefined}
         onAction={hasNgn ? onActivity : undefined}
       />
 
       <TourTarget id="wallet-balance">
         <View style={{ gap: theme.spacing.sm }}>
-          <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 20 }}>
+          <VadCard variant="surface" style={{ padding: density.phone ? theme.spacing.sm : theme.spacing.md, gap: theme.spacing.sm, borderRadius: theme.radius.lg }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <View style={{ flex: 1, gap: 2 }}>
                 <VadText variant="bodyStrong">Your currencies</VadText>
@@ -246,7 +246,7 @@ function CompactCurrencyBalance({ wallet }: { wallet: WalletRow }) {
   const currency = wallet.asset_code === 'NGN' ? 'Naira' : 'USD Coin';
 
   return (
-    <VadCard variant="raised" style={{ paddingVertical: 12, paddingHorizontal: 14, gap: 10, borderRadius: 17 }}>
+    <VadCard variant="raised" style={{ paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md, gap: theme.spacing.sm, borderRadius: theme.radius.lg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted }}>
           <VadText variant="caption" tone="brand" style={{ fontWeight: '800' }}>{wallet.asset_code === 'NGN' ? '₦' : '$'}</VadText>
@@ -256,7 +256,7 @@ function CompactCurrencyBalance({ wallet }: { wallet: WalletRow }) {
           <VadText variant="caption" tone="secondary">{currency}</VadText>
         </View>
         <View style={{ alignItems: 'flex-end', minWidth: 0, maxWidth: '54%', gap: 2 }}>
-          <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(total, wallet.asset_code)}</VadText>
+          <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit style={{ fontVariant: ['tabular-nums'] }}>{assetMoney(total, wallet.asset_code)}</VadText>
           <VadText variant="caption" tone="tertiary">Total balance</VadText>
         </View>
       </View>
@@ -274,7 +274,7 @@ function BalanceFact({ label, value, tone = 'primary' }: { label: string; value:
   return (
     <View style={{ flex: 1, minWidth: 0, gap: 2, paddingHorizontal: 7, borderLeftWidth: label === 'Available' ? 0 : 1, borderLeftColor: theme.colors.border }}>
       <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
-      <VadText variant="caption" tone={tone} numberOfLines={1} adjustsFontSizeToFit>{value}</VadText>
+      <VadText variant="caption" tone={tone} numberOfLines={1} adjustsFontSizeToFit style={{ fontVariant: ['tabular-nums'] }}>{value}</VadText>
     </View>
   );
 }
