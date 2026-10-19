@@ -43,8 +43,7 @@ export function WelcomeScreen({ onContinue }: Props) {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ flex: 1, overflow: 'hidden', backgroundColor: theme.colors.welcomeBase }}>
+    <View style={{ flex: 1, overflow: 'hidden', backgroundColor: theme.colors.welcomeBase }}>
         <Animated.Image
           source={welcomeVisual}
           accessibilityLabel="A view of the world from space"
@@ -84,6 +83,7 @@ export function WelcomeScreen({ onContinue }: Props) {
           }}
         />
 
+        <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
         <View
           style={{
             flex: 1,
@@ -179,7 +179,7 @@ export function WelcomeScreen({ onContinue }: Props) {
             </View>
           </View>
         </View>
-      </View>
-    </SafeAreaView>
+        </SafeAreaView>
+    </View>
   );
 }
