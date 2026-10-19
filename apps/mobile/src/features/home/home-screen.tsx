@@ -17,7 +17,7 @@ type Category = 'All' | 'Sports' | 'Politics' | 'Economy' | 'Tech' | 'Entertainm
 
 export function HomeScreen({
   markets, wallets, promotions, featuredMarkets, trendingMarkets, featuredSettings, trendingSettings,
-  userName, onOpenMarket, onOpenPromotion, onExploreMarkets, onOpenCommunity, onNotifications, onDeposit, onWithdraw, onSend,
+  userName, onOpenMarket, onOpenPromotion, onExploreMarkets, onNotifications, onDeposit, onWithdraw, onSend,
 }: {
   markets: MarketCatalogItem[];
   wallets: WalletRow[];
@@ -30,7 +30,6 @@ export function HomeScreen({
   onOpenMarket: (market: MarketCatalogItem) => void;
   onOpenPromotion: (targetPath: string) => void;
   onExploreMarkets: (category?: string) => void;
-  onOpenCommunity: () => void;
   onNotifications: () => void;
   onDeposit: () => void;
   onWithdraw: () => void;
