@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
@@ -20,7 +20,6 @@ export function FeaturedMarketsCarousel({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const scroller = useRef<ScrollView>(null);
   const [width, setWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const liveMarkets = featured
@@ -48,7 +47,6 @@ export function FeaturedMarketsCarousel({
         <VadText variant="caption" tone="secondary">Based on live market rankings</VadText>
       </View>
       <ScrollView
-        ref={scroller}
         horizontal
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
@@ -86,7 +84,7 @@ export function FeaturedMarketsCarousel({
               <VadText variant="bodyStrong" numberOfLines={3} style={{ fontSize: density.compact ? 16 : 18, lineHeight: density.compact ? 21 : 24 }}>{market.title}</VadText>
               <VadText variant="caption" tone="secondary" numberOfLines={2}>{market.category || 'Market'} · {market.asset_code} · {market.status === 'OPEN' ? 'Trading open' : market.status}</VadText>
               <View style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, backgroundColor: theme.colors.brandPrimary }}>
-                <VadText variant="caption" style={{ color: theme.colors.onBrand, fontWeight: '700' }}>Explore market ›</VadText>
+                <VadText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700' }}>Explore market ›</VadText>
               </View>
             </View>
             <View style={{ alignItems: 'center', gap: 7 }}>
