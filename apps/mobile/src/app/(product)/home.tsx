@@ -15,7 +15,7 @@ export default function HomeRoute() {
   const theme = useVadTheme();
   const { session } = useAuth();
   const metadata = session?.user.user_metadata ?? {};
-  const userName = String(metadata.first_name ?? metadata.given_name ?? metadata.name ?? metadata.full_name ?? session?.user.email?.split('@')[0] ?? 'VAD member').trim().split(/\\s+/)[0];
+  const userName = String(metadata.first_name ?? metadata.given_name ?? metadata.name ?? metadata.full_name ?? session?.user.email?.split('@')[0] ?? 'VAD member').trim().split(/\s+/)[0];
 
   const openMarket = (market: MarketCatalogItem) => {
     router.push({
@@ -54,10 +54,9 @@ export default function HomeRoute() {
           markets={data.markets}
           wallets={data.wallet}
           userName={userName}
+          userId={session?.user.id ?? ''}
           promotions={data.homePromotions}
-          featuredMarkets={data.featuredMarkets}
           trendingMarkets={data.trendingMarkets}
-          featuredSettings={data.featuredMarketSettings}
           trendingSettings={data.trendingMarketSettings}
           onOpenMarket={openMarket}
           onOpenPromotion={openPromotion}
