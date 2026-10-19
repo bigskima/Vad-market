@@ -6,7 +6,6 @@ import { VadText } from '@/components/ui/vad-text';
 import { HomePromotionCarousel } from '@/features/home/components/home-promotion-carousel';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
-import { useBalanceVisibility } from '@/hooks/use-balance-visibility';
 import { useLiveNow } from '@/hooks/use-live-now';
 import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -43,7 +42,7 @@ export function HomeScreen({
   const { enabledCurrencies } = useCurrencyPreference();
   const [category, setCategory] = useState<Category>('All');
   const [dismissedPromotion, setDismissedPromotion] = useState<string | null>(null);
-  const { visible: balanceVisible, toggle: toggleBalance } = useBalanceVisibility();
+  const [balanceVisible, setBalanceVisible] = useState(true);
   const visibleMarkets = markets.filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency));
   const activeMarkets = visibleMarkets.filter((market) => getMarketTiming(market, now).tradingOpen && market.resolution_status !== 'RESOLVED');
   const trendingRows = useMemo(() => trendingMarkets
@@ -79,8 +78,8 @@ export function HomeScreen({
         <View style={{ padding: density.compact ? 17 : 20, minHeight: 150, overflow: 'hidden', borderRadius: 23, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, gap: 9 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <VadText variant="body" tone="secondary">Total balance</VadText>
-            <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? 'Hide balance' : 'Show balance'} onPress={toggleBalance} hitSlop={10}>
-              <VadIcon name={balanceVisible ? 'eye' : 'eyeOff'} size={19} tone="secondary" />
+            <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? 'Hide balance' : 'Show balance'} onPress={() => setBalanceVisible((visible) => !visible)} hitSlop={10}>
+              <VadIcon name={balanceVisible ? 'account' : 'activity'} size={19} tone="secondary" />
             </Pressable>
           </View>
           <VadText variant="title" style={{ fontSize: density.phone ? 31 : 36, lineHeight: density.phone ? 37 : 42, letterSpacing: -0.8 }}>
@@ -103,8 +102,8 @@ export function HomeScreen({
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
         <QuickAction label="Deposit" icon="plus" color="#20D99A" onPress={onDeposit} />
         <QuickAction label="Withdraw" icon="wallet" color="#625BFF" onPress={onWithdraw} />
-        <QuickAction label="Predict" icon="trendingUp" color="#3298F5" onPress={() => onExploreMarkets()} />
-        <QuickAction label="Send" icon="send" color="#253246" onPress={onSend} />
+        <QuickAction label="Predict" icon="arrowUp" color="#3298F5" onPress={() => onExploreMarkets()} />
+        <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
       </View>
 
       {promotionsToShow.length ? (
@@ -186,7 +185,7 @@ function HomeHeaderAction({ label, icon, onPress }: { label: string; icon: 'sear
   return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: theme.colors.surface, opacity: pressed ? 0.7 : 1 })}><VadIcon name={icon} size={21} tone="secondary" /></Pressable>;
 }
 
-function QuickAction({ label, icon, color, onPress }: { label: string; icon: 'plus' | 'wallet' | 'trendingUp' | 'send'; color: string; onPress: () => void }) {
+function QuickAction({ label, icon, color, onPress }: { label: string; icon: 'plus' | 'wallet' | 'arrowUp' | 'share'; color: string; onPress: () => void }) {
   const theme = useVadTheme();
   return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ flex: 1, minWidth: 0, alignItems: 'center', gap: 6, opacity: pressed ? 0.72 : 1 })}><View style={{ width: 52, height: 52, borderRadius: 28, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}><VadIcon name={icon} size={24} tone="inverse" /></View><VadText variant="caption" style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>{label}</VadText></Pressable>;
 }
@@ -199,7 +198,7 @@ function SectionHeading({ title, action, onAction }: { title: string; action: st
 function MarketThumb({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
   const category = market.category?.toLowerCase() ?? '';
-  const icon = category.includes('sport') ? 'activity' : category.includes('tech') ? 'cpu' : category.includes('polit') ? 'globe' : category.includes('econom') ? 'chart' : 'trendingUp';
+  const icon = category.includes('sport') ? 'activity' : category.includes('tech') ? 'operations' : category.includes('polit') ? 'community' : category.includes('econom') ? 'markets' : 'activity';
   return <View style={{ width: 46, height: 46, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}><VadIcon name={icon as 'activity'} size={23} tone="secondary" /></View>;
 }
 
