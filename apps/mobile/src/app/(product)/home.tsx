@@ -57,6 +57,7 @@ export default function HomeRoute() {
           onOpenMarket={openMarket}
           onOpenPromotion={openPromotion}
           onExploreMarkets={exploreMarkets}
+          onOpenWallet={() => router.push('/wallet')}
           onOpenCommunity={() => router.push('/community')}
         />
       )}
