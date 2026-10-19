@@ -6,6 +6,7 @@ import { VadChip } from '@/components/ui/vad-chip';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
+import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { HomeHeroBanner } from '@/features/home/components/home-hero-banner';
 import { HomeWalletSnapshot } from '@/features/home/components/home-wallet-snapshot';
@@ -77,6 +78,7 @@ export function HomeScreen({
   const { enabledCurrencies } = useCurrencyPreference();
   const visibleMarkets = markets.filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency));
   const [lens, setLens] = useState<MarketLens>('LIVE');
+  const [highlightsDismissed, setHighlightsDismissed] = useState(false);
 
   const active = visibleMarkets.filter((market) => getMarketTiming(market, now).tradingOpen);
   const categories = [...new Set(visibleMarkets.map((market) => market.category).filter(Boolean))].slice(0, 8) as string[];
@@ -182,10 +184,10 @@ export function HomeScreen({
         </View>
       </TourTarget>
 
-      {promotions.length ? (
+      {promotions.length && !highlightsDismissed ? (
         <View style={{ gap: theme.spacing.sm }}>
           <VadSectionHeader title="Highlights" subtitle="Updates from across VAD." />
-          <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} />
+          <HomePromotionCarousel promotions={promotions} onOpen={onOpenPromotion} onDismiss={() => setHighlightsDismissed(true)} />
         </View>
       ) : null}
 
