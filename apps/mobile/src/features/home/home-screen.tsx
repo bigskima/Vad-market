@@ -10,19 +10,18 @@ import { useLiveNow } from '@/hooks/use-live-now';
 import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
-import type { FeaturedMarketRow, FeaturedMarketSettings, HomePromotion, TrendingMarketRow, TrendingMarketSettings, VadMarketRow } from '@/services/home-content-api';
+import type { FeaturedMarketRow, FeaturedMarketSettings, HomePromotion, TrendingMarketRow, TrendingMarketSettings } from '@/services/home-content-api';
 import type { MarketCatalogItem, WalletRow } from '@/services/market-api';
 
 type Category = 'All' | 'Sports' | 'Politics' | 'Economy' | 'Tech' | 'Entertainment';
 
 export function HomeScreen({
-  markets, wallets, promotions, vadMarkets, featuredMarkets, trendingMarkets, featuredSettings, trendingSettings,
-  userName, onOpenMarket, onOpenPromotion, onExploreMarkets, onOpenCommunity, onDeposit, onWithdraw, onSend,
+  markets, wallets, promotions, featuredMarkets, trendingMarkets, featuredSettings, trendingSettings,
+  userName, onOpenMarket, onOpenPromotion, onExploreMarkets, onOpenCommunity, onNotifications, onDeposit, onWithdraw, onSend,
 }: {
   markets: MarketCatalogItem[];
   wallets: WalletRow[];
   promotions: HomePromotion[];
-  vadMarkets: VadMarketRow[];
   featuredMarkets: FeaturedMarketRow[];
   trendingMarkets: TrendingMarketRow[];
   featuredSettings: FeaturedMarketSettings;
@@ -32,6 +31,7 @@ export function HomeScreen({
   onOpenPromotion: (targetPath: string) => void;
   onExploreMarkets: (category?: string) => void;
   onOpenCommunity: () => void;
+  onNotifications: () => void;
   onDeposit: () => void;
   onWithdraw: () => void;
   onSend: () => void;
@@ -71,7 +71,7 @@ export function HomeScreen({
           <VadText variant="bodyStrong" style={{ fontSize: 18, lineHeight: 22 }}>{userName || 'VAD member'}</VadText>
         </View>
         <HomeHeaderAction label="Search markets" icon="search" onPress={() => onExploreMarkets()} />
-        <HomeHeaderAction label="Notifications" icon="bell" onPress={onOpenCommunity} />
+        <HomeHeaderAction label="Notifications" icon="bell" onPress={onNotifications} />
       </View>
 
       <TourTarget id="home-overview">
