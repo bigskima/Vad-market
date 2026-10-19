@@ -30,7 +30,7 @@ export function MarketCard({
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
   const volume = Number(market.total_volume ?? 0);
-  const hasVolume = Number.isFinite(volume) && volume > 0;
+  const hasVolume = market.total_volume != null && Number.isFinite(volume) && volume >= 0;
 
   return (
     <View
