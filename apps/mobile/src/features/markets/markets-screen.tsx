@@ -63,6 +63,7 @@ export function MarketsScreen({
   const [sortMode, setSortMode] = useState<MarketSortMode>('activity');
   const [stage, setStage] = useState<MarketStageFilter>('all');
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [showAllMarkets, setShowAllMarkets] = useState(false);
 
   const categories = useMemo(
     () => [...new Set(markets.map((market) => market.category).filter((value): value is string => Boolean(value)))].sort(),
@@ -122,13 +123,22 @@ export function MarketsScreen({
     });
   }, [baseFilteredMarkets, stage, sortMode, now, trendingMarkets]);
 
+  const listingMarkets = useMemo(() => {
+    const discoveryHasFilters = Boolean(debouncedQuery) || category !== 'All' || stage !== 'all' || sortMode !== 'activity';
+    if (showAllMarkets || discoveryHasFilters) return orderedMarkets;
+    const ranked = trendingMarkets
+      .map((entry) => orderedMarkets.find((market) => market.instrument_public_id === entry.instrument_public_id))
+      .filter((market): market is MarketCatalogItem => Boolean(market));
+    return ranked.length ? ranked : orderedMarkets;
+  }, [orderedMarkets, trendingMarkets, showAllMarkets, debouncedQuery, category, stage, sortMode]);
+
   const cardWidth = columns === 2 ? '48.7%' : '100%';
   const pageSize = columns === 2 ? 8 : 5;
   const progressive = useProgressiveList({
-    items: orderedMarkets,
+    items: listingMarkets,
     initialCount: pageSize,
     step: pageSize,
-    resetKey: `${debouncedQuery.toLowerCase()}|${category}|${sortMode}|${stage}|${columns}`,
+    resetKey: `${debouncedQuery.toLowerCase()}|${category}|${sortMode}|${stage}|${columns}|${showAllMarkets}`,
   });
 
   const visibleMarkets = progressive.visibleItems;
@@ -172,9 +182,9 @@ export function MarketsScreen({
               <VadIcon name="activity" size={20} tone="brand" />
               <VadText variant="bodyStrong" style={{ fontSize: 19 }}>Trending Markets</VadText>
             </View>
-            <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setStage('all'); setSortMode('activity'); setQuery(''); setDebouncedQuery(''); }} />
+            <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setStage('all'); setSortMode('activity'); setQuery(''); setDebouncedQuery(''); setShowAllMarkets(true); }} />
           </View>
-          <VadText variant="caption" tone="secondary">{trendingMarkets.length ? 'Ranked from verified trading activity.' : 'No published trending ranking is available; showing the live catalogue by recent activity.'}</VadText>
+          <VadText variant="caption" tone="secondary">{trendingMarkets.length && !showAllMarkets && !debouncedQuery && category === 'All' && stage === 'all' ? 'Ranked from verified trading activity.' : trendingMarkets.length ? 'Live market catalogue.' : 'No published trending ranking is available; showing the live catalogue by recent activity.'}</VadText>
         </View>
       ) : null}
 
