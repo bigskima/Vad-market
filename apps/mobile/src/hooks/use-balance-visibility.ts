@@ -30,7 +30,7 @@ export function useBalanceVisibility() {
       void AsyncStorage.getItem(STORAGE_KEY)
         .then((stored) => {
           if (!active) return;
-          if (cachedHidden === null) publishHidden(stored !== 'false');
+          if (cachedHidden === null) publishHidden(stored === 'true');
           else {
             setHiddenState(cachedHidden);
             setReady(true);
