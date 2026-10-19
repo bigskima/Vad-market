@@ -223,7 +223,6 @@ function AccountRow({
   onPress: () => void;
 }) {
   const theme = useVadTheme();
-  const density = useProductDensity();
   return (
     <Pressable
       accessibilityRole="button"
