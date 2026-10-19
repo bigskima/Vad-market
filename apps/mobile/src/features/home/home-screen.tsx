@@ -69,6 +69,12 @@ export function HomeScreen({
         setBalanceHistory([]);
         return;
       }
+      setProfileName(null);
+      setProfileAvatarUrl(null);
+      setBalanceHistory([]);
+      setWatchlistIds([]);
+      setMarketHistoryById({});
+      setWatchlistError(null);
       setWatchlistLoading(true);
       const [profileResult, balanceResult, watchlistResult] = await Promise.allSettled([
         supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle(),
@@ -168,7 +174,7 @@ export function HomeScreen({
     <View style={{ width: '100%', gap: density.compact ? 13 : 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 }}>
         <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
-          {profileAvatarUrl ? <Image source={{ uri: profileAvatarUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name="account" size={23} tone="secondary" />}
+          {profileAvatarUrl ? <Image source={{ uri: profileAvatarUrl }} accessibilityLabel="Profile photo" onError={() => setProfileAvatarUrl(null)} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name="account" size={23} tone="secondary" />}
         </View>
         <View style={{ flex: 1, gap: 1 }}>
           <VadText variant="caption" tone="secondary">Good {getGreeting()},</VadText>
