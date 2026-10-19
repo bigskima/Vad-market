@@ -45,7 +45,7 @@ export function HomeScreen({
   const now = useLiveNow();
   const { enabledCurrencies } = useCurrencyPreference();
   const [category, setCategory] = useState<Category>('All');
-  const [promotionCarouselDismissed, setPromotionCarouselDismissed] = useState(false);
+  const [dismissedPromotionSignature, setDismissedPromotionSignature] = useState<string | null>(null);
   const [promotionPlaceholderDismissed, setPromotionPlaceholderDismissed] = useState(false);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -154,7 +154,8 @@ export function HomeScreen({
   const walletRows = wallets.filter((wallet) => enabledCurrencies.includes(wallet.asset_code as VADCurrency));
   const totalNgn = walletRows.filter((wallet) => wallet.asset_code === 'NGN').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
   const totalUsdc = walletRows.filter((wallet) => wallet.asset_code === 'USDC').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
-  const promotionsToShow = promotionCarouselDismissed ? [] : promotions;
+  const promotionSignature = promotions.map((promotion) => promotion.public_id).join('|');
+  const promotionsToShow = dismissedPromotionSignature === promotionSignature ? [] : promotions;
   const primaryAsset = walletRows.some((wallet) => wallet.asset_code === 'NGN') ? 'NGN' : walletRows.some((wallet) => wallet.asset_code === 'USDC') ? 'USDC' : null;
   const primaryBalance = primaryAsset === 'NGN' ? formatMoney(totalNgn, 'NGN') : primaryAsset === 'USDC' ? formatMoney(totalUsdc, 'USDC') : '—';
   const primaryHistory = balanceHistory.filter((point) => point.asset_code === primaryAsset).sort((a, b) => a.observed_on.localeCompare(b.observed_on));
@@ -220,7 +221,7 @@ export function HomeScreen({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Dismiss promotions"
-              onPress={() => setPromotionCarouselDismissed(true)}
+              onPress={() => setDismissedPromotionSignature(promotionSignature)}
               style={{ position: 'absolute', top: 7, right: 7, zIndex: 2, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(9, 13, 31, 0.78)' }}
             >
               <VadIcon name="close" size={17} color="#FFFFFF" />
