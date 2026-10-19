@@ -64,6 +64,7 @@ export default function HomeRoute() {
           onOpenPromotion={openPromotion}
           onExploreMarkets={exploreMarkets}
           onOpenCommunity={() => router.push('/community')}
+          onNotifications={() => router.push('/notifications')}
           onDeposit={() => router.push('/wallet/deposit')}
           onWithdraw={() => router.push('/wallet/withdraw')}
           onSend={() => router.push('/wallet')}
