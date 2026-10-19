@@ -6,12 +6,16 @@ import { HomeScreen } from '@/features/home/home-screen';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useAuth } from '@/providers/auth-provider';
 import { isSafeInternalRoute } from '@/services/home-content-api';
 import type { MarketCatalogItem } from '@/services/market-api';
 
 export default function HomeRoute() {
   const data = useProductDataContext();
   const theme = useVadTheme();
+  const { session } = useAuth();
+  const metadata = session?.user.user_metadata ?? {};
+  const userName = String(metadata.first_name ?? metadata.given_name ?? metadata.name ?? metadata.full_name ?? session?.user.email?.split('@')[0] ?? 'VAD member').trim().split(/\\s+/)[0];
 
   const openMarket = (market: MarketCatalogItem) => {
     router.push({
@@ -48,6 +52,8 @@ export default function HomeRoute() {
       ) : (
         <HomeScreen
           markets={data.markets}
+          wallets={data.wallet}
+          userName={userName}
           promotions={data.homePromotions}
           vadMarkets={data.vadMarkets}
           featuredMarkets={data.featuredMarkets}
@@ -58,6 +64,9 @@ export default function HomeRoute() {
           onOpenPromotion={openPromotion}
           onExploreMarkets={exploreMarkets}
           onOpenCommunity={() => router.push('/community')}
+          onDeposit={() => router.push('/wallet/deposit')}
+          onWithdraw={() => router.push('/wallet/withdraw')}
+          onSend={() => router.push('/wallet')}
         />
       )}
     </ProductRoute>
