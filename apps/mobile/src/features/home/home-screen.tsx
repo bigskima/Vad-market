@@ -44,6 +44,7 @@ export function HomeScreen({
   const { enabledCurrencies } = useCurrencyPreference();
   const [category, setCategory] = useState<Category>('All');
   const [dismissedPromotion, setDismissedPromotion] = useState<string | null>(null);
+  const [promotionPlaceholderDismissed, setPromotionPlaceholderDismissed] = useState(false);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
@@ -162,14 +163,14 @@ export function HomeScreen({
       </View>
 
       <TourTarget id="home-overview">
-        <View style={{ padding: density.compact ? 17 : 20, minHeight: 150, overflow: 'hidden', borderRadius: 23, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, gap: 9 }}>
+        <View style={{ padding: density.compact ? 14 : 16, minHeight: density.compact ? 122 : 132, overflow: 'hidden', borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, gap: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <VadText variant="body" tone="secondary">Total balance</VadText>
             <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? 'Hide balance' : 'Show balance'} onPress={() => setBalanceVisible((visible) => !visible)} hitSlop={10}>
               <VadIcon name={balanceVisible ? 'eye' : 'eyeOff'} size={19} tone="secondary" />
             </Pressable>
           </View>
-          <VadText variant="title" style={{ fontSize: density.phone ? 31 : 36, lineHeight: density.phone ? 37 : 42, letterSpacing: -0.8 }}>
+          <VadText variant="title" style={{ fontSize: density.phone ? 30 : 34, lineHeight: density.phone ? 35 : 39, letterSpacing: -0.8 }}>
             {balanceVisible ? primaryBalance : '••••••••'}
           </VadText>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap', paddingRight: 112 }}>
@@ -197,24 +198,37 @@ export function HomeScreen({
         <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
       </View>
 
-      <View style={{ gap: 6 }}>
-        {promotionsToShow.length ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <VadText variant="bodyStrong">Highlights</VadText>
-            <Pressable onPress={() => setDismissedPromotion(promotionsToShow[0]?.public_id ?? null)} accessibilityRole="button" accessibilityLabel="Dismiss promotion">
-              <VadIcon name="close" size={17} tone="secondary" />
-            </Pressable>
-          </View>
-        ) : null}
-        {promotionsToShow.length ? <HomePromotionCarousel promotions={promotionsToShow} onOpen={onOpenPromotion} /> : (
-          <View style={{ minHeight: density.compact ? 92 : 104, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.brandSoft, paddingHorizontal: 16, paddingVertical: 14, justifyContent: 'center', gap: 5 }}>
-            <VadText variant="bodyStrong">Highlights</VadText>
-            <VadText variant="caption" tone="secondary">VAD announcements and market campaigns will appear here when published.</VadText>
-          </View>
-        )}
-      </View>
+      {!promotionPlaceholderDismissed || promotionsToShow.length ? (
+        <View style={{ position: 'relative', gap: 5 }}>
+          {promotionsToShow.length ? (
+            <>
+              <HomePromotionCarousel promotions={promotionsToShow} onOpen={onOpenPromotion} />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss promotion"
+                onPress={() => setDismissedPromotion(promotionsToShow[0]?.public_id ?? null)}
+                style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(9, 13, 31, 0.78)' }}
+              >
+                <VadIcon name="close" size={17} color="#FFFFFF" />
+              </Pressable>
+            </>
+          ) : (
+            <View style={{ minHeight: density.compact ? 108 : 124, overflow: 'hidden', borderRadius: 17, borderWidth: 1, borderColor: theme.colors.brandPrimary, backgroundColor: theme.colors.brandSoft, paddingHorizontal: 16, paddingVertical: 13, paddingRight: 46, justifyContent: 'center', gap: 5 }}>
+              <VadText variant="heading" style={{ fontSize: density.compact ? 16 : 18, lineHeight: density.compact ? 20 : 22 }}>Discover live markets</VadText>
+              <VadText variant="caption" tone="secondary" style={{ maxWidth: '92%' }}>Explore sports, politics, technology and more. Market data updates from VAD.</VadText>
+              <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={{ alignSelf: 'flex-start', marginTop: 3, backgroundColor: theme.colors.background, borderRadius: 18, paddingHorizontal: 13, paddingVertical: 7 }}>
+                <VadText variant="caption" tone="brand" style={{ fontWeight: '700' }}>Explore markets ›</VadText>
+              </Pressable>
+              <View pointerEvents="none" style={{ position: 'absolute', right: -15, bottom: -24, width: 112, height: 112, borderRadius: 56, borderWidth: 16, borderColor: theme.colors.brandPrimary, opacity: 0.14 }} />
+              <Pressable accessibilityRole="button" accessibilityLabel="Dismiss promotional placeholder" onPress={() => setPromotionPlaceholderDismissed(true)} style={{ position: 'absolute', top: 8, right: 8, width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}>
+                <VadIcon name="close" size={17} tone="secondary" />
+              </Pressable>
+            </View>
+          )}
+        </View>
+      ) : null}
 
-      <TourTarget id="home-featured-markets">
+      <TourTarget id="home-watchlist">
         <View style={{ gap: 9 }}>
           <SectionHeading title="Watchlist" action="See all" onAction={() => onExploreMarkets('watchlist')} />
           {watchlistError ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
