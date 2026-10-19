@@ -40,6 +40,7 @@ export default function MarketsRoute() {
         <MarketsScreen
           markets={data.markets}
           onOpenMarket={openMarket}
+          onOpenWallet={() => router.push('/wallet')}
           initialCategory={initialCategory}
         />
       )}
