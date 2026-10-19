@@ -11,7 +11,7 @@ import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import type { HomePromotion, TrendingMarketRow, TrendingMarketSettings } from '@/services/home-content-api';
-import type { MarketCatalogItem, WalletRow } from '@/services/market-api';
+import { getMarketPriceHistory, type MarketCatalogItem, type WalletRow } from '@/services/market-api';
 import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchlist } from '@/services/market-watchlist-api';
 import { supabase } from '@/lib/supabase';
 import { getWalletBalanceHistory, type WalletBalanceHistoryPoint } from '@/services/wallet-history-api';
@@ -51,6 +51,7 @@ export function HomeScreen({
   const [watchlistLoading, setWatchlistLoading] = useState(true);
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
   const [watchlistBusyId, setWatchlistBusyId] = useState<string | null>(null);
+  const [marketHistoryById, setMarketHistoryById] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
     let active = true;
@@ -83,6 +84,19 @@ export function HomeScreen({
       .finally(() => { if (active) setWatchlistLoading(false); });
     return () => { active = false; };
   }, [userId]);
+
+  useEffect(() => {
+    let active = true;
+    if (!watchlistIds.length) { setMarketHistoryById({}); return () => { active = false; }; }
+    void Promise.all(watchlistIds.slice(0, 10).map(async (id) => {
+      try {
+        const rows = await getMarketPriceHistory(id, 30);
+        const values = rows.filter((row) => row.outcome_code === 'YES').sort((a, b) => a.observed_at.localeCompare(b.observed_at)).map((row) => Number(row.price)).filter(Number.isFinite);
+        return [id, values] as const;
+      } catch { return [id, []] as const; }
+    })).then((entries) => { if (active) setMarketHistoryById(Object.fromEntries(entries)); });
+    return () => { active = false; };
+  }, [watchlistIds]);
 
   const toggleWatchlist = async (instrumentPublicId: string) => {
     if (watchlistBusyId) return;
@@ -210,6 +224,7 @@ export function HomeScreen({
                       <VadIcon name="close" size={15} tone="secondary" />
                     </Pressable>
                   </View>
+                  {marketHistoryById[market.instrument_public_id]?.length > 1 ? <MarketSparkline values={marketHistoryById[market.instrument_public_id]} /> : null}
                 </View>
               ))}
             </ScrollView>
@@ -278,6 +293,34 @@ function MarketThumb({ market }: { market: MarketCatalogItem }) {
   const category = market.category?.toLowerCase() ?? '';
   const icon = category.includes('sport') ? 'activity' : category.includes('tech') ? 'operations' : category.includes('polit') ? 'community' : category.includes('econom') ? 'markets' : 'activity';
   return <View style={{ width: 46, height: 46, borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>{mediaUrl ? <Image source={{ uri: mediaUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name={icon as 'activity'} size={23} tone="secondary" />}</View>;
+}
+
+function MarketSparkline({ values }: { values: number[] }) {
+  const theme = useVadTheme();
+  const samples = values.slice(-18);
+  if (samples.length < 2) return null;
+  const min = Math.min(...samples);
+  const max = Math.max(...samples);
+  const range = max - min || 1;
+  const width = 180;
+  const height = 20;
+  const padding = 2;
+  const points = samples.map((value, index) => ({
+    x: padding + (index / (samples.length - 1)) * (width - padding * 2),
+    y: height - padding - ((value - min) / range) * (height - padding * 2),
+  }));
+  return (
+    <View accessibilityLabel="Executed YES price history" style={{ width: '100%', height, overflow: 'hidden' }}>
+      {points.slice(0, -1).map((point, index) => {
+        const next = points[index + 1];
+        const dx = next.x - point.x;
+        const dy = next.y - point.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        return <View key={index} style={{ position: 'absolute', left: (point.x + next.x) / 2 - length / 2, top: (point.y + next.y) / 2 - 1, width: length, height: 2, borderRadius: 2, backgroundColor: theme.colors.yes, transform: [{ rotate: `${angle}deg` }] }} />;
+      })}
+    </View>
+  );
 }
 
 function BalanceSparkline({ values }: { values: number[] }) {
