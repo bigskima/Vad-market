@@ -80,17 +80,17 @@ export function PortfolioScreen({
         <VadText variant="caption" tone="secondary">Your positions, orders and settled markets.</VadText>
       </View>
       <TourTarget id="portfolio-summary">
-        <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.xl, gap: theme.spacing.md, borderRadius: 26, borderWidth: 1, borderColor: theme.colors.border }}>
+        <VadCard variant="brand" style={{ padding: density.phone ? theme.spacing.md : theme.spacing.lg, gap: theme.spacing.md, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ gap: 4 }}>
               <VadText variant="caption" tone="secondary">YOUR MARKET EXPOSURE</VadText>
               <VadText variant="heading">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
             </View>
-            <View style={{ width: 46, height: 46, borderRadius: 17, backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 44, height: 44, borderRadius: theme.radius.md, backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
               <VadIcon name="wallet" size={21} tone="brand" />
             </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.lg, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+          <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
             <View style={{ flex: 1, gap: 3, paddingRight: 8 }}>
               <VadText variant="caption" tone="secondary">Shares held</VadText>
               <VadText variant="heading">{Number(totalShares).toLocaleString()}</VadText>
