@@ -23,10 +23,7 @@ export function useBalanceVisibility() {
     };
 
     subscribers.add(subscribe);
-    if (cachedHidden !== null) {
-      setHiddenState(cachedHidden);
-      setReady(true);
-    } else {
+    if (cachedHidden === null) {
       void AsyncStorage.getItem(STORAGE_KEY)
         .then((stored) => {
           if (!active) return;
