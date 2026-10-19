@@ -44,16 +44,14 @@ export function FeaturedMarketsCarousel({
     .filter(({ market }) => category === 'All' || market.category === category)
     .slice(0, 8);
 
-  useEffect(() => {
-    if (activeIndex >= liveMarkets.length) setActiveIndex(0);
-  }, [activeIndex, liveMarkets.length]);
-
   if (!liveMarkets.length) return (
     <View style={{ minHeight: 64, justifyContent: 'center', gap: 4, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, paddingHorizontal: 14, paddingVertical: 10 }}>
       <VadText variant="bodyStrong">{category === 'All' ? 'No featured markets right now' : `No featured ${category.toLowerCase()} markets right now`}</VadText>
       <VadText variant="caption" tone="secondary">Featured markets appear here when VAD curates or ranks eligible open markets.</VadText>
     </View>
   );
+
+  const displayedIndex = Math.min(activeIndex, Math.max(0, liveMarkets.length - 1));
 
   const onMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!width) return;
@@ -123,7 +121,7 @@ export function FeaturedMarketsCarousel({
         ))}
       </ScrollView>
       {liveMarkets.length > 1 ? (
-        <View accessibilityLabel={`Featured market ${activeIndex + 1} of ${liveMarkets.length}`} style={{ flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
+        <View accessibilityLabel={`Featured market ${displayedIndex + 1} of ${liveMarkets.length}`} style={{ flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
           {liveMarkets.map((item, index) => (
             <Pressable
               key={item.market.instrument_public_id}
@@ -134,7 +132,7 @@ export function FeaturedMarketsCarousel({
                 scrollRef.current?.scrollTo({ x: index * (width + 8), animated: true });
               }}
               hitSlop={6}
-              style={{ width: index === activeIndex ? 15 : 5, height: 5, borderRadius: 3, backgroundColor: index === activeIndex ? theme.colors.brandPrimary : theme.colors.borderStrong }}
+              style={{ width: index === displayedIndex ? 15 : 5, height: 5, borderRadius: 3, backgroundColor: index === displayedIndex ? theme.colors.brandPrimary : theme.colors.borderStrong }}
             />
           ))}
         </View>
