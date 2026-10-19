@@ -29,10 +29,20 @@ export function useBalanceVisibility() {
     } else {
       void AsyncStorage.getItem(STORAGE_KEY)
         .then((stored) => {
-          if (active) publishHidden(stored !== 'false');
+          if (!active) return;
+          if (cachedHidden === null) publishHidden(stored !== 'false');
+          else {
+            setHiddenState(cachedHidden);
+            setReady(true);
+          }
         })
         .catch(() => {
-          if (active) publishHidden(true);
+          if (!active) return;
+          if (cachedHidden === null) publishHidden(true);
+          else {
+            setHiddenState(cachedHidden);
+            setReady(true);
+          }
         });
     }
 
