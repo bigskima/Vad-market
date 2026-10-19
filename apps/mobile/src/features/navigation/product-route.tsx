@@ -31,6 +31,7 @@ type Props = {
   active: ProductTab;
   children: ReactNode;
   allowCreate?: boolean;
+  hideTopBar?: boolean;
   requiredCapability?: RuntimeCapabilityKey;
   capabilityTitle?: string;
 };
@@ -39,6 +40,7 @@ export function ProductRoute({
   active,
   children,
   allowCreate = false,
+  hideTopBar = false,
   requiredCapability,
   capabilityTitle = 'This section is not available yet',
 }: Props) {
@@ -202,20 +204,22 @@ export function ProductRoute({
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <ProductTopBar
-        active={active}
-        email={email}
-        isAdmin={Boolean(data.adminSummary)}
-        canCreate={canCreate}
-        onCreate={() => router.push('/create-market')}
-        onWallet={() => router.push('/wallet')}
-        onAdmin={() => router.push('/admin')}
-        onAssistant={() => router.push('/assistant')}
-        onAccount={() => router.replace('/account')}
-        onSearch={() => router.push('/markets')}
-        onNotices={() => router.push('/notifications')}
-        noticeCount={noticeCount}
-      />
+      {!hideTopBar ? (
+        <ProductTopBar
+          active={active}
+          email={email}
+          isAdmin={Boolean(data.adminSummary)}
+          canCreate={canCreate}
+          onCreate={() => router.push('/create-market')}
+          onWallet={() => router.push('/wallet')}
+          onAdmin={() => router.push('/admin')}
+          onAssistant={() => router.push('/assistant')}
+          onAccount={() => router.replace('/account')}
+          onSearch={() => router.push('/markets')}
+          onNotices={() => router.push('/notifications')}
+          noticeCount={noticeCount}
+        />
+      ) : null}
 
       <ProductAnnouncementBar notice={publicNotice} />
 
