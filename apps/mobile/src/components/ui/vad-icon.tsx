@@ -12,6 +12,8 @@ export type VadIconName =
   | 'search'
   | 'bell'
   | 'close'
+  | 'eye'
+  | 'eyeOff'
   | 'bookmark'
   | 'share'
   | 'reply'
@@ -72,6 +74,20 @@ export function VadIcon({
       <View style={{ width: size, height: size, alignItems: 'center' }}>
         <View style={{ marginTop: size * 0.12, width: size * 0.62, height: size * 0.58, borderWidth: line, borderColor: ink, borderTopLeftRadius: size, borderTopRightRadius: size, borderBottomWidth: line, borderBottomLeftRadius: size * 0.16, borderBottomRightRadius: size * 0.16 }} />
         <View style={{ marginTop: size * 0.06, width: size * 0.18, height: line, borderRadius: line, backgroundColor: ink }} />
+      </View>
+    );
+  }
+
+  if (name === 'eye' || name === 'eyeOff') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.84, height: size * 0.52, borderWidth: line, borderColor: ink, borderRadius: size * 0.5, transform: [{ rotate: '-2deg' }], alignItems: 'center', justifyContent: 'center' }}>
+          {name === 'eye' ? (
+            <View style={{ width: size * 0.22, height: size * 0.22, borderWidth: line, borderColor: ink, borderRadius: size }} />
+          ) : (
+            <View style={{ width: size * 0.95, height: line * 1.2, backgroundColor: ink, transform: [{ rotate: '-42deg' }] }} />
+          )}
+        </View>
       </View>
     );
   }
