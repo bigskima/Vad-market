@@ -168,7 +168,7 @@ function PriceTile({
     if (previous === null || previous === numericValue) return;
 
     setMovement(numericValue > previous ? 'up' : 'down');
-    const timeout = setTimeout(() => setMovement(null), theme.motion.slow * 2);
+    const timeout = setTimeout(() => setMovement(null), theme.motion.slow);
     return () => clearTimeout(timeout);
   }, [numericValue, theme.motion.slow]);
 
