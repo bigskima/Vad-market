@@ -48,6 +48,13 @@ export default function HomeRoute() {
       ) : (
         <HomeScreen
           markets={data.markets}
+          wallets={data.wallet}
+          activeAssetCodes={data.activeAssetCodes}
+          walletError={data.sectionErrors.wallet}
+          onRetryWallet={() => void data.load()}
+          onOpenDeposit={() => router.push('/wallet/deposit')}
+          onOpenWithdraw={() => router.push('/wallet/withdraw')}
+          onOpenPortfolio={() => router.push('/portfolio')}
           promotions={data.homePromotions}
           vadMarkets={data.vadMarkets}
           featuredMarkets={data.featuredMarkets}
