@@ -72,7 +72,7 @@ export function FeaturedMarketsCarousel({
         onMomentumScrollEnd={onMomentumEnd}
         contentContainerStyle={{ gap: 8 }}
       >
-        {liveMarkets.map(({ entry, market }) => (
+        {liveMarkets.map(({ market, source }) => (
           <Pressable
             key={market.instrument_public_id}
             accessibilityRole="button"
@@ -95,7 +95,7 @@ export function FeaturedMarketsCarousel({
           >
             <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
               <View style={{ alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4, backgroundColor: theme.colors.brandSoft }}>
-                <VadText variant="caption" tone="brand">{source === 'curated' ? 'Featured by VAD' : `Trending · #${entry.rank}`}</VadText>
+                <VadText variant="caption" tone="brand">{source === 'curated' ? 'Featured by VAD' : 'Featured by activity'}</VadText>
               </View>
               <VadText variant="bodyStrong" numberOfLines={3} style={{ fontSize: density.compact ? 16 : 18, lineHeight: density.compact ? 21 : 24 }}>{market.title}</VadText>
               <VadText variant="caption" tone="secondary" numberOfLines={2}>{market.category || 'Market'} · {market.asset_code} · {market.status === 'OPEN' ? 'Trading open' : market.status}</VadText>
