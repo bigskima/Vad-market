@@ -17,6 +17,7 @@ import { WalletSectionErrorBoundary } from '@/features/wallet/wallet-section-err
 import { OnchainActivityPanel } from '@/features/wallet/onchain-activity-panel';
 import { OnchainPositionsPanel } from '@/features/wallet/onchain-positions-panel';
 import { UsdcWalletBalances } from '@/features/wallet/usdc-wallet-balances';
+import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -139,6 +140,7 @@ export function WalletScreen({
       ) : null}
 
       <WalletSectionErrorBoundary title="Embedded wallet unavailable">
+        <TngnDemoModeCard />
         <CryptoWalletConnections />
       </WalletSectionErrorBoundary>
       {currencyPreference.isCurrencyEnabled('USDC') ? (
