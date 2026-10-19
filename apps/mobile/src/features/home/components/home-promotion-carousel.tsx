@@ -133,19 +133,36 @@ export function HomePromotionCarousel({
                 style={{
                   flex: 1,
                   justifyContent: 'center',
+                  alignItems: 'flex-start',
                   paddingHorizontal: density.cardPadding,
                   paddingVertical: density.compact ? 8 : 10,
-                  gap: 3,
+                  paddingRight: density.cardPadding + 18,
+                  gap: 5,
                 }}
               >
-                <VadText
-                  variant="heading"
-                  style={{ fontSize: density.compact ? 13 : 15, lineHeight: density.compact ? 16 : 18 }}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  {promotion.title}
-                </VadText>
+                {promotion.title ? (
+                  <VadText
+                    variant="heading"
+                    style={{ fontSize: density.compact ? 15 : 18, lineHeight: density.compact ? 19 : 22 }}
+                    numberOfLines={2}
+                    adjustsFontSizeToFit
+                  >
+                    {promotion.title}
+                  </VadText>
+                ) : null}
+                {promotion.body ? (
+                  <VadText
+                    variant="caption"
+                    tone="secondary"
+                    style={{ fontSize: density.compact ? 11 : 12, lineHeight: density.compact ? 14 : 16 }}
+                    numberOfLines={2}
+                  >
+                    {promotion.body}
+                  </VadText>
+                ) : null}
+                <View style={{ marginTop: 2, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18, backgroundColor: theme.colors.background }}>
+                  <VadText variant="caption" tone="brand" style={{ fontWeight: '700' }}>Explore markets ›</VadText>
+                </View>
               </View>
             )}
           </Pressable>
