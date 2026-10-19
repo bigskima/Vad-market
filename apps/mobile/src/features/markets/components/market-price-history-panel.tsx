@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -31,6 +32,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
   const [series, setSeries] = useState<SeriesKey>('YES');
   const [plotWidth, setPlotWidth] = useState(0);
   const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null);
+  const [requestVersion, setRequestVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -51,7 +53,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [instrumentId, poolMode]);
+  }, [instrumentId, poolMode, requestVersion]);
 
   const visiblePoints = useMemo(() => {
     const selected = ranges.find((item) => item.value === range);
@@ -141,7 +143,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
           const tint = item === 'NO' ? theme.colors.no : theme.colors.yes;
           return (
             <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => setSeries(item)}
-              style={{ borderRadius: 8, borderWidth: 1, borderColor: active ? tint : theme.colors.border, backgroundColor: active ? (item === 'NO' ? theme.colors.noSoft : theme.colors.yesSoft) : theme.colors.surface, paddingHorizontal: 8, paddingVertical: 4 }}>
+              style={{ minHeight: 44, minWidth: 62, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1, borderColor: active ? tint : theme.colors.border, backgroundColor: active ? (item === 'NO' ? theme.colors.noSoft : theme.colors.yesSoft) : theme.colors.surface, paddingHorizontal: 9, paddingVertical: 6 }}>
               <VadText variant="caption" style={{ color: active ? tint : theme.colors.textSecondary, fontWeight: '600' }}>{item === 'BOTH' ? 'YES + NO' : item}</VadText>
             </Pressable>
           );
@@ -151,7 +153,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
           const active = range === item.value;
           return (
             <Pressable key={item.value} accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => { setRange(item.value); setSelectedTimestamp(null); }}
-              style={{ borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: active ? theme.colors.brandSoft : 'transparent' }}>
+              style={{ minHeight: 44, minWidth: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: active ? theme.colors.brandSoft : 'transparent' }}>
               <VadText variant="caption" tone={active ? 'brand' : 'tertiary'}>{item.label}</VadText>
             </Pressable>
           );
@@ -159,8 +161,16 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
       </View> : null}
 
       {failed ? (
-        <View style={{ borderRadius: 9, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 9, paddingVertical: 8 }}>
-          <VadText variant="caption" tone="secondary">Price history unavailable right now.</VadText>
+        <View style={{ borderRadius: 12, backgroundColor: theme.colors.surfaceMuted, padding: 12, gap: 8 }}>
+          <VadText variant="bodyStrong">Price history unavailable</VadText>
+          <VadText variant="caption" tone="secondary">Your market is still available. We could not load its recorded history, and your current prices have not been changed.</VadText>
+          <VadButton
+            label="Try again"
+            variant="secondary"
+            size="small"
+            fullWidth={false}
+            onPress={() => setRequestVersion((version) => version + 1)}
+          />
         </View>
       ) : loading ? (
         <View style={{ height: chartHeight, justifyContent: 'center', gap: 8 }}>
