@@ -56,6 +56,11 @@ export function HomeScreen({
 
   useEffect(() => {
     let active = true;
+    setProfileName(null);
+    setProfileAvatarUrl(null);
+    setWatchlistIds([]);
+    setMarketHistoryById({});
+    setWatchlistError(null);
     if (!userId) {
       setProfileName(null);
       setProfileAvatarUrl(null);
