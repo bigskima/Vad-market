@@ -59,6 +59,7 @@ export default function HomeRoute() {
           wallets={data.wallet}
           userName={userName}
           userId={session?.user.id ?? ''}
+          hasUnreadNotifications={data.notifications.some((notification) => !notification.read_at)}
           promotions={data.homePromotions}
           trendingMarkets={data.trendingMarkets}
           trendingSettings={data.trendingMarketSettings}
