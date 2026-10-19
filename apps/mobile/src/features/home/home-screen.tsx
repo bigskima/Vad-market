@@ -6,7 +6,6 @@ import { VadChip } from '@/components/ui/vad-chip';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
-import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { HomeHeroBanner } from '@/features/home/components/home-hero-banner';
 import { HomeWalletSnapshot } from '@/features/home/components/home-wallet-snapshot';
