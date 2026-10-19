@@ -172,8 +172,8 @@ function PriceTile({
     return () => clearTimeout(timeout);
   }, [numericValue, theme.motion.slow]);
 
-  const foreground = positive ? theme.colors.info : theme.colors.no;
-  const baseBackground = positive ? theme.colors.infoSoft : theme.colors.noSoft;
+  const foreground = positive ? theme.colors.yes : theme.colors.noText;
+  const baseBackground = positive ? theme.colors.yesSoft : theme.colors.noSoft;
   const background = movement === 'up'
     ? theme.colors.yesSoft
     : movement === 'down'
@@ -194,7 +194,7 @@ function PriceTile({
         paddingVertical: theme.spacing.xs,
         backgroundColor: background,
         borderWidth: 1,
-        borderColor: movement === 'up' ? theme.colors.yes : movement === 'down' ? theme.colors.no : (positive ? theme.colors.info : theme.colors.no),
+        borderColor: movement === 'up' ? theme.colors.yes : movement === 'down' ? theme.colors.no : (positive ? theme.colors.yes : theme.colors.noText),
       }}
     >
       <VadText variant="caption" style={{ color: foreground }}>{label}</VadText>
