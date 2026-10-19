@@ -57,7 +57,10 @@ export function HomeWalletSnapshot({
   const total = primary
     ? Number(primary.available ?? 0) + Number(primary.reserved ?? 0) + Number(primary.withdrawal_pending ?? 0)
     : 0;
-  const hasNgn = visibleWallets.some((wallet) => wallet.asset_code === 'NGN');
+  const hasNgn = activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEligible('NGN') && currencyPreference.isCurrencyEnabled('NGN');
+  const hasVisibleCurrency = (['NGN', 'USDC'] as VADCurrency[]).some((currency) =>
+    activeAssetCodes.includes(currency) && currencyPreference.isCurrencyEligible(currency) && currencyPreference.isCurrencyEnabled(currency),
+  );
 
   const actions: QuickAction[] = hasNgn
     ? [
@@ -100,7 +103,7 @@ export function HomeWalletSnapshot({
               <View style={{ flex: 1, gap: 2 }}>
                 <VadText variant="caption" tone="brand">YOUR WALLET</VadText>
                 <VadText variant="bodyStrong">Your balance will appear here</VadText>
-                <VadText variant="caption" tone="secondary">Enable an eligible settlement currency or open Wallet to review your account.</VadText>
+                <VadText variant="caption" tone="secondary">{hasVisibleCurrency ? 'Your balance has not been returned yet. Open Wallet to review your account.' : 'Enable an eligible settlement currency in Wallet to show its balances here.'}</VadText>
               </View>
               <VadIcon name="wallet" size={22} tone="secondary" />
             </View>
