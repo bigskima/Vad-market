@@ -132,7 +132,7 @@ export function HomeScreen({
         </View>
         <View style={{ flex: 1, gap: 1 }}>
           <VadText variant="caption" tone="secondary">Good {getGreeting()},</VadText>
-          <VadText variant="bodyStrong" style={{ fontSize: 18, lineHeight: 22 }}>{profileName || userName || 'VAD member'}</VadText>
+          <VadText variant="bodyStrong" style={{ fontSize: 18, lineHeight: 22 }}>{(profileName || userName || 'VAD member').trim().split(/\s+/)[0]}</VadText>
         </View>
         <HomeHeaderAction label="Search markets" icon="search" onPress={() => onExploreMarkets()} />
         <HomeHeaderAction label="Notifications" icon="bell" onPress={onNotifications} />
@@ -274,9 +274,10 @@ function SectionHeading({ title, action, onAction }: { title: string; action: st
 
 function MarketThumb({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
+  const mediaUrl = market.media_path ? (/^https?:\/\//i.test(market.media_path) ? market.media_path : supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl) : null;
   const category = market.category?.toLowerCase() ?? '';
   const icon = category.includes('sport') ? 'activity' : category.includes('tech') ? 'operations' : category.includes('polit') ? 'community' : category.includes('econom') ? 'markets' : 'activity';
-  return <View style={{ width: 46, height: 46, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}><VadIcon name={icon as 'activity'} size={23} tone="secondary" /></View>;
+  return <View style={{ width: 46, height: 46, borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>{mediaUrl ? <Image source={{ uri: mediaUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name={icon as 'activity'} size={23} tone="secondary" />}</View>;
 }
 
 function BalanceSparkline({ values }: { values: number[] }) {
