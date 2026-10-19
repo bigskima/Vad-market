@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
@@ -27,6 +27,7 @@ export function FeaturedMarketsCarousel({
   const theme = useVadTheme();
   const density = useProductDensity();
   const now = useLiveNow();
+  const scrollRef = useRef<ScrollView>(null);
   const [width, setWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const curatedIds = new Set(curated.map((entry) => entry.instrument_public_id));
@@ -66,6 +67,7 @@ export function FeaturedMarketsCarousel({
         <VadText variant="caption" tone="secondary">Admin-curated and live-ranked markets</VadText>
       </View>
       <ScrollView
+        ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
@@ -122,7 +124,19 @@ export function FeaturedMarketsCarousel({
       </ScrollView>
       {liveMarkets.length > 1 ? (
         <View accessibilityLabel={`Featured market ${activeIndex + 1} of ${liveMarkets.length}`} style={{ flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
-          {liveMarkets.map((item, index) => <View key={item.market.instrument_public_id} style={{ width: index === activeIndex ? 15 : 5, height: 5, borderRadius: 3, backgroundColor: index === activeIndex ? theme.colors.brandPrimary : theme.colors.borderStrong }} />)}
+          {liveMarkets.map((item, index) => (
+            <Pressable
+              key={item.market.instrument_public_id}
+              accessibilityRole="button"
+              accessibilityLabel={`Show featured market ${index + 1}`}
+              onPress={() => {
+                setActiveIndex(index);
+                scrollRef.current?.scrollTo({ x: index * (width + 8), animated: true });
+              }}
+              hitSlop={6}
+              style={{ width: index === activeIndex ? 15 : 5, height: 5, borderRadius: 3, backgroundColor: index === activeIndex ? theme.colors.brandPrimary : theme.colors.borderStrong }}
+            />
+          ))}
         </View>
       ) : null}
     </View>
