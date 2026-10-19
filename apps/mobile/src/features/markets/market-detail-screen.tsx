@@ -120,6 +120,7 @@ export function MarketDetailScreen({
       {tab === 'Chart' ? <Activity market={market} /> : null}
       {tab === 'Trade' ? (
         <TradingTicket
+          key={`${market.instrument_public_id}:${initialOutcome ?? 'default'}`}
           market={market}
           initialOutcome={initialOutcome}
           canTrade={effectiveCanTrade}
