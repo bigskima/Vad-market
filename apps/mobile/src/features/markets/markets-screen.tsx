@@ -173,7 +173,7 @@ export function MarketsScreen({
         />
       </TourTarget>
 
-      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} onOpenMarket={onOpenMarket} />
+      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} category={category} onOpenMarket={onOpenMarket} />
 
       {orderedMarkets.length ? (
         <View style={{ gap: theme.spacing.sm, paddingTop: 2 }}>
