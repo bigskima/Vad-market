@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -39,6 +39,12 @@ export function MarketsScreen({
   const { width } = useWindowDimensions();
   const columns = width >= 920 ? 2 : 1;
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedQuery(query.trim()), 250);
+    return () => clearTimeout(handle);
+  }, [query]);
   const [category, setCategory] = useState(() =>
     initialCategory && markets.some((market) => market.category === initialCategory)
       ? initialCategory
@@ -54,12 +60,12 @@ export function MarketsScreen({
   );
 
   const baseFilteredMarkets = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+    const needle = debouncedQuery.toLowerCase();
     return markets
       .filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency))
       .filter((market) => category === 'All' || market.category === category)
       .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status].some((value) => String(value ?? '').toLowerCase().includes(needle)));
-  }, [markets, category, query, enabledCurrencies]);
+  }, [markets, category, debouncedQuery, enabledCurrencies]);
 
   const stageCounts = useMemo(() => {
     const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
@@ -103,7 +109,7 @@ export function MarketsScreen({
     items: orderedMarkets,
     initialCount: pageSize,
     step: pageSize,
-    resetKey: `${query.trim().toLowerCase()}|${category}|${sortMode}|${stage}|${columns}`,
+    resetKey: `${debouncedQuery.toLowerCase()}|${category}|${sortMode}|${stage}|${columns}`,
   });
 
   const visibleMarkets = progressive.visibleItems;
@@ -145,7 +151,7 @@ export function MarketsScreen({
               <VadIcon name="activity" size={20} tone="brand" />
               <VadText variant="bodyStrong" style={{ fontSize: 19 }}>Trending Markets</VadText>
             </View>
-            <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setStage('all'); setSortMode('activity'); setQuery(''); }} />
+            <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setStage('all'); setSortMode('activity'); setQuery(''); setDebouncedQuery(''); }} />
           </View>
           <VadText variant="caption" tone="secondary">Sorted from the live market catalogue by recent activity and updates.</VadText>
         </View>
@@ -197,6 +203,7 @@ export function MarketsScreen({
             actionLabel="Clear filters"
             onAction={() => {
               setQuery('');
+              setDebouncedQuery('');
               setCategory('All');
               setSortMode('activity');
               setStage('all');
