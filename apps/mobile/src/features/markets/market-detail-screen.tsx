@@ -43,6 +43,7 @@ export function MarketDetailScreen({
   onPlaced,
   onOpenMarket,
   onRefreshMarket,
+  onOpenWallet,
   activeTab,
   onActiveTabChange,
 }: {
@@ -55,6 +56,7 @@ export function MarketDetailScreen({
   onPlaced: () => Promise<void>;
   onOpenMarket: (market: MarketCatalogItem) => void;
   onRefreshMarket?: () => Promise<void>;
+  onOpenWallet: () => void;
   activeTab?: DetailTab;
   onActiveTabChange?: (tab: DetailTab) => void;
 }) {
@@ -104,8 +106,15 @@ export function MarketDetailScreen({
           <VadIcon name="wallet" size={22} tone="secondary" />
           <VadText variant="bodyStrong">Market unavailable for your currency settings</VadText>
           <VadText variant="caption" tone="secondary">
-            This market is hidden because its settlement currency is not enabled or is not supported in your region.
+            Enable the settlement currency in Wallet settings if it is available for your account. Region eligibility still applies.
           </VadText>
+          <VadButton
+            label="Review wallet currencies"
+            variant="secondary"
+            size="small"
+            leading={<VadIcon name="wallet" size={15} />}
+            onPress={onOpenWallet}
+          />
         </VadCard>
       </View>
     );
