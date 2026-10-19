@@ -2,14 +2,12 @@ import { router } from 'expo-router';
 import { HomeScreen } from '@/features/home/home-screen';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { useProductDataContext } from '@/providers/product-data-provider';
-import { useVadTheme } from '@/providers/theme-provider';
 import { useAuth } from '@/providers/auth-provider';
 import { isSafeInternalRoute } from '@/services/home-content-api';
 import type { MarketCatalogItem } from '@/services/market-api';
 
 export default function HomeRoute() {
   const data = useProductDataContext();
-  const theme = useVadTheme();
   const { session } = useAuth();
   const metadata = session?.user.user_metadata ?? {};
   const userName = String(metadata.first_name ?? metadata.given_name ?? metadata.name ?? metadata.full_name ?? session?.user.email?.split('@')[0] ?? 'VAD member').trim().split(/\s+/)[0];
