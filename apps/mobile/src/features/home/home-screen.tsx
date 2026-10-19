@@ -64,13 +64,16 @@ export function HomeScreen({
       return () => { active = false; };
     }
     void getWalletBalanceHistory(30).then((rows) => { if (active) setBalanceHistory(rows); }).catch(() => { if (active) setBalanceHistory([]); });
-    void supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle()
-      .then(({ data }) => {
+    void (async () => {
+      try {
+        const { data } = await supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle();
         if (!active || !data) return;
         setProfileName(data.display_name ?? null);
         setProfileAvatarUrl(data.avatar_path ? supabase.storage.from('profile-media').getPublicUrl(data.avatar_path).data.publicUrl : null);
-      })
-      .catch(() => { if (active) { setProfileName(null); setProfileAvatarUrl(null); } });
+      } catch {
+        if (active) { setProfileName(null); setProfileAvatarUrl(null); }
+      }
+    })();
     setWatchlistLoading(true);
     void listUserMarketWatchlist()
       .then((rows) => {
