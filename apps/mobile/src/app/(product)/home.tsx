@@ -57,7 +57,7 @@ export default function HomeRoute() {
         onNotifications={() => router.push('/notifications')}
         onDeposit={() => router.push('/wallet/deposit')}
         onWithdraw={() => router.push('/wallet/withdraw')}
-        onSend={() => router.push('/wallet')}
+        onSend={() => router.push('/wallet/send')}
       />
     </ProductRoute>
   );
