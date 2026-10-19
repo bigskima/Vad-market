@@ -585,7 +585,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   const theme = useVadTheme();
   const density = useProductDensity();
   const [step, setStep] = useState<TradeStep>('prediction');
-  const [outcome, setOutcome] = useState<'YES' | 'NO'>('YES');
+  const [outcome, setOutcome] = useState<'YES' | 'NO'>(initialOutcome ?? 'YES');
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
   const [price, setPrice] = useState(() => priceInput(market.yes_price));
   const [quantity, setQuantity] = useState('100');
