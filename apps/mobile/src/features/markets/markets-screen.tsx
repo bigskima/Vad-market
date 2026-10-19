@@ -15,7 +15,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import { getMarketTiming } from '@/lib/market-timing';
 import type { MarketCatalogItem } from '@/services/market-api';
-import type { FeaturedMarketRow, TrendingMarketRow } from '@/services/home-content-api';
+import type { FeaturedMarketRow, TrendingMarketRow, VadMarketRow } from '@/services/home-content-api';
 import { FeaturedMarketsCarousel } from './featured-markets-carousel';
 import { MarketCard } from './components/market-card';
 import { PageHeader } from '@/features/navigation/page-header';
@@ -38,7 +38,7 @@ export function MarketsScreen({
   onOpenMarket: (market: MarketCatalogItem) => void;
   initialCategory?: string;
   featuredMarkets?: FeaturedMarketRow[];
-  curatedMarkets?: import('@/services/home-content-api').VadMarketRow[];
+  curatedMarkets?: VadMarketRow[];
   trendingMarkets?: TrendingMarketRow[];
   unreadNotifications?: boolean;
 }) {
