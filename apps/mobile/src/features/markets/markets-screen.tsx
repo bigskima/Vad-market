@@ -46,6 +46,7 @@ export function MarketsScreen({
   );
   const [sortMode, setSortMode] = useState<MarketSortMode>('activity');
   const [stage, setStage] = useState<MarketStageFilter>('all');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   const categories = useMemo(
     () => [...new Set(markets.map((market) => market.category).filter((value): value is string => Boolean(value)))].sort(),
