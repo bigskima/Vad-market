@@ -1,16 +1,18 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
-import { MarketDetailScreen } from '@/features/markets/market-detail-screen';
+import { MarketDetailScreen, type MarketDetailTab } from '@/features/markets/market-detail-screen';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 
 export default function MarketDetailRoute() {
@@ -18,6 +20,8 @@ export default function MarketDetailRoute() {
   const { session } = useAuth();
   const data = useProductDataContext();
   const theme = useVadTheme();
+  const currencyPreference = useCurrencyPreference();
+  const [detailTab, setDetailTab] = useState<MarketDetailTab>('Overview');
   const runtime = useRuntimeCapabilities(session);
   const marketId = Array.isArray(params.marketId)
     ? params.marketId[0]
@@ -28,6 +32,7 @@ export default function MarketDetailRoute() {
   const tradeReason = runtime.snapshot.reasons.trade;
 
   const openMarket = (next: MarketCatalogItem) => {
+    setDetailTab('Overview');
     router.replace({
       pathname: '/market/[marketId]',
       params: { marketId: next.instrument_public_id },
@@ -38,8 +43,35 @@ export default function MarketDetailRoute() {
     await Promise.all([data.refreshPortfolio(), data.refreshMarkets()]);
   };
 
+  const marketCurrencyAllowed = market
+    ? currencyPreference.isCurrencyEligible(market.asset_code as VADCurrency)
+      && currencyPreference.isCurrencyEnabled(market.asset_code as VADCurrency)
+    : false;
+
+  const stickyActions = market && marketCurrencyAllowed ? (
+    <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+      <View style={{ flex: 1 }}>
+        <VadButton
+          label="Chart"
+          variant="secondary"
+          size="large"
+          fullWidth
+          onPress={() => setDetailTab('Chart')}
+        />
+      </View>
+      <View style={{ flex: 1 }}>
+        <VadButton
+          label="Trade"
+          size="large"
+          fullWidth
+          onPress={() => setDetailTab('Trade')}
+        />
+      </View>
+    </View>
+  ) : undefined;
+
   return (
-    <ProductSubpage title="Market" maxWidth={980}>
+    <ProductSubpage title="Market" maxWidth={980} footer={stickyActions}>
       {data.loading ? (
         <View style={{ gap: theme.spacing.md }}>
           <VadSkeleton width="62%" height={34} />
@@ -64,6 +96,8 @@ export default function MarketDetailRoute() {
           <MarketDetailScreen
             market={market}
             markets={data.markets}
+            activeTab={detailTab}
+            onActiveTabChange={setDetailTab}
             canTrade={runtime.snapshot.capabilities.trade}
             tradeReason={tradeReason}
             tradeCapabilityLoading={
