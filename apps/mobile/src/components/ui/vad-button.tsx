@@ -104,7 +104,7 @@ export function VadButton({
           backgroundColor,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
           opacity: isDisabled ? 0.42 : state.pressed ? 0.82 : 1,
-          transform: [{ scale: state.pressed && !isDisabled ? 0.975 : 1 }],
+          transform: [{ scale: state.pressed && !isDisabled ? 0.97 : 1 }],
         },
         typeof style === 'function' ? style(state) : style,
       ]}
