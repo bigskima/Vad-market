@@ -279,6 +279,49 @@ function MarketThumb({ market }: { market: MarketCatalogItem }) {
   return <View style={{ width: 46, height: 46, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}><VadIcon name={icon as 'activity'} size={23} tone="secondary" /></View>;
 }
 
+function BalanceSparkline({ values }: { values: number[] }) {
+  const theme = useVadTheme();
+  const samples = values.slice(-14);
+  if (samples.length < 2) return null;
+  const min = Math.min(...samples);
+  const max = Math.max(...samples);
+  const range = max - min || 1;
+  const width = 116;
+  const height = 43;
+  const padding = 3;
+  const points = samples.map((value, index) => ({
+    x: padding + (index / (samples.length - 1)) * (width - padding * 2),
+    y: height - padding - ((value - min) / range) * (height - padding * 2),
+  }));
+  return (
+    <View accessibilityLabel="30-day wallet balance history" style={{ width, height, overflow: 'hidden' }}>
+      {points.slice(0, -1).map((point, index) => {
+        const next = points[index + 1];
+        const dx = next.x - point.x;
+        const dy = next.y - point.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        return (
+          <View
+            key={index}
+            style={{
+              position: 'absolute',
+              left: (point.x + next.x) / 2 - length / 2,
+              top: (point.y + next.y) / 2 - 1,
+              width: length,
+              height: 2,
+              borderRadius: 2,
+              backgroundColor: theme.colors.yes,
+              transform: [{ rotate: `${angle}deg` }],
+            }}
+          />
+        );
+      })}
+      <View style={{ position: 'absolute', left: points[points.length - 1].x - 3, top: points[points.length - 1].y - 3, width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.yes }} />
+    </View>
+  );
+}
+
 function getGreeting() { const hour = new Date().getHours(); return hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'; }
 function categoryMatches(value: string | null, category: Category) {
   const text = (value ?? '').toLowerCase();
