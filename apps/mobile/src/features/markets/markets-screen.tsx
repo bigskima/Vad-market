@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -15,6 +16,7 @@ import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-pr
 import { getMarketTiming } from '@/lib/market-timing';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketCard } from './components/market-card';
+import { PageHeader } from '@/features/navigation/page-header';
 import {
   MarketDiscoveryControls,
   type MarketSortMode,
@@ -107,12 +109,16 @@ export function MarketsScreen({
 
   return (
     <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
-      <View style={{ gap: 4, paddingBottom: theme.spacing.xs }}>
-        <VadText variant="caption" tone="brand">VAD EXCHANGE</VadText>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-          <VadText variant="title">{category === 'All' ? 'Markets' : category}</VadText>
-          <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
-        </View>
+      <PageHeader
+        title={category === 'All' ? 'Markets' : category}
+        subtitle="Discover and trade on real-world events."
+        actions={[
+          { icon: 'bell', label: 'Notifications', onPress: () => router.push('/notifications'), badge: false },
+          { icon: 'operations', label: 'Market filters', onPress: () => setFiltersExpanded((value) => !value) },
+        ]}
+      />
+      <View style={{ alignItems: 'flex-end', marginTop: -8 }}>
+        <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
       </View>
 
       <TourTarget id="markets-discovery">
