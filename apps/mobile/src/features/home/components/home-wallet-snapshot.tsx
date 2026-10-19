@@ -89,7 +89,7 @@ export function HomeWalletSnapshot({
               <VadIcon name="wallet" size={20} tone="secondary" />
               <View style={{ flex: 1, gap: 2 }}>
                 <VadText variant="bodyStrong">Wallet balance unavailable</VadText>
-                <VadText variant="caption" tone="secondary">We couldn't load your balances. Your market access is still available.</VadText>
+                <VadText variant="caption" tone="secondary">We could not load your balances. Your market access is still available.</VadText>
               </View>
             </View>
             <VadButton label="Retry balance" variant="secondary" size="small" fullWidth={false} onPress={onRetryWallet} />
