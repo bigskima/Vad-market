@@ -32,9 +32,9 @@ function readInitialPreference(): VadThemePreference {
     const stored =
       globalThis.localStorage?.getItem(THEME_PREFERENCE_KEY) ?? null;
 
-    return isThemePreference(stored) ? stored : 'system';
+    return isThemePreference(stored) ? stored : 'dark';
   } catch {
-    return 'system';
+    return 'dark';
   }
 }
 
