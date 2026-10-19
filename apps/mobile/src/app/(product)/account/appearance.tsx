@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
+import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -8,10 +9,10 @@ import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { VadThemePreference } from '@/theme/tokens';
 
-const options: { value: VadThemePreference; title: string; subtitle: string; glyph: string }[] = [
-  { value: 'system', title: 'System', subtitle: 'Match your device setting automatically.', glyph: '◐' },
-  { value: 'light', title: 'Light', subtitle: 'Use the light theme all the time.', glyph: '☀' },
-  { value: 'dark', title: 'Dark', subtitle: 'Use the dark theme all the time.', glyph: '☾' },
+const options: { value: VadThemePreference; title: string; subtitle: string; icon: VadIconName }[] = [
+  { value: 'system', title: 'System', subtitle: 'Match your device setting automatically.', icon: 'monitor' },
+  { value: 'light', title: 'Light', subtitle: 'Use the light theme all the time.', icon: 'sun' },
+  { value: 'dark', title: 'Dark', subtitle: 'Use the dark theme all the time.', icon: 'moon' },
 ];
 
 export default function AppearanceScreen() {
@@ -61,7 +62,7 @@ export default function AppearanceScreen() {
                     })}
                   >
                     <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface }}>
-                      <VadText variant="bodyStrong" tone={selected ? 'brand' : 'secondary'}>{option.glyph}</VadText>
+                      <VadIcon name={option.icon} size={17} tone={selected ? 'brand' : 'secondary'} />
                     </View>
                     <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
                       <VadText variant="bodyStrong" tone={selected ? 'brand' : 'primary'}>{option.title}</VadText>
