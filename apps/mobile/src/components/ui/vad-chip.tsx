@@ -63,7 +63,7 @@ export function VadChip({
   } as const;
   const colors = palette[tone];
   const staticHeight = density.phone ? 28 : 32;
-  const pressHeight = density.phone ? 32 : 36;
+  const pressHeight = 44;
   const staticPadding = density.phone ? 10 : theme.spacing.sm;
   const pressPadding = density.phone ? 12 : theme.spacing.md;
 
@@ -99,7 +99,7 @@ export function VadChip({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      hitSlop={4}
+      hitSlop={2}
       style={({ pressed }) => ({
         minHeight: pressHeight,
         paddingHorizontal: pressPadding,
