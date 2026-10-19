@@ -46,9 +46,9 @@ export function VadIcon({
     primary: theme.colors.textPrimary,
     secondary: theme.colors.textSecondary,
     tertiary: theme.colors.textTertiary,
-    brand: theme.colors.brandPrimary,
+    brand: theme.colors.brandText,
     yes: theme.colors.yes,
-    no: theme.colors.no,
+    no: theme.colors.noText,
     inverse: theme.colors.textInverse,
   } as const;
   const ink = color ?? tones[tone];
