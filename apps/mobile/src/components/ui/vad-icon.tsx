@@ -209,7 +209,18 @@ export function VadIcon({
     );
   }
 
-  const bars = name === 'portfolio' ? [0.52, 0.82, 0.66] : [0.42, 0.72, 0.94];
+  if (name === 'portfolio') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.78, height: size * 0.78, borderRadius: size, borderWidth: line, borderColor: ink }} />
+        <View style={{ position: 'absolute', width: line, height: size * 0.39, backgroundColor: ink, top: size * 0.11, left: size * 0.49 }} />
+        <View style={{ position: 'absolute', width: size * 0.38, height: line, backgroundColor: ink, top: size * 0.49, right: size * 0.11 }} />
+        <View style={{ position: 'absolute', width: size * 0.31, height: size * 0.31, top: size * 0.11, right: size * 0.11, borderTopWidth: line, borderRightWidth: line, borderColor: ink, borderTopRightRadius: size * 0.3 }} />
+      </View>
+    );
+  }
+
+  const bars = [0.42, 0.72, 0.94];
   return (
     <View style={{ width: size, height: size, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: size * 0.12, paddingBottom: size * 0.08 }}>
       {bars.map((height, index) => (
@@ -220,7 +231,6 @@ export function VadIcon({
             height: size * height,
             borderRadius: size * 0.09,
             backgroundColor: ink,
-            opacity: name === 'portfolio' && index === 1 ? 0.7 : 1,
           }}
         />
       ))}
