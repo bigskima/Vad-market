@@ -38,6 +38,9 @@ export const darkColors = {
   warningSoft: '#463717',
   infoSoft: '#142E4E',
   overlay: 'rgba(0,0,0,0.68)',
+  welcomeBase: '#0B0E14',
+  welcomeControlBorder: 'rgba(255,255,255,0.28)',
+  welcomeControlSurface: 'rgba(11,14,20,0.34)',
 } as const;
 
 export const lightColors = {
@@ -61,6 +64,9 @@ export const lightColors = {
   warningSoft: '#FFF4D8',
   infoSoft: '#E6F2FF',
   overlay: 'rgba(15,18,32,0.42)',
+  welcomeBase: '#0B0E14',
+  welcomeControlBorder: 'rgba(255,255,255,0.38)',
+  welcomeControlSurface: 'rgba(11,14,20,0.46)',
 } as const;
 
 const shadows = {
