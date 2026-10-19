@@ -138,6 +138,19 @@ export function MarketsScreen({
         />
       </TourTarget>
 
+      {orderedMarkets.length ? (
+        <View style={{ gap: theme.spacing.sm, paddingTop: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <VadIcon name="activity" size={20} tone="brand" />
+              <VadText variant="heading">Trending Markets</VadText>
+            </View>
+            <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setStage('all'); setSortMode('activity'); setQuery(''); }} />
+          </View>
+          <VadText variant="caption" tone="secondary">Sorted from the live market catalogue by recent activity and updates.</VadText>
+        </View>
+      ) : null}
+
       <TourTarget id="markets-results">
         {orderedMarkets.length ? (
           <View style={{ gap: theme.spacing.sm }}>
