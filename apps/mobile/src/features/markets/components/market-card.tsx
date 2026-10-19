@@ -61,7 +61,7 @@ export function MarketCard({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
           <VadIcon name="activity" size={13} tone="tertiary" />
           <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 11 }}>
-            {hasVolume ? `${formatVolume(volume)} ${market.asset_code} volume` : 'Volume unavailable'}
+            {hasVolume ? `${formatVolume(volume)} ${market.asset_code} total volume` : 'Volume unavailable'}
           </VadText>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
