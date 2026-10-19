@@ -3,19 +3,19 @@ export const spacing = {
   xs: 8,
   sm: 12,
   md: 16,
-  lg: 20,
+  lg: 16,
   xl: 24,
   xxl: 32,
-  xxxl: 40,
-  huge: 56,
+  xxxl: 32,
+  huge: 32,
 } as const;
 
 export const radius = {
-  sm: 7,
-  md: 11,
-  lg: 15,
-  xl: 19,
-  xxl: 24,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 16,
+  xxl: 16,
   pill: 999,
 } as const;
 
@@ -28,45 +28,46 @@ export const breakpoints = {
 } as const;
 
 export const motion = {
-  fast: 140,
+  fast: 150,
   standard: 220,
-  slow: 360,
+  slow: 250,
 } as const;
 
 export const typography = {
   display: {
-    fontSize: 34,
-    lineHeight: 40,
-    fontWeight: '800' as const,
-    letterSpacing: -1,
+    fontSize: 32,
+    lineHeight: 38,
+    fontWeight: '700' as const,
+    letterSpacing: -0.7,
+    fontVariant: ['tabular-nums'] as const,
   },
   title: {
-    fontSize: 25,
-    lineHeight: 31,
-    fontWeight: '800' as const,
-    letterSpacing: -0.55,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '700' as const,
+    letterSpacing: -0.45,
   },
   heading: {
     fontSize: 18,
     lineHeight: 24,
-    fontWeight: '700' as const,
+    fontWeight: '600' as const,
     letterSpacing: -0.1,
   },
   body: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 24,
     fontWeight: '400' as const,
   },
   bodyStrong: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 24,
     fontWeight: '600' as const,
   },
   label: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700' as const,
-    letterSpacing: 0.1,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600' as const,
+    letterSpacing: 0,
   },
   caption: {
     fontSize: 12,
