@@ -149,10 +149,10 @@ export function HomeScreen({
   const visibleMarkets = markets.filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency));
   const activeMarkets = visibleMarkets.filter((market) => getMarketTiming(market, now).tradingOpen && market.resolution_status !== 'RESOLVED');
   const trendingRows = useMemo(() => trendingMarkets
-    .map((entry) => ({ entry, market: visibleMarkets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
+    .map((entry) => ({ entry, market: activeMarkets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
     .filter((row): row is { entry: TrendingMarketRow; market: MarketCatalogItem } => Boolean(row.market))
     .filter(({ market }) => category === 'All' || categoryMatches(market.category, category))
-    .slice(0, 5), [trendingMarkets, visibleMarkets, category]);
+    .slice(0, 5), [trendingMarkets, activeMarkets, category]);
   const watchlistMarkets = useMemo(() => watchlistIds
     .map((id) => visibleMarkets.find((market) => market.instrument_public_id === id))
     .filter((market): market is MarketCatalogItem => Boolean(market))
@@ -366,7 +366,6 @@ export function HomeScreen({
               <VadText variant="caption" tone="secondary">{trendingSettings.enabled ? 'No trending markets are available for the selected category right now.' : 'Trending markets are currently disabled.'}</VadText>
             </View>
           )}
-          {!marketError && !activeMarkets.length ? <VadText variant="caption" tone="tertiary">No markets are currently open for trading.</VadText> : null}
         </View>
       </TourTarget>
     </View>
