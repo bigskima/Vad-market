@@ -39,7 +39,6 @@ export const typography = {
     lineHeight: 38,
     fontWeight: '700' as const,
     letterSpacing: -0.7,
-    fontVariant: ['tabular-nums'] as const,
   },
   title: {
     fontSize: 24,
