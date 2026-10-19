@@ -1,7 +1,4 @@
 import { router } from 'expo-router';
-import { View } from 'react-native';
-
-import { VadErrorState } from '@/components/ui/vad-error-state';
 import { HomeScreen } from '@/features/home/home-screen';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -41,37 +38,27 @@ export default function HomeRoute() {
     router.push(targetPath as never);
   };
 
-  const marketReadFailedWithoutData = Boolean(data.sectionErrors.markets && !data.markets.length);
-
   return (
     <ProductRoute active="Home" allowCreate hideTopBar>
-      {marketReadFailedWithoutData ? (
-        <View style={{ gap: theme.spacing.md }}>
-          <VadErrorState
-            title="Markets could not be loaded"
-            message={data.sectionErrors.markets ?? 'Market data is unavailable.'}
-            onRetry={() => void data.load()}
-          />
-        </View>
-      ) : (
-        <HomeScreen
-          markets={data.markets}
-          wallets={data.wallet}
-          userName={userName}
-          userId={session?.user.id ?? ''}
-          hasUnreadNotifications={data.notifications.some((notification) => !notification.read_at)}
-          promotions={data.homePromotions}
-          trendingMarkets={data.trendingMarkets}
-          trendingSettings={data.trendingMarketSettings}
-          onOpenMarket={openMarket}
-          onOpenPromotion={openPromotion}
-          onExploreMarkets={exploreMarkets}
-          onNotifications={() => router.push('/notifications')}
-          onDeposit={() => router.push('/wallet/deposit')}
-          onWithdraw={() => router.push('/wallet/withdraw')}
-          onSend={() => router.push('/wallet')}
-        />
-      )}
+      <HomeScreen
+        markets={data.markets}
+        wallets={data.wallet}
+        userName={userName}
+        userId={session?.user.id ?? ''}
+        hasUnreadNotifications={data.notifications.some((notification) => !notification.read_at)}
+        promotions={data.homePromotions}
+        trendingMarkets={data.trendingMarkets}
+        trendingSettings={data.trendingMarketSettings}
+        marketError={data.sectionErrors.markets ?? null}
+        onRetryMarkets={() => void data.load()}
+        onOpenMarket={openMarket}
+        onOpenPromotion={openPromotion}
+        onExploreMarkets={exploreMarkets}
+        onNotifications={() => router.push('/notifications')}
+        onDeposit={() => router.push('/wallet/deposit')}
+        onWithdraw={() => router.push('/wallet/withdraw')}
+        onSend={() => router.push('/wallet')}
+      />
     </ProductRoute>
   );
 }
