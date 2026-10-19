@@ -171,7 +171,7 @@ export function HomeScreen({
   const balanceChangePercent = balanceChange !== null && historyValues[0] !== 0 ? (balanceChange / Math.abs(historyValues[0])) * 100 : null;
 
   return (
-    <View style={{ width: '100%', gap: density.compact ? 13 : 16 }}>
+    <View style={{ width: '100%', gap: density.compact ? 10 : 13 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 }}>
         <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
           {profileAvatarUrl ? <Image source={{ uri: profileAvatarUrl }} accessibilityLabel="Profile photo" onError={() => setProfileAvatarUrl(null)} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name="account" size={23} tone="secondary" />}
@@ -185,17 +185,17 @@ export function HomeScreen({
       </View>
 
       <TourTarget id="home-overview">
-        <View style={{ padding: density.compact ? 14 : 16, minHeight: density.compact ? 122 : 132, overflow: 'hidden', borderRadius: 20, borderWidth: 1, borderColor: theme.mode === 'dark' ? '#123B3B' : theme.colors.border, backgroundColor: theme.mode === 'dark' ? '#071B1D' : theme.colors.surface, gap: 6 }}>
+        <View style={{ padding: density.compact ? 12 : 14, minHeight: density.compact ? 104 : 114, overflow: 'hidden', borderRadius: 19, borderWidth: 1, borderColor: theme.mode === 'dark' ? '#123B3B' : theme.colors.border, backgroundColor: theme.mode === 'dark' ? '#071B1D' : theme.colors.surface, gap: 3 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <VadText variant="body" tone="secondary">Total balance</VadText>
             <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? 'Hide balance' : 'Show balance'} onPress={() => setBalanceVisible((visible) => !visible)} hitSlop={10}>
               <VadIcon name={balanceVisible ? 'eye' : 'eyeOff'} size={19} tone="secondary" />
             </Pressable>
           </View>
-          <VadText variant="title" style={{ fontSize: density.phone ? 30 : 34, lineHeight: density.phone ? 35 : 39, letterSpacing: -0.8 }}>
+          <VadText variant="title" style={{ fontSize: density.phone ? 27 : 31, lineHeight: density.phone ? 32 : 36, letterSpacing: -0.7 }}>
             {balanceVisible ? primaryBalance : '••••••••'}
           </VadText>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap', paddingRight: 112 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', paddingRight: 94 }}>
             {hasBalanceTrend && balanceChange !== null ? (
               <VadText variant="caption" style={{ color: balanceChange >= 0 ? '#20D99A' : theme.colors.no }}>
                 {balanceChange >= 0 ? '▲ +' : '▼ '}{formatMoney(Math.abs(balanceChange), primaryAsset ?? 'NGN')}{balanceChangePercent !== null ? ` (${balanceChangePercent >= 0 ? '+' : ''}${balanceChangePercent.toFixed(1)}%)` : ''} · 30d
@@ -207,13 +207,13 @@ export function HomeScreen({
               <VadText variant="caption" tone="secondary">· USDC {balanceVisible ? totalUsdc.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '••••'}</VadText>
             ) : null}
           </View>
-          <View style={{ position: 'absolute', right: 12, bottom: 18, opacity: 0.95 }}>
-            {historyValues.length > 1 ? <BalanceSparkline values={historyValues} /> : <VadIcon name="wallet" size={48} tone="brand" />}
+          <View style={{ position: 'absolute', right: 10, bottom: 12, opacity: 0.9 }}>
+            {historyValues.length > 1 ? <BalanceSparkline values={historyValues} /> : <VadIcon name="wallet" size={38} tone="brand" />}
           </View>
         </View>
       </TourTarget>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6, paddingTop: 1, paddingBottom: 1 }}>
         <QuickAction label="Deposit" icon="plus" color="#20D99A" onPress={onDeposit} />
         <QuickAction label="Withdraw" icon="wallet" color="#625BFF" onPress={onWithdraw} />
         <QuickAction label="Predict" icon="arrowUp" color="#3298F5" onPress={() => onExploreMarkets()} />
@@ -235,7 +235,7 @@ export function HomeScreen({
           </View>
         ) : null
       ) : !promotionPlaceholderDismissed ? (
-        <View style={{ minHeight: density.compact ? 112 : 126, overflow: 'hidden', borderRadius: 17, borderWidth: 1, borderColor: '#3436B9', backgroundColor: '#202A82', paddingHorizontal: 16, paddingVertical: 13, paddingRight: 118, justifyContent: 'center', gap: 5 }}>
+        <View style={{ minHeight: density.compact ? 104 : 118, overflow: 'hidden', borderRadius: 16, borderWidth: 1, borderColor: '#3436B9', backgroundColor: '#202A82', paddingHorizontal: 14, paddingVertical: 10, paddingRight: 106, justifyContent: 'center', gap: 4 }}>
           <View pointerEvents="none" style={{ position: 'absolute', right: -30, top: -48, width: 190, height: 190, borderRadius: 95, borderWidth: 28, borderColor: '#4B52E8', opacity: 0.45 }} />
           <View pointerEvents="none" style={{ position: 'absolute', right: 22, bottom: -70, width: 175, height: 150, borderRadius: 88, backgroundColor: '#3639C7', opacity: 0.55, transform: [{ rotate: '-22deg' }] }} />
           <VadText variant="heading" style={{ color: '#FFFFFF', fontSize: density.compact ? 17 : 19, lineHeight: density.compact ? 21 : 24 }}>Discover VAD markets</VadText>
@@ -243,8 +243,8 @@ export function HomeScreen({
           <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={({ pressed }) => ({ alignSelf: 'flex-start', marginTop: 3, backgroundColor: '#FFFFFF', borderRadius: 18, paddingHorizontal: 13, paddingVertical: 7, opacity: pressed ? 0.82 : 1 })}>
             <VadText variant="caption" style={{ color: '#282D9B', fontWeight: '700' }}>Explore markets ›</VadText>
           </Pressable>
-          <View pointerEvents="none" style={{ position: 'absolute', right: 20, top: 22, width: 76, height: 76, borderRadius: 38, backgroundColor: '#4D52E9', borderWidth: 1, borderColor: '#777BFF', alignItems: 'center', justifyContent: 'center' }}>
-            <VadText style={{ fontSize: 39, lineHeight: 46 }}>↗</VadText>
+          <View pointerEvents="none" style={{ position: 'absolute', right: 20, top: 22, width: 62, height: 62, borderRadius: 31, backgroundColor: '#4D52E9', borderWidth: 1, borderColor: '#777BFF', alignItems: 'center', justifyContent: 'center' }}>
+            <VadText style={{ fontSize: 32, lineHeight: 38 }}>↗</VadText>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Dismiss market discovery banner" onPress={() => setPromotionPlaceholderDismissed(true)} style={{ position: 'absolute', top: 7, right: 7, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: 'rgba(9, 13, 31, 0.35)' }}>
             <VadIcon name="close" size={17} color="#FFFFFF" />
@@ -429,8 +429,8 @@ function BalanceSparkline({ values }: { values: number[] }) {
   const min = Math.min(...samples);
   const max = Math.max(...samples);
   const range = max - min || 1;
-  const width = 116;
-  const height = 43;
+  const width = 94;
+  const height = 32;
   const padding = 3;
   const points = samples.map((value, index) => ({
     x: padding + (index / (samples.length - 1)) * (width - padding * 2),
