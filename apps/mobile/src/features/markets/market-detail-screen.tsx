@@ -22,6 +22,7 @@ import { MarketPriceHistoryPanel } from './components/market-price-history-panel
 import { assetMoney, probability } from './format';
 
 type DetailTab = 'Overview' | 'Trade' | 'Chart' | 'Discussion' | 'Rules';
+export type MarketDetailTab = DetailTab;
 type MarketTiming = ReturnType<typeof getMarketTiming>;
 
 const tabs = [
@@ -42,6 +43,8 @@ export function MarketDetailScreen({
   onPlaced,
   onOpenMarket,
   onRefreshMarket,
+  activeTab,
+  onActiveTabChange,
 }: {
   market: MarketCatalogItem;
   markets: MarketCatalogItem[];
@@ -52,12 +55,16 @@ export function MarketDetailScreen({
   onPlaced: () => Promise<void>;
   onOpenMarket: (market: MarketCatalogItem) => void;
   onRefreshMarket?: () => Promise<void>;
+  activeTab?: DetailTab;
+  onActiveTabChange?: (tab: DetailTab) => void;
 }) {
   const density = useProductDensity();
   const currencyPreference = useCurrencyPreference();
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
-  const [tab, setTab] = useState<DetailTab>('Overview');
+  const [internalTab, setInternalTab] = useState<DetailTab>('Overview');
+  const tab = activeTab ?? internalTab;
+  const setTab = onActiveTabChange ?? setInternalTab;
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
 
