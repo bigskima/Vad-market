@@ -21,7 +21,9 @@ export type VadIconName =
   | 'community'
   | 'activity'
   | 'arrowUp'
-  | 'arrowDown';
+  | 'arrowDown'
+  | 'eye'
+  | 'eyeOff';
 
 type Tone = 'primary' | 'secondary' | 'tertiary' | 'brand' | 'yes' | 'no' | 'inverse';
 
@@ -48,6 +50,38 @@ export function VadIcon({
   } as const;
   const ink = color ?? tones[tone];
   const line = Math.max(1.5, size * 0.085);
+
+  if (name === 'eye' || name === 'eyeOff') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          style={{
+            width: size * 0.82,
+            height: size * 0.54,
+            borderWidth: line,
+            borderColor: ink,
+            borderRadius: size * 0.5,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <View style={{ width: size * 0.24, height: size * 0.24, borderRadius: size, backgroundColor: ink }} />
+        </View>
+        {name === 'eyeOff' ? (
+          <View
+            style={{
+              position: 'absolute',
+              width: size * 1.02,
+              height: line * 1.2,
+              borderRadius: line,
+              backgroundColor: ink,
+              transform: [{ rotate: '-38deg' }],
+            }}
+          />
+        ) : null}
+      </View>
+    );
+  }
 
   if (name === 'plus' || name === 'close') {
     return (
