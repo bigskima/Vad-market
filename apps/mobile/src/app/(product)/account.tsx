@@ -62,9 +62,9 @@ export default function AccountScreen() {
           <VadText variant="caption" tone="secondary">Profile, settings and access</VadText>
         </View>
 
-        <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.xl, gap: theme.spacing.md, borderRadius: 26, borderWidth: 1, borderColor: theme.colors.border }}>
+        <VadCard variant="brand" style={{ padding: density.phone ? theme.spacing.md : theme.spacing.lg, gap: theme.spacing.md, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-            <View style={{ width: 60, height: 60, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border }}>
+            <View style={{ width: 48, height: 48, borderRadius: theme.radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border }}>
               <VadText variant="title" tone="brand">{initial}</VadText>
             </View>
             <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
@@ -79,7 +79,7 @@ export default function AccountScreen() {
               </View>
             </View>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Manage profile" onPress={() => router.push('/account/profile')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Manage profile" onPress={() => router.push('/account/profile')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <VadIcon name="account" size={17} tone="brand" />
               <VadText variant="bodyStrong" tone="brand">Edit profile</VadText>
@@ -193,8 +193,8 @@ function EssentialAction({
       onPress={onPress}
       style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.76 : 1 })}
     >
-      <VadCard variant="surface" style={{ minHeight: 88, paddingHorizontal: 13, paddingVertical: 13, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border }}>
-        <View style={{ width: 38, height: 38, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+      <VadCard variant="surface" style={{ minHeight: 88, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.md, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between', gap: theme.spacing.sm, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.border }}>
+        <View style={{ width: 40, height: 40, borderRadius: theme.radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
           <VadIcon name={icon} size={17} tone="brand" />
         </View>
         <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
@@ -232,8 +232,8 @@ function AccountRow({
       onPress={onPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}
     >
-      <View style={{ minHeight: density.phone ? 58 : 64, paddingVertical: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-        <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted }}>
+      <View style={{ minHeight: 64, paddingVertical: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+        <View style={{ width: 40, height: 40, borderRadius: theme.radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted }}>
           <VadIcon name={icon} size={18} tone="secondary" />
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
