@@ -148,7 +148,16 @@ export function HomeScreen({
   };
   const visibleMarkets = markets.filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency));
   const activeMarkets = visibleMarkets.filter((market) => getMarketTiming(market, now).tradingOpen && market.resolution_status !== 'RESOLVED');
-  const availableCategories = useMemo(() => ['All', ...Array.from(new Set(visibleMarkets.map((market) => market.category?.trim()).filter((value): value is string => Boolean(value)))) .sort((a, b) => a.localeCompare(b))], [visibleMarkets]);
+  // Categories come from the live market catalogue returned by the database-backed market service.
+  // "All" is a UI-only filter, not a market category stored or invented in the database.
+  const marketCategories = useMemo(
+    () => Array.from(new Set(visibleMarkets
+      .map((market) => market.category?.trim())
+      .filter((value): value is string => Boolean(value))))
+      .sort((a, b) => a.localeCompare(b)),
+    [visibleMarkets],
+  );
+  const availableCategories = useMemo(() => ['All', ...marketCategories], [marketCategories]);
   const trendingRows = useMemo(() => trendingMarkets
     .map((entry) => ({ entry, market: activeMarkets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
     .filter((row): row is { entry: TrendingMarketRow; market: MarketCatalogItem } => Boolean(row.market))
