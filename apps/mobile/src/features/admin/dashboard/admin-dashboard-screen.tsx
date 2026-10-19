@@ -9,6 +9,7 @@ import { VadText } from '@/components/ui/vad-text';
 import type { AdminHref } from '@/features/admin/components/admin-navigation';
 import { useAdminResponsive } from '@/features/admin/components/use-admin-responsive';
 import { AdminMetricCard } from '@/features/admin/dashboard/admin-metric-card';
+import { TngnDemoAdminControl } from '@/features/admin/dashboard/tngn-demo-admin-control';
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAnyAdminPermission } from '@/services/admin-control-api';
@@ -48,6 +49,7 @@ function gateTone(status: AdminLaunchReadinessGateStatus): 'yes' | 'warning' | '
 export function AdminDashboardScreen() {
   const theme = useVadTheme();
   const data = useAdminData();
+  const canManageSettings = data.access.isSuperAdmin || hasAnyAdminPermission(data.access, ['policies.manage']);
   const responsive = useAdminResponsive();
 
   const canGovern = hasAnyAdminPermission(data.access, [
@@ -144,6 +146,7 @@ export function AdminDashboardScreen() {
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
+      {canManageSettings ? <TngnDemoAdminControl /> : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open operations queue"
