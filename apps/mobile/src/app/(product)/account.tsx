@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
@@ -20,6 +21,9 @@ export default function AccountScreen() {
   const theme = useVadTheme();
   const density = useProductDensity();
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
+  const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
+  const [signOutBusy, setSignOutBusy] = useState(false);
+  const [signOutError, setSignOutError] = useState(false);
   const userId = session?.user.id ?? null;
   const email = session?.user.email ?? session?.user.phone ?? 'VAD member';
   const displayName = typeof session?.user.user_metadata?.display_name === 'string'
@@ -30,6 +34,20 @@ export default function AccountScreen() {
   const appearance = theme.preference === 'system'
     ? `System · currently ${theme.mode}`
     : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1);
+
+  async function confirmSignOut() {
+    if (signOutBusy) return;
+    setSignOutBusy(true);
+    setSignOutError(false);
+    try {
+      await signOut();
+      setSignOutConfirmOpen(false);
+    } catch {
+      setSignOutError(true);
+    } finally {
+      setSignOutBusy(false);
+    }
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -56,6 +74,7 @@ export default function AccountScreen() {
 
   return (
     <ProductRoute active="Account">
+      <>
       <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
         <View style={{ gap: 3 }}>
           <VadText variant="title">Account</VadText>
@@ -165,9 +184,48 @@ export default function AccountScreen() {
         </VadProgressiveSection>
 
         <View style={{ alignItems: density.phone ? 'stretch' : 'flex-start' }}>
-          <VadButton label="Sign out" variant="ghost" fullWidth={density.phone} onPress={() => void signOut()} />
+          <VadButton
+            label="Sign out"
+            variant="destructive"
+            fullWidth={density.phone}
+            onPress={() => {
+              setSignOutError(false);
+              setSignOutConfirmOpen(true);
+            }}
+          />
         </View>
       </View>
+      <VadBottomSheet
+        visible={signOutConfirmOpen}
+        title="Sign out of VAD?"
+        onClose={() => {
+          if (!signOutBusy) setSignOutConfirmOpen(false);
+        }}
+      >
+        <View style={{ gap: theme.spacing.md }}>
+          <VadText variant="body" tone="secondary">You can sign back in any time. Make sure any pending payment or market action has finished before leaving.</VadText>
+          {signOutError ? (
+            <VadText variant="caption" tone="danger">We couldn't sign you out just now. Please try again.</VadText>
+          ) : null}
+          <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: theme.spacing.sm }}>
+            <VadButton
+              label="Stay signed in"
+              variant="secondary"
+              disabled={signOutBusy}
+              onPress={() => setSignOutConfirmOpen(false)}
+              style={{ flex: 1 }}
+            />
+            <VadButton
+              label="Sign out"
+              variant="destructive"
+              loading={signOutBusy}
+              onPress={() => void confirmSignOut()}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </View>
+      </VadBottomSheet>
+      </>
     </ProductRoute>
   );
 }
