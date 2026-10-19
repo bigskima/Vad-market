@@ -24,10 +24,12 @@ import {
 export function MarketsScreen({
   markets,
   onOpenMarket,
+  onOpenWallet,
   initialCategory,
 }: {
   markets: MarketCatalogItem[];
   onOpenMarket: (market: MarketCatalogItem) => void;
+  onOpenWallet: () => void;
   initialCategory?: string;
 }) {
   const theme = useVadTheme();
@@ -170,6 +172,13 @@ export function MarketsScreen({
           </View>
         ) : !markets.length ? (
           <VadEmptyState title="No markets yet" body="Markets will appear here as soon as they are published." />
+        ) : !markets.some((market) => enabledCurrencies.includes(market.asset_code as VADCurrency)) ? (
+          <VadEmptyState
+            title="No enabled market currencies"
+            body="Enable an eligible currency in Wallet to see markets settled in it."
+            actionLabel="Open wallet"
+            onAction={onOpenWallet}
+          />
         ) : (
           <VadEmptyState
             title="No matching markets"
