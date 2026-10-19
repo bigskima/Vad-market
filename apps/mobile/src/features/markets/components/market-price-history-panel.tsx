@@ -8,12 +8,14 @@ import { useLiveNow } from '@/hooks/use-live-now';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getMarketPriceHistory, getPeerPoolStakeHistory, type MarketPriceHistoryPoint } from '@/services/market-api';
 
-type RangeKey = '1D' | '1W' | 'ALL';
+type RangeKey = '1D' | '1W' | '1M' | '1Y' | 'ALL';
 type SeriesKey = 'YES' | 'NO' | 'BOTH';
 
 const ranges: { value: RangeKey; label: string; ms: number | null }[] = [
   { value: '1D', label: '1D', ms: 24 * 60 * 60 * 1000 },
   { value: '1W', label: '1W', ms: 7 * 24 * 60 * 60 * 1000 },
+  { value: '1M', label: '1M', ms: 30 * 24 * 60 * 60 * 1000 },
+  { value: '1Y', label: '1Y', ms: 365 * 24 * 60 * 60 * 1000 },
   { value: 'ALL', label: 'All', ms: null },
 ];
 
