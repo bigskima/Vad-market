@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
@@ -20,6 +21,8 @@ export function OnchainPositionsPanel({ enabled }: { enabled: boolean }) {
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const [workingId, setWorkingId] = useState<string | null>(null);
+  const [pendingSettlement, setPendingSettlement] = useState<OnchainPositionRow | null>(null);
+  const [settlementError, setSettlementError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -53,15 +56,17 @@ export function OnchainPositionsPanel({ enabled }: { enabled: boolean }) {
   async function claimOrRefund(row: OnchainPositionRow) {
     setWorkingId(row.position_record_id);
     setError(null);
+    setSettlementError(null);
     setNotice(null);
     try {
       const result = await settleUsdcPosition(row);
       setNotice(result.noAction
         ? `This position is already resolved: ${result.result}.`
         : `${row.entitlement_type === 'REFUND' ? 'Refund' : 'Payout'} submitted on ${result.chainCode}. Transaction: ${result.transactionHash.slice(0, 10)}…${result.transactionHash.slice(-6)}`);
+      setPendingSettlement(null);
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'The USDC payout could not be submitted.');
+      setSettlementError(reason instanceof Error ? reason.message : 'The USDC payout could not be submitted.');
     } finally {
       setWorkingId(null);
     }
@@ -103,7 +108,7 @@ export function OnchainPositionsPanel({ enabled }: { enabled: boolean }) {
                   {row.entitlement_type ? <VadChip label={row.entitlement_type} tone={row.entitlement_type === 'REFUND' ? 'warning' : 'brand'} /> : null}
                 </View>
                 {canSettle ? (
-                  <VadButton label={label} loading={workingId === row.position_record_id} disabled={workingId !== null} onPress={() => void claimOrRefund(row)} />
+                  <VadButton label={label} loading={workingId === row.position_record_id} disabled={workingId !== null} onPress={() => { setSettlementError(null); setPendingSettlement(row); }} />
                 ) : row.entitlement_status ? (
                   <VadText variant="caption" tone="secondary">Payout status: {row.entitlement_status.replaceAll('_', ' ').toLowerCase()}.</VadText>
                 ) : (
@@ -118,6 +123,67 @@ export function OnchainPositionsPanel({ enabled }: { enabled: boolean }) {
       )}
       {notice ? <VadText variant="caption" tone="secondary">{notice}</VadText> : null}
       {error && rows.length ? <VadErrorState title="Could not refresh positions" message={error} onRetry={() => void load()} /> : null}
+
+      <VadBottomSheet
+        visible={pendingSettlement !== null}
+        title={pendingSettlement?.entitlement_type === 'REFUND' ? 'Review USDC refund' : 'Review USDC payout'}
+        onClose={() => {
+          if (!workingId) setPendingSettlement(null);
+        }}
+        dismissible={!workingId}
+      >
+        {pendingSettlement ? (
+          <View style={{ gap: theme.spacing.md }}>
+            <View style={{ gap: 3 }}>
+              <VadText variant="bodyStrong">{pendingSettlement.market_title}</VadText>
+              <VadText variant="caption" tone="secondary">
+                {pendingSettlement.chain_code} · {pendingSettlement.outcome_code} · {pendingSettlement.wallet_address.slice(0, 8)}…{pendingSettlement.wallet_address.slice(-6)}
+              </VadText>
+              <VadText variant="caption" tone="secondary">
+                You are about to submit an on-chain {pendingSettlement.entitlement_type === 'REFUND' ? 'refund' : 'payout claim'} from the verified wallet shown above. Review these details before continuing.
+              </VadText>
+            </View>
+            <VadCard variant="muted" style={{ gap: theme.spacing.xs }}>
+              <MoneyReviewLine label="Market outcome" value={pendingSettlement.outcome_code} />
+              <MoneyReviewLine
+                label="Original stake"
+                value={balancesHidden ? '••••••' : `${Number(pendingSettlement.collateral_amount).toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC`}
+              />
+              <MoneyReviewLine
+                label={pendingSettlement.entitlement_type === 'REFUND' ? 'Refund amount on record' : 'Net payout on record'}
+                value={pendingSettlement.net_payout == null
+                  ? 'Not available yet'
+                  : balancesHidden
+                    ? '••••••'
+                    : `${Number(pendingSettlement.net_payout).toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC`}
+              />
+              <MoneyReviewLine label="Wallet" value={`${pendingSettlement.wallet_address.slice(0, 8)}…${pendingSettlement.wallet_address.slice(-6)}`} />
+            </VadCard>
+            <VadText variant="caption" tone="warning">
+              This submits a blockchain transaction. Network fees may apply, and the request cannot be undone after it is submitted.
+            </VadText>
+            {settlementError ? (
+              <VadErrorState title="Payout not submitted" message={settlementError} onRetry={() => void claimOrRefund(pendingSettlement)} />
+            ) : null}
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <VadButton
+                label="Cancel"
+                variant="secondary"
+                disabled={Boolean(workingId)}
+                onPress={() => setPendingSettlement(null)}
+                style={{ flex: 1 }}
+              />
+              <VadButton
+                label={pendingSettlement.entitlement_type === 'REFUND' ? 'Confirm & claim refund' : 'Confirm & claim payout'}
+                loading={workingId === pendingSettlement.position_record_id}
+                disabled={Boolean(workingId)}
+                onPress={() => void claimOrRefund(pendingSettlement)}
+                style={{ flex: 1.4 }}
+              />
+            </View>
+          </View>
+        ) : null}
+      </VadBottomSheet>
     </VadCard>
   );
 }
@@ -130,4 +196,15 @@ function positionStatus(row: OnchainPositionRow) {
   if (row.entitlement_status === 'CONFIRMED') return 'CONFIRMED';
   if (row.entitlement_type === 'CLAIM' || row.entitlement_type === 'REFUND') return 'READY';
   return 'LOCKED';
+}
+
+
+function MoneyReviewLine({ label, value }: { label: string; value: string }) {
+  const theme = useVadTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingVertical: theme.spacing.xs }}>
+      <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>{label}</VadText>
+      <VadText variant="bodyStrong" style={{ flexShrink: 1, textAlign: 'right' }}>{value}</VadText>
+    </View>
+  );
 }
