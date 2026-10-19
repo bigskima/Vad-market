@@ -189,7 +189,7 @@ export function MarketsScreen({
             >
               {visibleMarkets.map((market) => (
                 <View key={market.instrument_public_id} style={{ width: cardWidth }}>
-                  <MarketCard market={market} onPress={() => onOpenMarket(market)} compact />
+                  <MarketCard market={market} onPress={() => onOpenMarket(market)} onSelectOutcome={(outcome) => router.push({ pathname: '/market/[marketId]', params: { marketId: market.instrument_public_id, outcome } })} compact />
                 </View>
               ))}
             </View>
