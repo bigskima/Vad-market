@@ -46,6 +46,7 @@ export function WalletScreen({
   const [intents, setIntents] = useState<PaymentIntentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
+  const [balancesHidden, setBalancesHidden] = useState(false);
   const hasNgn = activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
   const hasUsdc = activeAssetCodes.includes('USDC') && currencyPreference.isCurrencyEnabled('USDC');
 
@@ -103,7 +104,23 @@ export function WalletScreen({
                 <VadText variant="bodyStrong">Your currencies</VadText>
                 <VadText variant="caption" tone="secondary">Choose which currencies to use across VAD.</VadText>
               </View>
-              <VadIcon name="wallet" size={18} tone="secondary" />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={balancesHidden ? 'Show balances' : 'Hide balances'}
+                onPress={() => setBalancesHidden((hidden) => !hidden)}
+                style={({ pressed }) => ({
+                  width: 44,
+                  height: 44,
+                  borderRadius: theme.radius.md,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surfaceRaised,
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                })}
+              >
+                <VadIcon name={balancesHidden ? 'eyeOff' : 'eye'} size={18} tone="secondary" />
+              </Pressable>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {currencyPreference.eligibleCurrencies.map((currency) => (
@@ -120,7 +137,7 @@ export function WalletScreen({
           </VadCard>
           <View style={{ gap: 7 }}>
             {orderedWallets.filter((wallet) => currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency)).map((wallet) => (
-              <CompactCurrencyBalance key={wallet.asset_code} wallet={wallet} />
+              <CompactCurrencyBalance key={wallet.asset_code} wallet={wallet} hidden={balancesHidden} />
             ))}
             {!orderedWallets.some((wallet) => currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency)) ? (
               <VadEmptyState title="No enabled balances" body="Enable an eligible currency above to show its balance across VAD." />
@@ -237,7 +254,7 @@ function CurrencyToggle({ currency, displayName, enabled, available, onToggle }:
   );
 }
 
-function CompactCurrencyBalance({ wallet }: { wallet: WalletRow }) {
+function CompactCurrencyBalance({ wallet, hidden = false }: { wallet: WalletRow; hidden?: boolean }) {
   const theme = useVadTheme();
   const available = Number(wallet.available ?? 0);
   const reserved = Number(wallet.reserved ?? 0);
@@ -256,14 +273,14 @@ function CompactCurrencyBalance({ wallet }: { wallet: WalletRow }) {
           <VadText variant="caption" tone="secondary">{currency}</VadText>
         </View>
         <View style={{ alignItems: 'flex-end', minWidth: 0, maxWidth: '54%', gap: 2 }}>
-          <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit style={{ fontVariant: ['tabular-nums'] }}>{assetMoney(total, wallet.asset_code)}</VadText>
+          <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit style={{ fontVariant: ['tabular-nums'] }}>{hidden ? '••••••' : assetMoney(total, wallet.asset_code)}</VadText>
           <VadText variant="caption" tone="tertiary">Total balance</VadText>
         </View>
       </View>
       <View style={{ flexDirection: 'row', gap: 0, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 9 }}>
-        <BalanceFact label="Available" value={assetMoney(available, wallet.asset_code)} tone="yes" />
-        <BalanceFact label="Reserved" value={assetMoney(reserved, wallet.asset_code)} />
-        <BalanceFact label="Pending" value={assetMoney(pending, wallet.asset_code)} />
+        <BalanceFact label="Available" value={hidden ? "••••••" : assetMoney(available, wallet.asset_code)} tone="yes" />
+        <BalanceFact label="Reserved" value={hidden ? "••••••" : assetMoney(reserved, wallet.asset_code)} />
+        <BalanceFact label="Pending" value={hidden ? "••••••" : assetMoney(pending, wallet.asset_code)} />
       </View>
     </VadCard>
   );
