@@ -58,23 +58,25 @@ export function ProductRoute({
   if (isLoading || data.loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <View
-          style={{
-            minHeight: density.phone ? 56 : 64,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
-            paddingHorizontal: density.horizontalPadding,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.spacing.sm,
-          }}
-        >
-          <VadSkeleton width={density.phone ? 34 : 142} height={density.phone ? 34 : 22} radius={17} />
-          <VadSkeleton width={density.phone ? '46%' : 320} height={44} radius={22} />
-          <View style={{ flex: 1 }} />
-          <VadSkeleton width={44} height={44} radius={22} />
-        </View>
+        {!hideTopBar ? (
+          <View
+            style={{
+              minHeight: density.phone ? 56 : 64,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
+              backgroundColor: theme.colors.surface,
+              paddingHorizontal: density.horizontalPadding,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.spacing.sm,
+            }}
+          >
+            <VadSkeleton width={density.phone ? 34 : 142} height={density.phone ? 34 : 22} radius={17} />
+            <VadSkeleton width={density.phone ? '46%' : 320} height={44} radius={22} />
+            <View style={{ flex: 1 }} />
+            <VadSkeleton width={44} height={44} radius={22} />
+          </View>
+        ) : null}
 
         <View style={{ flex: 1, flexDirection: 'row' }}>
           {density.desktop ? (
