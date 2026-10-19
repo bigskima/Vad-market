@@ -35,6 +35,7 @@ const tabs = [
 export function MarketDetailScreen({
   market,
   markets,
+  initialOutcome,
   canTrade,
   tradeReason,
   tradeCapabilityLoading = false,
@@ -45,6 +46,7 @@ export function MarketDetailScreen({
 }: {
   market: MarketCatalogItem;
   markets: MarketCatalogItem[];
+  initialOutcome?: 'YES' | 'NO';
   canTrade: boolean;
   tradeReason?: string;
   tradeCapabilityLoading?: boolean;
@@ -57,7 +59,7 @@ export function MarketDetailScreen({
   const currencyPreference = useCurrencyPreference();
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
-  const [tab, setTab] = useState<DetailTab>('Overview');
+  const [tab, setTab] = useState<DetailTab>(initialOutcome ? 'Trade' : 'Overview');
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
 
@@ -119,6 +121,7 @@ export function MarketDetailScreen({
       {tab === 'Trade' ? (
         <TradingTicket
           market={market}
+          initialOutcome={initialOutcome}
           canTrade={effectiveCanTrade}
           tradeReason={effectiveTradeReason}
           capabilityLoading={tradeCapabilityLoading}
