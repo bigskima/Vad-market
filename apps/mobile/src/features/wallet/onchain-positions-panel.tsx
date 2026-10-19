@@ -8,12 +8,14 @@ import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { useBalanceVisibility } from '@/hooks/use-balance-visibility';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getMyOnchainPositions, type OnchainPositionRow } from '@/services/onchain-api';
 import { settleUsdcPosition } from '@/services/onchain-settlement';
 
 export function OnchainPositionsPanel({ enabled }: { enabled: boolean }) {
   const theme = useVadTheme();
+  const { hidden: balancesHidden } = useBalanceVisibility();
   const [rows, setRows] = useState<OnchainPositionRow[]>([]);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
@@ -96,8 +98,8 @@ export function OnchainPositionsPanel({ enabled }: { enabled: boolean }) {
                   <VadChip label={positionStatus(row)} tone={row.position_status === 'SETTLED' || row.position_status === 'REFUNDED' ? 'yes' : 'neutral'} />
                 </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-                  <VadChip label={`Stake ${Number(row.collateral_amount).toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC`} tone="neutral" />
-                  {row.net_payout != null ? <VadChip label={`Net payout ${Number(row.net_payout).toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC`} tone="brand" /> : null}
+                  <VadChip label={`Stake ${balancesHidden ? '••••••' : `${Number(row.collateral_amount).toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC`}`} tone="neutral" />
+                  {row.net_payout != null ? <VadChip label={`Net payout ${balancesHidden ? '••••••' : `${Number(row.net_payout).toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC`}`} tone="brand" /> : null}
                   {row.entitlement_type ? <VadChip label={row.entitlement_type} tone={row.entitlement_type === 'REFUND' ? 'warning' : 'brand'} /> : null}
                 </View>
                 {canSettle ? (
