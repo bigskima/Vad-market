@@ -149,7 +149,7 @@ export function HomeScreen({
   const balanceChangePercent = balanceChange !== null && historyValues[0] !== 0 ? (balanceChange / Math.abs(historyValues[0])) * 100 : null;
 
   return (
-    <View style={{ width: '100%', gap: density.compact ? 14 : 18 }}>
+    <View style={{ width: '100%', gap: density.compact ? 13 : 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 }}>
         <View style={{ width: 43, height: 43, borderRadius: 22, overflow: 'hidden', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
           {profileAvatarUrl ? <Image source={{ uri: profileAvatarUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name="account" size={23} tone="secondary" />}
@@ -186,7 +186,7 @@ export function HomeScreen({
             ) : null}
           </View>
           <View style={{ position: 'absolute', right: 12, bottom: 18, opacity: 0.95 }}>
-            {hasBalanceTrend ? <BalanceSparkline values={historyValues} /> : <VadIcon name="wallet" size={64} tone="brand" />}
+            {hasBalanceTrend ? <BalanceSparkline values={historyValues} /> : <VadIcon name="wallet" size={48} tone="brand" />}
           </View>
         </View>
       </TourTarget>
