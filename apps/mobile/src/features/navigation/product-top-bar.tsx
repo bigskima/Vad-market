@@ -104,9 +104,9 @@ export function ProductTopBar({
             accessibilityLabel="Open account"
             onPress={onAccount}
             style={({ pressed }) => ({
-              width: 32,
-              height: 32,
-              borderRadius: 9,
+              width: 44,
+              height: 44,
+              borderRadius: theme.radius.md,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1,
@@ -129,7 +129,7 @@ export function ProductTopBar({
             style={({ pressed }) => ({
               flex: 1,
               minWidth: 0,
-              minHeight: 32,
+              minHeight: 44,
               flexDirection: 'row',
               alignItems: 'center',
               gap: 7,
@@ -301,7 +301,7 @@ function WalletAction({ onPress }: { onPress: () => void }) {
       accessibilityLabel="Open wallet"
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 29,
+        minHeight: 44,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -328,9 +328,9 @@ function CompactCreateAction({ onPress }: { onPress: () => void }) {
       accessibilityLabel="Create market"
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: theme.colors.brandPrimary,
@@ -353,9 +353,9 @@ function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'a
       accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
@@ -376,7 +376,7 @@ function HeaderAction({ label, icon, brand = false, onPress }: { label: string; 
       accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 31,
+        minHeight: 44,
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing.xs,
