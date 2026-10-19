@@ -147,8 +147,6 @@ export function MarketsScreen({
         <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
       </View>
 
-      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} onOpenMarket={onOpenMarket} />
-
       <TourTarget id="markets-discovery">
         <MarketDiscoveryControls
           query={query}
@@ -164,6 +162,8 @@ export function MarketsScreen({
           resultCount={orderedMarkets.length}
         />
       </TourTarget>
+
+      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} onOpenMarket={onOpenMarket} />
 
       {orderedMarkets.length ? (
         <View style={{ gap: theme.spacing.sm, paddingTop: 2 }}>
