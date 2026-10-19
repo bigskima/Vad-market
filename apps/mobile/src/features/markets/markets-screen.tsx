@@ -30,6 +30,7 @@ export function MarketsScreen({
   onOpenMarket,
   initialCategory,
   featuredMarkets = [],
+  curatedMarkets = [],
   trendingMarkets = [],
   unreadNotifications = false,
 }: {
@@ -37,6 +38,7 @@ export function MarketsScreen({
   onOpenMarket: (market: MarketCatalogItem) => void;
   initialCategory?: string;
   featuredMarkets?: FeaturedMarketRow[];
+  curatedMarkets?: import('@/services/home-content-api').VadMarketRow[];
   trendingMarkets?: TrendingMarketRow[];
   unreadNotifications?: boolean;
 }) {
@@ -145,7 +147,7 @@ export function MarketsScreen({
         <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
       </View>
 
-      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} onOpenMarket={onOpenMarket} />
+      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} onOpenMarket={onOpenMarket} />
 
       <TourTarget id="markets-discovery">
         <MarketDiscoveryControls
