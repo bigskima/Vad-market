@@ -92,8 +92,8 @@ export function HomeScreen({
 
       <TourTarget id="home-categories">
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: theme.spacing.sm }}>
-          <ThemeChip label="🔥 For you" selected={lens === 'LIVE'} onPress={() => setLens('LIVE')} />
-          <ThemeChip label="↗ Trending" selected={lens === 'MOMENTUM'} onPress={() => setLens('MOMENTUM')} />
+          <ThemeChip label="For you" selected={lens === 'LIVE'} onPress={() => setLens('LIVE')} />
+          <ThemeChip label="Trending" selected={lens === 'MOMENTUM'} onPress={() => setLens('MOMENTUM')} />
           <ThemeChip label="VAD Select" selected={lens === 'VAD'} onPress={() => setLens('VAD')} />
           {categories.map((category) => (
             <ThemeChip key={category} label={category} onPress={() => onExploreMarkets(category)} />
@@ -173,9 +173,9 @@ function ThemeChip({ label, selected = false, onPress }: { label: string; select
       accessibilityState={{ selected }}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 26,
+        minHeight: 44,
         justifyContent: 'center',
-        paddingHorizontal: 9,
+        paddingHorizontal: theme.spacing.md,
         borderRadius: theme.radius.pill,
         borderWidth: 1,
         borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
@@ -198,17 +198,17 @@ function SignalCard({ market, detail, onPress }: { market: MarketCatalogItem; de
       style={({ pressed }) => ({
         width: density.desktop ? 220 : Math.min(Math.max(density.width * 0.68, 180), 210),
         minHeight: 72,
-        borderRadius: 15,
+        borderRadius: theme.radius.lg,
         borderWidth: 1,
         borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
         backgroundColor: theme.colors.surface,
-        padding: 11,
+        padding: theme.spacing.md,
         gap: 5,
         opacity: pressed ? 0.8 : 1,
       })}
     >
-      <VadText variant="bodyStrong" numberOfLines={2} style={{ fontSize: 11, lineHeight: 14 }}>{market.title}</VadText>
-      <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11 }}>{detail}</VadText>
+      <VadText variant="bodyStrong" numberOfLines={2} style={{ fontSize: 14, lineHeight: 18 }}>{market.title}</VadText>
+      <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 12, lineHeight: 16 }}>{detail}</VadText>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
         <VadChip label={market.asset_code} />
         <VadText variant="caption" tone="brand">Open →</VadText>
