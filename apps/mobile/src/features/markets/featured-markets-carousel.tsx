@@ -15,11 +15,13 @@ export function FeaturedMarketsCarousel({
   markets,
   featured,
   curated = [],
+  category = 'All',
   onOpenMarket,
 }: {
   markets: MarketCatalogItem[];
   featured: FeaturedMarketRow[];
   curated?: VadMarketRow[];
+  category?: string;
   onOpenMarket: (market: MarketCatalogItem) => void;
 }) {
   const theme = useVadTheme();
@@ -38,6 +40,7 @@ export function FeaturedMarketsCarousel({
       .filter((row): row is { entry: FeaturedMarketRow; market: MarketCatalogItem; source: 'ranked' } => Boolean(row.market)),
   ]
     .filter(({ market }) => market.status === 'OPEN' && market.resolution_status !== 'RESOLVED' && getMarketTiming(market, now).tradingOpen)
+    .filter(({ market }) => category === 'All' || market.category === category)
     .slice(0, 8);
 
   useEffect(() => {
