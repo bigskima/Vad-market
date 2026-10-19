@@ -1,4 +1,4 @@
-import { Image, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Image, Pressable, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
@@ -31,143 +31,138 @@ export function WelcomeScreen({ onContinue }: Props) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          flexGrow: 1,
-          alignSelf: 'center',
-          width: '100%',
-          maxWidth: 1240,
-          paddingHorizontal: compact ? theme.spacing.md : theme.spacing.xl,
-          paddingTop: compact ? theme.spacing.md : theme.spacing.lg,
-          paddingBottom: compact ? theme.spacing.lg : theme.spacing.xl,
-          gap: compact ? theme.spacing.md : theme.spacing.lg,
-        }}
-      >
-        <View
+      <View style={{ flex: 1, overflow: 'hidden', backgroundColor: '#0B0E14' }}>
+        <Image
+          source={welcomeVisual}
+          accessibilityLabel="A view of the world from space"
+          resizeMode="cover"
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: theme.spacing.md,
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            opacity: theme.mode === 'dark' ? 0.94 : 0.84,
           }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-            <VadLogo size={compact ? 40 : 44} />
-            <View style={{ gap: 1 }}>
-              <VadText variant="heading">VAD</VadText>
-              <VadText variant="caption" tone="secondary" style={{ letterSpacing: 1.2 }}>
-                MARKET
-              </VadText>
-            </View>
-          </View>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Theme ${theme.preference}. Change theme`}
-            onPress={cycleTheme}
-            style={({ pressed }) => ({
-              minHeight: 40,
-              justifyContent: 'center',
-              paddingHorizontal: theme.spacing.md,
-              borderRadius: theme.radius.pill,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
-              opacity: pressed ? 0.78 : 1,
-            })}
-          >
-            <VadText variant="caption" tone="secondary">
-              {theme.preference === 'system' ? 'System' : theme.preference === 'light' ? 'Light' : 'Dark'}
-            </VadText>
-          </Pressable>
-        </View>
+        />
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            backgroundColor: theme.colors.overlay,
+          }}
+        />
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            backgroundColor: theme.colors.brandSoft,
+            opacity: theme.mode === 'dark' ? 0.22 : 0.14,
+          }}
+        />
 
         <View
           style={{
             flex: 1,
-            minHeight: wide ? 610 : undefined,
-            flexDirection: wide ? 'row' : 'column',
-            alignItems: 'stretch',
-            justifyContent: 'center',
-            gap: wide ? theme.spacing.xxl : theme.spacing.lg,
+            width: '100%',
+            maxWidth: 1240,
+            alignSelf: 'center',
+            paddingHorizontal: compact ? theme.spacing.md : theme.spacing.xl,
+            paddingTop: compact ? theme.spacing.sm : theme.spacing.lg,
+            paddingBottom: compact ? theme.spacing.md : theme.spacing.xl,
+            justifyContent: 'space-between',
           }}
         >
           <View
             style={{
-              flex: wide ? 0.9 : undefined,
-              justifyContent: 'center',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: theme.spacing.md,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+              <VadLogo size={compact ? 36 : 42} />
+              <View style={{ gap: 0 }}>
+                <VadText variant="heading" tone="inverse">VAD</VadText>
+                <VadText variant="caption" tone="inverse" style={{ letterSpacing: 1.4, opacity: 0.78 }}>
+                  MARKET
+                </VadText>
+              </View>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Theme set to ${theme.preference}. Change theme`}
+              onPress={cycleTheme}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                justifyContent: 'center',
+                paddingHorizontal: theme.spacing.md,
+                borderRadius: theme.radius.pill,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.28)',
+                backgroundColor: 'rgba(11,14,20,0.34)',
+                opacity: pressed ? 0.78 : 1,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+              })}
+            >
+              <VadText variant="caption" tone="inverse">
+                {theme.preference === 'system' ? 'System theme' : theme.preference === 'light' ? 'Light theme' : 'Dark theme'}
+              </VadText>
+            </Pressable>
+          </View>
+
+          <View
+            style={{
+              width: '100%',
+              maxWidth: wide ? 540 : 460,
+              alignSelf: wide ? 'flex-start' : 'stretch',
               gap: compact ? theme.spacing.md : theme.spacing.lg,
+              paddingBottom: compact ? theme.spacing.xs : theme.spacing.md,
             }}
           >
             <View style={{ gap: theme.spacing.sm }}>
-              <VadText variant={compact ? 'title' : 'display'}>
+              <VadText variant="caption" tone="inverse" style={{ letterSpacing: 1.8, opacity: 0.82 }}>
+                SEE THE SIGNAL. MAKE YOUR CALL.
+              </VadText>
+              <VadText variant={compact ? 'title' : 'display'} tone="inverse" style={{ maxWidth: 500 }}>
                 See what the world thinks.
               </VadText>
-              <VadText tone="secondary" style={{ maxWidth: 560 }}>
+              <VadText tone="inverse" style={{ maxWidth: 390, opacity: 0.82 }}>
                 Clear odds. Real-world outcomes.
               </VadText>
             </View>
 
-            {wide ? <WelcomeActions onContinue={onContinue} /> : null}
+            <View style={{ width: '100%', maxWidth: 420, gap: theme.spacing.sm }}>
+              <VadButton
+                label="Create account"
+                size="large"
+                onPress={() => onContinue('signUp')}
+              />
+              <VadButton
+                label="Sign in"
+                size="large"
+                variant="secondary"
+                onPress={() => onContinue('signIn')}
+              />
+              <VadText
+                variant="caption"
+                tone="inverse"
+                style={{ textAlign: 'center', opacity: 0.72, paddingTop: theme.spacing.xs }}
+              >
+                Some features may require identity verification and may not be available in every location.
+              </VadText>
+            </View>
           </View>
-
-          <WelcomeHero compact={compact} wide={wide} />
         </View>
-
-        {!wide ? <WelcomeActions onContinue={onContinue} /> : null}
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
-
-function WelcomeHero({ compact, wide }: { compact: boolean; wide: boolean }) {
-  const theme = useVadTheme();
-
-  return (
-    <View
-      style={{
-        flex: wide ? 1.1 : undefined,
-        minHeight: wide ? 440 : compact ? 220 : 280,
-        borderRadius: theme.radius.xxl,
-        borderWidth: 1,
-        borderColor: theme.colors.borderStrong,
-        backgroundColor: '#050813',
-        overflow: 'hidden',
-        ...theme.shadows.card,
-      }}
-    >
-      <Image
-        source={welcomeVisual}
-        resizeMode="cover"
-        style={{ position: 'absolute', width: '100%', height: '100%' }}
-      />
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: 0,
-          backgroundColor: 'rgba(3, 7, 18, 0.18)',
-        }}
-      />
-    </View>
-  );
-}
-
-function WelcomeActions({ onContinue }: Props) {
-  const theme = useVadTheme();
-  return (
-    <View style={{ maxWidth: 440, gap: theme.spacing.sm, paddingTop: theme.spacing.xs }}>
-      <VadButton label="Create account" size="large" onPress={() => onContinue('signUp')} />
-      <VadButton label="Sign in" size="large" variant="secondary" onPress={() => onContinue('signIn')} />
-      <VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>
-        Some features may require identity verification and may not be available in every location.
-      </VadText>
-    </View>
-  );
-}
-
