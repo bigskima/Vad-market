@@ -53,6 +53,7 @@ type TicketProps = {
   tradeReason?: string;
   capabilityLoading?: boolean;
   onPlaced: () => Promise<void>;
+  initialOutcome?: 'YES' | 'NO';
 };
 
 export function TradingTicket(props: TicketProps) {
@@ -63,12 +64,12 @@ export function TradingTicket(props: TicketProps) {
   return <OrderBookTradingTicket {...props} />;
 }
 
-function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = false, onPlaced }: TicketProps) {
+function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = false, onPlaced, initialOutcome }: TicketProps) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const isUsdc = market.asset_code === 'USDC';
   const [step, setStep] = useState<TradeStep>('prediction');
-  const [outcome, setOutcome] = useState<'YES' | 'NO'>('YES');
+  const [outcome, setOutcome] = useState<'YES' | 'NO'>(initialOutcome ?? 'YES');
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<PoolQuote | null>(null);
   const [stakeStatus, setStakeStatus] = useState<PoolStakeStatus | null>(null);
@@ -580,7 +581,7 @@ function UnsupportedUsdcOrderBook() {
   );
 }
 
-function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoading = false, onPlaced }: TicketProps) {
+function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoading = false, onPlaced, initialOutcome }: TicketProps) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const [step, setStep] = useState<TradeStep>('prediction');
