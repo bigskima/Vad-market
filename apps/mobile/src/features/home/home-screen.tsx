@@ -197,17 +197,22 @@ export function HomeScreen({
         <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
       </View>
 
-      {promotionsToShow.length ? (
-        <View style={{ gap: 6 }}>
+      <View style={{ gap: 6 }}>
+        {promotionsToShow.length ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <VadText variant="bodyStrong">Highlights</VadText>
             <Pressable onPress={() => setDismissedPromotion(promotionsToShow[0]?.public_id ?? null)} accessibilityRole="button" accessibilityLabel="Dismiss promotion">
               <VadIcon name="close" size={17} tone="secondary" />
             </Pressable>
           </View>
-          <HomePromotionCarousel promotions={promotionsToShow} onOpen={onOpenPromotion} />
-        </View>
-      ) : null}
+        ) : null}
+        {promotionsToShow.length ? <HomePromotionCarousel promotions={promotionsToShow} onOpen={onOpenPromotion} /> : (
+          <View style={{ minHeight: density.compact ? 92 : 104, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.brandSoft, paddingHorizontal: 16, paddingVertical: 14, justifyContent: 'center', gap: 5 }}>
+            <VadText variant="bodyStrong">Highlights</VadText>
+            <VadText variant="caption" tone="secondary">VAD announcements and market campaigns will appear here when published.</VadText>
+          </View>
+        )}
+      </View>
 
       <TourTarget id="home-featured-markets">
         <View style={{ gap: 9 }}>
