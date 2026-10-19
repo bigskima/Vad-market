@@ -120,7 +120,7 @@ export function HomeScreen({
 
       <TourTarget id="home-featured-markets">
         <View style={{ gap: 9 }}>
-          <SectionHeading title="Watchlist" action="See all" onAction={() => onExploreMarkets()} />
+          <SectionHeading title="Featured markets" action="See all" onAction={() => onExploreMarkets()} />
           {featuredRows.length ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9, paddingRight: 3 }}>
               {featuredRows.map(({ market }) => (
@@ -133,13 +133,12 @@ export function HomeScreen({
                     </View>
                   </View>
                   <View style={{ flex: 1 }} />
-                  <Sparkline />
                 </Pressable>
               ))}
             </ScrollView>
           ) : (
             <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14 }}>
-              <VadText variant="caption" tone="secondary">{featuredSettings.enabled ? 'Your saved markets will appear here when watchlist support is available.' : 'Featured markets are currently disabled by VAD.'}</VadText>
+              <VadText variant="caption" tone="secondary">{featuredSettings.enabled ? 'Featured markets will appear here when VAD publishes them.' : 'Featured markets are currently disabled by VAD.'}</VadText>
             </View>
           )}
         </View>
@@ -200,11 +199,6 @@ function MarketThumb({ market }: { market: MarketCatalogItem }) {
   const category = market.category?.toLowerCase() ?? '';
   const icon = category.includes('sport') ? 'activity' : category.includes('tech') ? 'operations' : category.includes('polit') ? 'community' : category.includes('econom') ? 'markets' : 'activity';
   return <View style={{ width: 46, height: 46, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}><VadIcon name={icon as 'activity'} size={23} tone="secondary" /></View>;
-}
-
-function Sparkline() {
-  const theme = useVadTheme();
-  return <View style={{ height: 3, width: '100%', borderRadius: 2, backgroundColor: theme.colors.yes, opacity: 0.7 }} />;
 }
 
 function getGreeting() { const hour = new Date().getHours(); return hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'; }
