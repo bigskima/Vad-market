@@ -136,7 +136,7 @@ export default function AccountScreen() {
         <VadProgressiveSection
           title="Personalize"
           icon="account"
-          summary={<VadText variant="caption" tone="tertiary">Profile · Rewards · Appearance</VadText>}
+          summary={<VadText variant="caption" tone="tertiary">Profile · Notifications · Appearance</VadText>}
         >
           <SettingsList>
             <AccountRow
@@ -146,10 +146,22 @@ export default function AccountScreen() {
               onPress={() => router.push('/account/profile')}
             />
             <AccountRow
+              icon="bell"
+              title="Notifications"
+              subtitle="Read account notices and updates"
+              onPress={() => router.push('/notifications')}
+            />
+            <AccountRow
               icon="community"
               title="Rewards & campaigns"
               subtitle="Invites and reward history"
               onPress={() => router.push('/account/growth')}
+            />
+            <AccountRow
+              icon="activity"
+              title="App tour"
+              subtitle="Review the main VAD features"
+              onPress={() => router.push('/account/app-tour')}
             />
             <AccountRow
               icon="markets"
