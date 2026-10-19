@@ -122,9 +122,9 @@ export function MarketsScreen({
           categories={categories}
           activeCategory={category}
           onCategoryChange={setCategory}
-          stage={stage}
-          onStageChange={setStage}
-          stageCounts={stageCounts}
+          stage={filtersExpanded ? stage : undefined}
+          onStageChange={filtersExpanded ? setStage : undefined}
+          stageCounts={filtersExpanded ? stageCounts : undefined}
           sortMode={sortMode}
           onSortModeChange={setSortMode}
           resultCount={orderedMarkets.length}
