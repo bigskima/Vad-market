@@ -285,7 +285,7 @@ export function HomeScreen({
           ) : watchlistError ? (
             <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
               <VadText variant="bodyStrong">Watchlist unavailable</VadText>
-              <VadText variant="caption" tone="secondary">We couldn't load your saved markets.</VadText>
+              <VadText variant="caption" tone="secondary">We could not load your saved markets.</VadText>
               <Pressable accessibilityRole="button" onPress={() => void retryWatchlist()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                 <VadText variant="caption" tone="brand">Try again</VadText>
               </Pressable>
@@ -391,7 +391,6 @@ function MarketThumb({ market, size = 46 }: { market: MarketCatalogItem; size?: 
 }
 
 function MarketSparkline({ values }: { values: number[] }) {
-  const theme = useVadTheme();
   const samples = values.slice(-18);
   if (samples.length < 2) return null;
   const min = Math.min(...samples);
@@ -419,7 +418,6 @@ function MarketSparkline({ values }: { values: number[] }) {
 }
 
 function BalanceSparkline({ values }: { values: number[] }) {
-  const theme = useVadTheme();
   const samples = values.slice(-14);
   if (samples.length < 2) return null;
   const min = Math.min(...samples);
