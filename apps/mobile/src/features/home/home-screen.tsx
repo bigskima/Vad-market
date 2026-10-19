@@ -56,47 +56,47 @@ export function HomeScreen({
 
   useEffect(() => {
     let active = true;
-    setProfileName(null);
-    setProfileAvatarUrl(null);
-    setWatchlistIds([]);
-    setMarketHistoryById({});
-    setWatchlistError(null);
-    if (!userId) {
-      setProfileName(null);
-      setProfileAvatarUrl(null);
-      setWatchlistIds([]);
-      setWatchlistLoading(false);
-      return () => { active = false; };
-    }
-    void getWalletBalanceHistory(30).then((rows) => { if (active) setBalanceHistory(rows); }).catch(() => { if (active) setBalanceHistory([]); });
-    void (async () => {
-      try {
-        const { data } = await supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle();
-        if (!active || !data) return;
-        setProfileName(data.display_name ?? null);
-        setProfileAvatarUrl(data.avatar_path ? supabase.storage.from('profile-media').getPublicUrl(data.avatar_path).data.publicUrl : null);
-      } catch {
-        if (active) { setProfileName(null); setProfileAvatarUrl(null); }
+    const loadUserHomeData = async () => {
+      if (!userId) {
+        setProfileName(null);
+        setProfileAvatarUrl(null);
+        setWatchlistIds([]);
+        setWatchlistError(null);
+        setWatchlistLoading(false);
+        setBalanceHistory([]);
+        return;
       }
-    })();
-    setWatchlistLoading(true);
-    void listUserMarketWatchlist()
-      .then((rows) => {
-        if (active) {
-          setWatchlistIds(rows.map((row) => row.instrument_public_id));
-          setWatchlistError(null);
-        }
-      })
-      .catch(() => {
-        if (active) setWatchlistError('Your watchlist could not be loaded. Please try again.');
-      })
-      .finally(() => { if (active) setWatchlistLoading(false); });
+      setWatchlistLoading(true);
+      const [profileResult, balanceResult, watchlistResult] = await Promise.allSettled([
+        supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle(),
+        getWalletBalanceHistory(30),
+        listUserMarketWatchlist(),
+      ]);
+      if (!active) return;
+      if (profileResult.status === 'fulfilled' && profileResult.value.data) {
+        const profile = profileResult.value.data;
+        setProfileName(profile.display_name ?? null);
+        setProfileAvatarUrl(profile.avatar_path ? supabase.storage.from('profile-media').getPublicUrl(profile.avatar_path).data.publicUrl : null);
+      } else {
+        setProfileName(null);
+        setProfileAvatarUrl(null);
+      }
+      setBalanceHistory(balanceResult.status === 'fulfilled' ? balanceResult.value : []);
+      if (watchlistResult.status === 'fulfilled') {
+        setWatchlistIds(watchlistResult.value.map((row) => row.instrument_public_id));
+        setWatchlistError(null);
+      } else {
+        setWatchlistError('Your watchlist could not be loaded. Please try again.');
+      }
+      setWatchlistLoading(false);
+    };
+    void loadUserHomeData();
     return () => { active = false; };
   }, [userId]);
 
   useEffect(() => {
     let active = true;
-    if (!watchlistIds.length) { setMarketHistoryById({}); return () => { active = false; }; }
+    if (!watchlistIds.length) return () => { active = false; };
     void Promise.all(watchlistIds.slice(0, 10).map(async (id) => {
       try {
         const rows = await getMarketPriceHistory(id, 30);
