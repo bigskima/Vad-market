@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  Animated,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -29,9 +32,47 @@ export function VadBottomSheet({
   dismissible?: boolean;
 }) {
   const theme = useVadTheme();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const dialog = width >= 768;
   const compact = width < 380;
+  const [dragOffset] = useState(() => new Animated.Value(0));
+  const panResponder = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_event, gesture) =>
+      dismissible && !dialog && gesture.dy > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+    onPanResponderMove: (_event, gesture) => {
+      dragOffset.setValue(Math.max(0, gesture.dy));
+    },
+    onPanResponderRelease: (_event, gesture) => {
+      if (dismissible && (gesture.dy > 112 || gesture.vy > 0.85)) {
+        Animated.timing(dragOffset, {
+          toValue: Math.max(height, 520),
+          duration: theme.motion.standard,
+          useNativeDriver: true,
+        }).start(({ finished }) => {
+          if (!finished) return;
+          dragOffset.setValue(0);
+          onClose();
+        });
+      } else {
+        Animated.spring(dragOffset, {
+          toValue: 0,
+          stiffness: 240,
+          damping: 25,
+          mass: 0.8,
+          useNativeDriver: true,
+        }).start();
+      }
+    },
+    onPanResponderTerminate: () => {
+      Animated.spring(dragOffset, {
+        toValue: 0,
+        stiffness: 240,
+        damping: 25,
+        mass: 0.8,
+        useNativeDriver: true,
+      }).start();
+    },
+  }), [dialog, dismissible, dragOffset, height, onClose, theme.motion.standard]);
 
   return (
     <Modal
@@ -67,36 +108,47 @@ export function VadBottomSheet({
             <View pointerEvents="none" style={StyleSheet.absoluteFill} />
           )}
 
-          <SafeAreaView
-            edges={dialog ? [] : ['bottom']}
-            style={[
-              dialog ? theme.shadows.floating : theme.shadows.card,
-              {
-                width: '100%',
-                maxWidth: dialog ? 680 : undefined,
-                maxHeight: dialog ? '84%' : '90%',
-                backgroundColor: theme.colors.surface,
-                borderRadius: dialog ? theme.radius.xxl : 0,
-                borderTopLeftRadius: theme.radius.xxl,
-                borderTopRightRadius: theme.radius.xxl,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                overflow: 'hidden',
-              },
-            ]}
+          <Animated.View
+            style={{
+              width: '100%',
+              maxWidth: dialog ? 680 : undefined,
+              transform: [{ translateY: dialog ? 0 : dragOffset }],
+            }}
           >
-            {!dialog ? (
-              <View style={{ alignItems: 'center', paddingTop: theme.spacing.xs }}>
+            <SafeAreaView
+              edges={dialog ? [] : ['bottom']}
+              style={[
+                dialog ? theme.shadows.floating : theme.shadows.card,
+                {
+                  width: '100%',
+                  maxWidth: dialog ? 680 : undefined,
+                  maxHeight: dialog ? '84%' : '90%',
+                  backgroundColor: theme.colors.surface,
+                  borderRadius: dialog ? theme.radius.xxl : 0,
+                  borderTopLeftRadius: theme.radius.xxl,
+                  borderTopRightRadius: theme.radius.xxl,
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                  overflow: 'hidden',
+                },
+              ]}
+            >
+              {!dialog ? (
                 <View
-                  style={{
-                    width: 44,
-                    height: 4,
-                    borderRadius: theme.radius.pill,
-                    backgroundColor: theme.colors.borderStrong,
-                  }}
-                />
-              </View>
-            ) : null}
+                  {...panResponder.panHandlers}
+                  style={{ alignItems: 'center', paddingTop: theme.spacing.xs, paddingBottom: theme.spacing.xxs }}
+                >
+                  <View
+                    accessibilityLabel="Drag down to close"
+                    style={{
+                      width: 44,
+                      height: 4,
+                      borderRadius: theme.radius.pill,
+                      backgroundColor: theme.colors.borderStrong,
+                    }}
+                  />
+                </View>
+              ) : null}
 
             <View
               style={{
@@ -149,7 +201,8 @@ export function VadBottomSheet({
             >
               {children}
             </ScrollView>
-          </SafeAreaView>
+            </SafeAreaView>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
