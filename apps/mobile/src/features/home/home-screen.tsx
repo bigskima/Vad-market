@@ -14,6 +14,7 @@ import type { HomePromotion, TrendingMarketRow, TrendingMarketSettings } from '@
 import type { MarketCatalogItem, WalletRow } from '@/services/market-api';
 import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchlist } from '@/services/market-watchlist-api';
 import { supabase } from '@/lib/supabase';
+import { getWalletBalanceHistory, type WalletBalanceHistoryPoint } from '@/services/wallet-history-api';
 
 type Category = 'All' | 'Sports' | 'Politics' | 'Economy' | 'Tech' | 'Entertainment';
 
@@ -45,6 +46,7 @@ export function HomeScreen({
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const [balanceHistory, setBalanceHistory] = useState<WalletBalanceHistoryPoint[]>([]);
   const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
   const [watchlistLoading, setWatchlistLoading] = useState(true);
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
@@ -59,6 +61,7 @@ export function HomeScreen({
       setWatchlistLoading(false);
       return () => { active = false; };
     }
+    void getWalletBalanceHistory(30).then((rows) => { if (active) setBalanceHistory(rows); }).catch(() => { if (active) setBalanceHistory([]); });
     void supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle()
       .then(({ data }) => {
         if (!active || !data) return;
@@ -113,7 +116,13 @@ export function HomeScreen({
   const totalNgn = walletRows.filter((wallet) => wallet.asset_code === 'NGN').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
   const totalUsdc = walletRows.filter((wallet) => wallet.asset_code === 'USDC').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
   const promotionsToShow = promotions.filter((promotion) => promotion.public_id !== dismissedPromotion);
-  const primaryBalance = walletRows.some((wallet) => wallet.asset_code === 'NGN') ? formatMoney(totalNgn, 'NGN') : walletRows.some((wallet) => wallet.asset_code === 'USDC') ? formatMoney(totalUsdc, 'USDC') : '—';
+  const primaryAsset = walletRows.some((wallet) => wallet.asset_code === 'NGN') ? 'NGN' : walletRows.some((wallet) => wallet.asset_code === 'USDC') ? 'USDC' : null;
+  const primaryBalance = primaryAsset === 'NGN' ? formatMoney(totalNgn, 'NGN') : primaryAsset === 'USDC' ? formatMoney(totalUsdc, 'USDC') : '—';
+  const primaryHistory = balanceHistory.filter((point) => point.asset_code === primaryAsset).sort((a, b) => a.observed_on.localeCompare(b.observed_on));
+  const historyValues = primaryHistory.map((point) => Number(point.balance)).filter(Number.isFinite);
+  const hasBalanceTrend = historyValues.length > 1 && historyValues.some((value) => value !== historyValues[0]);
+  const balanceChange = hasBalanceTrend ? historyValues[historyValues.length - 1] - historyValues[0] : null;
+  const balanceChangePercent = balanceChange !== null && historyValues[0] !== 0 ? (balanceChange / Math.abs(historyValues[0])) * 100 : null;
 
   return (
     <View style={{ width: '100%', gap: density.compact ? 14 : 18 }}>
@@ -140,16 +149,20 @@ export function HomeScreen({
           <VadText variant="title" style={{ fontSize: density.phone ? 31 : 36, lineHeight: density.phone ? 37 : 42, letterSpacing: -0.8 }}>
             {balanceVisible ? primaryBalance : '••••••••'}
           </VadText>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-            <VadText variant="caption" tone="secondary">
-              {walletRows.length ? (walletRows.some((wallet) => wallet.asset_code === 'NGN') ? 'NGN wallet balance' : 'USDC wallet balance') : 'Balance unavailable'}
-            </VadText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap', paddingRight: 112 }}>
+            {hasBalanceTrend && balanceChange !== null ? (
+              <VadText variant="caption" tone={balanceChange >= 0 ? 'yes' : 'no'}>
+                {balanceChange >= 0 ? '▲ +' : '▼ '}{formatMoney(Math.abs(balanceChange), primaryAsset ?? 'NGN')}{balanceChangePercent !== null ? ` (${balanceChangePercent >= 0 ? '+' : ''}${balanceChangePercent.toFixed(1)}%)` : ''} · 30d
+              </VadText>
+            ) : (
+              <VadText variant="caption" tone="secondary">{walletRows.length ? (primaryAsset === 'NGN' ? 'NGN wallet balance' : 'USDC wallet balance') : 'Balance unavailable'}</VadText>
+            )}
             {walletRows.some((wallet) => wallet.asset_code === 'NGN' && Number(wallet.available) > 0) && walletRows.some((wallet) => wallet.asset_code === 'USDC' && Number(wallet.available) > 0) ? (
               <VadText variant="caption" tone="secondary">· USDC {balanceVisible ? totalUsdc.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '••••'}</VadText>
             ) : null}
           </View>
-          <View style={{ position: 'absolute', right: 8, bottom: 7, opacity: 0.13 }}>
-            <VadIcon name="wallet" size={88} tone="brand" />
+          <View style={{ position: 'absolute', right: 12, bottom: 18, opacity: 0.95 }}>
+            {hasBalanceTrend ? <BalanceSparkline values={historyValues} /> : <VadIcon name="wallet" size={64} tone="brand" />}
           </View>
         </View>
       </TourTarget>
