@@ -156,7 +156,7 @@ export function MarketDiscoveryControls({
                     })}
                   >
                     <VadText variant="bodyStrong" tone={selected ? 'brand' : 'primary'}>{option.label}</VadText>
-                    {selected ? <VadIcon name="yes" size={18} tone="brand" /> : null}
+                    {selected ? <VadText variant="caption" tone="brand">Selected</VadText> : null}
                   </Pressable>
                 );
               })}
