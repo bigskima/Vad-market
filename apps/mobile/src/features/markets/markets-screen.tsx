@@ -15,6 +15,8 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import { getMarketTiming } from '@/lib/market-timing';
 import type { MarketCatalogItem } from '@/services/market-api';
+import type { FeaturedMarketRow, TrendingMarketRow } from '@/services/home-content-api';
+import { FeaturedMarketsCarousel } from './featured-markets-carousel';
 import { MarketCard } from './components/market-card';
 import { PageHeader } from '@/features/navigation/page-header';
 import {
@@ -27,10 +29,16 @@ export function MarketsScreen({
   markets,
   onOpenMarket,
   initialCategory,
+  featuredMarkets = [],
+  trendingMarkets = [],
+  unreadNotifications = false,
 }: {
   markets: MarketCatalogItem[];
   onOpenMarket: (market: MarketCatalogItem) => void;
   initialCategory?: string;
+  featuredMarkets?: FeaturedMarketRow[];
+  trendingMarkets?: TrendingMarketRow[];
+  unreadNotifications?: boolean;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -120,13 +128,15 @@ export function MarketsScreen({
         title={category === 'All' ? 'Markets' : category}
         subtitle="Discover and trade on real-world events."
         actions={[
-          { icon: 'bell', label: 'Notifications', onPress: () => router.push('/notifications'), badge: false },
+          { icon: 'bell', label: 'Notifications', onPress: () => router.push('/notifications'), badge: unreadNotifications },
           { icon: 'operations', label: 'Market filters', onPress: () => setFiltersExpanded((value) => !value) },
         ]}
       />
       <View style={{ alignItems: 'flex-end', marginTop: -8 }}>
         <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
       </View>
+
+      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} onOpenMarket={onOpenMarket} />
 
       <TourTarget id="markets-discovery">
         <MarketDiscoveryControls
@@ -153,7 +163,7 @@ export function MarketsScreen({
             </View>
             <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setStage('all'); setSortMode('activity'); setQuery(''); setDebouncedQuery(''); }} />
           </View>
-          <VadText variant="caption" tone="secondary">Sorted from the live market catalogue by recent activity and updates.</VadText>
+          <VadText variant="caption" tone="secondary">{trendingMarkets.length ? 'Ranked from verified trading activity.' : 'No published trending ranking is available; showing the live catalogue by recent activity.'}</VadText>
         </View>
       ) : null}
 
