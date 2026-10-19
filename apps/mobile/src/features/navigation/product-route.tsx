@@ -27,6 +27,8 @@ import { ProductSidebar } from './product-sidebar';
 import { ProductTabBar, type ProductTab } from './product-tab-bar';
 import { ProductTopBar } from './product-top-bar';
 
+const productTabScrollOffsets: Partial<Record<ProductTab, number>> = {};
+
 type Props = {
   active: ProductTab;
   children: ReactNode;
@@ -49,7 +51,8 @@ export function ProductRoute({
   const runtime = useRuntimeCapabilities(session);
   const { registerScrollController } = useProductTour();
   const scrollRef = useRef<ScrollView | null>(null);
-  const scrollOffsetRef = useRef(0);
+  const scrollOffsetRef = useRef(productTabScrollOffsets[active] ?? 0);
+  const didRestoreScrollRef = useRef(false);
 
   if (!isLoading && !session) return <Redirect href="/" />;
 
@@ -197,7 +200,16 @@ export function ProductRoute({
   }
 
   function rememberScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
-    scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+    const offset = event.nativeEvent.contentOffset.y;
+    scrollOffsetRef.current = offset;
+    productTabScrollOffsets[active] = offset;
+  }
+
+  function restoreScroll() {
+    if (didRestoreScrollRef.current) return;
+    didRestoreScrollRef.current = true;
+    const offset = productTabScrollOffsets[active] ?? 0;
+    if (offset > 0) scrollRef.current?.scrollTo({ y: offset, animated: false });
   }
 
   return (
@@ -241,6 +253,7 @@ export function ProductRoute({
             keyboardDismissMode="on-drag"
             contentInsetAdjustmentBehavior="automatic"
             onScroll={rememberScroll}
+            onContentSizeChange={restoreScroll}
             scrollEventThrottle={16}
             refreshControl={
               <RefreshControl
