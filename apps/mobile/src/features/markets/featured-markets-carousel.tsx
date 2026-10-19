@@ -60,7 +60,7 @@ export function FeaturedMarketsCarousel({
     <View style={{ gap: 8 }} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <VadText variant="bodyStrong" style={{ fontSize: 16 }}>Featured markets</VadText>
-        <VadText variant="caption" tone="secondary">Based on live market rankings</VadText>
+        <VadText variant="caption" tone="secondary">Admin-curated and live-ranked markets</VadText>
       </View>
       <ScrollView
         horizontal
