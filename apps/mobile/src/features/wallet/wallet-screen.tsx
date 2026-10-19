@@ -19,6 +19,7 @@ import { OnchainPositionsPanel } from '@/features/wallet/onchain-positions-panel
 import { UsdcWalletBalances } from '@/features/wallet/usdc-wallet-balances';
 import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import { TourTarget } from '@/features/tour/tour-provider';
+import { useBalanceVisibility } from '@/hooks/use-balance-visibility';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
@@ -46,7 +47,7 @@ export function WalletScreen({
   const [intents, setIntents] = useState<PaymentIntentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
-  const [balancesHidden, setBalancesHidden] = useState(false);
+  const { hidden: balancesHidden, toggle: toggleBalancesHidden } = useBalanceVisibility();
   const hasNgn = activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
   const hasUsdc = activeAssetCodes.includes('USDC') && currencyPreference.isCurrencyEnabled('USDC');
 
@@ -107,7 +108,7 @@ export function WalletScreen({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={balancesHidden ? 'Show balances' : 'Hide balances'}
-                onPress={() => setBalancesHidden((hidden) => !hidden)}
+                onPress={toggleBalancesHidden}
                 style={({ pressed }) => ({
                   width: 44,
                   height: 44,
