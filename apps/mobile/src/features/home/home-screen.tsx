@@ -24,9 +24,7 @@ export function HomeScreen({
   markets: MarketCatalogItem[];
   wallets: WalletRow[];
   promotions: HomePromotion[];
-  featuredMarkets: FeaturedMarketRow[];
   trendingMarkets: TrendingMarketRow[];
-  featuredSettings: FeaturedMarketSettings;
   trendingSettings: TrendingMarketSettings;
   userName: string;
   userId: string;
@@ -57,6 +55,8 @@ export function HomeScreen({
     if (!userId) {
       setProfileName(null);
       setProfileAvatarUrl(null);
+      setWatchlistIds([]);
+      setWatchlistLoading(false);
       return () => { active = false; };
     }
     void supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle()
