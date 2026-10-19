@@ -31,7 +31,7 @@ export function WelcomeScreen({ onContinue }: Props) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ flex: 1, overflow: 'hidden', backgroundColor: '#0B0E14' }}>
+      <View style={{ flex: 1, overflow: 'hidden', backgroundColor: theme.colors.welcomeBase }}>
         <Image
           source={welcomeVisual}
           accessibilityLabel="A view of the world from space"
@@ -107,8 +107,8 @@ export function WelcomeScreen({ onContinue }: Props) {
                 paddingHorizontal: theme.spacing.md,
                 borderRadius: theme.radius.pill,
                 borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.28)',
-                backgroundColor: 'rgba(11,14,20,0.34)',
+                borderColor: theme.colors.welcomeControlBorder,
+                backgroundColor: theme.colors.welcomeControlSurface,
                 opacity: pressed ? 0.78 : 1,
                 transform: [{ scale: pressed ? 0.97 : 1 }],
               })}
