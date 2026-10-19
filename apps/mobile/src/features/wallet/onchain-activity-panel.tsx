@@ -8,6 +8,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
+import { useBalanceVisibility } from '@/hooks/use-balance-visibility';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getMyOnchainTransactionIntents,
@@ -16,6 +17,7 @@ import {
 
 export function OnchainActivityPanel({ enabled }: { enabled: boolean }) {
   const theme = useVadTheme();
+  const { hidden: balancesHidden } = useBalanceVisibility();
   const [rows, setRows] = useState<OnchainTransactionIntentRow[]>([]);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export function OnchainActivityPanel({ enabled }: { enabled: boolean }) {
         />
       ) : rows.length ? (
         <View style={{ gap: theme.spacing.sm }}>
-          {rows.map((row) => <OnchainActivityRow key={row.intent_id} row={row} />)}
+          {rows.map((row) => <OnchainActivityRow key={row.intent_id} row={row} hidden={balancesHidden} />)}
           {error ? (
             <VadText variant="caption" tone="tertiary">
               The latest refresh could not complete. Previously loaded activity is still shown.
@@ -92,7 +94,7 @@ export function OnchainActivityPanel({ enabled }: { enabled: boolean }) {
   );
 }
 
-function OnchainActivityRow({ row }: { row: OnchainTransactionIntentRow }) {
+function OnchainActivityRow({ row, hidden }: { row: OnchainTransactionIntentRow; hidden: boolean }) {
   const theme = useVadTheme();
   const status = displayStatus(row);
 
@@ -111,7 +113,7 @@ function OnchainActivityRow({ row }: { row: OnchainTransactionIntentRow }) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <VadText variant="caption" tone="secondary">
           {row.outcome_label ? `${row.outcome_label} · ` : ''}
-          {row.amount == null ? 'Amount pending' : assetMoney(row.amount, 'USDC')}
+          {row.amount == null ? 'Amount pending' : hidden ? '••••••' : assetMoney(row.amount, 'USDC')}
         </VadText>
         <VadText variant="caption" tone="tertiary" numberOfLines={1}>
           {row.transaction_id ? shortTransactionId(row.transaction_id) : 'Awaiting transaction'}
