@@ -170,6 +170,7 @@ export function MarketsScreen({
           sortMode={sortMode}
           onSortModeChange={setSortMode}
           resultCount={orderedMarkets.length}
+          showAdvancedFilters={filtersExpanded}
         />
       </TourTarget>
 
