@@ -1,5 +1,5 @@
 import { Redirect, router } from 'expo-router';
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,9 +17,11 @@ export function ProductSubpage({
   title,
   maxWidth = 760,
   children,
+  footer,
 }: PropsWithChildren<{
   title: string;
   maxWidth?: number;
+  footer?: ReactNode;
 }>) {
   const theme = useVadTheme();
   const insets = useSafeAreaInsets();
@@ -102,6 +104,28 @@ export function ProductSubpage({
       >
         {children}
       </VadScreen>
+      {footer ? (
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
+            paddingBottom: insets.bottom,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth,
+              alignSelf: 'center',
+              paddingHorizontal: horizontalPadding,
+              paddingVertical: theme.spacing.sm,
+            }}
+          >
+            {footer}
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
