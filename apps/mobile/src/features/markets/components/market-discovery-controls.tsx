@@ -60,6 +60,7 @@ export function MarketDiscoveryControls({
           <VadInput
             value={query}
             onChangeText={onQueryChange}
+            clearable
             placeholder="Search markets"
             returnKeyType="search"
             autoCorrect={false}
