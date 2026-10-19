@@ -1,4 +1,5 @@
-import { Animated, Pressable, useWindowDimensions, useEffect, useRef, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Pressable, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
