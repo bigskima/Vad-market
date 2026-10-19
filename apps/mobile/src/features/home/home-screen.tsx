@@ -40,6 +40,7 @@ export function HomeScreen({
   onOpenMarket,
   onOpenPromotion,
   onExploreMarkets,
+  onOpenWallet,
   onOpenCommunity,
 }: {
   markets: MarketCatalogItem[];
@@ -52,6 +53,7 @@ export function HomeScreen({
   onOpenMarket: (market: MarketCatalogItem) => void;
   onOpenPromotion: (targetPath: string) => void;
   onExploreMarkets: (category?: string) => void;
+  onOpenWallet: () => void;
   onOpenCommunity: () => void;
 }) {
   const theme = useVadTheme();
@@ -124,13 +126,29 @@ export function HomeScreen({
               ))}
             </View>
           ) : (
-            <VadCard variant="muted" style={{ minHeight: 76, justifyContent: 'center', gap: 3, padding: theme.spacing.sm }}>
+              <VadCard variant="muted" style={{ minHeight: 76, justifyContent: 'center', gap: theme.spacing.xxs, padding: theme.spacing.md }}>
               <VadText variant="bodyStrong">
-                {lens === 'MOMENTUM' ? 'Momentum is quiet right now.' : lens === 'VAD' ? 'No VAD selections are live right now.' : 'No live markets right now.'}
+                {!visibleMarkets.length && markets.length
+                  ? 'No enabled market currencies.'
+                  : lens === 'MOMENTUM'
+                    ? 'Momentum is quiet right now.'
+                    : lens === 'VAD'
+                      ? 'No VAD selections are live right now.'
+                      : 'No live markets right now.'}
               </VadText>
-              <VadText variant="caption" tone="secondary">Switch views or open the full market catalogue.</VadText>
-              <View style={{ alignSelf: 'flex-start', marginTop: 4 }}>
-                <VadButton label="Browse all markets" variant="secondary" size="small" fullWidth={false} onPress={() => onExploreMarkets()} />
+              <VadText variant="caption" tone="secondary">
+                {!visibleMarkets.length && markets.length
+                  ? 'Enable an eligible currency in Wallet to see markets settled in it.'
+                  : 'Switch views or open the full market catalogue.'}
+              </VadText>
+              <View style={{ alignSelf: 'flex-start', marginTop: theme.spacing.xxs }}>
+                <VadButton
+                  label={!visibleMarkets.length && markets.length ? 'Open wallet' : 'Browse all markets'}
+                  variant="secondary"
+                  size="small"
+                  fullWidth={false}
+                  onPress={!visibleMarkets.length && markets.length ? onOpenWallet : () => onExploreMarkets()}
+                />
               </View>
             </VadCard>
           )}
