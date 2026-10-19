@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Pressable, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,7 +20,7 @@ export function WelcomeScreen({ onContinue }: Props) {
   const { width, height } = useWindowDimensions();
   const wide = width >= 820;
   const compact = width < 390 || height < 720;
-  const cinematicMotion = useRef(new Animated.Value(0)).current;
+  const [cinematicMotion] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     const animation = Animated.loop(
