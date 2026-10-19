@@ -1,5 +1,7 @@
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
 
+import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadInput } from '@/components/ui/vad-input';
@@ -19,7 +21,7 @@ const STAGE_OPTIONS: { value: MarketStageFilter; label: string }[] = [
   { value: 'live', label: 'Live' },
   { value: 'result', label: 'Resolving' },
   { value: 'complete', label: 'Completed' },
-  { value: 'all', label: 'All' },
+  { value: 'all', label: 'All markets' },
 ];
 
 export function MarketDiscoveryControls({
@@ -48,33 +50,13 @@ export function MarketDiscoveryControls({
   resultCount: number;
 }) {
   const theme = useVadTheme();
-  const { width } = useWindowDimensions();
-  const wide = width >= 820;
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilterCount = Number(Boolean(stage && stage !== 'all')) + Number(sortMode !== 'activity');
 
   return (
     <View style={{ gap: theme.spacing.md }}>
-      {stage && onStageChange ? (
-        <View style={{ gap: theme.spacing.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <VadText variant="caption" tone="tertiary">Status</VadText>
-            <VadText variant="caption" tone="secondary">{resultCount} matching</VadText>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingRight: theme.spacing.md }}>
-            {STAGE_OPTIONS.map((option) => (
-              <VadChip
-                key={option.value}
-                label={stageCounts ? `${option.label} ${stageCounts[option.value]}` : option.label}
-                selected={option.value === stage}
-                tone={option.value === stage ? (option.value === 'live' ? 'yes' : 'brand') : 'neutral'}
-                onPress={() => onStageChange(option.value)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-      ) : null}
-
-      <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: wide ? 'flex-end' : 'stretch', gap: theme.spacing.sm }}>
-        <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <VadInput
             value={query}
             onChangeText={onQueryChange}
@@ -82,29 +64,41 @@ export function MarketDiscoveryControls({
             returnKeyType="search"
             autoCorrect={false}
             accessibilityLabel="Search markets"
-            accessibilityHint="Search the selected market stage"
+            accessibilityHint="Search market titles, topics, currencies and status"
             leading={<VadIcon name="search" size={19} tone="tertiary" />}
           />
         </View>
-
-        <View style={{ gap: theme.spacing.xs, minWidth: wide ? 340 : undefined }}>
-          <VadText variant="caption" tone="tertiary">Sort</VadText>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-            {SORT_OPTIONS.map((option) => (
-              <VadChip
-                key={option.value}
-                label={option.label}
-                selected={option.value === sortMode}
-                tone={option.value === sortMode ? 'brand' : 'neutral'}
-                onPress={() => onSortModeChange(option.value)}
-              />
-            ))}
-          </View>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={activeFilterCount ? `Open filters, ${activeFilterCount} active` : 'Open market filters'}
+          accessibilityState={{ expanded: filtersOpen }}
+          onPress={() => setFiltersOpen(true)}
+          style={({ pressed }) => ({
+            minWidth: 48,
+            minHeight: 48,
+            paddingHorizontal: theme.spacing.sm,
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: activeFilterCount ? theme.colors.brandPrimary : theme.colors.border,
+            backgroundColor: activeFilterCount ? theme.colors.brandSoft : theme.colors.surface,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: theme.spacing.xxs,
+            opacity: pressed ? 0.78 : 1,
+            transform: [{ scale: pressed ? 0.97 : 1 }],
+          })}
+        >
+          <VadIcon name="operations" size={18} tone={activeFilterCount ? 'brand' : 'secondary'} />
+          {activeFilterCount ? <VadText variant="caption" tone="brand">{activeFilterCount}</VadText> : null}
+        </Pressable>
       </View>
 
       <View style={{ gap: theme.spacing.xs }}>
-        <VadText variant="caption" tone="tertiary">Topics</VadText>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+          <VadText variant="caption" tone="tertiary">Explore topics</VadText>
+          <VadText variant="caption" tone="secondary">{resultCount} markets</VadText>
+        </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
           {['All', ...categories].map((category) => (
             <VadChip
@@ -117,6 +111,74 @@ export function MarketDiscoveryControls({
           ))}
         </ScrollView>
       </View>
+
+      <VadBottomSheet visible={filtersOpen} title="Filter markets" onClose={() => setFiltersOpen(false)}>
+        <View style={{ gap: theme.spacing.xl }}>
+          {stage && onStageChange ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <VadText variant="heading">Market status</VadText>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+                {STAGE_OPTIONS.map((option) => (
+                  <VadChip
+                    key={option.value}
+                    label={stageCounts ? `${option.label} · ${stageCounts[option.value]}` : option.label}
+                    selected={option.value === stage}
+                    tone={option.value === stage ? (option.value === 'live' ? 'yes' : 'brand') : 'neutral'}
+                    onPress={() => onStageChange(option.value)}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <View style={{ gap: theme.spacing.sm }}>
+            <VadText variant="heading">Sort results</VadText>
+            <View style={{ gap: theme.spacing.xs }}>
+              {SORT_OPTIONS.map((option) => {
+                const selected = option.value === sortMode;
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    onPress={() => onSortModeChange(option.value)}
+                    style={({ pressed }) => ({
+                      minHeight: 48,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingHorizontal: theme.spacing.md,
+                      borderRadius: theme.radius.md,
+                      borderWidth: 1,
+                      borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
+                      backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
+                      opacity: pressed ? 0.82 : 1,
+                    })}
+                  >
+                    <VadText variant="bodyStrong" tone={selected ? 'brand' : 'primary'}>{option.label}</VadText>
+                    {selected ? <VadIcon name="yes" size={18} tone="brand" /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setFiltersOpen(false)}
+            style={({ pressed }) => ({
+              minHeight: 48,
+              borderRadius: theme.radius.md,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.colors.brandPrimary,
+              opacity: pressed ? 0.82 : 1,
+            })}
+          >
+            <VadText variant="label" tone="inverse">Show {resultCount} markets</VadText>
+          </Pressable>
+        </View>
+      </VadBottomSheet>
     </View>
   );
 }
