@@ -63,6 +63,7 @@ export default function MarketDetailRoute() {
             })}
           />
           <MarketDetailScreen
+            key={`${market.instrument_public_id}:${initialOutcome ?? 'default'}`}
             market={market}
             markets={data.markets}
             initialOutcome={initialOutcome}
