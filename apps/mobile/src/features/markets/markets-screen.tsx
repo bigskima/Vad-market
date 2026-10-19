@@ -96,6 +96,15 @@ export function MarketsScreen({
     });
 
     return [...filtered].sort((a, b) => {
+      if (sortMode === 'activity' && trendingMarkets.length) {
+        const aRank = trendingMarkets.find((entry) => entry.instrument_public_id === a.instrument_public_id)?.rank;
+        const bRank = trendingMarkets.find((entry) => entry.instrument_public_id === b.instrument_public_id)?.rank;
+        if (aRank != null || bRank != null) {
+          if (aRank == null) return 1;
+          if (bRank == null) return -1;
+          if (aRank !== bRank) return aRank - bRank;
+        }
+      }
       if (sortMode === 'closing') {
         const aClose = a.closes_at ? new Date(a.closes_at).getTime() : Number.MAX_SAFE_INTEGER;
         const bClose = b.closes_at ? new Date(b.closes_at).getTime() : Number.MAX_SAFE_INTEGER;
@@ -109,7 +118,7 @@ export function MarketsScreen({
       }
       return Number(Boolean(b.last_trade_at)) - Number(Boolean(a.last_trade_at)) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
-  }, [baseFilteredMarkets, stage, sortMode, now]);
+  }, [baseFilteredMarkets, stage, sortMode, now, trendingMarkets]);
 
   const cardWidth = columns === 2 ? '48.7%' : '100%';
   const pageSize = columns === 2 ? 8 : 5;
@@ -125,7 +134,7 @@ export function MarketsScreen({
   return (
     <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
       <PageHeader
-        title={category === 'All' ? 'Markets' : category}
+        title="Markets"
         subtitle="Discover and trade on real-world events."
         actions={[
           { icon: 'bell', label: 'Notifications', onPress: () => router.push('/notifications'), badge: unreadNotifications },
