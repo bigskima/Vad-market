@@ -33,7 +33,12 @@ export function FeaturedMarketsCarousel({
     if (activeIndex >= liveMarkets.length) setActiveIndex(0);
   }, [activeIndex, liveMarkets.length]);
 
-  if (!liveMarkets.length) return null;
+  if (!liveMarkets.length) return (
+    <View style={{ minHeight: 64, justifyContent: 'center', gap: 4, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, paddingHorizontal: 14, paddingVertical: 10 }}>
+      <VadText variant="bodyStrong">No featured markets right now</VadText>
+      <VadText variant="caption" tone="secondary">Featured markets will appear here when the live ranking service publishes eligible markets.</VadText>
+    </View>
+  );
 
   const onMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!width) return;
