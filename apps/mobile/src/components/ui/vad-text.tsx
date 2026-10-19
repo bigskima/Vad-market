@@ -31,11 +31,11 @@ export function VadText({ variant = 'body', tone = 'primary', style, children, .
     primary: theme.colors.textPrimary,
     secondary: theme.colors.textSecondary,
     tertiary: theme.colors.textTertiary,
-    brand: theme.colors.brandPrimary,
+    brand: theme.colors.brandText,
     yes: theme.colors.yes,
-    no: theme.colors.no,
-    warning: theme.colors.warning,
-    danger: theme.colors.danger,
+    no: theme.colors.noText,
+    warning: theme.colors.warningText,
+    danger: theme.colors.dangerText,
     inverse: theme.colors.textInverse,
   } as const;
 
