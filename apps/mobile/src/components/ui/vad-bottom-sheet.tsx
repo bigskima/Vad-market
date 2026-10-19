@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   KeyboardAvoidingView,
@@ -36,6 +36,11 @@ export function VadBottomSheet({
   const dialog = width >= 768;
   const compact = width < 380;
   const [dragOffset] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    if (visible) dragOffset.setValue(0);
+  }, [dragOffset, visible]);
+
   const panResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_event, gesture) =>
       dismissible && !dialog && gesture.dy > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
@@ -49,9 +54,7 @@ export function VadBottomSheet({
           duration: theme.motion.standard,
           useNativeDriver: true,
         }).start(({ finished }) => {
-          if (!finished) return;
-          dragOffset.setValue(0);
-          onClose();
+          if (finished) onClose();
         });
       } else {
         Animated.spring(dragOffset, {
@@ -136,10 +139,13 @@ export function VadBottomSheet({
               {!dialog ? (
                 <View
                   {...panResponder.panHandlers}
-                  style={{ alignItems: 'center', paddingTop: theme.spacing.xs, paddingBottom: theme.spacing.xxs }}
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel="Drag down to dismiss"
+                  accessibilityHint="Swipe down to close this sheet"
+                  style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <View
-                    accessibilityLabel="Drag down to close"
                     style={{
                       width: 44,
                       height: 4,
