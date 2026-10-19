@@ -119,7 +119,7 @@ export function HomeScreen({
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <VadText variant="body" tone="secondary">Total balance</VadText>
             <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? 'Hide balance' : 'Show balance'} onPress={() => setBalanceVisible((visible) => !visible)} hitSlop={10}>
-              <VadIcon name={balanceVisible ? 'account' : 'activity'} size={19} tone="secondary" />
+              <VadIcon name={balanceVisible ? 'eye' : 'eyeOff'} size={19} tone="secondary" />
             </Pressable>
           </View>
           <VadText variant="title" style={{ fontSize: density.phone ? 31 : 36, lineHeight: density.phone ? 37 : 42, letterSpacing: -0.8 }}>
@@ -151,7 +151,7 @@ export function HomeScreen({
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <VadText variant="bodyStrong">Highlights</VadText>
             <Pressable onPress={() => setDismissedPromotion(promotionsToShow[0]?.public_id ?? null)} accessibilityRole="button" accessibilityLabel="Dismiss promotion">
-              <VadIcon name="x" size={17} tone="secondary" />
+              <VadIcon name="close" size={17} tone="secondary" />
             </Pressable>
           </View>
           <HomePromotionCarousel promotions={promotionsToShow} onOpen={onOpenPromotion} />
