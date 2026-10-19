@@ -8,6 +8,7 @@ import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { HomeHeroBanner } from '@/features/home/components/home-hero-banner';
+import { HomeWalletSnapshot } from '@/features/home/components/home-wallet-snapshot';
 import { HomePromotionCarousel } from '@/features/home/components/home-promotion-carousel';
 import { MarketCard } from '@/features/markets/components/market-card';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
@@ -25,12 +26,19 @@ import type {
   TrendingMarketSettings,
   VadMarketRow,
 } from '@/services/home-content-api';
-import type { MarketCatalogItem } from '@/services/market-api';
+import type { MarketCatalogItem, WalletRow } from '@/services/market-api';
 
 type MarketLens = 'LIVE' | 'VAD' | 'MOMENTUM';
 
 export function HomeScreen({
   markets,
+  wallets,
+  activeAssetCodes,
+  walletError,
+  onRetryWallet,
+  onOpenDeposit,
+  onOpenWithdraw,
+  onOpenPortfolio,
   promotions,
   vadMarkets,
   featuredMarkets,
@@ -44,6 +52,13 @@ export function HomeScreen({
   onOpenCommunity,
 }: {
   markets: MarketCatalogItem[];
+  wallets: WalletRow[];
+  activeAssetCodes: string[];
+  walletError?: string | null;
+  onRetryWallet: () => void;
+  onOpenDeposit: () => void;
+  onOpenWithdraw: () => void;
+  onOpenPortfolio: () => void;
   promotions: HomePromotion[];
   vadMarkets: VadMarketRow[];
   featuredMarkets: FeaturedMarketRow[];
@@ -88,6 +103,18 @@ export function HomeScreen({
 
   return (
     <View style={{ gap: sectionGap, width: '100%' }}>
+      <HomeWalletSnapshot
+        wallets={wallets}
+        activeAssetCodes={activeAssetCodes}
+        walletError={walletError}
+        onRetryWallet={onRetryWallet}
+        onOpenWallet={onOpenWallet}
+        onOpenDeposit={onOpenDeposit}
+        onOpenWithdraw={onOpenWithdraw}
+        onExploreMarkets={() => onExploreMarkets()}
+        onOpenPortfolio={onOpenPortfolio}
+        onOpenCommunity={onOpenCommunity}
+      />
       <TourTarget id="home-overview">
         <HomeHeroBanner onExplore={() => onExploreMarkets()} />
       </TourTarget>
