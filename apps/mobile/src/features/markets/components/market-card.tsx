@@ -9,7 +9,6 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { probability } from '../format';
 import { MarketThumbnail } from './market-thumbnail';
-import { MarketProbabilityBar } from './market-probability-bar';
 
 export function MarketCard({
   market,
@@ -31,9 +30,7 @@ export function MarketCard({
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
   const volume = Number(market.total_volume ?? 0);
-  const participants = Number(market.participant_count ?? 0);
   const hasVolume = Number.isFinite(volume) && volume > 0;
-  const hasParticipants = Number.isFinite(participants) && participants > 0;
 
   return (
     <Pressable
