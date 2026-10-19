@@ -157,7 +157,7 @@ function PriceTile({
   compact: boolean;
 }) {
   const theme = useVadTheme();
-  const numericValue = Number(rawValue);
+  const numericValue = rawValue == null ? Number.NaN : Number(rawValue);
   const previousValue = useRef(Number.isFinite(numericValue) ? numericValue : null);
   const [movement, setMovement] = useState<'up' | 'down' | null>(null);
 
