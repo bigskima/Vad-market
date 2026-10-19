@@ -143,7 +143,7 @@ export function MarketsScreen({
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <VadIcon name="activity" size={20} tone="brand" />
-              <VadText variant="heading">Trending Markets</VadText>
+              <VadText variant="bodyStrong" style={{ fontSize: 19 }}>Trending Markets</VadText>
             </View>
             <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setStage('all'); setSortMode('activity'); setQuery(''); }} />
           </View>
