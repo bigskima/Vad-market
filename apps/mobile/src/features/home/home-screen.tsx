@@ -305,6 +305,16 @@ export function HomeScreen({
       <TourTarget id="home-categories">
         <View style={{ gap: 9 }}>
           <SectionHeading title="🔥 Trending Markets" action="See all" onAction={() => onExploreMarkets()} />
+          {marketError && trendingRows.length ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
+              <View style={{ flex: 1 }}>
+                <VadText variant="caption" tone="secondary">Showing previously loaded market data. Refresh failed.</VadText>
+              </View>
+              <Pressable accessibilityRole="button" onPress={onRetryMarkets} hitSlop={6}>
+                <VadText variant="caption" tone="brand">Retry</VadText>
+              </Pressable>
+            </View>
+          ) : null}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7 }}>
             {(['All', 'Sports', 'Politics', 'Economy', 'Tech', 'Entertainment'] as Category[]).map((item) => (
               <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: category === item }} onPress={() => setCategory(item)} style={{ minHeight: 35, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 20, backgroundColor: category === item ? theme.colors.brandPrimary : theme.colors.surface, borderWidth: 1, borderColor: category === item ? theme.colors.brandPrimary : theme.colors.border }}>
