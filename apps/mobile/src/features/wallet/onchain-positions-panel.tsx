@@ -163,7 +163,7 @@ export function OnchainPositionsPanel({ enabled }: { enabled: boolean }) {
               This submits a blockchain transaction. Network fees may apply, and the request cannot be undone after it is submitted.
             </VadText>
             {settlementError ? (
-              <VadErrorState title="Payout not submitted" message={settlementError} onRetry={() => void claimOrRefund(pendingSettlement)} />
+              <VadText variant="caption" tone="danger">{settlementError}</VadText>
             ) : null}
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
               <VadButton
