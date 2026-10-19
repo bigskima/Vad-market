@@ -25,6 +25,10 @@ export default function HomeRoute() {
   };
 
   const exploreMarkets = (category?: string) => {
+    if (category === 'watchlist') {
+      router.push('/watchlist');
+      return;
+    }
     if (category) {
       router.push({ pathname: '/markets', params: { category } });
       return;
