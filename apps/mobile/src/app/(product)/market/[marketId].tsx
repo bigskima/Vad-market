@@ -107,6 +107,7 @@ export default function MarketDetailRoute() {
             onPlaced={refreshAfterTrade}
             onOpenMarket={openMarket}
             onRefreshMarket={data.refreshMarkets}
+            onOpenWallet={() => router.push('/wallet')}
           />
         </View>
       ) : data.sectionErrors.markets ? (
