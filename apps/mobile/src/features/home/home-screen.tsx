@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
@@ -10,14 +10,15 @@ import { useLiveNow } from '@/hooks/use-live-now';
 import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
-import type { FeaturedMarketRow, FeaturedMarketSettings, HomePromotion, TrendingMarketRow, TrendingMarketSettings } from '@/services/home-content-api';
+import type { HomePromotion, TrendingMarketRow, TrendingMarketSettings } from '@/services/home-content-api';
 import type { MarketCatalogItem, WalletRow } from '@/services/market-api';
+import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchlist } from '@/services/market-watchlist-api';
 
 type Category = 'All' | 'Sports' | 'Politics' | 'Economy' | 'Tech' | 'Entertainment';
 
 export function HomeScreen({
-  markets, wallets, promotions, featuredMarkets, trendingMarkets, featuredSettings, trendingSettings,
-  userName, onOpenMarket, onOpenPromotion, onExploreMarkets, onNotifications, onDeposit, onWithdraw, onSend,
+  markets, wallets, promotions, trendingMarkets, trendingSettings,
+  userName, userId, onOpenMarket, onOpenPromotion, onExploreMarkets, onNotifications, onDeposit, onWithdraw, onSend,
 }: {
   markets: MarketCatalogItem[];
   wallets: WalletRow[];
@@ -27,6 +28,7 @@ export function HomeScreen({
   featuredSettings: FeaturedMarketSettings;
   trendingSettings: TrendingMarketSettings;
   userName: string;
+  userId: string;
   onOpenMarket: (market: MarketCatalogItem) => void;
   onOpenPromotion: (targetPath: string) => void;
   onExploreMarkets: (category?: string) => void;
@@ -42,6 +44,45 @@ export function HomeScreen({
   const [category, setCategory] = useState<Category>('All');
   const [dismissedPromotion, setDismissedPromotion] = useState<string | null>(null);
   const [balanceVisible, setBalanceVisible] = useState(true);
+  const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
+  const [watchlistLoading, setWatchlistLoading] = useState(true);
+  const [watchlistError, setWatchlistError] = useState<string | null>(null);
+  const [watchlistBusyId, setWatchlistBusyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setWatchlistLoading(true);
+    void listUserMarketWatchlist()
+      .then((rows) => {
+        if (active) {
+          setWatchlistIds(rows.map((row) => row.instrument_public_id));
+          setWatchlistError(null);
+        }
+      })
+      .catch(() => {
+        if (active) setWatchlistError('Your watchlist could not be loaded. Please try again.');
+      })
+      .finally(() => { if (active) setWatchlistLoading(false); });
+    return () => { active = false; };
+  }, [userId]);
+
+  const toggleWatchlist = async (instrumentPublicId: string) => {
+    if (watchlistBusyId) return;
+    const isSaved = watchlistIds.includes(instrumentPublicId);
+    setWatchlistBusyId(instrumentPublicId);
+    setWatchlistError(null);
+    try {
+      if (isSaved) await removeMarketFromWatchlist(userId, instrumentPublicId);
+      else await saveMarketToWatchlist(userId, instrumentPublicId);
+      setWatchlistIds((current) => isSaved
+        ? current.filter((id) => id !== instrumentPublicId)
+        : [instrumentPublicId, ...current]);
+    } catch {
+      setWatchlistError('We could not update your watchlist. Please try again.');
+    } finally {
+      setWatchlistBusyId(null);
+    }
+  };
   const visibleMarkets = markets.filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency));
   const activeMarkets = visibleMarkets.filter((market) => getMarketTiming(market, now).tradingOpen && market.resolution_status !== 'RESOLVED');
   const trendingRows = useMemo(() => trendingMarkets
@@ -49,10 +90,10 @@ export function HomeScreen({
     .filter((row): row is { entry: TrendingMarketRow; market: MarketCatalogItem } => Boolean(row.market))
     .filter(({ market }) => category === 'All' || categoryMatches(market.category, category))
     .slice(0, 5), [trendingMarkets, visibleMarkets, category]);
-  const featuredRows = useMemo(() => featuredMarkets
-    .map((entry) => ({ entry, market: visibleMarkets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
-    .filter((row): row is { entry: FeaturedMarketRow; market: MarketCatalogItem } => Boolean(row.market))
-    .slice(0, 5), [featuredMarkets, visibleMarkets]);
+  const watchlistMarkets = useMemo(() => watchlistIds
+    .map((id) => visibleMarkets.find((market) => market.instrument_public_id === id))
+    .filter((market): market is MarketCatalogItem => Boolean(market))
+    .slice(0, 10), [watchlistIds, visibleMarkets]);
   const walletRows = wallets.filter((wallet) => enabledCurrencies.includes(wallet.asset_code as VADCurrency));
   const totalNgn = walletRows.filter((wallet) => wallet.asset_code === 'NGN').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
   const totalUsdc = walletRows.filter((wallet) => wallet.asset_code === 'USDC').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
@@ -119,25 +160,35 @@ export function HomeScreen({
 
       <TourTarget id="home-featured-markets">
         <View style={{ gap: 9 }}>
-          <SectionHeading title="Featured markets" action="See all" onAction={() => onExploreMarkets()} />
-          {featuredRows.length ? (
+          <SectionHeading title="Watchlist" action="See all" onAction={() => onExploreMarkets('watchlist')} />
+          {watchlistError ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
+          {watchlistLoading ? (
+            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14 }}>
+              <VadText variant="caption" tone="secondary">Loading your saved markets…</VadText>
+            </View>
+          ) : watchlistMarkets.length ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9, paddingRight: 3 }}>
-              {featuredRows.map(({ market }) => (
-                <Pressable key={market.instrument_public_id} accessibilityRole="button" onPress={() => onOpenMarket(market)} style={({ pressed }) => ({ width: density.phone ? 204 : 220, minHeight: 115, borderRadius: 17, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 11, gap: 6, opacity: pressed ? 0.8 : 1 })}>
+              {watchlistMarkets.map((market) => (
+                <View key={market.instrument_public_id} style={{ width: density.phone ? 204 : 220, minHeight: 115, borderRadius: 17, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 11, gap: 6 }}>
                   <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
-                    <MarketThumb market={market} />
-                    <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                      <VadText variant="caption" numberOfLines={3} style={{ fontSize: 12, lineHeight: 15 }}>{market.title}</VadText>
-                      <VadText variant="caption" tone="yes" style={{ fontWeight: '700' }}>Yes · {formatProbability(market.yes_price)}</VadText>
-                    </View>
+                    <Pressable accessibilityRole="button" onPress={() => onOpenMarket(market)} style={{ flexDirection: 'row', gap: 8, flex: 1 }}>
+                      <MarketThumb market={market} />
+                      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                        <VadText variant="caption" numberOfLines={3} style={{ fontSize: 12, lineHeight: 15 }}>{market.title}</VadText>
+                        <VadText variant="caption" tone="yes" style={{ fontWeight: '700' }}>Yes · {formatProbability(market.yes_price)}</VadText>
+                      </View>
+                    </Pressable>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Remove from watchlist" disabled={watchlistBusyId === market.instrument_public_id} onPress={() => void toggleWatchlist(market.instrument_public_id)} hitSlop={8}>
+                      <VadIcon name="close" size={15} tone="secondary" />
+                    </Pressable>
                   </View>
-                  <View style={{ flex: 1 }} />
-                </Pressable>
+                </View>
               ))}
             </ScrollView>
           ) : (
-            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14 }}>
-              <VadText variant="caption" tone="secondary">{featuredSettings.enabled ? 'Featured markets will appear here when VAD publishes them.' : 'Featured markets are currently disabled by VAD.'}</VadText>
+            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 5 }}>
+              <VadText variant="bodyStrong">Your watchlist is empty</VadText>
+              <VadText variant="caption" tone="secondary">Save a market from Trending Markets to keep it here.</VadText>
             </View>
           )}
         </View>
@@ -164,7 +215,7 @@ export function HomeScreen({
                 <VadText variant="bodyStrong" style={{ fontSize: 14 }}>{formatProbability(market.yes_price)}</VadText>
                 <VadText variant="caption" tone={Number(entry.price_movement) >= 0 ? 'yes' : 'no'}>{Number(entry.price_movement) > 0 ? '▲ ' : Number(entry.price_movement) < 0 ? '▼ ' : ''}{Math.abs(Number(entry.price_movement) || 0).toFixed(1)}%</VadText>
               </View>
-              <VadIcon name="chevronRight" size={17} tone="tertiary" />
+<Pressable accessibilityRole="button" accessibilityLabel={watchlistIds.includes(market.instrument_public_id) ? 'Remove from watchlist' : 'Add to watchlist'} disabled={watchlistBusyId === market.instrument_public_id} onPress={() => void toggleWatchlist(market.instrument_public_id)} style={{ paddingHorizontal: 5, paddingVertical: 8 }}><VadText variant="caption" tone="brand">{watchlistIds.includes(market.instrument_public_id) ? 'Saved' : 'Save'}</VadText></Pressable>
             </Pressable>
           )) : (
             <View style={{ padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
