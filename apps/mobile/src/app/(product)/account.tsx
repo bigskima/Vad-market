@@ -173,6 +173,27 @@ export default function AccountScreen() {
         </VadProgressiveSection>
 
         <VadProgressiveSection
+          title="Money & verification"
+          icon="wallet"
+          summary={<VadText variant="caption" tone="tertiary">Funding · Withdrawals · Identity checks</VadText>}
+        >
+          <SettingsList>
+            <AccountRow
+              icon="wallet"
+              title="Funding & withdrawals"
+              subtitle="Availability, limits and fees"
+              onPress={() => router.push('/account/funding')}
+            />
+            <AccountRow
+              icon="account"
+              title="Identity verification"
+              subtitle="Review your verification status"
+              onPress={() => router.push('/account/verification')}
+            />
+          </SettingsList>
+        </VadProgressiveSection>
+
+        <VadProgressiveSection
           title="Security & access"
           icon="operations"
           summary={<VadText variant="caption" tone="tertiary">Policies{hasAdminAccess ? ' · Admin' : ''}</VadText>}
