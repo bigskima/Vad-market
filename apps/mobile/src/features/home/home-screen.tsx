@@ -16,7 +16,7 @@ import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchli
 import { supabase } from '@/lib/supabase';
 import { getWalletBalanceHistory, type WalletBalanceHistoryPoint } from '@/services/wallet-history-api';
 
-type Category = 'All' | 'Sports' | 'Politics' | 'Economy' | 'Tech' | 'Entertainment';
+type Category = string;
 
 export function HomeScreen({
   markets, wallets, promotions, trendingMarkets, trendingSettings, marketError, onRetryMarkets,
@@ -148,6 +148,7 @@ export function HomeScreen({
   };
   const visibleMarkets = markets.filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency));
   const activeMarkets = visibleMarkets.filter((market) => getMarketTiming(market, now).tradingOpen && market.resolution_status !== 'RESOLVED');
+  const availableCategories = useMemo(() => ['All', ...Array.from(new Set(visibleMarkets.map((market) => market.category?.trim()).filter((value): value is string => Boolean(value)))) .sort((a, b) => a.localeCompare(b))], [visibleMarkets]);
   const trendingRows = useMemo(() => trendingMarkets
     .map((entry) => ({ entry, market: activeMarkets.find((market) => market.instrument_public_id === entry.instrument_public_id) }))
     .filter((row): row is { entry: TrendingMarketRow; market: MarketCatalogItem } => Boolean(row.market))
@@ -322,7 +323,7 @@ export function HomeScreen({
             </View>
           ) : null}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7 }}>
-            {(['All', 'Sports', 'Politics', 'Economy', 'Tech', 'Entertainment'] as Category[]).map((item) => (
+            {availableCategories.map((item) => (
               <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: category === item }} onPress={() => setCategory(item)} style={{ minHeight: 35, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 20, backgroundColor: category === item ? theme.colors.brandPrimary : theme.colors.surface, borderWidth: 1, borderColor: category === item ? theme.colors.brandPrimary : theme.colors.border }}>
                 <VadText variant="caption" tone={category === item ? 'inverse' : 'secondary'}>{item}</VadText>
               </Pressable>
@@ -467,13 +468,8 @@ function BalanceSparkline({ values }: { values: number[] }) {
 
 function getGreeting() { const hour = new Date().getHours(); return hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'; }
 function categoryMatches(value: string | null, category: Category) {
-  const text = (value ?? '').toLowerCase();
-  if (category === 'Sports') return text.includes('sport') || text.includes('football') || text.includes('basketball');
-  if (category === 'Politics') return text.includes('polit') || text.includes('election') || text.includes('government');
-  if (category === 'Economy') return text.includes('econom') || text.includes('finance') || text.includes('market');
-  if (category === 'Tech') return text.includes('tech') || text.includes('ai') || text.includes('crypto');
-  if (category === 'Entertainment') return text.includes('entertain') || text.includes('movie') || text.includes('music');
-  return true;
+  if (category === 'All') return true;
+  return (value ?? '').trim().toLocaleLowerCase() === category.trim().toLocaleLowerCase();
 }
 function formatMoney(value: number, asset: string) { return asset === 'NGN' ? '₦' + value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDC'; }
 function formatProbability(value: number | string | null | undefined) { const n = Number(value); return Number.isFinite(n) ? `${Math.round(n <= 1 ? n * 100 : n)}%` : '—'; }
