@@ -23,7 +23,10 @@ export type VadIconName =
   | 'arrowUp'
   | 'arrowDown'
   | 'eye'
-  | 'eyeOff';
+  | 'eyeOff'
+  | 'sun'
+  | 'moon'
+  | 'monitor';
 
 type Tone = 'primary' | 'secondary' | 'tertiary' | 'brand' | 'yes' | 'no' | 'inverse';
 
@@ -50,6 +53,49 @@ export function VadIcon({
   } as const;
   const ink = color ?? tones[tone];
   const line = Math.max(1.5, size * 0.085);
+
+  if (name === 'sun') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.38, height: size * 0.38, borderWidth: line, borderColor: ink, borderRadius: size }} />
+        {[0, 45, 90, 135].map((angle) => (
+          <View
+            key={angle}
+            style={{
+              position: 'absolute',
+              width: size * 0.82,
+              height: line,
+              borderRadius: line,
+              backgroundColor: ink,
+              transform: [{ rotate: `${angle}deg` }],
+            }}
+          />
+        ))}
+        <View style={{ width: size * 0.24, height: size * 0.24, borderRadius: size, backgroundColor: theme.colors.surfaceRaised, position: 'absolute' }} />
+        <View style={{ width: size * 0.32, height: size * 0.32, borderRadius: size, backgroundColor: theme.colors.surfaceRaised, position: 'absolute' }} />
+        <View style={{ width: size * 0.38, height: size * 0.38, borderWidth: line, borderColor: ink, borderRadius: size, position: 'absolute' }} />
+      </View>
+    );
+  }
+
+  if (name === 'moon') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.7, height: size * 0.7, borderRadius: size, borderWidth: line, borderColor: ink, transform: [{ rotate: '-28deg' }] }} />
+        <View style={{ position: 'absolute', width: size * 0.56, height: size * 0.62, borderRadius: size, backgroundColor: theme.colors.surface, right: size * 0.04, top: size * 0.02 }} />
+      </View>
+    );
+  }
+
+  if (name === 'monitor') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.84, height: size * 0.58, borderWidth: line, borderColor: ink, borderRadius: size * 0.1 }} />
+        <View style={{ position: 'absolute', width: size * 0.1, height: size * 0.16, backgroundColor: ink, bottom: size * 0.1 }} />
+        <View style={{ position: 'absolute', width: size * 0.42, height: line, borderRadius: line, backgroundColor: ink, bottom: size * 0.06 }} />
+      </View>
+    );
+  }
 
   if (name === 'eye' || name === 'eyeOff') {
     return (
