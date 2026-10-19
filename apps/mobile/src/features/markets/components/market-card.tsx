@@ -15,10 +15,12 @@ export function MarketCard({
   market,
   onPress,
   compact = false,
+  onSelectOutcome,
 }: {
   market: MarketCatalogItem;
   onPress: () => void;
   compact?: boolean;
+  onSelectOutcome?: (outcome: 'YES' | 'NO') => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -73,8 +75,8 @@ export function MarketCard({
         </View>
       </View>
       <View style={{ width: tight ? 62 : 74, gap: 5 }}>
-        <OutcomeTile label="Yes" value={yes} positive compact={tight} />
-        <OutcomeTile label="No" value={no} positive={false} compact={tight} />
+        <OutcomeTile label="Yes" value={yes} positive compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('YES') : undefined} />
+        <OutcomeTile label="No" value={no} positive={false} compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('NO') : undefined} />
       </View>
       <VadIcon name="chevronRight" size={19} tone="secondary" />
     </Pressable>
@@ -88,14 +90,14 @@ function formatVolume(value: number) {
   }).format(value);
 }
 
-function OutcomeTile({ label, value, positive, compact }: { label: string; value: string; positive: boolean; compact: boolean }) {
+function OutcomeTile({ label, value, positive, compact, onPress }: { label: string; value: string; positive: boolean; compact: boolean; onPress?: () => void }) {
   const theme = useVadTheme();
   const foreground = positive ? theme.colors.yes : theme.colors.no;
   const background = positive ? theme.colors.yesSoft : theme.colors.noSoft;
   return (
-    <View style={{ minHeight: compact ? 31 : 35, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 3, gap: 0, backgroundColor: background, borderWidth: 1, borderColor: positive ? theme.colors.yes : theme.colors.no }}>
+    <Pressable disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={onPress ? `Trade ${label} on this market at ${value}` : undefined} onPress={onPress} style={({ pressed }) => ({ minHeight: compact ? 31 : 35, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 3, gap: 0, backgroundColor: background, borderWidth: 1, borderColor: positive ? theme.colors.yes : theme.colors.no, opacity: pressed ? 0.72 : 1 })}>
       <VadText variant="caption" style={{ color: foreground, fontSize: 10, lineHeight: 12 }}>{label}</VadText>
       <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 13 : 14, lineHeight: 17, fontWeight: '700' }}>{value}</VadText>
-    </View>
+    </Pressable>
   );
 }
