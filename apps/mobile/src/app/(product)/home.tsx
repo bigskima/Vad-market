@@ -55,7 +55,6 @@ export default function HomeRoute() {
           wallets={data.wallet}
           userName={userName}
           promotions={data.homePromotions}
-          vadMarkets={data.vadMarkets}
           featuredMarkets={data.featuredMarkets}
           trendingMarkets={data.trendingMarkets}
           featuredSettings={data.featuredMarketSettings}
