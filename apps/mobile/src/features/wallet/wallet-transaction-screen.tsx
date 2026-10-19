@@ -92,7 +92,9 @@ export function WalletTransactionScreen({ intentId, onOpenWallet }: { intentId: 
     return (
       <VadEmptyState
         title="Transaction unavailable"
-        body="This payment could not be found in your recent wallet activity."
+        body="This payment could not be found in your recent wallet activity. It may have expired, or it may not belong to your account."
+        actionLabel="Back to wallet"
+        onAction={onOpenWallet}
       />
     );
   }
