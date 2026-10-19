@@ -8,6 +8,7 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
+import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -19,9 +20,11 @@ const CARD_GAP = 8;
 export function HomePromotionCarousel({
   promotions,
   onOpen,
+  onDismiss,
 }: {
   promotions: HomePromotion[];
   onOpen: (targetPath: string) => void;
+  onDismiss: () => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -152,16 +155,12 @@ export function HomePromotionCarousel({
         ))}
       </ScrollView>
 
-      {promotions.length > 1 ? (
+      <View style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <View
           accessibilityLabel={`Promotion ${activeIndex + 1} of ${promotions.length}`}
-          style={{
-            flexDirection: 'row',
-            alignSelf: 'center',
-            gap: 4,
-          }}
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}
         >
-          {promotions.map((promotion, index) => (
+          {promotions.length > 1 ? promotions.map((promotion, index) => (
             <View
               key={`dot-${promotion.public_id}`}
               style={{
@@ -174,9 +173,31 @@ export function HomePromotionCarousel({
                     : theme.colors.borderStrong,
               }}
             />
-          ))}
+          )) : (
+            <VadText variant="caption" tone="tertiary">1 highlight</VadText>
+          )}
         </View>
-      ) : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss highlights"
+          onPress={onDismiss}
+          hitSlop={4}
+          style={({ pressed }) => ({
+            width: 44,
+            height: 44,
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.78 : 1,
+            transform: [{ scale: pressed ? 0.97 : 1 }],
+          })}
+        >
+          <VadIcon name="close" size={17} tone="secondary" />
+        </Pressable>
+      </View>
     </View>
   );
 }
