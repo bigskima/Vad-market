@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
@@ -13,6 +13,7 @@ import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-pr
 import type { HomePromotion, TrendingMarketRow, TrendingMarketSettings } from '@/services/home-content-api';
 import type { MarketCatalogItem, WalletRow } from '@/services/market-api';
 import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchlist } from '@/services/market-watchlist-api';
+import { supabase } from '@/lib/supabase';
 
 type Category = 'All' | 'Sports' | 'Politics' | 'Economy' | 'Tech' | 'Entertainment';
 
@@ -44,6 +45,8 @@ export function HomeScreen({
   const [category, setCategory] = useState<Category>('All');
   const [dismissedPromotion, setDismissedPromotion] = useState<string | null>(null);
   const [balanceVisible, setBalanceVisible] = useState(true);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
   const [watchlistLoading, setWatchlistLoading] = useState(true);
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
@@ -51,6 +54,18 @@ export function HomeScreen({
 
   useEffect(() => {
     let active = true;
+    if (!userId) {
+      setProfileName(null);
+      setProfileAvatarUrl(null);
+      return () => { active = false; };
+    }
+    void supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle()
+      .then(({ data }) => {
+        if (!active || !data) return;
+        setProfileName(data.display_name ?? null);
+        setProfileAvatarUrl(data.avatar_path ? supabase.storage.from('profile-media').getPublicUrl(data.avatar_path).data.publicUrl : null);
+      })
+      .catch(() => { if (active) { setProfileName(null); setProfileAvatarUrl(null); } });
     setWatchlistLoading(true);
     void listUserMarketWatchlist()
       .then((rows) => {
@@ -103,12 +118,12 @@ export function HomeScreen({
   return (
     <View style={{ width: '100%', gap: density.compact ? 14 : 18 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 }}>
-        <View style={{ width: 43, height: 43, borderRadius: 22, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
-          <VadIcon name="account" size={23} tone="secondary" />
+        <View style={{ width: 43, height: 43, borderRadius: 22, overflow: 'hidden', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
+          {profileAvatarUrl ? <Image source={{ uri: profileAvatarUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name="account" size={23} tone="secondary" />}
         </View>
         <View style={{ flex: 1, gap: 1 }}>
           <VadText variant="caption" tone="secondary">Good {getGreeting()},</VadText>
-          <VadText variant="bodyStrong" style={{ fontSize: 18, lineHeight: 22 }}>{userName || 'VAD member'}</VadText>
+          <VadText variant="bodyStrong" style={{ fontSize: 18, lineHeight: 22 }}>{profileName || userName || 'VAD member'}</VadText>
         </View>
         <HomeHeaderAction label="Search markets" icon="search" onPress={() => onExploreMarkets()} />
         <HomeHeaderAction label="Notifications" icon="bell" onPress={onNotifications} />
