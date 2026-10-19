@@ -46,6 +46,7 @@ export function ProductRoute({
 }: Props) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const shouldHideTopBar = hideTopBar || active === 'Home';
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
@@ -58,7 +59,7 @@ export function ProductRoute({
   if (isLoading || data.loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        {!hideTopBar ? (
+        {!shouldHideTopBar ? (
           <View
             style={{
               minHeight: density.phone ? 56 : 64,
@@ -206,7 +207,7 @@ export function ProductRoute({
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {!hideTopBar ? (
+      {!shouldHideTopBar ? (
         <ProductTopBar
           active={active}
           email={email}
