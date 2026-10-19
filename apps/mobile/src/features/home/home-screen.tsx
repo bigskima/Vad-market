@@ -256,10 +256,10 @@ export function HomeScreen({
           ) : watchlistMarkets.length ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9, paddingRight: 3 }}>
               {watchlistMarkets.map((market) => (
-                <View key={market.instrument_public_id} style={{ width: density.phone ? 204 : 220, minHeight: 115, borderRadius: 17, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 11, gap: 6 }}>
+                <View key={market.instrument_public_id} style={{ width: density.phone ? 156 : 220, minHeight: 98, borderRadius: 17, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 11, gap: 6 }}>
                   <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
                     <Pressable accessibilityRole="button" onPress={() => onOpenMarket(market)} style={{ flexDirection: 'row', gap: 8, flex: 1 }}>
-                      <MarketThumb market={market} />
+                      <MarketThumb market={market} size={38} />
                       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
                         <VadText variant="caption" numberOfLines={3} style={{ fontSize: 12, lineHeight: 15 }}>{market.title}</VadText>
                         <VadText variant="caption" tone="yes" style={{ fontWeight: '700' }}>Yes · {formatProbability(market.yes_price)}</VadText>
@@ -349,7 +349,7 @@ export function HomeScreen({
               <VadText variant="caption" tone="secondary">{trendingSettings.enabled ? 'No trending markets are available for the selected category right now.' : 'Trending markets are currently disabled.'}</VadText>
             </View>
           )}
-          {!activeMarkets.length ? <VadText variant="caption" tone="tertiary">No markets are currently open for trading.</VadText> : null}
+          {!marketError && !activeMarkets.length ? <VadText variant="caption" tone="tertiary">No markets are currently open for trading.</VadText> : null}
         </View>
       </TourTarget>
     </View>
@@ -371,12 +371,12 @@ function SectionHeading({ title, action, onAction }: { title: string; action: st
   return <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}><VadText variant="heading" style={{ fontSize: 18 }}>{title}</VadText><Pressable accessibilityRole="button" onPress={onAction} hitSlop={8}><VadText variant="caption" style={{ color: theme.colors.brandPrimary, fontWeight: '600' }}>{action}</VadText></Pressable></View>;
 }
 
-function MarketThumb({ market }: { market: MarketCatalogItem }) {
+function MarketThumb({ market, size = 46 }: { market: MarketCatalogItem; size?: number }) {
   const theme = useVadTheme();
   const mediaUrl = market.media_path ? (/^https?:\/\//i.test(market.media_path) ? market.media_path : supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl) : null;
   const category = market.category?.toLowerCase() ?? '';
   const icon = category.includes('sport') ? 'activity' : category.includes('tech') ? 'operations' : category.includes('polit') ? 'community' : category.includes('econom') ? 'markets' : 'activity';
-  return <View style={{ width: 46, height: 46, borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>{mediaUrl ? <Image source={{ uri: mediaUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name={icon as 'activity'} size={23} tone="secondary" />}</View>;
+  return <View style={{ width: size, height: size, borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>{mediaUrl ? <Image source={{ uri: mediaUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name={icon as 'activity'} size={Math.round(size * 0.5)} tone="secondary" />}</View>;
 }
 
 function MarketSparkline({ values }: { values: number[] }) {
