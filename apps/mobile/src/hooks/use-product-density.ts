@@ -1,5 +1,7 @@
 import { useWindowDimensions } from 'react-native';
 
+import { radius, spacing } from '@/theme/tokens';
+
 /**
  * Shared density rules for the consumer product surface.
  * Mobile ends at the md breakpoint so tablet/desktop layouts never become a
@@ -27,14 +29,14 @@ export function useProductDensity() {
     narrow,
     short,
     compact,
-    cardPadding: phone ? (compact ? 12 : 14) : 20,
-    cardRadius: phone ? 18 : 22,
-    controlHeight: phone ? 46 : 50,
+    cardPadding: phone ? (compact ? spacing.sm : spacing.md) : spacing.xl,
+    cardRadius: radius.lg,
+    controlHeight: phone ? 44 : 48,
     smallControlHeight: 44,
-    largeControlHeight: phone ? 50 : 56,
-    horizontalPadding: phone ? (narrow ? 12 : 16) : 24,
-    pageTopPadding: phone ? (compact ? 12 : 16) : 24,
-    sectionGap: phone ? (compact ? 16 : 20) : 28,
+    largeControlHeight: phone ? 48 : 56,
+    horizontalPadding: phone ? (narrow ? spacing.sm : spacing.md) : spacing.xl,
+    pageTopPadding: phone ? (compact ? spacing.sm : spacing.md) : spacing.xl,
+    sectionGap: phone ? (compact ? spacing.md : spacing.xl) : spacing.xl,
     contentBottomPadding: phone ? 96 : 48,
   } as const;
 }
