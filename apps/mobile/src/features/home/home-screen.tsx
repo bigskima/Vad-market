@@ -396,12 +396,13 @@ function MarketThumb({ market, size = 46 }: { market: MarketCatalogItem; size?: 
 }
 
 function MarketSparkline({ values }: { values: number[] }) {
+  const [chartWidth, setChartWidth] = useState(0);
   const samples = values.slice(-18);
   if (samples.length < 2) return null;
   const min = Math.min(...samples);
   const max = Math.max(...samples);
   const range = max - min || 1;
-  const width = 180;
+  const width = Math.max(100, chartWidth || 132);
   const height = 20;
   const padding = 2;
   const points = samples.map((value, index) => ({
@@ -409,7 +410,7 @@ function MarketSparkline({ values }: { values: number[] }) {
     y: height - padding - ((value - min) / range) * (height - padding * 2),
   }));
   return (
-    <View accessibilityLabel="Executed YES price history" style={{ width: '100%', height, overflow: 'hidden' }}>
+    <View accessibilityLabel="Executed YES price history" onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)} style={{ width: '100%', height, overflow: 'hidden' }}>
       {points.slice(0, -1).map((point, index) => {
         const next = points[index + 1];
         const dx = next.x - point.x;
