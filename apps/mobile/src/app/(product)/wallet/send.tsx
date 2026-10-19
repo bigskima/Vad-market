@@ -13,7 +13,7 @@ export default function SendRoute() {
     <ProductSubpage title="Send" maxWidth={760}>
       <View style={{ gap: theme.spacing.md }}>
         <VadText variant="caption" tone="secondary">
-          Transfer funds securely to another VAD account.
+          Send is reserved for account-to-account transfers when that service is enabled.
         </VadText>
         <VadEmptyState
           title="Transfers are not available yet"
