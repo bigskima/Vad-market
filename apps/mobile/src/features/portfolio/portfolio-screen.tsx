@@ -183,6 +183,13 @@ export function PortfolioScreen({
               </View>
             ))}
           </ProgressiveGrid>
+        ) : allOrders.length > 0 ? (
+          <VadEmptyState
+            title="Orders hidden by currency settings"
+            body="Your orders are still on your account, but their settlement currency is disabled. Review your enabled currencies to show them here."
+            actionLabel="Review wallet currencies"
+            onAction={onOpenWallet}
+          />
         ) : (
           <VadEmptyState title="No open orders" body="Filled orders move to Positions." />
         )
@@ -203,6 +210,13 @@ export function PortfolioScreen({
               </View>
             ))}
           </ProgressiveGrid>
+        ) : allSettlements.length > 0 ? (
+          <VadEmptyState
+            title="Payouts hidden by currency settings"
+            body="Your settlement history is still on your account, but its currency is disabled. Review your enabled currencies to show it here."
+            actionLabel="Review wallet currencies"
+            onAction={onOpenWallet}
+          />
         ) : (
           <VadEmptyState title="No payouts yet" body="Settled winning payouts appear here with fees and net credit." />
         )
