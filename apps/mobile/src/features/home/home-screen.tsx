@@ -163,7 +163,7 @@ export function HomeScreen({
       </View>
 
       <TourTarget id="home-overview">
-        <View style={{ padding: density.compact ? 14 : 16, minHeight: density.compact ? 122 : 132, overflow: 'hidden', borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, gap: 6 }}>
+        <View style={{ padding: density.compact ? 14 : 16, minHeight: density.compact ? 122 : 132, overflow: 'hidden', borderRadius: 20, borderWidth: 1, borderColor: theme.mode === 'dark' ? '#123B3B' : theme.colors.border, backgroundColor: theme.mode === 'dark' ? '#071B1D' : theme.colors.surface, gap: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <VadText variant="body" tone="secondary">Total balance</VadText>
             <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? 'Hide balance' : 'Show balance'} onPress={() => setBalanceVisible((visible) => !visible)} hitSlop={10}>
@@ -175,7 +175,7 @@ export function HomeScreen({
           </VadText>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap', paddingRight: 112 }}>
             {hasBalanceTrend && balanceChange !== null ? (
-              <VadText variant="caption" tone={balanceChange >= 0 ? 'yes' : 'no'}>
+              <VadText variant="caption" style={{ color: balanceChange >= 0 ? '#20D99A' : theme.colors.no }}>
                 {balanceChange >= 0 ? '▲ +' : '▼ '}{formatMoney(Math.abs(balanceChange), primaryAsset ?? 'NGN')}{balanceChangePercent !== null ? ` (${balanceChangePercent >= 0 ? '+' : ''}${balanceChangePercent.toFixed(1)}%)` : ''} · 30d
               </VadText>
             ) : (
@@ -345,7 +345,7 @@ function MarketSparkline({ values }: { values: number[] }) {
         const dy = next.y - point.y;
         const length = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-        return <View key={index} style={{ position: 'absolute', left: (point.x + next.x) / 2 - length / 2, top: (point.y + next.y) / 2 - 1, width: length, height: 2, borderRadius: 2, backgroundColor: theme.colors.yes, transform: [{ rotate: `${angle}deg` }] }} />;
+        return <View key={index} style={{ position: 'absolute', left: (point.x + next.x) / 2 - length / 2, top: (point.y + next.y) / 2 - 1, width: length, height: 2, borderRadius: 2, backgroundColor: '#20D99A', transform: [{ rotate: `${angle}deg` }] }} />;
       })}
     </View>
   );
@@ -383,13 +383,13 @@ function BalanceSparkline({ values }: { values: number[] }) {
               width: length,
               height: 2,
               borderRadius: 2,
-              backgroundColor: theme.colors.yes,
+              backgroundColor: '#20D99A',
               transform: [{ rotate: `${angle}deg` }],
             }}
           />
         );
       })}
-      <View style={{ position: 'absolute', left: points[points.length - 1].x - 3, top: points[points.length - 1].y - 3, width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.yes }} />
+      <View style={{ position: 'absolute', left: points[points.length - 1].x - 3, top: points[points.length - 1].y - 3, width: 6, height: 6, borderRadius: 3, backgroundColor: '#20D99A' }} />
     </View>
   );
 }
