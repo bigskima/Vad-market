@@ -35,6 +35,7 @@ export function PortfolioScreen({
   onOpenPosition,
   onOpenOrder,
   onOpenWallet,
+  onExploreMarkets,
 }: {
   positions: PositionRow[];
   orders: OrderRow[];
@@ -42,6 +43,7 @@ export function PortfolioScreen({
   onOpenPosition: (position: PositionRow) => void;
   onOpenOrder: (order: OrderRow) => void;
   onOpenWallet: () => void;
+  onExploreMarkets: () => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -164,7 +166,12 @@ export function PortfolioScreen({
             onAction={onOpenWallet}
           />
         ) : (
-          <VadEmptyState title="No matched positions" body="Peer-pool stakes appear in Predictions." />
+          <VadEmptyState
+            title="No matched positions"
+            body="When you take a position in a market, it will appear here. Peer-pool stakes appear in Predictions."
+            actionLabel="Explore markets"
+            onAction={onExploreMarkets}
+          />
         )
       ) : null}
 
