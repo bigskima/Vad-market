@@ -8,6 +8,7 @@ import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { useBalanceVisibility } from '@/hooks/use-balance-visibility';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getMyUsdcNetworkBalances,
@@ -16,6 +17,7 @@ import {
 
 export function UsdcWalletBalances() {
   const theme = useVadTheme();
+  const { hidden: balancesHidden } = useBalanceVisibility();
   const [wallets, setWallets] = useState<string[]>([]);
   const [networks, setNetworks] = useState<UsdcNetworkBalanceGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,7 @@ export function UsdcWalletBalances() {
       ) : (
         <View style={{ gap: theme.spacing.sm }}>
           {networks.map((network) => (
-            <NetworkBalanceCard key={network.chainCode} network={network} />
+            <NetworkBalanceCard key={network.chainCode} network={network} hidden={balancesHidden} />
           ))}
           {error ? (
             <VadText variant="caption" tone="tertiary">{error}</VadText>
@@ -93,7 +95,7 @@ export function UsdcWalletBalances() {
   );
 }
 
-function NetworkBalanceCard({ network }: { network: UsdcNetworkBalanceGroup }) {
+function NetworkBalanceCard({ network, hidden }: { network: UsdcNetworkBalanceGroup; hidden: boolean }) {
   const theme = useVadTheme();
   const readable = network.readStatus === 'OK';
   const hasBalanceResult = network.balances.some((balance) => balance.balance !== null);
@@ -123,7 +125,7 @@ function NetworkBalanceCard({ network }: { network: UsdcNetworkBalanceGroup }) {
             <View key={balance.walletAddress} style={{ gap: 3 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: theme.spacing.sm }}>
                 <VadText variant="caption" tone="secondary">USDC balance</VadText>
-                <VadText variant="bodyStrong">{formatUsdc(balance.balance ?? '0')} USDC</VadText>
+                <VadText variant="bodyStrong">{hidden ? '••••••' : `${formatUsdc(balance.balance ?? '0')} USDC`}</VadText>
               </View>
               <VadText variant="caption" tone="tertiary" numberOfLines={1}>
                 {shortAddress(balance.walletAddress)}
@@ -131,7 +133,7 @@ function NetworkBalanceCard({ network }: { network: UsdcNetworkBalanceGroup }) {
               <VadText variant="caption" tone={balance.gasReady ? 'secondary' : 'warning'}>
                 {network.chainCode === 'ARC'
                   ? (balance.gasReady ? 'Native USDC gas balance detected' : 'No native USDC gas balance detected')
-                  : (balance.gasReady ? `Gas balance: ${formatUsdc(balance.gasBalance ?? '0')} ${balance.gasSymbol}` : `No ${balance.gasSymbol} gas balance detected`)}
+                  : (balance.gasReady ? `Gas balance: ${hidden ? '••••••' : `${formatUsdc(balance.gasBalance ?? '0')} ${balance.gasSymbol}`}` : `No ${balance.gasSymbol} gas balance detected`)}
               </VadText>
             </View>
           ))}
