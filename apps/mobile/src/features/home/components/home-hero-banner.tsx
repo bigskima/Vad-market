@@ -17,7 +17,9 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
     if (!supabaseConfiguration.ready) return;
     void supabase.functions.invoke('home-hero-image-runtime', { body: {} }).then(({ data, error }) => {
       if (!cancelled && !error && typeof data?.imageUrl === 'string') setHeroImageUrl(data.imageUrl);
-    }).catch(() => { /* Keep the designed gradient fallback if AI artwork is unavailable. */ });
+    }).catch(() => {
+      // Keep the designed brand surface when optional artwork is unavailable.
+    });
     return () => { cancelled = true; };
   }, []);
 
@@ -26,46 +28,44 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
       accessibilityLabel="Discover VAD markets"
       style={{
         width: '100%',
-        minHeight: density.phone ? 154 : density.desktop ? 176 : 164,
+        minHeight: density.phone ? 136 : 148,
         overflow: 'hidden',
-        borderRadius: density.phone ? 22 : 26,
+        borderRadius: theme.radius.lg,
         borderWidth: 1,
-        borderColor: theme.colors.brandPrimary,
+        borderColor: theme.colors.border,
         backgroundColor: theme.colors.brandStrong,
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
         alignItems: 'flex-start',
-        paddingHorizontal: density.phone ? 19 : 24,
-        paddingVertical: density.phone ? 19 : 23,
-        gap: 12,
+        paddingHorizontal: density.phone ? theme.spacing.md : theme.spacing.lg,
+        paddingVertical: theme.spacing.md,
+        gap: theme.spacing.sm,
       }}
     >
       {heroImageUrl ? (
         <Image
           source={{ uri: heroImageUrl }}
           resizeMode="cover"
-          accessibilityLabel="AI-generated VAD discovery artwork"
-          style={{ position: 'absolute', width: '100%', height: '100%', left: 0, top: 0, opacity: 0.72 }}
+          accessibilityLabel="VAD discovery artwork"
+          style={{ position: 'absolute', width: '100%', height: '100%', left: 0, top: 0, opacity: 0.62 }}
         />
       ) : null}
-      <View style={{ gap: 3, maxWidth: 540 }}>
-        <VadText
-          variant={density.phone ? 'title' : 'heading'}
-          tone="inverse"
-          numberOfLines={2}
-          style={{
-            fontSize: density.phone ? 23 : 28,
-            lineHeight: density.phone ? 28 : 34,
-            letterSpacing: -0.35,
-          }}
-        >
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          backgroundColor: theme.colors.brandStrong,
+          opacity: heroImageUrl ? 0.26 : 1,
+        }}
+      />
+      <View style={{ gap: theme.spacing.xxs, maxWidth: 540 }}>
+        <VadText variant="title" tone="inverse" numberOfLines={2}>
           Discover what happens next.
         </VadText>
-        <VadText
-          variant="caption"
-          tone="inverse"
-          numberOfLines={2}
-          style={{ opacity: 0.82, lineHeight: 16 }}
-        >
+        <VadText variant="caption" tone="inverse" numberOfLines={2} style={{ opacity: 0.84 }}>
           Explore market questions and follow the outcomes.
         </VadText>
       </View>
@@ -74,21 +74,22 @@ export function HomeHeroBanner({ onExplore }: { onExplore: () => void }) {
         accessibilityLabel="Explore markets"
         onPress={onExplore}
         style={({ pressed }) => ({
-          minHeight: 38,
+          minHeight: 44,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 5,
-          paddingHorizontal: 15,
-          borderRadius: 12,
+          gap: theme.spacing.xxs,
+          paddingHorizontal: theme.spacing.md,
+          borderRadius: theme.radius.md,
           backgroundColor: theme.colors.surface,
-          opacity: pressed ? 0.82 : 1,
+          opacity: pressed ? 0.84 : 1,
+          transform: [{ scale: pressed ? 0.97 : 1 }],
         })}
       >
-        <VadText variant="caption" style={{ color: theme.colors.brandPrimary, fontWeight: '700' }}>
+        <VadText variant="label" tone="brand">
           Explore markets
         </VadText>
-        <VadIcon name="chevronRight" size={13} tone="brand" />
+        <VadIcon name="chevronRight" size={16} tone="brand" />
       </Pressable>
     </View>
   );
