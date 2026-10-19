@@ -13,6 +13,7 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { CryptoWalletConnections } from '@/features/wallet/crypto-wallet-connections';
+import { WalletSectionErrorBoundary } from '@/features/wallet/wallet-section-error-boundary';
 import { OnchainActivityPanel } from '@/features/wallet/onchain-activity-panel';
 import { OnchainPositionsPanel } from '@/features/wallet/onchain-positions-panel';
 import { UsdcWalletBalances } from '@/features/wallet/usdc-wallet-balances';
@@ -137,10 +138,20 @@ export function WalletScreen({
         </TourTarget>
       ) : null}
 
-      <CryptoWalletConnections />
-      {currencyPreference.isCurrencyEnabled('USDC') ? <UsdcWalletBalances /> : null}
-      <OnchainActivityPanel enabled={hasUsdc} />
-      <OnchainPositionsPanel enabled={hasUsdc} />
+      <WalletSectionErrorBoundary title="Embedded wallet unavailable">
+        <CryptoWalletConnections />
+      </WalletSectionErrorBoundary>
+      {currencyPreference.isCurrencyEnabled('USDC') ? (
+        <WalletSectionErrorBoundary title="USDC balances unavailable">
+          <UsdcWalletBalances />
+        </WalletSectionErrorBoundary>
+      ) : null}
+      <WalletSectionErrorBoundary title="On-chain activity unavailable">
+        <OnchainActivityPanel enabled={hasUsdc} />
+      </WalletSectionErrorBoundary>
+      <WalletSectionErrorBoundary title="USDC positions unavailable">
+        <OnchainPositionsPanel enabled={hasUsdc} />
+      </WalletSectionErrorBoundary>
 
       {hasNgn ? (
         <TourTarget id="wallet-activity">
