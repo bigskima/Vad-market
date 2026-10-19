@@ -19,7 +19,7 @@ import {
   type PaymentIntentRow,
 } from '@/services/payment-api';
 
-export function WalletTransactionScreen({ intentId }: { intentId: string }) {
+export function WalletTransactionScreen({ intentId, onOpenWallet }: { intentId: string; onOpenWallet: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const currencyPreference = useCurrencyPreference();
@@ -54,7 +54,14 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
   }, [load]);
 
   if (intent && !currencyPreference.isCurrencyEnabled(intent.asset_code as 'NGN' | 'USDC')) {
-    return <VadEmptyState title="Transaction hidden" body="This transaction uses a currency that is not enabled for your account or region." />;
+    return (
+      <VadEmptyState
+        title="Transaction hidden"
+        body="This transaction uses a currency that is currently disabled. Review your enabled currencies to make it visible again if the currency is eligible for your account."
+        actionLabel="Review wallet currencies"
+        onAction={onOpenWallet}
+      />
+    );
   }
 
   if (loading) {
