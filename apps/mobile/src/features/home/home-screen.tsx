@@ -20,7 +20,7 @@ type Category = 'All' | 'Sports' | 'Politics' | 'Economy' | 'Tech' | 'Entertainm
 
 export function HomeScreen({
   markets, wallets, promotions, trendingMarkets, trendingSettings,
-  userName, userId, onOpenMarket, onOpenPromotion, onExploreMarkets, onNotifications, onDeposit, onWithdraw, onSend,
+  userName, userId, hasUnreadNotifications, onOpenMarket, onOpenPromotion, onExploreMarkets, onNotifications, onDeposit, onWithdraw, onSend,
 }: {
   markets: MarketCatalogItem[];
   wallets: WalletRow[];
@@ -29,6 +29,7 @@ export function HomeScreen({
   trendingSettings: TrendingMarketSettings;
   userName: string;
   userId: string;
+  hasUnreadNotifications: boolean;
   onOpenMarket: (market: MarketCatalogItem) => void;
   onOpenPromotion: (targetPath: string) => void;
   onExploreMarkets: (category?: string) => void;
@@ -149,7 +150,7 @@ export function HomeScreen({
           <VadText variant="bodyStrong" style={{ fontSize: 18, lineHeight: 22 }}>{(profileName || userName || 'VAD member').trim().split(/\s+/)[0]}</VadText>
         </View>
         <HomeHeaderAction label="Search markets" icon="search" onPress={() => onExploreMarkets()} />
-        <HomeHeaderAction label="Notifications" icon="bell" onPress={onNotifications} />
+        <HomeHeaderAction label="Notifications" icon="bell" badge={hasUnreadNotifications} onPress={onNotifications} />
       </View>
 
       <TourTarget id="home-overview">
@@ -272,9 +273,9 @@ export function HomeScreen({
   );
 }
 
-function HomeHeaderAction({ label, icon, onPress }: { label: string; icon: 'search' | 'bell'; onPress: () => void }) {
+function HomeHeaderAction({ label, icon, badge = false, onPress }: { label: string; icon: 'search' | 'bell'; badge?: boolean; onPress: () => void }) {
   const theme = useVadTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: theme.colors.surface, opacity: pressed ? 0.7 : 1 })}><VadIcon name={icon} size={21} tone="secondary" /></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: theme.colors.surface, opacity: pressed ? 0.7 : 1 })}><VadIcon name={icon} size={21} tone="secondary" />{badge ? <View style={{ position: 'absolute', right: 3, top: 3, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.background }} /> : null}</Pressable>;
 }
 
 function QuickAction({ label, icon, color, onPress }: { label: string; icon: 'plus' | 'wallet' | 'arrowUp' | 'share'; color: string; onPress: () => void }) {
