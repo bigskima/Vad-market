@@ -19,7 +19,7 @@ import { getWalletBalanceHistory, type WalletBalanceHistoryPoint } from '@/servi
 type Category = 'All' | 'Sports' | 'Politics' | 'Economy' | 'Tech' | 'Entertainment';
 
 export function HomeScreen({
-  markets, wallets, promotions, trendingMarkets, trendingSettings,
+  markets, wallets, promotions, trendingMarkets, trendingSettings, marketError, onRetryMarkets,
   userName, userId, hasUnreadNotifications, onOpenMarket, onOpenPromotion, onExploreMarkets, onNotifications, onDeposit, onWithdraw, onSend,
 }: {
   markets: MarketCatalogItem[];
@@ -27,6 +27,8 @@ export function HomeScreen({
   promotions: HomePromotion[];
   trendingMarkets: TrendingMarketRow[];
   trendingSettings: TrendingMarketSettings;
+  marketError?: string | null;
+  onRetryMarkets: () => void;
   userName: string;
   userId: string;
   hasUnreadNotifications: boolean;
@@ -246,7 +248,7 @@ export function HomeScreen({
       <TourTarget id="home-watchlist">
         <View style={{ gap: 9 }}>
           <SectionHeading title="Watchlist" action="See all" onAction={() => onExploreMarkets('watchlist')} />
-          {watchlistError ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
+          {watchlistError && watchlistMarkets.length ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
           {watchlistLoading ? (
             <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14 }}>
               <VadText variant="caption" tone="secondary">Loading your saved markets…</VadText>
@@ -271,6 +273,14 @@ export function HomeScreen({
                 </View>
               ))}
             </ScrollView>
+          ) : marketError && watchlistIds.length ? (
+            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
+              <VadText variant="bodyStrong">Saved markets temporarily unavailable</VadText>
+              <VadText variant="caption" tone="secondary">Your saved markets are safe. The market catalogue could not be refreshed.</VadText>
+              <Pressable accessibilityRole="button" onPress={onRetryMarkets} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
+                <VadText variant="caption" tone="brand">Retry market data</VadText>
+              </Pressable>
+            </View>
           ) : watchlistError ? (
             <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
               <VadText variant="bodyStrong">Watchlist unavailable</VadText>
@@ -326,7 +336,19 @@ export function HomeScreen({
                 <VadIcon name="bookmark" size={18} tone={watchlistIds.includes(market.instrument_public_id) ? 'brand' : 'secondary'} />
               </Pressable>
             </View>
-          )) : (
+          )) : marketError ? (
+            <View style={{ padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, gap: 8 }}>
+              <VadText variant="bodyStrong">Market data unavailable</VadText>
+              <VadText variant="caption" tone="secondary">{marketError}</VadText>
+              <Pressable accessibilityRole="button" onPress={onRetryMarkets} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
+                <VadText variant="caption" tone="brand">Try again</VadText>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={{ padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
+              <VadText variant="caption" tone="secondary">{trendingSettings.enabled ? 'No trending markets are available for the selected category right now.' : 'Trending markets are currently disabled.'}</VadText>
+            </View>
+          )}
           {!activeMarkets.length ? <VadText variant="caption" tone="tertiary">No markets are currently open for trading.</VadText> : null}
         </View>
       </TourTarget>
