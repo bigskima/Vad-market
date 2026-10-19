@@ -3,6 +3,8 @@ import { Pressable, ScrollView, View, type NativeScrollEvent, type NativeSynthet
 
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
+import { useLiveNow } from '@/hooks/use-live-now';
+import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { FeaturedMarketRow } from '@/services/home-content-api';
 import type { MarketCatalogItem } from '@/services/market-api';
@@ -20,13 +22,14 @@ export function FeaturedMarketsCarousel({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const now = useLiveNow();
   const [width, setWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const liveMarkets = featured
     .filter((entry) => entry.instrument_public_id)
     .map((entry) => ({ entry, market: markets.find((item) => item.instrument_public_id === entry.instrument_public_id) }))
     .filter((row): row is { entry: FeaturedMarketRow; market: MarketCatalogItem } => Boolean(row.market))
-    .filter(({ market }) => market.status === 'OPEN' && market.resolution_status !== 'RESOLVED')
+    .filter(({ market }) => market.status === 'OPEN' && market.resolution_status !== 'RESOLVED' && getMarketTiming(market, now).tradingOpen)
     .slice(0, 8);
 
   useEffect(() => {
