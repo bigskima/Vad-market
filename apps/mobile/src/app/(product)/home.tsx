@@ -44,7 +44,7 @@ export default function HomeRoute() {
   const marketReadFailedWithoutData = Boolean(data.sectionErrors.markets && !data.markets.length);
 
   return (
-    <ProductRoute active="Home" allowCreate>
+    <ProductRoute active="Home" allowCreate hideTopBar>
       {marketReadFailedWithoutData ? (
         <View style={{ gap: theme.spacing.md }}>
           <VadErrorState
