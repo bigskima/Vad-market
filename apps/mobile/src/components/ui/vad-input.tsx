@@ -9,6 +9,7 @@ import {
 
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { VadIcon } from './vad-icon';
 import { VadDateTimeField } from './vad-date-time-field';
 import { VadText } from './vad-text';
 
@@ -23,6 +24,7 @@ type Props = TextInputProps & {
   revealable?: boolean;
   datePicker?: boolean;
   dateOnly?: boolean;
+  clearable?: boolean;
 };
 
 export function VadInput({
@@ -44,6 +46,7 @@ export function VadInput({
   revealable = false,
   datePicker,
   dateOnly,
+  clearable = false,
   secureTextEntry,
   value,
   ...props
@@ -193,6 +196,22 @@ export function VadInput({
             })}
           >
             <VadText variant="caption" tone="brand">{revealed ? 'Hide' : 'Show'}</VadText>
+          </Pressable>
+        ) : clearable && hasValue && editable ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Clear ${label ?? 'input'}`}
+            onPress={() => onChangeText?.('')}
+            style={({ pressed }) => ({
+              minWidth: 44,
+              minHeight: 44,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: theme.radius.pill,
+              backgroundColor: pressed ? theme.colors.surfaceMuted : 'transparent',
+            })}
+          >
+            <VadIcon name="close" size={15} tone="tertiary" />
           </Pressable>
         ) : trailing ? (
           <View style={{ minHeight: singleHeight, justifyContent: 'center', paddingLeft: theme.spacing.sm }}>
