@@ -6,7 +6,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useLiveNow } from '@/hooks/use-live-now';
 import { getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
-import type { FeaturedMarketRow } from '@/services/home-content-api';
+import type { FeaturedMarketRow, VadMarketRow } from '@/services/home-content-api';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { probability } from './format';
 import { MarketThumbnail } from './components/market-thumbnail';
@@ -14,10 +14,12 @@ import { MarketThumbnail } from './components/market-thumbnail';
 export function FeaturedMarketsCarousel({
   markets,
   featured,
+  curated = [],
   onOpenMarket,
 }: {
   markets: MarketCatalogItem[];
   featured: FeaturedMarketRow[];
+  curated?: VadMarketRow[];
   onOpenMarket: (market: MarketCatalogItem) => void;
 }) {
   const theme = useVadTheme();
@@ -25,10 +27,16 @@ export function FeaturedMarketsCarousel({
   const now = useLiveNow();
   const [width, setWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
-  const liveMarkets = featured
-    .filter((entry) => entry.instrument_public_id)
-    .map((entry) => ({ entry, market: markets.find((item) => item.instrument_public_id === entry.instrument_public_id) }))
-    .filter((row): row is { entry: FeaturedMarketRow; market: MarketCatalogItem } => Boolean(row.market))
+  const curatedIds = new Set(curated.map((entry) => entry.instrument_public_id));
+  const liveMarkets = [
+    ...curated
+      .map((entry) => ({ entry, market: markets.find((item) => item.instrument_public_id === entry.instrument_public_id), source: 'curated' as const }))
+      .filter((row): row is { entry: VadMarketRow; market: MarketCatalogItem; source: 'curated' } => Boolean(row.market)),
+    ...featured
+      .filter((entry) => !curatedIds.has(entry.instrument_public_id))
+      .map((entry) => ({ entry, market: markets.find((item) => item.instrument_public_id === entry.instrument_public_id), source: 'ranked' as const }))
+      .filter((row): row is { entry: FeaturedMarketRow; market: MarketCatalogItem; source: 'ranked' } => Boolean(row.market)),
+  ]
     .filter(({ market }) => market.status === 'OPEN' && market.resolution_status !== 'RESOLVED' && getMarketTiming(market, now).tradingOpen)
     .slice(0, 8);
 
@@ -87,7 +95,7 @@ export function FeaturedMarketsCarousel({
           >
             <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
               <View style={{ alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4, backgroundColor: theme.colors.brandSoft }}>
-                <VadText variant="caption" tone="brand">Featured · #{entry.rank}</VadText>
+                <VadText variant="caption" tone="brand">{source === 'curated' ? 'Featured by VAD' : `Trending · #${entry.rank}`}</VadText>
               </View>
               <VadText variant="bodyStrong" numberOfLines={3} style={{ fontSize: density.compact ? 16 : 18, lineHeight: density.compact ? 21 : 24 }}>{market.title}</VadText>
               <VadText variant="caption" tone="secondary" numberOfLines={2}>{market.category || 'Market'} · {market.asset_code} · {market.status === 'OPEN' ? 'Trading open' : market.status}</VadText>
