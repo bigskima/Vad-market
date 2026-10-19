@@ -205,7 +205,7 @@ export default function AccountScreen() {
         <View style={{ gap: theme.spacing.md }}>
           <VadText variant="body" tone="secondary">You can sign back in any time. Make sure any pending payment or market action has finished before leaving.</VadText>
           {signOutError ? (
-            <VadText variant="caption" tone="danger">We couldn't sign you out just now. Please try again.</VadText>
+            <VadText variant="caption" tone="danger">We could not sign you out just now. Please try again.</VadText>
           ) : null}
           <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton
