@@ -71,8 +71,7 @@ export function VadIcon({
             }}
           />
         ))}
-        <View style={{ width: size * 0.24, height: size * 0.24, borderRadius: size, backgroundColor: theme.colors.surfaceRaised, position: 'absolute' }} />
-        <View style={{ width: size * 0.32, height: size * 0.32, borderRadius: size, backgroundColor: theme.colors.surfaceRaised, position: 'absolute' }} />
+        <View style={{ width: size * 0.32, height: size * 0.32, borderRadius: size, backgroundColor: theme.colors.surface, position: 'absolute' }} />
         <View style={{ width: size * 0.38, height: size * 0.38, borderWidth: line, borderColor: ink, borderRadius: size, position: 'absolute' }} />
       </View>
     );
