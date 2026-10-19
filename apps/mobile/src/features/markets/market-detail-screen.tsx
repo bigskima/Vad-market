@@ -60,6 +60,10 @@ export function MarketDetailScreen({
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
   const [tab, setTab] = useState<DetailTab>(initialOutcome ? 'Trade' : 'Overview');
+  useEffect(() => {
+    if (initialOutcome) setTab('Trade');
+  }, [initialOutcome, market.instrument_public_id]);
+
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
 
