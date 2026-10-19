@@ -43,7 +43,7 @@ export function HomeScreen({
   const now = useLiveNow();
   const { enabledCurrencies } = useCurrencyPreference();
   const [category, setCategory] = useState<Category>('All');
-  const [dismissedPromotion, setDismissedPromotion] = useState<string | null>(null);
+  const [promotionCarouselDismissed, setPromotionCarouselDismissed] = useState(false);
   const [promotionPlaceholderDismissed, setPromotionPlaceholderDismissed] = useState(false);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -108,6 +108,19 @@ export function HomeScreen({
     return () => { active = false; };
   }, [watchlistIds]);
 
+  const retryWatchlist = async () => {
+    setWatchlistLoading(true);
+    setWatchlistError(null);
+    try {
+      const rows = await listUserMarketWatchlist();
+      setWatchlistIds(rows.map((row) => row.instrument_public_id));
+    } catch {
+      setWatchlistError('Your watchlist could not be loaded. Please try again.');
+    } finally {
+      setWatchlistLoading(false);
+    }
+  };
+
   const toggleWatchlist = async (instrumentPublicId: string) => {
     if (watchlistBusyId) return;
     const isSaved = watchlistIds.includes(instrumentPublicId);
@@ -139,7 +152,7 @@ export function HomeScreen({
   const walletRows = wallets.filter((wallet) => enabledCurrencies.includes(wallet.asset_code as VADCurrency));
   const totalNgn = walletRows.filter((wallet) => wallet.asset_code === 'NGN').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
   const totalUsdc = walletRows.filter((wallet) => wallet.asset_code === 'USDC').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
-  const promotionsToShow = promotions.filter((promotion) => promotion.public_id !== dismissedPromotion);
+  const promotionsToShow = promotionCarouselDismissed ? [] : promotions;
   const primaryAsset = walletRows.some((wallet) => wallet.asset_code === 'NGN') ? 'NGN' : walletRows.some((wallet) => wallet.asset_code === 'USDC') ? 'USDC' : null;
   const primaryBalance = primaryAsset === 'NGN' ? formatMoney(totalNgn, 'NGN') : primaryAsset === 'USDC' ? formatMoney(totalUsdc, 'USDC') : '—';
   const primaryHistory = balanceHistory.filter((point) => point.asset_code === primaryAsset).sort((a, b) => a.observed_on.localeCompare(b.observed_on));
@@ -179,7 +192,7 @@ export function HomeScreen({
                 {balanceChange >= 0 ? '▲ +' : '▼ '}{formatMoney(Math.abs(balanceChange), primaryAsset ?? 'NGN')}{balanceChangePercent !== null ? ` (${balanceChangePercent >= 0 ? '+' : ''}${balanceChangePercent.toFixed(1)}%)` : ''} · 30d
               </VadText>
             ) : (
-              <VadText variant="caption" tone="secondary">{walletRows.length ? (primaryAsset === 'NGN' ? 'NGN wallet balance' : 'USDC wallet balance') : 'Balance unavailable'}</VadText>
+              <VadText variant="caption" tone="secondary">{primaryAsset ? `${primaryAsset} wallet balance` : 'No enabled wallet currency'}</VadText>
             )}
             {walletRows.some((wallet) => wallet.asset_code === 'NGN' && Number(wallet.available) > 0) && walletRows.some((wallet) => wallet.asset_code === 'USDC' && Number(wallet.available) > 0) ? (
               <VadText variant="caption" tone="secondary">· USDC {balanceVisible ? totalUsdc.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '••••'}</VadText>
@@ -198,33 +211,35 @@ export function HomeScreen({
         <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
       </View>
 
-      {!promotionPlaceholderDismissed || promotionsToShow.length ? (
-        <View style={{ position: 'relative', gap: 5 }}>
-          {promotionsToShow.length ? (
-            <>
-              <HomePromotionCarousel promotions={promotionsToShow} onOpen={onOpenPromotion} />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Dismiss promotion"
-                onPress={() => setDismissedPromotion(promotionsToShow[0]?.public_id ?? null)}
-                style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(9, 13, 31, 0.78)' }}
-              >
-                <VadIcon name="close" size={17} color="#FFFFFF" />
-              </Pressable>
-            </>
-          ) : (
-            <View style={{ minHeight: density.compact ? 108 : 124, overflow: 'hidden', borderRadius: 17, borderWidth: 1, borderColor: theme.colors.brandPrimary, backgroundColor: theme.colors.brandSoft, paddingHorizontal: 16, paddingVertical: 13, paddingRight: 46, justifyContent: 'center', gap: 5 }}>
-              <VadText variant="heading" style={{ fontSize: density.compact ? 16 : 18, lineHeight: density.compact ? 20 : 22 }}>Discover live markets</VadText>
-              <VadText variant="caption" tone="secondary" style={{ maxWidth: '92%' }}>Explore sports, politics, technology and more. Market data updates from VAD.</VadText>
-              <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={{ alignSelf: 'flex-start', marginTop: 3, backgroundColor: theme.colors.background, borderRadius: 18, paddingHorizontal: 13, paddingVertical: 7 }}>
-                <VadText variant="caption" tone="brand" style={{ fontWeight: '700' }}>Explore markets ›</VadText>
-              </Pressable>
-              <View pointerEvents="none" style={{ position: 'absolute', right: -15, bottom: -24, width: 112, height: 112, borderRadius: 56, borderWidth: 16, borderColor: theme.colors.brandPrimary, opacity: 0.14 }} />
-              <Pressable accessibilityRole="button" accessibilityLabel="Dismiss promotional placeholder" onPress={() => setPromotionPlaceholderDismissed(true)} style={{ position: 'absolute', top: 8, right: 8, width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}>
-                <VadIcon name="close" size={17} tone="secondary" />
-              </Pressable>
-            </View>
-          )}
+      {promotions.length ? (
+        promotionsToShow.length ? (
+          <View style={{ position: 'relative' }}>
+            <HomePromotionCarousel promotions={promotionsToShow} onOpen={onOpenPromotion} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss promotions"
+              onPress={() => setPromotionCarouselDismissed(true)}
+              style={{ position: 'absolute', top: 7, right: 7, zIndex: 2, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(9, 13, 31, 0.78)' }}
+            >
+              <VadIcon name="close" size={17} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        ) : null
+      ) : !promotionPlaceholderDismissed ? (
+        <View style={{ minHeight: density.compact ? 112 : 126, overflow: 'hidden', borderRadius: 17, borderWidth: 1, borderColor: '#3436B9', backgroundColor: '#202A82', paddingHorizontal: 16, paddingVertical: 13, paddingRight: 118, justifyContent: 'center', gap: 5 }}>
+          <View pointerEvents="none" style={{ position: 'absolute', right: -30, top: -48, width: 190, height: 190, borderRadius: 95, borderWidth: 28, borderColor: '#4B52E8', opacity: 0.45 }} />
+          <View pointerEvents="none" style={{ position: 'absolute', right: 22, bottom: -70, width: 175, height: 150, borderRadius: 88, backgroundColor: '#3639C7', opacity: 0.55, transform: [{ rotate: '-22deg' }] }} />
+          <VadText variant="heading" style={{ color: '#FFFFFF', fontSize: density.compact ? 17 : 19, lineHeight: density.compact ? 21 : 24 }}>Discover VAD markets</VadText>
+          <VadText variant="caption" style={{ color: '#DDE1FF', fontSize: density.compact ? 11 : 12, lineHeight: density.compact ? 15 : 17 }}>Explore published markets across sports, politics, technology and more.</VadText>
+          <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={({ pressed }) => ({ alignSelf: 'flex-start', marginTop: 3, backgroundColor: '#FFFFFF', borderRadius: 18, paddingHorizontal: 13, paddingVertical: 7, opacity: pressed ? 0.82 : 1 })}>
+            <VadText variant="caption" style={{ color: '#282D9B', fontWeight: '700' }}>Explore markets ›</VadText>
+          </Pressable>
+          <View pointerEvents="none" style={{ position: 'absolute', right: 20, top: 22, width: 76, height: 76, borderRadius: 38, backgroundColor: '#4D52E9', borderWidth: 1, borderColor: '#777BFF', alignItems: 'center', justifyContent: 'center' }}>
+            <VadText style={{ fontSize: 39, lineHeight: 46 }}>↗</VadText>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Dismiss market discovery banner" onPress={() => setPromotionPlaceholderDismissed(true)} style={{ position: 'absolute', top: 7, right: 7, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: 'rgba(9, 13, 31, 0.35)' }}>
+            <VadIcon name="close" size={17} color="#FFFFFF" />
+          </Pressable>
         </View>
       ) : null}
 
@@ -256,10 +271,21 @@ export function HomeScreen({
                 </View>
               ))}
             </ScrollView>
+          ) : watchlistError ? (
+            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
+              <VadText variant="bodyStrong">Watchlist unavailable</VadText>
+              <VadText variant="caption" tone="secondary">We couldn't load your saved markets.</VadText>
+              <Pressable accessibilityRole="button" onPress={() => void retryWatchlist()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
+                <VadText variant="caption" tone="brand">Try again</VadText>
+              </Pressable>
+            </View>
           ) : (
-            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 5 }}>
+            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 7 }}>
               <VadText variant="bodyStrong">Your watchlist is empty</VadText>
-              <VadText variant="caption" tone="secondary">Save a market from Trending Markets to keep it here.</VadText>
+              <VadText variant="caption" tone="secondary">Save markets to keep their latest prices and trends close by.</VadText>
+              <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
+                <VadText variant="caption" tone="brand">Browse markets</VadText>
+              </Pressable>
             </View>
           )}
         </View>
@@ -276,23 +302,31 @@ export function HomeScreen({
             ))}
           </ScrollView>
           {trendingSettings.enabled && trendingRows.length ? trendingRows.map(({ entry, market }) => (
-            <Pressable key={market.instrument_public_id} accessibilityRole="button" onPress={() => onOpenMarket(market)} style={({ pressed }) => ({ minHeight: 69, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 3, borderBottomWidth: 1, borderBottomColor: theme.colors.border, opacity: pressed ? 0.75 : 1 })}>
-              <MarketThumb market={market} />
-              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <VadText variant="bodyStrong" numberOfLines={2} style={{ fontSize: 13, lineHeight: 17 }}>{market.title}</VadText>
-                <VadText variant="caption" tone="secondary">{formatVolume(market.total_volume, market.asset_code)} volume</VadText>
-              </View>
-              <View style={{ alignItems: 'flex-end', gap: 3 }}>
-                <VadText variant="bodyStrong" style={{ fontSize: 14 }}>{formatProbability(market.yes_price)}</VadText>
-                <VadText variant="caption" tone={Number(entry.price_movement) >= 0 ? 'yes' : 'no'}>{Number(entry.price_movement) > 0 ? '▲ ' : Number(entry.price_movement) < 0 ? '▼ ' : ''}{Math.abs(Number(entry.price_movement) || 0).toFixed(1)}%</VadText>
-              </View>
-<Pressable accessibilityRole="button" accessibilityLabel={watchlistIds.includes(market.instrument_public_id) ? 'Remove from watchlist' : 'Add to watchlist'} disabled={watchlistBusyId === market.instrument_public_id} onPress={() => void toggleWatchlist(market.instrument_public_id)} style={{ paddingHorizontal: 5, paddingVertical: 8 }}><VadText variant="caption" tone="brand">{watchlistIds.includes(market.instrument_public_id) ? 'Saved' : 'Save'}</VadText></Pressable>
-            </Pressable>
-          )) : (
-            <View style={{ padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
-              <VadText variant="caption" tone="secondary">{trendingSettings.enabled ? 'No trending markets are available for the selected category right now.' : 'Trending markets are currently disabled.'}</VadText>
+            <View key={market.instrument_public_id} style={{ minHeight: 69, flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 8, paddingHorizontal: 2, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+              <Pressable accessibilityRole="button" onPress={() => onOpenMarket(market)} style={({ pressed }) => ({ flexDirection: 'row', flex: 1, minWidth: 0, alignItems: 'center', gap: 10, opacity: pressed ? 0.75 : 1 })}>
+                <MarketThumb market={market} />
+                <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                  <VadText variant="bodyStrong" numberOfLines={2} style={{ fontSize: 13, lineHeight: 17 }}>{market.title}</VadText>
+                  <VadText variant="caption" tone="secondary">{formatVolume(market.total_volume, market.asset_code)} volume</VadText>
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 3, minWidth: 54 }}>
+                  <VadText variant="bodyStrong" style={{ fontSize: 14 }}>{formatProbability(market.yes_price)}</VadText>
+                  <VadText variant="caption" tone={Number(entry.price_movement) >= 0 ? 'yes' : 'no'}>{Number(entry.price_movement) > 0 ? '▲ ' : Number(entry.price_movement) < 0 ? '▼ ' : ''}{Math.abs(Number(entry.price_movement) || 0).toFixed(1)}%</VadText>
+                </View>
+                <VadIcon name="chevronRight" size={17} tone="tertiary" />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={watchlistIds.includes(market.instrument_public_id) ? 'Remove from watchlist' : 'Add to watchlist'}
+                accessibilityState={{ selected: watchlistIds.includes(market.instrument_public_id), disabled: watchlistBusyId === market.instrument_public_id }}
+                disabled={watchlistBusyId === market.instrument_public_id}
+                onPress={() => void toggleWatchlist(market.instrument_public_id)}
+                style={({ pressed }) => ({ minWidth: 40, minHeight: 40, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.65 : 1 })}
+              >
+                <VadIcon name="bookmark" size={18} tone={watchlistIds.includes(market.instrument_public_id) ? 'brand' : 'secondary'} />
+              </Pressable>
             </View>
-          )}
+          )) : (
           {!activeMarkets.length ? <VadText variant="caption" tone="tertiary">No markets are currently open for trading.</VadText> : null}
         </View>
       </TourTarget>
