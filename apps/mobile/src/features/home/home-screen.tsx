@@ -167,7 +167,7 @@ export function HomeScreen({
   return (
     <View style={{ width: '100%', gap: density.compact ? 13 : 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 }}>
-        <View style={{ width: 43, height: 43, borderRadius: 22, overflow: 'hidden', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
           {profileAvatarUrl ? <Image source={{ uri: profileAvatarUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name="account" size={23} tone="secondary" />}
         </View>
         <View style={{ flex: 1, gap: 1 }}>
@@ -369,7 +369,7 @@ export function HomeScreen({
 
 function HomeHeaderAction({ label, icon, badge = false, onPress }: { label: string; icon: 'search' | 'bell'; badge?: boolean; onPress: () => void }) {
   const theme = useVadTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: theme.colors.surface, opacity: pressed ? 0.7 : 1 })}><VadIcon name={icon} size={21} tone="secondary" />{badge ? <View style={{ position: 'absolute', right: 3, top: 3, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.background }} /> : null}</Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'transparent', opacity: pressed ? 0.7 : 1 })}><VadIcon name={icon} size={21} tone="secondary" />{badge ? <View style={{ position: 'absolute', right: 3, top: 3, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.background }} /> : null}</Pressable>;
 }
 
 function QuickAction({ label, icon, color, onPress }: { label: string; icon: 'plus' | 'wallet' | 'arrowUp' | 'share'; color: string; onPress: () => void }) {
