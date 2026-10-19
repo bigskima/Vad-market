@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
@@ -101,8 +102,8 @@ export function MarketCard({
 
       <View style={{ gap: 7 }}>
         <View style={{ flexDirection: 'row', gap: 5 }}>
-          <PriceTile label="YES" value={yes} positive compact={tight} />
-          <PriceTile label="NO" value={no} positive={false} compact={tight} />
+          <PriceTile label="YES" value={yes} rawValue={market.yes_price} positive compact={tight} />
+          <PriceTile label="NO" value={no} rawValue={market.no_price} positive={false} compact={tight} />
         </View>
         <MarketProbabilityBar yes={market.yes_price} no={market.no_price} />
       </View>
@@ -145,19 +146,39 @@ function formatVolume(value: number) {
 function PriceTile({
   label,
   value,
+  rawValue,
   positive,
   compact,
 }: {
   label: string;
   value: string;
+  rawValue?: number | string | null;
   positive: boolean;
   compact: boolean;
 }) {
   const theme = useVadTheme();
-  // The catalogue reference uses blue for YES and red for NO; reserve green for
-  // positive account/settlement states so outcome colours stay visually distinct.
+  const numericValue = Number(rawValue);
+  const previousValue = useRef(Number.isFinite(numericValue) ? numericValue : null);
+  const [movement, setMovement] = useState<'up' | 'down' | null>(null);
+
+  useEffect(() => {
+    const previous = previousValue.current;
+    if (!Number.isFinite(numericValue)) return;
+    previousValue.current = numericValue;
+    if (previous === null || previous === numericValue) return;
+
+    setMovement(numericValue > previous ? 'up' : 'down');
+    const timeout = setTimeout(() => setMovement(null), theme.motion.slow * 2);
+    return () => clearTimeout(timeout);
+  }, [numericValue, theme.motion.slow]);
+
   const foreground = positive ? theme.colors.info : theme.colors.no;
-  const background = positive ? theme.colors.infoSoft : theme.colors.noSoft;
+  const baseBackground = positive ? theme.colors.infoSoft : theme.colors.noSoft;
+  const background = movement === 'up'
+    ? theme.colors.yesSoft
+    : movement === 'down'
+      ? theme.colors.noSoft
+      : baseBackground;
   return (
     <View
       style={{
@@ -173,7 +194,7 @@ function PriceTile({
         paddingVertical: theme.spacing.xs,
         backgroundColor: background,
         borderWidth: 1,
-        borderColor: positive ? theme.colors.info : theme.colors.no,
+        borderColor: movement === 'up' ? theme.colors.yes : movement === 'down' ? theme.colors.no : (positive ? theme.colors.info : theme.colors.no),
       }}
     >
       <VadText variant="caption" style={{ color: foreground }}>{label}</VadText>
