@@ -34,12 +34,14 @@ export function PortfolioScreen({
   settlements: allSettlements,
   onOpenPosition,
   onOpenOrder,
+  onOpenWallet,
 }: {
   positions: PositionRow[];
   orders: OrderRow[];
   settlements: SettlementReceiptRow[];
   onOpenPosition: (position: PositionRow) => void;
   onOpenOrder: (order: OrderRow) => void;
+  onOpenWallet: () => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -154,6 +156,13 @@ export function PortfolioScreen({
               </View>
             ))}
           </ProgressiveGrid>
+        ) : allPositions.length > 0 ? (
+          <VadEmptyState
+            title="Positions hidden by currency settings"
+            body="Your positions are still on your account, but their settlement currency is currently disabled. Review your enabled currencies to show them here."
+            actionLabel="Review wallet currencies"
+            onAction={onOpenWallet}
+          />
         ) : (
           <VadEmptyState title="No matched positions" body="Peer-pool stakes appear in Predictions." />
         )
