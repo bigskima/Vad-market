@@ -202,7 +202,7 @@ export function HomeScreen({
             ) : null}
           </View>
           <View style={{ position: 'absolute', right: 12, bottom: 18, opacity: 0.95 }}>
-            {hasBalanceTrend ? <BalanceSparkline values={historyValues} /> : <VadIcon name="wallet" size={48} tone="brand" />}
+            {historyValues.length > 1 ? <BalanceSparkline values={historyValues} /> : <VadIcon name="wallet" size={48} tone="brand" />}
           </View>
         </View>
       </TourTarget>
