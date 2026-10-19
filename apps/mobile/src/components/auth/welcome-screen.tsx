@@ -1,4 +1,4 @@
-import { Image, Pressable, useWindowDimensions, View } from 'react-native';
+import { Animated, Pressable, useWindowDimensions, useEffect, useRef, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
@@ -19,6 +19,18 @@ export function WelcomeScreen({ onContinue }: Props) {
   const { width, height } = useWindowDimensions();
   const wide = width >= 820;
   const compact = width < 390 || height < 720;
+  const cinematicMotion = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(cinematicMotion, { toValue: 1, duration: 14000, useNativeDriver: true }),
+        Animated.timing(cinematicMotion, { toValue: 0, duration: 14000, useNativeDriver: true }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [cinematicMotion]);
 
   function cycleTheme() {
     const next = theme.preference === 'system'
@@ -32,7 +44,7 @@ export function WelcomeScreen({ onContinue }: Props) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <View style={{ flex: 1, overflow: 'hidden', backgroundColor: theme.colors.welcomeBase }}>
-        <Image
+        <Animated.Image
           source={welcomeVisual}
           accessibilityLabel="A view of the world from space"
           resizeMode="cover"
@@ -41,6 +53,10 @@ export function WelcomeScreen({ onContinue }: Props) {
             width: '100%',
             height: '100%',
             opacity: theme.mode === 'dark' ? 0.94 : 0.84,
+            transform: [
+              { scale: cinematicMotion.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) },
+              { translateX: cinematicMotion.interpolate({ inputRange: [0, 1], outputRange: [0, -10] }) },
+            ],
           }}
         />
         <View
