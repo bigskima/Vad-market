@@ -48,6 +48,7 @@ export function WalletScreen({
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [selectedAsset, setSelectedAsset] = useState<VADCurrency | null>(null);
   const [manageCurrenciesOpen, setManageCurrenciesOpen] = useState(false);
+  const [advancedToolsOpen, setAdvancedToolsOpen] = useState(false);
   const hasNgn = activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
   const hasUsdc = activeAssetCodes.includes('USDC') && currencyPreference.isCurrencyEnabled('USDC');
 
@@ -128,10 +129,16 @@ export function WalletScreen({
         {orderedWallets.map((wallet) => <Pressable key={wallet.asset_code} accessibilityRole="button" accessibilityLabel={`Select ${wallet.asset_code} wallet`} onPress={() => setSelectedAsset(wallet.asset_code as VADCurrency)}><CompactCurrencyBalance wallet={wallet} selected={primaryCode === wallet.asset_code} balanceVisible={balanceVisible} /></Pressable>)}
         {!orderedWallets.length ? <VadEmptyState title="No supported wallet accounts" body="Your account has no enabled NGN or USDC wallet balance to display." /> : null}
       </View>
-      <WalletSectionErrorBoundary title="Embedded wallet unavailable"><TngnDemoModeCard /><CryptoWalletConnections /></WalletSectionErrorBoundary>
-      {currencyPreference.isCurrencyEnabled('USDC') ? <WalletSectionErrorBoundary title="USDC balances unavailable"><UsdcWalletBalances /></WalletSectionErrorBoundary> : null}
-      <WalletSectionErrorBoundary title="On-chain activity unavailable"><OnchainActivityPanel enabled={hasUsdc} /></WalletSectionErrorBoundary>
-      <WalletSectionErrorBoundary title="USDC positions unavailable"><OnchainPositionsPanel enabled={hasUsdc} /></WalletSectionErrorBoundary>
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: advancedToolsOpen }} onPress={() => setAdvancedToolsOpen((value) => !value)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 }}>
+        <View style={{ flex: 1, gap: 2 }}><VadText variant="bodyStrong">More wallet tools</VadText><VadText variant="caption" tone="secondary">Connected wallets, on-chain activity and positions</VadText></View>
+        <VadIcon name={advancedToolsOpen ? 'close' : 'chevronRight'} size={18} tone="secondary" />
+      </Pressable>
+      {advancedToolsOpen ? <View style={{ gap: density.sectionGap }}>
+        <WalletSectionErrorBoundary title="Embedded wallet unavailable"><TngnDemoModeCard /><CryptoWalletConnections /></WalletSectionErrorBoundary>
+        {currencyPreference.isCurrencyEnabled('USDC') ? <WalletSectionErrorBoundary title="USDC balances unavailable"><UsdcWalletBalances /></WalletSectionErrorBoundary> : null}
+        <WalletSectionErrorBoundary title="On-chain activity unavailable"><OnchainActivityPanel enabled={hasUsdc} /></WalletSectionErrorBoundary>
+        <WalletSectionErrorBoundary title="USDC positions unavailable"><OnchainPositionsPanel enabled={hasUsdc} /></WalletSectionErrorBoundary>
+      </View> : null}
       {hasNgn ? <TourTarget id="wallet-activity"><View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
         <VadSectionHeader title="Recent Transactions" actionLabel="See all" onAction={onActivity} />
         {loading ? <View style={{ gap: theme.spacing.sm }}><VadSkeleton height={density.compact ? 68 : 76} radius={theme.radius.xl} /><VadSkeleton height={density.compact ? 68 : 76} radius={theme.radius.xl} />{density.phone ? null : <VadSkeleton height={76} radius={theme.radius.xl} />}</View>
