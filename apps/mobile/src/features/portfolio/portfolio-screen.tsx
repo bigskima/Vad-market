@@ -45,9 +45,9 @@ export function PortfolioScreen({
   const theme = useVadTheme();
   const density = useProductDensity();
   const { enabledCurrencies } = useCurrencyPreference();
-  const positions = allPositions.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
-  const orders = allOrders.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
-  const settlements = allSettlements.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
+  const positions = allPositions.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
+  const orders = allOrders.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
+  const settlements = allSettlements.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
   const [tab, setTab] = useState<PortfolioTab>('positions');
 
   const totalShares = positions.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
