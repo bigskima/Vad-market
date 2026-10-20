@@ -15,6 +15,7 @@ import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-pr
 import { getMarketTiming } from '@/lib/market-timing';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketCard } from './components/market-card';
+import { TngnSandboxMarkets } from './tngn-sandbox-markets';
 import {
   MarketDiscoveryControls,
   type MarketSortMode,
@@ -114,6 +115,8 @@ export function MarketsScreen({
           <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
         </View>
       </View>
+
+      {enabledCurrencies.includes('TNGN') ? <TngnSandboxMarkets /> : null}
 
       <TourTarget id="markets-discovery">
         <MarketDiscoveryControls
