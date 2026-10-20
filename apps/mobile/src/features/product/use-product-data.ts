@@ -188,7 +188,7 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const probeHomeExperience = useCallback(async () => {
     if (!enabled) return;
     try {
-      const next = await getHomeExperience();
+      const next = await readWithRetry(() => getHomeExperience());
       setHomePromotions(next.promotions);
       setPublicNotices(next.notices);
       setVadMarkets(next.vadMarkets);
@@ -205,7 +205,7 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const refreshMarkets = useCallback(async () => {
     if (!enabled) return;
     try {
-      setMarkets(await listMarkets());
+      setMarkets(await readWithRetry(() => listMarkets()));
       setSectionErrors((current) => ({ ...current, markets: null }));
     } catch (reason) {
       setSectionErrors((current) => ({ ...current, markets: userFacingErrorMessage(reason, 'markets', 'We could not refresh markets right now.') }));
@@ -215,13 +215,13 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const refreshPortfolio = useCallback(async () => {
     if (!enabled) return;
     const results = await Promise.allSettled([
-      getWalletSummary(),
-      getWalletActivity(),
-      getPositions(),
-      getOpenOrders(),
-      getPoolStakes(),
-      getMarketHistory(),
-      getSettlementReceipts(),
+      readWithRetry(() => getWalletSummary()),
+      readWithRetry(() => getWalletActivity()),
+      readWithRetry(() => getPositions()),
+      readWithRetry(() => getOpenOrders()),
+      readWithRetry(() => getPoolStakes()),
+      readWithRetry(() => getMarketHistory()),
+      readWithRetry(() => getSettlementReceipts()),
     ]);
     setSectionErrors((current) => ({
       ...current,
@@ -245,7 +245,7 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const refreshNotifications = useCallback(async () => {
     if (!enabled) return;
     try {
-      setNotifications(await getNotifications());
+      setNotifications(await readWithRetry(() => getNotifications()));
       setSectionErrors((current) => ({ ...current, notifications: null }));
     } catch (reason) {
       setSectionErrors((current) => ({ ...current, notifications: userFacingErrorMessage(reason, 'general', 'We could not refresh notifications right now.') }));
@@ -255,16 +255,16 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const load = useCallback(async () => {
     if (!enabled) return;
     const results = await Promise.allSettled([
-      listMarkets(),
-      getWalletSummary(),
-      getWalletActivity(),
-      getPositions(),
-      getOpenOrders(),
-      getPoolStakes(),
-      getMarketHistory(),
-      getSettlementReceipts(),
-      getMyProposals(),
-      getNotifications(),
+      readWithRetry(() => listMarkets()),
+      readWithRetry(() => getWalletSummary()),
+      readWithRetry(() => getWalletActivity()),
+      readWithRetry(() => getPositions()),
+      readWithRetry(() => getOpenOrders()),
+      readWithRetry(() => getPoolStakes()),
+      readWithRetry(() => getMarketHistory()),
+      readWithRetry(() => getSettlementReceipts()),
+      readWithRetry(() => getMyProposals()),
+      readWithRetry(() => getNotifications()),
     ]);
 
     const nextSectionErrors: ProductSectionErrors = {
