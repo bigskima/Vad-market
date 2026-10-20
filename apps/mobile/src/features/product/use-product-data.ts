@@ -91,6 +91,32 @@ function settledError(result: PromiseSettledResult<unknown>, context: UserErrorC
   return userFacingErrorMessage(result.reason, context, fallback);
 }
 
+// Retry only transient connectivity/server failures. Permission, validation and
+// missing-function errors are deterministic and should surface immediately.
+function isTransientReadFailure(reason: unknown) {
+  const value = reason && typeof reason === 'object'
+    ? reason as { message?: unknown; code?: unknown; status?: unknown }
+    : { message: reason };
+  const message = `${String(value.message ?? '')} ${String(value.code ?? '')}`.toLowerCase();
+  const status = Number(value.status);
+  return !Number.isFinite(status) || status === 0 || status >= 500
+    || ['failed to fetch', 'network request failed', 'networkerror', 'network error', 'fetch failed', 'timeout', 'timed out', 'econnreset', 'temporarily unavailable'].some((part) => message.includes(part));
+}
+
+async function readWithRetry<T>(read: () => Promise<T>, attempts = 2): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await read();
+    } catch (reason) {
+      lastError = reason;
+      if (attempt + 1 >= attempts || !isTransientReadFailure(reason)) throw reason;
+      await new Promise<void>((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+    }
+  }
+  throw lastError;
+}
+
 function upsertMarket(previous: MarketCatalogItem[], next: MarketCatalogItem) {
   const found = previous.some((item) => item.instrument_public_id === next.instrument_public_id);
   const merged = found
