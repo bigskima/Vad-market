@@ -9,7 +9,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 type DemoStatus = { globally_enabled: boolean; user_enabled: boolean };
 type DemoMarket = { id: number; key: string; title: string; description: string; status: string; outcomes: { code: string; label: string }[] };
 type DemoAccount = { assetCode: string; availableBalance: number; environment: 'DEMO' };
-type DemoOrder = { orderId: string; marketTitle: string; outcomeCode: string; stake: number; status: string; createdAt: string };
+type DemoOrder = { orderId: string; marketTitle: string; outcomeCode: string; stake: number; status: string; finalOutcome?: string | null; payout?: number; settledAt?: string | null; createdAt: string };
 
 export function TngnDemoModeCard() {
   const theme = useVadTheme();
@@ -136,7 +136,8 @@ export function TngnDemoModeCard() {
               </View>
               <View style={{ alignItems: 'flex-end', gap: 2 }}>
                 <VadText variant="label">−{Number(order.stake).toLocaleString()} TNGN</VadText>
-                <VadText variant="caption" tone="tertiary">{order.status}</VadText>
+                <VadText variant="caption" tone="tertiary">{order.status}{order.finalOutcome ? ` · Result ${order.finalOutcome}` : ''}</VadText>
+                {order.status === 'SETTLED' ? <VadText variant="caption" tone={Number(order.payout ?? 0) > 0 ? 'success' : 'secondary'}>{Number(order.payout ?? 0).toLocaleString()} TNGN payout</VadText> : null}
               </View>
             </View>
           )) : <VadText variant="caption" tone="tertiary">Your practice orders will appear here.</VadText>}
