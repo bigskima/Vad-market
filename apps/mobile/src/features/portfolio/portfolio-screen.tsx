@@ -17,7 +17,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
-import type { OrderRow, PositionRow, SettlementReceiptRow } from '@/services/market-api';
+import type { MarketHistoryRow, OrderRow, PositionRow, SettlementReceiptRow } from '@/services/market-api';
 
 type PortfolioTab = 'positions' | 'orders' | 'payouts';
 
@@ -33,12 +33,14 @@ export function PortfolioScreen({
   positions: allPositions,
   orders: allOrders,
   settlements: allSettlements,
+  marketHistory: allMarketHistory,
   onOpenPosition,
   onOpenOrder,
 }: {
   positions: PositionRow[];
   orders: OrderRow[];
   settlements: SettlementReceiptRow[];
+  marketHistory: MarketHistoryRow[];
   onOpenPosition: (position: PositionRow) => void;
   onOpenOrder: (order: OrderRow) => void;
 }) {
@@ -48,6 +50,12 @@ export function PortfolioScreen({
   const positions = allPositions.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
   const orders = allOrders.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
   const settlements = allSettlements.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
+  const marketHistory = allMarketHistory.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
+  const realizedByAsset = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of marketHistory) totals.set(row.asset_code, (totals.get(row.asset_code) ?? 0) + Number(row.realized_pnl ?? 0));
+    return [...totals.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [marketHistory]);
   const [tab, setTab] = useState<PortfolioTab>('positions');
 
   const totalShares = positions.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
@@ -80,19 +88,18 @@ export function PortfolioScreen({
         <VadText variant="title">Portfolio</VadText>
         <VadText variant="caption" tone="secondary">Your positions, orders and settled markets.</VadText>
       </View>
-      <TngnDemoModeCard />
       <TourTarget id="portfolio-summary">
-        <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.xl, gap: theme.spacing.md, borderRadius: 26, borderWidth: 1, borderColor: theme.colors.border }}>
+        <VadCard variant="brand" style={{ padding: density.phone ? 14 : theme.spacing.lg, gap: theme.spacing.sm, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ gap: 4 }}>
-              <VadText variant="caption" tone="secondary">YOUR MARKET EXPOSURE</VadText>
-              <VadText variant="heading">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
+              <VadText variant="caption" tone="secondary">YOUR PORTFOLIO</VadText>
+              <VadText variant="heading">{positions.length} {positions.length === 1 ? 'holding' : 'holdings'}</VadText>
             </View>
             <View style={{ width: 46, height: 46, borderRadius: 17, backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
               <VadIcon name="wallet" size={21} tone="brand" />
             </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.lg, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+          <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
             <View style={{ flex: 1, gap: 3, paddingRight: 8 }}>
               <VadText variant="caption" tone="secondary">Shares held</VadText>
               <VadText variant="heading">{Number(totalShares).toLocaleString()}</VadText>
@@ -108,6 +115,19 @@ export function PortfolioScreen({
           </View>
         </VadCard>
       </TourTarget>
+      <TngnDemoModeCard />
+
+      {realizedByAsset.length ? (
+        <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
+          <VadSectionHeader title="Realized performance" subtitle="Settled market P&L from your recorded results. Each currency is kept separate." />
+          {realizedByAsset.map(([assetCode, value]) => (
+            <View key={assetCode} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, paddingVertical: 5, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+              <View style={{ flex: 1, gap: 1 }}><VadText variant="bodyStrong">{assetCode}</VadText><VadText variant="caption" tone="tertiary">Realized P&L</VadText></View>
+              <VadText variant="bodyStrong" tone={value >= 0 ? 'yes' : 'no'}>{signedMoney(value, assetCode)}</VadText>
+            </View>
+          ))}
+        </VadCard>
+      ) : null}
 
       {exposure.length ? (
         <VadProgressiveSection
