@@ -34,6 +34,7 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
 
   const visibleData = useMemo<ProductDataValue>(() => {
     const markets = filterMarketsByAssets(data.markets, activeAssetCodes);
+    const realLedgerAssetCodes = activeAssetCodes.filter((code) => code !== 'TNGN');
     const visibleMarketIds = new Set(markets.map((market) => market.instrument_public_id));
     const notifications = data.notifications.filter((notification) =>
       isAssetScopedNotificationVisible(notification, activeAssetCodes, visibleMarketIds),
@@ -48,13 +49,13 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
       activeAssetCodes,
       countryCode: runtimeCapabilities.context.countryCode,
       markets,
-      wallet: filterAssetRows(data.wallet, activeAssetCodes),
-      walletActivity: filterAssetRows(data.walletActivity, activeAssetCodes),
-      positions: filterAssetRows(data.positions, activeAssetCodes),
-      orders: filterAssetRows(data.orders, activeAssetCodes),
-      poolStakes: filterAssetRows(data.poolStakes, activeAssetCodes),
-      marketHistory: filterAssetRows(data.marketHistory, activeAssetCodes),
-      settlements: filterAssetRows(data.settlements, activeAssetCodes),
+      wallet: filterAssetRows(data.wallet, realLedgerAssetCodes),
+      walletActivity: filterAssetRows(data.walletActivity, realLedgerAssetCodes),
+      positions: filterAssetRows(data.positions, realLedgerAssetCodes),
+      orders: filterAssetRows(data.orders, realLedgerAssetCodes),
+      poolStakes: filterAssetRows(data.poolStakes, realLedgerAssetCodes),
+      marketHistory: filterAssetRows(data.marketHistory, realLedgerAssetCodes),
+      settlements: filterAssetRows(data.settlements, realLedgerAssetCodes),
       notifications,
       liveNotification,
       homePromotions: data.homePromotions.filter((promotion) =>
