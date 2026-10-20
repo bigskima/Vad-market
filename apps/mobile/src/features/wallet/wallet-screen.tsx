@@ -16,7 +16,6 @@ import { WalletSectionErrorBoundary } from '@/features/wallet/wallet-section-err
 import { OnchainActivityPanel } from '@/features/wallet/onchain-activity-panel';
 import { OnchainPositionsPanel } from '@/features/wallet/onchain-positions-panel';
 import { UsdcWalletBalances } from '@/features/wallet/usdc-wallet-balances';
-import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -113,7 +112,6 @@ export function WalletScreen({
           </View>
         </View>
       </TourTarget>
-      <WalletSectionErrorBoundary title="TNGN sandbox account unavailable"><TngnDemoModeCard /></WalletSectionErrorBoundary>
       {manageCurrenciesOpen ? <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
         <View style={{ gap: 3 }}><VadText variant="bodyStrong">Manage currencies</VadText><VadText variant="caption" tone="secondary">Only currencies enabled by your account policy and available wallet balances can be selected.</VadText></View>
         <View style={{ flexDirection: 'row', gap: 8 }}>{currencyPreference.eligibleCurrencies.map((currency) => <CurrencyToggle key={currency} currency={currency} displayName={currencyPreference.isCurrencyEnabled(currency) ? currency : 'Additional currency'} enabled={currencyPreference.isCurrencyEnabled(currency)} available={activeAssetCodes.includes(currency) || currency === 'TNGN'} onToggle={() => currencyPreference.toggleCurrency(currency)} />)}</View>
