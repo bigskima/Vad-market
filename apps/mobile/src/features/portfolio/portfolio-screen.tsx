@@ -417,6 +417,12 @@ function positionStatusLabel(status: string) {
   return 'ACTIVE';
 }
 
+function signedMoney(value: number | string, assetCode: string) {
+  const amount = Number(value ?? 0);
+  const formatted = assetMoney(amount, assetCode);
+  return amount > 0 ? `+${formatted}` : formatted;
+}
+
 function buildAssetExposure(positions: PositionRow[], orders: OrderRow[]) {
   const map = new Map<string, AssetExposure>();
   function ensure(assetCode: string) {
