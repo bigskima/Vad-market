@@ -149,6 +149,7 @@ export function WalletScreen({
       </View></TourTarget> : null}
     </View>
   );
+}
 
 function CurrencyToggle({ currency, displayName, enabled, available, onToggle }: { currency: VADCurrency; displayName: string; enabled: boolean; available: boolean; onToggle: () => void }) {
   const theme = useVadTheme();
