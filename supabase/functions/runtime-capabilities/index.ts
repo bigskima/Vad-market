@@ -62,6 +62,10 @@ interface AssetRow {
   metadata?: Record<string, unknown> | null;
 }
 
+interface CurrencyPolicyRow {
+  eligible_asset_codes?: string[];
+}
+
 function closedCapabilities() {
   return {
     createPost: false,
@@ -153,7 +157,7 @@ const authenticatedHandler = withSupabase(
       );
     }
 
-    const [rulesResult, jurisdictionAssetsResult, controlsResult, testerAccessResult] = await Promise.all([
+    const [rulesResult, jurisdictionAssetsResult, controlsResult, testerAccessResult, currencyPolicyResult] = await Promise.all([
       ctx.supabase
         .from("capability_rules")
         .select("capability_key,enabled,reason_code,version")
@@ -166,6 +170,7 @@ const authenticatedHandler = withSupabase(
         .eq("status", "ACTIVE"),
       ctx.supabase.rpc("my_service_control_snapshot"),
       ctx.supabase.rpc("my_tester_access_state"),
+      ctx.supabase.rpc("get_my_currency_policy"),
     ]);
 
     if (rulesResult.error || jurisdictionAssetsResult.error) {
@@ -206,6 +211,11 @@ const authenticatedHandler = withSupabase(
 
     const controls = controlsResult.data as ServiceControlSnapshot;
     const testerAccess = (testerAccessResult.data ?? {}) as TesterAccessState;
+    const currencyPolicyRow = Array.isArray(currencyPolicyResult.data)
+      ? currencyPolicyResult.data[0] as CurrencyPolicyRow | undefined
+      : currencyPolicyResult.data as CurrencyPolicyRow | null;
+    const tngnSandboxEligible = !currencyPolicyResult.error
+      && currencyPolicyRow?.eligible_asset_codes?.includes("TNGN") === true;
     const eligibleAssetIds = jurisdictionAssetsResult.data.map((row) => row.asset_id);
     let activeAssetCodes: string[] = [];
     let hasSandboxAsset = false;
@@ -235,6 +245,18 @@ const authenticatedHandler = withSupabase(
       const assetRows = (assets ?? []) as AssetRow[];
       activeAssetCodes = assetRows.map((asset) => asset.code);
       hasSandboxAsset = assetRows.some((asset) => asset.metadata?.sandbox_only === true);
+    }
+
+    // TNGN is a platform-controlled sandbox asset, not a jurisdictional money rail.
+    // Keep it discoverable independently of the user's country asset allow-list.
+    if (tngnSandboxEligible) {
+      activeAssetCodes = [...new Set([...activeAssetCodes, "TNGN"])].sort();
+      hasSandboxAsset = true;
+    } else if (currencyPolicyResult.error) {
+      console.warn("runtime-capabilities sandbox asset lookup failed", {
+        requestId,
+        currencyPolicyCode: currencyPolicyResult.error.code,
+      });
     }
 
     const capabilities = closedCapabilities();
