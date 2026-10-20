@@ -10,6 +10,7 @@ import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
+import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import { assetMoney, pct } from '@/features/markets/format';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -79,6 +80,7 @@ export function PortfolioScreen({
         <VadText variant="title">Portfolio</VadText>
         <VadText variant="caption" tone="secondary">Your positions, orders and settled markets.</VadText>
       </View>
+      <TngnDemoModeCard />
       <TourTarget id="portfolio-summary">
         <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.xl, gap: theme.spacing.md, borderRadius: 26, borderWidth: 1, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
