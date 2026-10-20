@@ -112,7 +112,7 @@ export function WalletScreen({
                   currency={currency}
                   displayName={currencyPreference.isCurrencyEnabled(currency) ? currency : 'Additional currency'}
                   enabled={currencyPreference.isCurrencyEnabled(currency)}
-                  available={activeAssetCodes.includes(currency)}
+                  available={activeAssetCodes.includes(currency) || currency === 'TNGN'}
                   onToggle={() => currencyPreference.toggleCurrency(currency)}
                 />
               ))}
