@@ -315,8 +315,19 @@ async function ensureNgnLocationForInstrument(instrumentPublicId: string) {
   }
 }
 
+async function getMarketAssetCode(instrumentPublicId: string) {
+  const { data, error } = await supabase
+    .from('market_catalog')
+    .select('asset_code')
+    .eq('instrument_public_id', instrumentPublicId)
+    .maybeSingle();
+  assertNoError(error, 'trading', 'We could not verify this market currency. Please try again.');
+  return data?.asset_code ?? null;
+}
+
 export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; amount: number }) {
-  const { data, error } = await supabase.rpc('pool_quote', {
+  const assetCode = await getMarketAssetCode(input.instrumentPublicId);
+  const { data, error } = await supabase.rpc(assetCode === 'TNGN' ? 'tngn_pool_quote' : 'pool_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
     p_amount: input.amount,
@@ -326,6 +337,18 @@ export async function quotePoolStake(input: { instrumentPublicId: string; outcom
 }
 
 export async function placePoolStake(quote: PoolQuote) {
+  const assetCode = await getMarketAssetCode(quote.instrumentPublicId);
+  if (assetCode === 'TNGN') {
+    const idempotencyKey = `tngn:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+    const { data, error } = await supabase.rpc('place_tngn_market_stake', {
+      p_instrument_public_id: quote.instrumentPublicId,
+      p_outcome_code: quote.outcomeCode,
+      p_amount: Number(quote.amount),
+      p_idempotency_key: idempotencyKey,
+    });
+    assertNoError(error, 'trading', 'We could not commit this TNGN prediction. Please try again.');
+    return data as PoolStakeStatus;
+  }
   await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `pool:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_pool_stake', {
