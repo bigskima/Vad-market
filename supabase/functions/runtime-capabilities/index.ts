@@ -251,7 +251,6 @@ const authenticatedHandler = withSupabase(
     // Keep it discoverable independently of the user's country asset allow-list.
     if (tngnSandboxEligible) {
       activeAssetCodes = [...new Set([...activeAssetCodes, "TNGN"])].sort();
-      hasSandboxAsset = true;
     } else if (currencyPolicyResult.error) {
       console.warn("runtime-capabilities sandbox asset lookup failed", {
         requestId,
