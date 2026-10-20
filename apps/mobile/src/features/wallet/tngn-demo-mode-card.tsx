@@ -137,7 +137,7 @@ export function TngnDemoModeCard() {
               <View style={{ alignItems: 'flex-end', gap: 2 }}>
                 <VadText variant="label">−{Number(order.stake).toLocaleString()} TNGN</VadText>
                 <VadText variant="caption" tone="tertiary">{order.status}{order.finalOutcome ? ` · Result ${order.finalOutcome}` : ''}</VadText>
-                {order.status === 'SETTLED' ? <VadText variant="caption" tone={Number(order.payout ?? 0) > 0 ? 'success' : 'secondary'}>{Number(order.payout ?? 0).toLocaleString()} TNGN payout</VadText> : null}
+                {order.status === 'SETTLED' ? <VadText variant="caption" tone={Number(order.payout ?? 0) > 0 ? 'yes' : 'secondary'}>{Number(order.payout ?? 0).toLocaleString()} TNGN payout</VadText> : null}
               </View>
             </View>
           )) : <VadText variant="caption" tone="tertiary">Your practice orders will appear here.</VadText>}
