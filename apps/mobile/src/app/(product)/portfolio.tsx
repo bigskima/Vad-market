@@ -41,7 +41,7 @@ export default function PortfolioRoute() {
         ) : (
           <View style={{ gap: theme.spacing.md }}>
             {settlementsReadFailedWithoutData ? <VadErrorState title="Payout history could not be loaded" message={data.sectionErrors.settlements ?? 'Payout history is unavailable.'} onRetry={() => void data.refreshPortfolio()} /> : null}
-            <PortfolioScreen positions={data.positions} orders={data.orders} settlements={data.settlements} onOpenPosition={openPosition} onOpenOrder={openOrder} />
+            <PortfolioScreen positions={data.positions} orders={data.orders} settlements={data.settlements} marketHistory={data.marketHistory} onOpenPosition={openPosition} onOpenOrder={openOrder} />
           </View>
         )}
 
