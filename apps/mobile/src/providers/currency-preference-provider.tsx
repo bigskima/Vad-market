@@ -136,7 +136,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
         Alert.alert('Sign in required', 'Sign in to change trading currencies.');
         return;
       }
-      if (currency === 'TNGN') {
+      if (next.includes('TNGN') !== enabledCurrencies.includes('TNGN')) {
         const { data: tngnEnabled, error: tngnError } = await supabase.rpc('set_my_demo_mode', {
           p_enabled: next.includes('TNGN'),
         });
@@ -160,7 +160,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
       await refresh();
     })();
-  }, [eligibleCurrencies, refresh]);
+  }, [eligibleCurrencies, enabledCurrencies, refresh]);
 
   const toggleCurrency = useCallback((currency: VADCurrency) => {
     if (!eligibleCurrencies.includes(currency)) return;
@@ -179,16 +179,37 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
           return;
         }
       }
-      setEnabledState(next);
-      try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
-      if (!supabaseConfiguration.ready) return;
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) return;
-      await supabase.from('user_currency_preferences').upsert({
-        user_id: data.user.id,
+      if (!supabaseConfiguration.ready) {
+        Alert.alert('Currency settings unavailable', 'Connect to VAD before changing trading currencies.');
+        return;
+      }
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) {
+        Alert.alert('Sign in required', 'Sign in to change trading currencies.');
+        return;
+      }
+      if (currency === 'TNGN') {
+        const { data: tngnEnabled, error: tngnError } = await supabase.rpc('set_my_demo_mode', {
+          p_enabled: next.includes('TNGN'),
+        });
+        if (tngnError || (next.includes('TNGN') && tngnEnabled !== true)) {
+          Alert.alert('TNGN unavailable', 'TNGN test trading is disabled by platform settings. Your currency selection was not changed.');
+          await refresh();
+          return;
+        }
+      }
+      const { error: preferenceError } = await supabase.from('user_currency_preferences').upsert({
+        user_id: authData.user.id,
         enabled_asset_codes: next,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
+      if (preferenceError) {
+        Alert.alert('Could not save currency settings', 'Your trading currency preference was not saved. Please try again.');
+        await refresh();
+        return;
+      }
+      setEnabledState(next);
+      try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
       await refresh();
     })();
   }, [eligibleCurrencies, enabledCurrencies, refresh]);
