@@ -19,7 +19,6 @@ import type { FeaturedMarketRow, TrendingMarketRow, VadMarketRow } from '@/servi
 import { FeaturedMarketsCarousel } from './featured-markets-carousel';
 import { MarketCard } from './components/market-card';
 import { PageHeader } from '@/features/navigation/page-header';
-import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import {
   MarketDiscoveryControls,
   type MarketSortMode,
@@ -175,7 +174,6 @@ export function MarketsScreen({
         />
       </TourTarget>
 
-      <TngnDemoModeCard />
 
       <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} category={category} onOpenMarket={onOpenMarket} />
 
