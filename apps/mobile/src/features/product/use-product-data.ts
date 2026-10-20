@@ -99,7 +99,7 @@ function isTransientReadFailure(reason: unknown) {
     : { message: reason };
   const message = `${String(value.message ?? '')} ${String(value.code ?? '')}`.toLowerCase();
   const status = Number(value.status);
-  return !Number.isFinite(status) || status === 0 || status >= 500
+  return (value.status != null && Number.isFinite(status) && (status === 0 || status >= 500))
     || ['failed to fetch', 'network request failed', 'networkerror', 'network error', 'fetch failed', 'timeout', 'timed out', 'econnreset', 'temporarily unavailable'].some((part) => message.includes(part));
 }
 
