@@ -67,7 +67,7 @@ export function TngnDemoAdminControl() {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="bodyStrong">{loading ? 'Checking status…' : status.globally_enabled ? 'Globally enabled' : 'Globally disabled'}</VadText>
-          <VadText variant="caption" tone="tertiary">{status.globally_enabled ? 'Eligible users may opt in from Wallet.' : 'Demo mode is unavailable to all users.'}</VadText>
+          <VadText variant="caption" tone="tertiary">{status.globally_enabled ? 'Eligible users may opt in from Wallet, Markets, or Portfolio.' : 'Demo mode is unavailable to all users.'}</VadText>
         </View>
         <Pressable accessibilityRole="switch" accessibilityState={{ checked: status.globally_enabled, disabled: loading || saving }} disabled={loading || saving} onPress={() => void toggle()} style={({ pressed }) => ({ width: 48, height: 28, borderRadius: 14, padding: 3, justifyContent: 'center', alignItems: status.globally_enabled ? 'flex-end' : 'flex-start', backgroundColor: status.globally_enabled ? theme.colors.brandPrimary : theme.colors.border, opacity: loading || saving ? 0.45 : pressed ? 0.75 : 1 })}>
           <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: theme.colors.surface }} />
