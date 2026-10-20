@@ -275,7 +275,32 @@ export async function getOpenOrders() {
 export async function getPoolStakes() {
   const { data, error } = await supabase.rpc('my_pool_stakes');
   assertNoError(error, 'portfolio', 'We could not load your committed predictions right now. Please try again.');
-  return (data ?? []) as PoolStakeRow[];
+  const standardRows = (data ?? []) as PoolStakeRow[];
+  const { data: policy, error: policyError } = await supabase.rpc('get_my_currency_policy');
+  assertNoError(policyError, 'portfolio', 'We could not verify your enabled trading currencies.');
+  const enabledAssets = Array.isArray(policy)
+    ? policy.flatMap((row: { enabled_asset_codes?: string[] }) => row.enabled_asset_codes ?? [])
+    : [];
+  if (!enabledAssets.includes('TNGN')) return standardRows;
+
+  const { data: tngnRows, error: tngnError } = await supabase.rpc('my_tngn_market_orders');
+  assertNoError(tngnError, 'portfolio', 'We could not load your TNGN prediction history.');
+  const isolatedRows = ((tngnRows ?? []) as Array<{
+    orderId: string; marketId: string; marketTitle: string; outcomeCode: string;
+    stake: number | string; status: string; finalOutcome: string | null; createdAt: string;
+  }>).map((row) => ({
+    stake_id: row.orderId,
+    market_id: row.marketId,
+    market_title: row.marketTitle,
+    outcome_code: row.outcomeCode,
+    asset_code: 'TNGN',
+    amount: row.stake,
+    trading_fee: 0,
+    market_status: row.status,
+    final_outcome: row.finalOutcome,
+    created_at: row.createdAt,
+  } satisfies PoolStakeRow));
+  return [...isolatedRows, ...standardRows];
 }
 
 export async function getMarketHistory() {
