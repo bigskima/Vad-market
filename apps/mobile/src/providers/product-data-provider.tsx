@@ -36,11 +36,12 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
     const markets = filterMarketsByAssets(data.markets, activeAssetCodes);
     const realLedgerAssetCodes = activeAssetCodes.filter((code) => code !== 'TNGN');
     const visibleMarketIds = new Set(markets.map((market) => market.instrument_public_id));
+    const realMoneyMarketIds = new Set(markets.filter((market) => market.asset_code !== 'TNGN').map((market) => market.instrument_public_id));
     const notifications = data.notifications.filter((notification) =>
-      isAssetScopedNotificationVisible(notification, realLedgerAssetCodes, visibleMarketIds),
+      isAssetScopedNotificationVisible(notification, realLedgerAssetCodes, realMoneyMarketIds),
     );
     const liveNotification = data.liveNotification &&
-      isAssetScopedNotificationVisible(data.liveNotification, realLedgerAssetCodes, visibleMarketIds)
+      isAssetScopedNotificationVisible(data.liveNotification, realLedgerAssetCodes, realMoneyMarketIds)
         ? data.liveNotification
         : null;
 
