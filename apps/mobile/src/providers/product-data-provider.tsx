@@ -37,10 +37,10 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
     const realLedgerAssetCodes = activeAssetCodes.filter((code) => code !== 'TNGN');
     const visibleMarketIds = new Set(markets.map((market) => market.instrument_public_id));
     const notifications = data.notifications.filter((notification) =>
-      isAssetScopedNotificationVisible(notification, activeAssetCodes, visibleMarketIds),
+      isAssetScopedNotificationVisible(notification, realLedgerAssetCodes, visibleMarketIds),
     );
     const liveNotification = data.liveNotification &&
-      isAssetScopedNotificationVisible(data.liveNotification, activeAssetCodes, visibleMarketIds)
+      isAssetScopedNotificationVisible(data.liveNotification, realLedgerAssetCodes, visibleMarketIds)
         ? data.liveNotification
         : null;
 
