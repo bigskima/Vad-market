@@ -13,7 +13,8 @@ import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
-import { useCurrencyPreference } from '@/providers/currency-preference-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
+import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { MarketDepthPanel } from './components/market-depth-panel';
@@ -78,7 +79,8 @@ export function MarketDetailScreen({
     }
   }, [now, onRefreshMarket, timing.closesAt, timing.resolvesAt]);
 
-  const marketCurrency = market.asset_code as 'NGN' | 'USDC';
+  const marketCurrency = market.asset_code as VADCurrency;
+  const isTngnMarket = marketCurrency === 'TNGN';
   const currencyAllowed = currencyPreference.isCurrencyEligible(marketCurrency)
     && currencyPreference.isCurrencyEnabled(marketCurrency);
   const effectiveCanTrade = canTrade && timing.tradingOpen && currencyAllowed;
@@ -117,13 +119,23 @@ export function MarketDetailScreen({
       ) : null}
       {tab === 'Chart' ? <Activity market={market} /> : null}
       {tab === 'Trade' ? (
-        <TradingTicket
-          market={market}
-          canTrade={effectiveCanTrade}
-          tradeReason={effectiveTradeReason}
-          capabilityLoading={tradeCapabilityLoading}
-          onPlaced={onPlaced}
-        />
+        isTngnMarket ? (
+          <View style={{ gap: 8 }}>
+            <VadCard variant="surface" style={{ padding: 12, gap: 4 }}>
+              <VadText variant="bodyStrong">TNGN sandbox only</VadText>
+              <VadText variant="caption" tone="secondary">This market is not routed through real-money order or settlement services. Use the separate sandbox account below to practice with synthetic TNGN.</VadText>
+            </VadCard>
+            <TngnDemoModeCard />
+          </View>
+        ) : (
+          <TradingTicket
+            market={market}
+            canTrade={effectiveCanTrade}
+            tradeReason={effectiveTradeReason}
+            capabilityLoading={tradeCapabilityLoading}
+            onPlaced={onPlaced}
+          />
+        )
       ) : null}
       {tab === 'Discussion' ? (
         <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} marketFilter={market} />
