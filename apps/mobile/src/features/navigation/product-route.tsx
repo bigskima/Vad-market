@@ -46,7 +46,7 @@ export function ProductRoute({
 }: Props) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const shouldHideTopBar = hideTopBar || active === 'Home' || active === 'Markets';
+  const shouldHideTopBar = hideTopBar || active === 'Home' || active === 'Markets' || active === 'Wallet';
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
