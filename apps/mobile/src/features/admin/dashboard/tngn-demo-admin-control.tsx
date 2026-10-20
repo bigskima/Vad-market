@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, TextInput, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
 import { VadText } from '@/components/ui/vad-text';
@@ -17,6 +17,10 @@ export function TngnDemoAdminControl() {
   const [error, setError] = useState<string | null>(null);
   const [markets, setMarkets] = useState<DemoMarket[]>([]);
   const [resolutionBusy, setResolutionBusy] = useState<string | null>(null);
+  const [marketTitle, setMarketTitle] = useState('');
+  const [marketDescription, setMarketDescription] = useState('');
+  const [outcomePreset, setOutcomePreset] = useState<'YES_NO' | 'CHOICE'>('YES_NO');
+  const [creatingMarket, setCreatingMarket] = useState(false);
   const refresh = useCallback(async () => {
     if (!supabaseConfiguration.ready) { setLoading(false); return; }
     const { data, error: rpcError } = await supabase.rpc('get_demo_mode_status');
@@ -29,6 +33,20 @@ export function TngnDemoAdminControl() {
     setLoading(false);
   }, []);
   useEffect(() => { const timer = setTimeout(() => void refresh(), 0); return () => clearTimeout(timer); }, [refresh]);
+  const createMarket = async () => {
+    if (creatingMarket || !marketTitle.trim()) { setError('Enter a title for the sandbox market.'); return; }
+    setCreatingMarket(true); setError(null);
+    const outcomes = outcomePreset === 'YES_NO'
+      ? [{ code: 'YES', label: 'Yes' }, { code: 'NO', label: 'No' }]
+      : [{ code: 'A', label: 'Option A' }, { code: 'B', label: 'Option B' }, { code: 'C', label: 'Option C' }];
+    try {
+      const { error: createError } = await supabase.rpc('admin_create_demo_market', { p_title: marketTitle.trim(), p_description: marketDescription.trim(), p_outcomes: outcomes });
+      if (createError) throw createError;
+      setMarketTitle(''); setMarketDescription('');
+      await refresh();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not create sandbox market.'); }
+    finally { setCreatingMarket(false); }
+  };
   const resolveMarket = (market: DemoMarket, outcomeCode: string) => {
     Alert.alert('Resolve sandbox market?', 'Set ' + market.title + ' to ' + outcomeCode + '. Winning demo orders receive 2x their stake; losing orders receive no payout. This affects synthetic TNGN only.', [
       { text: 'Cancel', style: 'cancel' },
@@ -74,6 +92,22 @@ export function TngnDemoAdminControl() {
         </Pressable>
       </View>
       {error ? <VadText variant="caption" tone="danger">{error}</VadText> : null}
+      <View style={{ gap: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md }}>
+        <VadText variant="bodyStrong">Create sandbox market</VadText>
+        <VadText variant="caption" tone="secondary">Create a practice-only market. It uses synthetic TNGN and never publishes a real-money instrument.</VadText>
+        <TextInput value={marketTitle} onChangeText={setMarketTitle} maxLength={120} placeholder="Market title" placeholderTextColor={theme.colors.textTertiary} accessibilityLabel="Sandbox market title" style={{ color: theme.colors.textPrimary, borderColor: theme.colors.border, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 }} />
+        <TextInput value={marketDescription} onChangeText={setMarketDescription} maxLength={500} multiline placeholder="Description and practice rules (optional)" placeholderTextColor={theme.colors.textTertiary} accessibilityLabel="Sandbox market description" style={{ minHeight: 64, color: theme.colors.textPrimary, borderColor: theme.colors.border, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, textAlignVertical: 'top' }} />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {([{ value: 'YES_NO', label: 'Yes / No' }, { value: 'CHOICE', label: '3 choices' }] as const).map((option) => (
+            <Pressable key={option.value} onPress={() => setOutcomePreset(option.value)} style={{ flex: 1, alignItems: 'center', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: outcomePreset === option.value ? theme.colors.brandPrimary : theme.colors.border, backgroundColor: outcomePreset === option.value ? theme.colors.brandSoft : theme.colors.surfaceMuted }}>
+              <VadText variant="label" tone={outcomePreset === option.value ? 'brand' : 'secondary'}>{option.label}</VadText>
+            </Pressable>
+          ))}
+        </View>
+        <Pressable disabled={creatingMarket || !status.globally_enabled} onPress={() => void createMarket()} style={{ alignItems: 'center', padding: 12, borderRadius: 10, backgroundColor: theme.colors.brandPrimary, opacity: creatingMarket || !status.globally_enabled ? 0.5 : 1 }}>
+          <VadText variant="label" tone="inverse">{creatingMarket ? 'Creating…' : 'Create practice market'}</VadText>
+        </Pressable>
+      </View>
       <View style={{ gap: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md }}>
         <VadText variant="bodyStrong">Sandbox market resolution</VadText>
         <VadText variant="caption" tone="secondary">Resolve practice markets explicitly. This never resolves or changes real VAD markets.</VadText>
