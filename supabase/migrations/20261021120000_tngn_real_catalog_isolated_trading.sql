@@ -1,4 +1,5 @@
 begin;
+alter table public.demo_orders alter column demo_market_id drop not null;
 alter table public.demo_orders add column if not exists instrument_public_id uuid, add column if not exists market_title text, add column if not exists quoted_probability numeric(12,8), add column if not exists idempotency_key text;
 create unique index if not exists demo_orders_idempotency_key_uidx on public.demo_orders(user_id,idempotency_key) where idempotency_key is not null;
 
@@ -36,7 +37,7 @@ begin
  if b<p_amount then raise exception 'Insufficient TNGN balance.' using errcode='22023'; end if;
  update public.demo_accounts set available_balance=available_balance-p_amount,updated_at=statement_timestamp() where user_id=auth.uid();
  insert into public.demo_orders(user_id,demo_market_id,outcome_code,side,stake,status,instrument_public_id,market_title,quoted_probability,idempotency_key)
- values(auth.uid(),(select id from public.demo_markets order by id limit 1),outcome,'BUY',p_amount,'OPEN',p_instrument_public_id,q->>'marketTitle',(q->>'impliedProbability')::numeric,k) returning * into o;
+ values(auth.uid(),null,outcome,'BUY',p_amount,'OPEN',p_instrument_public_id,q->>'marketTitle',(q->>'impliedProbability')::numeric,k) returning * into o;
  insert into public.demo_ledger_entries(user_id,entry_type,amount,reference_id) values(auth.uid(),'DEMO_STAKE',-p_amount,o.public_id::text);
  return jsonb_build_object('stakeId',o.public_id,'marketId',p_instrument_public_id,'marketTitle',o.market_title,'outcomeCode',outcome,'amount',p_amount,'tradingFee',0,'status','COMMITTED','assetCode','TNGN','environment','TNGN','availableBalance',b-p_amount,'realMoneyUsed',false,'quotedProbability',q->>'impliedProbability');
 end; $$;
