@@ -9,16 +9,17 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { probability } from '../format';
 import { MarketThumbnail } from './market-thumbnail';
-import { MarketProbabilityBar } from './market-probability-bar';
 
 export function MarketCard({
   market,
   onPress,
   compact = false,
+  onSelectOutcome,
 }: {
   market: MarketCatalogItem;
   onPress: () => void;
   compact?: boolean;
+  onSelectOutcome?: (outcome: 'YES' | 'NO') => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -29,109 +30,58 @@ export function MarketCard({
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
   const volume = Number(market.total_volume ?? 0);
-  const participants = Number(market.participant_count ?? 0);
-  const hasVolume = Number.isFinite(volume) && volume > 0;
-  const hasParticipants = Number.isFinite(participants) && participants > 0;
+  const hasVolume = market.total_volume != null && Number.isFinite(volume) && volume >= 0;
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${market.title}. YES ${yes}, NO ${no}. Currency ${market.asset_code}. ${timing.statusLabel}. ${timing.primaryTiming}.`}
-      accessibilityHint="Opens the market timeline, trading, discussion and resolution rules."
-      style={({ pressed }) => ({
+    <View
+      style={{
         width: '100%',
-        minHeight: 0,
+        minHeight: tight ? 72 : 88,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: tight ? 9 : 12,
         borderWidth: 1,
-        borderColor: pressed ? theme.colors.brandPrimary : theme.colors.border,
-        borderRadius: density.phone ? 16 : 18,
+        borderColor: theme.colors.border,
+        borderRadius: density.phone ? 17 : 19,
         backgroundColor: theme.colors.surface,
-        padding: tight ? 11 : 13,
-        gap: 9,
-        opacity: pressed ? 0.92 : 1,
+        padding: tight ? 9 : 12,
         ...theme.shadows.subtle,
-      })}
+      }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-        <MarketThumbnail market={market} size={tight ? 38 : 42} />
-        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13, flexShrink: 1 }}>
-              {(market.category ?? 'General').toUpperCase()}
-            </VadText>
-            <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: theme.colors.borderStrong }} />
-            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
-              {market.asset_code}
-            </VadText>
-          </View>
-          <VadText
-            variant="bodyStrong"
-            numberOfLines={2}
-            ellipsizeMode="tail"
-            style={{ fontSize: tight ? 14 : 15, lineHeight: tight ? 18 : 20, letterSpacing: -0.2, fontWeight: '700' }}
-          >
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Open market: ${market.title}`}
+        accessibilityHint="Opens this exact market's details."
+        style={({ pressed }) => ({ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: tight ? 9 : 12, opacity: pressed ? 0.72 : 1 })}
+      >
+        <MarketThumbnail market={market} size={tight ? 54 : 68} />
+        <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+          <VadText variant="bodyStrong" numberOfLines={2} ellipsizeMode="tail" style={{ fontSize: tight ? 14 : 15, lineHeight: tight ? 18 : 20, letterSpacing: -0.2, fontWeight: '700' }}>
             {market.title}
           </VadText>
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: 2, maxWidth: density.phone ? 82 : 100 }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            paddingHorizontal: 7,
-            paddingVertical: 3,
-            borderRadius: 999,
-            backgroundColor: isOpen ? theme.colors.yesSoft : theme.colors.surfaceRaised,
-          }}>
-            <View style={{
-              width: 4,
-              height: 4,
-              borderRadius: 3,
-              backgroundColor: isOpen ? theme.colors.yes : theme.colors.textTertiary,
-            }} />
-            <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={1} style={{ fontSize: 10, lineHeight: 13 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <VadIcon name="activity" size={13} tone="tertiary" />
+            <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 11 }}>
+              {hasVolume ? `${formatVolume(volume)} ${market.asset_code} total volume` : 'Volume unavailable'}
+            </VadText>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isOpen ? theme.colors.yes : theme.colors.textTertiary }} />
+            <VadText variant="caption" tone={isOpen ? 'yes' : 'tertiary'} numberOfLines={1} style={{ fontSize: 10 }}>
               {isOpen ? 'Live' : timing.statusLabel}
             </VadText>
           </View>
-          <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ textAlign: 'right', fontSize: 10, lineHeight: 13 }}>
-            {timing.primaryTiming}
-          </VadText>
         </View>
+      </Pressable>
+      <View style={{ width: tight ? 122 : 146, flexDirection: 'row', gap: 5 }}>
+        <OutcomeTile label="Yes" value={yes} positive compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('YES') : undefined} />
+        <OutcomeTile label="No" value={no} positive={false} compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('NO') : undefined} />
       </View>
-
-      <View style={{ gap: 7 }}>
-        <View style={{ flexDirection: 'row', gap: 5 }}>
-          <PriceTile label="YES" value={yes} positive compact={tight} />
-          <PriceTile label="NO" value={no} positive={false} compact={tight} />
-        </View>
-        <MarketProbabilityBar yes={market.yes_price} no={market.no_price} />
-      </View>
-
-      <View
-        style={{
-          borderTopWidth: 1,
-          borderTopColor: theme.colors.border,
-          paddingTop: 4,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 5,
-        }}
-      >
-        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-          <VadIcon name="activity" size={13} tone="tertiary" />
-          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11 }}>
-            {hasVolume ? `${formatVolume(volume)} ${market.asset_code}` : 'No volume'}
-          </VadText>
-        </View>
-        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
-          <VadIcon name="community" size={10} tone="tertiary" />
-          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 9, lineHeight: 11 }}>
-            {hasParticipants ? `${participants.toLocaleString()} traders` : 'No traders'}
-          </VadText>
-        </View>
-        <VadIcon name="chevronRight" size={10} tone="tertiary" />
-      </View>
-    </Pressable>
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Open ${market.title}`} hitSlop={6} style={({ pressed }) => ({ padding: 2, opacity: pressed ? 0.65 : 1 })}>
+        <VadIcon name="chevronRight" size={19} tone="secondary" />
+      </Pressable>
+    </View>
   );
 }
 
@@ -142,44 +92,14 @@ function formatVolume(value: number) {
   }).format(value);
 }
 
-function PriceTile({
-  label,
-  value,
-  positive,
-  compact,
-}: {
-  label: string;
-  value: string;
-  positive: boolean;
-  compact: boolean;
-}) {
+function OutcomeTile({ label, value, positive, compact, onPress }: { label: string; value: string; positive: boolean; compact: boolean; onPress?: () => void }) {
   const theme = useVadTheme();
-  // The catalogue reference uses blue for YES and red for NO; reserve green for
-  // positive account/settlement states so outcome colours stay visually distinct.
-  const foreground = positive ? theme.colors.info : theme.colors.no;
-  const background = positive ? theme.colors.infoSoft : theme.colors.noSoft;
+  const foreground = positive ? theme.colors.yes : theme.colors.no;
+  const background = positive ? theme.colors.yesSoft : theme.colors.noSoft;
   return (
-    <View
-      style={{
-        flex: 1,
-        minWidth: 0,
-        minHeight: compact ? 32 : 36,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 4,
-        borderRadius: 9,
-        paddingHorizontal: compact ? 9 : 10,
-        paddingVertical: 4,
-        backgroundColor: background,
-        borderWidth: 1,
-        borderColor: positive ? theme.colors.info : theme.colors.no,
-      }}
-    >
-      <VadText variant="caption" style={{ color: foreground, fontSize: 11, lineHeight: 14, fontWeight: '700' }}>{label}</VadText>
-      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 14 : 15, lineHeight: 18, fontWeight: '700' }}>
-        {value}
-      </VadText>
-    </View>
+    <Pressable disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={onPress ? `Trade ${label} on this market at ${value}` : undefined} onPress={onPress} style={({ pressed }) => ({ flex: 1, minHeight: compact ? 47 : 54, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 3, gap: 0, backgroundColor: background, borderWidth: 1, borderColor: positive ? theme.colors.yes : theme.colors.no, opacity: pressed ? 0.72 : 1 })}>
+      <VadText variant="caption" style={{ color: foreground, fontSize: 10, lineHeight: 12 }}>{label}</VadText>
+      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 13 : 15, lineHeight: 18, fontWeight: '700' }}>{value}</VadText>
+    </Pressable>
   );
 }

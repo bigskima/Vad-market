@@ -84,7 +84,7 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
     <View
       accessibilityRole="alert"
       style={{
-        minHeight: 32,
+        minHeight: 29,
         flexDirection: 'row',
         alignItems: 'center',
         overflow: 'hidden',
@@ -100,7 +100,7 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
         onHoverOut={() => setPaused(false)}
         onPressIn={() => setPaused(true)}
         onPressOut={() => setPaused(false)}
-        style={{ flex: 1, minHeight: 32, justifyContent: 'center', overflow: 'hidden' }}
+        style={{ flex: 1, minHeight: 29, justifyContent: 'center', overflow: 'hidden' }}
       >
         <Animated.View
           style={{
@@ -130,8 +130,8 @@ export function ProductAnnouncementBar({ notice }: { notice?: PublicNotice | nul
         hitSlop={4}
         onPress={() => setDismissedId(notice.public_id)}
         style={({ pressed }) => ({
-          width: 44,
-          height: 32,
+          width: 38,
+          height: 29,
           alignItems: 'center',
           justifyContent: 'center',
           borderLeftWidth: 1,

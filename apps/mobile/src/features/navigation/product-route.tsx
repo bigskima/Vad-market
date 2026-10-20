@@ -31,6 +31,7 @@ type Props = {
   active: ProductTab;
   children: ReactNode;
   allowCreate?: boolean;
+  hideTopBar?: boolean;
   requiredCapability?: RuntimeCapabilityKey;
   capabilityTitle?: string;
 };
@@ -39,11 +40,13 @@ export function ProductRoute({
   active,
   children,
   allowCreate = false,
+  hideTopBar = false,
   requiredCapability,
   capabilityTitle = 'This section is not available yet',
 }: Props) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const shouldHideTopBar = hideTopBar || active === 'Home' || active === 'Markets' || active === 'Wallet';
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
@@ -56,23 +59,25 @@ export function ProductRoute({
   if (isLoading || data.loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <View
-          style={{
-            minHeight: density.phone ? 56 : 64,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
-            paddingHorizontal: density.horizontalPadding,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.spacing.sm,
-          }}
-        >
-          <VadSkeleton width={density.phone ? 34 : 142} height={density.phone ? 34 : 22} radius={17} />
-          <VadSkeleton width={density.phone ? '46%' : 320} height={44} radius={22} />
-          <View style={{ flex: 1 }} />
-          <VadSkeleton width={44} height={44} radius={22} />
-        </View>
+        {!shouldHideTopBar ? (
+          <View
+            style={{
+              minHeight: density.phone ? 56 : 64,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
+              backgroundColor: theme.colors.surface,
+              paddingHorizontal: density.horizontalPadding,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.spacing.sm,
+            }}
+          >
+            <VadSkeleton width={density.phone ? 34 : 142} height={density.phone ? 34 : 22} radius={17} />
+            <VadSkeleton width={density.phone ? '46%' : 320} height={44} radius={22} />
+            <View style={{ flex: 1 }} />
+            <VadSkeleton width={44} height={44} radius={22} />
+          </View>
+        ) : null}
 
         <View style={{ flex: 1, flexDirection: 'row' }}>
           {density.desktop ? (
@@ -202,20 +207,22 @@ export function ProductRoute({
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <ProductTopBar
-        active={active}
-        email={email}
-        isAdmin={Boolean(data.adminSummary)}
-        canCreate={canCreate}
-        onCreate={() => router.push('/create-market')}
-        onWallet={() => router.push('/wallet')}
-        onAdmin={() => router.push('/admin')}
-        onAssistant={() => router.push('/assistant')}
-        onAccount={() => router.replace('/account')}
-        onSearch={() => router.push('/markets')}
-        onNotices={() => router.push('/notifications')}
-        noticeCount={noticeCount}
-      />
+      {!shouldHideTopBar ? (
+        <ProductTopBar
+          active={active}
+          email={email}
+          isAdmin={Boolean(data.adminSummary)}
+          canCreate={canCreate}
+          onCreate={() => router.push('/create-market')}
+          onWallet={() => router.push('/wallet')}
+          onAdmin={() => router.push('/admin')}
+          onAssistant={() => router.push('/assistant')}
+          onAccount={() => router.replace('/account')}
+          onSearch={() => router.push('/markets')}
+          onNotices={() => router.push('/notifications')}
+          noticeCount={noticeCount}
+        />
+      ) : null}
 
       <ProductAnnouncementBar notice={publicNotice} />
 

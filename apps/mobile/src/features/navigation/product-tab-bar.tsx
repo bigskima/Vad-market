@@ -81,7 +81,7 @@ export function ProductTabBar({
                 justifyContent: 'center',
                 gap: 2,
                 borderRadius: 19,
-                backgroundColor: selected ? theme.colors.brandSoft : pressed ? theme.colors.surfaceRaised : 'transparent',
+                backgroundColor: pressed ? theme.colors.surfaceRaised : 'transparent',
                 opacity: pressed ? 0.78 : 1,
                 transform: [{ scale: pressed ? 0.96 : 1 }],
               })}
@@ -93,10 +93,10 @@ export function ProductTabBar({
                   borderRadius: theme.radius.pill,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: selected ? theme.colors.brandPrimary : 'transparent',
+                  backgroundColor: 'transparent',
                 }}
               >
-                <VadIcon name={tab.icon} size={density.compact ? 17 : 18} tone={selected ? 'inverse' : 'tertiary'} />
+                <VadIcon name={tab.icon} size={density.compact ? 19 : 21} tone={selected ? 'brand' : 'tertiary'} />
               </View>
 
               <VadText

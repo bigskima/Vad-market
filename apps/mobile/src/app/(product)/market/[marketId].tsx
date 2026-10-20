@@ -14,7 +14,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 
 export default function MarketDetailRoute() {
-  const params = useLocalSearchParams<{ marketId: string }>();
+  const params = useLocalSearchParams<{ marketId: string; outcome?: string }>();
   const { session } = useAuth();
   const data = useProductDataContext();
   const theme = useVadTheme();
@@ -26,6 +26,7 @@ export default function MarketDetailRoute() {
     (item) => item.instrument_public_id === marketId,
   );
   const tradeReason = runtime.snapshot.reasons.trade;
+  const initialOutcome = params.outcome === 'YES' || params.outcome === 'NO' ? params.outcome : undefined;
 
   const openMarket = (next: MarketCatalogItem) => {
     router.replace({
@@ -62,8 +63,10 @@ export default function MarketDetailRoute() {
             })}
           />
           <MarketDetailScreen
+            key={`${market.instrument_public_id}:${initialOutcome ?? 'default'}`}
             market={market}
             markets={data.markets}
+            initialOutcome={initialOutcome}
             canTrade={runtime.snapshot.capabilities.trade}
             tradeReason={tradeReason}
             tradeCapabilityLoading={
