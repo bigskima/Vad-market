@@ -41,6 +41,10 @@ export default function MarketsRoute() {
           markets={data.markets}
           onOpenMarket={openMarket}
           initialCategory={initialCategory}
+          featuredMarkets={data.featuredMarkets}
+          curatedMarkets={data.vadMarkets}
+          trendingMarkets={data.trendingMarkets}
+          unreadNotifications={data.unreadNotificationCount > 0}
         />
       )}
     </ProductRoute>

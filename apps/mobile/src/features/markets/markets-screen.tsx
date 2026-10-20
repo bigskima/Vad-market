@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -14,7 +15,10 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import { getMarketTiming } from '@/lib/market-timing';
 import type { MarketCatalogItem } from '@/services/market-api';
+import type { FeaturedMarketRow, TrendingMarketRow, VadMarketRow } from '@/services/home-content-api';
+import { FeaturedMarketsCarousel } from './featured-markets-carousel';
 import { MarketCard } from './components/market-card';
+import { PageHeader } from '@/features/navigation/page-header';
 import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import {
   MarketDiscoveryControls,
@@ -26,10 +30,18 @@ export function MarketsScreen({
   markets,
   onOpenMarket,
   initialCategory,
+  featuredMarkets = [],
+  curatedMarkets = [],
+  trendingMarkets = [],
+  unreadNotifications = false,
 }: {
   markets: MarketCatalogItem[];
   onOpenMarket: (market: MarketCatalogItem) => void;
   initialCategory?: string;
+  featuredMarkets?: FeaturedMarketRow[];
+  curatedMarkets?: VadMarketRow[];
+  trendingMarkets?: TrendingMarketRow[];
+  unreadNotifications?: boolean;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -38,6 +50,12 @@ export function MarketsScreen({
   const { width } = useWindowDimensions();
   const columns = width >= 920 ? 2 : 1;
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedQuery(query.trim()), 250);
+    return () => clearTimeout(handle);
+  }, [query]);
   const [category, setCategory] = useState(() =>
     initialCategory && markets.some((market) => market.category === initialCategory)
       ? initialCategory
@@ -45,6 +63,8 @@ export function MarketsScreen({
   );
   const [sortMode, setSortMode] = useState<MarketSortMode>('activity');
   const [stage, setStage] = useState<MarketStageFilter>('all');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [showAllMarkets, setShowAllMarkets] = useState(false);
 
   const categories = useMemo(
     () => [...new Set(markets.map((market) => market.category).filter((value): value is string => Boolean(value)))].sort(),
@@ -52,12 +72,12 @@ export function MarketsScreen({
   );
 
   const baseFilteredMarkets = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+    const needle = debouncedQuery.toLowerCase();
     return markets
       .filter((market) => market.asset_code === 'TNGN' ? isCurrencyEligible('TNGN') : enabledCurrencies.includes(market.asset_code as VADCurrency))
       .filter((market) => category === 'All' || market.category === category)
-      .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status].some((value) => String(value ?? '').toLowerCase().includes(needle)));
-  }, [markets, category, query, enabledCurrencies, isCurrencyEligible]);
+      .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status, market.market_type, market.event_public_id, market.instrument_public_id].some((value) => String(value ?? '').toLowerCase().includes(needle)));
+  }, [markets, category, debouncedQuery, enabledCurrencies, isCurrencyEligible]);
 
   const stageCounts = useMemo(() => {
     const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
@@ -80,6 +100,15 @@ export function MarketsScreen({
     });
 
     return [...filtered].sort((a, b) => {
+      if (sortMode === 'activity' && trendingMarkets.length) {
+        const aRank = trendingMarkets.find((entry) => entry.instrument_public_id === a.instrument_public_id)?.rank;
+        const bRank = trendingMarkets.find((entry) => entry.instrument_public_id === b.instrument_public_id)?.rank;
+        if (aRank != null || bRank != null) {
+          if (aRank == null) return 1;
+          if (bRank == null) return -1;
+          if (aRank !== bRank) return aRank - bRank;
+        }
+      }
       if (sortMode === 'closing') {
         const aClose = a.closes_at ? new Date(a.closes_at).getTime() : Number.MAX_SAFE_INTEGER;
         const bClose = b.closes_at ? new Date(b.closes_at).getTime() : Number.MAX_SAFE_INTEGER;
@@ -93,30 +122,41 @@ export function MarketsScreen({
       }
       return Number(Boolean(b.last_trade_at)) - Number(Boolean(a.last_trade_at)) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
-  }, [baseFilteredMarkets, stage, sortMode, now]);
+  }, [baseFilteredMarkets, stage, sortMode, now, trendingMarkets]);
+
+  const listingMarkets = useMemo(() => {
+    const discoveryHasFilters = Boolean(debouncedQuery) || category !== 'All' || stage !== 'all' || sortMode !== 'activity';
+    if (showAllMarkets || discoveryHasFilters) return orderedMarkets;
+    const ranked = trendingMarkets
+      .map((entry) => orderedMarkets.find((market) => market.instrument_public_id === entry.instrument_public_id))
+      .filter((market): market is MarketCatalogItem => Boolean(market));
+    return ranked.length ? ranked : orderedMarkets;
+  }, [orderedMarkets, trendingMarkets, showAllMarkets, debouncedQuery, category, stage, sortMode]);
 
   const cardWidth = columns === 2 ? '48.7%' : '100%';
   const pageSize = columns === 2 ? 8 : 5;
   const progressive = useProgressiveList({
-    items: orderedMarkets,
+    items: listingMarkets,
     initialCount: pageSize,
     step: pageSize,
-    resetKey: `${query.trim().toLowerCase()}|${category}|${sortMode}|${stage}|${columns}`,
+    resetKey: `${debouncedQuery.toLowerCase()}|${category}|${sortMode}|${stage}|${columns}|${showAllMarkets}`,
   });
 
   const visibleMarkets = progressive.visibleItems;
 
   return (
     <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
-      <View style={{ gap: 4, paddingBottom: theme.spacing.xs }}>
-        <VadText variant="caption" tone="brand">VAD EXCHANGE</VadText>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-          <VadText variant="title">{category === 'All' ? 'Markets' : category}</VadText>
-          <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
-        </View>
+      <PageHeader
+        title="Markets"
+        subtitle="Discover and trade on real-world events."
+        actions={[
+          { icon: 'bell', label: 'Notifications', onPress: () => router.push('/notifications'), badge: unreadNotifications },
+          { icon: 'operations', label: 'Market filters', onPress: () => setFiltersExpanded((value) => !value) },
+        ]}
+      />
+      <View style={{ alignItems: 'flex-end', marginTop: -8 }}>
+        <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
       </View>
-
-      <TngnDemoModeCard />
 
       <TourTarget id="markets-discovery">
         <MarketDiscoveryControls
@@ -125,14 +165,32 @@ export function MarketsScreen({
           categories={categories}
           activeCategory={category}
           onCategoryChange={setCategory}
-          stage={stage}
-          onStageChange={setStage}
-          stageCounts={stageCounts}
+          stage={filtersExpanded ? stage : undefined}
+          onStageChange={filtersExpanded ? setStage : undefined}
+          stageCounts={filtersExpanded ? stageCounts : undefined}
           sortMode={sortMode}
           onSortModeChange={setSortMode}
           resultCount={orderedMarkets.length}
+          showAdvancedFilters={filtersExpanded}
         />
       </TourTarget>
+
+      <TngnDemoModeCard />
+
+      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} category={category} onOpenMarket={onOpenMarket} />
+
+      {orderedMarkets.length ? (
+        <View style={{ gap: theme.spacing.sm, paddingTop: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <VadIcon name="activity" size={20} tone="brand" />
+              <VadText variant="bodyStrong" style={{ fontSize: 19 }}>Trending Markets</VadText>
+            </View>
+            <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setStage('all'); setSortMode('activity'); setQuery(''); setDebouncedQuery(''); setShowAllMarkets(true); }} />
+          </View>
+          <VadText variant="caption" tone="secondary">{trendingMarkets.length && !showAllMarkets && !debouncedQuery && category === 'All' && stage === 'all' ? 'Ranked from verified trading activity.' : trendingMarkets.length ? 'Live market catalogue.' : 'No published trending ranking is available; showing the live catalogue by recent activity.'}</VadText>
+        </View>
+      ) : null}
 
       <TourTarget id="markets-results">
         {orderedMarkets.length ? (
@@ -147,7 +205,7 @@ export function MarketsScreen({
             >
               {visibleMarkets.map((market) => (
                 <View key={market.instrument_public_id} style={{ width: cardWidth }}>
-                  <MarketCard market={market} onPress={() => onOpenMarket(market)} compact />
+                  <MarketCard market={market} onPress={() => onOpenMarket(market)} onSelectOutcome={(outcome) => router.push({ pathname: '/market/[marketId]', params: { marketId: market.instrument_public_id, outcome } })} compact />
                 </View>
               ))}
             </View>
@@ -180,6 +238,7 @@ export function MarketsScreen({
             actionLabel="Clear filters"
             onAction={() => {
               setQuery('');
+              setDebouncedQuery('');
               setCategory('All');
               setSortMode('activity');
               setStage('all');

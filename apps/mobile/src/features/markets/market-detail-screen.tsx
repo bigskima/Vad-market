@@ -36,6 +36,7 @@ const tabs = [
 export function MarketDetailScreen({
   market,
   markets,
+  initialOutcome,
   canTrade,
   tradeReason,
   tradeCapabilityLoading = false,
@@ -46,6 +47,7 @@ export function MarketDetailScreen({
 }: {
   market: MarketCatalogItem;
   markets: MarketCatalogItem[];
+  initialOutcome?: 'YES' | 'NO';
   canTrade: boolean;
   tradeReason?: string;
   tradeCapabilityLoading?: boolean;
@@ -58,7 +60,7 @@ export function MarketDetailScreen({
   const currencyPreference = useCurrencyPreference();
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
-  const [tab, setTab] = useState<DetailTab>('Overview');
+  const [tab, setTab] = useState<DetailTab>(initialOutcome ? 'Trade' : 'Overview');
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
 
@@ -123,13 +125,15 @@ export function MarketDetailScreen({
           <View style={{ gap: 8 }}>
             <VadCard variant="surface" style={{ padding: 12, gap: 4 }}>
               <VadText variant="bodyStrong">TNGN sandbox only</VadText>
-              <VadText variant="caption" tone="secondary">This market is not routed through real-money order or settlement services. Use the separate sandbox account below to practice with synthetic TNGN.</VadText>
+              <VadText variant="caption" tone="secondary">This market is isolated from real-money orders and settlement. Practice with the separate TNGN sandbox account.</VadText>
             </VadCard>
             <TngnDemoModeCard />
           </View>
         ) : (
           <TradingTicket
+            key={`${market.instrument_public_id}:${initialOutcome ?? 'default'}`}
             market={market}
+            initialOutcome={initialOutcome}
             canTrade={effectiveCanTrade}
             tradeReason={effectiveTradeReason}
             capabilityLoading={tradeCapabilityLoading}
