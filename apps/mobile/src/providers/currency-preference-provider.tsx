@@ -136,6 +136,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
         Alert.alert('Sign in required', 'Sign in to change trading currencies.');
         return;
       }
+      // Keep the per-user TNGN switch synchronized with the server-side platform gate.
       if (next.includes('TNGN') !== enabledCurrencies.includes('TNGN')) {
         const { data: tngnEnabled, error: tngnError } = await supabase.rpc('set_my_demo_mode', {
           p_enabled: next.includes('TNGN'),
