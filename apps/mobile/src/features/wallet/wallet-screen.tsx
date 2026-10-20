@@ -285,12 +285,14 @@ function WalletAction({
   icon,
   tone,
   onPress,
+  disabled = false,
 }: {
   label: string;
   detail: string;
   icon: VadIconName;
   tone: 'yes' | 'brand' | 'primary';
   onPress: () => void;
+  disabled?: boolean;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -302,9 +304,10 @@ function WalletAction({
       accessibilityLabel={label}
       accessibilityHint={detail}
       onPress={onPress}
+      disabled={disabled}
       style={({ pressed }) => ({
         flex: 1,
-        opacity: pressed ? 0.7 : 1,
+        opacity: disabled ? 0.45 : pressed ? 0.7 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
