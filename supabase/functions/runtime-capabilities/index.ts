@@ -305,11 +305,12 @@ const authenticatedHandler = withSupabase(
       delete messages.trade;
     }
 
-    if (activeAssetCodes.length === 0) {
+    const hasRealMoneyAsset = activeAssetCodes.some((code) => code !== "TNGN");
+    if (!hasRealMoneyAsset) {
       capabilities.trade = false;
       capabilities.deposit = false;
       capabilities.withdraw = false;
-      reasons.trade = "NO_ACTIVE_ASSET";
+      reasons.trade = activeAssetCodes.includes("TNGN") ? "SANDBOX_ONLY" : "NO_ACTIVE_ASSET";
       reasons.deposit = "NO_ACTIVE_ASSET";
       reasons.withdraw = "NO_ACTIVE_ASSET";
       delete messages.trade;
