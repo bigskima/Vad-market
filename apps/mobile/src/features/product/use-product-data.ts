@@ -91,32 +91,6 @@ function settledError(result: PromiseSettledResult<unknown>, context: UserErrorC
   return userFacingErrorMessage(result.reason, context, fallback);
 }
 
-// Retry only transient connectivity/server failures. Permission, validation and
-// missing-function errors are deterministic and should surface immediately.
-function isTransientReadFailure(reason: unknown) {
-  const value = reason && typeof reason === 'object'
-    ? reason as { message?: unknown; code?: unknown; status?: unknown }
-    : { message: reason };
-  const message = `${String(value.message ?? '')} ${String(value.code ?? '')}`.toLowerCase();
-  const status = Number(value.status);
-  return (value.status != null && Number.isFinite(status) && (status === 0 || status >= 500))
-    || ['failed to fetch', 'network request failed', 'networkerror', 'network error', 'fetch failed', 'timeout', 'timed out', 'econnreset', 'temporarily unavailable'].some((part) => message.includes(part));
-}
-
-async function readWithRetry<T>(read: () => Promise<T>, attempts = 2): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      return await read();
-    } catch (reason) {
-      lastError = reason;
-      if (attempt + 1 >= attempts || !isTransientReadFailure(reason)) throw reason;
-      await new Promise<void>((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
-    }
-  }
-  throw lastError;
-}
-
 function upsertMarket(previous: MarketCatalogItem[], next: MarketCatalogItem) {
   const found = previous.some((item) => item.instrument_public_id === next.instrument_public_id);
   const merged = found
@@ -188,7 +162,7 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const probeHomeExperience = useCallback(async () => {
     if (!enabled) return;
     try {
-      const next = await readWithRetry(() => getHomeExperience());
+      const next = await getHomeExperience();
       setHomePromotions(next.promotions);
       setPublicNotices(next.notices);
       setVadMarkets(next.vadMarkets);
@@ -205,7 +179,7 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const refreshMarkets = useCallback(async () => {
     if (!enabled) return;
     try {
-      setMarkets(await readWithRetry(() => listMarkets()));
+      setMarkets(await listMarkets());
       setSectionErrors((current) => ({ ...current, markets: null }));
     } catch (reason) {
       setSectionErrors((current) => ({ ...current, markets: userFacingErrorMessage(reason, 'markets', 'We could not refresh markets right now.') }));
@@ -215,13 +189,13 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const refreshPortfolio = useCallback(async () => {
     if (!enabled) return;
     const results = await Promise.allSettled([
-      readWithRetry(() => getWalletSummary()),
-      readWithRetry(() => getWalletActivity()),
-      readWithRetry(() => getPositions()),
-      readWithRetry(() => getOpenOrders()),
-      readWithRetry(() => getPoolStakes()),
-      readWithRetry(() => getMarketHistory()),
-      readWithRetry(() => getSettlementReceipts()),
+      getWalletSummary(),
+      getWalletActivity(),
+      getPositions(),
+      getOpenOrders(),
+      getPoolStakes(),
+      getMarketHistory(),
+      getSettlementReceipts(),
     ]);
     setSectionErrors((current) => ({
       ...current,
@@ -245,7 +219,7 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const refreshNotifications = useCallback(async () => {
     if (!enabled) return;
     try {
-      setNotifications(await readWithRetry(() => getNotifications()));
+      setNotifications(await getNotifications());
       setSectionErrors((current) => ({ ...current, notifications: null }));
     } catch (reason) {
       setSectionErrors((current) => ({ ...current, notifications: userFacingErrorMessage(reason, 'general', 'We could not refresh notifications right now.') }));
@@ -255,16 +229,16 @@ export function useProductData(enabled = true, userId: string | null = null) {
   const load = useCallback(async () => {
     if (!enabled) return;
     const results = await Promise.allSettled([
-      readWithRetry(() => listMarkets()),
-      readWithRetry(() => getWalletSummary()),
-      readWithRetry(() => getWalletActivity()),
-      readWithRetry(() => getPositions()),
-      readWithRetry(() => getOpenOrders()),
-      readWithRetry(() => getPoolStakes()),
-      readWithRetry(() => getMarketHistory()),
-      readWithRetry(() => getSettlementReceipts()),
-      readWithRetry(() => getMyProposals()),
-      readWithRetry(() => getNotifications()),
+      listMarkets(),
+      getWalletSummary(),
+      getWalletActivity(),
+      getPositions(),
+      getOpenOrders(),
+      getPoolStakes(),
+      getMarketHistory(),
+      getSettlementReceipts(),
+      getMyProposals(),
+      getNotifications(),
     ]);
 
     const nextSectionErrors: ProductSectionErrors = {
