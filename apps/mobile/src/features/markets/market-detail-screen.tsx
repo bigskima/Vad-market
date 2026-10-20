@@ -14,7 +14,6 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
-import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { MarketDepthPanel } from './components/market-depth-panel';
@@ -121,25 +120,15 @@ export function MarketDetailScreen({
       ) : null}
       {tab === 'Chart' ? <Activity market={market} /> : null}
       {tab === 'Trade' ? (
-        isTngnMarket ? (
-          <View style={{ gap: 8 }}>
-            <VadCard variant="surface" style={{ padding: 12, gap: 4 }}>
-              <VadText variant="bodyStrong">TNGN sandbox only</VadText>
-              <VadText variant="caption" tone="secondary">This market is isolated from real-money orders and settlement. Practice with the separate TNGN sandbox account.</VadText>
-            </VadCard>
-            <TngnDemoModeCard />
-          </View>
-        ) : (
-          <TradingTicket
-            key={`${market.instrument_public_id}:${initialOutcome ?? 'default'}`}
-            market={market}
-            initialOutcome={initialOutcome}
-            canTrade={effectiveCanTrade}
-            tradeReason={effectiveTradeReason}
-            capabilityLoading={tradeCapabilityLoading}
-            onPlaced={onPlaced}
-          />
-        )
+        <TradingTicket
+          key={`${market.instrument_public_id}:${initialOutcome ?? 'default'}`}
+          market={market}
+          initialOutcome={initialOutcome}
+          canTrade={effectiveCanTrade}
+          tradeReason={effectiveTradeReason}
+          capabilityLoading={tradeCapabilityLoading}
+          onPlaced={onPlaced}
+        />
       ) : null}
       {tab === 'Discussion' ? (
         <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} marketFilter={market} />
