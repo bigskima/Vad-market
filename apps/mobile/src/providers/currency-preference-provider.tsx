@@ -6,7 +6,7 @@ import { Alert } from 'react-native';
 import { supabase, supabaseConfiguration } from '@/lib/supabase';
 import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
-export type VADCurrency = 'NGN' | 'USDC';
+export type VADCurrency = 'NGN' | 'USDC' | 'TNGN';
 type CurrencyPolicy = {
   country_code: string;
   eligible_asset_codes: VADCurrency[];
@@ -25,7 +25,7 @@ type CurrencyPreferenceValue = {
 
 const STORAGE_KEY = 'vad:enabled-currencies';
 const CurrencyPreferenceContext = createContext<CurrencyPreferenceValue | null>(null);
-const SUPPORTED: VADCurrency[] = ['NGN', 'USDC'];
+const SUPPORTED: VADCurrency[] = ['NGN', 'USDC', 'TNGN'];
 
 function asCurrencies(value: unknown): VADCurrency[] {
   if (!Array.isArray(value)) return [];
