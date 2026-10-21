@@ -173,6 +173,22 @@ export type OrderRow = {
   created_at: string;
 };
 
+export type PortfolioOrderHistoryRow = {
+  order_id: string;
+  instrument_id: string;
+  market_title: string;
+  outcome_code: string;
+  asset_code: string;
+  side: string;
+  limit_price: number | string;
+  quantity: number | string;
+  filled_quantity: number | string;
+  remaining_quantity: number | string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SettlementReceiptRow = {
   settlement_id: string;
   market_id: string;
@@ -347,6 +363,14 @@ export async function getOpenOrders() {
   const { data, error } = await supabase.rpc('my_open_orders');
   assertNoError(error, 'portfolio', 'We could not load your open orders right now. Please try again.');
   return (data ?? []) as OrderRow[];
+}
+
+export async function getPortfolioOrderHistory(limit = 100) {
+  const { data, error } = await supabase.rpc('my_portfolio_order_history', {
+    p_limit: limit,
+  });
+  assertNoError(error, 'portfolio', 'We could not load your order history right now. Please try again.');
+  return (data ?? []) as PortfolioOrderHistoryRow[];
 }
 
 export async function getPoolStakes() {
