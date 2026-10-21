@@ -208,7 +208,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     }
     if (cryptoThreshold && selectedCryptoAsset && details.threshold?.trim()) {
       const comparison = ({ GT: 'above', GTE: 'at or above', LT: 'below', LTE: 'at or below' } as Record<string, string>)[details.operator ?? 'GTE'] ?? 'at or above';
-      return `Will ${selectedCryptoAsset.symbol.toUpperCase()} be ${comparison} ${details.threshold.trim()} USD at the scheduled observation time?`;
+      return `Will ${selectedCryptoAsset.symbol.toUpperCase()} be ${comparison} $${details.threshold.trim()} USD at the scheduled observation time?`;
     }
     return suggestedFromTemplate(marketType.questionTemplate, details);
   }, [awayTeam, competition, cryptoThreshold, details, football, guided, homeTeam, marketType, prediction, selectedCryptoAsset]);
