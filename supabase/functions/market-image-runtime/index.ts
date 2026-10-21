@@ -23,6 +23,7 @@ type ImageJob = {
   attempts: number;
   lease_expires_at: string | null;
   generated_media_path: string | null;
+  updated_at: string;
 };
 
 Deno.serve(async (req) => {
@@ -96,11 +97,23 @@ Deno.serve(async (req) => {
 
     const { data: beforeClaim, error: jobError } = await admin
       .from('market_image_generation_jobs')
-      .select('instrument_public_id,status,attempts,lease_expires_at,generated_media_path')
+      .select('instrument_public_id,status,attempts,lease_expires_at,generated_media_path,updated_at')
       .eq('instrument_public_id', instrumentId)
       .maybeSingle();
     if (jobError || !beforeClaim) return json({ error: 'Image generation queue is unavailable' }, 500);
     let job = beforeClaim as ImageJob;
+
+    // Authenticated clients may wake queued jobs, but a failing provider must not
+    // be retried on every page refresh. Permit a later recovery attempt after 24h.
+    const retryWindowMs = 24 * 60 * 60 * 1000;
+    const retryLimitReached = Number(job.attempts ?? 0) >= 5
+      && Number.isFinite(Date.parse(job.updated_at))
+      && now.getTime() - Date.parse(job.updated_at) < retryWindowMs;
+    const leaseExpired = Boolean(job.lease_expires_at)
+      && Date.parse(job.lease_expires_at as string) <= now.getTime();
+    if (retryLimitReached && (job.status === 'FAILED' || (job.status === 'GENERATING' && leaseExpired))) {
+      return json({ error: 'Market artwork generation is paused after repeated failures. Try again later.' }, 429);
+    }
 
     if (job.status === 'DONE') {
       const { data: refreshed } = await admin.from('market_catalog')
