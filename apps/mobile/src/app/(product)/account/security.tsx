@@ -32,7 +32,7 @@ export default function AccountSecurityScreen() {
       if (factorError) throw factorError;
       setFactors((data?.all ?? [])
         .filter((factor) => factor.status === 'verified')
-        .map((factor) => ({ id: factor.id, factor_type: factor.factorType, status: factor.status })));
+        .map((factor) => ({ id: factor.id, factor_type: factor.factor_type, status: factor.status })));
     } catch {
       setError('VAD could not load multi-factor status from the sign-in provider. Try again later.');
     } finally {
