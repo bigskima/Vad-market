@@ -717,7 +717,13 @@ function AdminMarketDataSourcePanel({ canManage }: { canManage: boolean }) {
     setError(null);
     try {
       const sources = await getAdminMarketDataSources();
-      setSource(sources.find((item) => item.code === 'COINGECKO') ?? sources[0] ?? null);
+      const nextSource = sources.find((item) => item.code === 'COINGECKO') ?? sources[0] ?? null;
+      setSource(nextSource);
+      if (nextSource) {
+        setQuoteCurrencyDraft(nextSource.quote_currency);
+        setPageSizeDraft(String(nextSource.default_page_size));
+        setCacheSecondsDraft(String(nextSource.cache_seconds));
+      }
     } catch (value) {
       setError(value instanceof Error ? value.message : 'Market-data source configuration is unavailable.');
     } finally {
@@ -728,18 +734,20 @@ function AdminMarketDataSourcePanel({ canManage }: { canManage: boolean }) {
   useEffect(() => {
     let active = true;
     void getAdminMarketDataSources()
-      .then((sources) => { if (active) setSource(sources.find((item) => item.code === 'COINGECKO') ?? sources[0] ?? null); })
+      .then((sources) => {
+        if (!active) return;
+        const nextSource = sources.find((item) => item.code === 'COINGECKO') ?? sources[0] ?? null;
+        setSource(nextSource);
+        if (nextSource) {
+          setQuoteCurrencyDraft(nextSource.quote_currency);
+          setPageSizeDraft(String(nextSource.default_page_size));
+          setCacheSecondsDraft(String(nextSource.cache_seconds));
+        }
+      })
       .catch((value: unknown) => { if (active) setError(value instanceof Error ? value.message : 'Market-data source configuration is unavailable.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
-
-  useEffect(() => {
-    if (!source) return;
-    setQuoteCurrencyDraft(source.quote_currency);
-    setPageSizeDraft(String(source.default_page_size));
-    setCacheSecondsDraft(String(source.cache_seconds));
-  }, [source?.code, source?.updated_at]);
 
   async function updateSettings() {
     const pageSize = Number(pageSizeDraft);

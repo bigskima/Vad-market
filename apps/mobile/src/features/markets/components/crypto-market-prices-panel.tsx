@@ -182,7 +182,7 @@ export function CryptoMarketPricesPanel({
 
       <VadText variant="caption" tone="tertiary">
         {fetchedAt ? `Public market-data snapshot · updated ${new Date(fetchedAt).toLocaleTimeString()}${staleSnapshot ? ' · STALE CACHED DATA — public source temporarily unavailable' : ''}. ` : ''}
-        Prices and 24-hour changes are display data only. VAD's market odds and final outcomes remain separate.
+        Prices and 24-hour changes are display data only. VAD&apos;s market odds and final outcomes remain separate.
       </VadText>
     </View>
   );
@@ -320,11 +320,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
 
   useEffect(() => {
     const query = assetQuery.trim();
-    if (!query) {
-      setCoin(null);
-      setLoading(false);
-      return;
-    }
+    if (!query) return;
     let active = true;
     const refresh = async () => {
       try {
@@ -347,7 +343,6 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
         if (active) setLoading(false);
       }
     };
-    setLoading(true);
     void refresh();
     const timer = setInterval(() => void refresh(), 60_000);
     return () => { active = false; clearInterval(timer); };
@@ -360,7 +355,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
       <View style={{ gap: 2 }}>
         <VadText variant="label" tone="brand">UNDERLYING CRYPTO ASSET</VadText>
         <VadText variant="caption" tone="secondary">
-          Public spot-market reference. This is separate from VAD's YES/NO price and never determines the outcome.
+          Public spot-market reference. This is separate from VAD&apos;s YES/NO price and never determines the outcome.
         </VadText>
       </View>
       {loading && !coin ? (

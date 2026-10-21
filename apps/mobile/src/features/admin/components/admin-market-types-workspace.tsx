@@ -50,10 +50,15 @@ export function AdminMarketTypesWorkspace() {
   const [typeDescription, setTypeDescription] = useState('');
   const [sourceLabel, setSourceLabel] = useState('Authoritative result source');
 
-  async function reload() {
+  async function reload(preferredCode?: string) {
     const catalog = await getAdminGuidedMarketCatalog();
     setCategories(catalog.categories);
-    setSelectedCategoryCode((current) => current || catalog.categories[0]?.code || '');
+    const selected = catalog.categories.find((item) => item.code === (preferredCode || selectedCategoryCode))
+      ?? catalog.categories[0]
+      ?? null;
+    setSelectedCategoryCode(selected?.code ?? '');
+    setPresentationProfile(selected?.presentationProfile ?? 'EVENT');
+    setPresentationGroupField(selected?.groupField ?? '');
   }
 
   useEffect(() => {
@@ -77,11 +82,7 @@ export function AdminMarketTypesWorkspace() {
     [categories, selectedCategoryCode],
   );
 
-  useEffect(() => {
-    if (!selectedCategory) return;
-    setPresentationProfile(selectedCategory.presentationProfile ?? 'EVENT');
-    setPresentationGroupField(selectedCategory.groupField ?? '');
-  }, [selectedCategory?.code, selectedCategory?.presentationProfile, selectedCategory?.groupField]);
+
 
   const presentationProfiles: MarketPresentationProfile[] = [
     'EVENT', 'CRYPTO', 'SPORTS', 'MUSIC', 'AI', 'STOCKS',
@@ -106,7 +107,7 @@ export function AdminMarketTypesWorkspace() {
         presentationProfile: categoryProfile,
         groupField: categoryGroupField.trim(),
       });
-      await reload();
+      await reload(codeFrom(name));
       setCategoryName('');
       setCategoryDescription('');
       setCategoryProfile('EVENT');
