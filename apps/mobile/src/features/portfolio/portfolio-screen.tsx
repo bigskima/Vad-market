@@ -707,6 +707,7 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
 function SummaryMetric({ title, count, amount: value, asset, tone, value: customValue }: {
   title: string; count: number; amount?: number; asset?: string; tone?: 'yes' | 'no'; value?: string;
 }) {
+  const theme = useVadTheme();
   const label = customValue ?? (count === 0 || value == null ? '—' : `${value >= 0 ? '+' : '−'}${assetMoney(Math.abs(value), asset)}`);
   return (
     <VadCard variant="raised" style={{ flex: 1, minWidth: 0, padding: 10, gap: 5, borderRadius: 16 }}>
