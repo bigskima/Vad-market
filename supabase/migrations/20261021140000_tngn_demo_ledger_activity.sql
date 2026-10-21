@@ -2,6 +2,47 @@ begin;
 
 -- Read-only Wallet activity for the isolated TNGN sandbox ledger.
 -- This does not query or write finance.ledger_accounts or real wallet activity.
+-- Ensure the initial synthetic balance is a ledger entry distinct from real funding.
+create unique index if not exists demo_ledger_initial_grant_uidx
+  on public.demo_ledger_entries(user_id, reference_id)
+  where entry_type = 'DEMO_GRANT' and reference_id = 'initial-demo-balance';
+
+create or replace function private.record_tngn_demo_initial_grant()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  insert into public.demo_ledger_entries(user_id, entry_type, amount, reference_id, created_at)
+  values(new.user_id, 'DEMO_GRANT', new.available_balance, 'initial-demo-balance', coalesce(new.created_at, statement_timestamp()))
+  on conflict (user_id, reference_id) where entry_type = 'DEMO_GRANT' and reference_id = 'initial-demo-balance'
+  do nothing;
+  return new;
+end;
+$;
+
+drop trigger if exists demo_accounts_record_initial_grant on public.demo_accounts;
+create trigger demo_accounts_record_initial_grant
+after insert on public.demo_accounts
+for each row execute function private.record_tngn_demo_initial_grant();
+
+-- Existing demo accounts were created before the isolated activity view existed.
+-- Seed only the one-time grant record; all stake/settlement history stays intact.
+insert into public.demo_ledger_entries(user_id, entry_type, amount, reference_id, created_at)
+select account.user_id, 'DEMO_GRANT', 100000, 'initial-demo-balance', account.created_at
+from public.demo_accounts account
+where not exists (
+  select 1 from public.demo_ledger_entries entry
+  where entry.user_id = account.user_id
+    and entry.entry_type = 'DEMO_GRANT'
+    and entry.reference_id = 'initial-demo-balance'
+)
+on conflict (user_id, reference_id) where entry_type = 'DEMO_GRANT' and reference_id = 'initial-demo-balance'
+do nothing;
+
+revoke all on function private.record_tngn_demo_initial_grant() from public, anon, authenticated;
+
 create or replace function public.my_tngn_demo_ledger_activity(p_limit integer default 100)
 returns setof jsonb
 language plpgsql
