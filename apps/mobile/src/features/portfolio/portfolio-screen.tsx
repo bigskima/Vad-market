@@ -705,7 +705,7 @@ function SummaryMetric({ title, count, amount: value, asset, tone, value: custom
   return (
     <VadCard variant="raised" style={{ flex: 1, minWidth: 0, padding: 10, gap: 5, borderRadius: 16 }}>
       <View style={{ width: 31, height: 31, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: tone === 'yes' ? 'rgba(16,214,157,0.14)' : tone === 'no' ? 'rgba(255,75,95,0.14)' : theme.colors.surfaceMuted }}>
-        <VadIcon name={tone === 'yes' ? 'trendingUp' : tone === 'no' ? 'trendingDown' : 'clock'} size={17} tone={tone ?? 'secondary'} />
+        <VadIcon name={tone === 'yes' ? 'arrowUp' : tone === 'no' ? 'arrowDown' : 'activity'} size={17} tone={tone ?? 'secondary'} />
       </View>
       <VadText variant="caption" tone="secondary" numberOfLines={2}>{title}</VadText>
       <VadText variant="heading">{count.toLocaleString()}</VadText>
