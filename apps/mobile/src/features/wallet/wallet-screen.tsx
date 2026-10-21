@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
@@ -20,130 +20,317 @@ import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
-import { getMyPaymentIntents, type PaymentIntentRow } from '@/services/payment-api';
-import type { WalletRow } from '@/services/market-api';
+import type { PaymentIntentRow } from '@/services/payment-api';
+import { getWalletBalanceHistory, type WalletActivityRow, type WalletBalanceHistoryRow, type WalletRow } from '@/services/market-api';
 
 export function WalletScreen({
   wallets,
+  walletActivity,
+  walletActivityError,
+  unreadNotificationCount,
   onDeposit,
   onWithdraw,
+  onTransfer,
   onActivity,
-  onOpenTransaction,
+  onNotifications,
   activeAssetCodes,
 }: {
   wallets: WalletRow[];
+  walletActivity: WalletActivityRow[];
+  walletActivityError: string | null;
+  unreadNotificationCount: number;
   onDeposit: () => void;
   onWithdraw: () => void;
+  onTransfer: () => void;
   onActivity: () => void;
-  onOpenTransaction: (intent: PaymentIntentRow) => void;
+  onNotifications: () => void;
   activeAssetCodes: string[];
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const currencyPreference = useCurrencyPreference();
-  const [intents, setIntents] = useState<PaymentIntentRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activityError, setActivityError] = useState<string | null>(null);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [selectedAsset, setSelectedAsset] = useState<VADCurrency | null>(null);
+  const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
   const [manageCurrenciesOpen, setManageCurrenciesOpen] = useState(false);
   const [advancedToolsOpen, setAdvancedToolsOpen] = useState(false);
+  const [balanceHistory, setBalanceHistory] = useState<WalletBalanceHistoryRow[]>([]);
+  const [balanceHistoryLoading, setBalanceHistoryLoading] = useState(true);
+  const [balanceHistoryError, setBalanceHistoryError] = useState<string | null>(null);
   const hasNgn = activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
   const hasUsdc = activeAssetCodes.includes('USDC') && currencyPreference.isCurrencyEnabled('USDC');
 
-  const load = useCallback(async () => {
-    if (!hasNgn) {
-      setIntents([]);
-      setLoading(false);
-      setActivityError(null);
-      return;
-    }
-    setActivityError(null);
-    try {
-      setIntents(await getMyPaymentIntents(6));
-    } catch (error) {
-      setActivityError(error instanceof Error ? error.message : 'We could not load wallet activity right now. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [hasNgn]);
-
   useEffect(() => {
-    const timer = setTimeout(() => void load(), 0);
-    return () => clearTimeout(timer);
-  }, [load]);
+    let active = true;
+    const timer = setTimeout(() => {
+      void getWalletBalanceHistory(30)
+        .then((rows) => {
+          if (!active) return;
+          setBalanceHistory(rows);
+          setBalanceHistoryError(null);
+        })
+        .catch((error: unknown) => {
+          if (!active) return;
+          setBalanceHistoryError(error instanceof Error ? error.message : 'Wallet balance history is unavailable.');
+        })
+        .finally(() => {
+          if (active) setBalanceHistoryLoading(false);
+        });
+    }, 0);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, []);
 
   const orderedWallets = useMemo(
-    () => wallets.filter((wallet) => (wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC' || wallet.asset_code === 'TNGN') && currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency))
+    () => wallets
+      .filter((wallet) => (
+        (wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC' || wallet.asset_code === 'TNGN')
+        && currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency)
+      ))
       .sort((a, b) => assetRank(a.asset_code) - assetRank(b.asset_code)),
     [wallets, currencyPreference],
   );
-  const primary = orderedWallets.find((row) => row.asset_code === selectedAsset) ?? (hasNgn
-    ? orderedWallets.find((row) => row.asset_code === 'NGN') ?? orderedWallets[0]
-    : orderedWallets[0]);
+  const primary = orderedWallets.find((row) => row.asset_code === selectedAsset)
+    ?? (hasNgn ? orderedWallets.find((row) => row.asset_code === 'NGN') ?? orderedWallets[0] : orderedWallets[0]);
+  const primaryCode = primary?.asset_code ?? '';
   const available = Number(primary?.available ?? 0);
   const reserved = Number(primary?.reserved ?? 0);
   const pending = Number(primary?.withdrawal_pending ?? 0);
   const total = available + reserved + pending;
-  const primaryCode = primary?.asset_code ?? '';
-  const recentIntents = intents.slice(0, density.phone ? 3 : 4);
+  const secondaryWallet = primaryCode === 'NGN'
+    ? orderedWallets.find((wallet) => wallet.asset_code === 'USDC')
+    : primaryCode === 'USDC'
+      ? orderedWallets.find((wallet) => wallet.asset_code === 'NGN')
+      : undefined;
+  const secondaryTotal = secondaryWallet
+    ? Number(secondaryWallet.available ?? 0) + Number(secondaryWallet.reserved ?? 0) + Number(secondaryWallet.withdrawal_pending ?? 0)
+    : 0;
+  const historyValues = balanceHistory
+    .filter((row) => row.asset_code === primaryCode)
+    .sort((a, b) => a.observed_on.localeCompare(b.observed_on))
+    .map((row) => Number(row.balance))
+    .filter(Number.isFinite);
+  const recentActivity = useMemo(
+    () => walletActivity
+      .filter((row) => currencyPreference.isCurrencyEnabled(row.asset_code as VADCurrency))
+      .slice()
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+      .slice(0, 4),
+    [walletActivity, currencyPreference],
+  );
 
   return (
-    <View style={{ gap: density.sectionGap }}>
+    <View style={{ gap: density.phone ? 14 : theme.spacing.lg }}>
       <PageHeader title="Wallet" subtitle="Manage your funds for prediction markets." actions={[
-        { icon: 'bell', label: 'Wallet activity and notifications', onPress: onActivity },
-        { icon: 'operations', label: manageCurrenciesOpen ? 'Close currency settings' : 'Wallet currency settings', onPress: () => setManageCurrenciesOpen((value) => !value) },
+        {
+          icon: 'bell',
+          label: unreadNotificationCount > 0 ? `Notifications, ${unreadNotificationCount} unread` : 'Notifications',
+          badge: unreadNotificationCount > 0,
+          onPress: onNotifications,
+        },
+        {
+          icon: 'settings',
+          label: manageCurrenciesOpen ? 'Close wallet settings' : 'Wallet settings',
+          onPress: () => setManageCurrenciesOpen((value) => !value),
+        },
       ]} />
+
       <TourTarget id="wallet-balance">
-        <View style={{ borderRadius: 22, padding: density.phone ? 12 : 16, gap: 10, overflow: 'hidden', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.brandPrimary }}>
+        <View style={{
+          position: 'relative',
+          borderRadius: 23,
+          padding: density.phone ? 14 : 18,
+          gap: 12,
+          overflow: 'hidden',
+          backgroundColor: theme.mode === 'dark' ? '#1A238E' : '#2838D4',
+          borderWidth: 1,
+          borderColor: '#4148E5',
+        }}>
+          <View pointerEvents="none" style={{ position: 'absolute', top: -80, right: 66, width: 75, height: 330, backgroundColor: 'rgba(255,255,255,0.035)', transform: [{ rotate: '31deg' }] }} />
+          <View pointerEvents="none" style={{ position: 'absolute', top: -65, right: -8, width: 64, height: 300, backgroundColor: 'rgba(255,255,255,0.045)', transform: [{ rotate: '31deg' }] }} />
+
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <VadText variant="body" tone="secondary">Total Balance</VadText>
-              <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? 'Hide balance' : 'Show balance'} onPress={() => setBalanceVisible((value) => !value)} hitSlop={10}><VadIcon name={balanceVisible ? 'eye' : 'eyeOff'} size={19} tone="secondary" /></Pressable>
+              <VadText variant="body" tone="secondary" style={{ color: '#C9D0FF', fontSize: 14 }}>Total Balance</VadText>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={balanceVisible ? 'Hide balance' : 'Show balance'}
+                onPress={() => setBalanceVisible((value) => !value)}
+                hitSlop={10}
+                style={{ width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <VadIcon name={balanceVisible ? 'eye' : 'eyeOff'} size={19} color="#DDE2FF" />
+              </Pressable>
             </View>
-            <View style={{ flexDirection: 'row', gap: 5 }}>
-              {orderedWallets.map((wallet) => <Pressable key={wallet.asset_code} accessibilityRole="button" accessibilityState={{ selected: primaryCode === wallet.asset_code }} onPress={() => setSelectedAsset(wallet.asset_code as VADCurrency)} style={{ borderRadius: 20, paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: primaryCode === wallet.asset_code ? theme.colors.brandPrimary : theme.colors.border, backgroundColor: primaryCode === wallet.asset_code ? theme.colors.brandPrimary : theme.colors.surfaceMuted }}><VadText variant="caption" tone={primaryCode === wallet.asset_code ? 'inverse' : 'secondary'}>{wallet.asset_code}</VadText></Pressable>)}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Select wallet currency, currently ${primaryCode || 'none'}`}
+              accessibilityState={{ expanded: currencyPickerOpen }}
+              onPress={() => setCurrencyPickerOpen((value) => !value)}
+              style={({ pressed }) => ({
+                flexDirection: 'row', alignItems: 'center', gap: 7,
+                borderRadius: 18, paddingVertical: 7, paddingHorizontal: 12,
+                borderWidth: 1, borderColor: 'rgba(196,204,255,0.28)',
+                backgroundColor: 'rgba(6,10,53,0.22)', opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <VadText variant="caption" style={{ color: '#F5F6FF', fontSize: 12 }}>{primaryCode || 'Currency'}</VadText>
+              <VadIcon name={currencyPickerOpen ? 'close' : 'chevronRight'} size={13} color="#DDE2FF" />
+            </Pressable>
+          </View>
+
+          {currencyPickerOpen && orderedWallets.length ? (
+            <View style={{ alignSelf: 'flex-end', minWidth: 124, gap: 2, padding: 5, borderRadius: 12, backgroundColor: '#12185F', borderWidth: 1, borderColor: 'rgba(196,204,255,0.24)' }}>
+              {orderedWallets.map((wallet) => (
+                <Pressable
+                  key={wallet.asset_code}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: primaryCode === wallet.asset_code }}
+                  onPress={() => { setSelectedAsset(wallet.asset_code as VADCurrency); setCurrencyPickerOpen(false); }}
+                  style={({ pressed }) => ({ borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: primaryCode === wallet.asset_code ? 'rgba(110,119,255,0.34)' : 'transparent', opacity: pressed ? 0.75 : 1 })}
+                >
+                  <VadText variant="caption" style={{ color: '#F5F6FF', fontSize: 12 }}>{wallet.asset_code}{primaryCode === wallet.asset_code ? '  ✓' : ''}</VadText>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 78 }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+              <VadText variant="title" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 31 : 37, lineHeight: density.phone ? 37 : 44, letterSpacing: -1, color: '#FFFFFF' }}>
+                {balanceVisible && primary ? assetMoney(total, primaryCode) : '••••••••'}
+              </VadText>
+              {secondaryWallet ? (
+                <VadText variant="caption" numberOfLines={1} adjustsFontSizeToFit style={{ color: '#C9D0FF', fontSize: 12 }}>
+                  {balanceVisible ? `${secondaryWallet.asset_code} balance · ${assetMoney(secondaryTotal, secondaryWallet.asset_code)}` : `${secondaryWallet.asset_code} balance · ••••••`}
+                </VadText>
+              ) : primaryCode === 'TNGN' ? (
+                <VadText variant="caption" style={{ color: '#C9D0FF', fontSize: 12 }}>Practice ledger · separate from real money</VadText>
+              ) : (
+                <VadText variant="caption" style={{ color: '#C9D0FF', fontSize: 12 }}>Wallet balance for {primaryCode || 'your selected currency'}</VadText>
+              )}
+            </View>
+            <View style={{ width: Math.max(108, Math.min(174, density.width * 0.37)), alignItems: 'flex-end', justifyContent: 'center' }}>
+              {balanceHistoryLoading ? (
+                <VadSkeleton width={Math.max(104, Math.min(168, density.width * 0.36))} height={58} radius={12} />
+              ) : (
+                <WalletBalanceSparkline
+                  values={historyValues}
+                  width={Math.max(108, Math.min(174, density.width * 0.37))}
+                  height={66}
+                  color="#8E88FF"
+                />
+              )}
             </View>
           </View>
-          <VadText variant="title" style={{ fontSize: density.phone ? 26 : 30, lineHeight: density.phone ? 32 : 36, letterSpacing: -0.8 }} numberOfLines={1} adjustsFontSizeToFit>{balanceVisible && primary ? assetMoney(total, primaryCode) : '••••••••'}</VadText>
+          {balanceHistoryError && !balanceHistory.length ? (
+            <VadText variant="caption" style={{ color: '#D4D8FF' }}>Balance trend temporarily unavailable; the amount above remains the current wallet summary.</VadText>
+          ) : null}
+
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1, minWidth: 0, borderRadius: 15, padding: 11, gap: 4, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}><VadText variant="caption" tone="secondary">Available</VadText><VadText variant="bodyStrong" tone="yes" numberOfLines={1} adjustsFontSizeToFit>{balanceVisible ? assetMoney(available, primaryCode) : '••••••'}</VadText></View>
-            <View style={{ flex: 1, minWidth: 0, borderRadius: 15, padding: 11, gap: 4, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}><VadText variant="caption" tone="secondary">In Use</VadText><VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{balanceVisible ? assetMoney(reserved + pending, primaryCode) : '••••••'}</VadText></View>
+            <WalletBalanceMetric icon="wallet" label="Available" value={balanceVisible ? assetMoney(available, primaryCode) : '••••••'} tone="available" />
+            <WalletBalanceMetric icon="clock" label="In Use (Active Predictions)" value={balanceVisible ? assetMoney(reserved + pending, primaryCode) : '••••••'} tone="inUse" />
           </View>
         </View>
       </TourTarget>
-      {manageCurrenciesOpen ? <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
-        <View style={{ gap: 3 }}><VadText variant="bodyStrong">Manage currencies</VadText><VadText variant="caption" tone="secondary">Only currencies enabled by your account policy and available wallet balances can be selected.</VadText></View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>{currencyPreference.eligibleCurrencies.filter((currency) => currency !== 'TNGN').map((currency) => <CurrencyToggle key={currency} currency={currency} displayName={currencyPreference.isCurrencyEnabled(currency) ? currency : 'Additional currency'} enabled={currencyPreference.isCurrencyEnabled(currency)} available={activeAssetCodes.includes(currency)} onToggle={() => currencyPreference.toggleCurrency(currency)} />)}</View>
-      </VadCard> : null}
-      {hasNgn ? <TourTarget id="wallet-actions"><View style={{ flexDirection: 'row', gap: density.phone ? 7 : theme.spacing.sm }}>
-        <WalletAction label="Deposit" detail="Add funds" icon="arrowDown" tone="yes" onPress={onDeposit} />
-        <WalletAction label="Withdraw" detail="Send to bank" icon="arrowUp" tone="brand" onPress={onWithdraw} />
-        <WalletAction label="History" detail="View transactions" icon="activity" tone="primary" onPress={onActivity} />
-      </View></TourTarget> : null}
+
+      {manageCurrenciesOpen ? (
+        <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
+          <View style={{ gap: 3 }}>
+            <VadText variant="bodyStrong">Wallet settings</VadText>
+            <VadText variant="caption" tone="secondary">Choose which eligible currencies appear across the wallet, markets and portfolio. The settings do not convert balances or change jurisdiction eligibility.</VadText>
+          </View>
+          <View style={{ gap: 8 }}>
+            {currencyPreference.eligibleCurrencies.map((currency) => (
+              <CurrencyToggle
+                key={currency}
+                currency={currency}
+                displayName={currency === 'TNGN' ? 'TNGN practice balance' : currency === 'NGN' ? 'Nigerian Naira' : currency === 'USDC' ? 'USDC' : currency}
+                enabled={currencyPreference.isCurrencyEnabled(currency)}
+                available={activeAssetCodes.includes(currency)}
+                onToggle={() => currencyPreference.toggleCurrency(currency)}
+              />
+            ))}
+          </View>
+        </VadCard>
+      ) : null}
+
+      <TourTarget id="wallet-actions">
+        <View style={{ flexDirection: 'row', gap: density.phone ? 6 : theme.spacing.sm }}>
+          <WalletAction label="Deposit" detail="Add funds" icon="plus" tone="yes" onPress={onDeposit} disabled={!hasNgn} />
+          <WalletAction label="Withdraw" detail="Send to bank" icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn} />
+          <WalletAction label="Transfer" detail="To another user" icon="transfer" tone="purple" onPress={onTransfer} />
+          <WalletAction label="History" detail="View transactions" icon="fileText" tone="primary" onPress={onActivity} />
+        </View>
+      </TourTarget>
+
       <View style={{ gap: density.phone ? 8 : theme.spacing.sm }}>
         <VadSectionHeader title="Your Currencies" actionLabel="Manage" onAction={() => setManageCurrenciesOpen((value) => !value)} />
-        {orderedWallets.map((wallet) => <Pressable key={wallet.asset_code} accessibilityRole="button" accessibilityLabel={`Select ${wallet.asset_code} wallet`} onPress={() => setSelectedAsset(wallet.asset_code as VADCurrency)}><CompactCurrencyBalance wallet={wallet} selected={primaryCode === wallet.asset_code} balanceVisible={balanceVisible} /></Pressable>)}
+        {orderedWallets.map((wallet) => (
+          <Pressable key={wallet.asset_code} accessibilityRole="button" accessibilityLabel={`Select ${wallet.asset_code} wallet`} onPress={() => setSelectedAsset(wallet.asset_code as VADCurrency)}>
+            <CompactCurrencyBalance wallet={wallet} selected={primaryCode === wallet.asset_code} balanceVisible={balanceVisible} />
+          </Pressable>
+        ))}
         {!orderedWallets.length ? <VadEmptyState title="No supported wallet accounts" body="Your account has no enabled wallet balances to display." /> : null}
       </View>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: advancedToolsOpen }} onPress={() => setAdvancedToolsOpen((value) => !value)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 }}>
-        <View style={{ flex: 1, gap: 2 }}><VadText variant="bodyStrong">More wallet tools</VadText><VadText variant="caption" tone="secondary">Connected wallets, on-chain activity and positions</VadText></View>
+
+      <TourTarget id="wallet-activity">
+        <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
+          <VadSectionHeader title="Recent Transactions" actionLabel="See all" onAction={onActivity} />
+          {walletActivityError && !recentActivity.length ? (
+            <VadErrorState title="Wallet activity unavailable" message={walletActivityError} onRetry={onActivity} />
+          ) : recentActivity.length ? (
+            <View style={{ gap: density.compact ? 7 : theme.spacing.sm }}>
+              {recentActivity.map((row) => <RecentWalletActivityRow key={row.activity_id + row.account_type} row={row} onPress={onActivity} />)}
+            </View>
+          ) : (
+            <VadEmptyState title="No transactions yet" body="Deposits, predictions, releases, refunds and settlement results appear after the ledger records them." actionLabel="Deposit NGN" onAction={onDeposit} />
+          )}
+          {walletActivityError ? <VadText variant="caption" tone="secondary">Some recent activity could not be refreshed. Open History to retry the complete ledger.</VadText> : null}
+        </View>
+      </TourTarget>
+
+      <View style={{ gap: density.phone ? 8 : theme.spacing.sm }}>
+        <VadSectionHeader title="Embedded Wallet" subtitle="Self-custody USDC and on-chain addresses, separate from the VAD account ledger." />
+        <WalletSectionErrorBoundary title="Embedded wallet unavailable">
+          <CryptoWalletConnections />
+        </WalletSectionErrorBoundary>
+        {hasUsdc ? (
+          <WalletSectionErrorBoundary title="USDC on-chain balances unavailable">
+            <UsdcWalletBalances />
+          </WalletSectionErrorBoundary>
+        ) : (
+          <VadCard variant="raised" style={{ gap: 4 }}>
+            <VadText variant="bodyStrong">On-chain USDC balances</VadText>
+            <VadText variant="caption" tone="secondary">Enable USDC for this account where eligible to view connected-network balances. Self-custody holdings are not added to the internal-ledger total above.</VadText>
+          </VadCard>
+        )}
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: advancedToolsOpen }}
+        onPress={() => setAdvancedToolsOpen((value) => !value)}
+        style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}
+      >
+        <View style={{ flex: 1, gap: 2 }}>
+          <VadText variant="bodyStrong">More on-chain tools</VadText>
+          <VadText variant="caption" tone="secondary">On-chain activity and market positions</VadText>
+        </View>
         <VadIcon name={advancedToolsOpen ? 'close' : 'chevronRight'} size={18} tone="secondary" />
       </Pressable>
-      {advancedToolsOpen ? <View style={{ gap: density.sectionGap }}>
-        <WalletSectionErrorBoundary title="Embedded wallet unavailable"><CryptoWalletConnections /></WalletSectionErrorBoundary>
-        {currencyPreference.isCurrencyEnabled('USDC') ? <WalletSectionErrorBoundary title="USDC balances unavailable"><UsdcWalletBalances /></WalletSectionErrorBoundary> : null}
-        <WalletSectionErrorBoundary title="On-chain activity unavailable"><OnchainActivityPanel enabled={hasUsdc} /></WalletSectionErrorBoundary>
-        <WalletSectionErrorBoundary title="USDC positions unavailable"><OnchainPositionsPanel enabled={hasUsdc} /></WalletSectionErrorBoundary>
-      </View> : null}
-      {hasNgn ? <TourTarget id="wallet-activity"><View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
-        <VadSectionHeader title="Recent Transactions" actionLabel="See all" onAction={onActivity} />
-        {loading ? <View style={{ gap: theme.spacing.sm }}><VadSkeleton height={density.compact ? 68 : 76} radius={theme.radius.xl} /><VadSkeleton height={density.compact ? 68 : 76} radius={theme.radius.xl} />{density.phone ? null : <VadSkeleton height={76} radius={theme.radius.xl} />}</View>
-        : activityError && !intents.length ? <VadErrorState title="Wallet activity unavailable" message={activityError} onRetry={() => { setLoading(true); void load(); }} />
-        : <>{activityError ? <VadErrorState title="Could not refresh wallet activity" message={activityError} onRetry={() => void load()} /> : null}
-          {recentIntents.length ? <View style={{ gap: density.compact ? 7 : theme.spacing.sm }}>{recentIntents.map((intent) => <PaymentRow key={intent.intent_public_id} intent={intent} onPress={() => onOpenTransaction(intent)} />)}</View>
-          : <VadEmptyState title="No transactions yet" body="Deposits, withdrawals and refunds appear here after the payment service records them." actionLabel="Deposit NGN" onAction={onDeposit} />}</>}
-      </View></TourTarget> : null}
+      {advancedToolsOpen ? (
+        <View style={{ gap: density.sectionGap }}>
+          <WalletSectionErrorBoundary title="On-chain activity unavailable">
+            <OnchainActivityPanel enabled={hasUsdc} />
+          </WalletSectionErrorBoundary>
+          <WalletSectionErrorBoundary title="USDC positions unavailable">
+            <OnchainPositionsPanel enabled={hasUsdc} />
+          </WalletSectionErrorBoundary>
+        </View>
+      ) : null}
     </View>
   );
 }
