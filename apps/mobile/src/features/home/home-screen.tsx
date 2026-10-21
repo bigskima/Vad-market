@@ -20,8 +20,12 @@ type Category = string;
 
 function listWatchlistWithTimeout(timeoutMs = 12_000) {
   return new Promise<Awaited<ReturnType<typeof listUserMarketWatchlist>>>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Watchlist request timed out')), timeoutMs);
-    void listUserMarketWatchlist().then(
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort();
+      reject(new Error('Watchlist request timed out'));
+    }, timeoutMs);
+    void listUserMarketWatchlist(controller.signal).then(
       (rows) => { clearTimeout(timeout); resolve(rows); },
       (reason: unknown) => { clearTimeout(timeout); reject(reason); },
     );
