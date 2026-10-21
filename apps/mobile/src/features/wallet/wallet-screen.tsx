@@ -114,7 +114,7 @@ export function WalletScreen({
       </TourTarget>
       {manageCurrenciesOpen ? <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
         <View style={{ gap: 3 }}><VadText variant="bodyStrong">Manage currencies</VadText><VadText variant="caption" tone="secondary">Only currencies enabled by your account policy and available wallet balances can be selected.</VadText></View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>{currencyPreference.eligibleCurrencies.filter((currency) => currency !== 'TNGN').map((currency) => <CurrencyToggle key={currency} currency={currency} displayName={currencyPreference.isCurrencyEnabled(currency) ? currency : 'Additional currency'} enabled={currencyPreference.isCurrencyEnabled(currency)} available={activeAssetCodes.includes(currency) || currency === 'TNGN'} onToggle={() => currencyPreference.toggleCurrency(currency)} />)}</View>
+        <View style={{ flexDirection: 'row', gap: 8 }}>{currencyPreference.eligibleCurrencies.filter((currency) => currency !== 'TNGN').map((currency) => <CurrencyToggle key={currency} currency={currency} displayName={currencyPreference.isCurrencyEnabled(currency) ? currency : 'Additional currency'} enabled={currencyPreference.isCurrencyEnabled(currency)} available={activeAssetCodes.includes(currency)} onToggle={() => currencyPreference.toggleCurrency(currency)} />)}</View>
       </VadCard> : null}
       {hasNgn ? <TourTarget id="wallet-actions"><View style={{ flexDirection: 'row', gap: density.phone ? 7 : theme.spacing.sm }}>
         <WalletAction label="Deposit" detail="Add funds" icon="arrowDown" tone="yes" onPress={onDeposit} />
