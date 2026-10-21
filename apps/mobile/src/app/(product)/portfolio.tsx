@@ -7,7 +7,7 @@ import { PeerMarketPortfolio } from '@/features/portfolio/peer-market-portfolio'
 import { PortfolioScreen } from '@/features/portfolio/portfolio-screen';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
-import type { PositionRow, OrderRow } from '@/services/market-api';
+import type { PositionRow } from '@/services/market-api';
 
 export default function PortfolioRoute() {
   const data = useProductDataContext();
@@ -17,7 +17,7 @@ export default function PortfolioRoute() {
     router.push({ pathname: '/portfolio/position/[instrumentId]', params: { instrumentId: String(position.instrument_id), outcome: position.outcome_code } });
   };
 
-  const openOrder = (order: OrderRow) => {
+  const openOrder = (order: { order_id: string }) => {
     router.push({ pathname: '/portfolio/order/[orderId]', params: { orderId: String(order.order_id) } });
   };
 
