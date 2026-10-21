@@ -198,7 +198,7 @@ export default function AccountScreen() {
         ) : null}
 
         <Pressable accessibilityRole="button" accessibilityLabel="Log out" disabled={signingOut} onPress={requestSignOut} style={({ pressed }) => ({ minHeight: 38, borderRadius: 9, borderWidth: 1, borderColor: theme.colors.no, backgroundColor: theme.colors.noSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: pressed || signingOut ? 0.65 : 1 })}>
-          <VadIcon name="share" size={17} tone="no" />
+          <VadIcon name="logOut" size={17} tone="no" />
           <VadText variant="bodyStrong" tone="no" style={{ fontSize: density.phone ? 13 : 15 }}>{signingOut ? 'Logging out…' : 'Log Out'}</VadText>
           <VadIcon name="chevronRight" size={16} tone="no" />
         </Pressable>
