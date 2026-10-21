@@ -3,6 +3,7 @@ import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadCard } from '@/components/ui/vad-card';
+import { VadChip } from '@/components/ui/vad-chip';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
@@ -18,6 +19,7 @@ import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
 import { getAdminMarketDataSources, setAdminMarketDataSourceStatus, updateAdminMarketDataSourceSettings } from '@/services/crypto-market-data-api';
+import { getSportsMarketTaxonomy, setAdminSportsCompetitionStatus, type SportsMarketTaxonomy, type SportsMarketCompetition } from '@/services/admin-guided-market-catalog-api';
 import {
   decideProviderStatusRequest,
   requestProviderStatus,
@@ -44,6 +46,7 @@ export function AdminProvidersScreen() {
   const wide = width >= 860;
   const data = useAdminData();
   const canManage = hasAdminPermission(data.access, 'providers.manage');
+  const canManageMarkets = hasAdminPermission(data.access, 'markets.manage');
   const canCheckOracle = canManage || hasAdminPermission(data.access, 'oracle.review');
   const [tab, setTab] = useState('readiness');
   const [selectedProvider, setSelectedProvider] = useState<ProviderReadinessRow | null>(null);
@@ -400,6 +403,7 @@ export function AdminProvidersScreen() {
       </View>
 
       {canManage ? <AdminMarketDataSourcePanel canManage={canManage} /> : null}
+      {canManageMarkets ? <AdminSportsCompetitionPanel /> : null}
 
       <AdminSectionTabs
         active={tab}
@@ -872,6 +876,140 @@ function AdminMarketDataSourcePanel({ canManage }: { canManage: boolean }) {
         <VadText variant="caption" tone="secondary">No display-only market data source has been configured.</VadText>
       )}
       {error ? <VadErrorState title="Market-data settings unavailable" message={error} onRetry={() => void load()} /> : null}
+      {message ? <VadText variant="caption" tone="yes">{message}</VadText> : null}
+    </VadCard>
+  );
+}
+
+
+function AdminSportsCompetitionPanel() {
+  const theme = useVadTheme();
+  const [catalog, setCatalog] = useState<SportsMarketTaxonomy>({ sports: [], competitions: [] });
+  const [loading, setLoading] = useState(true);
+  const [workingCode, setWorkingCode] = useState<string | null>(null);
+  const [selectedSport, setSelectedSport] = useState('FOOTBALL');
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      setCatalog(await getSportsMarketTaxonomy());
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Sports competition catalog could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  const sports = [...catalog.sports].sort((a, b) => a.name.localeCompare(b.name));
+  const entries = catalog.competitions.filter((item) => item.sportCode === selectedSport)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  async function toggle(item: SportsMarketCompetition) {
+    if (reason.trim().length < 3) {
+      setError('Enter a reason before changing a competition.');
+      return;
+    }
+    const key = `${item.sportCode}:${item.code}`;
+    setWorkingCode(key);
+    setError(null);
+    setMessage(null);
+    try {
+      const status = item.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
+      await setAdminSportsCompetitionStatus({
+        sportCode: item.sportCode,
+        competitionCode: item.code,
+        status,
+        reason: reason.trim(),
+      });
+      setReason('');
+      setMessage(`${item.name} is now ${status.toLowerCase()}.`);
+      await load();
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Competition status could not be changed.');
+    } finally {
+      setWorkingCode(null);
+    }
+  }
+
+  return (
+    <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: 3 }}>
+        <VadText variant="label" tone="brand">SPORTS · DATABASE CONTROL</VadText>
+        <VadText variant="heading">Sports and competitions</VadText>
+        <VadText variant="caption" tone="secondary">
+          Manage which database-backed leagues and sports appear in market creation. Automatic results are advertised only for competitions with an approved provider mapping; other sports use verified result review.
+        </VadText>
+      </View>
+      {loading ? <VadSkeleton height={88} radius={theme.radius.md} /> : (
+        <>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+            {sports.map((sport) => {
+              const active = sport.code === selectedSport;
+              const activeCount = catalog.competitions.filter((item) => item.sportCode === sport.code && item.status === 'ACTIVE').length;
+              return (
+                <VadChip
+                  key={sport.code}
+                  label={`${sport.name} · ${activeCount}`}
+                  selected={active}
+                  tone={active ? 'brand' : 'neutral'}
+                  onPress={() => setSelectedSport(sport.code)}
+                />
+              );
+            })}
+          </View>
+          {entries.length ? entries.map((item) => {
+            const key = `${item.sportCode}:${item.code}`;
+            const busy = workingCode === key;
+            return (
+              <View key={key} style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: theme.spacing.sm,
+                paddingVertical: theme.spacing.xs,
+                borderTopWidth: 1,
+                borderTopColor: theme.colors.border,
+              }}>
+                <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                  <VadText variant="bodyStrong">{item.name}</VadText>
+                  <VadText variant="caption" tone="secondary">
+                    {item.region || 'International'} · {item.resultMode === 'AUTOMATIC' ? `Automatic · ${item.providerCode ?? 'configured provider'}` : 'Verified result'}
+                  </VadText>
+                  <VadText variant="caption" tone={item.status === 'ACTIVE' ? 'yes' : 'warning'}>
+                    {item.status}
+                  </VadText>
+                </View>
+                <VadButton
+                  label={busy ? 'Saving…' : item.status === 'ACTIVE' ? 'Disable' : 'Enable'}
+                  variant="secondary"
+                  size="small"
+                  fullWidth={false}
+                  loading={busy}
+                  disabled={Boolean(workingCode)}
+                  onPress={() => void toggle(item)}
+                />
+              </View>
+            );
+          }) : (
+            <VadText variant="caption" tone="secondary">No competition records are configured for this sport yet.</VadText>
+          )}
+          <VadInput
+            label="Reason for competition change"
+            value={reason}
+            onChangeText={setReason}
+            placeholder="Why should this sport or competition be enabled/disabled?"
+          />
+          <VadText variant="caption" tone="secondary">
+            Status changes are permission-checked and written to the audit log. Disabling a league hides it from new-market selection; it does not rewrite previously published outcomes.
+          </VadText>
+        </>
+      )}
+      {error ? <VadErrorState title="Sports catalog controls unavailable" message={error} onRetry={() => void load()} /> : null}
       {message ? <VadText variant="caption" tone="yes">{message}</VadText> : null}
     </VadCard>
   );
