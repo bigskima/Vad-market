@@ -19,8 +19,10 @@ import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
 export default function AccountScreen() {
   const { session, signOut } = useAuth();
   const currencyPreference = useCurrencyPreference();
-  const { refreshPortfolio } = useProductDataContext();
+  const data = useProductDataContext();
+  const { refreshPortfolio } = data;
   const tngnEnabled = currencyPreference.isCurrencyEnabled('TNGN');
+  const unreadNotificationCount = data.notifications.filter((notification) => !notification.read_at).length;
   const theme = useVadTheme();
   const density = useProductDensity();
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
@@ -100,6 +102,7 @@ export default function AccountScreen() {
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={() => router.push('/notifications')} style={({ pressed }) => ({ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, opacity: pressed ? 0.7 : 1 })}>
             <VadIcon name="bell" size={21} tone="primary" />
+            {unreadNotificationCount > 0 ? <View style={{ position: 'absolute', top: 7, right: 7, width: 9, height: 9, borderRadius: 5, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.surface }} /> : null}
           </Pressable>
         </View>
 
