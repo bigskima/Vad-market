@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
 
     const payload = await ai.json();
     const encodedImage = String(payload?.result?.image || payload?.image || '');
-    const base64 = encodedImage.replace(/^data:image\\/[^;]+;base64,/i, '').replace(/\\s/g, '');
+    const base64 = encodedImage.replace(/^data:image\/[^;]+;base64,/i, '').replace(/\s/g, '');
     if (!base64) return await failJob('Cloudflare returned no generated image', 502);
 
     let binary: string;
