@@ -16,7 +16,6 @@ import { WalletSectionErrorBoundary } from '@/features/wallet/wallet-section-err
 import { OnchainActivityPanel } from '@/features/wallet/onchain-activity-panel';
 import { OnchainPositionsPanel } from '@/features/wallet/onchain-positions-panel';
 import { UsdcWalletBalances } from '@/features/wallet/usdc-wallet-balances';
-import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -75,7 +74,7 @@ export function WalletScreen({
   }, [load]);
 
   const orderedWallets = useMemo(
-    () => wallets.filter((wallet) => (wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC') && currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency))
+    () => wallets.filter((wallet) => (wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC' || wallet.asset_code === 'TNGN') && currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency))
       .sort((a, b) => assetRank(a.asset_code) - assetRank(b.asset_code)),
     [wallets, currencyPreference],
   );
@@ -113,10 +112,9 @@ export function WalletScreen({
           </View>
         </View>
       </TourTarget>
-      <WalletSectionErrorBoundary title="TNGN sandbox account unavailable"><TngnDemoModeCard /></WalletSectionErrorBoundary>
       {manageCurrenciesOpen ? <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
         <View style={{ gap: 3 }}><VadText variant="bodyStrong">Manage currencies</VadText><VadText variant="caption" tone="secondary">Only currencies enabled by your account policy and available wallet balances can be selected.</VadText></View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>{currencyPreference.eligibleCurrencies.map((currency) => <CurrencyToggle key={currency} currency={currency} displayName={currencyPreference.isCurrencyEnabled(currency) ? currency : 'Additional currency'} enabled={currencyPreference.isCurrencyEnabled(currency)} available={activeAssetCodes.includes(currency) || currency === 'TNGN'} onToggle={() => currencyPreference.toggleCurrency(currency)} />)}</View>
+        <View style={{ flexDirection: 'row', gap: 8 }}>{currencyPreference.eligibleCurrencies.filter((currency) => currency !== 'TNGN').map((currency) => <CurrencyToggle key={currency} currency={currency} displayName={currencyPreference.isCurrencyEnabled(currency) ? currency : 'Additional currency'} enabled={currencyPreference.isCurrencyEnabled(currency)} available={activeAssetCodes.includes(currency)} onToggle={() => currencyPreference.toggleCurrency(currency)} />)}</View>
       </VadCard> : null}
       {hasNgn ? <TourTarget id="wallet-actions"><View style={{ flexDirection: 'row', gap: density.phone ? 7 : theme.spacing.sm }}>
         <WalletAction label="Deposit" detail="Add funds" icon="arrowDown" tone="yes" onPress={onDeposit} />
@@ -126,7 +124,7 @@ export function WalletScreen({
       <View style={{ gap: density.phone ? 8 : theme.spacing.sm }}>
         <VadSectionHeader title="Your Currencies" actionLabel="Manage" onAction={() => setManageCurrenciesOpen((value) => !value)} />
         {orderedWallets.map((wallet) => <Pressable key={wallet.asset_code} accessibilityRole="button" accessibilityLabel={`Select ${wallet.asset_code} wallet`} onPress={() => setSelectedAsset(wallet.asset_code as VADCurrency)}><CompactCurrencyBalance wallet={wallet} selected={primaryCode === wallet.asset_code} balanceVisible={balanceVisible} /></Pressable>)}
-        {!orderedWallets.length ? <VadEmptyState title="No supported wallet accounts" body="Your account has no enabled NGN or USDC wallet balance to display." /> : null}
+        {!orderedWallets.length ? <VadEmptyState title="No supported wallet accounts" body="Your account has no enabled wallet balances to display." /> : null}
       </View>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: advancedToolsOpen }} onPress={() => setAdvancedToolsOpen((value) => !value)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 }}>
         <View style={{ flex: 1, gap: 2 }}><VadText variant="bodyStrong">More wallet tools</VadText><VadText variant="caption" tone="secondary">Connected wallets, on-chain activity and positions</VadText></View>
@@ -185,13 +183,13 @@ function CompactCurrencyBalance({ wallet, selected, balanceVisible }: { wallet: 
   const reserved = Number(wallet.reserved ?? 0);
   const pending = Number(wallet.withdrawal_pending ?? 0);
   const total = available + reserved + pending;
-  const currency = wallet.asset_code === 'NGN' ? 'Naira' : 'USD Coin';
+  const currency = wallet.asset_code === 'NGN' ? 'Naira' : wallet.asset_code === 'TNGN' ? 'Test Naira · separate demo ledger' : 'USD Coin';
 
   return (
     <VadCard variant="raised" style={{ paddingVertical: 12, paddingHorizontal: 14, gap: 10, borderRadius: 17, borderColor: selected ? theme.colors.brandPrimary : theme.colors.border, borderWidth: selected ? 1.5 : 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted }}>
-          <VadText variant="caption" tone="brand" style={{ fontWeight: '800' }}>{wallet.asset_code === 'NGN' ? '₦' : '$'}</VadText>
+          <VadText variant="caption" tone="brand" style={{ fontWeight: '800' }}>{wallet.asset_code === 'NGN' ? '₦' : wallet.asset_code === 'TNGN' ? 'T' : '$'}</VadText>
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
           <VadText variant="bodyStrong">{wallet.asset_code}</VadText>
@@ -340,5 +338,6 @@ function WalletAction({
 function assetRank(code: string) {
   if (code === 'NGN') return 0;
   if (code === 'USDC') return 1;
+  if (code === 'TNGN') return 2;
   return 10;
 }
