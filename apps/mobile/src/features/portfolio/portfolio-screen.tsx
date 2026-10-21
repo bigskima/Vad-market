@@ -10,7 +10,6 @@ import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
-import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import { assetMoney, pct } from '@/features/markets/format';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -50,7 +49,7 @@ export function PortfolioScreen({
   const positions = allPositions.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
   const orders = allOrders.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
   const settlements = allSettlements.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
-  const marketHistory = allMarketHistory.filter((row) => row.asset_code !== 'TNGN' && enabledCurrencies.includes(row.asset_code as VADCurrency));
+  const marketHistory = allMarketHistory.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
   const realizedByAsset = useMemo(() => {
     const totals = new Map<string, number>();
     for (const row of marketHistory) totals.set(row.asset_code, (totals.get(row.asset_code) ?? 0) + Number(row.realized_pnl ?? 0));
@@ -115,7 +114,6 @@ export function PortfolioScreen({
           </View>
         </VadCard>
       </TourTarget>
-      <TngnDemoModeCard />
 
       {realizedByAsset.length ? (
         <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
