@@ -389,8 +389,7 @@ export async function getMarketHistory() {
           };
         });
         return [...demoHistory, ...realHistory].sort((a, b) =>
-          Date.parse(b.settled_at ?? '') - Date.parse(a.settled_at ?? '')
-          || Date.parse(b.market_id) - Date.parse(a.market_id),
+          (Date.parse(b.settled_at ?? '') || 0) - (Date.parse(a.settled_at ?? '') || 0),
         );
       }
     }
