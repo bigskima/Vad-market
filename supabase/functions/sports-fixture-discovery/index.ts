@@ -37,6 +37,7 @@ type SportsProvider = {
   baseUrl?: string | null;
   secretReference?: string | null;
   publicMetadata?: JsonRecord;
+  resources?: Array<{ resourceType: string; canonicalKey: string; externalKey: string; status: string }>;
 };
 type ProviderMatch = {
   id?: string | number | null;
@@ -208,6 +209,14 @@ async function handle(req: Request) {
     && ['ACTIVE', 'DEGRADED'].includes(item.status)
   );
   if (!provider) return json({ error: 'PROVIDER_UNAVAILABLE', message: 'The provider mapped to this competition is not active. Check provider status in Admin.' }, 503);
+
+  const mappedResource = (provider.resources ?? []).some((resource) =>
+    resource.status === 'ACTIVE'
+    && resource.resourceType === 'SPORTS_COMPETITION'
+    && resource.externalKey.trim().toUpperCase() === String(competition.providerCompetitionCode).trim().toUpperCase()
+    && resource.canonicalKey.trim().toUpperCase() === sportCode + ':' + String(competition.providerCompetitionCode).trim().toUpperCase()
+  );
+  if (!mappedResource) return json({ error: 'PROVIDER_MAPPING_INACTIVE', message: 'The Oracle provider has no active competition resource for this mapping. Re-enable or repair the provider mapping in Admin before importing fixtures.' }, 409);
 
   const adapter = safeText(provider.adapter, 80).toUpperCase();
   // Every adapter has its own strict host and response contract. The first
