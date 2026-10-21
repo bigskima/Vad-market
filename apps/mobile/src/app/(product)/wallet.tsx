@@ -3,41 +3,37 @@ import { View } from 'react-native';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { ProductRoute } from '@/features/navigation/product-route';
-import { WalletLedgerActivity } from '@/features/wallet/wallet-ledger-activity';
 import { WalletScreen } from '@/features/wallet/wallet-screen';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
-import type { PaymentIntentRow } from '@/services/payment-api';
 
 export default function WalletRoute() {
   const data = useProductDataContext();
   const theme = useVadTheme();
-
-  const openTransaction = (intent: PaymentIntentRow) => {
-    router.push({ pathname: '/wallet/transaction/[intentId]', params: { intentId: intent.intent_public_id } });
-  };
-
   const walletReadFailedWithoutData = Boolean(data.sectionErrors.wallet && !data.wallet.length);
 
   return (
     <ProductRoute active="Wallet">
       {walletReadFailedWithoutData ? (
-        <VadErrorState title="Wallet balance could not be loaded" message={data.sectionErrors.wallet ?? 'Wallet data is unavailable.'} onRetry={() => void data.load()} />
+        <VadErrorState
+          title="Wallet balance could not be loaded"
+          message={data.sectionErrors.wallet ?? 'Wallet data is unavailable.'}
+          onRetry={() => void data.load()}
+        />
       ) : (
         <View style={{ gap: theme.spacing.lg }}>
           <WalletScreen
             wallets={data.wallet}
+            walletActivity={data.walletActivity}
+            walletActivityError={data.sectionErrors.walletActivity ?? null}
+            unreadNotificationCount={data.notifications.filter((notification) => !notification.read_at).length}
             onDeposit={() => router.push('/wallet/deposit')}
             onWithdraw={() => router.push('/wallet/withdraw')}
+            onTransfer={() => router.push('/wallet/send')}
             onActivity={() => router.push('/wallet/activity')}
-            onOpenTransaction={openTransaction}
+            onNotifications={() => router.push('/notifications')}
             activeAssetCodes={data.activeAssetCodes}
           />
-          {data.sectionErrors.walletActivity && !data.walletActivity.length ? (
-            <VadErrorState title="Wallet activity unavailable" message={data.sectionErrors.walletActivity} onRetry={() => void data.refreshPortfolio()} />
-          ) : data.walletActivity.length ? (
-            <WalletLedgerActivity rows={data.walletActivity} compact />
-          ) : null}
         </View>
       )}
     </ProductRoute>
