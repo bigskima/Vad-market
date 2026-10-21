@@ -32,6 +32,7 @@ export function WalletScreen({
   onWithdraw,
   onTransfer,
   onActivity,
+  onRetryActivity,
   onNotifications,
   activeAssetCodes,
 }: {
@@ -43,6 +44,7 @@ export function WalletScreen({
   onWithdraw: () => void;
   onTransfer: () => void;
   onActivity: () => void;
+  onRetryActivity: () => void;
   onNotifications: () => void;
   activeAssetCodes: string[];
 }) {
@@ -280,7 +282,7 @@ export function WalletScreen({
         <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
           <VadSectionHeader title="Recent Transactions" actionLabel="See all" onAction={onActivity} />
           {walletActivityError && !recentActivity.length ? (
-            <VadErrorState title="Wallet activity unavailable" message={walletActivityError} onRetry={onActivity} />
+            <VadErrorState title="Wallet activity unavailable" message={walletActivityError} onRetry={onRetryActivity} />
           ) : recentActivity.length ? (
             <View style={{ gap: density.compact ? 7 : theme.spacing.sm }}>
               {recentActivity.map((row) => <RecentWalletActivityRow key={row.activity_id + row.account_type} row={row} onPress={onActivity} />)}
