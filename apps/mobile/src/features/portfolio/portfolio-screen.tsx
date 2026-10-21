@@ -93,12 +93,10 @@ export function PortfolioScreen({
   const [orderHistoryLoading, setOrderHistoryLoading] = useState(true);
   const [orderHistoryError, setOrderHistoryError] = useState<string | null>(null);
   const [retryValuation, setRetryValuation] = useState(0);
+  const [clockNow, setClockNow] = useState(() => Date.now());
 
   useEffect(() => {
     let cancelled = false;
-    setMarksLoading(true);
-    setHistoryLoading(true);
-    setOrderHistoryLoading(true);
     void Promise.allSettled([
       getPortfolioPositionMarks(),
       getPortfolioValuationHistory(3650, 600),
@@ -131,8 +129,12 @@ export function PortfolioScreen({
   }, [retryValuation, positions, orders, wallet, marketHistory, poolStakes, settlements, markets]);
 
   useEffect(() => {
-    // While Portfolio remains open, request real snapshots on the same cadence
-    // the server uses to avoid storing redundant valuation observations.
+    const timer = setInterval(() => setClockNow(Date.now()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    // Ask the server for real snapshots on the same cadence used to avoid duplicates.
     const timer = setInterval(() => setRetryValuation((value) => value + 1), 15 * 60 * 1000);
     return () => clearInterval(timer);
   }, []);
@@ -164,7 +166,7 @@ export function PortfolioScreen({
     .filter((snapshot) => snapshot.asset_code === asset)
     .sort((a, b) => Date.parse(a.observed_at) - Date.parse(b.observed_at)), [snapshots, asset]);
   const latestSnapshot = currencySnapshots[currencySnapshots.length - 1] ?? null;
-  const cutoff = period === 'ALL' ? 0 : Date.now() - PERIOD_DAYS[period] * 24 * 60 * 60 * 1000;
+  const cutoff = period === 'ALL' ? 0 : clockNow - PERIOD_DAYS[period] * 24 * 60 * 60 * 1000;
   const periodSnapshots = currencySnapshots.filter((snapshot) => Date.parse(snapshot.observed_at) >= cutoff);
   const completePeriodSnapshots = periodSnapshots.filter((snapshot) => snapshot.valuation_complete && snapshot.total_value != null);
   const startSnapshot = completePeriodSnapshots[0] ?? null;
@@ -699,7 +701,6 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
 function SummaryMetric({ title, count, amount: value, asset, tone, value: customValue }: {
   title: string; count: number; amount?: number; asset?: string; tone?: 'yes' | 'no'; value?: string;
 }) {
-  const theme = useVadTheme();
   const label = customValue ?? (count === 0 || value == null ? '—' : `${value >= 0 ? '+' : '−'}${assetMoney(Math.abs(value), asset)}`);
   return (
     <VadCard variant="raised" style={{ flex: 1, minWidth: 0, padding: 10, gap: 5, borderRadius: 16 }}>
