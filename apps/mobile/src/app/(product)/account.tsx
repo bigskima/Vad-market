@@ -117,7 +117,7 @@ export default function AccountScreen() {
   };
 
   return (
-    <ProductRoute active="Account">
+    <ProductRoute active="Account" hideTopBar>
       <View style={{ gap: density.phone ? 9 : 13, paddingBottom: theme.spacing.xs }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <View style={{ flex: 1, gap: 1 }}>
