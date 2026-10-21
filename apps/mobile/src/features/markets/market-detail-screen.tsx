@@ -63,15 +63,17 @@ export function MarketDetailScreen({
   const isCryptoMarket = String(market.presentation_profile ?? '').toUpperCase() === 'CRYPTO'
     || String(market.category_code ?? '').toUpperCase() === 'CRYPTO_WEB3'
     || String(market.category ?? '').toUpperCase() === 'CRYPTO';
-  const [tab, setTab] = useState<DetailTab>(initialOutcome ? 'Trade' : 'Overview');
+  const screenKey = `${market.instrument_public_id}:${initialOutcome ?? 'none'}`;
+  const [tabState, setTabState] = useState<{ key: string; tab: DetailTab }>(() => ({ key: screenKey, tab: initialOutcome ? 'Trade' : 'Overview' }));
+  const tab = tabState.key === screenKey ? tabState.tab : initialOutcome ? 'Trade' : 'Overview';
+  const setTab = (nextTab: DetailTab) => setTabState({ key: screenKey, tab: nextTab });
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
 
   useEffect(() => {
     closeRefreshDone.current = false;
     resolveRefreshDone.current = false;
-    setTab(initialOutcome ? 'Trade' : 'Overview');
-  }, [market.instrument_public_id, initialOutcome]);
+  }, [market.instrument_public_id]);
 
   useEffect(() => {
     if (!onRefreshMarket) return;
