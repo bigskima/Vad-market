@@ -289,6 +289,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function setDetail(key: string, value: string) {
     if (key === 'sport' || key === 'competition') {
       sportsDraftRequest.current += 1;
+      setSportsDraftLoading(false);
       setSelectedFixture(null);
       setSportsDraftNotice(null);
     }
@@ -308,6 +309,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   function chooseSportsFixture(fixture: AdminSportsFixture, cacheKey: string) {
     sportsDraftRequest.current += 1;
+    setSportsDraftLoading(false);
     setSelectedFixture({ fixture, cacheKey });
     setSportsDraftNotice(null);
     setTitle('');
@@ -584,12 +586,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
               {football ? (
                 <View style={{ gap: theme.spacing.md }}>
-                  <VadInput label="Competition" value={competition} onChangeText={(value) => { sportsDraftRequest.current += 1; setSelectedFixture(null); setSportsDraftNotice(null); setCompetition(value); setTitleEdited(false); }} placeholder="La Liga" />
+                  <VadInput label="Competition" value={competition} onChangeText={(value) => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setCompetition(value); setTitleEdited(false); }} placeholder="La Liga" />
                   {footballCompetitions.length ? (
                     <View style={{ gap: 7 }}>
                       <VadText variant="caption" tone="secondary">Competitions available for automatic checking</VadText>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
-                        {footballCompetitions.map((item) => <VadChip key={item} label={item} selected={competition === item} onPress={() => { setCompetition(item); setTitleEdited(false); }} />)}
+                        {footballCompetitions.map((item) => <VadChip key={item} label={item} selected={competition === item} onPress={() => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setCompetition(item); setTitleEdited(false); }} />)}
                       </View>
                     </View>
                   ) : null}
@@ -602,8 +604,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
                     selectedFixtureId={selectedFixture?.fixture.fixtureId}
                     onSelect={chooseSportsFixture}
                   />
-                  <VadInput label="Home team" value={homeTeam} onChangeText={(value) => { sportsDraftRequest.current += 1; setSelectedFixture(null); setSportsDraftNotice(null); setHomeTeam(value); setTitleEdited(false); }} placeholder="Real Betis" />
-                  <VadInput label="Away team" value={awayTeam} onChangeText={(value) => { sportsDraftRequest.current += 1; setSelectedFixture(null); setSportsDraftNotice(null); setAwayTeam(value); setTitleEdited(false); }} placeholder="Getafe" />
+                  <VadInput label="Home team" value={homeTeam} onChangeText={(value) => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setHomeTeam(value); setTitleEdited(false); }} placeholder="Real Betis" />
+                  <VadInput label="Away team" value={awayTeam} onChangeText={(value) => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setAwayTeam(value); setTitleEdited(false); }} placeholder="Getafe" />
                   <FieldGroup label="Prediction">
                     <VadChip label="Home team wins" selected={prediction === 'HOME_WIN'} onPress={() => { setPrediction('HOME_WIN'); setTitleEdited(false); }} />
                     <VadChip label="Draw" selected={prediction === 'DRAW'} onPress={() => { setPrediction('DRAW'); setTitleEdited(false); }} />
