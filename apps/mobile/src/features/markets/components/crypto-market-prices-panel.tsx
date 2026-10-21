@@ -422,7 +422,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
           })}
         </View>
       ) : null}
-      {displayedCoin && updatedAt ? <VadText variant="caption" tone={staleSnapshot ? 'warning' : 'tertiary'}>{staleSnapshot ? 'Stale cached snapshot' : 'Source snapshot'}: {new Date(updatedAt).toLocaleTimeString()} · CoinGecko</VadText> : null}
+      {displayedCoin && updatedAt ? <VadText variant="caption" tone={staleSnapshot ? 'warning' : 'tertiary'}>{staleSnapshot ? 'Stale cached snapshot' : 'Live reference · refreshes every 30 seconds'}: {new Date(updatedAt).toLocaleTimeString()} · CoinGecko</VadText> : null}
     </VadCard>
   );
 }
