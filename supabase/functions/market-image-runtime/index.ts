@@ -45,8 +45,14 @@ Deno.serve(async (req) => {
     }
 
     admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: authData, error: authError } = await admin.auth.getUser(token);
-    if (authError || !authData.user) return json({ error: 'Authentication required' }, 401);
+    // A trusted server-side worker may call this function with the service-role JWT
+    // after its own one-time secret check. Ordinary app requests still require a
+    // valid signed-in user JWT; the service key is never shipped to a client.
+    const internalWorkerCall = token === serviceKey;
+    if (!internalWorkerCall) {
+      const { data: authData, error: authError } = await admin.auth.getUser(token);
+      if (authError || !authData.user) return json({ error: 'Authentication required' }, 401);
+    }
 
     let body: Record<string, unknown>;
     try {
