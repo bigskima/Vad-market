@@ -127,7 +127,7 @@ export function AdminSportsFixturePicker({
                 return (
                   <VadCard
                     key={page.source + ':' + fixture.fixtureId}
-                    variant={selected ? 'raised' : 'default'}
+                    variant={selected ? 'raised' : 'surface'}
                     style={{
                       gap: theme.spacing.sm,
                       borderWidth: 1,
