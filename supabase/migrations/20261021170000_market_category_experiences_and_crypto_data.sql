@@ -543,4 +543,69 @@ $$;
 revoke all on function public.admin_set_market_data_source_status(text,text,text) from public,anon;
 grant execute on function public.admin_set_market_data_source_status(text,text,text) to authenticated;
 
+
+create or replace function public.admin_update_market_data_source_settings(
+  p_code text,
+  p_quote_currency text,
+  p_default_page_size integer,
+  p_cache_seconds integer,
+  p_reason text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_code text := upper(btrim(coalesce(p_code,'')));
+  v_quote text := upper(btrim(coalesce(p_quote_currency,'')));
+  v_old market.market_data_sources;
+begin
+  if auth.uid() is null or not private.has_permission('providers.manage') then
+    raise exception 'Provider management permission required' using errcode='42501';
+  end if;
+  if v_quote !~ '^[A-Z]{3,8}$' then
+    raise exception 'Choose a valid quote currency code.' using errcode='22023';
+  end if;
+  if p_default_page_size is null or p_default_page_size < 1 or p_default_page_size > 100 then
+    raise exception 'Default page size must be between 1 and 100.' using errcode='22023';
+  end if;
+  if p_cache_seconds is null or p_cache_seconds < 15 or p_cache_seconds > 3600 then
+    raise exception 'Cache duration must be between 15 and 3600 seconds.' using errcode='22023';
+  end if;
+  if char_length(btrim(coalesce(p_reason,''))) < 3 then
+    raise exception 'Enter a reason for updating the market data settings.' using errcode='22023';
+  end if;
+
+  select * into v_old from market.market_data_sources where code=v_code for update;
+  if v_old.code is null then raise exception 'Market data source not found.' using errcode='P0002'; end if;
+
+  update market.market_data_sources
+  set quote_currency=v_quote,
+      default_page_size=p_default_page_size,
+      cache_seconds=p_cache_seconds,
+      updated_by=auth.uid(),
+      updated_at=statement_timestamp()
+  where code=v_code;
+
+  insert into audit.records(actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata)
+  values(
+    auth.uid(),'ADMIN','MARKET_DATA_SOURCE_SETTINGS_UPDATED','MARKET_DATA_SOURCE',v_code,
+    btrim(p_reason),
+    jsonb_build_object(
+      'purpose','DISPLAY_ONLY',
+      'previous_quote_currency',v_old.quote_currency,
+      'quote_currency',v_quote,
+      'previous_default_page_size',v_old.default_page_size,
+      'default_page_size',p_default_page_size,
+      'previous_cache_seconds',v_old.cache_seconds,
+      'cache_seconds',p_cache_seconds
+    )
+  );
+  return true;
+end;
+$$;
+revoke all on function public.admin_update_market_data_source_settings(text,text,integer,integer,text) from public,anon;
+grant execute on function public.admin_update_market_data_source_settings(text,text,integer,integer,text) to authenticated;
+
 commit;
