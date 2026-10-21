@@ -18,6 +18,8 @@ import type { MarketCatalogItem } from '@/services/market-api';
 import type { FeaturedMarketRow, TrendingMarketRow, VadMarketRow } from '@/services/home-content-api';
 import { FeaturedMarketsCarousel } from './featured-markets-carousel';
 import { requestMarketImageGeneration } from '@/services/market-image-generation';
+import { getMarketCategoryExperiences, type MarketCategoryExperience } from '@/services/crypto-market-data-api';
+import { CryptoMarketPricesPanel } from './components/crypto-market-prices-panel';
 import { MarketCard } from './components/market-card';
 import { PageHeader } from '@/features/navigation/page-header';
 import {
@@ -51,11 +53,20 @@ export function MarketsScreen({
   const columns = width >= 920 ? 2 : 1;
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [categoryExperiences, setCategoryExperiences] = useState<MarketCategoryExperience[]>([]);
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(query.trim()), 250);
     return () => clearTimeout(handle);
   }, [query]);
+
+  useEffect(() => {
+    let active = true;
+    void getMarketCategoryExperiences()
+      .then((items) => { if (active) setCategoryExperiences(items); })
+      .catch(() => { if (active) setCategoryExperiences([]); });
+    return () => { active = false; };
+  }, []);
 
   // Lazily fill missing AI artwork for the live catalogue while keeping the
   // requests bounded by the shared generation queue and server-side idempotency.
@@ -75,9 +86,27 @@ export function MarketsScreen({
   const [showAllMarkets, setShowAllMarkets] = useState(false);
 
   const categories = useMemo(
-    () => [...new Set(markets.map((market) => market.category).filter((value): value is string => Boolean(value)))].sort(),
-    [markets],
+    () => [...new Set([
+      ...categoryExperiences.map((item) => item.name),
+      ...markets.map((market) => market.category).filter((value): value is string => Boolean(value)),
+    ])].sort((a, b) => {
+      const aOrder = categoryExperiences.find((item) => item.name === a)?.display_order;
+      const bOrder = categoryExperiences.find((item) => item.name === b)?.display_order;
+      if (aOrder != null || bOrder != null) return (aOrder ?? 10_000) - (bOrder ?? 10_000) || a.localeCompare(b);
+      return a.localeCompare(b);
+    }),
+    [markets, categoryExperiences],
   );
+
+  const activeCategoryExperience = useMemo(
+    () => categoryExperiences.find((item) => item.name === category)
+      ?? categoryExperiences.find((item) => item.code === category)
+      ?? null,
+    [categoryExperiences, category],
+  );
+  const selectedProfile = activeCategoryExperience?.presentation_profile
+    ?? markets.find((market) => market.category === category)?.presentation_profile
+    ?? 'EVENT';
 
   const baseFilteredMarkets = useMemo(() => {
     const needle = debouncedQuery.toLowerCase();
@@ -151,6 +180,27 @@ export function MarketsScreen({
   });
 
   const visibleMarkets = progressive.visibleItems;
+  const visibleMarketGroups = useMemo(() => {
+    const groupField = activeCategoryExperience?.group_field?.trim() ?? '';
+    if (!groupField || visibleMarkets.length === 0) {
+      return [{ key: 'all', label: '', markets: visibleMarkets }];
+    }
+    const groups = new Map<string, MarketCatalogItem[]>();
+    for (const market of visibleMarkets) {
+      const label = market.group_key?.trim() || '';
+      const key = label || '__ungrouped__';
+      const rows = groups.get(key) ?? [];
+      rows.push(market);
+      groups.set(key, rows);
+    }
+    return [...groups.entries()]
+      .sort(([a], [b]) => a === '__ungrouped__' ? 1 : b === '__ungrouped__' ? -1 : a.localeCompare(b))
+      .map(([key, rows]) => ({
+        key,
+        label: key === '__ungrouped__' ? 'Other markets' : key,
+        markets: rows,
+      }));
+  }, [visibleMarkets, activeCategoryExperience]);
 
   return (
     <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
@@ -184,7 +234,17 @@ export function MarketsScreen({
       </TourTarget>
 
 
-      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} category={category} onOpenMarket={onOpenMarket} />
+      {selectedProfile === 'CRYPTO' ? (
+        <CryptoMarketPricesPanel
+          search={debouncedQuery}
+          onSelectCoin={(coin) => {
+            setQuery(coin.name);
+            setCategory(categoryExperiences.find((item) => item.presentation_profile === 'CRYPTO')?.name ?? category);
+          }}
+        />
+      ) : null}
+
+            <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} category={category} onOpenMarket={onOpenMarket} />
 
       {orderedMarkets.length ? (
         <View style={{ gap: theme.spacing.sm, paddingTop: 2 }}>
@@ -210,9 +270,26 @@ export function MarketsScreen({
                 alignItems: 'stretch',
               }}
             >
-              {visibleMarkets.map((market) => (
-                <View key={market.instrument_public_id} style={{ width: cardWidth }}>
-                  <MarketCard market={market} onPress={() => onOpenMarket(market)} onSelectOutcome={(outcome) => router.push({ pathname: '/market/[marketId]', params: { marketId: market.instrument_public_id, outcome } })} compact />
+              {visibleMarketGroups.map((group) => (
+                <View key={group.key} style={{ width: '100%', gap: theme.spacing.xs }}>
+                  {group.label ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: theme.spacing.sm }}>
+                      <VadText variant="bodyStrong">{group.label}</VadText>
+                      <VadText variant="caption" tone="secondary">{group.markets.length} {group.markets.length === 1 ? 'market' : 'markets'}</VadText>
+                    </View>
+                  ) : null}
+                  <View style={{
+                    flexDirection: columns > 1 ? 'row' : 'column',
+                    flexWrap: columns > 1 ? 'wrap' : 'nowrap',
+                    gap: theme.spacing.sm,
+                    alignItems: 'stretch',
+                  }}>
+                    {group.markets.map((market) => (
+                      <View key={market.instrument_public_id} style={{ width: cardWidth }}>
+                        <MarketCard market={market} onPress={() => onOpenMarket(market)} onSelectOutcome={(outcome) => router.push({ pathname: '/market/[marketId]', params: { marketId: market.instrument_public_id, outcome } })} compact />
+                      </View>
+                    ))}
+                  </View>
                 </View>
               ))}
             </View>
