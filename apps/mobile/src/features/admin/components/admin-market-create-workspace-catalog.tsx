@@ -119,7 +119,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   }, []);
 
   useEffect(() => {
-    if (!cryptoThreshold || cryptoSearch.trim().length < 2) {
+    if (!(creationStyle === 'GUIDED' && marketTypeCode === 'CRYPTO_PRICE_THRESHOLD') || cryptoSearch.trim().length < 2) {
       setCryptoOptions([]);
       return;
     }
@@ -130,7 +130,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
         .catch(() => { if (active) setCryptoOptions([]); });
     }, 250);
     return () => { active = false; clearTimeout(timer); };
-  }, [cryptoSearch, cryptoThreshold]);
+  }, [cryptoSearch, creationStyle, marketTypeCode]);
 
   async function chooseCryptoAsset(coin: CryptoMarketQuote) {
     const requestId = ++cryptoAssetCheckRequest.current;
