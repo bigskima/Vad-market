@@ -31,6 +31,7 @@ export default function WalletRoute() {
             onWithdraw={() => router.push('/wallet/withdraw')}
             onTransfer={() => router.push('/wallet/send')}
             onActivity={() => router.push('/wallet/activity')}
+            onRetryActivity={() => void data.refreshPortfolio()}
             onNotifications={() => router.push('/notifications')}
             activeAssetCodes={data.activeAssetCodes}
           />
