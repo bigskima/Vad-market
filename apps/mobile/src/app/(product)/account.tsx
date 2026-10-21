@@ -13,9 +13,9 @@ import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
 import { useCurrencyPreference } from '@/providers/currency-preference-provider';
+import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getAdminAccess } from '@/services/admin-control-api';
-import { useProductDataContext } from '@/providers/product-data-provider';
 
 export default function AccountScreen() {
   const { session, signOut } = useAuth();
