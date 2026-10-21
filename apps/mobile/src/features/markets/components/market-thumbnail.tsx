@@ -10,19 +10,20 @@ import { requestMarketImageGeneration } from '@/services/market-image-generation
 
 export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogItem; size?: number }) {
   const [generatedPath, setGeneratedPath] = useState<string | null>(null);
+  const existingMediaPath = market.media_path?.trim() || null;
 
   useEffect(() => {
-    if (market.media_path) return;
+    if (existingMediaPath) return;
     let active = true;
     void requestMarketImageGeneration(market.instrument_public_id).then((path) => {
       if (active && path) setGeneratedPath(path);
     });
     return () => { active = false; };
-  }, [market.instrument_public_id, market.media_path]);
+  }, [market.instrument_public_id, existingMediaPath]);
 
   return (
     <MarketMediaThumbnail
-      mediaPath={market.media_path ?? generatedPath}
+      mediaPath={existingMediaPath ?? generatedPath}
       legacyUrl={null}
       title={market.title}
       category={market.category}
