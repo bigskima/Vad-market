@@ -213,8 +213,10 @@ async function handle(req: Request) {
   const mappedResource = (provider.resources ?? []).some((resource) =>
     resource.status === 'ACTIVE'
     && resource.resourceType === 'SPORTS_COMPETITION'
-    && resource.externalKey.trim().toUpperCase() === String(competition.providerCompetitionCode).trim().toUpperCase()
-    && resource.canonicalKey.trim().toUpperCase() === sportCode + ':' + String(competition.providerCompetitionCode).trim().toUpperCase()
+    && (
+      resource.canonicalKey.trim().toUpperCase() === sportCode + ':' + String(competition.providerCompetitionCode).trim().toUpperCase()
+      || resource.externalKey.trim().toUpperCase() === String(competition.providerCompetitionCode).trim().toUpperCase()
+    )
   );
   if (!mappedResource) return json({ error: 'PROVIDER_MAPPING_INACTIVE', message: 'The Oracle provider has no active competition resource for this mapping. Re-enable or repair the provider mapping in Admin before importing fixtures.' }, 409);
 
