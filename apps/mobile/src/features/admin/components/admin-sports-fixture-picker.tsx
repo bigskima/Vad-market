@@ -77,6 +77,7 @@ export function AdminSportsFixturePicker({
         competitionCode,
         fromDate: today,
         toDate: rangeEnd(daysAhead),
+        forceRefresh: Boolean(page),
       });
       setPage(result);
     } catch (value) {
