@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Alert, Image, Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
@@ -106,7 +106,7 @@ export default function AccountScreen() {
         </SettingsGroup>
 
         <SettingsGroup title="Security">
-          <AccountRow icon="operations" title="Sign-in and account security" subtitle="Manage account access and authentication" onPress={() => router.push('/account/profile')} />
+          <AccountRow icon="operations" title="Additional security controls" subtitle="Password, PIN, two-factor and session management are not yet exposed in this app build." />
           <AccountRow icon="account" title="Policies & privacy" subtitle="Terms and privacy information" onPress={() => router.push('/account/policies')} last />
         </SettingsGroup>
 
@@ -140,13 +140,13 @@ export default function AccountScreen() {
               </Pressable>
             </View>
           ) : null}
-          <AccountRow icon="markets" title="Language & Region" subtitle="Regional display and currency eligibility" onPress={() => router.push('/account/appearance')} last />
+          <AccountRow icon="markets" title="Language & Region" subtitle="Regional and language controls are not configured yet." last />
         </SettingsGroup>
 
         <SettingsGroup title="Support">
-          <AccountRow icon="community" title="Help & Support" subtitle="Help and available support channels" onPress={() => router.push('/account/policies')} />
-          <AccountRow icon="operations" title="Terms & Policies" subtitle="Terms, privacy and risk information" onPress={() => router.push('/account/policies')} />
-          <AccountRow icon="activity" title="About VAD Market" subtitle="Application information and legal resources" onPress={() => router.push('/account/policies')} last />
+          <AccountRow icon="community" title="Help & Support" subtitle="A support destination has not been configured yet." />
+          <AccountRow icon="operations" title="Terms & Policies" subtitle="Open the currently published legal documents" onPress={() => router.push('/account/policies')} />
+          <AccountRow icon="activity" title="About VAD Market" subtitle="App version and company information are not configured on this screen." last />
         </SettingsGroup>
 
         {hasAdminAccess ? (
@@ -164,7 +164,7 @@ export default function AccountScreen() {
   );
 }
 
-function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
   const theme = useVadTheme();
   return (
     <View style={{ gap: 7 }}>
@@ -181,7 +181,7 @@ function IconTile({ icon }: { icon: VadIconName }) {
   return <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}><VadIcon name={icon} size={17} tone="brand" /></View>;
 }
 
-function AccountRow({ icon, title, subtitle, onPress, last = false }: { icon: VadIconName; title: string; subtitle: string; onPress: () => void; last?: boolean }) {
+function AccountRow({ icon, title, subtitle, onPress, last = false }: { icon: VadIconName; title: string; subtitle: string; onPress?: () => void; last?: boolean }) {
   const theme = useVadTheme();
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityHint={subtitle} onPress={onPress} style={({ pressed }) => ({ minHeight: 61, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.7 : 1, borderBottomWidth: last ? 0 : 1, borderBottomColor: theme.colors.border })}>
