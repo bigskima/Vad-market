@@ -112,7 +112,7 @@ export function CryptoMarketPricesPanel({
             Browse assets returned by the configured public API—not a fixed Bitcoin/Ethereum list.
           </VadText>
         </View>
-        <VadIcon name="chart-no-axes-combined" size={22} tone="brand" />
+        <VadIcon name="markets" size={22} tone="brand" />
       </View>
 
       {loading && !coins.length ? (
@@ -224,14 +224,14 @@ function CryptoCoinCard({
           <Image source={{ uri: coin.imageUrl }} accessibilityLabel="" style={{ width: 28, height: 28, borderRadius: 14 }} />
         ) : (
           <View style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: theme.colors.surfaceMuted }}>
-            <VadIcon name="coins" size={15} tone="secondary" />
+            <VadIcon name="activity" size={15} tone="secondary" />
           </View>
         )}
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
           <VadText variant="bodyStrong" numberOfLines={1}>{coin.name}</VadText>
           <VadText variant="caption" tone="secondary">{coin.symbol}{coin.marketCapRank ? ` · #${coin.marketCapRank}` : ''}</VadText>
         </View>
-        {onPress ? <VadIcon name="arrow-up-right" size={16} tone="secondary" /> : null}
+        {onPress ? <VadIcon name="chevronRight" size={16} tone="secondary" /> : null}
       </View>
 
       <View style={{ gap: 2 }}>
