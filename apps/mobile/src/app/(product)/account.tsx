@@ -118,7 +118,7 @@ export default function AccountScreen() {
 
   return (
     <ProductRoute active="Account" hideTopBar>
-      <View style={{ gap: density.phone ? 9 : 13, paddingBottom: theme.spacing.xs }}>
+      <View style={{ gap: density.phone ? 7 : 12, paddingBottom: theme.spacing.xs }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <View style={{ flex: 1, gap: 1 }}>
             <VadText variant="title">Account</VadText>
@@ -130,7 +130,7 @@ export default function AccountScreen() {
           </Pressable>
         </View>
 
-        <VadCard style={{ padding: density.phone ? 10 : 14, borderRadius: 15, gap: 0, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+        <VadCard style={{ paddingHorizontal: density.phone ? 10 : 14, paddingVertical: density.phone ? 5 : 10, borderRadius: 15, gap: 0, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <View style={{ width: density.phone ? 56 : 64, height: density.phone ? 56 : 64, borderRadius: 40, overflow: 'visible', position: 'relative', flexShrink: 0 }}>
               <View style={{ width: '100%', height: '100%', borderRadius: 40, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.borderStrong }}>
@@ -154,7 +154,7 @@ export default function AccountScreen() {
           </View>
         </VadCard>
 
-        <Pressable accessibilityRole="button" accessibilityLabel="View verification details" onPress={() => router.push('/account/verification')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: density.phone ? 10 : 13, borderRadius: 15, borderWidth: 1, borderColor: isVerified ? theme.colors.yes : kycStatus?.status === 'REJECTED' ? theme.colors.no : theme.colors.border, backgroundColor: isVerified ? theme.colors.yesSoft : theme.colors.surface, opacity: pressed ? 0.78 : 1 })}>
+        <Pressable accessibilityRole="button" accessibilityLabel="View verification details" onPress={() => router.push('/account/verification')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: density.phone ? 8 : 11, borderRadius: 15, borderWidth: 1, borderColor: isVerified ? theme.colors.yes : kycStatus?.status === 'REJECTED' ? theme.colors.no : theme.colors.border, backgroundColor: isVerified ? theme.colors.yesSoft : theme.colors.surface, opacity: pressed ? 0.78 : 1 })}>
           <View style={{ width: 38, height: 38, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: isVerified ? theme.colors.yesSoft : kycStatus?.status === 'REJECTED' ? theme.colors.noSoft : theme.colors.surfaceMuted, flexShrink: 0 }}>
             <VadIcon name={isVerified ? 'shieldCheck' : 'shield'} size={22} color={isVerified ? theme.colors.yes : kycStatus?.status === 'REJECTED' ? theme.colors.no : theme.colors.textSecondary} />
           </View>
