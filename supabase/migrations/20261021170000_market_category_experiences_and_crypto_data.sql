@@ -543,7 +543,7 @@ language sql
 stable
 security definer
 set search_path=''
-as $
+as $$
   select jsonb_build_object(
     'code',s.code,
     'name',s.name,
@@ -556,7 +556,7 @@ as $
   from market.market_data_sources s
   where s.code='COINGECKO'
   limit 1;
-$;
+$$;
 revoke all on function public.get_crypto_market_data_source_runtime() from public,anon,authenticated;
 grant execute on function public.get_crypto_market_data_source_runtime() to service_role;
 
@@ -570,7 +570,7 @@ language sql
 stable
 security definer
 set search_path=''
-as $
+as $$
   select jsonb_build_object(
     'secret_reference',p.secret_reference,
     'public_metadata',p.public_metadata,
@@ -583,7 +583,7 @@ as $
     and p.status in ('ACTIVE','DEGRADED')
   order by p.priority asc,p.id asc
   limit 1;
-$;
+$$;
 revoke all on function public.get_cloudflare_market_image_provider_runtime() from public,anon,authenticated;
 grant execute on function public.get_cloudflare_market_image_provider_runtime() to service_role;
 
@@ -749,7 +749,7 @@ language sql
 stable
 security definer
 set search_path=''
-as $
+as $$
   select jsonb_build_object(
     'payload',c.payload,
     'fetched_at',c.fetched_at,
@@ -759,7 +759,7 @@ as $
   from market.market_data_cache c
   where c.request_key=p_request_key
   limit 1;
-$;
+$$;
 revoke all on function public.get_crypto_market_data_cache(text) from public,anon,authenticated;
 grant execute on function public.get_crypto_market_data_cache(text) to service_role;
 
@@ -774,7 +774,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path=''
-as $
+as $$
 begin
   if p_payload is null or jsonb_typeof(p_payload)<>'object' then
     raise exception 'Market data cache payload must be a JSON object.' using errcode='22023';
@@ -792,7 +792,7 @@ begin
     updated_at=statement_timestamp();
   return true;
 end;
-$;
+$$;
 revoke all on function public.upsert_crypto_market_data_cache(text,jsonb,timestamptz,timestamptz,timestamptz) from public,anon,authenticated;
 grant execute on function public.upsert_crypto_market_data_cache(text,jsonb,timestamptz,timestamptz,timestamptz) to service_role;
 
