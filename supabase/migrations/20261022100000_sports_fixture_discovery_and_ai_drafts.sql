@@ -173,10 +173,8 @@ values(
   '{"type":"object","required":["title","description","resolutionRules","riskNotes"],"properties":{"title":{"type":"string","minLength":10,"maxLength":180},"description":{"type":"string","maxLength":1000},"resolutionRules":{"type":"string","minLength":20,"maxLength":1800},"riskNotes":{"type":"string","maxLength":500}}}'::jsonb,
   'ACTIVE'
 )
-on conflict(capability_key,version) do update set
-  system_prompt=excluded.system_prompt,
-  output_schema=excluded.output_schema,
-  status='ACTIVE';
+-- Prompt versions are immutable by design; change the version number for future prompt edits.
+on conflict(capability_key,version) do nothing;
 
 create or replace function public.internal_sports_market_draft_context()
 returns jsonb
