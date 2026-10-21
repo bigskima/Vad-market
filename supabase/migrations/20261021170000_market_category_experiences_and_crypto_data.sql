@@ -378,7 +378,7 @@ as $$
   order by c.display_order,c.name;
 $$;
 revoke all on function public.get_market_category_experiences() from public;
-grant execute on function public.get_market_category_experiences() to authenticated;
+grant execute on function public.get_market_category_experiences() to anon,authenticated;
 
 create or replace function public.admin_set_guided_category_presentation(
   p_category_code text,

@@ -117,15 +117,14 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const authorization = req.headers.get('Authorization') ?? '';
-    const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
-    if (!supabaseUrl || !serviceKey || !token) return json({ error: 'Authentication required' }, 401);
+    // This endpoint only returns public crypto quotes and public market-data
+    // status. It has no account, order, portfolio or settlement side effects, so
+    // it remains usable for anonymous market discovery as well as signed-in users.
+    if (!supabaseUrl || !serviceKey) return json({ error: 'Market data service is not configured.' }, 503);
 
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: authData, error: authError } = await admin.auth.getUser(token);
-    if (authError || !authData.user) return json({ error: 'Authentication required' }, 401);
 
     let body: Record<string, unknown>;
     try {

@@ -399,7 +399,7 @@ export function AdminProvidersScreen() {
         />
       </View>
 
-      <AdminMarketDataSourcePanel canManage={canManage} />
+      {canManage ? <AdminMarketDataSourcePanel canManage={canManage} /> : null}
 
       <AdminSectionTabs
         active={tab}
