@@ -23,7 +23,18 @@ export type VadIconName =
   | 'community'
   | 'activity'
   | 'arrowUp'
-  | 'arrowDown';
+  | 'arrowDown'
+  | 'camera'
+  | 'shieldCheck'
+  | 'creditCard'
+  | 'lock'
+  | 'shield'
+  | 'device'
+  | 'palette'
+  | 'globe'
+  | 'lifeBuoy'
+  | 'fileText'
+  | 'info';
 
 type Tone = 'primary' | 'secondary' | 'tertiary' | 'brand' | 'yes' | 'no' | 'inverse';
 
@@ -216,6 +227,110 @@ export function VadIcon({
         <View style={{ position: 'absolute', width: line, height: size * 0.39, backgroundColor: ink, top: size * 0.11, left: size * 0.49 }} />
         <View style={{ position: 'absolute', width: size * 0.38, height: line, backgroundColor: ink, top: size * 0.49, right: size * 0.11 }} />
         <View style={{ position: 'absolute', width: size * 0.31, height: size * 0.31, top: size * 0.11, right: size * 0.11, borderTopWidth: line, borderRightWidth: line, borderColor: ink, borderTopRightRadius: size * 0.3 }} />
+      </View>
+    );
+  }
+
+  if (name === 'camera') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.84, height: size * 0.62, borderWidth: line, borderColor: ink, borderRadius: size * 0.14, marginTop: size * 0.14 }} />
+        <View style={{ position: 'absolute', top: size * 0.1, left: size * 0.24, width: size * 0.25, height: size * 0.13, borderTopLeftRadius: size * 0.05, borderTopRightRadius: size * 0.05, backgroundColor: ink }} />
+        <View style={{ position: 'absolute', width: size * 0.28, height: size * 0.28, borderWidth: line, borderColor: ink, borderRadius: size, top: size * 0.33 }} />
+      </View>
+    );
+  }
+
+  if (name === 'shield' || name === 'shieldCheck') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.7, height: size * 0.8, borderWidth: line, borderColor: ink, borderTopLeftRadius: size * 0.18, borderTopRightRadius: size * 0.18, borderBottomLeftRadius: size * 0.35, borderBottomRightRadius: size * 0.35, transform: [{ rotate: '0deg' }] }} />
+        {name === 'shieldCheck' ? <View style={{ position: 'absolute', width: size * 0.25, height: size * 0.14, borderLeftWidth: line * 1.3, borderBottomWidth: line * 1.3, borderColor: ink, transform: [{ rotate: '-45deg' }], top: size * 0.39 }} /> : null}
+      </View>
+    );
+  }
+
+  if (name === 'creditCard') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.86, height: size * 0.62, borderWidth: line, borderColor: ink, borderRadius: size * 0.1 }} />
+        <View style={{ position: 'absolute', left: size * 0.1, right: size * 0.1, top: size * 0.42, height: line, backgroundColor: ink }} />
+        <View style={{ position: 'absolute', width: size * 0.2, height: line, left: size * 0.16, bottom: size * 0.24, backgroundColor: ink }} />
+      </View>
+    );
+  }
+
+  if (name === 'lock') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ position: 'absolute', top: size * 0.08, width: size * 0.44, height: size * 0.46, borderWidth: line, borderColor: ink, borderTopLeftRadius: size * 0.25, borderTopRightRadius: size * 0.25, borderBottomWidth: 0 }} />
+        <View style={{ position: 'absolute', bottom: size * 0.08, width: size * 0.72, height: size * 0.5, borderWidth: line, borderColor: ink, borderRadius: size * 0.12, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: line * 1.4, height: line * 1.4, borderRadius: size, backgroundColor: ink }} />
+          <View style={{ width: line, height: size * 0.12, backgroundColor: ink, marginTop: line * 0.3 }} />
+        </View>
+      </View>
+    );
+  }
+
+  if (name === 'device') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.82, height: size * 0.6, borderWidth: line, borderColor: ink, borderRadius: size * 0.08 }} />
+        <View style={{ position: 'absolute', bottom: size * 0.1, width: size * 0.28, height: line, backgroundColor: ink }} />
+        <View style={{ position: 'absolute', bottom: size * 0.1, width: size * 0.5, height: line, backgroundColor: ink, transform: [{ translateY: size * 0.06 }] }} />
+      </View>
+    );
+  }
+
+  if (name === 'palette') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.82, height: size * 0.82, borderWidth: line, borderColor: ink, borderRadius: size * 0.45, transform: [{ rotate: '-15deg' }] }} />
+        <View style={{ position: 'absolute', width: size * 0.14, height: size * 0.14, borderRadius: size, backgroundColor: ink, left: size * 0.25, top: size * 0.25 }} />
+        <View style={{ position: 'absolute', width: size * 0.13, height: size * 0.13, borderRadius: size, backgroundColor: ink, right: size * 0.24, top: size * 0.31 }} />
+        <View style={{ position: 'absolute', width: size * 0.13, height: size * 0.13, borderRadius: size, backgroundColor: ink, left: size * 0.34, bottom: size * 0.21 }} />
+      </View>
+    );
+  }
+
+  if (name === 'globe') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.86, height: size * 0.86, borderWidth: line, borderColor: ink, borderRadius: size }} />
+        <View style={{ position: 'absolute', width: size * 0.4, height: size * 0.86, borderWidth: line, borderColor: ink, borderRadius: size }} />
+        <View style={{ position: 'absolute', left: size * 0.1, right: size * 0.1, height: line, backgroundColor: ink }} />
+      </View>
+    );
+  }
+
+  if (name === 'lifeBuoy') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.84, height: size * 0.84, borderWidth: line * 2.2, borderColor: ink, borderRadius: size }} />
+        <View style={{ position: 'absolute', width: size * 0.32, height: size * 0.32, borderWidth: line, borderColor: ink, borderRadius: size }} />
+        <View style={{ position: 'absolute', width: size * 0.18, height: size * 0.18, top: size * 0.08, left: size * 0.08, borderBottomWidth: line, borderRightWidth: line, borderColor: ink }} />
+        <View style={{ position: 'absolute', width: size * 0.18, height: size * 0.18, top: size * 0.08, right: size * 0.08, borderBottomWidth: line, borderLeftWidth: line, borderColor: ink }} />
+        <View style={{ position: 'absolute', width: size * 0.18, height: size * 0.18, bottom: size * 0.08, left: size * 0.08, borderTopWidth: line, borderRightWidth: line, borderColor: ink }} />
+        <View style={{ position: 'absolute', width: size * 0.18, height: size * 0.18, bottom: size * 0.08, right: size * 0.08, borderTopWidth: line, borderLeftWidth: line, borderColor: ink }} />
+      </View>
+    );
+  }
+
+  if (name === 'fileText') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.65, height: size * 0.82, borderWidth: line, borderColor: ink, borderRadius: size * 0.06 }} />
+        {[0.39, 0.53, 0.67].map((top) => <View key={top} style={{ position: 'absolute', left: size * 0.27, width: size * 0.45, height: line, backgroundColor: ink, top: size * top }} />)}
+      </View>
+    );
+  }
+
+  if (name === 'info') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.86, height: size * 0.86, borderWidth: line, borderColor: ink, borderRadius: size }} />
+        <View style={{ position: 'absolute', width: line * 1.2, height: line * 1.2, borderRadius: size, backgroundColor: ink, top: size * 0.27 }} />
+        <View style={{ position: 'absolute', width: line * 1.2, height: size * 0.28, borderRadius: line, backgroundColor: ink, top: size * 0.43 }} />
       </View>
     );
   }
