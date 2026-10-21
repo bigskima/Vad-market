@@ -913,7 +913,10 @@ function AdminSportsCompetitionPanel() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
 
   const sports = [...catalog.sports].sort((a, b) => a.name.localeCompare(b.name));
   const entries = catalog.competitions.filter((item) => item.sportCode === selectedSport)
