@@ -1,289 +1,201 @@
 import { router } from 'expo-router';
-import { type ReactNode, useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Image, Pressable, View } from 'react-native';
 
-import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
-import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
-import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductRoute } from '@/features/navigation/product-route';
-import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
 import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import type { VadThemePreference } from '@/theme/tokens';
 import { getAdminAccess } from '@/services/admin-control-api';
 
 export default function AccountScreen() {
   const { session, signOut } = useAuth();
   const currencyPreference = useCurrencyPreference();
   const { refreshPortfolio } = useProductDataContext();
-  const tngnEnabled = currencyPreference.isCurrencyEnabled('TNGN');
   const theme = useVadTheme();
   const density = useProductDensity();
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
-  const userId = session?.user.id ?? null;
-  const email = session?.user.email ?? session?.user.phone ?? 'VAD member';
-  const displayName = typeof session?.user.user_metadata?.display_name === 'string'
-    ? session.user.user_metadata.display_name.trim()
-    : '';
-  const identity = displayName || email;
-  const initial = identity.trim().charAt(0).toUpperCase() || 'V';
-  const appearance = theme.preference === 'system'
-    ? `System · currently ${theme.mode}`
+  const [signingOut, setSigningOut] = useState(false);
+  const user = session?.user;
+  const userId = user?.id ?? null;
+  const email = user?.email ?? user?.phone ?? 'Contact information unavailable';
+  const metadata = user?.user_metadata ?? {};
+  const displayName = typeof metadata.display_name === 'string' ? metadata.display_name.trim()
+    : typeof metadata.full_name === 'string' ? metadata.full_name.trim() : '';
+  const avatarUrl = typeof metadata.avatar_url === 'string' ? metadata.avatar_url
+    : typeof metadata.picture === 'string' ? metadata.picture : null;
+  const country = typeof metadata.country === 'string' ? metadata.country
+    : typeof metadata.country_name === 'string' ? metadata.country_name : null;
+  const appearance = theme.preference === 'system' ? `System · ${theme.mode}`
     : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1);
 
   useEffect(() => {
-    if (currencyPreference.loading || !userId) return;
+    if (!userId || currencyPreference.loading) return;
     void refreshPortfolio();
-  }, [currencyPreference.loading, refreshPortfolio, tngnEnabled, userId]);
+  }, [currencyPreference.loading, currencyPreference.isCurrencyEnabled('TNGN'), refreshPortfolio, userId]);
 
   useEffect(() => {
     let ignore = false;
-    const timer = setTimeout(() => {
-      if (!userId) {
-        setHasAdminAccess(false);
-        return;
-      }
-
-      void getAdminAccess()
-        .then((access) => {
-          if (!ignore) setHasAdminAccess(access.isSuperAdmin || access.roles.length > 0);
-        })
-        .catch(() => {
-          if (!ignore) setHasAdminAccess(false);
-        });
-    }, 0);
-
-    return () => {
-      ignore = true;
-      clearTimeout(timer);
-    };
+    if (!userId) { setHasAdminAccess(false); return; }
+    void getAdminAccess().then((access) => {
+      if (!ignore) setHasAdminAccess(access.isSuperAdmin || access.roles.length > 0);
+    }).catch(() => { if (!ignore) setHasAdminAccess(false); });
+    return () => { ignore = true; };
   }, [userId]);
+
+  const requestSignOut = () => {
+    Alert.alert('Log out of VAD Market?', 'You will need to sign in again to access your account.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log Out', style: 'destructive', onPress: () => {
+        setSigningOut(true);
+        void signOut().catch(() => {
+          Alert.alert('Could not log out', 'Please try again.');
+        }).finally(() => setSigningOut(false));
+      } },
+    ]);
+  };
 
   return (
     <ProductRoute active="Account">
-      <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
-        <View style={{ gap: 3 }}>
-          <VadText variant="title">Account</VadText>
-          <VadText variant="caption" tone="secondary">Profile, settings and access</VadText>
+      <View style={{ gap: density.phone ? 12 : 16, paddingBottom: theme.spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <VadText variant="title">Account</VadText>
+            <VadText variant="caption" tone="secondary">Manage your profile, security and app preferences.</VadText>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={() => router.push('/notifications')} style={({ pressed }) => ({ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, opacity: pressed ? 0.7 : 1 })}>
+            <VadIcon name="bell" size={21} tone="primary" />
+          </Pressable>
         </View>
 
-        <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.xl, gap: theme.spacing.md, borderRadius: 26, borderWidth: 1, borderColor: theme.colors.border }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-            <View style={{ width: 60, height: 60, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border }}>
-              <VadText variant="title" tone="brand">{initial}</VadText>
+        <VadCard variant="surface" style={{ padding: density.phone ? 13 : 18, borderRadius: 19, borderWidth: 1, borderColor: theme.colors.border, gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 66, height: 66, borderRadius: 33, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border }}>
+              {avatarUrl ? <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <VadText variant="title" tone="brand">{(displayName || email).trim().charAt(0).toUpperCase() || 'V'}</VadText>}
             </View>
-            <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
-              <VadText variant="heading" numberOfLines={1}>{displayName || 'Welcome to VAD'}</VadText>
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <VadText variant="heading" numberOfLines={1}>{displayName || 'VAD Market member'}</VadText>
               <VadText variant="caption" tone="secondary" numberOfLines={1}>{email}</VadText>
-              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: theme.colors.surface, borderRadius: theme.radius.pill, paddingHorizontal: 8, paddingVertical: 4 }}>
-                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: hasAdminAccess ? theme.colors.brandPrimary : theme.colors.yes }} />
-                  <VadText variant="caption" tone="secondary">{hasAdminAccess ? 'Admin' : 'Member'}</VadText>
-                </View>
-                <VadText variant="caption" tone="secondary">{appearance} mode</VadText>
-              </View>
+              <VadText variant="caption" tone="secondary" numberOfLines={1}>{country || 'Country not set'}</VadText>
             </View>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Manage profile" onPress={() => router.push('/account/profile')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <VadIcon name="account" size={17} tone="brand" />
-              <VadText variant="bodyStrong" tone="brand">Edit profile</VadText>
-            </View>
-            <VadIcon name="chevronRight" size={17} tone="brand" />
-          </Pressable>
+          <ActionButton label="Edit Profile" onPress={() => router.push('/account/profile')} />
         </VadCard>
 
-        <View style={{ gap: theme.spacing.sm }}>
-          <VadSectionHeader
-            title="Shortcuts"
-          />
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <TourTarget id="account-verification">
-              <EssentialAction
-                icon="operations"
-                title="Verification"
-                body="Check your verification status."
-                onPress={() => router.push('/account/verification')}
-              />
-            </TourTarget>
-
-            <TourTarget id="account-funding">
-              <EssentialAction
-                icon="wallet"
-                title="Funding"
-                body="Deposits, withdrawals and limits"
-                onPress={() => router.push('/account/funding')}
-              />
-            </TourTarget>
-
+        <Pressable accessibilityRole="button" accessibilityLabel="View identity verification details" onPress={() => router.push('/account/verification')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
+          <View style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+            <VadIcon name="operations" size={22} tone="brand" />
           </View>
-        </View>
+          <View style={{ flex: 1, gap: 3 }}>
+            <VadText variant="bodyStrong">Verification status</VadText>
+            <VadText variant="caption" tone="secondary">View your actual identity-verification status and next steps.</VadText>
+          </View>
+          <VadText variant="caption" tone="brand">View</VadText>
+        </Pressable>
 
-        <VadProgressiveSection
-          title="Trading currencies"
-          icon="markets"
-          summary={<VadText variant="caption" tone="tertiary">Choose which eligible currencies appear in trading</VadText>}
-        >
-          <SettingsList>
-            {currencyPreference.isCurrencyEligible('TNGN') ? (
-              <Pressable
-                accessibilityRole="switch"
-                accessibilityLabel="Enable TNGN trading"
-                accessibilityState={{ checked: currencyPreference.isCurrencyEnabled('TNGN'), disabled: currencyPreference.loading }}
-                disabled={currencyPreference.loading}
-                onPress={() => currencyPreference.toggleCurrency('TNGN')}
-                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 12, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}
-              >
-                <View style={{ flex: 1, gap: 3, paddingRight: 12 }}>
-                  <VadText variant="bodyStrong">TNGN demo trading</VadText>
-                  <VadText variant="caption" tone="secondary">Trade TNGN in the same Markets, Wallet, and Portfolio screens. Its demo ledger stays isolated from real NGN and USDC.</VadText>
-                </View>
-                <View style={{ width: 48, height: 28, borderRadius: 14, padding: 3, justifyContent: 'center', alignItems: currencyPreference.isCurrencyEnabled('TNGN') ? 'flex-end' : 'flex-start', backgroundColor: currencyPreference.isCurrencyEnabled('TNGN') ? theme.colors.brandPrimary : theme.colors.border }}>
-                  <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: theme.colors.surface }} />
-                </View>
-              </Pressable>
-            ) : (
-              <View style={{ padding: 12, gap: 3 }}>
-                <VadText variant="bodyStrong">TNGN unavailable</VadText>
-                <VadText variant="caption" tone="secondary">TNGN has not been enabled for this account by the platform configuration.</VadText>
+        <SettingsGroup title="Account">
+          <AccountRow icon="account" title="Personal Information" subtitle="Name, email and profile details" onPress={() => router.push('/account/profile')} />
+          <AccountRow icon="operations" title="Verification (KYC)" subtitle="Identity verification and documents" onPress={() => router.push('/account/verification')} />
+          <AccountRow icon="wallet" title="Payment Methods" subtitle="Deposits, withdrawals and available payment options" onPress={() => router.push('/account/funding')} last />
+        </SettingsGroup>
+
+        <SettingsGroup title="Security">
+          <AccountRow icon="operations" title="Sign-in and account security" subtitle="Manage account access and authentication" onPress={() => router.push('/account/profile')} />
+          <AccountRow icon="account" title="Policies & privacy" subtitle="Terms and privacy information" onPress={() => router.push('/account/policies')} last />
+        </SettingsGroup>
+
+        <SettingsGroup title="Preferences">
+          <AccountRow icon="bell" title="Notifications" subtitle="Trade alerts, results and account activity" onPress={() => router.push('/notifications')} />
+          <View style={{ paddingHorizontal: 12, paddingVertical: 12, gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <IconTile icon="markets" />
+              <View style={{ flex: 1, gap: 2 }}>
+                <VadText variant="bodyStrong">App Appearance</VadText>
+                <VadText variant="caption" tone="secondary">{appearance}</VadText>
               </View>
-            )}
-          </SettingsList>
-        </VadProgressiveSection>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 7 }}>
+              {(['dark', 'light', 'system'] as VadThemePreference[]).map((preference) => (
+                <Pressable key={preference} accessibilityRole="button" accessibilityState={{ selected: theme.preference === preference }} onPress={() => theme.setPreference(preference)} style={({ pressed }) => ({ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center', backgroundColor: theme.preference === preference ? theme.colors.brandSoft : theme.colors.surfaceMuted, borderWidth: 1, borderColor: theme.preference === preference ? theme.colors.brandPrimary : theme.colors.border, opacity: pressed ? 0.75 : 1 })}>
+                  <VadText variant="caption" tone={theme.preference === preference ? 'brand' : 'secondary'}>{preference === 'system' ? 'System' : preference === 'dark' ? 'Dark' : 'Light'}</VadText>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+          {currencyPreference.isCurrencyEligible('TNGN') ? (
+            <View style={{ paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <IconTile icon="wallet" />
+              <View style={{ flex: 1, gap: 2 }}>
+                <VadText variant="bodyStrong">TNGN demo trading</VadText>
+                <VadText variant="caption" tone="secondary">Separate practice ledger; real NGN and USDC remain unaffected.</VadText>
+              </View>
+              <Pressable accessibilityRole="switch" accessibilityLabel="Enable TNGN demo trading" accessibilityState={{ checked: currencyPreference.isCurrencyEnabled('TNGN'), disabled: currencyPreference.loading }} disabled={currencyPreference.loading} onPress={() => currencyPreference.toggleCurrency('TNGN')} style={{ width: 43, height: 25, borderRadius: 13, padding: 3, justifyContent: 'center', alignItems: currencyPreference.isCurrencyEnabled('TNGN') ? 'flex-end' : 'flex-start', backgroundColor: currencyPreference.isCurrencyEnabled('TNGN') ? theme.colors.brandPrimary : theme.colors.border }}>
+                <View style={{ width: 19, height: 19, borderRadius: 10, backgroundColor: theme.colors.surface }} />
+              </Pressable>
+            </View>
+          ) : null}
+          <AccountRow icon="markets" title="Language & Region" subtitle="Regional display and currency eligibility" onPress={() => router.push('/account/appearance')} last />
+        </SettingsGroup>
 
-        <VadProgressiveSection
-          title="Personalize"
-          icon="account"
-          summary={<VadText variant="caption" tone="tertiary">Profile · Rewards · Appearance</VadText>}
-        >
-          <SettingsList>
-            <AccountRow
-              icon="account"
-              title="Public profile"
-              subtitle="Name, username and profile photo"
-              onPress={() => router.push('/account/profile')}
-            />
-            <AccountRow
-              icon="community"
-              title="Rewards & campaigns"
-              subtitle="Invites and reward history"
-              onPress={() => router.push('/account/growth')}
-            />
-            <AccountRow
-              icon="markets"
-              title="Appearance"
-              subtitle={appearance}
-              onPress={() => router.push('/account/appearance')}
-            />
-          </SettingsList>
-        </VadProgressiveSection>
+        <SettingsGroup title="Support">
+          <AccountRow icon="community" title="Help & Support" subtitle="Help and available support channels" onPress={() => router.push('/account/policies')} />
+          <AccountRow icon="operations" title="Terms & Policies" subtitle="Terms, privacy and risk information" onPress={() => router.push('/account/policies')} />
+          <AccountRow icon="activity" title="About VAD Market" subtitle="Application information and legal resources" onPress={() => router.push('/account/policies')} last />
+        </SettingsGroup>
 
-        <VadProgressiveSection
-          title="Security & access"
-          icon="operations"
-          summary={<VadText variant="caption" tone="tertiary">Policies{hasAdminAccess ? ' · Admin' : ''}</VadText>}
-        >
-          <SettingsList>
-            <AccountRow
-              icon="operations"
-              title="Policies & privacy"
-              subtitle="Terms and privacy"
-              onPress={() => router.push('/account/policies')}
-            />
-            {hasAdminAccess ? (
-              <AccountRow
-                icon="operations"
-                title="Admin operations"
-                subtitle="Operations dashboard"
-                onPress={() => router.push('/admin')}
-              />
-            ) : null}
-          </SettingsList>
-        </VadProgressiveSection>
+        {hasAdminAccess ? (
+          <SettingsGroup title="Administration">
+            <AccountRow icon="operations" title="Admin operations" subtitle="Operations dashboard" onPress={() => router.push('/admin')} last />
+          </SettingsGroup>
+        ) : null}
 
-        <View style={{ alignItems: density.phone ? 'stretch' : 'flex-start' }}>
-          <VadButton label="Sign out" variant="ghost" fullWidth={density.phone} onPress={() => void signOut()} />
-        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Log out" disabled={signingOut} onPress={requestSignOut} style={({ pressed }) => ({ minHeight: 45, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.no, backgroundColor: theme.colors.noSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: pressed || signingOut ? 0.65 : 1 })}>
+          <VadIcon name="close" size={17} tone="no" />
+          <VadText variant="bodyStrong" tone="no">{signingOut ? 'Logging out…' : 'Log Out'}</VadText>
+        </Pressable>
       </View>
     </ProductRoute>
   );
 }
 
-function EssentialAction({
-  icon,
-  title,
-  body,
-  onPress,
-}: {
-  icon: VadIconName;
-  title: string;
-  body: string;
-  onPress: () => void;
-}) {
+function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
   const theme = useVadTheme();
-
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityHint={body}
-      onPress={onPress}
-      style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.76 : 1 })}
-    >
-      <VadCard variant="surface" style={{ minHeight: 88, paddingHorizontal: 13, paddingVertical: 13, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border }}>
-        <View style={{ width: 38, height: 38, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
-          <VadIcon name={icon} size={17} tone="brand" />
-        </View>
-        <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-          <VadText variant="bodyStrong" numberOfLines={1} style={{ flex: 1 }}>{title}</VadText>
-          <VadIcon name="chevronRight" size={15} tone="tertiary" />
-        </View>
+    <View style={{ gap: 7 }}>
+      <VadText variant="bodyStrong">{title}</VadText>
+      <VadCard variant="surface" style={{ paddingHorizontal: 12, paddingVertical: 2, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border, gap: 0 }}>
+        {children}
       </VadCard>
-    </Pressable>
+    </View>
   );
 }
 
-function SettingsList({ children }: { children: ReactNode }) {
+function IconTile({ icon }: { icon: VadIconName }) {
   const theme = useVadTheme();
-  return <View style={{ gap: theme.spacing.sm }}>{children}</View>;
+  return <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}><VadIcon name={icon} size={17} tone="brand" /></View>;
 }
 
-function AccountRow({
-  icon,
-  title,
-  subtitle,
-  onPress,
-}: {
-  icon: VadIconName;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}) {
+function AccountRow({ icon, title, subtitle, onPress, last = false }: { icon: VadIconName; title: string; subtitle: string; onPress: () => void; last?: boolean }) {
   const theme = useVadTheme();
-  const density = useProductDensity();
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityHint={subtitle}
-      onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.992 : 1 }] })}
-    >
-      <View style={{ minHeight: density.phone ? 58 : 64, paddingVertical: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-        <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted }}>
-          <VadIcon name={icon} size={18} tone="secondary" />
-        </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-          <VadText variant="bodyStrong">{title}</VadText>
-          <VadText variant="caption" tone="secondary" numberOfLines={1}>{subtitle}</VadText>
-        </View>
-        <VadIcon name="chevronRight" size={17} tone="tertiary" />
+    <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityHint={subtitle} onPress={onPress} style={({ pressed }) => ({ minHeight: 61, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.7 : 1, borderBottomWidth: last ? 0 : 1, borderBottomColor: theme.colors.border })}>
+      <IconTile icon={icon} />
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <VadText variant="bodyStrong">{title}</VadText>
+        <VadText variant="caption" tone="secondary" numberOfLines={2}>{subtitle}</VadText>
       </View>
+      <VadIcon name="chevronRight" size={17} tone="tertiary" />
     </Pressable>
   );
+}
+
+function ActionButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useVadTheme();
+  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ minHeight: 38, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.brandPrimary, opacity: pressed ? 0.7 : 1 })}><VadText variant="bodyStrong" tone="brand">{label}</VadText></Pressable>;
 }
