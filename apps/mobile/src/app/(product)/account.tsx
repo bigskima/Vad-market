@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Alert, Image, Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
@@ -17,7 +17,7 @@ import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
 import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
 import { supabase } from '@/lib/supabase';
 
-type UserKycState = { userId: string; status: KycStatus };
+type UserKycState = { userId: string; status: KycStatus | null };
 type UserMfaState = { userId: string; enabled: boolean | null };
 
 export default function AccountScreen() {
@@ -55,12 +55,12 @@ export default function AccountScreen() {
   const country = countryValue || countryNameFromCode(countryCode) || 'Country not set';
   const appearance = theme.preference === 'system' ? `System · currently ${theme.mode}`
     : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1);
-  const currencyEligibleForTngn = currencyPreference.isCurrencyEligible('TNGN');
+  const tngnEnabled = currencyPreference.isCurrencyEnabled('TNGN');
 
   useEffect(() => {
     if (!userId || currencyPreference.loading) return;
     void data.refreshPortfolio();
-  }, [currencyPreference.loading, data.refreshPortfolio, currencyPreference.isCurrencyEnabled('TNGN'), userId]);
+  }, [currencyPreference.loading, data.refreshPortfolio, tngnEnabled, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -73,7 +73,7 @@ export default function AccountScreen() {
     void getMyKycStatus().then((status) => {
       if (!ignore) setKycState({ userId, status });
     }).catch(() => {
-      if (!ignore) setKycState({ userId, status: { status: 'NOT_STARTED', providerConfigured: false } });
+      if (!ignore) setKycState({ userId, status: null });
     });
     void supabase.auth.mfa.listFactors().then(({ data: factors, error }) => {
       if (ignore) return;
@@ -104,12 +104,6 @@ export default function AccountScreen() {
 
   const isVerified = kycStatus?.status === 'VERIFIED';
   const kycCopy = getKycCopy(kycStatus);
-  const preferences = useMemo(() => [
-    { value: 'dark', label: 'Dark' },
-    { value: 'light', label: 'Light' },
-    { value: 'system', label: 'System' },
-  ] as const, []);
-
   const requestSignOut = () => {
     Alert.alert('Log out of VAD Market?', 'You will need to sign in again to access your account.', [
       { text: 'Cancel', style: 'cancel' },
@@ -201,12 +195,6 @@ export default function AccountScreen() {
           <SettingsGroup title="Administration">
             <AccountRow icon="operations" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Admin operations" subtitle="Operations dashboard" onPress={() => router.push('/admin')} last />
           </SettingsGroup>
-        ) : null}
-
-        {currencyEligibleForTngn ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Trading currency settings" onPress={() => router.push('/account/region')} style={{ alignSelf: 'flex-start', paddingVertical: 2 }}>
-            <VadText variant="caption" tone="tertiary">Trading currency settings</VadText>
-          </Pressable>
         ) : null}
 
         <Pressable accessibilityRole="button" accessibilityLabel="Log out" disabled={signingOut} onPress={requestSignOut} style={({ pressed }) => ({ minHeight: 38, borderRadius: 9, borderWidth: 1, borderColor: theme.colors.no, backgroundColor: theme.colors.noSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: pressed || signingOut ? 0.65 : 1 })}>
