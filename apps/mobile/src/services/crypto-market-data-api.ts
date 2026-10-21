@@ -72,7 +72,9 @@ export async function getCryptoMarketPrices(input: {
   const { data, error } = await supabase.functions.invoke('crypto-market-data', {
     body: {
       page: Math.max(1, Math.floor(input.page ?? 1)),
-      perPage: Math.max(1, Math.min(100, Math.floor(input.perPage ?? 24))),
+      ...(input.perPage == null ? {} : {
+        perPage: Math.max(1, Math.min(100, Math.floor(input.perPage))),
+      }),
       query: input.query?.trim() || null,
     },
   });
