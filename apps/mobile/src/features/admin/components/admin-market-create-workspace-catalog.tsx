@@ -469,12 +469,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
                   {marketType.fields.filter((field) => !cryptoThreshold || !['asset_symbol', 'coingecko_id', 'quote', 'operator', 'threshold'].includes(field.key)).map((field) => (
                     field.key === 'sport' ? (
                       <FieldGroup key={field.key} label="Sport">
-                        {sportsTaxonomy.sports.map((sport) => <VadChip key={sport.code} label={sport.name} selected={details.sport === sport.name} tone={details.sport === sport.name ? 'brand' : 'neutral'} onPress={() => { setDetail('sport', sport.name); setDetail('competition', ''); }} />)}
+                        {sportsTaxonomy.sports.filter((sport) => sport.status === 'ACTIVE').map((sport) => <VadChip key={sport.code} label={sport.name} selected={details.sport === sport.name} tone={details.sport === sport.name ? 'brand' : 'neutral'} onPress={() => { setDetail('sport', sport.name); setDetail('competition', ''); }} />)}
                       </FieldGroup>
                     ) : field.key === 'competition' && category?.code === 'SPORTS' ? (
                       <View key={field.key} style={{ gap: 7 }}>
                         <FieldGroup label="Competition / league">
-                          {sportsTaxonomy.competitions.filter((item) => !details.sport || item.sportCode === sportsTaxonomy.sports.find((sport) => sport.name === details.sport)?.code).map((item) => <VadChip key={`${item.sportCode}:${item.code}`} label={item.name} selected={details.competition === item.name} tone={details.competition === item.name ? 'brand' : 'neutral'} onPress={() => setDetail('competition', item.name)} />)}
+                          {sportsTaxonomy.competitions.filter((item) => item.status === 'ACTIVE' && (!details.sport || item.sportCode === sportsTaxonomy.sports.find((sport) => sport.name === details.sport)?.code)).map((item) => <VadChip key={`${item.sportCode}:${item.code}`} label={item.name} selected={details.competition === item.name} tone={details.competition === item.name ? 'brand' : 'neutral'} onPress={() => setDetail('competition', item.name)} />)}
                         </FieldGroup>
                         <VadText variant="caption" tone="secondary">League and sport choices come from the VAD database. This general match market uses the verified-source workflow; automatic football results are offered by the dedicated football market type when a supported competition is configured.</VadText>
                       </View>
