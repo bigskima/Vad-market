@@ -433,6 +433,11 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/market-image-worker/index.ts"
 
+[functions.crypto-oracle-asset-check]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/crypto-oracle-asset-check/index.ts"
+
 [functions.crypto-market-data]
 enabled = true
 # This endpoint serves public third-party crypto spot quotes only. It cannot
