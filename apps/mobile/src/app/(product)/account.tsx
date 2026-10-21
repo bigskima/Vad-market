@@ -12,11 +12,16 @@ import { ProductRoute } from '@/features/navigation/product-route';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
+import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getAdminAccess } from '@/services/admin-control-api';
 
 export default function AccountScreen() {
   const { session, signOut } = useAuth();
+  const currencyPreference = useCurrencyPreference();
+  const { refreshPortfolio } = useProductDataContext();
+  const tngnEnabled = currencyPreference.isCurrencyEnabled('TNGN');
   const theme = useVadTheme();
   const density = useProductDensity();
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
@@ -30,6 +35,11 @@ export default function AccountScreen() {
   const appearance = theme.preference === 'system'
     ? `System · currently ${theme.mode}`
     : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1);
+
+  useEffect(() => {
+    if (currencyPreference.loading || !userId) return;
+    void refreshPortfolio();
+  }, [currencyPreference.loading, refreshPortfolio, tngnEnabled, userId]);
 
   useEffect(() => {
     let ignore = false;
@@ -113,6 +123,38 @@ export default function AccountScreen() {
 
           </View>
         </View>
+
+        <VadProgressiveSection
+          title="Trading currencies"
+          icon="markets"
+          summary={<VadText variant="caption" tone="tertiary">Choose which eligible currencies appear in trading</VadText>}
+        >
+          <SettingsList>
+            {currencyPreference.isCurrencyEligible('TNGN') ? (
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityLabel="Enable TNGN trading"
+                accessibilityState={{ checked: currencyPreference.isCurrencyEnabled('TNGN'), disabled: currencyPreference.loading }}
+                disabled={currencyPreference.loading}
+                onPress={() => currencyPreference.toggleCurrency('TNGN')}
+                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 12, borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}
+              >
+                <View style={{ flex: 1, gap: 3, paddingRight: 12 }}>
+                  <VadText variant="bodyStrong">TNGN demo trading</VadText>
+                  <VadText variant="caption" tone="secondary">Trade TNGN in the same Markets, Wallet, and Portfolio screens. Its demo ledger stays isolated from real NGN and USDC.</VadText>
+                </View>
+                <View style={{ width: 48, height: 28, borderRadius: 14, padding: 3, justifyContent: 'center', alignItems: currencyPreference.isCurrencyEnabled('TNGN') ? 'flex-end' : 'flex-start', backgroundColor: currencyPreference.isCurrencyEnabled('TNGN') ? theme.colors.brandPrimary : theme.colors.border }}>
+                  <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: theme.colors.surface }} />
+                </View>
+              </Pressable>
+            ) : (
+              <View style={{ padding: 12, gap: 3 }}>
+                <VadText variant="bodyStrong">TNGN unavailable</VadText>
+                <VadText variant="caption" tone="secondary">TNGN has not been enabled for this account by the platform configuration.</VadText>
+              </View>
+            )}
+          </SettingsList>
+        </VadProgressiveSection>
 
         <VadProgressiveSection
           title="Personalize"
