@@ -22,11 +22,24 @@ export type AdminGuidedCatalogMarketType = {
   metadata: Record<string, unknown>;
 };
 
+export type MarketPresentationProfile =
+  | 'EVENT'
+  | 'CRYPTO'
+  | 'SPORTS'
+  | 'MUSIC'
+  | 'AI'
+  | 'STOCKS'
+  | 'ECONOMICS'
+  | 'ENTERTAINMENT'
+  | 'PUBLIC_EVENTS';
+
 export type AdminGuidedCatalogCategory = {
   code: string;
   name: string;
   description: string;
   displayOrder: number;
+  presentationProfile: MarketPresentationProfile;
+  groupField: string;
   marketTypes: AdminGuidedCatalogMarketType[];
 };
 
@@ -111,6 +124,8 @@ export async function getAdminGuidedMarketCatalog(): Promise<AdminGuidedMarketCa
         name,
         description: String(category.description ?? '').trim(),
         displayOrder: Number.isFinite(Number(category.displayOrder)) ? Number(category.displayOrder) : 100,
+        presentationProfile: normalizePresentationProfile(category.presentationProfile),
+        groupField: String(category.groupField ?? '').trim(),
         marketTypes: Array.isArray(category.marketTypes)
           ? category.marketTypes.map(asMarketType).filter((item): item is AdminGuidedCatalogMarketType => Boolean(item))
           : [],
@@ -118,6 +133,29 @@ export async function getAdminGuidedMarketCatalog(): Promise<AdminGuidedMarketCa
     }).filter((item): item is AdminGuidedCatalogCategory => Boolean(item))
     : [];
   return { categories };
+}
+
+function normalizePresentationProfile(value: unknown): MarketPresentationProfile {
+  const allowed: MarketPresentationProfile[] = [
+    'EVENT', 'CRYPTO', 'SPORTS', 'MUSIC', 'AI', 'STOCKS',
+    'ECONOMICS', 'ENTERTAINMENT', 'PUBLIC_EVENTS',
+  ];
+  const profile = String(value ?? '').toUpperCase() as MarketPresentationProfile;
+  return allowed.includes(profile) ? profile : 'EVENT';
+}
+
+export async function setAdminGuidedCategoryPresentation(input: {
+  code: string;
+  presentationProfile: MarketPresentationProfile;
+  groupField: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_guided_category_presentation', {
+    p_category_code: input.code,
+    p_presentation_profile: input.presentationProfile,
+    p_group_field: input.groupField.trim(),
+  });
+  fail(error, 'We could not update this category display configuration right now.');
+  return data === true;
 }
 
 export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) {
