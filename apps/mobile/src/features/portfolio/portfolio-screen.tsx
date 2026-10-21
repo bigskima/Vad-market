@@ -721,19 +721,57 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
   );
 }
 
+function CompactRangeSwitch({ value, onChange }: { value: Period; onChange: (value: Period) => void }) {
+  const theme = useVadTheme();
+  const options: { value: Period; label: string }[] = [
+    { value: '1D', label: '1D' },
+    { value: '1W', label: '1W' },
+    { value: '1M', label: '1M' },
+    { value: '1Y', label: '1Y' },
+    { value: 'ALL', label: 'ALL' },
+  ];
+  return (
+    <View accessibilityRole="tablist" style={{ flexDirection: 'row', alignItems: 'center', gap: 2, borderRadius: 14, backgroundColor: theme.colors.surfaceRaised, padding: 3 }}>
+      {options.map((option) => {
+        const selected = value === option.value;
+        return (
+          <Pressable key={option.value} accessibilityRole="tab" accessibilityLabel={option.value === 'ALL' ? 'All time' : option.label} accessibilityState={{ selected }} onPress={() => onChange(option.value)} style={({ pressed }) => ({
+            minWidth: 26, minHeight: 25, paddingHorizontal: 4, borderRadius: 9,
+            alignItems: 'center', justifyContent: 'center',
+            backgroundColor: selected ? theme.colors.brandPrimary : 'transparent',
+            opacity: pressed ? 0.75 : 1,
+          })}>
+            <VadText variant="caption" tone={selected ? 'inverse' : 'secondary'} style={{ fontSize: 10, lineHeight: 12, fontWeight: selected ? '700' : '500' }}>{option.label}</VadText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 function SummaryMetric({ title, count, amount: value, asset, tone, value: customValue }: {
   title: string; count: number; amount?: number; asset?: string; tone?: 'yes' | 'no'; value?: string;
 }) {
   const theme = useVadTheme();
   const label = customValue ?? (count === 0 || value == null ? '—' : `${value >= 0 ? '+' : '−'}${assetMoney(Math.abs(value), asset)}`);
+  const positive = tone === 'yes';
+  const negative = tone === 'no';
   return (
-    <VadCard variant="raised" style={{ flex: 1, minWidth: 0, padding: 10, gap: 5, borderRadius: 16 }}>
-      <View style={{ width: 31, height: 31, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: tone === 'yes' ? 'rgba(16,214,157,0.14)' : tone === 'no' ? 'rgba(255,75,95,0.14)' : theme.colors.surfaceMuted }}>
-        <VadIcon name={tone === 'yes' ? 'arrowUp' : tone === 'no' ? 'arrowDown' : 'activity'} size={17} tone={tone ?? 'secondary'} />
+    <VadCard style={{ flex: 1, minWidth: 0, padding: 8, gap: 4, borderRadius: 14, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minWidth: 0 }}>
+        <View style={{ width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: positive ? theme.colors.yesSoft : negative ? theme.colors.noSoft : theme.colors.surfaceMuted, flexShrink: 0 }}>
+          <VadIcon name={positive ? 'arrowUp' : negative ? 'arrowDown' : 'activity'} size={13} tone={tone ?? 'secondary'} />
+        </View>
+        <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 12 }}>{title}</VadText>
       </View>
-      <VadText variant="caption" tone="secondary" numberOfLines={2}>{title}</VadText>
-      <VadText variant="heading">{count.toLocaleString()}</VadText>
-      <VadText variant="caption" tone={tone ?? 'secondary'} numberOfLines={1} adjustsFontSizeToFit>{label}</VadText>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+        <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 17, lineHeight: 21 }}>{count.toLocaleString()}</VadText>
+        <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-end' }}>
+          <View style={{ maxWidth: '100%', borderRadius: 99, paddingHorizontal: 5, paddingVertical: 4, backgroundColor: positive ? theme.colors.yesSoft : negative ? theme.colors.noSoft : theme.colors.surfaceRaised }}>
+            <VadText variant="caption" tone={tone ?? 'secondary'} numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 9, lineHeight: 11 }}>{label}</VadText>
+          </View>
+        </View>
+      </View>
     </VadCard>
   );
 }
