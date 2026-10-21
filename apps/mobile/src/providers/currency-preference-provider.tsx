@@ -155,7 +155,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); catch { /* session fallback */ }
       await refresh();
     })();
-  }, [eligibleCurrencies, enabledCurrencies, refresh]);
+  }, [eligibleCurrencies, enabledCurrencies, preferredCurrency, refresh]);
 
   const toggleCurrency = useCallback((currency: VADCurrency) => {
     if (!eligibleCurrencies.includes(currency)) return;
