@@ -17,6 +17,7 @@ import { getMarketTiming } from '@/lib/market-timing';
 import type { MarketCatalogItem } from '@/services/market-api';
 import type { FeaturedMarketRow, TrendingMarketRow, VadMarketRow } from '@/services/home-content-api';
 import { FeaturedMarketsCarousel } from './featured-markets-carousel';
+import { requestMarketImageGeneration } from '@/services/market-image-generation';
 import { MarketCard } from './components/market-card';
 import { PageHeader } from '@/features/navigation/page-header';
 import {
@@ -55,6 +56,14 @@ export function MarketsScreen({
     const handle = setTimeout(() => setDebouncedQuery(query.trim()), 250);
     return () => clearTimeout(handle);
   }, [query]);
+
+  // Lazily fill missing AI artwork for the live catalogue while keeping the
+  // requests bounded by the shared generation queue and server-side idempotency.
+  useEffect(() => {
+    for (const market of markets) {
+      if (!market.media_path) void requestMarketImageGeneration(market.instrument_public_id);
+    }
+  }, [markets]);
   const [category, setCategory] = useState(() =>
     initialCategory && markets.some((market) => market.category === initialCategory)
       ? initialCategory
