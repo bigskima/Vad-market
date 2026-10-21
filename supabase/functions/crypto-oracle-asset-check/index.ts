@@ -20,13 +20,13 @@ async function fetchJson(url: string, token: string | null) {
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
     const response = await fetch(url, {
-      headers: { Accept: 'application/json', ...(token ? { Authorization: \`Bearer \${token}\` } : {}) },
+      headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       signal: controller.signal,
     });
     if (!response.ok) {
       throw new Error(response.status === 401 || response.status === 403
         ? 'The configured Pyth credentials are not accepted by the provider.'
-        : \`Pyth feed discovery returned HTTP \${response.status}.\`);
+        : `Pyth feed discovery returned HTTP ${response.status}.`);
     }
     return await response.json();
   } finally {
@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
   // Call the same permission-guarded RPC that powers the admin creation workspace.
   const userClient = createClient(supabaseUrl, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: \`Bearer \${token}\` } },
+    global: { headers: { Authorization: `Bearer ${token}` } },
   });
   const { error: permissionError } = await userClient.rpc('admin_guided_market_catalog');
   if (permissionError) return json({ error: 'Market management permission is required to inspect Oracle asset coverage.' }, 403);
@@ -94,13 +94,13 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'The Pyth source is not fully configured for Oracle resolution.' }, 503);
   }
 
-  const feedUrl = new URL(\`\${baseUrl}/v2/price_feeds\`);
+  const feedUrl = new URL(`${baseUrl}/v2/price_feeds`);
   feedUrl.searchParams.set('query', symbol);
   feedUrl.searchParams.set('asset_type', 'crypto');
   try {
     const payload = await fetchJson(feedUrl.toString(), apiToken);
     if (!Array.isArray(payload)) return json({ error: 'Pyth returned an invalid feed catalogue.' }, 502);
-    const expected = \`CRYPTO.\${symbol}/USD\`.toUpperCase();
+    const expected = `CRYPTO.${symbol}/USD`.toUpperCase();
     const exact = payload.find((entry: unknown) => {
       if (!isRecord(entry) || !isRecord(entry.attributes)) return false;
       return safeText(entry.attributes.symbol).toUpperCase() === expected;
@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
         symbol,
         quote: 'USD',
         provider: 'PYTH',
-        reason: \`Pyth has no exact \${symbol}/USD crypto feed. Choose another asset or configure an approved resolver mapping before publishing.\`,
+        reason: `Pyth has no exact ${symbol}/USD crypto feed. Choose another asset or configure an approved resolver mapping before publishing.`,
       });
     }
 
