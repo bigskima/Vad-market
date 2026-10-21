@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
@@ -14,8 +13,8 @@ export default function LanguageRegionScreen() {
   const data = useProductDataContext();
   const currency = useCurrencyPreference();
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Device default';
-  const available = useMemo(() => (['NGN', 'USDC', 'TNGN'] as VADCurrency[])
-    .filter((code) => currency.isCurrencyEligible(code)), [currency.enabledCurrencies.join('|')]);
+  const available = (['NGN', 'USDC', 'TNGN'] as VADCurrency[])
+    .filter((code) => currency.isCurrencyEligible(code));
 
   return (
     <ProductSubpage title="Language & Region" maxWidth={720}>
