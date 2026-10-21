@@ -19,6 +19,7 @@ import { MarketDetailHeader } from './components/market-detail-header';
 import { MarketDepthPanel } from './components/market-depth-panel';
 import { TradingTicket } from './components/trading-ticket';
 import { MarketPriceHistoryPanel } from './components/market-price-history-panel';
+import { CryptoMarketSpotSummary } from './components/crypto-market-prices-panel';
 import { assetMoney, probability } from './format';
 
 type DetailTab = 'Overview' | 'Trade' | 'Chart' | 'Discussion' | 'Rules';
@@ -144,6 +145,9 @@ function Overview({ market, timing, onTrade }: { market: MarketCatalogItem; timi
     <View style={{ gap: density.compact ? 8 : 12 }}>
       <MarketSnapshot market={market} timing={timing} />
       <MarketContextPanel market={market} />
+      {String(market.presentation_profile ?? '').toUpperCase() === 'CRYPTO' ? (
+        <CryptoMarketSpotSummary assetQuery={marketCryptoAssetQuery(market)} />
+      ) : null}
       <VadButton label="Trade this market" onPress={onTrade} size="small" leading={<VadIcon name="markets" size={15} tone="inverse" />} />
       <AssistantEntry
         label="Ask VAD AI about this market"
@@ -356,4 +360,26 @@ function MarketContextPanel({ market }: { market: MarketCatalogItem }) {
 
 function contextLabel(key: string) {
   return key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function marketCryptoAssetQuery(market: MarketCatalogItem) {
+  const context = market.market_context && typeof market.market_context === 'object'
+    ? market.market_context
+    : {};
+  const subject = context.subject && typeof context.subject === 'object' && !Array.isArray(context.subject)
+    ? context.subject as Record<string, unknown>
+    : {};
+  const candidates = [
+    subject.asset,
+    subject.symbol,
+    subject.coin,
+    subject.token,
+    context.asset,
+    context.symbol,
+    context.coin,
+    context.token,
+  ];
+  const source = candidates.find((value) => typeof value === 'string' && value.trim());
+  if (typeof source === 'string') return source.split('/')[0].trim();
+  return '';
 }
