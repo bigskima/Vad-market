@@ -11,11 +11,9 @@ import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
-import { CryptoWalletConnections } from '@/features/wallet/crypto-wallet-connections';
-import { WalletSectionErrorBoundary } from '@/features/wallet/wallet-section-error-boundary';
+import { EmbeddedWalletModal } from '@/features/wallet/embedded-wallet-modal';
 import { OnchainActivityPanel } from '@/features/wallet/onchain-activity-panel';
 import { OnchainPositionsPanel } from '@/features/wallet/onchain-positions-panel';
-import { UsdcWalletBalances } from '@/features/wallet/usdc-wallet-balances';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -299,22 +297,7 @@ export function WalletScreen({
         </View>
       </TourTarget>
 
-      <View style={{ gap: density.phone ? 8 : theme.spacing.sm }}>
-        <VadSectionHeader title="Embedded Wallet" subtitle="Self-custody USDC and on-chain addresses, separate from the VAD account ledger." />
-        <WalletSectionErrorBoundary title="Embedded wallet unavailable">
-          <CryptoWalletConnections />
-        </WalletSectionErrorBoundary>
-        {hasUsdc ? (
-          <WalletSectionErrorBoundary title="USDC on-chain balances unavailable">
-            <UsdcWalletBalances />
-          </WalletSectionErrorBoundary>
-        ) : (
-          <VadCard variant="raised" style={{ gap: 4 }}>
-            <VadText variant="bodyStrong">On-chain USDC balances</VadText>
-            <VadText variant="caption" tone="secondary">Enable USDC for this account where eligible to view connected-network balances. Self-custody holdings are not added to the internal-ledger total above.</VadText>
-          </VadCard>
-        )}
-      </View>
+      <EmbeddedWalletModal showUsdcBalance={hasUsdc} />
 
       <Pressable
         accessibilityRole="button"
