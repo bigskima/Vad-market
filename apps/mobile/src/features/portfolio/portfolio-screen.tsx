@@ -29,7 +29,6 @@ import {
   type PortfolioValuationSnapshotRow,
   type PositionRow,
   type SettlementReceiptRow,
-  type WalletRow,
 } from '@/services/market-api';
 
 type PortfolioTab = 'positions' | 'orders' | 'history' | 'performance';
@@ -48,7 +47,6 @@ export function PortfolioScreen({
   marketHistory,
   poolStakes,
   markets,
-  wallet,
   sectionErrors,
   loading = false,
   onRetry,
@@ -61,7 +59,6 @@ export function PortfolioScreen({
   marketHistory: MarketHistoryRow[];
   poolStakes: PoolStakeRow[];
   markets: MarketCatalogItem[];
-  wallet: WalletRow[];
   sectionErrors?: { positions?: string | null; orders?: string | null; poolStakes?: string | null; marketHistory?: string | null; settlements?: string | null };
   loading?: boolean;
   onRetry: () => void;
@@ -348,7 +345,7 @@ export function PortfolioScreen({
                 />
               ) : (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: 2 }}>
-                  <VadText variant="caption" tone="tertiary" textAlign="right">History building</VadText>
+                  <VadText variant="caption" tone="tertiary" style={{ textAlign: "right" }}>History building</VadText>
                 </View>
               )}
             </View>
