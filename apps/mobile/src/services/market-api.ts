@@ -251,13 +251,51 @@ export async function listMarkets() {
 export async function getWalletSummary() {
   const { data, error } = await supabase.rpc('my_wallet_summary');
   assertNoError(error, 'portfolio', 'We could not load your wallet balances right now. Please try again.');
-  return (data ?? []) as WalletRow[];
+  const realWallets = (data ?? []) as WalletRow[];
+
+  // TNGN balance comes from demo_accounts, never finance.ledger_accounts.
+  // Keep real wallet balances usable if the optional demo service is unavailable.
+  try {
+    const { data: statusData, error: statusError } = await supabase.rpc('get_demo_mode_status');
+    const status = (Array.isArray(statusData) ? statusData[0] : statusData) as { user_enabled?: boolean } | null;
+    if (!statusError && status?.user_enabled === true) {
+      const { data: accountData, error: accountError } = await supabase.rpc('my_demo_account');
+      const account = (Array.isArray(accountData) ? accountData[0] : accountData) as { availableBalance?: number | string } | null;
+      if (!accountError && account) {
+        return [
+          ...realWallets.filter((wallet) => wallet.asset_code !== 'TNGN'),
+          { asset_code: 'TNGN', available: Number(account.availableBalance ?? 0), reserved: 0, withdrawal_pending: 0 },
+        ];
+      }
+    }
+  } catch {
+    // Demo balance is optional; never suppress the real wallet summary.
+  }
+  return realWallets;
 }
 
 export async function getWalletActivity(limit = 100) {
   const { data, error } = await supabase.rpc('my_wallet_activity', { p_limit: limit });
   assertNoError(error, 'portfolio', 'We could not load your complete wallet activity right now. Please try again.');
-  return (data ?? []) as WalletActivityRow[];
+  const realActivity = (data ?? []) as WalletActivityRow[];
+
+  // Demo entries are read from the isolated TNGN ledger, not from my_wallet_activity.
+  try {
+    const { data: statusData, error: statusError } = await supabase.rpc('get_demo_mode_status');
+    const status = (Array.isArray(statusData) ? statusData[0] : statusData) as { user_enabled?: boolean } | null;
+    if (!statusError && status?.user_enabled === true) {
+      const { data: demoData, error: demoError } = await supabase.rpc('my_tngn_demo_ledger_activity', { p_limit: limit });
+      if (!demoError) {
+        const demoActivity = (demoData ?? []) as WalletActivityRow[];
+        return [...demoActivity, ...realActivity]
+          .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+          .slice(0, Math.max(1, limit));
+      }
+    }
+  } catch {
+    // Keep the real ledger activity visible if the isolated demo-ledger read fails.
+  }
+  return realActivity;
 }
 
 export async function getPositions() {
@@ -275,13 +313,90 @@ export async function getOpenOrders() {
 export async function getPoolStakes() {
   const { data, error } = await supabase.rpc('my_pool_stakes');
   assertNoError(error, 'portfolio', 'We could not load your committed predictions right now. Please try again.');
-  return (data ?? []) as PoolStakeRow[];
+  const standardRows = (data ?? []) as PoolStakeRow[];
+  const { data: policy, error: policyError } = await supabase.rpc('get_my_currency_policy');
+  assertNoError(policyError, 'portfolio', 'We could not verify your enabled trading currencies.');
+  const enabledAssets = Array.isArray(policy)
+    ? policy.flatMap((row: { enabled_asset_codes?: string[] }) => row.enabled_asset_codes ?? [])
+    : [];
+  if (!enabledAssets.includes('TNGN')) return standardRows;
+
+  const { data: tngnRows, error: tngnError } = await supabase.rpc('my_tngn_market_orders');
+  assertNoError(tngnError, 'portfolio', 'We could not load your TNGN prediction history.');
+  const isolatedRows = ((tngnRows ?? []) as Array<{
+    orderId: string; marketId: string; marketTitle: string; outcomeCode: string;
+    stake: number | string; status: string; finalOutcome: string | null; createdAt: string;
+  }>).map((row) => ({
+    stake_id: row.orderId,
+    market_id: row.marketId,
+    market_title: row.marketTitle,
+    outcome_code: row.outcomeCode,
+    asset_code: 'TNGN',
+    amount: row.stake,
+    trading_fee: 0,
+    market_status: row.status,
+    final_outcome: row.finalOutcome,
+    created_at: row.createdAt,
+  } satisfies PoolStakeRow));
+  return [...isolatedRows, ...standardRows];
 }
 
 export async function getMarketHistory() {
   const { data, error } = await supabase.rpc('my_market_history');
   assertNoError(error, 'portfolio', 'We could not load your settled market history right now. Please try again.');
-  return (data ?? []) as MarketHistoryRow[];
+  const realHistory = (data ?? []) as MarketHistoryRow[];
+
+  // Resolve TNGN outcomes from the isolated demo-order ledger. These rows never
+  // enter the real-money finance ledger, and are displayed only while enabled.
+  try {
+    const { data: statusData, error: statusError } = await supabase.rpc('get_demo_mode_status');
+    const status = (Array.isArray(statusData) ? statusData[0] : statusData) as { user_enabled?: boolean } | null;
+    if (!statusError && status?.user_enabled === true) {
+      const { data: demoData, error: demoError } = await supabase.rpc('my_tngn_market_orders');
+      if (!demoError) {
+        const demoHistory = ((demoData ?? []) as Array<{
+          orderId: string; marketId: string | null; marketTitle: string; outcomeCode: string;
+          stake: number | string; status: string; finalOutcome?: string | null; payout?: number | string | null;
+          settledAt?: string | null; createdAt: string;
+        }>).map((row): MarketHistoryRow => {
+          const stake = Number(row.stake ?? 0);
+          const payout = Number(row.payout ?? 0);
+          const settled = ['SETTLED', 'VOIDED', 'CANCELLED'].includes(String(row.status).toUpperCase());
+          const result: MarketHistoryRow['result'] = !settled
+            ? 'PENDING'
+            : String(row.status).toUpperCase() === 'VOIDED'
+              ? 'VOID'
+              : String(row.status).toUpperCase() === 'CANCELLED'
+                ? 'REFUNDED'
+                : payout > 0
+                  ? 'WON'
+                  : 'LOST';
+          return {
+            market_id: row.marketId ?? row.orderId,
+            market_title: row.marketTitle,
+            selected_outcome: row.outcomeCode,
+            final_outcome: row.finalOutcome ?? null,
+            asset_code: 'TNGN',
+            matched_quantity: 0,
+            stake_amount: stake,
+            trading_fee: 0,
+            gross_payout: payout,
+            settlement_fee: 0,
+            net_payout: payout,
+            realized_pnl: settled ? payout - stake : 0,
+            result,
+            settled_at: row.settledAt ?? null,
+          };
+        });
+        return [...demoHistory, ...realHistory].sort((a, b) =>
+          (Date.parse(b.settled_at ?? '') || 0) - (Date.parse(a.settled_at ?? '') || 0),
+        );
+      }
+    }
+  } catch {
+    // The real market history must remain usable if the optional demo read fails.
+  }
+  return realHistory;
 }
 
 export async function getSettlementReceipts() {
@@ -315,8 +430,19 @@ async function ensureNgnLocationForInstrument(instrumentPublicId: string) {
   }
 }
 
+async function getMarketAssetCode(instrumentPublicId: string) {
+  const { data, error } = await supabase
+    .from('market_catalog')
+    .select('asset_code')
+    .eq('instrument_public_id', instrumentPublicId)
+    .maybeSingle();
+  assertNoError(error, 'trading', 'We could not verify this market currency. Please try again.');
+  return data?.asset_code ?? null;
+}
+
 export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; amount: number }) {
-  const { data, error } = await supabase.rpc('pool_quote', {
+  const assetCode = await getMarketAssetCode(input.instrumentPublicId);
+  const { data, error } = await supabase.rpc(assetCode === 'TNGN' ? 'tngn_pool_quote' : 'pool_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
     p_amount: input.amount,
@@ -326,6 +452,18 @@ export async function quotePoolStake(input: { instrumentPublicId: string; outcom
 }
 
 export async function placePoolStake(quote: PoolQuote) {
+  const assetCode = await getMarketAssetCode(quote.instrumentPublicId);
+  if (assetCode === 'TNGN') {
+    const idempotencyKey = `tngn:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+    const { data, error } = await supabase.rpc('place_tngn_market_stake', {
+      p_instrument_public_id: quote.instrumentPublicId,
+      p_outcome_code: quote.outcomeCode,
+      p_amount: Number(quote.amount),
+      p_idempotency_key: idempotencyKey,
+    });
+    assertNoError(error, 'trading', 'We could not commit this TNGN prediction. Please try again.');
+    return data as PoolStakeStatus;
+  }
   await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `pool:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_pool_stake', {
