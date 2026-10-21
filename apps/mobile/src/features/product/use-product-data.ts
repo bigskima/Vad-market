@@ -86,24 +86,6 @@ const defaultTrendingSettings: TrendingMarketSettings = {
   lastRefreshedAt: null,
 };
 
-/**
- * Keep PostgREST request concurrency bounded. A full product refresh fans out
- * across markets, wallet, portfolio, proposals and notifications; launching all
- * requests at once can overload the database/API gateway and cause unrelated
- * sections to fail together under load.
- */
-async function settleInBatches(
-  tasks: Array<() => Promise<any>>,
-  batchSize = 3,
-): Promise<PromiseSettledResult<any>[]> {
-  const settled: PromiseSettledResult<any>[] = [];
-  for (let index = 0; index < tasks.length; index += batchSize) {
-    const batch = tasks.slice(index, index + batchSize);
-    settled.push(...(await Promise.allSettled(batch.map((task) => task()))));
-  }
-  return settled;
-}
-
 function settledError(result: PromiseSettledResult<unknown>, context: UserErrorContext, fallback: string) {
   if (result.status === 'fulfilled') return null;
   return userFacingErrorMessage(result.reason, context, fallback);
@@ -206,14 +188,14 @@ export function useProductData(enabled = true, userId: string | null = null) {
 
   const refreshPortfolio = useCallback(async () => {
     if (!enabled) return;
-    const results = await settleInBatches([
-      () => getWalletSummary(),
-      () => getWalletActivity(),
-      () => getPositions(),
-      () => getOpenOrders(),
-      () => getPoolStakes(),
-      () => getMarketHistory(),
-      () => getSettlementReceipts(),
+    const results = await Promise.allSettled([
+      getWalletSummary(),
+      getWalletActivity(),
+      getPositions(),
+      getOpenOrders(),
+      getPoolStakes(),
+      getMarketHistory(),
+      getSettlementReceipts(),
     ]);
     setSectionErrors((current) => ({
       ...current,
@@ -225,13 +207,13 @@ export function useProductData(enabled = true, userId: string | null = null) {
       marketHistory: settledError(results[5], 'portfolio', 'We could not refresh your market results right now.'),
       settlements: settledError(results[6], 'portfolio', 'We could not refresh your payout history right now.'),
     }));
-    if (results[0].status === 'fulfilled') setWallet(results[0].value as WalletRow[]);
-    if (results[1].status === 'fulfilled') setWalletActivity(results[1].value as WalletActivityRow[]);
-    if (results[2].status === 'fulfilled') setPositions(results[2].value as PositionRow[]);
-    if (results[3].status === 'fulfilled') setOrders(results[3].value as OrderRow[]);
-    if (results[4].status === 'fulfilled') setPoolStakes(results[4].value as PoolStakeRow[]);
-    if (results[5].status === 'fulfilled') setMarketHistory(results[5].value as MarketHistoryRow[]);
-    if (results[6].status === 'fulfilled') setSettlements(results[6].value as SettlementReceiptRow[]);
+    if (results[0].status === 'fulfilled') setWallet(results[0].value);
+    if (results[1].status === 'fulfilled') setWalletActivity(results[1].value);
+    if (results[2].status === 'fulfilled') setPositions(results[2].value);
+    if (results[3].status === 'fulfilled') setOrders(results[3].value);
+    if (results[4].status === 'fulfilled') setPoolStakes(results[4].value);
+    if (results[5].status === 'fulfilled') setMarketHistory(results[5].value);
+    if (results[6].status === 'fulfilled') setSettlements(results[6].value);
   }, [enabled]);
 
   const refreshNotifications = useCallback(async () => {
@@ -246,17 +228,17 @@ export function useProductData(enabled = true, userId: string | null = null) {
 
   const load = useCallback(async () => {
     if (!enabled) return;
-    const results = await settleInBatches([
-      () => listMarkets(),
-      () => getWalletSummary(),
-      () => getWalletActivity(),
-      () => getPositions(),
-      () => getOpenOrders(),
-      () => getPoolStakes(),
-      () => getMarketHistory(),
-      () => getSettlementReceipts(),
-      () => getMyProposals(),
-      () => getNotifications(),
+    const results = await Promise.allSettled([
+      listMarkets(),
+      getWalletSummary(),
+      getWalletActivity(),
+      getPositions(),
+      getOpenOrders(),
+      getPoolStakes(),
+      getMarketHistory(),
+      getSettlementReceipts(),
+      getMyProposals(),
+      getNotifications(),
     ]);
 
     const nextSectionErrors: ProductSectionErrors = {
@@ -278,16 +260,16 @@ export function useProductData(enabled = true, userId: string | null = null) {
     else if (failures > 0) setError('Some information could not refresh right now. Everything that updated successfully is still available.');
     else setError(null);
 
-    if (results[0].status === 'fulfilled') setMarkets(results[0].value as MarketCatalogItem[]);
-    if (results[1].status === 'fulfilled') setWallet(results[1].value as WalletRow[]);
-    if (results[2].status === 'fulfilled') setWalletActivity(results[2].value as WalletActivityRow[]);
-    if (results[3].status === 'fulfilled') setPositions(results[3].value as PositionRow[]);
-    if (results[4].status === 'fulfilled') setOrders(results[4].value as OrderRow[]);
-    if (results[5].status === 'fulfilled') setPoolStakes(results[5].value as PoolStakeRow[]);
-    if (results[6].status === 'fulfilled') setMarketHistory(results[6].value as MarketHistoryRow[]);
-    if (results[7].status === 'fulfilled') setSettlements(results[7].value as SettlementReceiptRow[]);
-    if (results[8].status === 'fulfilled') setProposals(results[8].value as ProposalRow[]);
-    if (results[9].status === 'fulfilled') setNotifications(results[9].value as UserNotificationRow[]);
+    if (results[0].status === 'fulfilled') setMarkets(results[0].value);
+    if (results[1].status === 'fulfilled') setWallet(results[1].value);
+    if (results[2].status === 'fulfilled') setWalletActivity(results[2].value);
+    if (results[3].status === 'fulfilled') setPositions(results[3].value);
+    if (results[4].status === 'fulfilled') setOrders(results[4].value);
+    if (results[5].status === 'fulfilled') setPoolStakes(results[5].value);
+    if (results[6].status === 'fulfilled') setMarketHistory(results[6].value);
+    if (results[7].status === 'fulfilled') setSettlements(results[7].value);
+    if (results[8].status === 'fulfilled') setProposals(results[8].value);
+    if (results[9].status === 'fulfilled') setNotifications(results[9].value);
   }, [enabled]);
 
   useEffect(() => {
