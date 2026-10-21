@@ -1,7 +1,6 @@
 import { Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
-import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
