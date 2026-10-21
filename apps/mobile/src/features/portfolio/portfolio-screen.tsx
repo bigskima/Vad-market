@@ -71,6 +71,7 @@ export function PortfolioScreen({
   const theme = useVadTheme();
   const density = useProductDensity();
   const { enabledCurrencies } = useCurrencyPreference();
+  const enabledCurrencySignature = enabledCurrencies.join('|');
   const [selectedAsset, setSelectedAsset] = useState<VADCurrency>('NGN');
   const [tab, setTab] = useState<PortfolioTab>('positions');
   const [period, setPeriod] = useState<Period>('ALL');
@@ -126,7 +127,7 @@ export function PortfolioScreen({
       setOrderHistoryLoading(false);
     });
     return () => { cancelled = true; };
-  }, [retryValuation]);
+  }, [retryValuation, enabledCurrencySignature]);
 
   useEffect(() => {
     const timer = setInterval(() => setClockNow(Date.now()), 60 * 1000);
