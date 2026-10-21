@@ -19,6 +19,8 @@ import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-pr
 import type { OrderRow, PositionRow, SettlementReceiptRow } from '@/services/market-api';
 
 type PortfolioTab = 'positions' | 'orders' | 'payouts';
+type PositionOutcomeFilter = 'all' | 'YES' | 'NO';
+type PositionStatusFilter = 'all' | 'active' | 'completed';
 
 type AssetExposure = {
   assetCode: string;
@@ -48,16 +50,24 @@ export function PortfolioScreen({
   const orders = allOrders.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
   const settlements = allSettlements.filter((row) => enabledCurrencies.includes(row.asset_code as VADCurrency));
   const [tab, setTab] = useState<PortfolioTab>('positions');
+  const [outcomeFilter, setOutcomeFilter] = useState<PositionOutcomeFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<PositionStatusFilter>('all');
+  const filteredPositions = positions.filter((row) => {
+    const status = String(row.status ?? '').toUpperCase();
+    const isCompleted = status.includes('SETTLE') || status.includes('CLOSE') || status.includes('RESOLVE') || status.includes('VOID') || status.includes('CANCEL');
+    return (outcomeFilter === 'all' || row.outcome_code.toUpperCase() === outcomeFilter)
+      && (statusFilter === 'all' || (statusFilter === 'active' ? !isCompleted : isCompleted));
+  });
 
   const totalShares = positions.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
   const exposure = useMemo(() => buildAssetExposure(positions, orders), [positions, orders]);
   const grid = density.wide;
   const pageSize = grid ? 8 : 5;
   const visiblePositions = useProgressiveList({
-    items: positions,
+    items: filteredPositions,
     initialCount: pageSize,
     step: pageSize,
-    resetKey: `positions|${positions.length}|${grid}`,
+    resetKey: `positions|${filteredPositions.length}|${outcomeFilter}|${statusFilter}|${grid}`,
   });
   const visibleOrders = useProgressiveList({
     items: orders,
@@ -75,16 +85,21 @@ export function PortfolioScreen({
 
   return (
     <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
-      <View style={{ gap: 3 }}>
-        <VadText variant="title">Portfolio</VadText>
-        <VadText variant="caption" tone="secondary">Your positions, orders and settled markets.</VadText>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+        <View style={{ flex: 1, gap: 3 }}>
+          <VadText variant="title">Portfolio</VadText>
+          <VadText variant="caption" tone="secondary">Track your positions, orders and performance.</VadText>
+        </View>
+        <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 8, backgroundColor: theme.colors.surface }}>
+          <VadText variant="caption" tone="secondary">{positions.length} positions</VadText>
+        </View>
       </View>
       <TourTarget id="portfolio-summary">
         <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.xl, gap: theme.spacing.md, borderRadius: 26, borderWidth: 1, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ gap: 4 }}>
-              <VadText variant="caption" tone="secondary">YOUR MARKET EXPOSURE</VadText>
-              <VadText variant="heading">{positions.length} {positions.length === 1 ? 'position' : 'positions'}</VadText>
+              <VadText variant="caption" tone="secondary">TOTAL STAKE / COST BASIS</VadText>
+              <VadText variant="heading">{assetMoney(positions.reduce((sum, row) => sum + Number(row.total_cost_basis ?? 0), 0), positions.length && positions.every((row) => row.asset_code === positions[0].asset_code) ? positions[0].asset_code : 'MULTI')}</VadText>
             </View>
             <View style={{ width: 46, height: 46, borderRadius: 17, backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
               <VadIcon name="wallet" size={21} tone="brand" />
@@ -92,7 +107,7 @@ export function PortfolioScreen({
           </View>
           <View style={{ flexDirection: 'row', gap: 0, paddingTop: theme.spacing.lg, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
             <View style={{ flex: 1, gap: 3, paddingRight: 8 }}>
-              <VadText variant="caption" tone="secondary">Shares held</VadText>
+              <VadText variant="caption" tone="secondary">Contracts held</VadText>
               <VadText variant="heading">{Number(totalShares).toLocaleString()}</VadText>
             </View>
             <View style={{ flex: 1, gap: 3, paddingHorizontal: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
@@ -100,7 +115,7 @@ export function PortfolioScreen({
               <VadText variant="heading">{orders.filter((order) => Number(order.remaining_quantity ?? 0) > 0).length}</VadText>
             </View>
             <View style={{ flex: 1, gap: 3, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
-              <VadText variant="caption" tone="secondary">Payouts</VadText>
+              <VadText variant="caption" tone="secondary">Settlements</VadText>
               <VadText variant="heading">{settlements.length}</VadText>
             </View>
           </View>
@@ -126,7 +141,7 @@ export function PortfolioScreen({
             options={[
               { value: 'positions', label: `Positions ${positions.length}` },
               { value: 'orders', label: `Orders ${orders.length}` },
-              { value: 'payouts', label: `Payouts ${settlements.length}` },
+              { value: 'payouts', label: `History ${settlements.length}` },
             ] as const}
             onChange={setTab}
           />
@@ -140,7 +155,18 @@ export function PortfolioScreen({
       </TourTarget>
 
       {tab === 'positions' ? (
-        positions.length ? (
+        <View style={{ gap: theme.spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+            <VadText variant="bodyStrong">My Positions</VadText>
+            <VadText variant="caption" tone="secondary">{filteredPositions.length} matched</VadText>
+          </View>
+          <View style={{ gap: theme.spacing.xs }}>
+            <VadText variant="caption" tone="secondary">Outcome</VadText>
+            <VadSegmentedControl value={outcomeFilter} options={[{ value: 'all', label: 'All' }, { value: 'YES', label: 'Yes' }, { value: 'NO', label: 'No' }] as const} onChange={setOutcomeFilter} />
+            <VadText variant="caption" tone="secondary">Status</VadText>
+            <VadSegmentedControl value={statusFilter} options={[{ value: 'all', label: 'All' }, { value: 'active', label: 'Active' }, { value: 'completed', label: 'Completed' }] as const} onChange={setStatusFilter} />
+          </View>
+        {filteredPositions.length ? (
           <ProgressiveGrid
             grid={grid}
             remaining={visiblePositions.remainingCount}
@@ -155,8 +181,9 @@ export function PortfolioScreen({
             ))}
           </ProgressiveGrid>
         ) : (
-          <VadEmptyState title="No matched positions" body="Peer-pool stakes appear in Predictions." />
-        )
+          <VadEmptyState title="No positions match these filters" body="Try another outcome or status, or clear the filters to see all positions." />
+        )}
+        </View>
       ) : null}
 
       {tab === 'orders' ? (
@@ -281,7 +308,7 @@ function PositionCard({ position, onPress }: { position: PositionRow; onPress: (
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm }}>
           <View style={{ flex: 1, gap: 2 }}>
-            <VadText variant="caption" tone="tertiary">Shares</VadText>
+            <VadText variant="caption" tone="tertiary">Contracts</VadText>
             <VadText variant="bodyStrong">{Number(position.quantity).toLocaleString()}</VadText>
           </View>
           <View style={{ flex: 1, gap: 2 }}>
@@ -289,7 +316,7 @@ function PositionCard({ position, onPress }: { position: PositionRow; onPress: (
             <VadText variant="bodyStrong">{pct(position.average_price)}</VadText>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end', gap: 2 }}>
-            <VadText variant="caption" tone="tertiary">Invested</VadText>
+            <VadText variant="caption" tone="tertiary">Total stake</VadText>
             <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(position.total_cost_basis, position.asset_code)}</VadText>
           </View>
         </View>
