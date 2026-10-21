@@ -130,6 +130,13 @@ export function PortfolioScreen({
     return () => { cancelled = true; };
   }, [retryValuation, positions, orders, wallet, marketHistory, poolStakes, settlements, markets]);
 
+  useEffect(() => {
+    // While Portfolio remains open, request real snapshots on the same cadence
+    // the server uses to avoid storing redundant valuation observations.
+    const timer = setInterval(() => setRetryValuation((value) => value + 1), 15 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const assetOptions = useMemo(
     () => enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC', 'TNGN'].includes(code)),
     [enabledCurrencies],
