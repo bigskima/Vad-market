@@ -5,6 +5,7 @@ import {
   fetchRuntimeCapabilities,
   unavailableCapabilities,
 } from '@/services/runtime-capabilities';
+import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 
 type CapabilitySnapshot = ReturnType<typeof unavailableCapabilities>;
 
@@ -15,6 +16,7 @@ type CapabilityState = {
 
 export function useRuntimeCapabilities(session: Session | null) {
   const userId = session?.user.id ?? null;
+  const { countryCode } = useCurrencyPreference();
   const [state, setState] = useState<CapabilityState | null>(null);
   const [manualRefreshing, setManualRefreshing] = useState(false);
 
@@ -49,7 +51,7 @@ export function useRuntimeCapabilities(session: Session | null) {
     return () => {
       ignore = true;
     };
-  }, [userId]);
+  }, [userId, countryCode]);
 
   // The state is keyed to the authenticated user. A session switch therefore
   // fails closed immediately without carrying the prior user's capabilities
