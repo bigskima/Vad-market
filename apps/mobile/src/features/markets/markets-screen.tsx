@@ -19,7 +19,6 @@ import type { FeaturedMarketRow, TrendingMarketRow, VadMarketRow } from '@/servi
 import { FeaturedMarketsCarousel } from './featured-markets-carousel';
 import { MarketCard } from './components/market-card';
 import { PageHeader } from '@/features/navigation/page-header';
-import { TngnDemoModeCard } from '@/features/wallet/tngn-demo-mode-card';
 import {
   MarketDiscoveryControls,
   type MarketSortMode,
@@ -74,10 +73,10 @@ export function MarketsScreen({
   const baseFilteredMarkets = useMemo(() => {
     const needle = debouncedQuery.toLowerCase();
     return markets
-      .filter((market) => market.asset_code === 'TNGN' ? isCurrencyEligible('TNGN') : enabledCurrencies.includes(market.asset_code as VADCurrency))
+      .filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency))
       .filter((market) => category === 'All' || market.category === category)
       .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status, market.market_type, market.event_public_id, market.instrument_public_id].some((value) => String(value ?? '').toLowerCase().includes(needle)));
-  }, [markets, category, debouncedQuery, enabledCurrencies, isCurrencyEligible]);
+  }, [markets, category, debouncedQuery, enabledCurrencies]);
 
   const stageCounts = useMemo(() => {
     const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
@@ -175,7 +174,6 @@ export function MarketsScreen({
         />
       </TourTarget>
 
-      <TngnDemoModeCard />
 
       <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} category={category} onOpenMarket={onOpenMarket} />
 
