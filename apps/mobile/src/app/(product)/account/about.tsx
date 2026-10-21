@@ -21,7 +21,7 @@ export default function AboutVadScreen() {
           </View>
           <VadText variant="title">{appName}</VadText>
           <VadText variant="caption" tone="secondary">Version {version}</VadText>
-          <VadText variant="body" tone="secondary">VAD Market is a prediction-market application. Trading availability and account permissions depend on the platform's published policies and verified eligibility.</VadText>
+          <VadText variant="body" tone="secondary">VAD Market is a prediction-market application. Trading availability and account permissions depend on the platform&apos;s published policies and verified eligibility.</VadText>
         </VadCard>
         <Pressable accessibilityRole="button" onPress={() => router.push('/account/policies')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
           <VadIcon name="fileText" size={20} tone="brand" />
