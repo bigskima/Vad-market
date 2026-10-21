@@ -18,6 +18,16 @@ import { getWalletBalanceHistory, type WalletBalanceHistoryPoint } from '@/servi
 
 type Category = string;
 
+function listWatchlistWithTimeout(timeoutMs = 12_000) {
+  return new Promise<Awaited<ReturnType<typeof listUserMarketWatchlist>>>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Watchlist request timed out')), timeoutMs);
+    void listUserMarketWatchlist().then(
+      (rows) => { clearTimeout(timeout); resolve(rows); },
+      (reason: unknown) => { clearTimeout(timeout); reject(reason); },
+    );
+  });
+}
+
 export function HomeScreen({
   markets, wallets, promotions, trendingMarkets, trendingSettings, marketError, onRetryMarkets,
   userName, userId, hasUnreadNotifications, onOpenMarket, onOpenPromotion, onExploreMarkets, onNotifications, onDeposit, onWithdraw, onSend,
@@ -76,20 +86,26 @@ export function HomeScreen({
       setMarketHistoryById({});
       setWatchlistError(null);
       setWatchlistLoading(true);
-      // A slow watchlist endpoint must not leave the Home section in an
-      // infinite loading state. Race only this optional section against a
-      // bounded wait; do not cancel or alter the underlying authenticated query.
-      const watchlistWithTimeout = new Promise<Awaited<ReturnType<typeof listUserMarketWatchlist>>>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Watchlist request timed out')), 12000);
-        void listUserMarketWatchlist().then(
-          (rows) => { clearTimeout(timeout); resolve(rows); },
-          (reason: unknown) => { clearTimeout(timeout); reject(reason); },
-        );
+      // Load the optional watchlist independently: profile or balance-history
+      // requests must not keep its loading state alive after the watchlist itself
+      // has completed or timed out.
+      void listWatchlistWithTimeout().then(
+        (rows) => {
+          if (!active) return;
+          setWatchlistIds(rows.map((row) => row.instrument_public_id));
+          setWatchlistError(null);
+        },
+        () => {
+          if (!active) return;
+          setWatchlistError('Your watchlist could not be loaded. Please try again.');
+        },
+      ).finally(() => {
+        if (active) setWatchlistLoading(false);
       });
-      const [profileResult, balanceResult, watchlistResult] = await Promise.allSettled([
+
+      const [profileResult, balanceResult] = await Promise.allSettled([
         supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle(),
         getWalletBalanceHistory(30),
-        watchlistWithTimeout,
       ]);
       if (!active) return;
       if (profileResult.status === 'fulfilled' && profileResult.value.data) {
@@ -101,13 +117,6 @@ export function HomeScreen({
         setProfileAvatarUrl(null);
       }
       setBalanceHistory(balanceResult.status === 'fulfilled' ? balanceResult.value : []);
-      if (watchlistResult.status === 'fulfilled') {
-        setWatchlistIds(watchlistResult.value.map((row) => row.instrument_public_id));
-        setWatchlistError(null);
-      } else {
-        setWatchlistError('Your watchlist could not be loaded. Please try again.');
-      }
-      setWatchlistLoading(false);
     };
     void loadUserHomeData();
     return () => { active = false; };
@@ -130,7 +139,7 @@ export function HomeScreen({
     setWatchlistLoading(true);
     setWatchlistError(null);
     try {
-      const rows = await listUserMarketWatchlist();
+      const rows = await listWatchlistWithTimeout();
       setWatchlistIds(rows.map((row) => row.instrument_public_id));
     } catch {
       setWatchlistError('Your watchlist could not be loaded. Please try again.');
