@@ -215,6 +215,8 @@ export function PortfolioScreen({
     .filter((market) => market.asset_code === asset && market.category)
     .map((market) => market.category as string))].sort(), [markets, asset]);
   const filteredPositions = positionsForAsset.filter((position) => {
+    const positionStatus = String(position.status ?? '').toUpperCase();
+    if (position.mark_status === 'SETTLED' || ['SETTLED', 'RESOLVED', 'FINAL'].includes(positionStatus)) return false;
     const category = marketsById.get(position.instrument_id)?.category ?? 'Other';
     const pnl = position.unrealized_pnl == null ? null : amount(position.unrealized_pnl);
     return (outcomeFilter === 'all' || position.outcome_code.toUpperCase() === outcomeFilter)
@@ -360,17 +362,17 @@ export function PortfolioScreen({
       </View>
 
       <TourTarget id="portfolio-switcher">
-        <VadSegmentedControl
+        <PortfolioTabControl
           value={tab}
           options={[
-            { value: 'positions', label: `Positions ${isTngn ? activeStakes.length : openMarkedPositions.length}` },
-            { value: 'orders', label: `Open Orders ${isTngn ? activeStakes.length : orders.filter((order) => order.asset_code === asset && amount(order.remaining_quantity) > 0).length}` },
-            { value: 'history', label: `History ${historyRows.length}` },
+            { value: 'positions', label: 'Positions' },
+            { value: 'orders', label: 'Open Orders' },
+            { value: 'history', label: 'History' },
             { value: 'performance', label: 'Performance' },
           ]}
           onChange={setTab}
         />
-      </TourTarget>
+      </TourTarget>arget>
 
       {tab === 'positions' ? (
         <View style={{ gap: theme.spacing.sm }}>
@@ -535,48 +537,53 @@ export function PortfolioScreen({
 
 function PositionCard({ position, market, onPress }: { position: PositionModel; market?: MarketCatalogItem; onPress: () => void }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const markStatus = String(position.mark_status ?? 'UNAVAILABLE').toUpperCase();
   const pnl = position.unrealized_pnl == null ? null : amount(position.unrealized_pnl);
   const imagePath = position.media_path ?? market?.media_path ?? null;
   const imageUrl = marketMediaUrl(imagePath);
-  const statusLabel = markStatus === 'MARKED' ? 'Recent mark' : markStatus === 'STALE' ? 'Stale price'
-    : markStatus === 'UNPRICED' ? 'No trade price' : markStatus === 'SETTLED' ? 'Settled'
-      : 'Value unavailable';
+  const statusLabel = markStatus === 'STALE' ? 'Stale price'
+    : markStatus === 'UNPRICED' ? 'Not priced'
+      : markStatus === 'SETTLED' ? 'Settled'
+        : 'No mark';
+  const pnlTone = pnl == null ? 'secondary' : pnl >= 0 ? 'yes' : 'no';
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${position.market_title} ${position.outcome_code} position`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
-      <VadCard variant="raised" style={{ padding: 10, gap: 9, borderRadius: 18 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${position.market_title} ${position.outcome_code} position`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
+      <VadCard style={{ padding: density.phone ? 7 : 9, borderRadius: 15, backgroundColor: theme.colors.surface, borderColor: theme.colors.border, gap: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: density.phone ? 7 : 9 }}>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: 72, height: 72, borderRadius: 12, backgroundColor: theme.colors.surfaceMuted }} />
+            <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: density.phone ? 62 : 74, height: density.phone ? 52 : 60, borderRadius: 9, backgroundColor: theme.colors.surfaceMuted, flexShrink: 0 }} />
           ) : (
-            <View style={{ width: 72, height: 72, borderRadius: 12, backgroundColor: theme.colors.surfaceMuted, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
-              <VadIcon name="activity" size={22} tone="tertiary" />
+            <View style={{ width: density.phone ? 62 : 74, height: density.phone ? 52 : 60, borderRadius: 9, backgroundColor: theme.colors.surfaceMuted, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <VadIcon name="activity" size={21} tone="tertiary" />
             </View>
           )}
-          <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-            <VadText variant="bodyStrong" numberOfLines={2}>{position.market_title}</VadText>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-              <VadChip label={position.outcome_code} tone={position.outcome_code === 'YES' ? 'yes' : 'no'} />
-              <VadText variant="caption" tone="tertiary">{position.asset_code} · {statusLabel}</VadText>
+          <View style={{ flex: 1, minWidth: 70, gap: 4 }}>
+            <VadText variant="bodyStrong" numberOfLines={2} style={{ fontSize: density.phone ? 11 : 13, lineHeight: density.phone ? 14 : 17 }}>{position.market_title}</VadText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
+              <VadChip label={position.outcome_code === 'YES' ? 'Yes' : position.outcome_code === 'NO' ? 'No' : position.outcome_code} tone={position.outcome_code === 'YES' ? 'yes' : 'no'} />
+              <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: density.phone ? 9 : 10, lineHeight: density.phone ? 11 : 13 }}>{amount(position.quantity).toLocaleString()} contracts</VadText>
             </View>
-            <VadText variant="caption" tone="secondary" numberOfLines={1}>{Number(position.quantity ?? 0).toLocaleString()} contracts · Avg {pct(position.average_price)}</VadText>
           </View>
-          <VadIcon name="chevronRight" size={18} tone="tertiary" />
-        </View>
-        <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8, flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1, gap: 2 }}>
-            <VadText variant="caption" tone="tertiary">Total stake</VadText>
-            <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(position.total_cost_basis, position.asset_code)}</VadText>
+          <View style={{ width: density.phone ? 72 : 92, flexShrink: 0, gap: 3 }}>
+            <View style={{ gap: 0 }}>
+              <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 10 : 12, lineHeight: density.phone ? 13 : 15 }}>{assetMoney(position.total_cost_basis, position.asset_code)}</VadText>
+              <VadText variant="caption" tone="secondary" style={{ fontSize: density.phone ? 8 : 9, lineHeight: density.phone ? 10 : 12 }}>Total Stake</VadText>
+            </View>
+            <View style={{ gap: 0 }}>
+              <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 10 : 12, lineHeight: density.phone ? 13 : 15 }}>{position.current_value == null || markStatus === 'SETTLED' ? '—' : assetMoney(position.current_value, position.asset_code)}</VadText>
+              <VadText variant="caption" tone="secondary" style={{ fontSize: density.phone ? 8 : 9, lineHeight: density.phone ? 10 : 12 }}>Current Value</VadText>
+            </View>
           </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <VadText variant="caption" tone="tertiary">Current value</VadText>
-            <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{position.current_value == null ? '—' : markStatus === 'SETTLED' ? 'Paid out' : assetMoney(position.current_value, position.asset_code)}</VadText>
+          <View style={{ width: density.phone ? 79 : 96, minHeight: 42, flexShrink: 0, borderRadius: 10, borderWidth: 1, borderColor: pnl == null ? theme.colors.border : pnl >= 0 ? theme.colors.yes : theme.colors.no, backgroundColor: pnl == null ? theme.colors.surfaceRaised : pnl >= 0 ? theme.colors.yesSoft : theme.colors.noSoft, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 5, gap: 1 }}>
+            <VadText variant="bodyStrong" tone={pnlTone} numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 10 : 12, lineHeight: density.phone ? 13 : 15 }}>
+              {pnl == null ? statusLabel : `${pnl >= 0 ? '+' : '−'}${assetMoney(Math.abs(pnl), position.asset_code)}`}
+            </VadText>
+            <VadText variant="caption" tone={pnlTone} numberOfLines={1} style={{ fontSize: density.phone ? 9 : 10, lineHeight: density.phone ? 11 : 13 }}>
+              {pnl == null ? 'P&L' : position.return_percentage == null ? 'P&L' : `${amount(position.return_percentage) >= 0 ? '+' : ''}${(amount(position.return_percentage) * 100).toFixed(2)}%`}
+            </VadText>
           </View>
-          <View style={{ flex: 1, alignItems: 'flex-end', gap: 2 }}>
-            <VadText variant="caption" tone="tertiary">Profit / loss</VadText>
-            <VadText variant="bodyStrong" tone={pnl == null ? 'secondary' : pnl >= 0 ? 'yes' : 'no'} numberOfLines={1} adjustsFontSizeToFit>{pnl == null ? statusLabel : `${pnl >= 0 ? '+' : '−'}${assetMoney(Math.abs(pnl), position.asset_code)}`}</VadText>
-            {pnl != null && position.return_percentage != null ? <VadText variant="caption" tone={pnl >= 0 ? 'yes' : 'no'}>{`${amount(position.return_percentage) >= 0 ? '+' : ''}${(amount(position.return_percentage) * 100).toFixed(2)}%`}</VadText> : null}
-          </View>
+          <VadIcon name="chevronRight" size={15} tone="tertiary" />
         </View>
       </VadCard>
     </Pressable>
@@ -718,6 +725,31 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
         <MetricTile label="Net credited" value={assetMoney(receipt.net_amount, receipt.asset_code)} tone="yes" />
       </View>
     </VadCard>
+  );
+}
+
+function PortfolioTabControl({ value, options, onChange }: {
+  value: PortfolioTab;
+  options: { value: PortfolioTab; label: string }[];
+  onChange: (value: PortfolioTab) => void;
+}) {
+  const theme = useVadTheme();
+  const density = useProductDensity();
+  return (
+    <View accessibilityRole="tablist" style={{ flexDirection: 'row', alignItems: 'center', padding: 3, gap: 3, borderRadius: 23, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
+      {options.map((option) => {
+        const selected = value === option.value;
+        return (
+          <Pressable key={option.value} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => onChange(option.value)} style={({ pressed }) => ({
+            flex: 1, minWidth: 0, minHeight: density.phone ? 34 : 39, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+            paddingHorizontal: density.phone ? 3 : 7, backgroundColor: selected ? theme.colors.brandPrimary : 'transparent',
+            opacity: pressed ? 0.78 : 1,
+          })}>
+            <VadText variant="caption" tone={selected ? 'inverse' : 'secondary'} numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 10 : 12, lineHeight: density.phone ? 13 : 15, fontWeight: selected ? '700' : '500' }}>{option.label}</VadText>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
