@@ -145,17 +145,31 @@ declare
   market_context jsonb := '{}'::jsonb;
   v_liquidity_mode text;
   v_reference_price numeric(38,18);
+  v_resolution oracle.resolutions;
   yes_outcome_id bigint;
   no_outcome_id bigint;
   yes_last numeric(38,18);
   no_last numeric(38,18);
+  yes_vol numeric(38,18) := 0;
+  no_vol numeric(38,18) := 0;
+  total_vol numeric(38,18) := 0;
   latest_fill timestamptz;
+  v_participants integer := 0;
 begin
   select * into instrument from market.instruments where id=p_instrument_id;
   if instrument.id is null then return; end if;
   select * into event from market.canonical_events where id=instrument.canonical_event_id;
   if event.id is null then return; end if;
   select * into asset from public.assets where id=instrument.asset_id;
+
+  -- Keep the existing Oracle read model intact; this reads the latest recorded
+  -- resolution only and never creates, changes, or finalizes an outcome.
+  select * into v_resolution
+  from oracle.resolutions
+  where event_id=event.id
+  order by coalesce(finalized_at,created_at) desc,id desc
+  limit 1;
+
   select * into category_row
   from market.guided_categories c
   where c.status='ACTIVE'
@@ -194,38 +208,77 @@ begin
   select id into yes_outcome_id from market.outcomes where instrument_id=instrument.id and code='YES';
   select id into no_outcome_id from market.outcomes where instrument_id=instrument.id and code='NO';
 
-  -- Preserve existing VAD lifecycle behaviour: current executed prices can come
-  -- from the real order book or the isolated sandbox execution ledger.
-  select x.price into yes_last
-  from (
-    select f.price,f.created_at from trading.fills f where f.outcome_id=yes_outcome_id
-    union all
-    select se.price,se.created_at from trading.sandbox_executions se where se.outcome_id=yes_outcome_id
-  ) x order by x.created_at desc limit 1;
+  if instrument.liquidity_model='POOL' then
+    select
+      coalesce(sum(ps.amount) filter(where ps.outcome_id=yes_outcome_id),0),
+      coalesce(sum(ps.amount) filter(where ps.outcome_id=no_outcome_id),0),
+      coalesce(sum(ps.amount),0),
+      max(ps.created_at),
+      count(distinct ps.user_id)::int
+    into yes_vol,no_vol,total_vol,latest_fill,v_participants
+    from trading.pool_stakes ps
+    where ps.instrument_id=instrument.id;
 
-  select x.price into no_last
-  from (
-    select f.price,f.created_at from trading.fills f where f.outcome_id=no_outcome_id
-    union all
-    select se.price,se.created_at from trading.sandbox_executions se where se.outcome_id=no_outcome_id
-  ) x order by x.created_at desc limit 1;
+    if total_vol>0 then
+      yes_last:=round(yes_vol/total_vol,18);
+      no_last:=round(no_vol/total_vol,18);
+    else
+      yes_last:=0.5;
+      no_last:=0.5;
+    end if;
+  else
+    -- Prices from executed trades are market marks, not settlement evidence.
+    -- Sandbox execution rows are considered only for sandbox-only assets.
+    select x.price into yes_last
+    from (
+      select f.price,f.created_at
+      from trading.fills f
+      join trading.orders o on o.id=f.order_id
+      where o.instrument_id=instrument.id and f.outcome_id=yes_outcome_id
+      union all
+      select se.price,se.created_at
+      from trading.sandbox_executions se
+      where se.instrument_id=instrument.id
+        and se.outcome_id=yes_outcome_id
+        and coalesce((asset.metadata->>'sandbox_only')::boolean,false)
+    ) x order by x.created_at desc limit 1;
 
-  if yes_last is null and no_last is not null then
-    yes_last := round(instrument.settlement_unit - no_last, 18);
+    select x.price into no_last
+    from (
+      select f.price,f.created_at
+      from trading.fills f
+      join trading.orders o on o.id=f.order_id
+      where o.instrument_id=instrument.id and f.outcome_id=no_outcome_id
+      union all
+      select se.price,se.created_at
+      from trading.sandbox_executions se
+      where se.instrument_id=instrument.id
+        and se.outcome_id=no_outcome_id
+        and coalesce((asset.metadata->>'sandbox_only')::boolean,false)
+    ) x order by x.created_at desc limit 1;
+
+    if yes_last is null and no_last is not null then yes_last:=round(instrument.settlement_unit-no_last,18); end if;
+    if no_last is null and yes_last is not null then no_last:=round(instrument.settlement_unit-yes_last,18); end if;
+
+    select
+      coalesce(sum(x.notional) filter(where x.outcome_id=yes_outcome_id),0),
+      coalesce(sum(x.notional) filter(where x.outcome_id=no_outcome_id),0),
+      coalesce(sum(x.notional),0),
+      max(x.created_at),
+      count(distinct x.user_id)::int
+    into yes_vol,no_vol,total_vol,latest_fill,v_participants
+    from (
+      select f.outcome_id,f.notional,f.created_at,o.user_id
+      from trading.fills f
+      join trading.orders o on o.id=f.order_id
+      where o.instrument_id=instrument.id
+      union all
+      select se.outcome_id,se.notional,se.created_at,se.user_id
+      from trading.sandbox_executions se
+      where se.instrument_id=instrument.id
+        and coalesce((asset.metadata->>'sandbox_only')::boolean,false)
+    ) x;
   end if;
-  if no_last is null and yes_last is not null then
-    no_last := round(instrument.settlement_unit - yes_last, 18);
-  end if;
-
-  select max(x.created_at) into latest_fill
-  from (
-    select f.created_at
-    from trading.fills f
-    join trading.orders o on o.id=f.order_id
-    where o.instrument_id=instrument.id
-    union all
-    select se.created_at from trading.sandbox_executions se where se.instrument_id=instrument.id
-  ) x;
 
   if coalesce((asset.metadata->>'sandbox_only')::boolean,false)
      and coalesce((asset.metadata->>'sandbox_instant_liquidity')::boolean,false) then
@@ -242,13 +295,17 @@ begin
 
   insert into public.market_catalog(
     instrument_public_id,event_public_id,title,category,category_code,presentation_profile,
-    group_key,market_context,asset_code,market_type,status,
-    closes_at,resolves_after,media_path,yes_price,no_price,last_trade_at,liquidity_mode,reference_price,updated_at
-  )
-  values(
+    group_key,market_context,asset_code,market_type,status,opens_at,closes_at,resolves_after,
+    media_path,yes_price,no_price,last_trade_at,liquidity_mode,reference_price,
+    resolution_status,resolution_outcome,resolution_finalized_at,
+    yes_volume,no_volume,total_volume,participant_count,updated_at
+  ) values(
     instrument.public_id,event.public_id,event.title,event.category,category_code,presentation_profile,
-    group_key,market_context,asset.code,instrument.market_type,instrument.status,
-    event.closes_at,event.resolves_after,event.media_path,yes_last,no_last,latest_fill,v_liquidity_mode,v_reference_price,statement_timestamp()
+    group_key,market_context,asset.code,instrument.market_type,instrument.status,event.opens_at,
+    event.closes_at,event.resolves_after,event.media_path,yes_last,no_last,latest_fill,
+    v_liquidity_mode,v_reference_price,v_resolution.status,
+    case when v_resolution.status in ('FINAL','VOID') then v_resolution.outcome_code else null end,
+    v_resolution.finalized_at,yes_vol,no_vol,total_vol,v_participants,statement_timestamp()
   )
   on conflict(instrument_public_id) do update set
     event_public_id=excluded.event_public_id,
@@ -261,6 +318,7 @@ begin
     asset_code=excluded.asset_code,
     market_type=excluded.market_type,
     status=excluded.status,
+    opens_at=excluded.opens_at,
     closes_at=excluded.closes_at,
     resolves_after=excluded.resolves_after,
     media_path=excluded.media_path,
@@ -269,6 +327,13 @@ begin
     last_trade_at=excluded.last_trade_at,
     liquidity_mode=excluded.liquidity_mode,
     reference_price=excluded.reference_price,
+    resolution_status=excluded.resolution_status,
+    resolution_outcome=excluded.resolution_outcome,
+    resolution_finalized_at=excluded.resolution_finalized_at,
+    yes_volume=excluded.yes_volume,
+    no_volume=excluded.no_volume,
+    total_volume=excluded.total_volume,
+    participant_count=excluded.participant_count,
     updated_at=statement_timestamp();
 end;
 $function$;
@@ -494,6 +559,33 @@ as $
 $;
 revoke all on function public.get_crypto_market_data_source_runtime() from public,anon,authenticated;
 grant execute on function public.get_crypto_market_data_source_runtime() to service_role;
+
+
+-- The internal integration schema is intentionally not exposed through PostgREST.
+-- This narrow, service-role-only RPC lets market-image-runtime read only the
+-- configured Cloudflare image provider settings it needs.
+create or replace function public.get_cloudflare_market_image_provider_runtime()
+returns jsonb
+language sql
+stable
+security definer
+set search_path=''
+as $
+  select jsonb_build_object(
+    'secret_reference',p.secret_reference,
+    'public_metadata',p.public_metadata,
+    'status',p.status,
+    'environment',p.environment
+  )
+  from integration.providers p
+  where p.code='CLOUDFLARE_WORKERS_AI'
+    and p.environment='PRODUCTION'
+    and p.status in ('ACTIVE','DEGRADED')
+  order by p.priority asc,p.id asc
+  limit 1;
+$;
+revoke all on function public.get_cloudflare_market_image_provider_runtime() from public,anon,authenticated;
+grant execute on function public.get_cloudflare_market_image_provider_runtime() to service_role;
 
 create or replace function public.admin_market_data_source_config()
 returns table(
