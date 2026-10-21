@@ -93,10 +93,10 @@ const defaultTrendingSettings: TrendingMarketSettings = {
  * sections to fail together under load.
  */
 async function settleInBatches(
-  tasks: Array<() => Promise<unknown>>,
+  tasks: Array<() => Promise<any>>,
   batchSize = 3,
-): Promise<PromiseSettledResult<unknown>[]> {
-  const settled: PromiseSettledResult<unknown>[] = [];
+): Promise<PromiseSettledResult<any>[]> {
+  const settled: PromiseSettledResult<any>[] = [];
   for (let index = 0; index < tasks.length; index += batchSize) {
     const batch = tasks.slice(index, index + batchSize);
     settled.push(...(await Promise.allSettled(batch.map((task) => task()))));
