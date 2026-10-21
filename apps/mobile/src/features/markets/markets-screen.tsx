@@ -76,7 +76,7 @@ export function MarketsScreen({
       .filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency))
       .filter((market) => category === 'All' || market.category === category)
       .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status, market.market_type, market.event_public_id, market.instrument_public_id].some((value) => String(value ?? '').toLowerCase().includes(needle)));
-  }, [markets, category, debouncedQuery, enabledCurrencies, isCurrencyEligible]);
+  }, [markets, category, debouncedQuery, enabledCurrencies]);
 
   const stageCounts = useMemo(() => {
     const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
