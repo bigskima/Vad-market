@@ -10,11 +10,12 @@ function fail(error: { message: string; code?: string; details?: string; hint?: 
   if (error) throw userFacingError(error, 'markets', 'Your watchlist could not be updated. Please try again.');
 }
 
-export async function listUserMarketWatchlist(): Promise<UserMarketWatchlistRow[]> {
-  const { data, error } = await supabase
+export async function listUserMarketWatchlist(signal?: AbortSignal): Promise<UserMarketWatchlistRow[]> {
+  const query = supabase
     .from('user_market_watchlist')
     .select('instrument_public_id, created_at')
     .order('created_at', { ascending: false });
+  const { data, error } = signal ? await query.abortSignal(signal) : await query;
   fail(error);
   return (data ?? []) as UserMarketWatchlistRow[];
 }
