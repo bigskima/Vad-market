@@ -97,7 +97,7 @@ function isMarketMovement(row: WalletActivityRow) {
 function isIncoming(row: WalletActivityRow) {
   // For the user's available account, ledger CREDIT increases balance and DEBIT decreases it.
   // Reserved-account trading-fee rows are represented by their journal meaning instead.
-  if (row.account_type === 'USER_AVAILABLE') return row.direction === 'CREDIT';
+  if (row.account_type === 'USER_AVAILABLE' || row.account_type === 'DEMO') return row.direction === 'CREDIT';
   return ['ORDER_FEE_RESERVE_RELEASE', 'MARKET_CLOSE_ORDER_RELEASE'].includes(row.activity_type);
 }
 
