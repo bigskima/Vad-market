@@ -233,8 +233,13 @@ export function WalletScreen({
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <WalletBalanceMetric icon="wallet" label="Available" value={balanceVisible ? assetMoney(available, primaryCode) : '••••••'} tone="available" />
-            <WalletBalanceMetric icon="clock" label="In Use (Active Predictions)" value={balanceVisible ? assetMoney(reserved + pending, primaryCode) : '••••••'} tone="inUse" />
+            <WalletBalanceMetric icon="clock" label="In Use (Active Predictions)" value={balanceVisible ? assetMoney(reserved, primaryCode) : '••••••'} tone="inUse" />
           </View>
+          {pending > 0 ? (
+            <VadText variant="caption" style={{ color: '#D8DDFF', fontSize: 10.5 }}>
+              Pending withdrawals · {balanceVisible ? assetMoney(pending, primaryCode) : '••••••'}
+            </VadText>
+          ) : null}
         </View>
       </TourTarget>
 
