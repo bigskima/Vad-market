@@ -17,9 +17,8 @@ import {
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
+import { getAdminMarketDataSources, setAdminMarketDataSourceStatus } from '@/services/crypto-market-data-api';
 import {
-  getAdminMarketDataSources,
-  setAdminMarketDataSourceStatus,
   decideProviderStatusRequest,
   requestProviderStatus,
   runOracleProviderHealth,
