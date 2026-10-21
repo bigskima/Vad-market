@@ -377,7 +377,8 @@ begin
         )), '')
       end,
       updated_at=statement_timestamp()
-  where upper(btrim(coalesce(mc.category,'')))=upper(btrim(v_category.name));
+  where mc.category_code=v_category.code
+     or upper(btrim(coalesce(mc.category,'')))=upper(btrim(v_category.name));
 
   insert into audit.records(actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata)
   values(
