@@ -25,7 +25,6 @@ export default function PortfolioRoute() {
         marketHistory={data.marketHistory}
         poolStakes={data.poolStakes}
         markets={data.markets}
-        wallet={data.wallet}
         sectionErrors={data.sectionErrors}
         loading={data.loading}
         onRetry={() => void data.refreshPortfolio()}
