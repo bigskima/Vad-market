@@ -23,11 +23,11 @@ export function WalletLedgerActivity({ rows, compact = false }: { rows: WalletAc
   const [filter, setFilter] = useState<Filter>('all');
   const [visible, setVisible] = useState(compact ? 5 : 10);
 
-  const eligibleRows = useMemo(() => rows.filter((row) => currencyPreference.isCurrencyEnabled(row.asset_code as 'NGN' | 'USDC')), [rows, currencyPreference]);
+  const eligibleRows = useMemo(() => rows.filter((row) => currencyPreference.isCurrencyEnabled(row.asset_code as 'NGN' | 'USDC' | 'TNGN')), [rows, currencyPreference]);
   const filtered = useMemo(() => eligibleRows.filter((row) => {
     if (filter === 'all') return true;
-    if (filter === 'markets') return isMarketMovement(row) && row.activity_type !== 'MARKET_SETTLEMENT';
-    if (filter === 'payouts') return row.activity_type === 'MARKET_SETTLEMENT';
+    if (filter === 'markets') return isMarketMovement(row) && !['MARKET_SETTLEMENT', 'DEMO_SETTLEMENT', 'DEMO_REFUND'].includes(row.activity_type);
+    if (filter === 'payouts') return ['MARKET_SETTLEMENT', 'DEMO_SETTLEMENT', 'DEMO_REFUND'].includes(row.activity_type);
     return !isMarketMovement(row);
   }), [filter, eligibleRows]);
 
@@ -91,18 +91,22 @@ function LedgerRow({ row, now }: { row: WalletActivityRow; now: number }) {
 }
 
 function isMarketMovement(row: WalletActivityRow) {
-  return Boolean(row.market_id) || ['POOL_STAKE', 'TRADING_FEE', 'ORDER_RESERVE', 'ORDER_FEE_RESERVE_RELEASE', 'MARKET_CLOSE_ORDER_RELEASE', 'MARKET_SETTLEMENT', 'LEGACY_SANDBOX_CORRECTION', 'LEGACY_SANDBOX_FEE_REFUND'].includes(row.activity_type);
+  return Boolean(row.market_id) || ['POOL_STAKE', 'TRADING_FEE', 'ORDER_RESERVE', 'ORDER_FEE_RESERVE_RELEASE', 'MARKET_CLOSE_ORDER_RELEASE', 'MARKET_SETTLEMENT', 'LEGACY_SANDBOX_CORRECTION', 'LEGACY_SANDBOX_FEE_REFUND', 'DEMO_STAKE', 'DEMO_SETTLEMENT', 'DEMO_REFUND'].includes(row.activity_type);
 }
 
 function isIncoming(row: WalletActivityRow) {
   // For the user's available account, ledger CREDIT increases balance and DEBIT decreases it.
   // Reserved-account trading-fee rows are represented by their journal meaning instead.
-  if (row.account_type === 'USER_AVAILABLE') return row.direction === 'CREDIT';
+  if (row.account_type === 'USER_AVAILABLE' || row.account_type === 'DEMO') return row.direction === 'CREDIT';
   return ['ORDER_FEE_RESERVE_RELEASE', 'MARKET_CLOSE_ORDER_RELEASE'].includes(row.activity_type);
 }
 
 function movementLabel(type: string) {
   const labels: Record<string, string> = {
+    DEMO_GRANT: 'TNGN practice balance granted',
+    DEMO_STAKE: 'TNGN demo stake committed',
+    DEMO_REFUND: 'TNGN demo stake refunded',
+    DEMO_SETTLEMENT: 'TNGN demo settlement',
     POOL_STAKE: 'Market stake committed',
     TRADING_FEE: 'Trading fee',
     ORDER_RESERVE: 'Order funds reserved',
