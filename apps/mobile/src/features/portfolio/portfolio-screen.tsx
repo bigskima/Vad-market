@@ -271,7 +271,7 @@ export function PortfolioScreen({
   };
 
   return (
-    <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
+    <View style={{ gap: density.phone ? 8 : density.sectionGap }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
           <VadText variant="title">Portfolio</VadText>
@@ -363,9 +363,9 @@ export function PortfolioScreen({
       </TourTarget>
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <SummaryMetric title="Winning positions" count={winnersCount} amount={winnersValue} asset={asset} tone="yes" />
-        <SummaryMetric title="Losing positions" count={losersCount} amount={losersValue} asset={asset} tone="no" />
-        <SummaryMetric title="Open positions" count={openCount} value={openValueText} />
+        <SummaryMetric title="Winning Positions" count={winnersCount} amount={winnersValue} asset={asset} tone="yes" />
+        <SummaryMetric title="Losing Positions" count={losersCount} amount={losersValue} asset={asset} tone="no" />
+        <SummaryMetric title="Open Positions" count={openCount} value={openValueText} />
       </View>
 
       <TourTarget id="portfolio-switcher">
@@ -862,7 +862,7 @@ function LoadingState({ label }: { label: string }) {
 function PortfolioLineChart({ values, width, height, positive }: { values: number[]; width: number; height: number; positive: boolean }) {
   const theme = useVadTheme();
   if (values.length < 2 || values.some((value) => !Number.isFinite(value))) {
-    return <View style={{ height, justifyContent: "center", alignItems: "center", paddingHorizontal: 12 }}><VadText variant="caption" tone="tertiary">Record more genuine valuations to show this trend. No historical values are estimated.</VadText></View>;
+    return <View style={{ height, justifyContent: "center", alignItems: "center", paddingHorizontal: 12 }}><VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>Record more genuine valuations to show this trend. No historical values are estimated.</VadText></View>;
   }
   const min = Math.min(...values);
   const max = Math.max(...values);
