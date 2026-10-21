@@ -187,15 +187,13 @@ export function PortfolioScreen({
   const markedPositions = positionsForAsset.filter((position) => position.mark_status === 'MARKED');
   const winningPositions = markedPositions.filter((position) => amount(position.unrealized_pnl) > 0);
   const losingPositions = markedPositions.filter((position) => amount(position.unrealized_pnl) < 0);
-  const realizedWinningRows = settledRows.filter((row) => String(row.result).toUpperCase() === 'WON');
-  const realizedLosingRows = settledRows.filter((row) => String(row.result).toUpperCase() === 'LOST');
   const winningPnl = winningPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0);
   const losingPnl = losingPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0);
   const openPositionValue = openMarkedPositions.every((position) => position.mark_status === 'MARKED')
     ? openMarkedPositions.reduce((sum, position) => sum + amount(position.current_value), 0)
     : null;
-  const tngnWins = isTngn ? settledRows.filter((row) => row.result === 'WON') : [];
-  const tngnLosses = isTngn ? settledRows.filter((row) => row.result === 'LOST') : [];
+  const tngnWins = isTngn ? settledRows.filter((row) => String(row.result).toUpperCase() === 'WON') : [];
+  const tngnLosses = isTngn ? settledRows.filter((row) => String(row.result).toUpperCase() === 'LOST') : [];
   const winnersCount = isTngn ? tngnWins.length : winningPositions.length;
   const losersCount = isTngn ? tngnLosses.length : losingPositions.length;
   const winnersValue = isTngn
@@ -344,7 +342,7 @@ export function PortfolioScreen({
               ) : completePeriodSnapshots.length >= 2 ? (
                 <PortfolioLineChart
                   values={completePeriodSnapshots.map((snapshot) => amount(snapshot.total_value))}
-                  width={Math.max(120, Math.min(220, density.width * 0.44))}
+                  width={Math.max(120, Math.min(200, density.width * 0.38))}
                   height={72}
                   positive={performanceDelta == null || performanceDelta >= 0}
                 />
