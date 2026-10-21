@@ -17,12 +17,14 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import {
   getPortfolioPositionMarks,
+  getPortfolioOrderHistory,
   getPortfolioValuationHistory,
   marketMediaUrl,
   type MarketCatalogItem,
   type MarketHistoryRow,
   type OrderRow,
   type PoolStakeRow,
+  type PortfolioOrderHistoryRow,
   type PortfolioPositionMarkRow,
   type PortfolioValuationSnapshotRow,
   type PositionRow,
@@ -87,14 +89,21 @@ export function PortfolioScreen({
   const [historyLoading, setHistoryLoading] = useState(true);
   const [marksError, setMarksError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [orderHistory, setOrderHistory] = useState<PortfolioOrderHistoryRow[]>([]);
+  const [orderHistoryLoading, setOrderHistoryLoading] = useState(true);
+  const [orderHistoryError, setOrderHistoryError] = useState<string | null>(null);
   const [retryValuation, setRetryValuation] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setMarksLoading(true);
+    setHistoryLoading(true);
+    setOrderHistoryLoading(true);
     void Promise.allSettled([
       getPortfolioPositionMarks(),
       getPortfolioValuationHistory(3650, 600),
-    ]).then(([marksResult, snapshotsResult]) => {
+      getPortfolioOrderHistory(200),
+    ]).then(([marksResult, snapshotsResult, orderHistoryResult]) => {
       if (cancelled) return;
       if (marksResult.status === 'fulfilled') {
         setMarks(marksResult.value);
@@ -110,15 +119,21 @@ export function PortfolioScreen({
         setHistoryError('Portfolio valuation history could not be loaded.');
       }
       setHistoryLoading(false);
+      if (orderHistoryResult.status === 'fulfilled') {
+        setOrderHistory(orderHistoryResult.value);
+        setOrderHistoryError(null);
+      } else {
+        setOrderHistoryError('Historical orders could not be loaded.');
+      }
+      setOrderHistoryLoading(false);
     });
     return () => { cancelled = true; };
-  }, [retryValuation]);
+  }, [retryValuation, positions, wallet, marketHistory]);
 
-  const assetOptions = useMemo(() => {
-    const valid = enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC', 'TNGN'].includes(code));
-    return valid.length ? valid : [...new Set([...wallet.map((row) => row.asset_code), ...positions.map((row) => row.asset_code)])]
-      .filter((code): code is VADCurrency => ['NGN', 'USDC', 'TNGN'].includes(code));
-  }, [enabledCurrencies, wallet, positions]);
+  const assetOptions = useMemo(
+    () => enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC', 'TNGN'].includes(code)),
+    [enabledCurrencies],
+  );
   const asset = assetOptions.includes(selectedAsset) ? selectedAsset : assetOptions[0] ?? 'NGN';
   const isTngn = asset === 'TNGN';
   const walletRow = wallet.find((row) => row.asset_code === asset);
@@ -212,11 +227,18 @@ export function PortfolioScreen({
     step: 5,
     resetKey: `${asset}|${orders.length}`,
   });
+  const historicalOrders = useMemo(() => orderHistory
+    .filter((row) => row.asset_code === asset && !['OPEN', 'PARTIALLY_FILLED'].includes(String(row.status).toUpperCase()))
+    .sort((a, b) => (Date.parse(b.updated_at ?? b.created_at) || 0) - (Date.parse(a.updated_at ?? a.created_at) || 0)), [orderHistory, asset]);
+  const historyEvents = useMemo(() => [
+    ...historyRows.map((row, index) => ({ kind: 'market' as const, key: `market-${row.market_id}-${row.selected_outcome}-${row.settled_at ?? index}`, at: row.settled_at, market: row })),
+    ...historicalOrders.map((row) => ({ kind: 'order' as const, key: `order-${row.order_id}`, at: row.updated_at ?? row.created_at, order: row })),
+  ].sort((a, b) => (Date.parse(b.at ?? '') || 0) - (Date.parse(a.at ?? '') || 0)), [historyRows, historicalOrders]);
   const visibleHistory = useProgressiveList({
-    items: historyRows,
+    items: historyEvents,
     initialCount: visibleHistoryCount,
     step: 8,
-    resetKey: `${asset}|${historyRows.length}`,
+    resetKey: `${asset}|${historyEvents.length}`,
   });
   const settledPnl = settledRows.reduce((sum, row) => sum + amount(row.realized_pnl), 0);
   const positiveSettlements = settledRows.filter((row) => row.result === 'WON').length;
@@ -425,13 +447,14 @@ export function PortfolioScreen({
           <View style={{ gap: theme.spacing.sm }}>
             {visibleHistory.visibleItems.map((row, index) => <HistoryCard key={`${row.market_id}-${row.selected_outcome}-${row.settled_at ?? index}`} row={row} />)}
             {visibleHistory.remainingCount > 0 ? <VadButton label={`Show next ${visibleHistory.nextCount} history records`} variant="secondary" onPress={visibleHistory.showMore} /> : null}
+            {orderHistoryError ? <InlineError message={orderHistoryError} onRetry={retry} /> : null}
             {settlements.filter((row) => row.asset_code === asset).length ? (
               <VadProgressiveSection title="Settlement receipts" icon="checkCircle" summary={<VadText variant="caption" tone="tertiary">{settlements.filter((row) => row.asset_code === asset).length} persisted records</VadText>}>
                 {settlements.filter((row) => row.asset_code === asset).slice(0, 8).map((receipt) => <SettlementCard key={receipt.settlement_id} receipt={receipt} />)}
               </VadProgressiveSection>
             ) : null}
           </View>
-        ) : <VadEmptyState title="No market history yet" body="Trades, outcomes, refunds and settlement results appear here from your account records." />
+        ) : orderHistoryError ? <InlineError message={orderHistoryError} onRetry={retry} /> : <VadEmptyState title="No portfolio history yet" body="Trades, orders, outcomes, refunds and settlement results appear here from your account records." />
       ) : null}
 
       {tab === 'performance' ? (
