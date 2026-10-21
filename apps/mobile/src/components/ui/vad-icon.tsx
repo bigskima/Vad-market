@@ -37,7 +37,9 @@ export type VadIconName =
   | 'info'
   | 'filter'
   | 'clock'
-  | 'logOut';
+  | 'logOut'
+  | 'settings'
+  | 'transfer';
 
 type Tone = 'primary' | 'secondary' | 'tertiary' | 'brand' | 'yes' | 'no' | 'inverse';
 
@@ -168,6 +170,29 @@ export function VadIcon({
             transform: [{ rotate: up ? '45deg' : '225deg' }],
           }}
         />
+      </View>
+    );
+  }
+
+  if (name === 'settings') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        {[0, 45, 90, 135].map((angle) => (
+          <View key={angle} style={{ position: 'absolute', width: size * 0.82, height: line * 1.65, borderRadius: line, backgroundColor: ink, transform: [{ rotate: `${angle}deg` }] }} />
+        ))}
+        <View style={{ width: size * 0.66, height: size * 0.66, borderWidth: line, borderColor: ink, borderRadius: size, backgroundColor: theme.colors.surface }} />
+        <View style={{ position: 'absolute', width: size * 0.22, height: size * 0.22, borderWidth: line, borderColor: ink, borderRadius: size }} />
+      </View>
+    );
+  }
+
+  if (name === 'transfer') {
+    return (
+      <View style={{ width: size, height: size, justifyContent: 'center' }}>
+        <View style={{ position: 'absolute', left: size * 0.1, top: size * 0.32, width: size * 0.62, height: line, borderRadius: line, backgroundColor: ink }} />
+        <View style={{ position: 'absolute', right: size * 0.1, top: size * 0.23, width: size * 0.24, height: size * 0.24, borderTopWidth: line, borderRightWidth: line, borderColor: ink, transform: [{ rotate: '45deg' }] }} />
+        <View style={{ position: 'absolute', right: size * 0.1, bottom: size * 0.32, width: size * 0.62, height: line, borderRadius: line, backgroundColor: ink }} />
+        <View style={{ position: 'absolute', left: size * 0.1, bottom: size * 0.23, width: size * 0.24, height: size * 0.24, borderLeftWidth: line, borderBottomWidth: line, borderColor: ink, transform: [{ rotate: '45deg' }] }} />
       </View>
     );
   }
