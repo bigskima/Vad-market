@@ -90,15 +90,17 @@ Deno.serve(async (req: Request) => {
   const baseUrl = safeText(pyth.baseUrl).replace(/\/$/, '');
   const secretName = safeText(pyth.secretReference);
   const apiToken = secretName ? Deno.env.get(secretName) ?? '' : '';
-  if (!baseUrl || !secretName || !apiToken) {
-    return json({ error: 'The Pyth source is not fully configured for Oracle resolution.' }, 503);
+  if (!baseUrl) {
+    return json({ error: 'The Pyth source base URL is not configured for Oracle feed discovery.' }, 503);
   }
 
   const feedUrl = new URL(`${baseUrl}/v2/price_feeds`);
   feedUrl.searchParams.set('query', symbol);
   feedUrl.searchParams.set('asset_type', 'crypto');
   try {
-    const payload = await fetchJson(feedUrl.toString(), apiToken);
+    // Hermes feed discovery is public; send the configured key if available, but
+    // do not block discovery when this public endpoint does not require one.
+    const payload = await fetchJson(feedUrl.toString(), apiToken || null);
     if (!Array.isArray(payload)) return json({ error: 'Pyth returned an invalid feed catalogue.' }, 502);
     const expected = `CRYPTO.${symbol}/USD`.toUpperCase();
     const exact = payload.find((entry: unknown) => {
