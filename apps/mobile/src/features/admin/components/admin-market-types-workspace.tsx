@@ -8,11 +8,13 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import type { MarketPresentationProfile } from '@/services/admin-guided-market-catalog-api';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getAdminGuidedMarketCatalog,
   saveAdminGuidedCategory,
   saveAdminSimpleGuidedMarketType,
+  setAdminGuidedCategoryPresentation,
   type AdminGuidedCatalogCategory,
 } from '@/services/admin-guided-market-catalog-api';
 
@@ -38,16 +40,25 @@ export function AdminMarketTypesWorkspace() {
 
   const [categoryName, setCategoryName] = useState('');
   const [categoryDescription, setCategoryDescription] = useState('');
+  const [categoryProfile, setCategoryProfile] = useState<MarketPresentationProfile>('EVENT');
+  const [categoryGroupField, setCategoryGroupField] = useState('');
+  const [presentationProfile, setPresentationProfile] = useState<MarketPresentationProfile>('EVENT');
+  const [presentationGroupField, setPresentationGroupField] = useState('');
 
   const [selectedCategoryCode, setSelectedCategoryCode] = useState('');
   const [typeName, setTypeName] = useState('');
   const [typeDescription, setTypeDescription] = useState('');
   const [sourceLabel, setSourceLabel] = useState('Authoritative result source');
 
-  async function reload() {
+  async function reload(preferredCode?: string) {
     const catalog = await getAdminGuidedMarketCatalog();
     setCategories(catalog.categories);
-    setSelectedCategoryCode((current) => current || catalog.categories[0]?.code || '');
+    const selected = catalog.categories.find((item) => item.code === (preferredCode || selectedCategoryCode))
+      ?? catalog.categories[0]
+      ?? null;
+    setSelectedCategoryCode(selected?.code ?? '');
+    setPresentationProfile(selected?.presentationProfile ?? 'EVENT');
+    setPresentationGroupField(selected?.groupField ?? '');
   }
 
   useEffect(() => {
@@ -56,7 +67,10 @@ export function AdminMarketTypesWorkspace() {
       .then((catalog) => {
         if (ignore) return;
         setCategories(catalog.categories);
-        setSelectedCategoryCode(catalog.categories[0]?.code ?? '');
+        const first = catalog.categories[0];
+        setSelectedCategoryCode(first?.code ?? '');
+        setPresentationProfile(first?.presentationProfile ?? 'EVENT');
+        setPresentationGroupField(first?.groupField ?? '');
       })
       .catch((value) => { if (!ignore) setError(value instanceof Error ? value.message : 'Market types could not be loaded.'); })
       .finally(() => { if (!ignore) setLoading(false); });
@@ -67,6 +81,13 @@ export function AdminMarketTypesWorkspace() {
     () => categories.find((item) => item.code === selectedCategoryCode) ?? null,
     [categories, selectedCategoryCode],
   );
+
+
+
+  const presentationProfiles: MarketPresentationProfile[] = [
+    'EVENT', 'CRYPTO', 'SPORTS', 'MUSIC', 'AI', 'STOCKS',
+    'ECONOMICS', 'ENTERTAINMENT', 'PUBLIC_EVENTS',
+  ];
 
   async function saveCategory() {
     const name = categoryName.trim();
@@ -81,10 +102,17 @@ export function AdminMarketTypesWorkspace() {
         description: categoryDescription.trim(),
         displayOrder: categories.length * 10 + 10,
       });
-      await reload();
+      await setAdminGuidedCategoryPresentation({
+        code: codeFrom(name),
+        presentationProfile: categoryProfile,
+        groupField: categoryGroupField.trim(),
+      });
+      await reload(codeFrom(name));
       setCategoryName('');
       setCategoryDescription('');
-      setSuccess('Category added. It is now available in Create Market.');
+      setCategoryProfile('EVENT');
+      setCategoryGroupField('');
+      setSuccess('Category added with its display profile. It is available in Create Market and Market discovery.');
     } catch (value) {
       setError(value instanceof Error ? value.message : 'Category could not be saved.');
     } finally {
@@ -139,15 +167,52 @@ export function AdminMarketTypesWorkspace() {
           <View style={{ gap: theme.spacing.md }}>
             <VadInput label="Category name" value={categoryName} onChangeText={setCategoryName} placeholder="e.g. Fashion" />
             <VadInput label="Short description · optional" value={categoryDescription} onChangeText={setCategoryDescription} multiline placeholder="What kinds of objective markets belong here?" />
-            <VadCard variant="muted"><VadText variant="caption" tone="secondary">No code or internal category ID is needed. VAD creates it from the name.</VadText></VadCard>
+            <VadText variant="bodyStrong">Market experience</VadText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+              {presentationProfiles.map((profile) => (
+                <VadChip key={profile} label={profile.replaceAll('_', ' ')} selected={categoryProfile === profile} tone={categoryProfile === profile ? 'brand' : 'neutral'} onPress={() => setCategoryProfile(profile)} />
+              ))}
+            </View>
+            <VadInput label="Grouping field · optional" value={categoryGroupField} onChangeText={setCategoryGroupField} placeholder="e.g. competition, event_name, company" />
+            <VadCard variant="muted"><VadText variant="caption" tone="secondary">Profile controls category-specific presentation. Grouping reads existing market context and does not change outcome rules.</VadText></VadCard>
             <VadButton label={working ? 'Saving…' : 'Add category'} disabled={working} onPress={() => void saveCategory()} />
           </View>
         ) : (
           <View style={{ gap: theme.spacing.md }}>
             <VadText variant="bodyStrong">Choose category</VadText>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {categories.map((item) => <VadChip key={item.code} label={item.name} selected={selectedCategory?.code === item.code} onPress={() => setSelectedCategoryCode(item.code)} />)}
+              {categories.map((item) => <VadChip key={item.code} label={item.name} selected={selectedCategory?.code === item.code} onPress={() => { setSelectedCategoryCode(item.code); setPresentationProfile(item.presentationProfile ?? 'EVENT'); setPresentationGroupField(item.groupField ?? ''); }} />)}
             </View>
+            <VadCard variant="muted" style={{ gap: theme.spacing.sm }}>
+              <VadText variant="bodyStrong">Selected category experience</VadText>
+              <VadText variant="caption" tone="secondary">Changing the profile updates the market display and grouping, not its authoritative result source or settlement.</VadText>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+                {presentationProfiles.map((profile) => (
+                  <VadChip key={profile} label={profile.replaceAll('_', ' ')} selected={presentationProfile === profile} tone={presentationProfile === profile ? 'brand' : 'neutral'} onPress={() => setPresentationProfile(profile)} />
+                ))}
+              </View>
+              <VadInput label="Grouping field · optional" value={presentationGroupField} onChangeText={setPresentationGroupField} placeholder="e.g. competition, event_name, company" />
+              <VadButton
+                label="Save category presentation"
+                variant="secondary"
+                disabled={working || !selectedCategory}
+                onPress={() => {
+                  if (!selectedCategory) return;
+                  setWorking(true);
+                  setError(null);
+                  setSuccess(null);
+                  void setAdminGuidedCategoryPresentation({
+                    code: selectedCategory.code,
+                    presentationProfile,
+                    groupField: presentationGroupField.trim(),
+                  }).then(async () => {
+                    await reload();
+                    setSuccess('Category presentation updated. Market discovery will use the saved profile and grouping field.');
+                  }).catch((value: unknown) => setError(value instanceof Error ? value.message : 'Category presentation could not be saved.'))
+                    .finally(() => setWorking(false));
+                }}
+              />
+            </VadCard>
             <VadInput label="Market type name" value={typeName} onChangeText={setTypeName} placeholder="e.g. Fashion award winner" />
             <VadInput label="Short description · optional" value={typeDescription} onChangeText={setTypeDescription} multiline placeholder="Explain when an admin should choose this." />
             <VadInput label="Result source label" value={sourceLabel} onChangeText={setSourceLabel} placeholder="e.g. Official award organizer" />
@@ -168,6 +233,10 @@ export function AdminMarketTypesWorkspace() {
         {categories.map((item) => (
           <VadCard key={item.code} variant="muted" style={{ gap: 8 }}>
             <VadText variant="bodyStrong">{item.name}</VadText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              <VadChip label={(item.presentationProfile ?? 'EVENT').replaceAll('_', ' ')} tone="brand" />
+              <VadChip label={item.groupField ? `Group: ${item.groupField}` : 'Ungrouped'} />
+            </View>
             {item.description ? <VadText variant="caption" tone="secondary">{item.description}</VadText> : null}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
               {item.marketTypes.map((type) => <VadChip key={type.code} label={type.name} />)}

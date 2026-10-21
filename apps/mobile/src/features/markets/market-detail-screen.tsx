@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
-import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { AssistantEntry } from '@/features/assistant/assistant-entry';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
@@ -19,18 +18,20 @@ import { MarketDetailHeader } from './components/market-detail-header';
 import { MarketDepthPanel } from './components/market-depth-panel';
 import { TradingTicket } from './components/trading-ticket';
 import { MarketPriceHistoryPanel } from './components/market-price-history-panel';
+import { CryptoMarketSpotSummary } from './components/crypto-market-prices-panel';
 import { assetMoney, probability } from './format';
 
-type DetailTab = 'Overview' | 'Trade' | 'Chart' | 'Discussion' | 'Rules';
+type DetailTab = 'Overview' | 'Live price' | 'Trade' | 'Chart' | 'Discussion' | 'Rules';
 type MarketTiming = ReturnType<typeof getMarketTiming>;
 
-const tabs = [
+const tabs: { value: DetailTab; label: string }[] = [
   { value: 'Overview', label: 'Overview' },
+  { value: 'Live price', label: 'Live price' },
   { value: 'Trade', label: 'Trade' },
-  { value: 'Chart', label: 'Chart' },
+  { value: 'Chart', label: 'Activity' },
   { value: 'Discussion', label: 'Chat' },
   { value: 'Rules', label: 'Rules' },
-] as const;
+];
 
 export function MarketDetailScreen({
   market,
@@ -59,7 +60,13 @@ export function MarketDetailScreen({
   const currencyPreference = useCurrencyPreference();
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
-  const [tab, setTab] = useState<DetailTab>(initialOutcome ? 'Trade' : 'Overview');
+  const isCryptoMarket = String(market.presentation_profile ?? '').toUpperCase() === 'CRYPTO'
+    || String(market.category_code ?? '').toUpperCase() === 'CRYPTO_WEB3'
+    || String(market.category ?? '').toUpperCase() === 'CRYPTO';
+  const screenKey = `${market.instrument_public_id}:${initialOutcome ?? 'none'}`;
+  const [tabState, setTabState] = useState<{ key: string; tab: DetailTab }>(() => ({ key: screenKey, tab: initialOutcome ? 'Trade' : 'Overview' }));
+  const tab = tabState.key === screenKey ? tabState.tab : initialOutcome ? 'Trade' : 'Overview';
+  const setTab = (nextTab: DetailTab) => setTabState({ key: screenKey, tab: nextTab });
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
 
@@ -110,13 +117,22 @@ export function MarketDetailScreen({
     <View style={{ gap: density.compact ? 12 : density.sectionGap }}>
       <MarketDetailHeader market={market} />
 
-      <View style={{ gap: 6 }}>
-        <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingVertical: 2 }}>
+        {tabs.filter((item) => isCryptoMarket || item.value !== 'Live price').map((item) => (
+          <VadChip
+            key={item.value}
+            label={item.label}
+            selected={tab === item.value}
+            tone={tab === item.value ? 'brand' : 'neutral'}
+            onPress={() => setTab(item.value)}
+          />
+        ))}
+      </ScrollView>
 
       {tab === 'Overview' ? (
         <Overview market={market} timing={timing} onTrade={() => setTab('Trade')} />
       ) : null}
+      {tab === 'Live price' && isCryptoMarket ? <CryptoMarketSpotSummary assetQuery={marketCryptoAssetQuery(market)} /> : null}
       {tab === 'Chart' ? <Activity market={market} /> : null}
       {tab === 'Trade' ? (
         <TradingTicket
@@ -143,6 +159,7 @@ function Overview({ market, timing, onTrade }: { market: MarketCatalogItem; timi
   return (
     <View style={{ gap: density.compact ? 8 : 12 }}>
       <MarketSnapshot market={market} timing={timing} />
+      <MarketContextPanel market={market} />
       <VadButton label="Trade this market" onPress={onTrade} size="small" leading={<VadIcon name="markets" size={15} tone="inverse" />} />
       <AssistantEntry
         label="Ask VAD AI about this market"
@@ -281,4 +298,113 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
       </VadCard>
     </View>
   );
+}
+
+function MarketContextPanel({ market }: { market: MarketCatalogItem }) {
+  const theme = useVadTheme();
+  const profile = String(market.presentation_profile ?? 'EVENT').toUpperCase();
+  const labels: Record<string, string> = {
+    CRYPTO: 'Crypto market context',
+    SPORTS: 'Fixture & competition',
+    MUSIC: 'Artist & chart context',
+    AI: 'Model & benchmark context',
+    STOCKS: 'Company & financial context',
+    ECONOMICS: 'Economic indicator context',
+    ENTERTAINMENT: 'Entertainment context',
+    PUBLIC_EVENTS: 'Event context',
+    EVENT: 'Market context',
+  };
+  const context = market.market_context && typeof market.market_context === 'object'
+    ? market.market_context
+    : {};
+  const nested = (key: string) => context[key] && typeof context[key] === 'object' && !Array.isArray(context[key])
+    ? context[key] as Record<string, unknown>
+    : {};
+  const subject = nested('subject');
+  const details = nested('details');
+  const preferredKeys = [
+    'asset', 'symbol', 'quote', 'model', 'benchmark', 'company', 'subject',
+    'artist', 'song', 'album', 'event_name', 'competition', 'home_team', 'away_team',
+    'team', 'achievement', 'reporting_period', 'threshold', 'operator',
+  ];
+  const entries = preferredKeys.flatMap((key) => {
+    const value = subject[key] ?? details[key] ?? context[key];
+    if (value == null || typeof value === 'object' || typeof value === 'boolean') return [];
+    const text = String(value).trim();
+    if (!text || text.length > 160) return [];
+    return [{ key, value: text }];
+  }).filter((entry, index, all) => all.findIndex((candidate) => candidate.key === entry.key) === index).slice(0, 6);
+
+  if (!entries.length) return null;
+
+  return (
+    <VadCard variant="surface" style={{ gap: theme.spacing.sm }}>
+      <View style={{ gap: 3 }}>
+        <VadText variant="label" tone="brand">{labels[profile] ?? labels.EVENT}</VadText>
+        <VadText variant="caption" tone="secondary">
+          Details come from the published market setup. The official resolution criteria remain authoritative.
+        </VadText>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+        {entries.map((entry) => (
+          <View
+            key={entry.key}
+            style={{
+              minWidth: '42%',
+              maxWidth: '100%',
+              flexGrow: 1,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.surfaceMuted,
+              borderRadius: theme.radius.md,
+              padding: theme.spacing.sm,
+              gap: 2,
+            }}
+          >
+            <VadText variant="caption" tone="tertiary">{contextLabel(entry.key)}</VadText>
+            <VadText variant="bodyStrong">{entry.value}</VadText>
+          </View>
+        ))}
+      </View>
+    </VadCard>
+  );
+}
+
+function contextLabel(key: string) {
+  return key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function marketCryptoAssetQuery(market: MarketCatalogItem) {
+  const context = market.market_context && typeof market.market_context === 'object'
+    ? market.market_context
+    : {};
+  const subject = context.subject && typeof context.subject === 'object' && !Array.isArray(context.subject)
+    ? context.subject as Record<string, unknown>
+    : {};
+  const candidates = [
+    subject.asset,
+    subject.symbol,
+    subject.coin,
+    subject.token,
+    context.asset,
+    context.symbol,
+    context.coin,
+    context.token,
+  ];
+  const source = candidates.find((value) => typeof value === 'string' && value.trim());
+  if (typeof source === 'string') return source.split('/')[0].trim();
+
+  // Some legacy crypto markets do not carry structured subject metadata. Recover
+  // an explicit ticker from the title before falling back to no spot-price panel.
+  // This only selects the display quote; it does not affect the Oracle resolver.
+  const title = market.title ?? '';
+  const pair = title.match(/\b([A-Z0-9]{2,12})\s*\/\s*(?:USD|USDT|USDC)\b/i);
+  if (pair?.[1]) return pair[1].toUpperCase();
+  const parenthesizedSymbol = title.match(/\(([A-Z0-9]{2,12})\)/);
+  if (parenthesizedSymbol?.[1]) return parenthesizedSymbol[1].toUpperCase();
+  const leadingSymbol = title.match(/^Will\s+([A-Z0-9]{2,12})\s+(?:be|reach|close|trade|finish)\b/i);
+  if (leadingSymbol?.[1]) return leadingSymbol[1].toUpperCase();
+  const leadingName = title.match(/^Will\s+(Bitcoin|Ethereum|Solana|BNB|XRP|Dogecoin|Cardano)\b/i);
+  if (leadingName?.[1]) return leadingName[1];
+  return '';
 }

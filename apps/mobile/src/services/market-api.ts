@@ -7,6 +7,10 @@ export type MarketCatalogItem = {
   event_public_id: string;
   title: string;
   category: string | null;
+  category_code?: string | null;
+  presentation_profile?: 'EVENT' | 'CRYPTO' | 'SPORTS' | 'MUSIC' | 'AI' | 'STOCKS' | 'ECONOMICS' | 'ENTERTAINMENT' | 'PUBLIC_EVENTS' | string | null;
+  group_key?: string | null;
+  market_context?: Record<string, unknown> | null;
   asset_code: string;
   market_type: string;
   status: string;
