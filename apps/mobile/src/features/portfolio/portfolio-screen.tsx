@@ -35,7 +35,7 @@ import {
 type PortfolioTab = 'positions' | 'orders' | 'history' | 'performance';
 type Period = '1D' | '1W' | '1M' | '1Y' | 'ALL';
 type OutcomeFilter = 'all' | 'YES' | 'NO';
-type StatusFilter = 'all' | 'active' | 'completed';
+type StatusFilter = 'all' | 'marked' | 'unmarked';
 type PerformanceFilter = 'all' | 'profit' | 'loss' | 'unmarked';
 type PositionModel = PositionRow & Partial<PortfolioPositionMarkRow>;
 
@@ -215,12 +215,10 @@ export function PortfolioScreen({
     .filter((market) => market.asset_code === asset && market.category)
     .map((market) => market.category as string))].sort(), [markets, asset]);
   const filteredPositions = positionsForAsset.filter((position) => {
-    const status = String(position.market_status ?? position.status ?? '').toUpperCase();
-    const completed = position.mark_status === 'SETTLED' || ['SETTLED', 'RESOLVED', 'FINAL'].includes(status);
     const category = marketsById.get(position.instrument_id)?.category ?? 'Other';
     const pnl = position.unrealized_pnl == null ? null : amount(position.unrealized_pnl);
     return (outcomeFilter === 'all' || position.outcome_code.toUpperCase() === outcomeFilter)
-      && (statusFilter === 'all' || (statusFilter === 'active' ? !completed : completed))
+      && (statusFilter === 'all' || (statusFilter === 'marked' ? position.mark_status === 'MARKED' : position.mark_status !== 'MARKED'))
       && (categoryFilter === 'all' || category === categoryFilter)
       && (performanceFilter === 'all'
         || (performanceFilter === 'profit' && pnl != null && pnl > 0)
@@ -386,8 +384,8 @@ export function PortfolioScreen({
                 <VadSegmentedControl value={outcomeFilter} options={[{ value: 'all', label: 'All' }, { value: 'YES', label: 'Yes' }, { value: 'NO', label: 'No' }]} onChange={(value) => { setOutcomeFilter(value); setVisiblePositionCount(5); }} />
               </View>
               <View style={{ gap: 5 }}>
-                <VadText variant="caption" tone="secondary">Position status</VadText>
-                <VadSegmentedControl value={statusFilter} options={[{ value: 'all', label: 'All' }, { value: 'active', label: 'Open' }, { value: 'completed', label: 'Settled' }]} onChange={(value) => { setStatusFilter(value); setVisiblePositionCount(5); }} />
+                <VadText variant="caption" tone="secondary">Valuation status</VadText>
+                <VadSegmentedControl value={statusFilter} options={[{ value: 'all', label: 'All' }, { value: 'marked', label: 'Marked' }, { value: 'unmarked', label: 'Unmarked' }]} onChange={(value) => { setStatusFilter(value); setVisiblePositionCount(5); }} />
               </View>
               <View style={{ gap: 5 }}>
                 <VadText variant="caption" tone="secondary">Performance</VadText>
