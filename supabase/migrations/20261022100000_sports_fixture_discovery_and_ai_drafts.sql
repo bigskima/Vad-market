@@ -276,14 +276,14 @@ begin
     p_actor_user_id,'ADMIN','SPORTS_MARKET_DRAFT_GENERATED','SPORTS_FIXTURE',
     left(btrim(p_fixture_id),180),
     'Generated an AI-assisted draft from an imported sports fixture.',
-    jsonb_build_object(
+    coalesce(p_metadata,'{}'::jsonb) || jsonb_build_object(
       'provider_code',upper(left(btrim(p_provider_code),80)),
       'fixture_id',left(btrim(p_fixture_id),180),
       'market_type_code',upper(left(btrim(p_market_type_code),80)),
       'selected_result',upper(left(btrim(coalesce(p_selected_result,'')),40)),
       'ai_provider_id',p_ai_provider_id,
       'prompt_version_id',p_prompt_version_id
-    ) || coalesce(p_metadata,'{}'::jsonb)
+    )
   );
   return true;
 end;
