@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Alert, Image, Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
@@ -13,72 +13,102 @@ import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { VadThemePreference } from '@/theme/tokens';
 import { getAdminAccess } from '@/services/admin-control-api';
-import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
 import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
+import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
+import { supabase } from '@/lib/supabase';
+
+type UserKycState = { userId: string; status: KycStatus };
+type UserMfaState = { userId: string; enabled: boolean | null };
 
 export default function AccountScreen() {
   const { session, signOut } = useAuth();
-  const currencyPreference = useCurrencyPreference();
   const data = useProductDataContext();
-  const { refreshPortfolio } = data;
-  const tngnEnabled = currencyPreference.isCurrencyEnabled('TNGN');
-  const unreadNotificationCount = data.notifications.filter((notification) => !notification.read_at).length;
+  const currencyPreference = useCurrencyPreference();
   const theme = useVadTheme();
   const density = useProductDensity();
-  const [hasAdminAccess, setHasAdminAccess] = useState(false);
-  const [savedProfile, setSavedProfile] = useState<UserProfile | null>(null);
-  const [kycStatus, setKycStatus] = useState<KycStatus | null>(null);
-  const [signingOut, setSigningOut] = useState(false);
   const user = session?.user;
   const userId = user?.id ?? null;
-  const email = user?.email ?? user?.phone ?? 'Contact information unavailable';
   const metadata = user?.user_metadata ?? {};
+  const email = user?.email ?? user?.phone ?? 'Contact information unavailable';
+  const unreadNotificationCount = data.notifications.filter((notification) => !notification.read_at).length;
+  const [savedProfile, setSavedProfile] = useState<UserProfile | null>(null);
+  const [kycState, setKycState] = useState<UserKycState | null>(null);
+  const [mfaState, setMfaState] = useState<UserMfaState | null>(null);
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
+  const [adminAccessFor, setAdminAccessFor] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+
   const metadataName = typeof metadata.display_name === 'string' ? metadata.display_name.trim()
     : typeof metadata.full_name === 'string' ? metadata.full_name.trim() : '';
-  const displayName = savedProfile?.display_name?.trim() || metadataName;
+  const profile = savedProfile?.user_id === userId ? savedProfile : null;
+  const displayName = profile?.display_name?.trim() || metadataName || 'VAD Market member';
   const metadataAvatar = typeof metadata.avatar_url === 'string' ? metadata.avatar_url
     : typeof metadata.picture === 'string' ? metadata.picture : null;
-  const avatarUrl = profileMediaUrl(savedProfile?.avatar_path) || metadataAvatar;
-  const country = typeof metadata.country === 'string' ? metadata.country
-    : typeof metadata.country_name === 'string' ? metadata.country_name : null;
-  const kycTitle = kycStatus?.status === 'VERIFIED' ? 'Account verified'
-    : kycStatus?.status === 'IN_REVIEW' || kycStatus?.status === 'PROVIDER_PENDING' ? 'Verification in progress'
-      : kycStatus?.status === 'REJECTED' ? 'Verification needs attention'
-        : kycStatus?.status === 'EXPIRED' ? 'Verification expired'
-          : kycStatus?.status === 'CANCELLED' ? 'Verification cancelled'
-            : kycStatus?.status === 'CREATED' ? 'Verification started'
-              : kycStatus ? 'Verify your account' : 'Verification status';
-  const kycDescription = kycStatus?.status === 'VERIFIED' ? 'Your identity verification is confirmed by VAD.'
-    : kycStatus?.status === 'IN_REVIEW' || kycStatus?.status === 'PROVIDER_PENDING' ? 'Your verification is being processed. Check details for updates.'
-      : kycStatus?.status === 'REJECTED' ? 'Review the verification details for the next available step.'
-        : kycStatus?.status === 'EXPIRED' ? 'Your verification may need to be renewed.'
-          : kycStatus?.status === 'CANCELLED' ? 'Open verification details to restart if eligible.'
-            : kycStatus?.status === 'CREATED' ? 'Continue the identity verification process.'
-              : kycStatus ? 'Complete identity verification to check applicable account limits.' : 'Open details to check your status.';
-  const appearance = theme.preference === 'system' ? `System · ${theme.mode}`
+  const avatarUrl = profileMediaUrl(profile?.avatar_path) || metadataAvatar;
+  const kycStatus = kycState?.userId === userId ? kycState.status : null;
+  const mfaEnabled = mfaState?.userId === userId ? mfaState.enabled : null;
+  const countryValue = typeof metadata.country === 'string' ? metadata.country
+    : typeof metadata.country_name === 'string' ? metadata.country_name : '';
+  const contextCountryCode = typeof metadata.country_code === 'string' ? metadata.country_code
+    : data.countryCode;
+  const countryCode = normalizeCountryCode(contextCountryCode, countryValue);
+  const country = countryValue || countryNameFromCode(countryCode) || 'Country not set';
+  const appearance = theme.preference === 'system' ? `System · currently ${theme.mode}`
     : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1);
+  const currencyEligibleForTngn = currencyPreference.isCurrencyEligible('TNGN');
 
   useEffect(() => {
     if (!userId || currencyPreference.loading) return;
-    void refreshPortfolio();
-  }, [currencyPreference.loading, refreshPortfolio, tngnEnabled, userId]);
+    void data.refreshPortfolio();
+  }, [currencyPreference.loading, data.refreshPortfolio, currencyPreference.isCurrencyEnabled('TNGN'), userId]);
 
   useEffect(() => {
-    let ignore = false;
     if (!userId) return;
-    void getMyKycStatus().then((status) => { if (!ignore) setKycStatus(status); }).catch(() => { if (!ignore) setKycStatus(null); });
-    void getMyProfile().then((profile) => { if (!ignore) setSavedProfile(profile); }).catch(() => { if (!ignore) setSavedProfile(null); });
+    let ignore = false;
+    void getMyProfile().then((next) => {
+      if (!ignore) setSavedProfile(next);
+    }).catch(() => {
+      if (!ignore) setSavedProfile(null);
+    });
+    void getMyKycStatus().then((status) => {
+      if (!ignore) setKycState({ userId, status });
+    }).catch(() => {
+      if (!ignore) setKycState({ userId, status: { status: 'NOT_STARTED', providerConfigured: false } });
+    });
+    void supabase.auth.mfa.listFactors().then(({ data: factors, error }) => {
+      if (ignore) return;
+      const enabled = error ? null : (factors?.all ?? []).some((factor) => factor.status === 'verified');
+      setMfaState({ userId, enabled });
+    }).catch(() => {
+      if (!ignore) setMfaState({ userId, enabled: null });
+    });
     return () => { ignore = true; };
   }, [userId]);
 
   useEffect(() => {
-    let ignore = false;
     if (!userId) return;
+    let ignore = false;
     void getAdminAccess().then((access) => {
-      if (!ignore) setHasAdminAccess(access.isSuperAdmin || access.roles.length > 0);
-    }).catch(() => { if (!ignore) setHasAdminAccess(false); });
+      if (!ignore) {
+        setHasAdminAccess(access.isSuperAdmin || access.roles.length > 0);
+        setAdminAccessFor(userId);
+      }
+    }).catch(() => {
+      if (!ignore) {
+        setHasAdminAccess(false);
+        setAdminAccessFor(userId);
+      }
+    });
     return () => { ignore = true; };
   }, [userId]);
+
+  const isVerified = kycStatus?.status === 'VERIFIED';
+  const kycCopy = getKycCopy(kycStatus);
+  const preferences = useMemo(() => [
+    { value: 'dark', label: 'Dark' },
+    { value: 'light', label: 'Light' },
+    { value: 'system', label: 'System' },
+  ] as const, []);
 
   const requestSignOut = () => {
     Alert.alert('Log out of VAD Market?', 'You will need to sign in again to access your account.', [
@@ -94,140 +124,196 @@ export default function AccountScreen() {
 
   return (
     <ProductRoute active="Account">
-      <View style={{ gap: density.phone ? 12 : 16, paddingBottom: theme.spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <View style={{ flex: 1, gap: 2 }}>
+      <View style={{ gap: density.phone ? 9 : 13, paddingBottom: theme.spacing.xs }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <View style={{ flex: 1, gap: 1 }}>
             <VadText variant="title">Account</VadText>
             <VadText variant="caption" tone="secondary">Manage your profile, security and app preferences.</VadText>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={() => router.push('/notifications')} style={({ pressed }) => ({ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, opacity: pressed ? 0.7 : 1 })}>
-            <VadIcon name="bell" size={21} tone="primary" />
-            {unreadNotificationCount > 0 ? <View style={{ position: 'absolute', top: 7, right: 7, width: 9, height: 9, borderRadius: 5, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.surface }} /> : null}
+          <Pressable accessibilityRole="button" accessibilityLabel={unreadNotificationCount ? `Notifications, ${unreadNotificationCount} unread` : 'Notifications'} onPress={() => router.push('/notifications')} style={({ pressed }) => ({ width: 39, height: 39, borderRadius: 20, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
+            <VadIcon name="bell" size={25} tone="primary" />
+            {unreadNotificationCount > 0 ? <View style={{ position: 'absolute', top: 4, right: 3, width: 9, height: 9, borderRadius: 5, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.background }} /> : null}
           </Pressable>
         </View>
 
-        <VadCard variant="surface" style={{ padding: density.phone ? 13 : 18, borderRadius: 19, borderWidth: 1, borderColor: theme.colors.border, gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ width: 66, height: 66, borderRadius: 33, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border }}>
-              {avatarUrl ? <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <VadText variant="title" tone="brand">{(displayName || email).trim().charAt(0).toUpperCase() || 'V'}</VadText>}
+        <VadCard style={{ padding: density.phone ? 10 : 14, borderRadius: 15, gap: 0, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ width: density.phone ? 56 : 64, height: density.phone ? 56 : 64, borderRadius: 40, overflow: 'visible', position: 'relative', flexShrink: 0 }}>
+              <View style={{ width: '100%', height: '100%', borderRadius: 40, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.borderStrong }}>
+                {avatarUrl ? <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <VadText variant="title" tone="brand">{(displayName || email).trim().charAt(0).toUpperCase() || 'V'}</VadText>}
+              </View>
+              <Pressable accessibilityRole="button" accessibilityLabel="Change profile photo" onPress={() => router.push('/account/profile')} style={({ pressed }) => ({ position: 'absolute', right: -2, bottom: 0, width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.borderStrong, backgroundColor: theme.colors.surfaceRaised, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
+                <VadIcon name="camera" size={13} color={theme.colors.info} />
+              </Pressable>
             </View>
-            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <VadText variant="heading" numberOfLines={1}>{displayName || 'VAD Market member'}</VadText>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <VadText variant="heading" numberOfLines={1}>{displayName}</VadText>
               <VadText variant="caption" tone="secondary" numberOfLines={1}>{email}</VadText>
-              <VadText variant="caption" tone="secondary" numberOfLines={1}>{country || 'Country not set'}</VadText>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                {countryCode ? <VadText variant="caption">{countryFlag(countryCode)}</VadText> : null}
+                <VadText variant="caption" tone="secondary" numberOfLines={1}>{country}</VadText>
+              </View>
             </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Edit profile" onPress={() => router.push('/account/profile')} style={({ pressed }) => ({ minHeight: 35, paddingHorizontal: density.phone ? 10 : 15, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.brandPrimary, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
+              <VadText variant="caption" tone="primary">Edit Profile</VadText>
+            </Pressable>
           </View>
-          <ActionButton label="Edit Profile" onPress={() => router.push('/account/profile')} />
         </VadCard>
 
-        <Pressable accessibilityRole="button" accessibilityLabel="View identity verification details" onPress={() => router.push('/account/verification')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: kycStatus?.status === 'VERIFIED' ? theme.colors.yes : theme.colors.border, backgroundColor: kycStatus?.status === 'VERIFIED' ? theme.colors.yesSoft : theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
-          <View style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: kycStatus?.status === 'VERIFIED' ? theme.colors.yesSoft : theme.colors.brandSoft }}>
-            <VadIcon name="operations" size={22} tone={kycStatus?.status === 'VERIFIED' ? 'yes' : 'brand'} />
+        <Pressable accessibilityRole="button" accessibilityLabel="View verification details" onPress={() => router.push('/account/verification')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: density.phone ? 10 : 13, borderRadius: 15, borderWidth: 1, borderColor: isVerified ? theme.colors.yes : kycStatus?.status === 'REJECTED' ? theme.colors.no : theme.colors.border, backgroundColor: isVerified ? theme.colors.yesSoft : theme.colors.surface, opacity: pressed ? 0.78 : 1 })}>
+          <View style={{ width: 38, height: 38, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: isVerified ? theme.colors.yesSoft : kycStatus?.status === 'REJECTED' ? theme.colors.noSoft : theme.colors.surfaceMuted, flexShrink: 0 }}>
+            <VadIcon name={isVerified ? 'shieldCheck' : 'shield'} size={22} color={isVerified ? theme.colors.yes : kycStatus?.status === 'REJECTED' ? theme.colors.no : theme.colors.textSecondary} />
           </View>
-          <View style={{ flex: 1, gap: 3 }}>
-            <VadText variant="bodyStrong">{kycTitle}</VadText>
-            <VadText variant="caption" tone="secondary">{kycDescription}</VadText>
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <VadText variant="bodyStrong" style={{ fontSize: density.phone ? 13 : 15 }}>{kycCopy.title}</VadText>
+            <VadText variant="caption" tone="secondary" numberOfLines={2}>{kycCopy.body}</VadText>
           </View>
-          <VadText variant="caption" tone={kycStatus?.status === 'VERIFIED' ? 'yes' : 'brand'}>View Details</VadText>
+          <View style={{ borderRadius: 22, borderWidth: 1, borderColor: isVerified ? theme.colors.yes : theme.colors.border, paddingHorizontal: 12, paddingVertical: 7, alignItems: 'center', justifyContent: 'center' }}>
+            <VadText variant="caption" tone={isVerified ? 'yes' : 'secondary'}>{isVerified ? 'View Details' : 'View Details'}</VadText>
+          </View>
         </Pressable>
 
         <SettingsGroup title="Account">
-          <AccountRow icon="account" title="Personal Information" subtitle="Name, email and profile details" onPress={() => router.push('/account/profile')} />
-          <AccountRow icon="operations" title="Verification (KYC)" subtitle="Identity verification and documents" onPress={() => router.push('/account/verification')} />
-          <AccountRow icon="wallet" title="Payment Methods" subtitle="Deposits, withdrawals and available payment options" onPress={() => router.push('/account/funding')} last />
+          <AccountRow icon="account" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Personal Information" subtitle="Name, email, phone number, country" onPress={() => router.push('/account/profile')} />
+          <AccountRow icon="creditCard" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Verification (KYC)" subtitle="Identity verification and documents" badge={isVerified ? 'Verified' : undefined} badgeTone="yes" onPress={() => router.push('/account/verification')} />
+          <AccountRow icon="wallet" iconBackground={theme.colors.warningSoft} iconColor={theme.colors.warning} title="Payment Methods" subtitle="Linked bank accounts and payment options" onPress={() => router.push('/account/funding')} last />
         </SettingsGroup>
 
         <SettingsGroup title="Security">
-          <AccountRow icon="operations" title="Additional security controls" subtitle="Password, PIN, two-factor and session management are not yet exposed in this app build." />
-          <AccountRow icon="account" title="Policies & privacy" subtitle="Terms and privacy information" onPress={() => router.push('/account/policies')} last />
+          <AccountRow icon="lock" iconBackground={theme.colors.yesSoft} iconColor={theme.colors.yes} title="Security Settings" subtitle="Password, PIN, biometric login" onPress={() => router.push('/account/security')} />
+          <AccountRow icon="shieldCheck" iconBackground={theme.colors.noSoft} iconColor={theme.colors.no} title="Two-Factor Authentication" subtitle="Add an extra layer of security" badge={mfaEnabled === null ? 'Unavailable' : mfaEnabled ? 'Enabled' : 'Not enabled'} badgeTone={mfaEnabled ? 'yes' : 'neutral'} onPress={() => router.push('/account/security')} />
+          <AccountRow icon="device" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Active Sessions" subtitle="Manage your logged in devices" badge="Unavailable" badgeTone="neutral" last />
         </SettingsGroup>
 
         <SettingsGroup title="Preferences">
-          <AccountRow icon="bell" title="Notifications" subtitle="Trade alerts, results and account activity" onPress={() => router.push('/notifications')} />
-          <View style={{ paddingHorizontal: 12, paddingVertical: 12, gap: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <IconTile icon="markets" />
-              <View style={{ flex: 1, gap: 2 }}>
-                <VadText variant="bodyStrong">App Appearance</VadText>
-                <VadText variant="caption" tone="secondary">{appearance}</VadText>
-              </View>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 7 }}>
-              {(['dark', 'light', 'system'] as VadThemePreference[]).map((preference) => (
-                <Pressable key={preference} accessibilityRole="button" accessibilityState={{ selected: theme.preference === preference }} onPress={() => theme.setPreference(preference)} style={({ pressed }) => ({ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center', backgroundColor: theme.preference === preference ? theme.colors.brandSoft : theme.colors.surfaceMuted, borderWidth: 1, borderColor: theme.preference === preference ? theme.colors.brandPrimary : theme.colors.border, opacity: pressed ? 0.75 : 1 })}>
-                  <VadText variant="caption" tone={theme.preference === preference ? 'brand' : 'secondary'}>{preference === 'system' ? 'System' : preference === 'dark' ? 'Dark' : 'Light'}</VadText>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-          {currencyPreference.isCurrencyEligible('TNGN') ? (
-            <View style={{ paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <IconTile icon="wallet" />
-              <View style={{ flex: 1, gap: 2 }}>
-                <VadText variant="bodyStrong">TNGN demo trading</VadText>
-                <VadText variant="caption" tone="secondary">Separate practice ledger; real NGN and USDC remain unaffected.</VadText>
-              </View>
-              <Pressable accessibilityRole="switch" accessibilityLabel="Enable TNGN demo trading" accessibilityState={{ checked: currencyPreference.isCurrencyEnabled('TNGN'), disabled: currencyPreference.loading }} disabled={currencyPreference.loading} onPress={() => currencyPreference.toggleCurrency('TNGN')} style={{ width: 43, height: 25, borderRadius: 13, padding: 3, justifyContent: 'center', alignItems: currencyPreference.isCurrencyEnabled('TNGN') ? 'flex-end' : 'flex-start', backgroundColor: currencyPreference.isCurrencyEnabled('TNGN') ? theme.colors.brandPrimary : theme.colors.border }}>
-                <View style={{ width: 19, height: 19, borderRadius: 10, backgroundColor: theme.colors.surface }} />
-              </Pressable>
-            </View>
-          ) : null}
-          <AccountRow icon="markets" title="Language & Region" subtitle="Regional and language controls are not configured yet." last />
+          <AccountRow icon="bell" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Notifications" subtitle="Trade alerts, results, account activity" onPress={() => router.push('/notifications')} />
+          <AccountRow icon="palette" iconBackground={theme.colors.warningSoft} iconColor={theme.colors.warning} title="App Appearance" subtitle="Dark mode, light mode, or system" badge={theme.preference === 'system' ? 'System' : theme.preference === 'dark' ? 'Dark' : 'Light'} badgeTone="neutral" onPress={() => router.push('/account/appearance')} />
+          <AccountRow icon="globe" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Language & Region" subtitle="English and regional settings" onPress={() => router.push('/account/region')} last />
         </SettingsGroup>
 
         <SettingsGroup title="Support">
-          <AccountRow icon="community" title="Help & Support" subtitle="A support destination has not been configured yet." />
-          <AccountRow icon="operations" title="Terms & Policies" subtitle="Open the currently published legal documents" onPress={() => router.push('/account/policies')} />
-          <AccountRow icon="activity" title="About VAD Market" subtitle="App version and company information are not configured on this screen." last />
+          <AccountRow icon="lifeBuoy" iconBackground={theme.colors.yesSoft} iconColor={theme.colors.yes} title="Help & Support" subtitle="FAQs, contact and available support options" />
+          <AccountRow icon="fileText" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Terms & Policies" subtitle="Terms of service, privacy policy, risk disclosures" onPress={() => router.push('/account/policies')} />
+          <AccountRow icon="info" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="About VAD Market" subtitle="App version and legal information" onPress={() => router.push('/account/about')} last />
         </SettingsGroup>
 
-        {userId && hasAdminAccess ? (
+        {adminAccessFor === userId && hasAdminAccess ? (
           <SettingsGroup title="Administration">
-            <AccountRow icon="operations" title="Admin operations" subtitle="Operations dashboard" onPress={() => router.push('/admin')} last />
+            <AccountRow icon="operations" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Admin operations" subtitle="Operations dashboard" onPress={() => router.push('/admin')} last />
           </SettingsGroup>
         ) : null}
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Log out" disabled={signingOut} onPress={requestSignOut} style={({ pressed }) => ({ minHeight: 45, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.no, backgroundColor: theme.colors.noSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: pressed || signingOut ? 0.65 : 1 })}>
-          <VadIcon name="close" size={17} tone="no" />
-          <VadText variant="bodyStrong" tone="no">{signingOut ? 'Logging out…' : 'Log Out'}</VadText>
+        {currencyEligibleForTngn ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Trading currency settings" onPress={() => router.push('/account/region')} style={{ alignSelf: 'flex-start', paddingVertical: 2 }}>
+            <VadText variant="caption" tone="tertiary">Trading currency settings</VadText>
+          </Pressable>
+        ) : null}
+
+        <Pressable accessibilityRole="button" accessibilityLabel="Log out" disabled={signingOut} onPress={requestSignOut} style={({ pressed }) => ({ minHeight: 38, borderRadius: 9, borderWidth: 1, borderColor: theme.colors.no, backgroundColor: theme.colors.noSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: pressed || signingOut ? 0.65 : 1 })}>
+          <VadIcon name="share" size={17} tone="no" />
+          <VadText variant="bodyStrong" tone="no" style={{ fontSize: density.phone ? 13 : 15 }}>{signingOut ? 'Logging out…' : 'Log Out'}</VadText>
+          <VadIcon name="chevronRight" size={16} tone="no" />
         </Pressable>
       </View>
     </ProductRoute>
   );
 }
 
+function normalizeCountryCode(code: string | null | undefined, countryName: string) {
+  const value = typeof code === 'string' ? code.trim().toUpperCase() : '';
+  if (/^[A-Z]{2}$/.test(value)) return value;
+  const known = countryName.trim().toLowerCase();
+  if (known === 'nigeria') return 'NG';
+  if (known === 'united states' || known === 'united states of america') return 'US';
+  if (known === 'united kingdom' || known === 'uk') return 'GB';
+  if (known === 'ghana') return 'GH';
+  if (known === 'kenya') return 'KE';
+  if (known === 'south africa') return 'ZA';
+  return '';
+}
+
+function countryNameFromCode(code: string) {
+  const names: Record<string, string> = { NG: 'Nigeria', US: 'United States', GB: 'United Kingdom', GH: 'Ghana', KE: 'Kenya', ZA: 'South Africa' };
+  return names[code] ?? '';
+}
+
+function countryFlag(code: string) {
+  return String.fromCodePoint(...[...code].map((character) => 127397 + character.charCodeAt(0)));
+}
+
+function getKycCopy(status: KycStatus | null) {
+  if (!status) return { title: 'Verification status unavailable', body: 'Open verification details to check the latest status.' };
+  switch (status.status) {
+    case 'VERIFIED': return { title: 'Account Verified', body: 'Your identity has been verified. Applicable account permissions are confirmed by VAD.' };
+    case 'IN_REVIEW':
+    case 'PROVIDER_PENDING': return { title: 'Verification In Progress', body: 'Your identity verification is being reviewed. View details for updates.' };
+    case 'REJECTED': return { title: 'Verification Needs Attention', body: 'Review the verification details for the next available step.' };
+    case 'EXPIRED': return { title: 'Verification Expired', body: 'Your identity verification may need to be renewed.' };
+    case 'CANCELLED': return { title: 'Verification Cancelled', body: 'Open verification details to restart if eligible.' };
+    case 'CREATED': return { title: 'Verification Started', body: 'Continue your identity verification process.' };
+    default: return { title: 'Verify Your Account', body: 'Complete identity verification to check the limits that apply to your account.' };
+  }
+}
+
 function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
   const theme = useVadTheme();
   return (
-    <View style={{ gap: 7 }}>
-      <VadText variant="bodyStrong">{title}</VadText>
-      <VadCard variant="surface" style={{ paddingHorizontal: 12, paddingVertical: 2, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border, gap: 0 }}>
+    <View style={{ gap: 4 }}>
+      <VadText variant="bodyStrong" style={{ fontSize: 13, lineHeight: 16 }}>{title}</VadText>
+      <VadCard style={{ paddingHorizontal: 10, paddingVertical: 0, borderRadius: 14, backgroundColor: theme.colors.surface, borderColor: theme.colors.border, gap: 0 }}>
         {children}
       </VadCard>
     </View>
   );
 }
 
-function IconTile({ icon }: { icon: VadIconName }) {
+function AccountRow({
+  icon,
+  iconBackground,
+  iconColor,
+  title,
+  subtitle,
+  onPress,
+  last = false,
+  badge,
+  badgeTone = 'neutral',
+}: {
+  icon: VadIconName;
+  iconBackground: string;
+  iconColor: string;
+  title: string;
+  subtitle: string;
+  onPress?: () => void;
+  last?: boolean;
+  badge?: string;
+  badgeTone?: 'yes' | 'no' | 'neutral';
+}) {
   const theme = useVadTheme();
-  return <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}><VadIcon name={icon} size={17} tone="brand" /></View>;
-}
-
-function AccountRow({ icon, title, subtitle, onPress, last = false }: { icon: VadIconName; title: string; subtitle: string; onPress?: () => void; last?: boolean }) {
-  const theme = useVadTheme();
+  const density = useProductDensity();
   return (
-    <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={title} accessibilityHint={subtitle} accessibilityState={{ disabled: !onPress }} disabled={!onPress} onPress={onPress} style={({ pressed }) => ({ minHeight: 61, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.7 : onPress ? 1 : 0.72, borderBottomWidth: last ? 0 : 1, borderBottomColor: theme.colors.border })}>
-      <IconTile icon={icon} />
-      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <VadText variant="bodyStrong">{title}</VadText>
-        <VadText variant="caption" tone="secondary" numberOfLines={2}>{subtitle}</VadText>
+    <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={title} accessibilityHint={subtitle} accessibilityState={{ disabled: !onPress }} disabled={!onPress} onPress={onPress} style={({ pressed }) => ({ minHeight: density.phone ? 39 : 45, flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 3, opacity: pressed ? 0.72 : onPress ? 1 : 0.92, borderBottomWidth: last ? 0 : 1, borderBottomColor: theme.colors.border })}>
+      <IconTile icon={icon} backgroundColor={iconBackground} iconColor={iconColor} size={density.phone ? 29 : 33} />
+      <View style={{ flex: 1, minWidth: 0, gap: 0 }}>
+        <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: density.phone ? 12 : 14, lineHeight: density.phone ? 15 : 18 }}>{title}</VadText>
+        <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: density.phone ? 10 : 11, lineHeight: density.phone ? 13 : 15 }}>{subtitle}</VadText>
       </View>
-      {onPress ? <VadIcon name="chevronRight" size={17} tone="tertiary" /> : null}
+      {badge ? <StatusBadge label={badge} tone={badgeTone} /> : null}
+      {onPress ? <VadIcon name="chevronRight" size={16} tone="tertiary" /> : null}
     </Pressable>
   );
 }
 
-function ActionButton({ label, onPress }: { label: string; onPress: () => void }) {
+function IconTile({ icon, backgroundColor, iconColor, size = 32 }: { icon: VadIconName; backgroundColor: string; iconColor: string; size?: number }) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: backgroundColor, flexShrink: 0 }}>
+      <VadIcon name={icon} size={size * 0.5} color={iconColor} />
+    </View>
+  );
+}
+
+function StatusBadge({ label, tone }: { label: string; tone: 'yes' | 'no' | 'neutral' }) {
   const theme = useVadTheme();
-  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ minHeight: 38, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.brandPrimary, opacity: pressed ? 0.7 : 1 })}><VadText variant="bodyStrong" tone="brand">{label}</VadText></Pressable>;
+  const color = tone === 'yes' ? theme.colors.yes : tone === 'no' ? theme.colors.no : theme.colors.textSecondary;
+  const background = tone === 'yes' ? theme.colors.yesSoft : tone === 'no' ? theme.colors.noSoft : theme.colors.surfaceMuted;
+  return <View style={{ borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: background, alignItems: 'center', justifyContent: 'center' }}><VadText variant="caption" style={{ fontSize: 10, lineHeight: 13, color, fontWeight: '600' }}>{label}</VadText></View>;
 }
