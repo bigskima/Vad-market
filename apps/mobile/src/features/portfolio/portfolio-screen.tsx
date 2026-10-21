@@ -66,7 +66,7 @@ export function PortfolioScreen({
   loading?: boolean;
   onRetry: () => void;
   onOpenPosition: (position: PositionRow) => void;
-  onOpenOrder: (order: OrderRow) => void;
+  onOpenOrder: (order: OrderRow | PortfolioOrderHistoryRow) => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -593,6 +593,41 @@ function OrderCard({ order, onPress }: { order: OrderRow; onPress: () => void })
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
           <VadText variant="caption" tone="brand">View order</VadText>
           <VadIcon name="chevronRight" size={16} tone="brand" />
+        </View>
+      </VadCard>
+    </Pressable>
+  );
+}
+
+function OrderHistoryCard({ order, onPress }: { order: PortfolioOrderHistoryRow; onPress: () => void }) {
+  const theme = useVadTheme();
+  const status = String(order.status).toUpperCase();
+  const filled = amount(order.filled_quantity);
+  const total = amount(order.quantity);
+  const isSuccessful = status === 'FILLED' || status === 'COMPLETE' || status === 'COMPLETED';
+  const needsAttention = status.includes('CANCEL') || status.includes('EXPIRE') || status.includes('REJECT') || status.includes('FAIL');
+  const tone = isSuccessful ? 'yes' : needsAttention ? 'no' : 'brand';
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open historical ${status.toLowerCase()} order for ${order.market_title}`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
+      <VadCard variant="raised" style={{ gap: theme.spacing.sm, padding: 13 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <VadText variant="bodyStrong" numberOfLines={2}>{order.market_title}</VadText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+              <VadChip label={order.outcome_code} tone={order.outcome_code === 'YES' ? 'yes' : 'no'} />
+              <VadText variant="caption" tone="secondary">{order.side} · {order.asset_code}</VadText>
+            </View>
+          </View>
+          <VadChip label={status.replaceAll('_', ' ')} tone={tone} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <MetricTile label="Limit price" value={pct(order.limit_price)} />
+          <MetricTile label="Contracts filled" value={filled.toLocaleString()} />
+          <MetricTile label="Contracts total" value={total.toLocaleString()} />
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <VadText variant="caption" tone="tertiary">Last updated {new Date(order.updated_at || order.created_at).toLocaleString()}</VadText>
+          <VadIcon name="chevronRight" size={16} tone="tertiary" />
         </View>
       </VadCard>
     </Pressable>
