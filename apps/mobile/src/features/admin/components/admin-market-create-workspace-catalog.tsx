@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -58,6 +58,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [selectedCryptoAsset, setSelectedCryptoAsset] = useState<CryptoMarketQuote | null>(null);
   const [cryptoAssetCheck, setCryptoAssetCheck] = useState<{ supported: boolean; reason?: string; feedSymbol?: string } | null>(null);
   const [cryptoAssetCheckLoading, setCryptoAssetCheckLoading] = useState(false);
+  const cryptoAssetCheckRequest = useRef(0);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +133,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   }, [cryptoSearch, cryptoThreshold]);
 
   async function chooseCryptoAsset(coin: CryptoMarketQuote) {
+    const requestId = ++cryptoAssetCheckRequest.current;
     setSelectedCryptoAsset(coin);
     setCryptoAssetCheck(null);
     setCryptoAssetCheckLoading(true);
@@ -148,13 +150,15 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setError(null);
     try {
       const check = await checkCryptoOracleAsset(coin.symbol);
+      if (requestId !== cryptoAssetCheckRequest.current) return;
       setCryptoAssetCheck(check);
       if (!check.supported) setError(check.reason ?? 'This asset does not have an approved Pyth historical feed. Choose another asset.');
     } catch (reason) {
+      if (requestId !== cryptoAssetCheckRequest.current) return;
       setCryptoAssetCheck({ supported: false, reason: reason instanceof Error ? reason.message : 'Pyth feed coverage could not be verified.' });
       setError(reason instanceof Error ? reason.message : 'Pyth feed coverage could not be verified.');
     } finally {
-      setCryptoAssetCheckLoading(false);
+      if (requestId === cryptoAssetCheckRequest.current) setCryptoAssetCheckLoading(false);
     }
   }
 
@@ -472,7 +476,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                         <FieldGroup label="Competition / league">
                           {sportsTaxonomy.competitions.filter((item) => !details.sport || item.sportCode === sportsTaxonomy.sports.find((sport) => sport.name === details.sport)?.code).map((item) => <VadChip key={`${item.sportCode}:${item.code}`} label={item.name} selected={details.competition === item.name} tone={details.competition === item.name ? 'brand' : 'neutral'} onPress={() => setDetail('competition', item.name)} />)}
                         </FieldGroup>
-                        <VadText variant="caption" tone="secondary">Automatic results appear only for leagues that have an active Oracle competition mapping. Other sports use the configured verified-source workflow.</VadText>
+                        <VadText variant="caption" tone="secondary">League and sport choices come from the VAD database. This general match market uses the verified-source workflow; automatic football results are offered by the dedicated football market type when a supported competition is configured.</VadText>
                       </View>
                     ) : (
                     <VadInput
@@ -488,7 +492,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                     <View style={{ gap: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12, padding: theme.spacing.md }}>
                       <VadText variant="bodyStrong">Select a resolvable crypto asset</VadText>
                       <VadText variant="caption" tone="secondary">Searches CoinGecko&apos;s live asset catalogue. VAD checks for an exact Pyth/USD historical feed before allowing creation.</VadText>
-                      <VadInput label="Search coin name or ticker" value={cryptoSearch} onChangeText={setCryptoSearch} placeholder="Solana, SOL, Cardano, ADA…" />
+                      <VadInput label="Search coin name or ticker" value={cryptoSearch} onChangeText={(value) => { setCryptoSearch(value); setSelectedCryptoAsset(null); setCryptoAssetCheck(null); setCryptoAssetCheckLoading(false); cryptoAssetCheckRequest.current += 1; }} placeholder="Solana, SOL, Cardano, ADA…" />
                       {cryptoOptions.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
                         {cryptoOptions.map((coin) => <VadChip key={coin.id} label={`${coin.name} (${coin.symbol.toUpperCase()})`} selected={selectedCryptoAsset?.id === coin.id} tone={selectedCryptoAsset?.id === coin.id ? 'brand' : 'neutral'} onPress={() => void chooseCryptoAsset(coin)} />)}
                       </View> : cryptoSearch.trim().length >= 2 ? <VadText variant="caption" tone="secondary">No matching assets returned yet. Try a different name or ticker.</VadText> : null}
@@ -508,8 +512,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
                     <VadInput label="What must happen for YES to win?" value={resultCondition} onChangeText={setResultCondition} multiline placeholder="Describe the objective outcome in plain language." />
                   ) : null}
                   <VadCard variant="muted" style={{ gap: 4 }}>
-                    <VadText variant="bodyStrong">Verified result</VadText>
-                    <VadText variant="caption" tone="secondary">VAD will verify the outcome from the source below. You do not need to configure oracle IDs, resolver types or internal event records.</VadText>
+                    <VadText variant="bodyStrong">{cryptoThreshold ? 'Automated historical-price resolution' : 'Verified result'}</VadText>
+                    <VadText variant="caption" tone="secondary">{cryptoThreshold ? 'The Oracle checks approved Pyth and CoinGecko historical observations at the scheduled time. The live chart is display-only and cannot settle the market.' : 'VAD will verify the outcome from the source below. You do not need to configure oracle IDs, resolver types or internal event records.'}</VadText>
                   </VadCard>
                   <SourceFields label={marketType.sourceLabel} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
                 </View>
