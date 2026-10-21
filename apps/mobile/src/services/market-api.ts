@@ -344,7 +344,60 @@ export async function getPoolStakes() {
 export async function getMarketHistory() {
   const { data, error } = await supabase.rpc('my_market_history');
   assertNoError(error, 'portfolio', 'We could not load your settled market history right now. Please try again.');
-  return (data ?? []) as MarketHistoryRow[];
+  const realHistory = (data ?? []) as MarketHistoryRow[];
+
+  // Resolve TNGN outcomes from the isolated demo-order ledger. These rows never
+  // enter the real-money finance ledger, and are displayed only while enabled.
+  try {
+    const { data: statusData, error: statusError } = await supabase.rpc('get_demo_mode_status');
+    const status = (Array.isArray(statusData) ? statusData[0] : statusData) as { user_enabled?: boolean } | null;
+    if (!statusError && status?.user_enabled === true) {
+      const { data: demoData, error: demoError } = await supabase.rpc('my_tngn_market_orders');
+      if (!demoError) {
+        const demoHistory = ((demoData ?? []) as Array<{
+          orderId: string; marketId: string | null; marketTitle: string; outcomeCode: string;
+          stake: number | string; status: string; finalOutcome?: string | null; payout?: number | string | null;
+          settledAt?: string | null; createdAt: string;
+        }>).map((row): MarketHistoryRow => {
+          const stake = Number(row.stake ?? 0);
+          const payout = Number(row.payout ?? 0);
+          const settled = ['SETTLED', 'VOIDED', 'CANCELLED'].includes(String(row.status).toUpperCase());
+          const result: MarketHistoryRow['result'] = !settled
+            ? 'PENDING'
+            : String(row.status).toUpperCase() === 'VOIDED'
+              ? 'VOID'
+              : String(row.status).toUpperCase() === 'CANCELLED'
+                ? 'REFUNDED'
+                : payout > 0
+                  ? 'WON'
+                  : 'LOST';
+          return {
+            market_id: row.marketId ?? row.orderId,
+            market_title: row.marketTitle,
+            selected_outcome: row.outcomeCode,
+            final_outcome: row.finalOutcome ?? null,
+            asset_code: 'TNGN',
+            matched_quantity: 0,
+            stake_amount: stake,
+            trading_fee: 0,
+            gross_payout: payout,
+            settlement_fee: 0,
+            net_payout: payout,
+            realized_pnl: settled ? payout - stake : 0,
+            result,
+            settled_at: row.settledAt ?? null,
+          };
+        });
+        return [...demoHistory, ...realHistory].sort((a, b) =>
+          Date.parse(b.settled_at ?? '') - Date.parse(a.settled_at ?? '')
+          || Date.parse(b.market_id) - Date.parse(a.market_id),
+        );
+      }
+    }
+  } catch {
+    // The real market history must remain usable if the optional demo read fails.
+  }
+  return realHistory;
 }
 
 export async function getSettlementReceipts() {
