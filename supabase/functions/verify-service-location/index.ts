@@ -102,7 +102,18 @@ Deno.serve(async (req) => {
       .select('country_code')
       .eq('user_id', authData.user.id)
       .maybeSingle();
-    const accountCountry = String(account?.country_code || '').toUpperCase();
+    let accountCountry = String(account?.country_code || '').trim().toUpperCase();
+
+    // Repair an unset country only when device GPS and the client IP both resolve to
+    // Nigeria and the request has no anonymous-network risk signals. Never overwrite
+    // an existing country choice based merely on a traveller's current location.
+    if (!accountCountry && deviceCountry === 'NG' && ipCountry === 'NG' && !riskDetected) {
+      const { error: countryUpdateError } = await admin
+        .from('user_accounts')
+        .update({ country_code: 'NG' })
+        .eq('user_id', authData.user.id);
+      if (!countryUpdateError) accountCountry = 'NG';
+    }
 
     let decision: 'VERIFIED' | 'DENIED' | 'REVIEW' = 'DENIED';
     let reasonCode = 'ACCOUNT_NOT_ELIGIBLE';
