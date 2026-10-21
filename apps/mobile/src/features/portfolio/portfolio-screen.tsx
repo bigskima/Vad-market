@@ -98,8 +98,8 @@ export function PortfolioScreen({
         <VadCard variant="brand" style={{ padding: density.phone ? 18 : theme.spacing.xl, gap: theme.spacing.md, borderRadius: 26, borderWidth: 1, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
             <View style={{ gap: 4 }}>
-              <VadText variant="caption" tone="secondary">TOTAL STAKE / COST BASIS</VadText>
-              <VadText variant="heading">{assetMoney(positions.reduce((sum, row) => sum + Number(row.total_cost_basis ?? 0), 0), positions.length && positions.every((row) => row.asset_code === positions[0].asset_code) ? positions[0].asset_code : 'MULTI')}</VadText>
+              <VadText variant="caption" tone="secondary">{positions.length && positions.every((row) => row.asset_code === positions[0].asset_code) ? `TOTAL STAKE · ${positions[0].asset_code}` : 'POSITIONS ACROSS CURRENCIES'}</VadText>
+              <VadText variant="heading">{!positions.length ? '—' : positions.every((row) => row.asset_code === positions[0].asset_code) ? assetMoney(positions.reduce((sum, row) => sum + Number(row.total_cost_basis ?? 0), 0), positions[0].asset_code) : 'View by currency below'}</VadText>
             </View>
             <View style={{ width: 46, height: 46, borderRadius: 17, backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
               <VadIcon name="wallet" size={21} tone="brand" />
