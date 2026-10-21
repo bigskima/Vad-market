@@ -11,7 +11,6 @@ import { useAuth } from '@/providers/auth-provider';
 import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
-import type { VadThemePreference } from '@/theme/tokens';
 import { getAdminAccess } from '@/services/admin-control-api';
 import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
 import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
@@ -26,6 +25,7 @@ export default function AccountScreen() {
   const currencyPreference = useCurrencyPreference();
   const theme = useVadTheme();
   const density = useProductDensity();
+  const refreshPortfolio = data.refreshPortfolio;
   const user = session?.user;
   const userId = user?.id ?? null;
   const metadata = user?.user_metadata ?? {};
@@ -53,14 +53,12 @@ export default function AccountScreen() {
     : data.countryCode;
   const countryCode = normalizeCountryCode(contextCountryCode, countryValue);
   const country = countryValue || countryNameFromCode(countryCode) || 'Country not set';
-  const appearance = theme.preference === 'system' ? `System · currently ${theme.mode}`
-    : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1);
   const tngnEnabled = currencyPreference.isCurrencyEnabled('TNGN');
 
   useEffect(() => {
     if (!userId || currencyPreference.loading) return;
-    void data.refreshPortfolio();
-  }, [currencyPreference.loading, data.refreshPortfolio, tngnEnabled, userId]);
+    void refreshPortfolio();
+  }, [currencyPreference.loading, refreshPortfolio, tngnEnabled, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -77,7 +75,7 @@ export default function AccountScreen() {
     });
     void supabase.auth.mfa.listFactors().then(({ data: factors, error }) => {
       if (ignore) return;
-      const enabled = error ? null : (factors?.all ?? []).some((factor) => factor.status === 'verified');
+      const enabled = error ? null : (factors?.all ?? []).some((factor) => factor.factor_type === 'totp' && factor.status === 'verified');
       setMfaState({ userId, enabled });
     }).catch(() => {
       if (!ignore) setMfaState({ userId, enabled: null });
