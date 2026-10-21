@@ -342,7 +342,11 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
         setStaleSnapshot(result.stale === true);
         setError(exact ? null : `No exact public price match was returned for ${query}.`);
       } catch (reason) {
-        if (active) setError(reason instanceof Error ? reason.message : 'Public crypto price is temporarily unavailable.');
+        if (active) {
+          setCoin(null);
+          setResolvedQuery(normalizeAssetQuery(query));
+          setError(reason instanceof Error ? reason.message : 'Public crypto price is temporarily unavailable.');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -364,14 +368,14 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
       </View>
       {(loading || resolvedQuery !== normalizedQuery) && !displayedCoin ? (
         <VadSkeleton height={70} radius={theme.radius.md} />
-      ) : coin ? (
+      ) : displayedCoin ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
           {displayedCoin.imageUrl ? <Image source={{ uri: displayedCoin.imageUrl }} accessibilityLabel="" style={{ width: 38, height: 38, borderRadius: 19 }} /> : null}
           <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
             <VadText variant="bodyStrong">{displayedCoin.name} ({displayedCoin.symbol})</VadText>
             <VadText variant="title">{formatCoinPrice(displayedCoin.currentPrice, quoteCurrency)}</VadText>
-            <VadText variant="caption" tone={displayedCoin.change24hPercent == null ? 'secondary' : coin.change24hPercent >= 0 ? 'yes' : 'no'}>
-              {coin.change24hPercent == null ? '24h change unavailable' : `${coin.change24hPercent > 0 ? '+' : ''}${coin.change24hPercent.toFixed(2)}% · 24h`}
+            <VadText variant="caption" tone={displayedCoin.change24hPercent == null ? 'secondary' : displayedCoin.change24hPercent >= 0 ? 'yes' : 'no'}>
+              {displayedCoin.change24hPercent == null ? '24h change unavailable' : `${displayedCoin.change24hPercent > 0 ? '+' : ''}${displayedCoin.change24hPercent.toFixed(2)}% · 24h`}
             </VadText>
           </View>
           {displayedCoin.marketCapRank ? (
@@ -396,9 +400,9 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
             const dy = next.y - point.y;
             const length = Math.sqrt(dx * dx + dy * dy);
             const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-            const lineColor = coin.change24hPercent == null
+            const lineColor = displayedCoin.change24hPercent == null
               ? theme.colors.textTertiary
-              : coin.change24hPercent >= 0 ? theme.colors.yes : theme.colors.no;
+              : displayedCoin.change24hPercent >= 0 ? theme.colors.yes : theme.colors.no;
             return (
               <View
                 key={index}
