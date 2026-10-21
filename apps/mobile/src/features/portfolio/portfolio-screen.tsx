@@ -62,7 +62,7 @@ export function PortfolioScreen({
   poolStakes: PoolStakeRow[];
   markets: MarketCatalogItem[];
   wallet: WalletRow[];
-  sectionErrors?: { positions?: string | null; orders?: string | null; marketHistory?: string | null; settlements?: string | null };
+  sectionErrors?: { positions?: string | null; orders?: string | null; poolStakes?: string | null; marketHistory?: string | null; settlements?: string | null };
   loading?: boolean;
   onRetry: () => void;
   onOpenPosition: (position: PositionRow) => void;
@@ -394,14 +394,12 @@ export function PortfolioScreen({
             </VadCard>
           ) : null}
 
-          {sectionErrors?.positions ? (
-            <InlineError message={sectionErrors.positions} onRetry={retry} />
-          ) : loading && positionsForAsset.length === 0 && activeStakes.length === 0 ? (
-            <LoadingState label="Loading your positions…" />
-          ) : marksLoading ? (
-            <LoadingState label="Loading your position valuations…" />
-          ) : isTngn ? (
-            activeStakes.length ? (
+          {isTngn ? (
+            sectionErrors?.poolStakes ? (
+              <InlineError message={sectionErrors.poolStakes} onRetry={retry} />
+            ) : loading && poolStakes.length === 0 ? (
+              <LoadingState label="Loading your TNGN predictions…" />
+            ) : activeStakes.length ? (
               <View style={{ gap: theme.spacing.sm }}>
                 {activeStakes.slice(0, visiblePositionCount).map((stake) => <DemoStakeCard key={stake.stake_id} stake={stake} />)}
                 {activeStakes.length > visiblePositionCount ? <VadButton label="Show more positions" variant="secondary" onPress={() => setVisiblePositionCount((count) => count + 5)} /> : null}
@@ -409,6 +407,12 @@ export function PortfolioScreen({
             ) : (
               <VadEmptyState title="No open TNGN predictions" body="TNGN is a practice balance. Open demo predictions appear here; settled results remain in History." />
             )
+          ) : sectionErrors?.positions ? (
+            <InlineError message={sectionErrors.positions} onRetry={retry} />
+          ) : loading && positionsForAsset.length === 0 ? (
+            <LoadingState label="Loading your positions…" />
+          ) : marksLoading ? (
+            <LoadingState label="Loading your position valuations…" />
           ) : filteredPositions.length ? (
             <View style={{ gap: theme.spacing.sm }}>
               {visiblePositions.visibleItems.map((position) => (
