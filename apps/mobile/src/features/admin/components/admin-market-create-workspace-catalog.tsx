@@ -120,7 +120,6 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   useEffect(() => {
     if (!(creationStyle === 'GUIDED' && marketTypeCode === 'CRYPTO_PRICE_THRESHOLD') || cryptoSearch.trim().length < 2) {
-      setCryptoOptions([]);
       return;
     }
     let active = true;
@@ -492,7 +491,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                     <View style={{ gap: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12, padding: theme.spacing.md }}>
                       <VadText variant="bodyStrong">Select a resolvable crypto asset</VadText>
                       <VadText variant="caption" tone="secondary">Searches CoinGecko&apos;s live asset catalogue. VAD checks for an exact Pyth/USD historical feed before allowing creation.</VadText>
-                      <VadInput label="Search coin name or ticker" value={cryptoSearch} onChangeText={(value) => { setCryptoSearch(value); setSelectedCryptoAsset(null); setCryptoAssetCheck(null); setCryptoAssetCheckLoading(false); cryptoAssetCheckRequest.current += 1; }} placeholder="Solana, SOL, Cardano, ADA…" />
+                      <VadInput label="Search coin name or ticker" value={cryptoSearch} onChangeText={(value) => { setCryptoSearch(value); setCryptoOptions([]); setSelectedCryptoAsset(null); setCryptoAssetCheck(null); setCryptoAssetCheckLoading(false); cryptoAssetCheckRequest.current += 1; }} placeholder="Solana, SOL, Cardano, ADA…" />
                       {cryptoOptions.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
                         {cryptoOptions.map((coin) => <VadChip key={coin.id} label={`${coin.name} (${coin.symbol.toUpperCase()})`} selected={selectedCryptoAsset?.id === coin.id} tone={selectedCryptoAsset?.id === coin.id ? 'brand' : 'neutral'} onPress={() => void chooseCryptoAsset(coin)} />)}
                       </View> : cryptoSearch.trim().length >= 2 ? <VadText variant="caption" tone="secondary">No matching assets returned yet. Try a different name or ticker.</VadText> : null}
