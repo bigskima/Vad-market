@@ -44,6 +44,7 @@ type CoinMarketRow = {
 };
 
 function safeNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
   const n = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(n) ? n : null;
 }
@@ -85,7 +86,11 @@ async function providerJson(url: URL, apiKey: string | null) {
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
-        ...(apiKey ? { 'x-cg-demo-api-key': apiKey } : {}),
+        ...(apiKey
+          ? (url.hostname === 'pro-api.coingecko.com'
+            ? { 'x-cg-pro-api-key': apiKey }
+            : { 'x-cg-demo-api-key': apiKey })
+          : {}),
       },
     });
     if (!response.ok) {
