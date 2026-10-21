@@ -86,6 +86,24 @@ const defaultTrendingSettings: TrendingMarketSettings = {
   lastRefreshedAt: null,
 };
 
+/**
+ * Keep PostgREST request concurrency bounded. A full product refresh fans out
+ * across markets, wallet, portfolio, proposals and notifications; launching all
+ * requests at once can overload the database/API gateway and cause unrelated
+ * sections to fail together under load.
+ */
+async function settleInBatches<T>(
+  tasks: Array<() => Promise<T>>,
+  batchSize = 3,
+): Promise<PromiseSettledResult<T>[]> {
+  const settled: PromiseSettledResult<T>[] = [];
+  for (let index = 0; index < tasks.length; index += batchSize) {
+    const batch = tasks.slice(index, index + batchSize);
+    settled.push(...(await Promise.allSettled(batch.map((task) => task()))));
+  }
+  return settled;
+}
+
 function settledError(result: PromiseSettledResult<unknown>, context: UserErrorContext, fallback: string) {
   if (result.status === 'fulfilled') return null;
   return userFacingErrorMessage(result.reason, context, fallback);
@@ -188,14 +206,14 @@ export function useProductData(enabled = true, userId: string | null = null) {
 
   const refreshPortfolio = useCallback(async () => {
     if (!enabled) return;
-    const results = await Promise.allSettled([
-      getWalletSummary(),
-      getWalletActivity(),
-      getPositions(),
-      getOpenOrders(),
-      getPoolStakes(),
-      getMarketHistory(),
-      getSettlementReceipts(),
+    const results = await settleInBatches([
+      () => getWalletSummary(),
+      () => getWalletActivity(),
+      () => getPositions(),
+      () => getOpenOrders(),
+      () => getPoolStakes(),
+      () => getMarketHistory(),
+      () => getSettlementReceipts(),
     ]);
     setSectionErrors((current) => ({
       ...current,
@@ -228,17 +246,17 @@ export function useProductData(enabled = true, userId: string | null = null) {
 
   const load = useCallback(async () => {
     if (!enabled) return;
-    const results = await Promise.allSettled([
-      listMarkets(),
-      getWalletSummary(),
-      getWalletActivity(),
-      getPositions(),
-      getOpenOrders(),
-      getPoolStakes(),
-      getMarketHistory(),
-      getSettlementReceipts(),
-      getMyProposals(),
-      getNotifications(),
+    const results = await settleInBatches([
+      () => listMarkets(),
+      () => getWalletSummary(),
+      () => getWalletActivity(),
+      () => getPositions(),
+      () => getOpenOrders(),
+      () => getPoolStakes(),
+      () => getMarketHistory(),
+      () => getSettlementReceipts(),
+      () => getMyProposals(),
+      () => getNotifications(),
     ]);
 
     const nextSectionErrors: ProductSectionErrors = {
