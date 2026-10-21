@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -50,14 +50,18 @@ export function AdminSportsFixturePicker({
 }: Props) {
   const theme = useVadTheme();
   const [daysAhead, setDaysAhead] = useState<7 | 14>(7);
-  const [page, setPage] = useState<FixturePage | null>(null);
+  const [pageState, setPageState] = useState<{ selectionKey: string; page: FixturePage } | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setPage(null);
-    setError(null);
-  }, [sportCode, competitionCode, providerCode, providerCompetitionCode]);
+  const [errorState, setErrorState] = useState<{ selectionKey: string; message: string } | null>(null);
+  const requestRef = useRef(0);
+  const selectionKey = [
+    sportCode.trim().toUpperCase(),
+    competitionCode.trim().toUpperCase(),
+    providerCode?.trim().toUpperCase() ?? '',
+    providerCompetitionCode?.trim().toUpperCase() ?? '',
+  ].join(':');
+  const page = pageState?.selectionKey === selectionKey ? pageState.page : null;
+  const error = errorState?.selectionKey === selectionKey ? errorState.message : null;
 
   const mappingReady = Boolean(
     sportCode.trim()
@@ -68,8 +72,10 @@ export function AdminSportsFixturePicker({
 
   async function loadFixtures() {
     if (!mappingReady) return;
+    const requestId = ++requestRef.current;
+    const requestedSelectionKey = selectionKey;
     setLoading(true);
-    setError(null);
+    setErrorState(null);
     try {
       const today = isoDate(new Date());
       const result = await getAdminSportsFixtures({
@@ -79,12 +85,19 @@ export function AdminSportsFixturePicker({
         toDate: rangeEnd(daysAhead),
         forceRefresh: Boolean(page),
       });
-      setPage(result);
+      if (requestId === requestRef.current) {
+        setPageState({ selectionKey: requestedSelectionKey, page: result });
+      }
     } catch (value) {
-      setError(value instanceof Error ? value.message : 'Upcoming fixtures could not be loaded.');
-      setPage(null);
+      if (requestId === requestRef.current) {
+        setErrorState({
+          selectionKey: requestedSelectionKey,
+          message: value instanceof Error ? value.message : 'Upcoming fixtures could not be loaded.',
+        });
+        setPageState(null);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestRef.current) setLoading(false);
     }
   }
 
@@ -108,8 +121,8 @@ export function AdminSportsFixturePicker({
       ) : (
         <>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
-            <VadChip label="Next 7 days" selected={daysAhead === 7} onPress={() => { setDaysAhead(7); setPage(null); }} />
-            <VadChip label="Next 14 days" selected={daysAhead === 14} onPress={() => { setDaysAhead(14); setPage(null); }} />
+            <VadChip label="Next 7 days" selected={daysAhead === 7} onPress={() => { setDaysAhead(7); setPageState(null); }} />
+            <VadChip label="Next 14 days" selected={daysAhead === 14} onPress={() => { setDaysAhead(14); setPageState(null); }} />
           </View>
           <VadButton
             label={loading ? 'Loading fixtures…' : page ? 'Refresh from provider' : 'Load upcoming fixtures'}
