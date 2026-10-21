@@ -12,6 +12,7 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { EmbeddedWalletModal } from '@/features/wallet/embedded-wallet-modal';
+import { WalletSectionErrorBoundary } from '@/features/wallet/wallet-section-error-boundary';
 import { OnchainActivityPanel } from '@/features/wallet/onchain-activity-panel';
 import { OnchainPositionsPanel } from '@/features/wallet/onchain-positions-panel';
 import { TourTarget } from '@/features/tour/tour-provider';
