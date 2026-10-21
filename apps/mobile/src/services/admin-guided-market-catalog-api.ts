@@ -233,6 +233,7 @@ export async function saveAdminSimpleGuidedMarketType(input: {
 
 export type SportsMarketCompetition = {
   sportCode: string;
+  status: 'ACTIVE' | 'DISABLED';
   code: string;
   name: string;
   region: string;
@@ -242,7 +243,7 @@ export type SportsMarketCompetition = {
   aliases: string[];
 };
 export type SportsMarketTaxonomy = {
-  sports: { code: string; name: string }[];
+  sports: { code: string; name: string; status: 'ACTIVE' | 'DISABLED' }[];
   competitions: SportsMarketCompetition[];
 };
 export async function getSportsMarketTaxonomy(): Promise<SportsMarketTaxonomy> {
