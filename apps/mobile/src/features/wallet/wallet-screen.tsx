@@ -654,43 +654,43 @@ function WalletAction({
   label: string;
   detail: string;
   icon: VadIconName;
-  tone: 'yes' | 'brand' | 'primary';
+  tone: 'yes' | 'brand' | 'primary' | 'purple';
   onPress: () => void;
   disabled?: boolean;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const soft = tone === 'yes' ? theme.colors.yesSoft : tone === 'brand' ? theme.colors.brandSoft : theme.colors.surfaceRaised;
-  const iconTone = tone === 'yes' ? 'yes' : tone === 'brand' ? 'brand' : 'primary';
+  const accent = tone === 'yes' ? '#14D5A0'
+    : tone === 'brand' ? '#386AF4'
+      : tone === 'purple' ? '#713EF2'
+        : theme.colors.textSecondary;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityHint={detail}
+      accessibilityHint={disabled ? `${detail}. Unavailable for this wallet currency.` : detail}
+      accessibilityState={{ disabled }}
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => ({
-        flex: 1,
-        opacity: disabled ? 0.45 : pressed ? 0.7 : 1,
-        transform: [{ scale: pressed ? 0.97 : 1 }],
-      })}
+      style={({ pressed }) => ({ flex: 1, minWidth: 0, opacity: disabled ? 0.42 : pressed ? 0.76 : 1, transform: [{ scale: pressed && !disabled ? 0.98 : 1 }] })}
     >
-      <View
-        style={{
-          minHeight: density.phone ? 78 : 96,
-          borderRadius: theme.radius.xl,
-          backgroundColor: soft,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: density.compact ? 8 : theme.spacing.sm,
-          gap: 4,
-        }}
-      >
-        <VadIcon name={icon} size={density.compact ? 19 : 22} tone={iconTone} />
-        <VadText variant="label" numberOfLines={1}>{label}</VadText>
-        {!density.compact ? <VadText variant="caption" tone="tertiary" numberOfLines={1}>{detail}</VadText> : null}
+      <View style={{
+        minHeight: density.phone ? 105 : 116,
+        paddingHorizontal: density.phone ? 4 : 7,
+        paddingVertical: 8,
+        borderRadius: 17,
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 5,
+      }}>
+        <View style={{ width: density.phone ? 43 : 48, height: density.phone ? 43 : 48, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: tone === 'primary' ? theme.colors.surfaceMuted : accent }}>
+          <VadIcon name={icon} size={density.phone ? 21 : 23} color={tone === 'primary' ? theme.colors.textSecondary : '#FFFFFF'} />
+        </View>
+        <VadText variant="label" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 11.5 : 13, lineHeight: 16 }}>{label}</VadText>
+        <VadText variant="caption" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 9.5 : 11, lineHeight: 13, color: theme.colors.textTertiary }}>{detail}</VadText>
       </View>
     </Pressable>
   );
