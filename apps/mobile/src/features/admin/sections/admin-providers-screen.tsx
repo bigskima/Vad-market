@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
+import { VadCard } from '@/components/ui/vad-card';
+import { VadChip } from '@/components/ui/vad-chip';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
@@ -16,6 +18,8 @@ import {
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
+import { getAdminMarketDataSources, setAdminMarketDataSourceStatus, updateAdminMarketDataSourceSettings } from '@/services/crypto-market-data-api';
+import { getSportsMarketTaxonomy, setAdminSportsCompetitionStatus, upsertAdminSportsCompetition, type SportsMarketTaxonomy, type SportsMarketCompetition } from '@/services/admin-guided-market-catalog-api';
 import {
   decideProviderStatusRequest,
   requestProviderStatus,
@@ -42,6 +46,7 @@ export function AdminProvidersScreen() {
   const wide = width >= 860;
   const data = useAdminData();
   const canManage = hasAdminPermission(data.access, 'providers.manage');
+  const canManageMarkets = hasAdminPermission(data.access, 'markets.manage');
   const canCheckOracle = canManage || hasAdminPermission(data.access, 'oracle.review');
   const [tab, setTab] = useState('readiness');
   const [selectedProvider, setSelectedProvider] = useState<ProviderReadinessRow | null>(null);
@@ -397,6 +402,9 @@ export function AdminProvidersScreen() {
         />
       </View>
 
+      {canManage ? <AdminMarketDataSourcePanel canManage={canManage} /> : null}
+      {canManageMarkets ? <AdminSportsCompetitionPanel /> : null}
+
       <AdminSectionTabs
         active={tab}
         onChange={setTab}
@@ -693,5 +701,417 @@ function EmptyText({ children }: { children: string }) {
     <View style={{ paddingVertical: 18 }}>
       <VadText tone="secondary">{children}</VadText>
     </View>
+  );
+}
+
+function AdminMarketDataSourcePanel({ canManage }: { canManage: boolean }) {
+  const theme = useVadTheme();
+  const [source, setSource] = useState<import('@/services/crypto-market-data-api').AdminMarketDataSource | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [reason, setReason] = useState('');
+  const [quoteCurrencyDraft, setQuoteCurrencyDraft] = useState('USD');
+  const [pageSizeDraft, setPageSizeDraft] = useState('24');
+  const [cacheSecondsDraft, setCacheSecondsDraft] = useState('60');
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const sources = await getAdminMarketDataSources();
+      const nextSource = sources.find((item) => item.code === 'COINGECKO') ?? sources[0] ?? null;
+      setSource(nextSource);
+      if (nextSource) {
+        setQuoteCurrencyDraft(nextSource.quote_currency);
+        setPageSizeDraft(String(nextSource.default_page_size));
+        setCacheSecondsDraft(String(nextSource.cache_seconds));
+      }
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Market-data source configuration is unavailable.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    void getAdminMarketDataSources()
+      .then((sources) => {
+        if (!active) return;
+        const nextSource = sources.find((item) => item.code === 'COINGECKO') ?? sources[0] ?? null;
+        setSource(nextSource);
+        if (nextSource) {
+          setQuoteCurrencyDraft(nextSource.quote_currency);
+          setPageSizeDraft(String(nextSource.default_page_size));
+          setCacheSecondsDraft(String(nextSource.cache_seconds));
+        }
+      })
+      .catch((value: unknown) => { if (active) setError(value instanceof Error ? value.message : 'Market-data source configuration is unavailable.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  async function updateSettings() {
+    const pageSize = Number(pageSizeDraft);
+    const cacheSeconds = Number(cacheSecondsDraft);
+    if (!source || !canManage || reason.trim().length < 3) return;
+    if (!/^[A-Za-z]{3,8}$/.test(quoteCurrencyDraft.trim())) {
+      setError('Enter a valid quote currency code (3–8 letters).');
+      return;
+    }
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+      setError('Default page size must be between 1 and 100.');
+      return;
+    }
+    if (!Number.isInteger(cacheSeconds) || cacheSeconds < 15 || cacheSeconds > 3600) {
+      setError('Cache duration must be between 15 and 3600 seconds.');
+      return;
+    }
+    setWorking(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await updateAdminMarketDataSourceSettings({
+        code: source.code,
+        quoteCurrency: quoteCurrencyDraft,
+        defaultPageSize: pageSize,
+        cacheSeconds,
+        reason: reason.trim(),
+      });
+      setReason('');
+      setMessage('Crypto display feed settings saved.');
+      await load();
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Market-data source settings could not be updated.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function changeStatus() {
+    if (!source || !canManage || reason.trim().length < 3) return;
+    setWorking(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const status = source.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
+      await setAdminMarketDataSourceStatus({ code: source.code, status, reason: reason.trim() });
+      setReason('');
+      setMessage(`${source.name} display feed ${status.toLowerCase()}.`);
+      await load();
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Market-data source status could not be changed.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  return (
+    <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: 3 }}>
+        <VadText variant="label" tone="brand">MARKET DATA · DISPLAY ONLY</VadText>
+        <VadText variant="heading">Crypto prices feed</VadText>
+        <VadText variant="caption" tone="secondary">
+          Controls the public CoinGecko coin catalogue and live display quotes. This is deliberately separate from Oracle providers, outcome consensus and settlement.
+        </VadText>
+      </View>
+      {loading ? (
+        <VadSkeleton height={72} radius={theme.radius.md} />
+      ) : source ? (
+        <>
+          <View style={{ gap: 4 }}>
+            <VadText variant="bodyStrong">{source.name}</VadText>
+            <VadText variant="caption" tone="secondary">{source.base_url}</VadText>
+            <VadText variant="caption" tone={source.status === 'ACTIVE' ? 'yes' : 'warning'}>
+              {source.status === 'ACTIVE' ? 'Active · public API quotes available' : 'Disabled · crypto live quotes hidden'}
+            </VadText>
+            <VadText variant="caption" tone="tertiary">
+              Quote currency: {source.quote_currency} · page size: {source.default_page_size} · cache: {source.cache_seconds}s
+            </VadText>
+          </View>
+          {canManage ? (
+            <>
+              <VadInput
+                label="Quote currency"
+                value={quoteCurrencyDraft}
+                onChangeText={setQuoteCurrencyDraft}
+                placeholder="USD"
+              />
+              <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <VadInput label="Assets per page (1–100)" value={pageSizeDraft} onChangeText={setPageSizeDraft} placeholder="24" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <VadInput label="Cache seconds (15–3600)" value={cacheSecondsDraft} onChangeText={setCacheSecondsDraft} placeholder="60" />
+                </View>
+              </View>
+              <VadInput
+                label="Reason for feed change"
+                value={reason}
+                onChangeText={setReason}
+                placeholder="Why are you changing this display feed or its settings?"
+              />
+              <VadButton
+                label={working ? 'Saving…' : 'Save crypto feed settings'}
+                variant="secondary"
+                loading={working}
+                disabled={working || reason.trim().length < 3}
+                onPress={() => void updateSettings()}
+              />
+              <VadButton
+                label={source.status === 'ACTIVE' ? 'Disable crypto display feed' : 'Enable crypto display feed'}
+                variant={source.status === 'ACTIVE' ? 'secondary' : 'primary'}
+                loading={working}
+                disabled={working || reason.trim().length < 3}
+                onPress={() => void changeStatus()}
+              />
+            </>
+          ) : (
+            <VadText variant="caption" tone="secondary">Read-only: provider management permission is required to change this setting.</VadText>
+          )}
+        </>
+      ) : (
+        <VadText variant="caption" tone="secondary">No display-only market data source has been configured.</VadText>
+      )}
+      {error ? <VadErrorState title="Market-data settings unavailable" message={error} onRetry={() => void load()} /> : null}
+      {message ? <VadText variant="caption" tone="yes">{message}</VadText> : null}
+    </VadCard>
+  );
+}
+
+
+function AdminSportsCompetitionPanel() {
+  const theme = useVadTheme();
+  const [catalog, setCatalog] = useState<SportsMarketTaxonomy>({ sports: [], competitions: [] });
+  const [loading, setLoading] = useState(true);
+  const [workingCode, setWorkingCode] = useState<string | null>(null);
+  const [selectedSport, setSelectedSport] = useState('FOOTBALL');
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [draftSportCode, setDraftSportCode] = useState('FOOTBALL');
+  const [draftSportName, setDraftSportName] = useState('Football');
+  const [draftCompetitionCode, setDraftCompetitionCode] = useState('');
+  const [draftCompetitionName, setDraftCompetitionName] = useState('');
+  const [draftRegion, setDraftRegion] = useState('International');
+  const [draftAliases, setDraftAliases] = useState('');
+  const [draftResultMode, setDraftResultMode] = useState<'AUTOMATIC' | 'VERIFIED'>('VERIFIED');
+  const [draftProviderCode, setDraftProviderCode] = useState('FOOTBALL_DATA');
+  const [draftProviderCompetitionCode, setDraftProviderCompetitionCode] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setCatalog(await getSportsMarketTaxonomy());
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Sports competition catalog could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
+
+  const sports = [...catalog.sports].sort((a, b) => a.name.localeCompare(b.name));
+  const entries = catalog.competitions.filter((item) => item.sportCode === selectedSport)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  async function saveCompetition() {
+    if (reason.trim().length < 3) {
+      setError('Enter a reason before adding or updating a competition.');
+      return;
+    }
+    if (!draftSportCode.trim() || !draftSportName.trim() || !draftCompetitionCode.trim() || !draftCompetitionName.trim()) {
+      setError('Enter the sport and competition codes and names.');
+      return;
+    }
+    if (draftResultMode === 'AUTOMATIC' && (!draftProviderCode.trim() || !draftProviderCompetitionCode.trim())) {
+      setError('Automatic mode requires a provider code and exact provider competition mapping.');
+      return;
+    }
+    setWorkingCode('CREATE_COMPETITION');
+    setError(null);
+    setMessage(null);
+    try {
+      await upsertAdminSportsCompetition({
+        sportCode: draftSportCode,
+        sportName: draftSportName,
+        competitionCode: draftCompetitionCode,
+        competitionName: draftCompetitionName,
+        region: draftRegion,
+        aliases: draftAliases.split(',').map((value) => value.trim()).filter(Boolean),
+        resultMode: draftResultMode,
+        providerCode: draftResultMode === 'AUTOMATIC' ? draftProviderCode : undefined,
+        providerCompetitionCode: draftResultMode === 'AUTOMATIC' ? draftProviderCompetitionCode : undefined,
+        reason: reason.trim(),
+      });
+      setSelectedSport(draftSportCode.trim().toUpperCase());
+      setDraftCompetitionCode('');
+      setDraftCompetitionName('');
+      setDraftAliases('');
+      setDraftProviderCompetitionCode('');
+      setReason('');
+      setMessage('Sports competition saved to the database.');
+      await load();
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Competition could not be saved.');
+    } finally {
+      setWorkingCode(null);
+    }
+  }
+
+  async function toggle(item: SportsMarketCompetition) {
+    if (reason.trim().length < 3) {
+      setError('Enter a reason before changing a competition.');
+      return;
+    }
+    const key = `${item.sportCode}:${item.code}`;
+    setWorkingCode(key);
+    setError(null);
+    setMessage(null);
+    try {
+      const status = item.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
+      await setAdminSportsCompetitionStatus({
+        sportCode: item.sportCode,
+        competitionCode: item.code,
+        status,
+        reason: reason.trim(),
+      });
+      setReason('');
+      setMessage(`${item.name} is now ${status.toLowerCase()}.`);
+      await load();
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Competition status could not be changed.');
+    } finally {
+      setWorkingCode(null);
+    }
+  }
+
+  return (
+    <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: 3 }}>
+        <VadText variant="label" tone="brand">SPORTS · DATABASE CONTROL</VadText>
+        <VadText variant="heading">Sports and competitions</VadText>
+        <VadText variant="caption" tone="secondary">
+          Manage which database-backed leagues and sports appear in market creation. Automatic results are advertised only for competitions with an approved provider mapping; other sports use verified result review.
+        </VadText>
+      </View>
+      {loading ? <VadSkeleton height={88} radius={theme.radius.md} /> : (
+        <>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+            {sports.map((sport) => {
+              const active = sport.code === selectedSport;
+              const activeCount = catalog.competitions.filter((item) => item.sportCode === sport.code && item.status === 'ACTIVE').length;
+              return (
+                <VadChip
+                  key={sport.code}
+                  label={`${sport.name} · ${activeCount}`}
+                  selected={active}
+                  tone={active ? 'brand' : 'neutral'}
+                  onPress={() => setSelectedSport(sport.code)}
+                />
+              );
+            })}
+          </View>
+          {entries.length ? entries.map((item) => {
+            const key = `${item.sportCode}:${item.code}`;
+            const busy = workingCode === key;
+            return (
+              <View key={key} style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: theme.spacing.sm,
+                paddingVertical: theme.spacing.xs,
+                borderTopWidth: 1,
+                borderTopColor: theme.colors.border,
+              }}>
+                <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                  <VadText variant="bodyStrong">{item.name}</VadText>
+                  <VadText variant="caption" tone="secondary">
+                    {item.region || 'International'} · {item.resultMode === 'AUTOMATIC' ? `Automatic · ${item.providerCode ?? 'configured provider'}` : 'Verified result'}
+                  </VadText>
+                  <VadText variant="caption" tone={item.status === 'ACTIVE' ? 'yes' : 'warning'}>
+                    {item.status}
+                  </VadText>
+                </View>
+                <VadButton
+                  label={busy ? 'Saving…' : item.status === 'ACTIVE' ? 'Disable' : 'Enable'}
+                  variant="secondary"
+                  size="small"
+                  fullWidth={false}
+                  loading={busy}
+                  disabled={Boolean(workingCode)}
+                  onPress={() => void toggle(item)}
+                />
+              </View>
+            );
+          }) : (
+            <VadText variant="caption" tone="secondary">No competition records are configured for this sport yet.</VadText>
+          )}
+          <View style={{ gap: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md }}>
+            <VadText variant="bodyStrong">Add a sport or competition</VadText>
+            <VadText variant="caption" tone="secondary">
+              New records are saved to the database. Use Verified by default; Automatic requires an already approved Oracle competition resource.
+            </VadText>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <VadInput label="Sport code" value={draftSportCode} onChangeText={setDraftSportCode} placeholder="FOOTBALL" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <VadInput label="Sport name" value={draftSportName} onChangeText={setDraftSportName} placeholder="Football" />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <VadInput label="Competition code" value={draftCompetitionCode} onChangeText={setDraftCompetitionCode} placeholder="PL" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <VadInput label="Competition name" value={draftCompetitionName} onChangeText={setDraftCompetitionName} placeholder="Premier League" />
+              </View>
+            </View>
+            <VadInput label="Region · optional" value={draftRegion} onChangeText={setDraftRegion} placeholder="England" />
+            <VadInput label="Aliases · comma separated, optional" value={draftAliases} onChangeText={setDraftAliases} placeholder="EPL, English Premier League" />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+              <VadChip label="Verified source" selected={draftResultMode === 'VERIFIED'} tone={draftResultMode === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => setDraftResultMode('VERIFIED')} />
+              <VadChip label="Automatic provider" selected={draftResultMode === 'AUTOMATIC'} tone={draftResultMode === 'AUTOMATIC' ? 'brand' : 'neutral'} onPress={() => setDraftResultMode('AUTOMATIC')} />
+            </View>
+            {draftResultMode === 'AUTOMATIC' ? (
+              <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <VadInput label="Oracle provider code" value={draftProviderCode} onChangeText={setDraftProviderCode} placeholder="FOOTBALL_DATA" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <VadInput label="Provider competition code" value={draftProviderCompetitionCode} onChangeText={setDraftProviderCompetitionCode} placeholder="PL" />
+                </View>
+              </View>
+            ) : null}
+          </View>
+          <VadInput
+            label="Reason for catalog change"
+            value={reason}
+            onChangeText={setReason}
+            placeholder="Why are you adding or changing this competition?"
+          />
+          <VadButton
+            label={workingCode === 'CREATE_COMPETITION' ? 'Saving…' : 'Save sport / competition'}
+            variant="secondary"
+            loading={workingCode === 'CREATE_COMPETITION'}
+            disabled={Boolean(workingCode) || reason.trim().length < 3}
+            onPress={() => void saveCompetition()}
+          />
+          <VadText variant="caption" tone="secondary">
+            Status changes are permission-checked and written to the audit log. Disabling a league hides it from new-market selection; it does not rewrite previously published outcomes.
+          </VadText>
+        </>
+      )}
+      {error ? <VadErrorState title="Sports catalog controls unavailable" message={error} onRetry={() => void load()} /> : null}
+      {message ? <VadText variant="caption" tone="yes">{message}</VadText> : null}
+    </VadCard>
   );
 }

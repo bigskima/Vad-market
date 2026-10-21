@@ -424,3 +424,23 @@ entrypoint = "./functions/runtime-capabilities/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/runtime-capabilities/*.html" ]
+
+
+[functions.market-image-worker]
+enabled = true
+# Called by pg_cron using a one-time Vault-stored secret; the function validates
+# that secret through a service-role-only RPC before processing queued images.
+verify_jwt = false
+entrypoint = "./functions/market-image-worker/index.ts"
+
+[functions.crypto-oracle-asset-check]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/crypto-oracle-asset-check/index.ts"
+
+[functions.crypto-market-data]
+enabled = true
+# This endpoint serves public third-party crypto spot quotes only. It cannot
+# create trades, write market observations, resolve outcomes or settle positions.
+verify_jwt = false
+entrypoint = "./functions/crypto-market-data/index.ts"

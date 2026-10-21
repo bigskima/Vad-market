@@ -44,6 +44,8 @@ export type CryptoMarketDataPage = {
   query: string | null;
   hasMore: boolean;
   fetchedAt: string;
+  cached?: boolean;
+  stale?: boolean;
   coins: CryptoMarketQuote[];
 };
 
@@ -72,7 +74,9 @@ export async function getCryptoMarketPrices(input: {
   const { data, error } = await supabase.functions.invoke('crypto-market-data', {
     body: {
       page: Math.max(1, Math.floor(input.page ?? 1)),
-      perPage: Math.max(1, Math.min(100, Math.floor(input.perPage ?? 24))),
+      ...(input.perPage == null ? {} : {
+        perPage: Math.max(1, Math.min(100, Math.floor(input.perPage))),
+      }),
       query: input.query?.trim() || null,
     },
   });
@@ -92,6 +96,24 @@ export async function getAdminMarketDataSources(): Promise<AdminMarketDataSource
   return (data ?? []) as AdminMarketDataSource[];
 }
 
+export async function updateAdminMarketDataSourceSettings(input: {
+  code: string;
+  quoteCurrency: string;
+  defaultPageSize: number;
+  cacheSeconds: number;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_update_market_data_source_settings', {
+    p_code: input.code,
+    p_quote_currency: input.quoteCurrency.trim().toUpperCase(),
+    p_default_page_size: input.defaultPageSize,
+    p_cache_seconds: input.cacheSeconds,
+    p_reason: input.reason.trim(),
+  });
+  if (error) throw userFacingError(error, 'admin', 'Market-data source settings could not be updated.');
+  return data === true;
+}
+
 export async function setAdminMarketDataSourceStatus(input: {
   code: string;
   status: 'ACTIVE' | 'DISABLED';
@@ -104,4 +126,51 @@ export async function setAdminMarketDataSourceStatus(input: {
   });
   if (error) throw userFacingError(error, 'admin', 'Market-data source status could not be updated.');
   return data === true;
+}
+
+
+export type CryptoOracleAssetCheck = {
+  supported: boolean;
+  symbol: string;
+  quote: 'USD';
+  provider: 'PYTH';
+  feedSymbol?: string;
+  feedId?: string;
+  reason?: string;
+};
+
+export async function checkCryptoOracleAsset(symbol: string): Promise<CryptoOracleAssetCheck> {
+  const normalized = symbol.trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,20}$/.test(normalized)) {
+    throw new Error('Select a valid crypto asset symbol.');
+  }
+  const { data, error } = await supabase.functions.invoke('crypto-oracle-asset-check', {
+    body: { symbol: normalized, quote: 'USD' },
+  });
+  if (error) throw userFacingError(error, 'admin', 'Oracle support for this crypto asset could not be checked.');
+  const payload = data as Partial<CryptoOracleAssetCheck> & { error?: string };
+  if (payload?.error) throw new Error(payload.error);
+  if (payload?.symbol !== normalized || typeof payload?.supported !== 'boolean') {
+    throw new Error('The crypto Oracle support check returned an invalid response.');
+  }
+  return payload as CryptoOracleAssetCheck;
+}
+
+
+export async function registerCryptoOracleAsset(input: {
+  symbol: string;
+  coinGeckoId: string;
+  pythFeedSymbol: string;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_register_crypto_oracle_asset', {
+    p_symbol: input.symbol.trim().toUpperCase(),
+    p_coin_gecko_id: input.coinGeckoId.trim().toLowerCase(),
+    p_pyth_feed_symbol: input.pythFeedSymbol.trim(),
+    p_reason: input.reason.trim(),
+  });
+  if (error) throw userFacingError(error, 'admin', 'This asset could not be registered for Oracle resolution.');
+  const payload = data as { registered?: boolean; symbol?: string; coin_gecko_id?: string; pyth_feed_symbol?: string } | null;
+  if (payload?.registered !== true) throw new Error('The Oracle asset registration did not return confirmation.');
+  return payload;
 }

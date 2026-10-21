@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, View, type DimensionValue } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
+import { EmbeddedWalletModal } from '@/features/wallet/embedded-wallet-modal';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
@@ -29,7 +30,6 @@ import {
   type PortfolioValuationSnapshotRow,
   type PositionRow,
   type SettlementReceiptRow,
-  type WalletRow,
 } from '@/services/market-api';
 
 type PortfolioTab = 'positions' | 'orders' | 'history' | 'performance';
@@ -48,7 +48,6 @@ export function PortfolioScreen({
   marketHistory,
   poolStakes,
   markets,
-  wallet,
   sectionErrors,
   loading = false,
   onRetry,
@@ -61,7 +60,6 @@ export function PortfolioScreen({
   marketHistory: MarketHistoryRow[];
   poolStakes: PoolStakeRow[];
   markets: MarketCatalogItem[];
-  wallet: WalletRow[];
   sectionErrors?: { positions?: string | null; orders?: string | null; poolStakes?: string | null; marketHistory?: string | null; settlements?: string | null };
   loading?: boolean;
   onRetry: () => void;
@@ -187,19 +185,15 @@ export function PortfolioScreen({
   const markedPositions = positionsForAsset.filter((position) => position.mark_status === 'MARKED');
   const winningPositions = markedPositions.filter((position) => amount(position.unrealized_pnl) > 0);
   const losingPositions = markedPositions.filter((position) => amount(position.unrealized_pnl) < 0);
-  const realizedWinningRows = settledRows.filter((row) => String(row.result).toUpperCase() === 'WON');
-  const realizedLosingRows = settledRows.filter((row) => String(row.result).toUpperCase() === 'LOST');
-  const winningPnl = winningPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0)
-    + realizedWinningRows.reduce((sum, row) => sum + Math.max(0, amount(row.realized_pnl)), 0);
-  const losingPnl = losingPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0)
-    + realizedLosingRows.reduce((sum, row) => sum + Math.min(0, amount(row.realized_pnl)), 0);
+  const winningPnl = winningPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0);
+  const losingPnl = losingPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0);
   const openPositionValue = openMarkedPositions.every((position) => position.mark_status === 'MARKED')
     ? openMarkedPositions.reduce((sum, position) => sum + amount(position.current_value), 0)
     : null;
-  const tngnWins = isTngn ? settledRows.filter((row) => row.result === 'WON') : [];
-  const tngnLosses = isTngn ? settledRows.filter((row) => row.result === 'LOST') : [];
-  const winnersCount = isTngn ? tngnWins.length : winningPositions.length + realizedWinningRows.length;
-  const losersCount = isTngn ? tngnLosses.length : losingPositions.length + realizedLosingRows.length;
+  const tngnWins = isTngn ? settledRows.filter((row) => String(row.result).toUpperCase() === 'WON') : [];
+  const tngnLosses = isTngn ? settledRows.filter((row) => String(row.result).toUpperCase() === 'LOST') : [];
+  const winnersCount = isTngn ? tngnWins.length : winningPositions.length;
+  const losersCount = isTngn ? tngnLosses.length : losingPositions.length;
   const winnersValue = isTngn
     ? tngnWins.reduce((sum, row) => sum + Math.max(0, amount(row.realized_pnl)), 0)
     : winningPnl;
@@ -215,6 +209,8 @@ export function PortfolioScreen({
     .filter((market) => market.asset_code === asset && market.category)
     .map((market) => market.category as string))].sort(), [markets, asset]);
   const filteredPositions = positionsForAsset.filter((position) => {
+    const positionStatus = String(position.status ?? '').toUpperCase();
+    if (position.mark_status === 'SETTLED' || ['SETTLED', 'RESOLVED', 'FINAL'].includes(positionStatus)) return false;
     const category = marketsById.get(position.instrument_id)?.category ?? 'Other';
     const pnl = position.unrealized_pnl == null ? null : amount(position.unrealized_pnl);
     return (outcomeFilter === 'all' || position.outcome_code.toUpperCase() === outcomeFilter)
@@ -273,91 +269,112 @@ export function PortfolioScreen({
   };
 
   return (
-    <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
-      <View style={{ gap: 3 }}>
-        <VadText variant="title">Portfolio</VadText>
-        <VadText variant="caption" tone="secondary">Track your positions, orders and performance.</VadText>
+    <View style={{ gap: density.phone ? 8 : density.sectionGap }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+          <VadText variant="title">Portfolio</VadText>
+          <VadText variant="caption" tone="secondary">Track your predictions, positions and performance.</VadText>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Show all-time portfolio performance" onPress={() => setPeriod('ALL')} style={({ pressed }) => ({
+          minHeight: 31, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+          borderRadius: 18, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface,
+          paddingHorizontal: 12, opacity: pressed ? 0.75 : 1,
+        })}>
+          <VadText variant="caption" tone="secondary">All Time</VadText>
+          <VadIcon name="chevronRight" size={13} tone="tertiary" />
+        </Pressable>
       </View>
 
       <TourTarget id="portfolio-summary">
-        <VadCard variant="brand" style={{ padding: density.phone ? 16 : theme.spacing.xl, gap: theme.spacing.md, borderRadius: 24, borderWidth: 1, borderColor: theme.colors.border }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <View style={{ flex: 1, gap: 3 }}>
-              <VadText variant="caption" tone="secondary">TOTAL PORTFOLIO VALUE</VadText>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <VadText variant="heading">{balanceHidden ? '••••••••' : latestSnapshot?.valuation_complete && latestSnapshot.total_value != null ? assetMoney(latestSnapshot.total_value, asset) : '—'}</VadText>
-                <Pressable accessibilityRole="button" accessibilityLabel={balanceHidden ? 'Show portfolio value' : 'Hide portfolio value'} onPress={() => setBalanceHidden((hidden) => !hidden)} hitSlop={8}>
-                  <VadIcon name={balanceHidden ? 'eyeOff' : 'eye'} size={19} tone="secondary" />
-                </Pressable>
-              </View>
-              <VadText variant="caption" tone="secondary">
-                {historyLoading ? 'Updating valuation…'
-                  : latestSnapshot?.valuation_complete && latestSnapshot.total_value != null
-                    ? `Cash ${balanceHidden ? '••••' : assetMoney(latestSnapshot.cash_balance, asset)} · Positions ${balanceHidden ? '••••' : assetMoney(latestSnapshot.positions_value, asset)}`
-                    : `${latestSnapshot?.unpriced_position_count ?? (marks.length ? positionsForAsset.filter((p) => p.mark_status !== 'MARKED' && p.mark_status !== 'SETTLED').length : 0)} position(s) need a fresh price or confirmed settlement. Total is withheld until valuation is complete.`}
-              </VadText>
+        <VadCard style={{ padding: density.phone ? 12 : 16, gap: 9, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.borderStrong, backgroundColor: theme.colors.surface }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, minWidth: 0, flex: 1 }}>
+              <VadText variant="caption" tone="secondary" numberOfLines={1}>Total Portfolio Value</VadText>
+              <Pressable accessibilityRole="button" accessibilityLabel={balanceHidden ? 'Show portfolio value' : 'Hide portfolio value'} onPress={() => setBalanceHidden((hidden) => !hidden)} hitSlop={7}>
+                <VadIcon name={balanceHidden ? 'eyeOff' : 'eye'} size={17} tone="secondary" />
+              </Pressable>
             </View>
-            {assetOptions.length > 1 ? (
-              <View style={{ alignSelf: 'flex-start' }}>
-                <VadChip label={asset} tone="brand" />
-              </View>
-            ) : null}
+            <CompactRangeSwitch value={period} onChange={setPeriod} />
           </View>
 
-          {assetOptions.length > 1 ? (
-            <View style={{ gap: 5 }}>
-              <VadText variant="caption" tone="secondary">Account currency</VadText>
-              <VadSegmentedControl value={asset} options={assetOptions.map((code) => ({ value: code, label: code }))} onChange={setSelectedAsset} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ flex: 1.06, minWidth: 0, gap: 3 }}>
+              <VadText variant="title" numberOfLines={1} adjustsFontSizeToFit>
+                {balanceHidden ? '••••••••' : latestSnapshot?.valuation_complete && latestSnapshot.total_value != null ? assetMoney(latestSnapshot.total_value, asset) : '—'}
+              </VadText>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <VadText variant="caption" tone="secondary" numberOfLines={1}>
+                  {historyLoading ? 'Updating value…' : latestSnapshot?.valuation_complete && latestSnapshot.total_value != null ? 'Account value' : 'Valuation unavailable'}
+                </VadText>
+                {assetOptions.length > 1 ? (
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Change portfolio currency, current ${asset}`} onPress={() => {
+                    const current = assetOptions.indexOf(asset);
+                    setSelectedAsset(assetOptions[(current + 1) % assetOptions.length] ?? asset);
+                  }} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: theme.colors.surfaceRaised, opacity: pressed ? 0.75 : 1 })}>
+                    <VadText variant="caption" tone="brand" style={{ fontSize: 10 }}>{asset}</VadText>
+                    <VadIcon name="chevronRight" size={10} tone="brand" />
+                  </Pressable>
+                ) : <VadText variant="caption" tone="tertiary">{asset}</VadText>}
+              </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 5 }}>
+                <VadText variant="caption" tone={performanceDelta == null ? 'tertiary' : performanceDelta >= 0 ? 'yes' : 'no'} numberOfLines={1} adjustsFontSizeToFit>
+                  {performanceDelta == null
+                    ? 'Performance history building'
+                    : `${performanceDelta >= 0 ? '+' : '−'}${assetMoney(Math.abs(performanceDelta), asset)}`}
+                </VadText>
+                {performancePercent != null ? (
+                  <VadText variant="caption" tone={performancePercent >= 0 ? 'yes' : 'no'} numberOfLines={1}>
+                    ({performancePercent >= 0 ? '+' : ''}{(performancePercent * 100).toFixed(2)}%)
+                  </VadText>
+                ) : null}
+              </View>
+              {latestSnapshot && !latestSnapshot.valuation_complete ? (
+                <VadText variant="caption" tone="tertiary" numberOfLines={1}>
+                  {latestSnapshot.unpriced_position_count} position(s) need a fresh mark
+                </VadText>
+              ) : null}
             </View>
-          ) : null}
-
-          <View style={{ gap: 8 }}>
-            <VadSegmentedControl value={period} options={[{ value: '1D', label: '1D' }, { value: '1W', label: '1W' }, { value: '1M', label: '1M' }, { value: '1Y', label: '1Y' }, { value: 'ALL', label: 'ALL' }]} onChange={setPeriod} />
-            <View style={{ height: 92, justifyContent: 'center' }}>
+            <View style={{ flex: 0.94, minWidth: 0, height: 76, justifyContent: 'center', alignItems: 'stretch' }}>
               {historyLoading ? (
-                <View style={{ height: 3, width: '32%', borderRadius: 4, backgroundColor: theme.colors.brandPrimary, opacity: 0.6 }} />
-              ) : (
+                <View style={{ height: 2, width: '34%', borderRadius: 4, alignSelf: 'center', backgroundColor: theme.colors.brandPrimary, opacity: 0.55 }} />
+              ) : completePeriodSnapshots.length >= 2 ? (
                 <PortfolioLineChart
                   values={completePeriodSnapshots.map((snapshot) => amount(snapshot.total_value))}
-                  width={Math.max(220, Math.min(720, density.width - 72))}
-                  height={88}
+                  width={Math.max(120, Math.min(200, density.width * 0.38))}
+                  height={72}
                   positive={performanceDelta == null || performanceDelta >= 0}
                 />
+              ) : (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: 2 }}>
+                  <VadText variant="caption" tone="tertiary" style={{ textAlign: "right" }}>History building</VadText>
+                </View>
               )}
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <VadText variant="caption" tone="secondary">
-                  {performanceDelta == null ? 'Period performance' : `${performanceDelta >= 0 ? '+' : '−'}${assetMoney(Math.abs(performanceDelta), asset)}`}
-                </VadText>
-                <VadText variant="caption" tone={performanceDelta == null ? 'tertiary' : performanceDelta >= 0 ? 'yes' : 'no'}>
-                  {performanceDelta == null
-                    ? (completePeriodSnapshots.length < 2 ? 'More real snapshots needed for a trend' : 'No comparable complete valuations')
-                    : performancePercent == null ? 'Return percentage unavailable'
-                      : `${performancePercent >= 0 ? '+' : ''}${(performancePercent * 100).toFixed(2)}% · net of recorded deposits/withdrawals`}
-                </VadText>
-              </View>
-              <VadText variant="caption" tone="tertiary">{completePeriodSnapshots.length ? new Date(completePeriodSnapshots[completePeriodSnapshots.length - 1].observed_at).toLocaleDateString() : 'No history yet'}</VadText>
-            </View>
           </View>
-          {historyError ? <InlineError message={historyError} onRetry={retry} /> : null}
-          {marksError ? <InlineError message={marksError} onRetry={retry} /> : null}
+          {historyError || marksError ? (
+            <View style={{ gap: 5 }}>
+              {historyError ? <InlineError message={historyError} onRetry={retry} /> : null}
+              {marksError ? <InlineError message={marksError} onRetry={retry} /> : null}
+            </View>
+          ) : null}
         </VadCard>
       </TourTarget>
 
+      <EmbeddedWalletModal showUsdcBalance={enabledCurrencies.includes('USDC')} compact />
+
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <SummaryMetric title="Winning positions" count={winnersCount} amount={winnersValue} asset={asset} tone="yes" />
-        <SummaryMetric title="Losing positions" count={losersCount} amount={losersValue} asset={asset} tone="no" />
-        <SummaryMetric title="Open positions" count={openCount} value={openValueText} />
+        <SummaryMetric title="Winning Positions" count={winnersCount} amount={winnersValue} asset={asset} tone="yes" />
+        <SummaryMetric title="Losing Positions" count={losersCount} amount={losersValue} asset={asset} tone="no" />
+        <SummaryMetric title="Open Positions" count={openCount} value={openValueText} />
       </View>
 
       <TourTarget id="portfolio-switcher">
-        <VadSegmentedControl
+        <PortfolioTabControl
           value={tab}
           options={[
-            { value: 'positions', label: `Positions ${isTngn ? activeStakes.length : openMarkedPositions.length}` },
-            { value: 'orders', label: `Open Orders ${isTngn ? activeStakes.length : orders.filter((order) => order.asset_code === asset && amount(order.remaining_quantity) > 0).length}` },
-            { value: 'history', label: `History ${historyRows.length}` },
+            { value: 'positions', label: 'Positions' },
+            { value: 'orders', label: 'Open Orders' },
+            { value: 'history', label: 'History' },
             { value: 'performance', label: 'Performance' },
           ]}
           onChange={setTab}
@@ -373,7 +390,7 @@ export function PortfolioScreen({
               borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border,
               backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
             })}>
-              <VadIcon name="operations" size={16} tone="secondary" />
+              <VadIcon name="filter" size={16} tone="secondary" />
               <VadText variant="caption" tone="secondary">Filter</VadText>
             </Pressable>
           </View>
@@ -527,48 +544,53 @@ export function PortfolioScreen({
 
 function PositionCard({ position, market, onPress }: { position: PositionModel; market?: MarketCatalogItem; onPress: () => void }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const markStatus = String(position.mark_status ?? 'UNAVAILABLE').toUpperCase();
   const pnl = position.unrealized_pnl == null ? null : amount(position.unrealized_pnl);
   const imagePath = position.media_path ?? market?.media_path ?? null;
   const imageUrl = marketMediaUrl(imagePath);
-  const statusLabel = markStatus === 'MARKED' ? 'Recent mark' : markStatus === 'STALE' ? 'Stale price'
-    : markStatus === 'UNPRICED' ? 'No trade price' : markStatus === 'SETTLED' ? 'Settled'
-      : 'Value unavailable';
+  const statusLabel = markStatus === 'STALE' ? 'Stale price'
+    : markStatus === 'UNPRICED' ? 'Not priced'
+      : markStatus === 'SETTLED' ? 'Settled'
+        : 'No mark';
+  const pnlTone = pnl == null ? 'secondary' : pnl >= 0 ? 'yes' : 'no';
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${position.market_title} ${position.outcome_code} position`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
-      <VadCard variant="raised" style={{ padding: 10, gap: 9, borderRadius: 18 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${position.market_title} ${position.outcome_code} position`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
+      <VadCard style={{ padding: density.phone ? 7 : 9, borderRadius: 15, backgroundColor: theme.colors.surface, borderColor: theme.colors.border, gap: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: density.phone ? 7 : 9 }}>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: 72, height: 72, borderRadius: 12, backgroundColor: theme.colors.surfaceMuted }} />
+            <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: density.phone ? 62 : 74, height: density.phone ? 52 : 60, borderRadius: 9, backgroundColor: theme.colors.surfaceMuted, flexShrink: 0 }} />
           ) : (
-            <View style={{ width: 72, height: 72, borderRadius: 12, backgroundColor: theme.colors.surfaceMuted, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
-              <VadIcon name="activity" size={22} tone="tertiary" />
+            <View style={{ width: density.phone ? 62 : 74, height: density.phone ? 52 : 60, borderRadius: 9, backgroundColor: theme.colors.surfaceMuted, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <VadIcon name="activity" size={21} tone="tertiary" />
             </View>
           )}
-          <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-            <VadText variant="bodyStrong" numberOfLines={2}>{position.market_title}</VadText>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-              <VadChip label={position.outcome_code} tone={position.outcome_code === 'YES' ? 'yes' : 'no'} />
-              <VadText variant="caption" tone="tertiary">{position.asset_code} · {statusLabel}</VadText>
+          <View style={{ flex: 1, minWidth: 70, gap: 4 }}>
+            <VadText variant="bodyStrong" numberOfLines={2} style={{ fontSize: density.phone ? 11 : 13, lineHeight: density.phone ? 14 : 17 }}>{position.market_title}</VadText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
+              <VadChip label={position.outcome_code === 'YES' ? 'Yes' : position.outcome_code === 'NO' ? 'No' : position.outcome_code} tone={position.outcome_code === 'YES' ? 'yes' : 'no'} />
+              <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: density.phone ? 9 : 10, lineHeight: density.phone ? 11 : 13 }}>{amount(position.quantity).toLocaleString()} contracts</VadText>
             </View>
-            <VadText variant="caption" tone="secondary" numberOfLines={1}>{Number(position.quantity ?? 0).toLocaleString()} contracts · Avg {pct(position.average_price)}</VadText>
           </View>
-          <VadIcon name="chevronRight" size={18} tone="tertiary" />
-        </View>
-        <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8, flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1, gap: 2 }}>
-            <VadText variant="caption" tone="tertiary">Total stake</VadText>
-            <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(position.total_cost_basis, position.asset_code)}</VadText>
+          <View style={{ width: density.phone ? 72 : 92, flexShrink: 0, gap: 3 }}>
+            <View style={{ gap: 0 }}>
+              <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 10 : 12, lineHeight: density.phone ? 13 : 15 }}>{assetMoney(position.total_cost_basis, position.asset_code)}</VadText>
+              <VadText variant="caption" tone="secondary" style={{ fontSize: density.phone ? 8 : 9, lineHeight: density.phone ? 10 : 12 }}>Total Stake</VadText>
+            </View>
+            <View style={{ gap: 0 }}>
+              <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 10 : 12, lineHeight: density.phone ? 13 : 15 }}>{position.current_value == null || markStatus === 'SETTLED' ? '—' : assetMoney(position.current_value, position.asset_code)}</VadText>
+              <VadText variant="caption" tone="secondary" style={{ fontSize: density.phone ? 8 : 9, lineHeight: density.phone ? 10 : 12 }}>Current Value</VadText>
+            </View>
           </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <VadText variant="caption" tone="tertiary">Current value</VadText>
-            <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{position.current_value == null ? '—' : markStatus === 'SETTLED' ? 'Paid out' : assetMoney(position.current_value, position.asset_code)}</VadText>
+          <View style={{ width: density.phone ? 79 : 96, minHeight: 42, flexShrink: 0, borderRadius: 10, borderWidth: 1, borderColor: pnl == null ? theme.colors.border : pnl >= 0 ? theme.colors.yes : theme.colors.no, backgroundColor: pnl == null ? theme.colors.surfaceRaised : pnl >= 0 ? theme.colors.yesSoft : theme.colors.noSoft, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 5, gap: 1 }}>
+            <VadText variant="bodyStrong" tone={pnlTone} numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 10 : 12, lineHeight: density.phone ? 13 : 15 }}>
+              {pnl == null ? statusLabel : `${pnl >= 0 ? '+' : '−'}${assetMoney(Math.abs(pnl), position.asset_code)}`}
+            </VadText>
+            <VadText variant="caption" tone={pnlTone} numberOfLines={1} style={{ fontSize: density.phone ? 9 : 10, lineHeight: density.phone ? 11 : 13 }}>
+              {pnl == null ? 'P&L' : position.return_percentage == null ? 'P&L' : `${amount(position.return_percentage) >= 0 ? '+' : ''}${(amount(position.return_percentage) * 100).toFixed(2)}%`}
+            </VadText>
           </View>
-          <View style={{ flex: 1, alignItems: 'flex-end', gap: 2 }}>
-            <VadText variant="caption" tone="tertiary">Profit / loss</VadText>
-            <VadText variant="bodyStrong" tone={pnl == null ? 'secondary' : pnl >= 0 ? 'yes' : 'no'} numberOfLines={1} adjustsFontSizeToFit>{pnl == null ? statusLabel : `${pnl >= 0 ? '+' : '−'}${assetMoney(Math.abs(pnl), position.asset_code)}`}</VadText>
-            {pnl != null && position.return_percentage != null ? <VadText variant="caption" tone={pnl >= 0 ? 'yes' : 'no'}>{`${amount(position.return_percentage) >= 0 ? '+' : ''}${(amount(position.return_percentage) * 100).toFixed(2)}%`}</VadText> : null}
-          </View>
+          <VadIcon name="chevronRight" size={15} tone="tertiary" />
         </View>
       </VadCard>
     </Pressable>
@@ -713,19 +735,82 @@ function SettlementCard({ receipt }: { receipt: SettlementReceiptRow }) {
   );
 }
 
+function PortfolioTabControl({ value, options, onChange }: {
+  value: PortfolioTab;
+  options: { value: PortfolioTab; label: string }[];
+  onChange: (value: PortfolioTab) => void;
+}) {
+  const theme = useVadTheme();
+  const density = useProductDensity();
+  return (
+    <View accessibilityRole="tablist" style={{ flexDirection: 'row', alignItems: 'center', padding: 3, gap: 3, borderRadius: 23, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
+      {options.map((option) => {
+        const selected = value === option.value;
+        return (
+          <Pressable key={option.value} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => onChange(option.value)} style={({ pressed }) => ({
+            flex: 1, minWidth: 0, minHeight: density.phone ? 34 : 39, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+            paddingHorizontal: density.phone ? 3 : 7, backgroundColor: selected ? theme.colors.brandPrimary : 'transparent',
+            opacity: pressed ? 0.78 : 1,
+          })}>
+            <VadText variant="caption" tone={selected ? 'inverse' : 'secondary'} numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 10 : 12, lineHeight: density.phone ? 13 : 15, fontWeight: selected ? '700' : '500' }}>{option.label}</VadText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function CompactRangeSwitch({ value, onChange }: { value: Period; onChange: (value: Period) => void }) {
+  const theme = useVadTheme();
+  const options: { value: Period; label: string }[] = [
+    { value: '1D', label: '1D' },
+    { value: '1W', label: '1W' },
+    { value: '1M', label: '1M' },
+    { value: '1Y', label: '1Y' },
+    { value: 'ALL', label: 'ALL' },
+  ];
+  return (
+    <View accessibilityRole="tablist" style={{ flexDirection: 'row', alignItems: 'center', gap: 2, borderRadius: 14, backgroundColor: theme.colors.surfaceRaised, padding: 3 }}>
+      {options.map((option) => {
+        const selected = value === option.value;
+        return (
+          <Pressable key={option.value} accessibilityRole="tab" accessibilityLabel={option.value === 'ALL' ? 'All time' : option.label} accessibilityState={{ selected }} onPress={() => onChange(option.value)} style={({ pressed }) => ({
+            minWidth: 26, minHeight: 25, paddingHorizontal: 4, borderRadius: 9,
+            alignItems: 'center', justifyContent: 'center',
+            backgroundColor: selected ? theme.colors.brandPrimary : 'transparent',
+            opacity: pressed ? 0.75 : 1,
+          })}>
+            <VadText variant="caption" tone={selected ? 'inverse' : 'secondary'} style={{ fontSize: 10, lineHeight: 12, fontWeight: selected ? '700' : '500' }}>{option.label}</VadText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 function SummaryMetric({ title, count, amount: value, asset, tone, value: customValue }: {
   title: string; count: number; amount?: number; asset?: string; tone?: 'yes' | 'no'; value?: string;
 }) {
   const theme = useVadTheme();
   const label = customValue ?? (count === 0 || value == null ? '—' : `${value >= 0 ? '+' : '−'}${assetMoney(Math.abs(value), asset)}`);
+  const positive = tone === 'yes';
+  const negative = tone === 'no';
   return (
-    <VadCard variant="raised" style={{ flex: 1, minWidth: 0, padding: 10, gap: 5, borderRadius: 16 }}>
-      <View style={{ width: 31, height: 31, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: tone === 'yes' ? 'rgba(16,214,157,0.14)' : tone === 'no' ? 'rgba(255,75,95,0.14)' : theme.colors.surfaceMuted }}>
-        <VadIcon name={tone === 'yes' ? 'arrowUp' : tone === 'no' ? 'arrowDown' : 'activity'} size={17} tone={tone ?? 'secondary'} />
+    <VadCard style={{ flex: 1, minWidth: 0, padding: 8, gap: 4, borderRadius: 14, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minWidth: 0 }}>
+        <View style={{ width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: positive ? theme.colors.yesSoft : negative ? theme.colors.noSoft : theme.colors.surfaceMuted, flexShrink: 0 }}>
+          <VadIcon name={positive ? 'arrowUp' : negative ? 'arrowDown' : 'clock'} size={13} tone={tone ?? 'secondary'} />
+        </View>
+        <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 12 }}>{title}</VadText>
       </View>
-      <VadText variant="caption" tone="secondary" numberOfLines={2}>{title}</VadText>
-      <VadText variant="heading">{count.toLocaleString()}</VadText>
-      <VadText variant="caption" tone={tone ?? 'secondary'} numberOfLines={1} adjustsFontSizeToFit>{label}</VadText>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+        <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 17, lineHeight: 21 }}>{count.toLocaleString()}</VadText>
+        <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-end' }}>
+          <View style={{ maxWidth: '100%', borderRadius: 99, paddingHorizontal: 5, paddingVertical: 4, backgroundColor: positive ? theme.colors.yesSoft : negative ? theme.colors.noSoft : theme.colors.surfaceRaised }}>
+            <VadText variant="caption" tone={tone ?? 'secondary'} numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 9, lineHeight: 11 }}>{label}</VadText>
+          </View>
+        </View>
+      </View>
     </VadCard>
   );
 }
@@ -777,7 +862,7 @@ function LoadingState({ label }: { label: string }) {
 function PortfolioLineChart({ values, width, height, positive }: { values: number[]; width: number; height: number; positive: boolean }) {
   const theme = useVadTheme();
   if (values.length < 2 || values.some((value) => !Number.isFinite(value))) {
-    return <View style={{ height, justifyContent: "center", alignItems: "center", paddingHorizontal: 12 }}><VadText variant="caption" tone="tertiary">Record more genuine valuations to show this trend. No historical values are estimated.</VadText></View>;
+    return <View style={{ height, justifyContent: "center", alignItems: "center", paddingHorizontal: 12 }}><VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>Record more genuine valuations to show this trend. No historical values are estimated.</VadText></View>;
   }
   const min = Math.min(...values);
   const max = Math.max(...values);

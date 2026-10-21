@@ -102,7 +102,40 @@ Deno.serve(async (req) => {
       .select('country_code')
       .eq('user_id', authData.user.id)
       .maybeSingle();
-    const accountCountry = String(account?.country_code || '').toUpperCase();
+    let accountCountry = String(account?.country_code || '').trim().toUpperCase();
+
+    // Normalize common Nigeria aliases written by older onboarding clients. These
+    // values identify the same declared jurisdiction; all live-location and network
+    // checks below still have to pass before any NGN action is authorized.
+    if (['NG', 'NGA', 'NIGERIA'].includes(accountCountry)) {
+      if (accountCountry !== 'NG') {
+        const { data: normalizedAccount, error: normalizeError } = await admin
+          .from('user_accounts')
+          .update({ country_code: 'NG' })
+          .eq('user_id', authData.user.id)
+          .eq('country_code', account.country_code)
+          .select('country_code')
+          .maybeSingle();
+        if (!normalizeError && normalizedAccount?.country_code === 'NG') accountCountry = 'NG';
+      }
+    }
+
+    // Repair an unset country only when device GPS and the client IP both resolve to
+    // Nigeria and the request has no anonymous-network risk signals. Compare against
+    // the originally read value so a concurrent, explicit country change is preserved.
+    if (!accountCountry && deviceCountry === 'NG' && ipCountry === 'NG' && !riskDetected) {
+      let countryUpdate = admin
+        .from('user_accounts')
+        .update({ country_code: 'NG' })
+        .eq('user_id', authData.user.id);
+      countryUpdate = account?.country_code == null
+        ? countryUpdate.is('country_code', null)
+        : countryUpdate.eq('country_code', account.country_code);
+      const { data: updatedAccount, error: countryUpdateError } = await countryUpdate
+        .select('country_code')
+        .maybeSingle();
+      if (!countryUpdateError && updatedAccount?.country_code === 'NG') accountCountry = 'NG';
+    }
 
     let decision: 'VERIFIED' | 'DENIED' | 'REVIEW' = 'DENIED';
     let reasonCode = 'ACCOUNT_NOT_ELIGIBLE';

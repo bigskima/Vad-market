@@ -141,10 +141,13 @@ const authenticatedHandler = withSupabase(
       );
     }
 
+    const rawCountryCode = String(account.country_code ?? '').trim().toUpperCase();
+    const countryCode = ['NG', 'NGA', 'NIGERIA'].includes(rawCountryCode) ? 'NG' : rawCountryCode;
+
     const { data: jurisdiction, error: jurisdictionError } = await ctx.supabase
       .from("jurisdictions")
       .select("id,status")
-      .eq("country_code", account.country_code)
+      .eq("country_code", countryCode)
       .maybeSingle();
 
     if (jurisdictionError || !jurisdiction || jurisdiction.status !== "ACTIVE") {
@@ -161,7 +164,7 @@ const authenticatedHandler = withSupabase(
       ctx.supabase
         .from("capability_rules")
         .select("capability_key,enabled,reason_code,version")
-        .eq("country_code", account.country_code)
+        .eq("country_code", countryCode)
         .order("version", { ascending: false }),
       ctx.supabase
         .from("jurisdiction_assets")
@@ -326,7 +329,7 @@ const authenticatedHandler = withSupabase(
       requestId,
       evaluatedAt: new Date().toISOString(),
       context: {
-        countryCode: account.country_code,
+        countryCode,
         jurisdictionStatus: jurisdiction.status,
         activeAssetCodes,
         testerAccess: {
