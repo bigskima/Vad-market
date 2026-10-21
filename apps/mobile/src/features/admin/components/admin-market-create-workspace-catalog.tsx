@@ -286,19 +286,22 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setError(null);
   }
 
-  function setDetail(key: string, value: string) {
-    if (key === 'sport' || key === 'competition') {
-      sportsDraftRequest.current += 1;
-      setSportsDraftLoading(false);
-      setSelectedFixture(null);
-      setSportsDraftNotice(null);
-    }
-    setDetails((current) => ({ ...current, [key]: value }));
+  function invalidateSportsDraft(clearSelectedFixture = false) {
+    sportsDraftRequest.current += 1;
+    setSportsDraftLoading(false);
+    setSportsDraftNotice(null);
     setTitleEdited(false);
+    if (clearSelectedFixture) setSelectedFixture(null);
+  }
+
+  function setDetail(key: string, value: string) {
+    invalidateSportsDraft(key === 'sport' || key === 'competition' || key === 'competitor_a' || key === 'competitor_b');
+    setDetails((current) => ({ ...current, [key]: value }));
     setError(null);
   }
 
   function updateMatchStart(value: string) {
+    invalidateSportsDraft(true);
     setMatchStartsAt(value);
     setError(null);
     const start = Date.parse(value);
@@ -607,14 +610,14 @@ export function AdminMarketCreateWorkspaceCatalog() {
                   <VadInput label="Home team" value={homeTeam} onChangeText={(value) => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setHomeTeam(value); setTitleEdited(false); }} placeholder="Real Betis" />
                   <VadInput label="Away team" value={awayTeam} onChangeText={(value) => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setAwayTeam(value); setTitleEdited(false); }} placeholder="Getafe" />
                   <FieldGroup label="Prediction">
-                    <VadChip label="Home team wins" selected={prediction === 'HOME_WIN'} onPress={() => { setPrediction('HOME_WIN'); setTitleEdited(false); }} />
-                    <VadChip label="Draw" selected={prediction === 'DRAW'} onPress={() => { setPrediction('DRAW'); setTitleEdited(false); }} />
-                    <VadChip label="Away team wins" selected={prediction === 'AWAY_WIN'} onPress={() => { setPrediction('AWAY_WIN'); setTitleEdited(false); }} />
+                    <VadChip label="Home team wins" selected={prediction === 'HOME_WIN'} onPress={() => { invalidateSportsDraft(); setPrediction('HOME_WIN'); }} />
+                    <VadChip label="Draw" selected={prediction === 'DRAW'} onPress={() => { invalidateSportsDraft(); setPrediction('DRAW'); }} />
+                    <VadChip label="Away team wins" selected={prediction === 'AWAY_WIN'} onPress={() => { invalidateSportsDraft(); setPrediction('AWAY_WIN'); }} />
                   </FieldGroup>
                   <VadDateTimeField label="Match starts" value={matchStartsAt} onChange={updateMatchStart} hint="VAD identifies the fixture from the competition, teams and kickoff time." />
                   <FieldGroup label="Result checking">
-                    <VadChip label={`Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`} selected={resultChecking === 'AUTOMATIC'} tone={resultChecking === 'AUTOMATIC' ? 'brand' : 'neutral'} onPress={() => setResultChecking('AUTOMATIC')} />
-                    <VadChip label="Verified result" selected={resultChecking === 'VERIFIED'} tone={resultChecking === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => setResultChecking('VERIFIED')} />
+                    <VadChip label={`Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`} selected={resultChecking === 'AUTOMATIC'} tone={resultChecking === 'AUTOMATIC' ? 'brand' : 'neutral'} onPress={() => { invalidateSportsDraft(); setResultChecking('AUTOMATIC'); }} />
+                    <VadChip label="Verified result" selected={resultChecking === 'VERIFIED'} tone={resultChecking === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => { invalidateSportsDraft(); setResultChecking('VERIFIED'); }} />
                   </FieldGroup>
                   {resultChecking === 'VERIFIED' ? <SourceFields label="Official result source" sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} /> : null}
                 </View>
