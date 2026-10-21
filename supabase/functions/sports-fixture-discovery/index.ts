@@ -324,7 +324,13 @@ async function handle(req: Request) {
       p_ttl_seconds: cacheSeconds,
       p_stale_seconds: staleSeconds,
     });
-    if (cacheWriteError) console.warn('Sports fixture cache write failed:', cacheWriteError.code);
+    if (cacheWriteError) {
+      console.warn('Sports fixture cache write failed:', cacheWriteError.code);
+      return json({
+        error: 'FIXTURE_CACHE_WRITE_FAILED',
+        message: 'VAD could not store this fixture list for the review step. Try loading fixtures again.',
+      }, 503);
+    }
     return json(responsePayload, 200, cacheSeconds);
   } catch (error) {
     if (stalePayload) return json({ ...stalePayload, cached: true, stale: true }, 200, 15);
