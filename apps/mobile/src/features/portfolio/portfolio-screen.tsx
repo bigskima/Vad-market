@@ -189,17 +189,15 @@ export function PortfolioScreen({
   const losingPositions = markedPositions.filter((position) => amount(position.unrealized_pnl) < 0);
   const realizedWinningRows = settledRows.filter((row) => String(row.result).toUpperCase() === 'WON');
   const realizedLosingRows = settledRows.filter((row) => String(row.result).toUpperCase() === 'LOST');
-  const winningPnl = winningPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0)
-    + realizedWinningRows.reduce((sum, row) => sum + Math.max(0, amount(row.realized_pnl)), 0);
-  const losingPnl = losingPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0)
-    + realizedLosingRows.reduce((sum, row) => sum + Math.min(0, amount(row.realized_pnl)), 0);
+  const winningPnl = winningPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0);
+  const losingPnl = losingPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0);
   const openPositionValue = openMarkedPositions.every((position) => position.mark_status === 'MARKED')
     ? openMarkedPositions.reduce((sum, position) => sum + amount(position.current_value), 0)
     : null;
   const tngnWins = isTngn ? settledRows.filter((row) => row.result === 'WON') : [];
   const tngnLosses = isTngn ? settledRows.filter((row) => row.result === 'LOST') : [];
-  const winnersCount = isTngn ? tngnWins.length : winningPositions.length + realizedWinningRows.length;
-  const losersCount = isTngn ? tngnLosses.length : losingPositions.length + realizedLosingRows.length;
+  const winnersCount = isTngn ? tngnWins.length : winningPositions.length;
+  const losersCount = isTngn ? tngnLosses.length : losingPositions.length;
   const winnersValue = isTngn
     ? tngnWins.reduce((sum, row) => sum + Math.max(0, amount(row.realized_pnl)), 0)
     : winningPnl;
@@ -308,9 +306,20 @@ export function PortfolioScreen({
               <VadText variant="title" numberOfLines={1} adjustsFontSizeToFit>
                 {balanceHidden ? '••••••••' : latestSnapshot?.valuation_complete && latestSnapshot.total_value != null ? assetMoney(latestSnapshot.total_value, asset) : '—'}
               </VadText>
-              <VadText variant="caption" tone="secondary" numberOfLines={1}>
-                {historyLoading ? 'Updating value…' : latestSnapshot?.valuation_complete && latestSnapshot.total_value != null ? `${asset} account value` : `${asset} valuation unavailable`}
-              </VadText>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <VadText variant="caption" tone="secondary" numberOfLines={1}>
+                  {historyLoading ? 'Updating value…' : latestSnapshot?.valuation_complete && latestSnapshot.total_value != null ? 'Account value' : 'Valuation unavailable'}
+                </VadText>
+                {assetOptions.length > 1 ? (
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Change portfolio currency, current ${asset}`} onPress={() => {
+                    const current = assetOptions.indexOf(asset);
+                    setSelectedAsset(assetOptions[(current + 1) % assetOptions.length] ?? asset);
+                  }} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: theme.colors.surfaceRaised, opacity: pressed ? 0.75 : 1 })}>
+                    <VadText variant="caption" tone="brand" style={{ fontSize: 10 }}>{asset}</VadText>
+                    <VadIcon name="chevronRight" size={10} tone="brand" />
+                  </Pressable>
+                ) : <VadText variant="caption" tone="tertiary">{asset}</VadText>}
+              </View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 5 }}>
                 <VadText variant="caption" tone={performanceDelta == null ? 'tertiary' : performanceDelta >= 0 ? 'yes' : 'no'} numberOfLines={1} adjustsFontSizeToFit>
                   {performanceDelta == null
