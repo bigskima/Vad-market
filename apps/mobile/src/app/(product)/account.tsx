@@ -13,6 +13,7 @@ import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { VadThemePreference } from '@/theme/tokens';
 import { getAdminAccess } from '@/services/admin-control-api';
+import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
 
 export default function AccountScreen() {
   const { session, signOut } = useAuth();
@@ -22,15 +23,18 @@ export default function AccountScreen() {
   const theme = useVadTheme();
   const density = useProductDensity();
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
+  const [savedProfile, setSavedProfile] = useState<UserProfile | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const user = session?.user;
   const userId = user?.id ?? null;
   const email = user?.email ?? user?.phone ?? 'Contact information unavailable';
   const metadata = user?.user_metadata ?? {};
-  const displayName = typeof metadata.display_name === 'string' ? metadata.display_name.trim()
+  const metadataName = typeof metadata.display_name === 'string' ? metadata.display_name.trim()
     : typeof metadata.full_name === 'string' ? metadata.full_name.trim() : '';
-  const avatarUrl = typeof metadata.avatar_url === 'string' ? metadata.avatar_url
+  const displayName = savedProfile?.display_name?.trim() || metadataName;
+  const metadataAvatar = typeof metadata.avatar_url === 'string' ? metadata.avatar_url
     : typeof metadata.picture === 'string' ? metadata.picture : null;
+  const avatarUrl = profileMediaUrl(savedProfile?.avatar_path) || metadataAvatar;
   const country = typeof metadata.country === 'string' ? metadata.country
     : typeof metadata.country_name === 'string' ? metadata.country_name : null;
   const appearance = theme.preference === 'system' ? `System · ${theme.mode}`
@@ -40,6 +44,13 @@ export default function AccountScreen() {
     if (!userId || currencyPreference.loading) return;
     void refreshPortfolio();
   }, [currencyPreference.loading, refreshPortfolio, tngnEnabled, userId]);
+
+  useEffect(() => {
+    let ignore = false;
+    if (!userId) { setSavedProfile(null); return; }
+    void getMyProfile().then((profile) => { if (!ignore) setSavedProfile(profile); }).catch(() => { if (!ignore) setSavedProfile(null); });
+    return () => { ignore = true; };
+  }, [userId]);
 
   useEffect(() => {
     let ignore = false;
