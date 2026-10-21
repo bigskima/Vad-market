@@ -531,7 +531,7 @@ function PositionCard({ position, market, onPress }: { position: PositionModel; 
   const pnl = position.unrealized_pnl == null ? null : amount(position.unrealized_pnl);
   const imagePath = position.media_path ?? market?.media_path ?? null;
   const imageUrl = marketMediaUrl(imagePath);
-  const statusLabel = markStatus === 'MARKED' ? 'Live mark' : markStatus === 'STALE' ? 'Stale price'
+  const statusLabel = markStatus === 'MARKED' ? 'Recent mark' : markStatus === 'STALE' ? 'Stale price'
     : markStatus === 'UNPRICED' ? 'No trade price' : markStatus === 'SETTLED' ? 'Settled'
       : 'Value unavailable';
   return (
