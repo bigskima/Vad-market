@@ -185,13 +185,13 @@ function IconTile({ icon }: { icon: VadIconName }) {
 function AccountRow({ icon, title, subtitle, onPress, last = false }: { icon: VadIconName; title: string; subtitle: string; onPress?: () => void; last?: boolean }) {
   const theme = useVadTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityHint={subtitle} onPress={onPress} style={({ pressed }) => ({ minHeight: 61, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.7 : 1, borderBottomWidth: last ? 0 : 1, borderBottomColor: theme.colors.border })}>
+    <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={title} accessibilityHint={subtitle} accessibilityState={{ disabled: !onPress }} disabled={!onPress} onPress={onPress} style={({ pressed }) => ({ minHeight: 61, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.7 : onPress ? 1 : 0.72, borderBottomWidth: last ? 0 : 1, borderBottomColor: theme.colors.border })}>
       <IconTile icon={icon} />
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <VadText variant="bodyStrong">{title}</VadText>
         <VadText variant="caption" tone="secondary" numberOfLines={2}>{subtitle}</VadText>
       </View>
-      <VadIcon name="chevronRight" size={17} tone="tertiary" />
+      {onPress ? <VadIcon name="chevronRight" size={17} tone="tertiary" /> : null}
     </Pressable>
   );
 }
