@@ -38,6 +38,7 @@ export default function PortfolioRoute() {
           markets={data.markets}
           wallet={data.wallet}
           sectionErrors={data.sectionErrors}
+          loading={data.loading}
           onRetry={() => void data.refreshPortfolio()}
           onOpenPosition={openPosition}
           onOpenOrder={openOrder}
