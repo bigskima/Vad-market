@@ -181,7 +181,7 @@ async function handle(req: Request) {
   const forceRefresh = body.forceRefresh === true;
 
   if (!sportCode || !competitionCode) return json({ error: 'COMPETITION_REQUIRED', message: 'Choose a sport and competition first.' }, 400);
-  if (fromDate < today || toDate < fromDate || toDate > plusDays(fromDate, 14) || fromDate > plusDays(today, 30)) {
+  if (fromDate < today || toDate < fromDate || toDate > plusDays(fromDate, 14) || fromDate > plusDays(today, 30) || toDate > plusDays(today, 30)) {
     return json({ error: 'INVALID_DATE_RANGE', message: 'Fixture discovery is limited to a date range of up to 15 days within the next 30 days.' }, 400);
   }
 
