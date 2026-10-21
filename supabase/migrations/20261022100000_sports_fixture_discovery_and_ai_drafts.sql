@@ -214,7 +214,9 @@ begin
     and coalesce(ip.public_metadata->>'ai_adapter','') in (
       'OPENAI_COMPATIBLE','GEMINI_GENERATE_CONTENT','ANTHROPIC_MESSAGES','CLOUDFLARE_WORKERS_AI'
     )
-    and coalesce(ip.public_metadata->>'endpoint','') like 'https://%';
+    and coalesce(ip.public_metadata->>'endpoint','') like 'https://%'
+    -- Respect VAD's free-only launch policy: do not trigger an unbudgeted paid model.
+    and coalesce(ap.cost_policy->>'billing_mode','')='FREE_ONLY';
 
   return jsonb_build_object(
     'prompt',case when v_prompt.id is null then null else jsonb_build_object(
@@ -234,6 +236,9 @@ create or replace function public.internal_record_sports_market_draft_audit(
   p_fixture_id text,
   p_market_type_code text,
   p_selected_result text,
+  p_ai_provider_id bigint,
+  p_prompt_version_id bigint,
+  p_output_payload jsonb,
   p_metadata jsonb default '{}'::jsonb
 )
 returns boolean
@@ -249,9 +254,22 @@ begin
      or nullif(btrim(coalesce(p_provider_code,'')),'') is null
      or nullif(btrim(coalesce(p_fixture_id,'')),'') is null
      or nullif(btrim(coalesce(p_market_type_code,'')),'') is null
+     or p_ai_provider_id is null
+     or p_prompt_version_id is null
+     or jsonb_typeof(coalesce(p_output_payload,'null'::jsonb))<>'object'
      or jsonb_typeof(coalesce(p_metadata,'{}'::jsonb))<>'object' then
     raise exception 'Invalid sports draft audit record' using errcode='22023';
   end if;
+
+  insert into ai.runs(
+    capability_key,provider_id,prompt_version_id,user_id,input_reference_type,
+    input_reference_id,output_payload,validation_status,completed_at
+  ) values (
+    'SPORTS_MARKET_DRAFT',p_ai_provider_id,p_prompt_version_id,p_actor_user_id,
+    'SPORTS_FIXTURE',left(btrim(p_fixture_id),180),p_output_payload,'VALID',
+    statement_timestamp()
+  );
+
   insert into audit.records(
     actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata
   ) values (
@@ -262,14 +280,16 @@ begin
       'provider_code',upper(left(btrim(p_provider_code),80)),
       'fixture_id',left(btrim(p_fixture_id),180),
       'market_type_code',upper(left(btrim(p_market_type_code),80)),
-      'selected_result',upper(left(btrim(coalesce(p_selected_result,'')),40))
+      'selected_result',upper(left(btrim(coalesce(p_selected_result,'')),40)),
+      'ai_provider_id',p_ai_provider_id,
+      'prompt_version_id',p_prompt_version_id
     ) || coalesce(p_metadata,'{}'::jsonb)
   );
   return true;
 end;
 $function$;
-revoke all on function public.internal_record_sports_market_draft_audit(uuid,text,text,text,text,jsonb) from public,anon,authenticated;
-grant execute on function public.internal_record_sports_market_draft_audit(uuid,text,text,text,text,jsonb) to service_role;
+revoke all on function public.internal_record_sports_market_draft_audit(uuid,text,text,text,text,bigint,bigint,jsonb,jsonb) from public,anon,authenticated;
+grant execute on function public.internal_record_sports_market_draft_audit(uuid,text,text,text,text,bigint,bigint,jsonb,jsonb) to service_role;
 
 commit;
 ),
