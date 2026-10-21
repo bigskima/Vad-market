@@ -272,3 +272,32 @@ export async function setAdminSportsCompetitionStatus(input: {
   fail(error, 'The sports competition setting could not be updated.');
   return data === true;
 }
+
+
+export async function upsertAdminSportsCompetition(input: {
+  sportCode: string;
+  sportName: string;
+  competitionCode: string;
+  competitionName: string;
+  region?: string;
+  aliases?: string[];
+  resultMode: 'AUTOMATIC' | 'VERIFIED';
+  providerCode?: string;
+  providerCompetitionCode?: string;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_upsert_sports_competition', {
+    p_sport_code: input.sportCode.trim().toUpperCase(),
+    p_sport_name: input.sportName.trim(),
+    p_competition_code: input.competitionCode.trim().toUpperCase(),
+    p_competition_name: input.competitionName.trim(),
+    p_region: input.region?.trim() || '',
+    p_aliases: input.aliases ?? [],
+    p_result_mode: input.resultMode,
+    p_provider_code: input.providerCode?.trim().toUpperCase() || null,
+    p_provider_competition_code: input.providerCompetitionCode?.trim().toUpperCase() || null,
+    p_reason: input.reason.trim(),
+  });
+  fail(error, 'The sports competition could not be saved.');
+  return data === true;
+}
