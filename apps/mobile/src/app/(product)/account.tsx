@@ -120,7 +120,7 @@ export default function AccountScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <View style={{ flex: 1, gap: 1 }}>
             <VadText variant="title">Account</VadText>
-            <VadText variant="caption" tone="secondary">Manage your profile, security and app preferences.</VadText>
+            <VadText variant="caption" tone="secondary" style={{ fontSize: density.phone ? 13 : 14, lineHeight: density.phone ? 18 : 19 }}>Manage your profile, security and app preferences.</VadText>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel={unreadNotificationCount ? `Notifications, ${unreadNotificationCount} unread` : 'Notifications'} onPress={() => router.push('/notifications')} style={({ pressed }) => ({ width: 39, height: 39, borderRadius: 20, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
             <VadIcon name="bell" size={25} tone="primary" />
@@ -147,7 +147,7 @@ export default function AccountScreen() {
               </View>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Edit profile" onPress={() => router.push('/account/profile')} style={({ pressed }) => ({ minHeight: 35, paddingHorizontal: density.phone ? 10 : 15, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.brandPrimary, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
-              <VadText variant="caption" tone="primary">Edit Profile</VadText>
+              <VadText variant="caption" tone="primary" style={{ fontSize: density.phone ? 12 : 13 }}>Edit Profile</VadText>
             </Pressable>
           </View>
         </VadCard>
@@ -157,8 +157,8 @@ export default function AccountScreen() {
             <VadIcon name={isVerified ? 'shieldCheck' : 'shield'} size={22} color={isVerified ? theme.colors.yes : kycStatus?.status === 'REJECTED' ? theme.colors.no : theme.colors.textSecondary} />
           </View>
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-            <VadText variant="bodyStrong" style={{ fontSize: density.phone ? 13 : 15 }}>{kycCopy.title}</VadText>
-            <VadText variant="caption" tone="secondary" numberOfLines={2}>{kycCopy.body}</VadText>
+            <VadText variant="bodyStrong" style={{ fontSize: density.phone ? 14 : 15 }}>{kycCopy.title}</VadText>
+            <VadText variant="caption" tone="secondary" numberOfLines={2} style={{ fontSize: density.phone ? 12 : 13, lineHeight: density.phone ? 16 : 18 }}>{kycCopy.body}</VadText>
           </View>
           <View style={{ borderRadius: 22, borderWidth: 1, borderColor: isVerified ? theme.colors.yes : theme.colors.border, paddingHorizontal: 12, paddingVertical: 7, alignItems: 'center', justifyContent: 'center' }}>
             <VadText variant="caption" tone={isVerified ? 'yes' : 'secondary'}>{isVerified ? 'View Details' : 'View Details'}</VadText>
@@ -195,9 +195,9 @@ export default function AccountScreen() {
           </SettingsGroup>
         ) : null}
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Log out" disabled={signingOut} onPress={requestSignOut} style={({ pressed }) => ({ minHeight: 38, borderRadius: 9, borderWidth: 1, borderColor: theme.colors.no, backgroundColor: theme.colors.noSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: pressed || signingOut ? 0.65 : 1 })}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Log out" disabled={signingOut} onPress={requestSignOut} style={({ pressed }) => ({ minHeight: density.phone ? 46 : 48, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.no, backgroundColor: theme.colors.noSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: pressed || signingOut ? 0.65 : 1 })}>
           <VadIcon name="logOut" size={17} tone="no" />
-          <VadText variant="bodyStrong" tone="no" style={{ fontSize: density.phone ? 13 : 15 }}>{signingOut ? 'Logging out…' : 'Log Out'}</VadText>
+          <VadText variant="bodyStrong" tone="no" style={{ fontSize: density.phone ? 14 : 15 }}>{signingOut ? 'Logging out…' : 'Log Out'}</VadText>
           <VadIcon name="chevronRight" size={16} tone="no" />
         </Pressable>
       </View>
@@ -244,9 +244,9 @@ function getKycCopy(status: KycStatus | null) {
 function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
   const theme = useVadTheme();
   return (
-    <View style={{ gap: 4 }}>
-      <VadText variant="bodyStrong" style={{ fontSize: 13, lineHeight: 16 }}>{title}</VadText>
-      <VadCard style={{ paddingHorizontal: 10, paddingVertical: 0, borderRadius: 14, backgroundColor: theme.colors.surface, borderColor: theme.colors.border, gap: 0 }}>
+    <View style={{ gap: 6 }}>
+      <VadText variant="bodyStrong" style={{ fontSize: 15, lineHeight: 19 }}>{title}</VadText>
+      <VadCard style={{ paddingHorizontal: 11, paddingVertical: 1, borderRadius: 15, backgroundColor: theme.colors.surface, borderColor: theme.colors.border, gap: 0 }}>
         {children}
       </VadCard>
     </View>
@@ -277,11 +277,11 @@ function AccountRow({
   const theme = useVadTheme();
   const density = useProductDensity();
   return (
-    <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={title} accessibilityHint={subtitle} accessibilityState={{ disabled: !onPress }} disabled={!onPress} onPress={onPress} style={({ pressed }) => ({ minHeight: density.phone ? 35 : 45, flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 3, opacity: pressed ? 0.72 : onPress ? 1 : 0.92, borderBottomWidth: last ? 0 : 1, borderBottomColor: theme.colors.border })}>
-      <IconTile icon={icon} backgroundColor={iconBackground} iconColor={iconColor} size={density.phone ? 29 : 33} />
+    <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={title} accessibilityHint={subtitle} accessibilityState={{ disabled: !onPress }} disabled={!onPress} onPress={onPress} style={({ pressed }) => ({ minHeight: density.phone ? 58 : 64, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: density.phone ? 7 : 9, opacity: pressed ? 0.72 : onPress ? 1 : 0.92, borderBottomWidth: last ? 0 : 1, borderBottomColor: theme.colors.border })}>
+      <IconTile icon={icon} backgroundColor={iconBackground} iconColor={iconColor} size={density.phone ? 36 : 40} />
       <View style={{ flex: 1, minWidth: 0, gap: 0 }}>
-        <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: density.phone ? 12 : 14, lineHeight: density.phone ? 15 : 18 }}>{title}</VadText>
-        <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: density.phone ? 10 : 11, lineHeight: density.phone ? 13 : 15 }}>{subtitle}</VadText>
+        <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: density.phone ? 14 : 15, lineHeight: density.phone ? 18 : 20 }}>{title}</VadText>
+        <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: density.phone ? 12 : 13, lineHeight: density.phone ? 16 : 17 }}>{subtitle}</VadText>
       </View>
       {badge ? <StatusBadge label={badge} tone={badgeTone} /> : null}
       {onPress ? <VadIcon name="chevronRight" size={16} tone="tertiary" /> : null}
@@ -301,5 +301,5 @@ function StatusBadge({ label, tone }: { label: string; tone: 'yes' | 'no' | 'neu
   const theme = useVadTheme();
   const color = tone === 'yes' ? theme.colors.yes : tone === 'no' ? theme.colors.no : theme.colors.textSecondary;
   const background = tone === 'yes' ? theme.colors.yesSoft : tone === 'no' ? theme.colors.noSoft : theme.colors.surfaceMuted;
-  return <View style={{ borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: background, alignItems: 'center', justifyContent: 'center' }}><VadText variant="caption" style={{ fontSize: 10, lineHeight: 13, color, fontWeight: '600' }}>{label}</VadText></View>;
+  return <View style={{ borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: background, alignItems: 'center', justifyContent: 'center' }}><VadText variant="caption" style={{ fontSize: 11, lineHeight: 14, color, fontWeight: '600' }}>{label}</VadText></View>;
 }
