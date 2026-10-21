@@ -424,3 +424,11 @@ entrypoint = "./functions/runtime-capabilities/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/runtime-capabilities/*.html" ]
+
+
+[functions.crypto-market-data]
+enabled = true
+# This endpoint serves public third-party crypto spot quotes only. It cannot
+# create trades, write market observations, resolve outcomes or settle positions.
+verify_jwt = false
+entrypoint = "./functions/crypto-market-data/index.ts"
