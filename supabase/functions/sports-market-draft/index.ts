@@ -188,6 +188,20 @@ async function authenticate(req: Request) {
   return { user, admin, userId: authData.user.id, taxonomy, guidedCatalog };
 }
 
+function fillMarketTemplate(template: string, values: Record<string, string>) {
+  return template.replace(/\{\{([A-Za-z0-9_]+)\}\}/g, (match, key: string) => values[key] ?? match);
+}
+
+function genericMatchWinnerTitle(fixture: JsonRecord) {
+  const home = safeText(fixture.homeTeam, 160);
+  const away = safeText(fixture.awayTeam, 160);
+  const sport = safeText(fixture.sportCode, 80);
+  const competition = safeText(fixture.competitionName, 160);
+  if (!home || !away) throw new Error('The selected sports fixture is missing a participant name.');
+  const context = [competition, sport].filter(Boolean).join(' · ');
+  return 'Will ' + home + ' beat ' + away + (context ? ' in ' + context : '') + '?';
+}
+
 function deterministicFootballTitle(fixture: JsonRecord, selectedResult: string) {
   const home = safeText(fixture.homeTeam, 160);
   const away = safeText(fixture.awayTeam, 160);
@@ -305,13 +319,21 @@ async function handle(req: Request) {
     sourceName: safeText(fixture.sourceName, 160),
     sourceUrl: safeText(fixture.sourceUrl, 500),
   };
+  const templateValues = {
+    sport: safeFixture.sport,
+    competition: safeFixture.competition,
+    competitor_a: safeFixture.homeTeam,
+    competitor_b: safeFixture.awayTeam,
+    home_team: safeFixture.homeTeam,
+    away_team: safeFixture.awayTeam,
+  };
   const baseCondition = selectedMarketType.handler === 'FOOTBALL_MATCH'
     ? (selectedResult === 'HOME_WIN'
       ? 'Resolve YES only if the official final result records the home team as the winner; resolve NO for an away-team win or draw.'
       : selectedResult === 'AWAY_WIN'
         ? 'Resolve YES only if the official final result records the away team as the winner; resolve NO for a home-team win or draw.'
         : 'Resolve YES only if the official final result is a draw; resolve NO if either team wins.')
-    : selectedMarketType.conditionTemplate;
+    : fillMarketTemplate(selectedMarketType.conditionTemplate, templateValues);
   const task = {
     task: 'Prepare a reviewable prediction-market draft using the exact supplied VAD market template and imported sports fixture.',
     fixture: safeFixture,
@@ -320,7 +342,7 @@ async function handle(req: Request) {
       name: selectedMarketType.name,
       description: selectedMarketType.description,
       handler: selectedMarketType.handler,
-      questionTemplate: selectedMarketType.questionTemplate,
+      questionTemplate: fillMarketTemplate(selectedMarketType.questionTemplate, templateValues),
       configuredConditionTemplate: baseCondition,
       sourceLabel: selectedMarketType.sourceLabel,
       sourceRequired: selectedMarketType.sourceRequired,
@@ -387,10 +409,15 @@ async function handle(req: Request) {
     return json({ error: 'DRAFT_AUDIT_FAILED', message: 'The draft was generated but could not be audited. Please retry before using it.' }, 503);
   }
 
+  const generatedTitle = safeText(generated.title, 180);
+  const genericTitleIsGrounded = generatedTitle.toLocaleLowerCase().includes(safeText(fixture.homeTeam, 160).toLocaleLowerCase())
+    && generatedTitle.toLocaleLowerCase().includes(safeText(fixture.awayTeam, 160).toLocaleLowerCase());
   return json({
     title: selectedMarketType.handler === 'FOOTBALL_MATCH'
       ? deterministicFootballTitle(fixture, selectedResult)
-      : safeText(generated.title, 180),
+      : selectedMarketType.code.toUpperCase() === 'SPORTS_MATCH_WINNER' && !genericTitleIsGrounded
+        ? genericMatchWinnerTitle(fixture)
+        : generatedTitle,
     description: safeText(generated.description, 1000),
     resolutionRules: safeText(generated.resolutionRules, 1800),
     riskNotes: safeText(generated.riskNotes, 500),
