@@ -251,10 +251,6 @@ export function PortfolioScreen({
     step: 8,
     resetKey: `${asset}|${historyEvents.length}`,
   });
-  const settledPnl = settledRows.reduce((sum, row) => sum + amount(row.realized_pnl), 0);
-  const winLossRows = settledRows.filter((row) => ['WON', 'LOST'].includes(String(row.result).toUpperCase()));
-  const positiveSettlements = winLossRows.filter((row) => String(row.result).toUpperCase() === 'WON').length;
-  const winRate = winLossRows.length ? positiveSettlements / winLossRows.length : null;
   const periodSettledRows = settledRows.filter((row) => (Date.parse(row.settled_at ?? '') || 0) >= cutoff);
   const periodSettledPnl = periodSettledRows.reduce((sum, row) => sum + amount(row.realized_pnl), 0);
   const periodWinLossRows = periodSettledRows.filter((row) => ['WON', 'LOST'].includes(String(row.result).toUpperCase()));
@@ -501,7 +497,7 @@ export function PortfolioScreen({
             </View>
             {historicalPnlSeries.length >= 2 ? (
               <View style={{ height: 94 }}>
-                <PortfolioLineChart values={historicalPnlSeries.map((point) => point.value)} width={Math.max(220, Math.min(720, density.width - 72))} height={90} positive={settledPnl >= 0} />
+                <PortfolioLineChart values={historicalPnlSeries.map((point) => point.value)} width={Math.max(220, Math.min(720, density.width - 72))} height={90} positive={periodSettledPnl >= 0} />
               </View>
             ) : (
               <VadEmptyState title="More settled results needed" body="The cumulative realized-performance chart appears after at least two dated settlement results. No history is synthesized." />
