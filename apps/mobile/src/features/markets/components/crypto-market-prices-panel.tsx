@@ -33,6 +33,7 @@ export function CryptoMarketPricesPanel({
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
+  const [quoteCurrency, setQuoteCurrency] = useState('USD');
 
   useEffect(() => {
     let active = true;
@@ -45,6 +46,7 @@ export function CryptoMarketPricesPanel({
         const result = await getCryptoMarketPrices({ page: 1, perPage: 24, query });
         if (!active) return;
         setCoins(result.coins);
+        setQuoteCurrency(result.quoteCurrency);
         setPage(1);
         setHasMore(result.hasMore);
         setFetchedAt(result.fetchedAt);
@@ -77,6 +79,7 @@ export function CryptoMarketPricesPanel({
         perPage: 24,
         query: search.trim(),
       });
+      setQuoteCurrency(result.quoteCurrency);
       setCoins((current) => {
         const seen = new Set(current.map((coin) => coin.id));
         return [...current, ...result.coins.filter((coin) => !seen.has(coin.id))];
@@ -142,7 +145,7 @@ export function CryptoMarketPricesPanel({
         <View style={gridStyle}>
           {coins.map((coin) => (
             <View key={coin.id} style={{ width: columns === 1 ? '100%' : '48%', flexGrow: columns === 1 ? 0 : 1, minWidth: 0 }}>
-              <CryptoCoinCard coin={coin} onPress={onSelectCoin ? () => onSelectCoin(coin) : undefined} />
+              <CryptoCoinCard coin={coin} currency={quoteCurrency} onPress={onSelectCoin ? () => onSelectCoin(coin) : undefined} />
             </View>
           ))}
         </View>
@@ -178,9 +181,11 @@ export function CryptoMarketPricesPanel({
 
 function CryptoCoinCard({
   coin,
+  currency = 'USD',
   onPress,
 }: {
   coin: CryptoMarketQuote;
+  currency?: string;
   onPress?: () => void;
 }) {
   const theme = useVadTheme();
@@ -201,7 +206,7 @@ function CryptoCoinCard({
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress ? `Show VAD markets related to ${coin.name} (${coin.symbol})` : `${coin.name}, ${formatCoinPrice(coin.currentPrice)}`}
+      accessibilityLabel={onPress ? `Show VAD markets related to ${coin.name} (${coin.symbol})` : `${coin.name}, ${formatCoinPrice(coin.currentPrice, currency)}`}
       onPress={onPress}
       style={({ pressed }) => ({
         opacity: pressed ? 0.78 : 1,
@@ -271,12 +276,100 @@ function CryptoCoinCard({
   );
 }
 
-function formatCoinPrice(value: number) {
+function formatCoinPrice(value: number, currency = 'USD') {
   const maximumFractionDigits = value >= 100 ? 2 : value >= 1 ? 4 : 8;
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: maximumFractionDigits,
-  }).format(value);
+  const currencyCode = /^[A-Z]{3,8}$/.test(currency.toUpperCase()) ? currency.toUpperCase() : 'USD';
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits,
+    }).format(value);
+  } catch {
+    return `${value.toLocaleString('en-US', { maximumFractionDigits })} ${currencyCode}`;
+  }
+}
+
+export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) {
+  const theme = useVadTheme();
+  const [coin, setCoin] = useState<CryptoMarketQuote | null>(null);
+  const [quoteCurrency, setQuoteCurrency] = useState('USD');
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const query = assetQuery.trim();
+    if (!query) {
+      setCoin(null);
+      setLoading(false);
+      return;
+    }
+    let active = true;
+    const refresh = async () => {
+      try {
+        const result = await getCryptoMarketPrices({ query, page: 1, perPage: 10 });
+        if (!active) return;
+        const needle = normalizeAssetQuery(query);
+        const exact = result.coins.find((item) =>
+          normalizeAssetQuery(item.symbol) === needle
+          || normalizeAssetQuery(item.id) === needle
+          || normalizeAssetQuery(item.name) === needle
+        );
+        setCoin(exact ?? null);
+        setQuoteCurrency(result.quoteCurrency);
+        setUpdatedAt(result.fetchedAt);
+        setError(exact ? null : `No exact public price match was returned for ${query}.`);
+      } catch (reason) {
+        if (active) setError(reason instanceof Error ? reason.message : 'Public crypto price is temporarily unavailable.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    setLoading(true);
+    void refresh();
+    const timer = setInterval(() => void refresh(), 60_000);
+    return () => { active = false; clearInterval(timer); };
+  }, [assetQuery]);
+
+  if (!assetQuery.trim()) return null;
+
+  return (
+    <VadCard variant="surface" style={{ gap: theme.spacing.sm }}>
+      <View style={{ gap: 2 }}>
+        <VadText variant="label" tone="brand">UNDERLYING CRYPTO ASSET</VadText>
+        <VadText variant="caption" tone="secondary">
+          Public spot-market reference. This is separate from VAD's YES/NO price and never determines the outcome.
+        </VadText>
+      </View>
+      {loading && !coin ? (
+        <VadSkeleton height={70} radius={theme.radius.md} />
+      ) : coin ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+          {coin.imageUrl ? <Image source={{ uri: coin.imageUrl }} accessibilityLabel="" style={{ width: 38, height: 38, borderRadius: 19 }} /> : null}
+          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+            <VadText variant="bodyStrong">{coin.name} ({coin.symbol})</VadText>
+            <VadText variant="title">{formatCoinPrice(coin.currentPrice, quoteCurrency)}</VadText>
+            <VadText variant="caption" tone={coin.change24hPercent == null ? 'secondary' : coin.change24hPercent >= 0 ? 'yes' : 'no'}>
+              {coin.change24hPercent == null ? '24h change unavailable' : `${coin.change24hPercent > 0 ? '+' : ''}${coin.change24hPercent.toFixed(2)}% · 24h`}
+            </VadText>
+          </View>
+          {coin.marketCapRank ? (
+            <View style={{ alignItems: 'flex-end', gap: 2 }}>
+              <VadText variant="caption" tone="secondary">Market cap rank</VadText>
+              <VadText variant="bodyStrong">#{coin.marketCapRank}</VadText>
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <VadText variant="caption" tone={error ? 'warning' : 'secondary'}>{error ?? 'No public price available for this asset.'}</VadText>
+      )}
+      {coin && updatedAt ? <VadText variant="caption" tone="tertiary">Source snapshot: {new Date(updatedAt).toLocaleTimeString()} · CoinGecko</VadText> : null}
+    </VadCard>
+  );
+}
+
+function normalizeAssetQuery(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
