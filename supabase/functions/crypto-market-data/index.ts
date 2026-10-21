@@ -172,11 +172,7 @@ Deno.serve(async (req) => {
     const queryKey = query.trim().toLowerCase();
     const cacheKey = `${feed.code}:${quoteCurrency}:${page}:${perPage}:${queryKey}`;
     const { data: cachedRow, error: cacheReadError } = await admin
-      .schema('market')
-      .from('market_data_cache')
-      .select('payload,fetched_at,expires_at,stale_until')
-      .eq('request_key', cacheKey)
-      .maybeSingle();
+      .rpc('get_crypto_market_data_cache', { p_request_key: cacheKey });
 
     if (cacheReadError) {
       console.warn('Crypto market-data cache read failed', cacheReadError.code);
@@ -247,14 +243,13 @@ Deno.serve(async (req) => {
       fetchedAt: fetchedAt.toISOString(),
       coins: coinRows.map(normalizeCoin).filter((coin) => coin.id && coin.currentPrice !== null),
     };
-    const { error: cacheWriteError } = await admin.schema('market').from('market_data_cache').upsert({
-      request_key: cacheKey,
-      payload: responsePayload,
-      fetched_at: fetchedAt.toISOString(),
-      expires_at: expiresAt.toISOString(),
-      stale_until: staleUntil.toISOString(),
-      updated_at: fetchedAt.toISOString(),
-    }, { onConflict: 'request_key' });
+    const { error: cacheWriteError } = await admin.rpc('upsert_crypto_market_data_cache', {
+      p_request_key: cacheKey,
+      p_payload: responsePayload,
+      p_fetched_at: fetchedAt.toISOString(),
+      p_expires_at: expiresAt.toISOString(),
+      p_stale_until: staleUntil.toISOString(),
+    });
     if (cacheWriteError) console.warn('Crypto market-data cache write failed', cacheWriteError.code);
 
     return json(responsePayload, 200, Math.min(Math.max(feed.cache_seconds, 15), 3600));

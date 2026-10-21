@@ -651,4 +651,57 @@ grant select,insert,update,delete on market.market_data_cache to service_role;
 create index if not exists market_market_data_cache_expiry_idx
   on market.market_data_cache(stale_until);
 
+create or replace function public.get_crypto_market_data_cache(p_request_key text)
+returns jsonb
+language sql
+stable
+security definer
+set search_path=''
+as $
+  select jsonb_build_object(
+    'payload',c.payload,
+    'fetched_at',c.fetched_at,
+    'expires_at',c.expires_at,
+    'stale_until',c.stale_until
+  )
+  from market.market_data_cache c
+  where c.request_key=p_request_key
+  limit 1;
+$;
+revoke all on function public.get_crypto_market_data_cache(text) from public,anon,authenticated;
+grant execute on function public.get_crypto_market_data_cache(text) to service_role;
+
+create or replace function public.upsert_crypto_market_data_cache(
+  p_request_key text,
+  p_payload jsonb,
+  p_fetched_at timestamptz,
+  p_expires_at timestamptz,
+  p_stale_until timestamptz
+)
+returns boolean
+language plpgsql
+security definer
+set search_path=''
+as $
+begin
+  if p_payload is null or jsonb_typeof(p_payload)<>'object' then
+    raise exception 'Market data cache payload must be a JSON object.' using errcode='22023';
+  end if;
+  insert into market.market_data_cache(
+    request_key,payload,fetched_at,expires_at,stale_until,updated_at
+  ) values (
+    p_request_key,p_payload,p_fetched_at,p_expires_at,p_stale_until,statement_timestamp()
+  )
+  on conflict(request_key) do update set
+    payload=excluded.payload,
+    fetched_at=excluded.fetched_at,
+    expires_at=excluded.expires_at,
+    stale_until=excluded.stale_until,
+    updated_at=statement_timestamp();
+  return true;
+end;
+$;
+revoke all on function public.upsert_crypto_market_data_cache(text,jsonb,timestamptz,timestamptz,timestamptz) from public,anon,authenticated;
+grant execute on function public.upsert_crypto_market_data_cache(text,jsonb,timestamptz,timestamptz,timestamptz) to service_role;
+
 commit;
