@@ -128,7 +128,7 @@ export function PortfolioScreen({
       setOrderHistoryLoading(false);
     });
     return () => { cancelled = true; };
-  }, [retryValuation, positions, wallet, marketHistory]);
+  }, [retryValuation, positions, orders, wallet, marketHistory, poolStakes, settlements, markets]);
 
   const assetOptions = useMemo(
     () => enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC', 'TNGN'].includes(code)),
