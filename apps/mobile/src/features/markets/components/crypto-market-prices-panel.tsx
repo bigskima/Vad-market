@@ -303,13 +303,16 @@ function formatCoinPrice(value: number, currency = 'USD') {
 export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) {
   const theme = useVadTheme();
   const [coin, setCoin] = useState<CryptoMarketQuote | null>(null);
+  const [resolvedQuery, setResolvedQuery] = useState('');
   const [quoteCurrency, setQuoteCurrency] = useState('USD');
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [staleSnapshot, setStaleSnapshot] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sparklineWidth, setSparklineWidth] = useState(180);
-  const sparkline = coin?.sparkline7d ?? [];
+  const normalizedQuery = normalizeAssetQuery(assetQuery);
+  const displayedCoin = resolvedQuery === normalizedQuery ? coin : null;
+  const sparkline = displayedCoin?.sparkline7d ?? [];
   const minPrice = sparkline.length ? Math.min(...sparkline) : 0;
   const maxPrice = sparkline.length ? Math.max(...sparkline) : 1;
   const priceRange = maxPrice - minPrice || 1;
@@ -333,6 +336,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
           || normalizeAssetQuery(item.name) === needle
         );
         setCoin(exact ?? null);
+        setResolvedQuery(needle);
         setQuoteCurrency(result.quoteCurrency);
         setUpdatedAt(result.fetchedAt);
         setStaleSnapshot(result.stale === true);
@@ -358,31 +362,31 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
           Public spot-market reference. This is separate from VAD&apos;s YES/NO price and never determines the outcome.
         </VadText>
       </View>
-      {loading && !coin ? (
+      {(loading || resolvedQuery !== normalizedQuery) && !displayedCoin ? (
         <VadSkeleton height={70} radius={theme.radius.md} />
       ) : coin ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-          {coin.imageUrl ? <Image source={{ uri: coin.imageUrl }} accessibilityLabel="" style={{ width: 38, height: 38, borderRadius: 19 }} /> : null}
+          {displayedCoin.imageUrl ? <Image source={{ uri: displayedCoin.imageUrl }} accessibilityLabel="" style={{ width: 38, height: 38, borderRadius: 19 }} /> : null}
           <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-            <VadText variant="bodyStrong">{coin.name} ({coin.symbol})</VadText>
-            <VadText variant="title">{formatCoinPrice(coin.currentPrice, quoteCurrency)}</VadText>
-            <VadText variant="caption" tone={coin.change24hPercent == null ? 'secondary' : coin.change24hPercent >= 0 ? 'yes' : 'no'}>
+            <VadText variant="bodyStrong">{displayedCoin.name} ({displayedCoin.symbol})</VadText>
+            <VadText variant="title">{formatCoinPrice(displayedCoin.currentPrice, quoteCurrency)}</VadText>
+            <VadText variant="caption" tone={displayedCoin.change24hPercent == null ? 'secondary' : coin.change24hPercent >= 0 ? 'yes' : 'no'}>
               {coin.change24hPercent == null ? '24h change unavailable' : `${coin.change24hPercent > 0 ? '+' : ''}${coin.change24hPercent.toFixed(2)}% · 24h`}
             </VadText>
           </View>
-          {coin.marketCapRank ? (
+          {displayedCoin.marketCapRank ? (
             <View style={{ alignItems: 'flex-end', gap: 2 }}>
               <VadText variant="caption" tone="secondary">Market cap rank</VadText>
-              <VadText variant="bodyStrong">#{coin.marketCapRank}</VadText>
+              <VadText variant="bodyStrong">#{displayedCoin.marketCapRank}</VadText>
             </View>
           ) : null}
         </View>
       ) : (
         <VadText variant="caption" tone={error ? 'warning' : 'secondary'}>{error ?? 'No public price available for this asset.'}</VadText>
       )}
-      {coin && points.length > 1 ? (
+      {displayedCoin && points.length > 1 ? (
         <View
-          accessibilityLabel={`Seven-day ${coin.name} public spot price trend`}
+          accessibilityLabel={`Seven-day ${displayedCoin.name} public spot price trend`}
           onLayout={(event) => setSparklineWidth(Math.max(80, event.nativeEvent.layout.width))}
           style={{ height: 38, width: '100%', overflow: 'hidden' }}
         >
@@ -414,7 +418,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
           })}
         </View>
       ) : null}
-      {coin && updatedAt ? <VadText variant="caption" tone={staleSnapshot ? 'warning' : 'tertiary'}>{staleSnapshot ? 'Stale cached snapshot' : 'Source snapshot'}: {new Date(updatedAt).toLocaleTimeString()} · CoinGecko</VadText> : null}
+      {displayedCoin && updatedAt ? <VadText variant="caption" tone={staleSnapshot ? 'warning' : 'tertiary'}>{staleSnapshot ? 'Stale cached snapshot' : 'Source snapshot'}: {new Date(updatedAt).toLocaleTimeString()} · CoinGecko</VadText> : null}
     </VadCard>
   );
 }
