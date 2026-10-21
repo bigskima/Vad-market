@@ -15,6 +15,7 @@ import { getMarketPriceHistory, type MarketCatalogItem, type WalletRow } from '@
 import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchlist } from '@/services/market-watchlist-api';
 import { supabase } from '@/lib/supabase';
 import { getWalletBalanceHistory, type WalletBalanceHistoryPoint } from '@/services/wallet-history-api';
+import { MarketThumbnail } from '@/features/markets/components/market-thumbnail';
 
 type Category = string;
 
@@ -398,11 +399,7 @@ function SectionHeading({ title, action, onAction }: { title: string; action: st
 }
 
 function MarketThumb({ market, size = 46 }: { market: MarketCatalogItem; size?: number }) {
-  const theme = useVadTheme();
-  const mediaUrl = market.media_path ? (/^https?:\/\//i.test(market.media_path) ? market.media_path : supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl) : null;
-  const category = market.category?.toLowerCase() ?? '';
-  const icon = category.includes('sport') ? 'activity' : category.includes('tech') ? 'operations' : category.includes('polit') ? 'community' : category.includes('econom') ? 'markets' : 'activity';
-  return <View style={{ width: size, height: size, borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>{mediaUrl ? <Image source={{ uri: mediaUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name={icon as 'activity'} size={Math.round(size * 0.5)} tone="secondary" />}</View>;
+  return <MarketThumbnail market={market} size={size} />;
 }
 
 function MarketSparkline({ values }: { values: number[] }) {
