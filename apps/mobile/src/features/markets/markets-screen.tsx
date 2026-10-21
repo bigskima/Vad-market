@@ -112,9 +112,11 @@ export function MarketsScreen({
     const needle = debouncedQuery.toLowerCase();
     return markets
       .filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency))
-      .filter((market) => category === 'All' || market.category === category)
-      .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status, market.market_type, market.event_public_id, market.instrument_public_id].some((value) => String(value ?? '').toLowerCase().includes(needle)));
-  }, [markets, category, debouncedQuery, enabledCurrencies]);
+      .filter((market) => category === 'All'
+        || market.category === category
+        || Boolean(activeCategoryExperience?.code && market.category_code === activeCategoryExperience.code))
+      .filter((market) => !needle || marketSearchText(market).includes(needle));
+  }, [markets, category, debouncedQuery, enabledCurrencies, activeCategoryExperience]);
 
   const stageCounts = useMemo(() => {
     const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
@@ -332,4 +334,31 @@ export function MarketsScreen({
       </TourTarget>
     </View>
   );
+}
+
+function marketSearchText(market: MarketCatalogItem) {
+  const values: string[] = [
+    market.title,
+    market.category,
+    market.category_code,
+    market.asset_code,
+    market.status,
+    market.market_type,
+    market.group_key,
+    market.event_public_id,
+    market.instrument_public_id,
+  ].map((value) => String(value ?? ''));
+
+  const context = market.market_context;
+  if (context && typeof context === 'object' && !Array.isArray(context)) {
+    for (const value of Object.values(context)) {
+      if (typeof value === 'string' || typeof value === 'number') values.push(String(value));
+      else if (value && typeof value === 'object' && !Array.isArray(value)) {
+        for (const nested of Object.values(value as Record<string, unknown>)) {
+          if (typeof nested === 'string' || typeof nested === 'number') values.push(String(nested));
+        }
+      }
+    }
+  }
+  return values.join(' ').toLowerCase();
 }
