@@ -186,15 +186,19 @@ export function PortfolioScreen({
   const markedPositions = positionsForAsset.filter((position) => position.mark_status === 'MARKED');
   const winningPositions = markedPositions.filter((position) => amount(position.unrealized_pnl) > 0);
   const losingPositions = markedPositions.filter((position) => amount(position.unrealized_pnl) < 0);
-  const winningPnl = winningPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0);
-  const losingPnl = losingPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0);
+  const realizedWinningRows = settledRows.filter((row) => String(row.result).toUpperCase() === 'WON');
+  const realizedLosingRows = settledRows.filter((row) => String(row.result).toUpperCase() === 'LOST');
+  const winningPnl = winningPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0)
+    + realizedWinningRows.reduce((sum, row) => sum + Math.max(0, amount(row.realized_pnl)), 0);
+  const losingPnl = losingPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0)
+    + realizedLosingRows.reduce((sum, row) => sum + Math.min(0, amount(row.realized_pnl)), 0);
   const openPositionValue = openMarkedPositions.every((position) => position.mark_status === 'MARKED')
     ? openMarkedPositions.reduce((sum, position) => sum + amount(position.current_value), 0)
     : null;
   const tngnWins = isTngn ? settledRows.filter((row) => row.result === 'WON') : [];
   const tngnLosses = isTngn ? settledRows.filter((row) => row.result === 'LOST') : [];
-  const winnersCount = isTngn ? tngnWins.length : winningPositions.length;
-  const losersCount = isTngn ? tngnLosses.length : losingPositions.length;
+  const winnersCount = isTngn ? tngnWins.length : winningPositions.length + realizedWinningRows.length;
+  const losersCount = isTngn ? tngnLosses.length : losingPositions.length + realizedLosingRows.length;
   const winnersValue = isTngn
     ? tngnWins.reduce((sum, row) => sum + Math.max(0, amount(row.realized_pnl)), 0)
     : winningPnl;
@@ -251,7 +255,13 @@ export function PortfolioScreen({
   const winLossRows = settledRows.filter((row) => ['WON', 'LOST'].includes(String(row.result).toUpperCase()));
   const positiveSettlements = winLossRows.filter((row) => String(row.result).toUpperCase() === 'WON').length;
   const winRate = winLossRows.length ? positiveSettlements / winLossRows.length : null;
-  const historicalPnlSeries = [...settledRows]
+  const periodSettledRows = settledRows.filter((row) => (Date.parse(row.settled_at ?? '') || 0) >= cutoff);
+  const periodSettledPnl = periodSettledRows.reduce((sum, row) => sum + amount(row.realized_pnl), 0);
+  const periodWinLossRows = periodSettledRows.filter((row) => ['WON', 'LOST'].includes(String(row.result).toUpperCase()));
+  const periodWinRate = periodWinLossRows.length
+    ? periodWinLossRows.filter((row) => String(row.result).toUpperCase() === 'WON').length / periodWinLossRows.length
+    : null;
+  const historicalPnlSeries = [...periodSettledRows]
     .sort((a, b) => Date.parse(a.settled_at ?? '') - Date.parse(b.settled_at ?? ''))
     .reduce<{ at: string; value: number }[]>((series, row) => {
       const previous = series.length ? series[series.length - 1].value : 0;
@@ -480,14 +490,14 @@ export function PortfolioScreen({
         <View style={{ gap: theme.spacing.md }}>
           <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
             <View style={{ gap: 3 }}>
-              <VadText variant="caption" tone="secondary">REALIZED PERFORMANCE · {asset}</VadText>
-              <VadText variant="heading" tone={settledPnl >= 0 ? 'yes' : 'no'}>{settledRows.length ? `${settledPnl >= 0 ? '+' : '−'}${assetMoney(Math.abs(settledPnl), asset)}` : '—'}</VadText>
-              <VadText variant="caption" tone="secondary">Calculated only from persisted settled results in this currency.</VadText>
+              <VadText variant="caption" tone="secondary">REALIZED PERFORMANCE · {asset} · {period}</VadText>
+              <VadText variant="heading" tone={periodSettledRows.length && periodSettledPnl >= 0 ? 'yes' : periodSettledRows.length ? 'no' : 'secondary'}>{periodSettledRows.length ? `${periodSettledPnl >= 0 ? '+' : '−'}${assetMoney(Math.abs(periodSettledPnl), asset)}` : '—'}</VadText>
+              <VadText variant="caption" tone="secondary">Persisted settlement results within the selected period; pending and voided positions are not counted as wins or losses.</VadText>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <MetricTile label="Settled records" value={String(settledRows.length)} />
-              <MetricTile label="Win rate" value={winRate == null ? '—' : pct(winRate)} />
-              <MetricTile label="Avg. result" value={settledRows.length ? assetMoney(settledPnl / settledRows.length, asset) : '—'} />
+              <MetricTile label="Settled records" value={String(periodSettledRows.length)} />
+              <MetricTile label="Win rate" value={periodWinRate == null ? '—' : pct(periodWinRate)} />
+              <MetricTile label="Avg. result" value={periodSettledRows.length ? assetMoney(periodSettledPnl / periodSettledRows.length, asset) : '—'} />
             </View>
             {historicalPnlSeries.length >= 2 ? (
               <View style={{ height: 94 }}>
@@ -497,10 +507,10 @@ export function PortfolioScreen({
               <VadEmptyState title="More settled results needed" body="The cumulative realized-performance chart appears after at least two dated settlement results. No history is synthesized." />
             )}
           </VadCard>
-          {settledRows.length ? (
+          {periodSettledRows.length ? (
             <View style={{ gap: theme.spacing.sm }}>
-              <VadText variant="bodyStrong">Settled results</VadText>
-              {settledRows.slice(-8).reverse().map((row, index) => <HistoryCard key={`perf-${row.market_id}-${row.selected_outcome}-${row.settled_at ?? index}`} row={row} />)}
+              <VadText variant="bodyStrong">Settled results · {period}</VadText>
+              {periodSettledRows.slice(-8).reverse().map((row, index) => <HistoryCard key={`perf-${row.market_id}-${row.selected_outcome}-${row.settled_at ?? index}`} row={row} />)}
             </View>
           ) : <VadEmptyState title="No realized performance yet" body="Realized P&L is available after VAD records a settlement for one of your predictions." />}
         </View>
