@@ -251,13 +251,51 @@ export async function listMarkets() {
 export async function getWalletSummary() {
   const { data, error } = await supabase.rpc('my_wallet_summary');
   assertNoError(error, 'portfolio', 'We could not load your wallet balances right now. Please try again.');
-  return (data ?? []) as WalletRow[];
+  const realWallets = (data ?? []) as WalletRow[];
+
+  // TNGN balance comes from demo_accounts, never finance.ledger_accounts.
+  // Keep real wallet balances usable if the optional demo service is unavailable.
+  try {
+    const { data: statusData, error: statusError } = await supabase.rpc('get_demo_mode_status');
+    const status = (Array.isArray(statusData) ? statusData[0] : statusData) as { user_enabled?: boolean } | null;
+    if (!statusError && status?.user_enabled === true) {
+      const { data: accountData, error: accountError } = await supabase.rpc('my_demo_account');
+      const account = (Array.isArray(accountData) ? accountData[0] : accountData) as { availableBalance?: number | string } | null;
+      if (!accountError && account) {
+        return [
+          ...realWallets.filter((wallet) => wallet.asset_code !== 'TNGN'),
+          { asset_code: 'TNGN', available: Number(account.availableBalance ?? 0), reserved: 0, withdrawal_pending: 0 },
+        ];
+      }
+    }
+  } catch {
+    // Demo balance is optional; never suppress the real wallet summary.
+  }
+  return realWallets;
 }
 
 export async function getWalletActivity(limit = 100) {
   const { data, error } = await supabase.rpc('my_wallet_activity', { p_limit: limit });
   assertNoError(error, 'portfolio', 'We could not load your complete wallet activity right now. Please try again.');
-  return (data ?? []) as WalletActivityRow[];
+  const realActivity = (data ?? []) as WalletActivityRow[];
+
+  // Demo entries are read from the isolated TNGN ledger, not from my_wallet_activity.
+  try {
+    const { data: statusData, error: statusError } = await supabase.rpc('get_demo_mode_status');
+    const status = (Array.isArray(statusData) ? statusData[0] : statusData) as { user_enabled?: boolean } | null;
+    if (!statusError && status?.user_enabled === true) {
+      const { data: demoData, error: demoError } = await supabase.rpc('my_tngn_demo_ledger_activity', { p_limit: limit });
+      if (!demoError) {
+        const demoActivity = (demoData ?? []) as WalletActivityRow[];
+        return [...demoActivity, ...realActivity]
+          .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+          .slice(0, Math.max(1, limit));
+      }
+    }
+  } catch {
+    // Keep the real ledger activity visible if the isolated demo-ledger read fails.
+  }
+  return realActivity;
 }
 
 export async function getPositions() {
