@@ -1,0 +1,107 @@
+import { userFacingError } from '@/lib/user-facing-error';
+import { supabase } from '@/lib/supabase';
+
+export type MarketPresentationProfile =
+  | 'EVENT'
+  | 'CRYPTO'
+  | 'SPORTS'
+  | 'MUSIC'
+  | 'AI'
+  | 'STOCKS'
+  | 'ECONOMICS'
+  | 'ENTERTAINMENT'
+  | 'PUBLIC_EVENTS';
+
+export type MarketCategoryExperience = {
+  code: string;
+  name: string;
+  description: string;
+  display_order: number;
+  presentation_profile: MarketPresentationProfile;
+  group_field: string;
+};
+
+export type CryptoMarketQuote = {
+  id: string;
+  symbol: string;
+  name: string;
+  imageUrl: string | null;
+  currentPrice: number;
+  marketCap: number | null;
+  marketCapRank: number | null;
+  totalVolume: number | null;
+  change24hPercent: number | null;
+  sparkline7d: number[];
+  sourceUpdatedAt: string | null;
+};
+
+export type CryptoMarketDataPage = {
+  source: 'COINGECKO';
+  dataPurpose: 'DISPLAY_ONLY';
+  quoteCurrency: string;
+  page: number;
+  perPage: number;
+  query: string | null;
+  hasMore: boolean;
+  fetchedAt: string;
+  coins: CryptoMarketQuote[];
+};
+
+export type AdminMarketDataSource = {
+  code: string;
+  name: string;
+  base_url: string;
+  status: 'ACTIVE' | 'DISABLED';
+  quote_currency: string;
+  default_page_size: number;
+  cache_seconds: number;
+  updated_at: string;
+};
+
+export async function getMarketCategoryExperiences(): Promise<MarketCategoryExperience[]> {
+  const { data, error } = await supabase.rpc('get_market_category_experiences');
+  if (error) throw userFacingError(error, 'markets', 'Market categories could not be loaded.');
+  return (data ?? []) as MarketCategoryExperience[];
+}
+
+export async function getCryptoMarketPrices(input: {
+  page?: number;
+  perPage?: number;
+  query?: string;
+} = {}): Promise<CryptoMarketDataPage> {
+  const { data, error } = await supabase.functions.invoke('crypto-market-data', {
+    body: {
+      page: Math.max(1, Math.floor(input.page ?? 1)),
+      perPage: Math.max(1, Math.min(100, Math.floor(input.perPage ?? 24))),
+      query: input.query?.trim() || null,
+    },
+  });
+  if (error) {
+    throw userFacingError(error, 'markets', 'Crypto market prices are temporarily unavailable.');
+  }
+  const payload = data as Partial<CryptoMarketDataPage> & { error?: string };
+  if (payload?.error || !Array.isArray(payload?.coins)) {
+    throw new Error(payload?.error || 'Crypto market prices are temporarily unavailable.');
+  }
+  return payload as CryptoMarketDataPage;
+}
+
+export async function getAdminMarketDataSources(): Promise<AdminMarketDataSource[]> {
+  const { data, error } = await supabase.rpc('admin_market_data_source_config');
+  if (error) throw userFacingError(error, 'admin', 'Market-data controls could not be loaded.');
+  return (data ?? []) as AdminMarketDataSource[];
+}
+
+export async function setAdminMarketDataSourceStatus(input: {
+  code: string;
+  status: 'ACTIVE' | 'DISABLED';
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_market_data_source_status', {
+    p_code: input.code,
+    p_status: input.status,
+    p_reason: input.reason.trim(),
+  });
+  if (error) throw userFacingError(error, 'admin', 'Market-data source status could not be updated.');
+  return data === true;
+}
