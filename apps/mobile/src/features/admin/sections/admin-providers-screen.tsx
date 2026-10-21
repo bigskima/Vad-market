@@ -919,6 +919,50 @@ function AdminSportsCompetitionPanel() {
   const entries = catalog.competitions.filter((item) => item.sportCode === selectedSport)
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  async function saveCompetition() {
+    if (reason.trim().length < 3) {
+      setError('Enter a reason before adding or updating a competition.');
+      return;
+    }
+    if (!draftSportCode.trim() || !draftSportName.trim() || !draftCompetitionCode.trim() || !draftCompetitionName.trim()) {
+      setError('Enter the sport and competition codes and names.');
+      return;
+    }
+    if (draftResultMode === 'AUTOMATIC' && (!draftProviderCode.trim() || !draftProviderCompetitionCode.trim())) {
+      setError('Automatic mode requires a provider code and exact provider competition mapping.');
+      return;
+    }
+    setWorkingCode('CREATE_COMPETITION');
+    setError(null);
+    setMessage(null);
+    try {
+      await upsertAdminSportsCompetition({
+        sportCode: draftSportCode,
+        sportName: draftSportName,
+        competitionCode: draftCompetitionCode,
+        competitionName: draftCompetitionName,
+        region: draftRegion,
+        aliases: draftAliases.split(',').map((value) => value.trim()).filter(Boolean),
+        resultMode: draftResultMode,
+        providerCode: draftResultMode === 'AUTOMATIC' ? draftProviderCode : undefined,
+        providerCompetitionCode: draftResultMode === 'AUTOMATIC' ? draftProviderCompetitionCode : undefined,
+        reason: reason.trim(),
+      });
+      setSelectedSport(draftSportCode.trim().toUpperCase());
+      setDraftCompetitionCode('');
+      setDraftCompetitionName('');
+      setDraftAliases('');
+      setDraftProviderCompetitionCode('');
+      setReason('');
+      setMessage('Sports competition saved to the database.');
+      await load();
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Competition could not be saved.');
+    } finally {
+      setWorkingCode(null);
+    }
+  }
+
   async function toggle(item: SportsMarketCompetition) {
     if (reason.trim().length < 3) {
       setError('Enter a reason before changing a competition.');
