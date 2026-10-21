@@ -1,9 +1,10 @@
 import 'expo-sqlite/localStorage/install';
 
-import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 
 import { supabase, supabaseConfiguration } from '@/lib/supabase';
+import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 export type VADCurrency = 'NGN' | 'USDC' | 'TNGN';
 type CurrencyPolicy = {
@@ -39,6 +40,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
   const [countryCode, setCountryCode] = useState('');
   const [preferredCurrency, setPreferredCurrencyState] = useState<VADCurrency | null>(null);
   const [loading, setLoading] = useState(true);
+  const countryDetectionAttempted = useRef(false);
 
   const applyPolicy = useCallback((policy: CurrencyPolicy, savedPreferred: VADCurrency | null) => {
     const country = String(policy.country_code ?? '').trim().toUpperCase();
@@ -80,8 +82,23 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       }
       const { data, error } = await supabase.rpc('get_my_currency_policy');
       if (error) throw error;
-      const row = (Array.isArray(data) ? data[0] : data) as CurrencyPolicy | null;
+      let row = (Array.isArray(data) ? data[0] : data) as CurrencyPolicy | null;
       if (!row) throw new Error('Currency policy is unavailable.');
+
+      // If onboarding left the account country blank, make one permissioned attempt
+      // to verify the device's real location. The Edge Function only fills an empty
+      // country from matching Nigerian GPS + IP evidence; it never overwrites a
+      // different, explicitly recorded account jurisdiction.
+      if (!String(row.country_code ?? '').trim() && !countryDetectionAttempted.current) {
+        countryDetectionAttempted.current = true;
+        const location = await verifyCurrentServiceLocation().catch(() => ({ allowed: false, reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE' }));
+        if (location.allowed) {
+          const { data: refreshedPolicy, error: refreshedPolicyError } = await supabase.rpc('get_my_currency_policy');
+          const refreshedRow = (Array.isArray(refreshedPolicy) ? refreshedPolicy[0] : refreshedPolicy) as CurrencyPolicy | null;
+          if (!refreshedPolicyError && refreshedRow) row = refreshedRow;
+        }
+      }
+
       const { data: preferenceData } = await supabase
         .from('user_currency_preferences')
         .select('preferred_asset_code')
