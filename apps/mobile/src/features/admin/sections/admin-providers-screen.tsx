@@ -1051,11 +1051,56 @@ function AdminSportsCompetitionPanel() {
           }) : (
             <VadText variant="caption" tone="secondary">No competition records are configured for this sport yet.</VadText>
           )}
+          <View style={{ gap: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md }}>
+            <VadText variant="bodyStrong">Add a sport or competition</VadText>
+            <VadText variant="caption" tone="secondary">
+              New records are saved to the database. Use Verified by default; Automatic requires an already approved Oracle competition resource.
+            </VadText>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <VadInput label="Sport code" value={draftSportCode} onChangeText={setDraftSportCode} placeholder="FOOTBALL" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <VadInput label="Sport name" value={draftSportName} onChangeText={setDraftSportName} placeholder="Football" />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <VadInput label="Competition code" value={draftCompetitionCode} onChangeText={setDraftCompetitionCode} placeholder="PL" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <VadInput label="Competition name" value={draftCompetitionName} onChangeText={setDraftCompetitionName} placeholder="Premier League" />
+              </View>
+            </View>
+            <VadInput label="Region · optional" value={draftRegion} onChangeText={setDraftRegion} placeholder="England" />
+            <VadInput label="Aliases · comma separated, optional" value={draftAliases} onChangeText={setDraftAliases} placeholder="EPL, English Premier League" />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+              <VadChip label="Verified source" selected={draftResultMode === 'VERIFIED'} tone={draftResultMode === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => setDraftResultMode('VERIFIED')} />
+              <VadChip label="Automatic provider" selected={draftResultMode === 'AUTOMATIC'} tone={draftResultMode === 'AUTOMATIC' ? 'brand' : 'neutral'} onPress={() => setDraftResultMode('AUTOMATIC')} />
+            </View>
+            {draftResultMode === 'AUTOMATIC' ? (
+              <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <VadInput label="Oracle provider code" value={draftProviderCode} onChangeText={setDraftProviderCode} placeholder="FOOTBALL_DATA" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <VadInput label="Provider competition code" value={draftProviderCompetitionCode} onChangeText={setDraftProviderCompetitionCode} placeholder="PL" />
+                </View>
+              </View>
+            ) : null}
+          </View>
           <VadInput
-            label="Reason for competition change"
+            label="Reason for catalog change"
             value={reason}
             onChangeText={setReason}
-            placeholder="Why should this sport or competition be enabled/disabled?"
+            placeholder="Why are you adding or changing this competition?"
+          />
+          <VadButton
+            label={workingCode === 'CREATE_COMPETITION' ? 'Saving…' : 'Save sport / competition'}
+            variant="secondary"
+            loading={workingCode === 'CREATE_COMPETITION'}
+            disabled={Boolean(workingCode) || reason.trim().length < 3}
+            onPress={() => void saveCompetition()}
           />
           <VadText variant="caption" tone="secondary">
             Status changes are permission-checked and written to the audit log. Disabling a league hides it from new-market selection; it does not rewrite previously published outcomes.
