@@ -92,11 +92,11 @@ const defaultTrendingSettings: TrendingMarketSettings = {
  * requests at once can overload the database/API gateway and cause unrelated
  * sections to fail together under load.
  */
-async function settleInBatches<T>(
-  tasks: Array<() => Promise<T>>,
+async function settleInBatches(
+  tasks: Array<() => Promise<unknown>>,
   batchSize = 3,
-): Promise<PromiseSettledResult<T>[]> {
-  const settled: PromiseSettledResult<T>[] = [];
+): Promise<PromiseSettledResult<unknown>[]> {
+  const settled: PromiseSettledResult<unknown>[] = [];
   for (let index = 0; index < tasks.length; index += batchSize) {
     const batch = tasks.slice(index, index + batchSize);
     settled.push(...(await Promise.allSettled(batch.map((task) => task()))));
