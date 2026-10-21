@@ -126,7 +126,7 @@ export function PortfolioScreen({
       setOrderHistoryLoading(false);
     });
     return () => { cancelled = true; };
-  }, [retryValuation, positions, orders, wallet, marketHistory, poolStakes, settlements, markets]);
+  }, [retryValuation]);
 
   useEffect(() => {
     const timer = setInterval(() => setClockNow(Date.now()), 60 * 1000);
