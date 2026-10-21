@@ -18,6 +18,7 @@ export default function AccountScreen() {
   const { session, signOut } = useAuth();
   const currencyPreference = useCurrencyPreference();
   const { refreshPortfolio } = useProductDataContext();
+  const tngnEnabled = currencyPreference.isCurrencyEnabled('TNGN');
   const theme = useVadTheme();
   const density = useProductDensity();
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
@@ -38,7 +39,7 @@ export default function AccountScreen() {
   useEffect(() => {
     if (!userId || currencyPreference.loading) return;
     void refreshPortfolio();
-  }, [currencyPreference.loading, currencyPreference.isCurrencyEnabled('TNGN'), refreshPortfolio, userId]);
+  }, [currencyPreference.loading, refreshPortfolio, tngnEnabled, userId]);
 
   useEffect(() => {
     let ignore = false;
