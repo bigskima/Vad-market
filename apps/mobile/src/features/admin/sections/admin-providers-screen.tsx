@@ -830,19 +830,6 @@ function AdminMarketDataSourcePanel({ canManage }: { canManage: boolean }) {
           {canManage ? (
             <>
               <VadInput
-                label="Reason for feed change"
-                value={reason}
-                onChangeText={setReason}
-                placeholder="Why are you changing this display feed or its settings?"
-              />
-              <VadButton
-                label={working ? 'Saving…' : 'Save crypto feed settings'}
-                variant="secondary"
-                loading={working}
-                disabled={working || reason.trim().length < 3}
-                onPress={() => void updateSettings()}
-              />
-              <VadInput
                 label="Quote currency"
                 value={quoteCurrencyDraft}
                 onChangeText={setQuoteCurrencyDraft}
@@ -856,6 +843,19 @@ function AdminMarketDataSourcePanel({ canManage }: { canManage: boolean }) {
                   <VadInput label="Cache seconds (15–3600)" value={cacheSecondsDraft} onChangeText={setCacheSecondsDraft} placeholder="60" />
                 </View>
               </View>
+              <VadInput
+                label="Reason for feed change"
+                value={reason}
+                onChangeText={setReason}
+                placeholder="Why are you changing this display feed or its settings?"
+              />
+              <VadButton
+                label={working ? 'Saving…' : 'Save crypto feed settings'}
+                variant="secondary"
+                loading={working}
+                disabled={working || reason.trim().length < 3}
+                onPress={() => void updateSettings()}
+              />
               <VadButton
                 label={source.status === 'ACTIVE' ? 'Disable crypto display feed' : 'Enable crypto display feed'}
                 variant={source.status === 'ACTIVE' ? 'secondary' : 'primary'}
