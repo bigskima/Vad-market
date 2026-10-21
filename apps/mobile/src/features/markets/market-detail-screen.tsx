@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
-import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { AssistantEntry } from '@/features/assistant/assistant-entry';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
@@ -22,16 +21,17 @@ import { MarketPriceHistoryPanel } from './components/market-price-history-panel
 import { CryptoMarketSpotSummary } from './components/crypto-market-prices-panel';
 import { assetMoney, probability } from './format';
 
-type DetailTab = 'Overview' | 'Trade' | 'Chart' | 'Discussion' | 'Rules';
+type DetailTab = 'Overview' | 'Live price' | 'Trade' | 'Chart' | 'Discussion' | 'Rules';
 type MarketTiming = ReturnType<typeof getMarketTiming>;
 
-const tabs = [
+const tabs: { value: DetailTab; label: string }[] = [
   { value: 'Overview', label: 'Overview' },
+  { value: 'Live price', label: 'Live price' },
   { value: 'Trade', label: 'Trade' },
-  { value: 'Chart', label: 'Chart' },
+  { value: 'Chart', label: 'Activity' },
   { value: 'Discussion', label: 'Chat' },
   { value: 'Rules', label: 'Rules' },
-] as const;
+];
 
 export function MarketDetailScreen({
   market,
@@ -60,6 +60,9 @@ export function MarketDetailScreen({
   const currencyPreference = useCurrencyPreference();
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
+  const isCryptoMarket = String(market.presentation_profile ?? '').toUpperCase() === 'CRYPTO'
+    || String(market.category_code ?? '').toUpperCase() === 'CRYPTO_WEB3'
+    || String(market.category ?? '').toUpperCase() === 'CRYPTO';
   const [tab, setTab] = useState<DetailTab>(initialOutcome ? 'Trade' : 'Overview');
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
@@ -67,7 +70,8 @@ export function MarketDetailScreen({
   useEffect(() => {
     closeRefreshDone.current = false;
     resolveRefreshDone.current = false;
-  }, [market.instrument_public_id]);
+    setTab(initialOutcome ? 'Trade' : 'Overview');
+  }, [market.instrument_public_id, initialOutcome]);
 
   useEffect(() => {
     if (!onRefreshMarket) return;
@@ -111,13 +115,22 @@ export function MarketDetailScreen({
     <View style={{ gap: density.compact ? 12 : density.sectionGap }}>
       <MarketDetailHeader market={market} />
 
-      <View style={{ gap: 6 }}>
-        <VadSegmentedControl value={tab} options={tabs} onChange={setTab} />
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingVertical: 2 }}>
+        {tabs.filter((item) => isCryptoMarket || item.value !== 'Live price').map((item) => (
+          <VadChip
+            key={item.value}
+            label={item.label}
+            selected={tab === item.value}
+            tone={tab === item.value ? 'brand' : 'neutral'}
+            onPress={() => setTab(item.value)}
+          />
+        ))}
+      </ScrollView>
 
       {tab === 'Overview' ? (
         <Overview market={market} timing={timing} onTrade={() => setTab('Trade')} />
       ) : null}
+      {tab === 'Live price' && isCryptoMarket ? <CryptoMarketSpotSummary assetQuery={marketCryptoAssetQuery(market)} /> : null}
       {tab === 'Chart' ? <Activity market={market} /> : null}
       {tab === 'Trade' ? (
         <TradingTicket
@@ -145,9 +158,6 @@ function Overview({ market, timing, onTrade }: { market: MarketCatalogItem; timi
     <View style={{ gap: density.compact ? 8 : 12 }}>
       <MarketSnapshot market={market} timing={timing} />
       <MarketContextPanel market={market} />
-      {String(market.presentation_profile ?? '').toUpperCase() === 'CRYPTO' ? (
-        <CryptoMarketSpotSummary assetQuery={marketCryptoAssetQuery(market)} />
-      ) : null}
       <VadButton label="Trade this market" onPress={onTrade} size="small" leading={<VadIcon name="markets" size={15} tone="inverse" />} />
       <AssistantEntry
         label="Ask VAD AI about this market"
