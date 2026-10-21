@@ -504,7 +504,6 @@ export function PortfolioScreen({
         </View>
       ) : null}
 
-      {marksError && tab === 'positions' && !sectionErrors?.positions ? <InlineError message={marksError} onRetry={retry} /> : null}
     </View>
   );
 }
