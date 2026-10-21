@@ -29,6 +29,8 @@ export type AdminSportsFixturePage = {
   purpose: 'FIXTURE_DISCOVERY_ONLY';
   sportCode: string;
   competitionCode: string;
+  providerCode: string;
+  providerCompetitionCode: string;
   competitionName: string;
   dateFrom: string;
   dateTo: string;
