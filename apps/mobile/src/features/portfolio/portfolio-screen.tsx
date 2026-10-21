@@ -357,7 +357,7 @@ export function PortfolioScreen({
           value={tab}
           options={[
             { value: 'positions', label: `Positions ${isTngn ? activeStakes.length : openMarkedPositions.length}` },
-            { value: 'orders', label: `Open Orders ${orders.filter((order) => order.asset_code === asset && amount(order.remaining_quantity) > 0).length}` },
+            { value: 'orders', label: `Open Orders ${isTngn ? activeStakes.length : orders.filter((order) => order.asset_code === asset && amount(order.remaining_quantity) > 0).length}` },
             { value: 'history', label: `History ${historyRows.length}` },
             { value: 'performance', label: 'Performance' },
           ]}
@@ -448,7 +448,16 @@ export function PortfolioScreen({
       ) : null}
 
       {tab === 'orders' ? (
-        sectionErrors?.orders ? <InlineError message={sectionErrors.orders} onRetry={retry} />
+        isTngn ? (
+          sectionErrors?.poolStakes ? <InlineError message={sectionErrors.poolStakes} onRetry={retry} />
+            : (loading || orderHistoryLoading) && activeStakes.length === 0 ? <LoadingState label="Loading your open TNGN predictions…" />
+            : activeStakes.length ? (
+              <View style={{ gap: theme.spacing.sm }}>
+                {activeStakes.slice(0, visibleOrderCount).map((stake) => <DemoStakeCard key={stake.stake_id} stake={stake} />)}
+                {activeStakes.length > visibleOrderCount ? <VadButton label="Show more TNGN orders" variant="secondary" onPress={() => setVisiblePositionCount((count) => count + 5)} /> : null}
+              </View>
+            ) : <VadEmptyState title="No open TNGN orders" body="Your TNGN practice predictions will appear here while awaiting market settlement. Real NGN and USDC orders stay separate." />
+        ) : sectionErrors?.orders ? <InlineError message={sectionErrors.orders} onRetry={retry} />
           : loading && visibleOrders.totalCount === 0 ? <LoadingState label="Loading your open orders…" />
           : visibleOrders.totalCount ? (
             <View style={{ gap: theme.spacing.sm }}>
