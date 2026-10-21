@@ -387,7 +387,7 @@ export function PortfolioScreen({
               borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border,
               backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
             })}>
-              <VadIcon name="operations" size={16} tone="secondary" />
+              <VadIcon name="filter" size={16} tone="secondary" />
               <VadText variant="caption" tone="secondary">Filter</VadText>
             </Pressable>
           </View>
@@ -796,7 +796,7 @@ function SummaryMetric({ title, count, amount: value, asset, tone, value: custom
     <VadCard style={{ flex: 1, minWidth: 0, padding: 8, gap: 4, borderRadius: 14, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minWidth: 0 }}>
         <View style={{ width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: positive ? theme.colors.yesSoft : negative ? theme.colors.noSoft : theme.colors.surfaceMuted, flexShrink: 0 }}>
-          <VadIcon name={positive ? 'arrowUp' : negative ? 'arrowDown' : 'activity'} size={13} tone={tone ?? 'secondary'} />
+          <VadIcon name={positive ? 'arrowUp' : negative ? 'arrowDown' : 'clock'} size={13} tone={tone ?? 'secondary'} />
         </View>
         <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 12 }}>{title}</VadText>
       </View>
