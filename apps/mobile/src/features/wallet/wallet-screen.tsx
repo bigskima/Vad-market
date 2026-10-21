@@ -370,40 +370,214 @@ function CompactCurrencyBalance({ wallet, selected, balanceVisible }: { wallet: 
   const reserved = Number(wallet.reserved ?? 0);
   const pending = Number(wallet.withdrawal_pending ?? 0);
   const total = available + reserved + pending;
-  const currency = wallet.asset_code === 'NGN' ? 'Naira' : wallet.asset_code === 'TNGN' ? 'Test Naira · separate demo ledger' : 'USD Coin';
+  const name = wallet.asset_code === 'NGN'
+    ? 'Nigerian Naira'
+    : wallet.asset_code === 'TNGN'
+      ? 'Test Naira'
+      : 'USD Coin';
+  const subtitle = wallet.asset_code === 'USDC'
+    ? 'USDC · VAD ledger'
+    : wallet.asset_code === 'TNGN'
+      ? 'Practice balance · isolated demo ledger'
+      : 'NGN';
 
   return (
-    <VadCard variant="raised" style={{ paddingVertical: 12, paddingHorizontal: 14, gap: 10, borderRadius: 17, borderColor: selected ? theme.colors.brandPrimary : theme.colors.border, borderWidth: selected ? 1.5 : 1 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted }}>
-          <VadText variant="caption" tone="brand" style={{ fontWeight: '800' }}>{wallet.asset_code === 'NGN' ? '₦' : wallet.asset_code === 'TNGN' ? 'T' : '$'}</VadText>
+    <VadCard
+      variant="raised"
+      style={{
+        minHeight: 68,
+        paddingVertical: 9,
+        paddingHorizontal: 11,
+        borderRadius: 16,
+        borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
+        borderWidth: selected ? 1.5 : 1,
+        backgroundColor: theme.colors.surface,
+      }}
+    >
+      <View style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <CurrencyMark assetCode={wallet.asset_code} />
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: 14 }}>{name}</VadText>
+          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 11.5 }}>{subtitle}</VadText>
         </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
-          <VadText variant="bodyStrong">{wallet.asset_code}</VadText>
-          <VadText variant="caption" tone="secondary">{currency}</VadText>
+        <View style={{ alignItems: 'flex-end', minWidth: 0, maxWidth: '42%', gap: 2 }}>
+          <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 14 }}>
+            {balanceVisible ? assetMoney(total, wallet.asset_code) : '••••••'}
+          </VadText>
+          <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 10.5 }}>
+            {selected ? 'Selected account' : wallet.asset_code}
+          </VadText>
         </View>
-        <View style={{ alignItems: 'flex-end', minWidth: 0, maxWidth: '54%', gap: 2 }}>
-          <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit>{balanceVisible ? assetMoney(total, wallet.asset_code) : '••••••'}</VadText>
-          <VadText variant="caption" tone="tertiary">Total balance</VadText>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 0, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 9 }}>
-        <BalanceFact label="Available" value={balanceVisible ? assetMoney(available, wallet.asset_code) : '••••••'} tone="yes" />
-        <BalanceFact label="Reserved" value={balanceVisible ? assetMoney(reserved, wallet.asset_code) : '••••••'} />
-        <BalanceFact label="Pending" value={balanceVisible ? assetMoney(pending, wallet.asset_code) : '••••••'} />
+        <VadIcon name="chevronRight" size={17} tone="tertiary" />
       </View>
     </VadCard>
   );
 }
 
-function BalanceFact({ label, value, tone = 'primary' }: { label: string; value: string; tone?: 'primary' | 'yes' }) {
+function CurrencyMark({ assetCode }: { assetCode: string }) {
   const theme = useVadTheme();
+  if (assetCode === 'NGN') {
+    return (
+      <View style={{ width: 42, height: 42, borderRadius: 21, overflow: 'hidden', flexDirection: 'row', backgroundColor: '#0B9D66', flexShrink: 0 }}>
+        <View style={{ flex: 1, backgroundColor: '#079B61' }} />
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />
+        <View style={{ flex: 1, backgroundColor: '#079B61' }} />
+      </View>
+    );
+  }
   return (
-    <View style={{ flex: 1, minWidth: 0, gap: 2, paddingHorizontal: 7, borderLeftWidth: label === 'Available' ? 0 : 1, borderLeftColor: theme.colors.border }}>
-      <VadText variant="caption" tone="tertiary" numberOfLines={1}>{label}</VadText>
-      <VadText variant="caption" tone={tone} numberOfLines={1} adjustsFontSizeToFit>{value}</VadText>
+    <View style={{
+      width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: assetCode === 'USDC' ? '#2563EB' : theme.colors.brandPrimary,
+      borderWidth: 1, borderColor: assetCode === 'USDC' ? '#60A5FA' : theme.colors.border,
+      flexShrink: 0,
+    }}>
+      <VadText variant="heading" style={{ color: '#FFFFFF', fontSize: 19 }}>{assetCode === 'USDC' ? '$' : 'T'}</VadText>
     </View>
   );
+}
+
+function WalletBalanceMetric({ icon, label, value, tone }: {
+  icon: VadIconName;
+  label: string;
+  value: string;
+  tone: 'available' | 'inUse';
+}) {
+  const theme = useVadTheme();
+  const accent = tone === 'available' ? '#18D6A3' : '#A78BFA';
+  return (
+    <View style={{
+      flex: 1, minWidth: 0, minHeight: 61, borderRadius: 13, paddingHorizontal: 9, paddingVertical: 8,
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: 'rgba(5,10,53,0.32)', borderWidth: 1, borderColor: 'rgba(196,204,255,0.13)',
+    }}>
+      <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: tone === 'available' ? 'rgba(24,214,163,0.18)' : 'rgba(167,139,250,0.18)', flexShrink: 0 }}>
+        <VadIcon name={icon} size={16} color={accent} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <VadText variant="caption" numberOfLines={1} style={{ color: '#C9D0FF', fontSize: 10.5 }}>{label}</VadText>
+        <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit style={{ color: '#FFFFFF', fontSize: 13 }}>{value}</VadText>
+      </View>
+    </View>
+  );
+}
+
+function WalletBalanceSparkline({ values, width, height, color }: {
+  values: number[];
+  width: number;
+  height: number;
+  color: string;
+}) {
+  const theme = useVadTheme();
+  if (values.length < 2 || values.some((value) => !Number.isFinite(value))) {
+    return (
+      <View style={{ width, height, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 }}>
+        <VadText variant="caption" style={{ color: '#C9D0FF', fontSize: 9, textAlign: 'right' }}>History builds from posted wallet activity</VadText>
+      </View>
+    );
+  }
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || Math.max(1, Math.abs(max) * 0.04);
+  const inset = 5;
+  const innerHeight = height - inset * 2;
+  const coords = values.map((value, index) => ({
+    x: inset + (index / (values.length - 1)) * Math.max(1, width - inset * 2),
+    y: inset + (1 - (value - min) / range) * innerHeight,
+  }));
+  return (
+    <View style={{ width, height, position: 'relative', overflow: 'hidden' }}>
+      {coords.slice(1).map((point, index) => {
+        const previous = coords[index];
+        const dx = point.x - previous.x;
+        const dy = point.y - previous.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        return (
+          <View
+            key={index}
+            style={{
+              position: 'absolute',
+              left: (previous.x + point.x) / 2 - length / 2,
+              top: (previous.y + point.y) / 2 - 1.5,
+              width: length,
+              height: 3,
+              borderRadius: 3,
+              backgroundColor: color,
+              transform: [{ rotate: `${Math.atan2(dy, dx)}rad` }],
+            }}
+          />
+        );
+      })}
+      <View style={{ position: 'absolute', right: 1, top: coords[coords.length - 1].y - 3, width: 7, height: 7, borderRadius: 4, backgroundColor: '#D2CFFF' }} />
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, borderBottomWidth: 1, borderBottomColor: theme.colors.border, opacity: 0.25 }} />
+    </View>
+  );
+}
+
+function RecentWalletActivityRow({ row, onPress }: { row: WalletActivityRow; onPress: () => void }) {
+  const theme = useVadTheme();
+  const incoming = ledgerMovementIsIncoming(row);
+  const title = ledgerMovementLabel(row.activity_type);
+  const icon: VadIconName = row.activity_type === 'DEPOSIT' || row.activity_type === 'WITHDRAWAL'
+    ? incoming ? 'arrowDown' : 'arrowUp'
+    : row.activity_type.includes('SETTLEMENT') ? 'activity'
+      : row.activity_type.includes('TRANSFER') ? 'transfer'
+        : row.market_title ? 'activity' : 'fileText';
+  const date = new Date(row.created_at);
+  const timestamp = Number.isFinite(date.getTime())
+    ? date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : 'Recently';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`View ${title.toLowerCase()} wallet record`}
+      accessibilityHint="Opens complete wallet activity"
+      onPress={onPress}
+      style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}
+    >
+      <VadCard variant="raised" style={{ minHeight: 69, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+        <View style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: incoming ? 'rgba(24,214,163,0.14)' : theme.colors.brandSoft, flexShrink: 0 }}>
+          <VadIcon name={icon} size={18} tone={incoming ? 'yes' : 'brand'} color={incoming ? '#18D6A3' : theme.colors.brandPrimary} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: 13.5 }}>{title}</VadText>
+          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 11.5 }}>{row.market_title ?? row.description ?? row.asset_code}</VadText>
+          <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 10.5 }}>{timestamp}</VadText>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '40%' }}>
+          <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit style={{ color: incoming ? '#18D6A3' : theme.colors.textPrimary, fontSize: 13 }}>
+            {incoming ? '+' : '−'}{assetMoney(row.amount, row.asset_code)}
+          </VadText>
+          <VadText variant="caption" tone="tertiary" style={{ fontSize: 10.5 }}>{row.asset_code}</VadText>
+        </View>
+        <VadIcon name="chevronRight" size={16} tone="tertiary" />
+      </VadCard>
+    </Pressable>
+  );
+}
+
+function ledgerMovementIsIncoming(row: WalletActivityRow) {
+  if (row.account_type === 'USER_AVAILABLE' || row.account_type === 'DEMO') return row.direction === 'CREDIT';
+  return ['ORDER_FEE_RESERVE_RELEASE', 'MARKET_CLOSE_ORDER_RELEASE'].includes(row.activity_type);
+}
+
+function ledgerMovementLabel(type: string) {
+  const labels: Record<string, string> = {
+    DEMO_GRANT: 'TNGN practice balance',
+    DEMO_STAKE: 'Prediction Purchase',
+    DEMO_REFUND: 'Prediction Refund',
+    DEMO_SETTLEMENT: 'Prediction Payout',
+    POOL_STAKE: 'Prediction Purchase',
+    TRADING_FEE: 'Trading Fee',
+    ORDER_RESERVE: 'Order Reserve',
+    ORDER_FEE_RESERVE_RELEASE: 'Order Reserve Released',
+    MARKET_CLOSE_ORDER_RELEASE: 'Order Funds Released',
+    MARKET_SETTLEMENT: 'Prediction Payout',
+    DEPOSIT: 'Deposit via Bank Transfer',
+    WITHDRAWAL: 'Withdrawal',
+    REFUND: 'Refund',
+  };
+  return labels[type] ?? type.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export function PaymentRow({ intent, onPress }: { intent: PaymentIntentRow; onPress?: () => void }) {
