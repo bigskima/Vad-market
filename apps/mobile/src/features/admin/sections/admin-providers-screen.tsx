@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
@@ -19,7 +19,7 @@ import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
 import { getAdminMarketDataSources, setAdminMarketDataSourceStatus, updateAdminMarketDataSourceSettings } from '@/services/crypto-market-data-api';
-import { getSportsMarketTaxonomy, setAdminSportsCompetitionStatus, type SportsMarketTaxonomy, type SportsMarketCompetition } from '@/services/admin-guided-market-catalog-api';
+import { getSportsMarketTaxonomy, setAdminSportsCompetitionStatus, upsertAdminSportsCompetition, type SportsMarketTaxonomy, type SportsMarketCompetition } from '@/services/admin-guided-market-catalog-api';
 import {
   decideProviderStatusRequest,
   requestProviderStatus,
@@ -891,8 +891,17 @@ function AdminSportsCompetitionPanel() {
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [draftSportCode, setDraftSportCode] = useState('FOOTBALL');
+  const [draftSportName, setDraftSportName] = useState('Football');
+  const [draftCompetitionCode, setDraftCompetitionCode] = useState('');
+  const [draftCompetitionName, setDraftCompetitionName] = useState('');
+  const [draftRegion, setDraftRegion] = useState('International');
+  const [draftAliases, setDraftAliases] = useState('');
+  const [draftResultMode, setDraftResultMode] = useState<'AUTOMATIC' | 'VERIFIED'>('VERIFIED');
+  const [draftProviderCode, setDraftProviderCode] = useState('FOOTBALL_DATA');
+  const [draftProviderCompetitionCode, setDraftProviderCompetitionCode] = useState('');
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -902,9 +911,9 @@ function AdminSportsCompetitionPanel() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
 
   const sports = [...catalog.sports].sort((a, b) => a.name.localeCompare(b.name));
   const entries = catalog.competitions.filter((item) => item.sportCode === selectedSport)
