@@ -303,6 +303,15 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sparklineWidth, setSparklineWidth] = useState(180);
+  const sparkline = coin?.sparkline7d ?? [];
+  const minPrice = sparkline.length ? Math.min(...sparkline) : 0;
+  const maxPrice = sparkline.length ? Math.max(...sparkline) : 1;
+  const priceRange = maxPrice - minPrice || 1;
+  const points = sparkline.map((price, index) => ({
+    x: 2 + (index / Math.max(1, sparkline.length - 1)) * Math.max(1, sparklineWidth - 4),
+    y: 34 - ((price - minPrice) / priceRange) * 29,
+  }));
 
   useEffect(() => {
     const query = assetQuery.trim();
@@ -370,6 +379,40 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
       ) : (
         <VadText variant="caption" tone={error ? 'warning' : 'secondary'}>{error ?? 'No public price available for this asset.'}</VadText>
       )}
+      {coin && points.length > 1 ? (
+        <View
+          accessibilityLabel={`Seven-day ${coin.name} public spot price trend`}
+          onLayout={(event) => setSparklineWidth(Math.max(80, event.nativeEvent.layout.width))}
+          style={{ height: 38, width: '100%', overflow: 'hidden' }}
+        >
+          {points.slice(0, -1).map((point, index) => {
+            const next = points[index + 1];
+            const dx = next.x - point.x;
+            const dy = next.y - point.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            const lineColor = coin.change24hPercent == null
+              ? theme.colors.textTertiary
+              : coin.change24hPercent >= 0 ? theme.colors.yes : theme.colors.no;
+            return (
+              <View
+                key={index}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: (point.x + next.x) / 2 - length / 2,
+                  top: (point.y + next.y) / 2,
+                  width: length,
+                  height: 1.7,
+                  borderRadius: 1,
+                  backgroundColor: lineColor,
+                  transform: [{ rotate: `${angle}deg` }],
+                }}
+              />
+            );
+          })}
+        </View>
+      ) : null}
       {coin && updatedAt ? <VadText variant="caption" tone="tertiary">Source snapshot: {new Date(updatedAt).toLocaleTimeString()} · CoinGecko</VadText> : null}
     </VadCard>
   );
