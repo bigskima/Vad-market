@@ -66,8 +66,8 @@ function acquireRestRequestSlot(signal?: AbortSignal | null): Promise<() => void
 
 function getRequestUrl(input: RequestInfo | URL): string {
   if (typeof input === 'string') return input;
-  if (typeof URL !== 'undefined' && input instanceof URL) return input.toString();
-  return input.url;
+  if ('url' in input) return input.url;
+  return input.toString();
 }
 
 const baseFetch = globalThis.fetch.bind(globalThis);
