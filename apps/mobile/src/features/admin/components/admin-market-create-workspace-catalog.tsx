@@ -21,6 +21,7 @@ import {
 } from '@/services/admin-guided-market-catalog-api';
 import {
   checkCryptoOracleAsset,
+  registerCryptoOracleAsset,
   getCryptoMarketPrices,
   type CryptoMarketQuote,
 } from '@/services/crypto-market-data-api';
@@ -342,6 +343,17 @@ export function AdminMarketCreateWorkspaceCatalog() {
           },
         });
       } else if (marketType) {
+        if (cryptoThreshold) {
+          if (!selectedCryptoAsset || !cryptoAssetCheck?.supported || !cryptoAssetCheck.feedSymbol) {
+            throw new Error('Select an asset with a verified exact Pyth/USD feed before creating this market.');
+          }
+          await registerCryptoOracleAsset({
+            symbol: selectedCryptoAsset.symbol,
+            coinGeckoId: selectedCryptoAsset.id,
+            pythFeedSymbol: cryptoAssetCheck.feedSymbol,
+            reason: 'Admin guided crypto threshold market creation',
+          });
+        }
         result = await createAdminCatalogMarket({
           ...common,
           marketTypeCode: marketType.code,
