@@ -335,7 +335,7 @@ export function PortfolioScreen({
               borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border,
               backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
             })}>
-              <VadIcon name="filter" size={16} tone="secondary" />
+              <VadIcon name="operations" size={16} tone="secondary" />
               <VadText variant="caption" tone="secondary">Filter</VadText>
             </Pressable>
           </View>
@@ -480,7 +480,7 @@ function PositionCard({ position, market, onPress }: { position: PositionModel; 
             <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: 72, height: 72, borderRadius: 12, backgroundColor: theme.colors.surfaceMuted }} />
           ) : (
             <View style={{ width: 72, height: 72, borderRadius: 12, backgroundColor: theme.colors.surfaceMuted, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
-              <VadIcon name="chartNoAxesCombined" size={22} tone="tertiary" />
+              <VadIcon name="activity" size={22} tone="tertiary" />
             </View>
           )}
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
@@ -523,7 +523,7 @@ function DemoStakeCard({ stake }: { stake: PoolStakeRow }) {
           <VadText variant="bodyStrong" numberOfLines={3}>{stake.market_title}</VadText>
           <VadText variant="caption" tone="secondary">{stake.outcome_code} · {stake.market_status}</VadText>
         </View>
-        <VadIcon name="flaskConical" size={18} tone="brand" />
+        <VadIcon name="activity" size={18} tone="brand" />
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
         <View style={{ gap: 2 }}>
@@ -571,11 +571,9 @@ function OrderCard({ order, onPress }: { order: OrderRow; onPress: () => void })
 }
 
 function HistoryCard({ row }: { row: MarketHistoryRow }) {
-  const theme = useVadTheme();
   const result = String(row.result).toUpperCase();
   const settled = ['WON', 'LOST', 'REFUNDED', 'VOID'].includes(result);
   const pnl = amount(row.realized_pnl);
-  const resultTone = result === 'WON' ? 'yes' : result === 'LOST' ? 'no' : 'brand';
   return (
     <VadCard variant="raised" style={{ gap: 8, padding: 13 }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
@@ -673,7 +671,7 @@ function LoadingState({ label }: { label: string }) {
   const theme = useVadTheme();
   return (
     <VadCard variant="raised" style={{ alignItems: 'center', padding: theme.spacing.lg, gap: 8 }}>
-      <VadIcon name="loaderCircle" size={21} tone="brand" />
+      <VadIcon name="activity" size={21} tone="brand" />
       <VadText variant="caption" tone="secondary">{label}</VadText>
     </VadCard>
   );
@@ -682,7 +680,7 @@ function LoadingState({ label }: { label: string }) {
 function PortfolioLineChart({ values, width, height, positive }: { values: number[]; width: number; height: number; positive: boolean }) {
   const theme = useVadTheme();
   if (values.length < 2 || values.some((value) => !Number.isFinite(value))) {
-    return <VadEmptyState title="Not enough valuation history yet" body="VAD will plot genuine valuation snapshots as they are recorded. It will not create estimated historical values." />;
+    return <View style={{ height, justifyContent: "center", alignItems: "center", paddingHorizontal: 12 }}><VadText variant="caption" tone="tertiary">Record more genuine valuations to show this trend. No historical values are estimated.</VadText></View>;
   }
   const min = Math.min(...values);
   const max = Math.max(...values);
