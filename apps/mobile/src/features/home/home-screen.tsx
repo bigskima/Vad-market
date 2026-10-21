@@ -79,13 +79,13 @@ export function HomeScreen({
       // A slow watchlist endpoint must not leave the Home section in an
       // infinite loading state. Race only this optional section against a
       // bounded wait; do not cancel or alter the underlying authenticated query.
-      const watchlistRequest = listUserMarketWatchlist();
-      const watchlistWithTimeout = Promise.race([
-        watchlistRequest,
-        new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Watchlist request timed out')), 12000);
-        }),
-      ]);
+      const watchlistWithTimeout = new Promise<Awaited<ReturnType<typeof listUserMarketWatchlist>>>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Watchlist request timed out')), 12000);
+        void listUserMarketWatchlist().then(
+          (rows) => { clearTimeout(timeout); resolve(rows); },
+          (reason: unknown) => { clearTimeout(timeout); reject(reason); },
+        );
+      });
       const [profileResult, balanceResult, watchlistResult] = await Promise.allSettled([
         supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle(),
         getWalletBalanceHistory(30),
