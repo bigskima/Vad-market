@@ -189,7 +189,7 @@ function CompactCurrencyBalance({ wallet, selected, balanceVisible }: { wallet: 
     <VadCard variant="raised" style={{ paddingVertical: 12, paddingHorizontal: 14, gap: 10, borderRadius: 17, borderColor: selected ? theme.colors.brandPrimary : theme.colors.border, borderWidth: selected ? 1.5 : 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted }}>
-          <VadText variant="caption" tone="brand" style={{ fontWeight: '800' }}>{wallet.asset_code === 'NGN' ? '₦' : wallet.asset_code === 'TNGN' ? 'T' : '
+          <VadText variant="caption" tone="brand" style={{ fontWeight: '800' }}>{wallet.asset_code === 'NGN' ? '₦' : wallet.asset_code === 'TNGN' ? 'T' : '$'}</VadText>
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
           <VadText variant="bodyStrong">{wallet.asset_code}</VadText>
