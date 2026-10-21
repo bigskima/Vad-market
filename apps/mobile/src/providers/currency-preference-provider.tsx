@@ -40,7 +40,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
   const [countryCode, setCountryCode] = useState('');
   const [preferredCurrency, setPreferredCurrencyState] = useState<VADCurrency | null>(null);
   const [loading, setLoading] = useState(true);
-  const countryDetectionAttempted = useRef(false);
+  const countryDetectionAttemptedForUser = useRef<string | null>(null);
 
   const applyPolicy = useCallback((policy: CurrencyPolicy, savedPreferred: VADCurrency | null) => {
     const country = String(policy.country_code ?? '').trim().toUpperCase();
@@ -78,6 +78,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
         setEligibleState([]);
         setEnabledState([]);
         setPreferredCurrencyState(null);
+        countryDetectionAttemptedForUser.current = null;
         return;
       }
       const { data, error } = await supabase.rpc('get_my_currency_policy');
@@ -89,8 +90,8 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       // to verify the device's real location. The Edge Function only fills an empty
       // country from matching Nigerian GPS + IP evidence; it never overwrites a
       // different, explicitly recorded account jurisdiction.
-      if (!String(row.country_code ?? '').trim() && !countryDetectionAttempted.current) {
-        countryDetectionAttempted.current = true;
+      if (!String(row.country_code ?? '').trim() && countryDetectionAttemptedForUser.current !== authData.user.id) {
+        countryDetectionAttemptedForUser.current = authData.user.id;
         const location = await verifyCurrentServiceLocation().catch(() => ({ allowed: false, reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE' }));
         if (location.allowed) {
           const { data: refreshedPolicy, error: refreshedPolicyError } = await supabase.rpc('get_my_currency_policy');
