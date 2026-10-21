@@ -268,6 +268,7 @@ export function PortfolioScreen({
   const retry = () => {
     setMarksLoading(true);
     setHistoryLoading(true);
+    setOrderHistoryLoading(true);
     setRetryValuation((value) => value + 1);
     onRetry();
   };
