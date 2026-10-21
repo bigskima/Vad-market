@@ -92,6 +92,24 @@ export async function getAdminMarketDataSources(): Promise<AdminMarketDataSource
   return (data ?? []) as AdminMarketDataSource[];
 }
 
+export async function updateAdminMarketDataSourceSettings(input: {
+  code: string;
+  quoteCurrency: string;
+  defaultPageSize: number;
+  cacheSeconds: number;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_update_market_data_source_settings', {
+    p_code: input.code,
+    p_quote_currency: input.quoteCurrency.trim().toUpperCase(),
+    p_default_page_size: input.defaultPageSize,
+    p_cache_seconds: input.cacheSeconds,
+    p_reason: input.reason.trim(),
+  });
+  if (error) throw userFacingError(error, 'admin', 'Market-data source settings could not be updated.');
+  return data === true;
+}
+
 export async function setAdminMarketDataSourceStatus(input: {
   code: string;
   status: 'ACTIVE' | 'DISABLED';
