@@ -81,9 +81,8 @@ export function MarketDetailScreen({
   }, [now, onRefreshMarket, timing.closesAt, timing.resolvesAt]);
 
   const marketCurrency = market.asset_code as VADCurrency;
-  const isTngnMarket = marketCurrency === 'TNGN';
   const currencyAllowed = currencyPreference.isCurrencyEligible(marketCurrency)
-    && (isTngnMarket || currencyPreference.isCurrencyEnabled(marketCurrency));
+    && currencyPreference.isCurrencyEnabled(marketCurrency);
   const effectiveCanTrade = canTrade && timing.tradingOpen && currencyAllowed;
   const effectiveTradeReason = !currencyAllowed
     ? 'CURRENCY_NOT_ENABLED'
