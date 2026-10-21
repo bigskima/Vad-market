@@ -48,6 +48,7 @@ export function PortfolioScreen({
   markets,
   wallet,
   sectionErrors,
+  loading = false,
   onRetry,
   onOpenPosition,
   onOpenOrder,
@@ -60,6 +61,7 @@ export function PortfolioScreen({
   markets: MarketCatalogItem[];
   wallet: WalletRow[];
   sectionErrors?: { positions?: string | null; orders?: string | null; marketHistory?: string | null; settlements?: string | null };
+  loading?: boolean;
   onRetry: () => void;
   onOpenPosition: (position: PositionRow) => void;
   onOpenOrder: (order: OrderRow) => void;
@@ -134,7 +136,7 @@ export function PortfolioScreen({
     && !['SETTLED', 'VOIDED', 'CANCELLED', 'REFUNDED'].includes(String(stake.market_status).toUpperCase())), [poolStakes, asset]);
   const historyRows = useMemo(() => marketHistory
     .filter((row) => row.asset_code === asset)
-    .sort((a, b) => Date.parse(b.settled_at ?? '') - Date.parse(a.settled_at ?? '')), [marketHistory, asset]);
+    .sort((a, b) => (Date.parse(b.settled_at ?? '') || 0) - (Date.parse(a.settled_at ?? '') || 0)), [marketHistory, asset]);
   const settledRows = useMemo(() => historyRows.filter((row) =>
     ['WON', 'LOST', 'REFUNDED', 'VOID'].includes(String(row.result).toUpperCase()) && Boolean(row.settled_at)), [historyRows]);
 
@@ -151,7 +153,7 @@ export function PortfolioScreen({
     ? periodSnapshots.filter((snapshot) => Date.parse(snapshot.observed_at) > Date.parse(startSnapshot.observed_at))
       .reduce((sum, snapshot) => sum + amount(snapshot.net_external_flow), 0)
     : 0;
-  const performanceDelta = startSnapshot && endSnapshot
+  const performanceDelta = completePeriodSnapshots.length >= 2 && startSnapshot && endSnapshot
     ? amount(endSnapshot.total_value) - amount(startSnapshot.total_value) - externalFlows
     : null;
   const performancePercent = performanceDelta != null && startSnapshot && amount(startSnapshot.total_value) > 0
@@ -179,7 +181,7 @@ export function PortfolioScreen({
     : losingPnl;
   const openCount = isTngn ? activeStakes.length : openMarkedPositions.length;
   const openValueText = isTngn
-    ? (activeStakes.length ? 'Unmarked' : assetMoney(cashBalance, asset))
+    ? (activeStakes.length ? 'Unmarked' : assetMoney(0, asset))
     : openPositionValue == null ? '—' : assetMoney(openPositionValue, asset);
 
   const categories = useMemo(() => [...new Set(markets
@@ -373,6 +375,8 @@ export function PortfolioScreen({
 
           {sectionErrors?.positions ? (
             <InlineError message={sectionErrors.positions} onRetry={retry} />
+          ) : loading && positionsForAsset.length === 0 && activeStakes.length === 0 ? (
+            <LoadingState label="Loading your positions…" />
           ) : marksLoading ? (
             <LoadingState label="Loading your position valuations…" />
           ) : isTngn ? (
@@ -404,6 +408,7 @@ export function PortfolioScreen({
 
       {tab === 'orders' ? (
         sectionErrors?.orders ? <InlineError message={sectionErrors.orders} onRetry={retry} />
+          : loading && visibleOrders.totalCount === 0 ? <LoadingState label="Loading your open orders…" />
           : visibleOrders.totalCount ? (
             <View style={{ gap: theme.spacing.sm }}>
               {visibleOrders.visibleItems.map((order) => <OrderCard key={order.order_id} order={order} onPress={() => onOpenOrder(order)} />)}
@@ -415,7 +420,8 @@ export function PortfolioScreen({
       {tab === 'history' ? (
         sectionErrors?.marketHistory || sectionErrors?.settlements ? (
           <InlineError message={sectionErrors.marketHistory ?? sectionErrors.settlements ?? 'History is unavailable.'} onRetry={retry} />
-        ) : visibleHistory.totalCount ? (
+        ) : loading && visibleHistory.totalCount === 0 ? <LoadingState label="Loading your market history…" />
+        : visibleHistory.totalCount ? (
           <View style={{ gap: theme.spacing.sm }}>
             {visibleHistory.visibleItems.map((row, index) => <HistoryCard key={`${row.market_id}-${row.selected_outcome}-${row.settled_at ?? index}`} row={row} />)}
             {visibleHistory.remainingCount > 0 ? <VadButton label={`Show next ${visibleHistory.nextCount} history records`} variant="secondary" onPress={visibleHistory.showMore} /> : null}
@@ -620,7 +626,7 @@ function SummaryMetric({ title, count, amount: value, asset, tone, value: custom
   title: string; count: number; amount?: number; asset?: string; tone?: 'yes' | 'no'; value?: string;
 }) {
   const theme = useVadTheme();
-  const label = customValue ?? (value == null ? '—' : `${value >= 0 ? '+' : '−'}${assetMoney(Math.abs(value), asset)}`);
+  const label = customValue ?? (count === 0 || value == null ? '—' : `${value >= 0 ? '+' : '−'}${assetMoney(Math.abs(value), asset)}`);
   return (
     <VadCard variant="raised" style={{ flex: 1, minWidth: 0, padding: 10, gap: 5, borderRadius: 16 }}>
       <View style={{ width: 31, height: 31, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: tone === 'yes' ? 'rgba(16,214,157,0.14)' : tone === 'no' ? 'rgba(255,75,95,0.14)' : theme.colors.surfaceMuted }}>
