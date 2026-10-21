@@ -255,7 +255,7 @@ export function WalletScreen({
                 currency={currency}
                 displayName={currency === 'TNGN' ? 'TNGN practice balance' : currency === 'NGN' ? 'Nigerian Naira' : currency === 'USDC' ? 'USDC' : currency}
                 enabled={currencyPreference.isCurrencyEnabled(currency)}
-                available={activeAssetCodes.includes(currency)}
+                available={currencyPreference.isCurrencyEligible(currency)}
                 onToggle={() => currencyPreference.toggleCurrency(currency)}
               />
             ))}
