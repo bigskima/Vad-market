@@ -426,6 +426,13 @@ entrypoint = "./functions/runtime-capabilities/index.ts"
 # static_files = [ "./functions/runtime-capabilities/*.html" ]
 
 
+[functions.market-image-worker]
+enabled = true
+# Called by pg_cron using a one-time Vault-stored secret; the function validates
+# that secret through a service-role-only RPC before processing queued images.
+verify_jwt = false
+entrypoint = "./functions/market-image-worker/index.ts"
+
 [functions.crypto-market-data]
 enabled = true
 # This endpoint serves public third-party crypto spot quotes only. It cannot
