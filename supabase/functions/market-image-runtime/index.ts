@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
 
     const { data: refreshedJob, error: refreshedJobError } = await admin
       .from('market_image_generation_jobs')
-      .select('instrument_public_id,status,attempts,lease_expires_at,generated_media_path')
+      .select('instrument_public_id,status,attempts,lease_expires_at,generated_media_path,updated_at')
       .eq('instrument_public_id', instrumentId)
       .maybeSingle();
     if (refreshedJobError || !refreshedJob) return json({ error: 'Image generation queue is unavailable' }, 500);
