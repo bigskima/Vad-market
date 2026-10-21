@@ -176,7 +176,7 @@ export default function AccountScreen() {
         <SettingsGroup title="Security">
           <AccountRow icon="lock" iconBackground={theme.colors.yesSoft} iconColor={theme.colors.yes} title="Security Settings" subtitle="Password, PIN, biometric login" onPress={() => router.push('/account/security')} />
           <AccountRow icon="shieldCheck" iconBackground={theme.colors.noSoft} iconColor={theme.colors.no} title="Two-Factor Authentication" subtitle="Add an extra layer of security" badge={mfaEnabled === null ? 'Unavailable' : mfaEnabled ? 'Enabled' : 'Not enabled'} badgeTone={mfaEnabled ? 'yes' : 'neutral'} onPress={() => router.push('/account/security')} />
-          <AccountRow icon="device" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Active Sessions" subtitle="Manage your logged in devices" badge="Unavailable" badgeTone="neutral" last />
+          <AccountRow icon="device" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Active Sessions" subtitle="Manage your logged in devices" onPress={() => router.push("/account/security")} last />
         </SettingsGroup>
 
         <SettingsGroup title="Preferences">
@@ -279,7 +279,7 @@ function AccountRow({
   const theme = useVadTheme();
   const density = useProductDensity();
   return (
-    <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={title} accessibilityHint={subtitle} accessibilityState={{ disabled: !onPress }} disabled={!onPress} onPress={onPress} style={({ pressed }) => ({ minHeight: density.phone ? 39 : 45, flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 3, opacity: pressed ? 0.72 : onPress ? 1 : 0.92, borderBottomWidth: last ? 0 : 1, borderBottomColor: theme.colors.border })}>
+    <Pressable accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={title} accessibilityHint={subtitle} accessibilityState={{ disabled: !onPress }} disabled={!onPress} onPress={onPress} style={({ pressed }) => ({ minHeight: density.phone ? 35 : 45, flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 3, opacity: pressed ? 0.72 : onPress ? 1 : 0.92, borderBottomWidth: last ? 0 : 1, borderBottomColor: theme.colors.border })}>
       <IconTile icon={icon} backgroundColor={iconBackground} iconColor={iconColor} size={density.phone ? 29 : 33} />
       <View style={{ flex: 1, minWidth: 0, gap: 0 }}>
         <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: density.phone ? 12 : 14, lineHeight: density.phone ? 15 : 18 }}>{title}</VadText>
