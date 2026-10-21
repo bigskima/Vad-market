@@ -360,7 +360,7 @@ export function PortfolioScreen({
             </View>
           ) : null}
         </VadCard>
-      </TourTarget>arget>
+      </TourTarget>
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <SummaryMetric title="Winning positions" count={winnersCount} amount={winnersValue} asset={asset} tone="yes" />
@@ -379,7 +379,7 @@ export function PortfolioScreen({
           ]}
           onChange={setTab}
         />
-      </TourTarget>arget>
+      </TourTarget>
 
       {tab === 'positions' ? (
         <View style={{ gap: theme.spacing.sm }}>
