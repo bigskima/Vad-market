@@ -143,6 +143,8 @@ declare
   group_field text := '';
   group_key text;
   market_context jsonb := '{}'::jsonb;
+  v_liquidity_mode text;
+  v_reference_price numeric(38,18);
   yes_outcome_id bigint;
   no_outcome_id bigint;
   yes_last numeric(38,18);
@@ -191,19 +193,62 @@ begin
 
   select id into yes_outcome_id from market.outcomes where instrument_id=instrument.id and code='YES';
   select id into no_outcome_id from market.outcomes where instrument_id=instrument.id and code='NO';
-  select f.price into yes_last from trading.fills f where f.outcome_id=yes_outcome_id order by f.created_at desc,f.id desc limit 1;
-  select f.price into no_last from trading.fills f where f.outcome_id=no_outcome_id order by f.created_at desc,f.id desc limit 1;
-  select max(f.created_at) into latest_fill from trading.fills f join trading.orders o on o.id=f.order_id where o.instrument_id=instrument.id;
+
+  -- Preserve existing VAD lifecycle behaviour: current executed prices can come
+  -- from the real order book or the isolated sandbox execution ledger.
+  select x.price into yes_last
+  from (
+    select f.price,f.created_at from trading.fills f where f.outcome_id=yes_outcome_id
+    union all
+    select se.price,se.created_at from trading.sandbox_executions se where se.outcome_id=yes_outcome_id
+  ) x order by x.created_at desc limit 1;
+
+  select x.price into no_last
+  from (
+    select f.price,f.created_at from trading.fills f where f.outcome_id=no_outcome_id
+    union all
+    select se.price,se.created_at from trading.sandbox_executions se where se.outcome_id=no_outcome_id
+  ) x order by x.created_at desc limit 1;
+
+  if yes_last is null and no_last is not null then
+    yes_last := round(instrument.settlement_unit - no_last, 18);
+  end if;
+  if no_last is null and yes_last is not null then
+    no_last := round(instrument.settlement_unit - yes_last, 18);
+  end if;
+
+  select max(x.created_at) into latest_fill
+  from (
+    select f.created_at
+    from trading.fills f
+    join trading.orders o on o.id=f.order_id
+    where o.instrument_id=instrument.id
+    union all
+    select se.created_at from trading.sandbox_executions se where se.instrument_id=instrument.id
+  ) x;
+
+  if coalesce((asset.metadata->>'sandbox_only')::boolean,false)
+     and coalesce((asset.metadata->>'sandbox_instant_liquidity')::boolean,false) then
+    v_liquidity_mode := 'SANDBOX_INSTANT';
+    v_reference_price := nullif(asset.metadata->>'sandbox_reference_price','')::numeric;
+    if yes_last is null and v_reference_price is not null then
+      yes_last := v_reference_price;
+      no_last := round(instrument.settlement_unit - v_reference_price, 18);
+    end if;
+  else
+    v_liquidity_mode := instrument.liquidity_model;
+    v_reference_price := null;
+  end if;
 
   insert into public.market_catalog(
     instrument_public_id,event_public_id,title,category,category_code,presentation_profile,
     group_key,market_context,asset_code,market_type,status,
-    closes_at,resolves_after,media_path,yes_price,no_price,last_trade_at,updated_at
+    closes_at,resolves_after,media_path,yes_price,no_price,last_trade_at,liquidity_mode,reference_price,updated_at
   )
   values(
     instrument.public_id,event.public_id,event.title,event.category,category_code,presentation_profile,
     group_key,market_context,asset.code,instrument.market_type,instrument.status,
-    event.closes_at,event.resolves_after,event.media_path,yes_last,no_last,latest_fill,statement_timestamp()
+    event.closes_at,event.resolves_after,event.media_path,yes_last,no_last,latest_fill,v_liquidity_mode,v_reference_price,statement_timestamp()
   )
   on conflict(instrument_public_id) do update set
     event_public_id=excluded.event_public_id,
@@ -222,6 +267,8 @@ begin
     yes_price=excluded.yes_price,
     no_price=excluded.no_price,
     last_trade_at=excluded.last_trade_at,
+    liquidity_mode=excluded.liquidity_mode,
+    reference_price=excluded.reference_price,
     updated_at=statement_timestamp();
 end;
 $function$;
