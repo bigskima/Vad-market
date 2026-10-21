@@ -1,0 +1,165 @@
+import { useEffect, useState } from 'react';
+import { View } from 'react-native';
+
+import { VadButton } from '@/components/ui/vad-button';
+import { VadCard } from '@/components/ui/vad-card';
+import { VadChip } from '@/components/ui/vad-chip';
+import { VadText } from '@/components/ui/vad-text';
+import {
+  getAdminSportsFixtures,
+  type AdminSportsFixture,
+} from '@/services/admin-sports-fixture-api';
+import { useVadTheme } from '@/providers/theme-provider';
+
+type FixturePage = Awaited<ReturnType<typeof getAdminSportsFixtures>>;
+
+type Props = {
+  sportCode: string;
+  competitionCode: string;
+  competitionName: string;
+  providerCode?: string | null;
+  providerCompetitionCode?: string | null;
+  selectedFixtureId?: string | null;
+  onSelect: (fixture: AdminSportsFixture, cacheKey: string) => void;
+};
+
+function isoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function rangeEnd(days: number) {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return isoDate(date);
+}
+
+function kickoffLabel(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) + ' (local time)';
+}
+
+export function AdminSportsFixturePicker({
+  sportCode,
+  competitionCode,
+  competitionName,
+  providerCode,
+  providerCompetitionCode,
+  selectedFixtureId,
+  onSelect,
+}: Props) {
+  const theme = useVadTheme();
+  const [daysAhead, setDaysAhead] = useState<7 | 14>(7);
+  const [page, setPage] = useState<FixturePage | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPage(null);
+    setError(null);
+  }, [sportCode, competitionCode, providerCode, providerCompetitionCode]);
+
+  const mappingReady = Boolean(
+    sportCode.trim()
+    && competitionCode.trim()
+    && providerCode?.trim()
+    && providerCompetitionCode?.trim()
+  );
+
+  async function loadFixtures() {
+    if (!mappingReady) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const today = isoDate(new Date());
+      const result = await getAdminSportsFixtures({
+        sportCode,
+        competitionCode,
+        fromDate: today,
+        toDate: rangeEnd(daysAhead),
+      });
+      setPage(result);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Upcoming fixtures could not be loaded.');
+      setPage(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <VadCard variant="muted" style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: 4 }}>
+        <VadText variant="bodyStrong">Upcoming fixtures</VadText>
+        <VadText variant="caption" tone="secondary">
+          {competitionName
+            ? 'Choose a real ' + competitionName + ' event. Team names and kickoff time will fill automatically.'
+            : 'Choose a competition to discover upcoming fixtures.'}
+        </VadText>
+      </View>
+
+      {!mappingReady ? (
+        <VadText variant="caption" tone="warning">
+          {competitionCode
+            ? 'Fixture import is not mapped to an active provider for this competition. Configure a provider and external competition code in Admin Sports Catalogue.'
+            : 'Choose a sport and competition first.'}
+        </VadText>
+      ) : (
+        <>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+            <VadChip label="Next 7 days" selected={daysAhead === 7} onPress={() => { setDaysAhead(7); setPage(null); }} />
+            <VadChip label="Next 14 days" selected={daysAhead === 14} onPress={() => { setDaysAhead(14); setPage(null); }} />
+          </View>
+          <VadButton
+            label={loading ? 'Loading fixtures…' : page ? 'Reload fixtures' : 'Load upcoming fixtures'}
+            onPress={() => void loadFixtures()}
+            disabled={loading}
+            variant="secondary"
+          />
+          {error ? <VadText variant="caption" tone="warning">{error}</VadText> : null}
+          {page ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <VadText variant="caption" tone="secondary">
+                Source: {page.source}{page.cached ? ' · cached response' : ''}{page.stale ? ' · older cached data' : ''}
+              </VadText>
+              {page.fixtures.length ? page.fixtures.map((fixture) => {
+                const selected = fixture.fixtureId === selectedFixtureId;
+                return (
+                  <VadCard
+                    key={page.source + ':' + fixture.fixtureId}
+                    variant={selected ? 'raised' : 'default'}
+                    style={{
+                      gap: theme.spacing.sm,
+                      borderWidth: 1,
+                      borderColor: selected ? theme.colors.brand : theme.colors.border,
+                    }}
+                  >
+                    <View style={{ gap: 4 }}>
+                      <VadText variant="bodyStrong">{fixture.homeTeam} vs {fixture.awayTeam}</VadText>
+                      <VadText variant="caption" tone="secondary">{kickoffLabel(fixture.startsAt)}</VadText>
+                      <VadText variant="caption" tone="secondary">
+                        {fixture.competitionName}{fixture.matchday ? ' · Matchday ' + fixture.matchday : ''}
+                      </VadText>
+                      {fixture.venue ? <VadText variant="caption" tone="secondary">{fixture.venue}</VadText> : null}
+                      <VadText variant="caption" tone="secondary">Fixture ID: {fixture.fixtureId} · {fixture.status}</VadText>
+                    </View>
+                    <VadButton
+                      label={selected ? 'Fixture selected' : 'Use this fixture'}
+                      onPress={() => onSelect(fixture, page.cacheKey)}
+                      disabled={selected || !fixture.isUpcoming}
+                      variant={selected ? 'primary' : 'secondary'}
+                    />
+                  </VadCard>
+                );
+              }) : (
+                <VadText variant="caption" tone="secondary">
+                  No upcoming fixtures were returned for this date range. Try 14 days or choose another competition supported by the configured provider.
+                </VadText>
+              )}
+            </View>
+          ) : null}
+        </>
+      )}
+    </VadCard>
+  );
+}
