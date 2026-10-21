@@ -7,6 +7,10 @@ export type MarketCatalogItem = {
   event_public_id: string;
   title: string;
   category: string | null;
+  category_code?: string | null;
+  presentation_profile?: 'EVENT' | 'CRYPTO' | 'SPORTS' | 'MUSIC' | 'AI' | 'STOCKS' | 'ECONOMICS' | 'ENTERTAINMENT' | 'PUBLIC_EVENTS' | string | null;
+  group_key?: string | null;
+  market_context?: Record<string, unknown> | null;
   asset_code: string;
   market_type: string;
   status: string;
@@ -142,6 +146,12 @@ export type WalletRow = {
   available: number | string;
   reserved: number | string;
   withdrawal_pending: number | string;
+};
+
+export type WalletBalanceHistoryRow = {
+  observed_on: string;
+  asset_code: string;
+  balance: number | string;
 };
 
 export type PositionRow = {
@@ -301,6 +311,14 @@ export async function listMarkets() {
   const { data, error } = await supabase.from('market_catalog').select('*').order('updated_at', { ascending: false });
   assertNoError(error, 'markets');
   return (data ?? []) as MarketCatalogItem[];
+}
+
+export async function getWalletBalanceHistory(days = 30) {
+  const { data, error } = await supabase.rpc('my_wallet_balance_history', {
+    p_days: Math.max(7, Math.min(90, Math.floor(days))),
+  });
+  assertNoError(error, 'portfolio', 'We could not load your wallet balance history right now. Please try again.');
+  return (data ?? []) as WalletBalanceHistoryRow[];
 }
 
 export async function getWalletSummary() {

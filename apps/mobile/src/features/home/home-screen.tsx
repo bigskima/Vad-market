@@ -15,6 +15,7 @@ import { getMarketPriceHistory, type MarketCatalogItem, type WalletRow } from '@
 import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchlist } from '@/services/market-watchlist-api';
 import { supabase } from '@/lib/supabase';
 import { getWalletBalanceHistory, type WalletBalanceHistoryPoint } from '@/services/wallet-history-api';
+import { MarketThumbnail } from '@/features/markets/components/market-thumbnail';
 
 type Category = string;
 
@@ -43,7 +44,7 @@ export function HomeScreen({
   const theme = useVadTheme();
   const density = useProductDensity();
   const now = useLiveNow();
-  const { enabledCurrencies } = useCurrencyPreference();
+  const { enabledCurrencies, preferredCurrency, setPreferredCurrency } = useCurrencyPreference();
   const [category, setCategory] = useState<Category>('All');
   const [dismissedPromotionSignature, setDismissedPromotionSignature] = useState<string | null>(null);
   const [promotionPlaceholderDismissed, setPromotionPlaceholderDismissed] = useState(false);
@@ -170,11 +171,28 @@ export function HomeScreen({
   const walletRows = wallets.filter((wallet) => enabledCurrencies.includes(wallet.asset_code as VADCurrency));
   const totalNgn = walletRows.filter((wallet) => wallet.asset_code === 'NGN').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
   const totalUsdc = walletRows.filter((wallet) => wallet.asset_code === 'USDC').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
+  const totalTngn = walletRows.filter((wallet) => wallet.asset_code === 'TNGN').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
   const promotionSignature = promotions.map((promotion) => promotion.public_id).join('|');
   const promotionsToShow = dismissedPromotionSignature === promotionSignature ? [] : promotions;
-  const primaryAsset = walletRows.some((wallet) => wallet.asset_code === 'NGN') ? 'NGN' : walletRows.some((wallet) => wallet.asset_code === 'USDC') ? 'USDC' : null;
-  const primaryBalance = primaryAsset === 'NGN' ? formatMoney(totalNgn, 'NGN') : primaryAsset === 'USDC' ? formatMoney(totalUsdc, 'USDC') : '—';
+  const displayCurrencies = enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC', 'TNGN'].includes(code));
+  const primaryAsset: VADCurrency | null = preferredCurrency && displayCurrencies.includes(preferredCurrency)
+    ? preferredCurrency
+    : displayCurrencies.includes('NGN') ? 'NGN' : displayCurrencies[0] ?? null;
+  const primaryBalance = primaryAsset === 'NGN'
+    ? formatMoney(totalNgn, 'NGN')
+    : primaryAsset === 'USDC'
+      ? formatMoney(totalUsdc, 'USDC')
+      : primaryAsset === 'TNGN'
+        ? formatMoney(totalTngn, 'TNGN')
+        : '—';
   const primaryHistory = balanceHistory.filter((point) => point.asset_code === primaryAsset).sort((a, b) => a.observed_on.localeCompare(b.observed_on));
+  const secondaryBalances = displayCurrencies
+    .filter((code) => code !== primaryAsset)
+    .map((code) => ({
+      code,
+      total: code === 'NGN' ? totalNgn : code === 'USDC' ? totalUsdc : totalTngn,
+    }))
+    .filter((item) => item.total > 0);
   const historyValues = primaryHistory.map((point) => Number(point.balance)).filter(Number.isFinite);
   const hasBalanceTrend = historyValues.length > 1 && historyValues.some((value) => value !== historyValues[0]);
   const balanceChange = hasBalanceTrend ? historyValues[historyValues.length - 1] - historyValues[0] : null;
@@ -197,7 +215,22 @@ export function HomeScreen({
       <TourTarget id="home-overview">
         <View style={{ padding: density.compact ? 12 : 14, minHeight: density.compact ? 104 : 114, overflow: 'hidden', borderRadius: 19, borderWidth: 1, borderColor: theme.mode === 'dark' ? '#123B3B' : theme.colors.border, backgroundColor: theme.mode === 'dark' ? '#071B1D' : theme.colors.surface, gap: 3 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <VadText variant="body" tone="secondary">Total balance</VadText>
+            <Pressable
+              accessibilityRole={displayCurrencies.length > 1 ? 'button' : undefined}
+              accessibilityLabel={displayCurrencies.length > 1 ? `Change home display currency, currently ${primaryAsset ?? 'none'}` : 'Total balance'}
+              accessibilityHint={displayCurrencies.length > 1 ? 'Cycles through currencies enabled for your account.' : undefined}
+              disabled={displayCurrencies.length < 2}
+              onPress={() => {
+                if (!primaryAsset || displayCurrencies.length < 2) return;
+                const current = displayCurrencies.indexOf(primaryAsset);
+                const next = displayCurrencies[(current + 1) % displayCurrencies.length];
+                if (next) setPreferredCurrency(next);
+              }}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 5, opacity: pressed ? 0.7 : 1 })}
+            >
+              <VadText variant="body" tone="secondary">{primaryAsset ? `Total balance · ${primaryAsset}` : 'Total balance'}</VadText>
+              {displayCurrencies.length > 1 ? <VadIcon name="chevronRight" size={14} tone="secondary" /> : null}
+            </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={balanceVisible ? 'Hide balance' : 'Show balance'} onPress={() => setBalanceVisible((visible) => !visible)} hitSlop={10}>
               <VadIcon name={balanceVisible ? 'eye' : 'eyeOff'} size={19} tone="secondary" />
             </Pressable>
@@ -213,9 +246,11 @@ export function HomeScreen({
             ) : (
               <VadText variant="caption" tone="secondary">{primaryAsset ? `${primaryAsset} wallet balance` : 'No enabled wallet currency'}</VadText>
             )}
-            {walletRows.some((wallet) => wallet.asset_code === 'NGN' && Number(wallet.available) > 0) && walletRows.some((wallet) => wallet.asset_code === 'USDC' && Number(wallet.available) > 0) ? (
-              <VadText variant="caption" tone="secondary">· USDC {balanceVisible ? totalUsdc.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '••••'}</VadText>
-            ) : null}
+            {secondaryBalances.map((item) => (
+              <VadText key={item.code} variant="caption" tone="secondary">
+                · {item.code} {balanceVisible ? formatMoney(item.total, item.code) : '••••'}
+              </VadText>
+            ))}
           </View>
           <View style={{ position: 'absolute', right: 10, bottom: 12, opacity: 0.9 }}>
             {historyValues.length > 1 ? <BalanceSparkline values={historyValues} /> : <VadIcon name="wallet" size={38} tone="brand" />}
@@ -398,11 +433,7 @@ function SectionHeading({ title, action, onAction }: { title: string; action: st
 }
 
 function MarketThumb({ market, size = 46 }: { market: MarketCatalogItem; size?: number }) {
-  const theme = useVadTheme();
-  const mediaUrl = market.media_path ? (/^https?:\/\//i.test(market.media_path) ? market.media_path : supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl) : null;
-  const category = market.category?.toLowerCase() ?? '';
-  const icon = category.includes('sport') ? 'activity' : category.includes('tech') ? 'operations' : category.includes('polit') ? 'community' : category.includes('econom') ? 'markets' : 'activity';
-  return <View style={{ width: size, height: size, borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>{mediaUrl ? <Image source={{ uri: mediaUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name={icon as 'activity'} size={Math.round(size * 0.5)} tone="secondary" />}</View>;
+  return <MarketThumbnail market={market} size={size} />;
 }
 
 function MarketSparkline({ values }: { values: number[] }) {
@@ -480,6 +511,10 @@ function categoryMatches(value: string | null, category: Category) {
   if (category === 'All') return true;
   return (value ?? '').trim().toLocaleLowerCase() === category.trim().toLocaleLowerCase();
 }
-function formatMoney(value: number, asset: string) { return asset === 'NGN' ? '₦' + value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDC'; }
+function formatMoney(value: number, asset: string) {
+  const number = value.toLocaleString(asset === 'NGN' ? 'en-NG' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (asset === 'NGN') return '₦' + number;
+  return asset === 'TNGN' ? `TNGN ${number}` : `${number} USDC`;
+}
 function formatProbability(value: number | string | null | undefined) { const n = Number(value); return Number.isFinite(n) ? `${Math.round(n <= 1 ? n * 100 : n)}%` : '—'; }
 function formatVolume(value: number | string | null | undefined, asset: string) { const n = Number(value); if (!Number.isFinite(n)) return 'Volume unavailable'; const compact = new Intl.NumberFormat(asset === 'NGN' ? 'en-NG' : 'en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n); return asset === 'NGN' ? `₦${compact}` : `${compact} USDC`; }

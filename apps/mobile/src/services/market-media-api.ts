@@ -16,6 +16,9 @@ const supportedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 export function marketMediaPublicUrl(path: string | null | undefined) {
   if (!path) return null;
+  // Older published markets may store an already-public media URL instead of a
+  // storage object path. Preserve those images while generated media uses paths.
+  if (/^https?:\/\//i.test(path)) return path;
   return supabase.storage.from(MARKET_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 

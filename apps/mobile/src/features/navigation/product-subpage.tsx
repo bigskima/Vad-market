@@ -16,10 +16,12 @@ import { ProductAnnouncementBar } from './product-announcement-bar';
 export function ProductSubpage({
   title,
   maxWidth = 760,
+  bottomPadding,
   children,
 }: PropsWithChildren<{
   title: string;
   maxWidth?: number;
+  bottomPadding?: number;
 }>) {
   const theme = useVadTheme();
   const insets = useSafeAreaInsets();
@@ -96,7 +98,7 @@ export function ProductSubpage({
           maxWidth,
           paddingHorizontal: horizontalPadding,
           paddingTop: density.pageTopPadding,
-          paddingBottom: density.phone ? theme.spacing.xxl : theme.spacing.xxxl,
+          paddingBottom: bottomPadding ?? (density.phone ? theme.spacing.xxl : theme.spacing.xxxl),
           gap: density.compact ? theme.spacing.sm : theme.spacing.lg,
         }}
       >

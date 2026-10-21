@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Image, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
@@ -5,11 +6,24 @@ import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { marketMediaPublicUrl } from '@/services/market-media-api';
+import { requestMarketImageGeneration } from '@/services/market-image-generation';
 
 export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogItem; size?: number }) {
+  const [generatedPath, setGeneratedPath] = useState<string | null>(null);
+  const existingMediaPath = market.media_path?.trim() || null;
+
+  useEffect(() => {
+    if (existingMediaPath) return;
+    let active = true;
+    void requestMarketImageGeneration(market.instrument_public_id).then((path) => {
+      if (active && path) setGeneratedPath(path);
+    });
+    return () => { active = false; };
+  }, [market.instrument_public_id, existingMediaPath]);
+
   return (
     <MarketMediaThumbnail
-      mediaPath={market.media_path}
+      mediaPath={existingMediaPath ?? generatedPath}
       legacyUrl={null}
       title={market.title}
       category={market.category}

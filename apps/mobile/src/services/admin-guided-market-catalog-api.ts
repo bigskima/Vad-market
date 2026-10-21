@@ -12,7 +12,7 @@ export type AdminGuidedCatalogMarketType = {
   code: string;
   name: string;
   description: string;
-  handler: 'VERIFIED_EVENT' | 'FOOTBALL_MATCH';
+  handler: 'VERIFIED_EVENT' | 'FOOTBALL_MATCH' | 'CRYPTO_THRESHOLD';
   questionTemplate: string;
   conditionTemplate: string;
   sourceLabel: string;
@@ -22,11 +22,24 @@ export type AdminGuidedCatalogMarketType = {
   metadata: Record<string, unknown>;
 };
 
+export type MarketPresentationProfile =
+  | 'EVENT'
+  | 'CRYPTO'
+  | 'SPORTS'
+  | 'MUSIC'
+  | 'AI'
+  | 'STOCKS'
+  | 'ECONOMICS'
+  | 'ENTERTAINMENT'
+  | 'PUBLIC_EVENTS';
+
 export type AdminGuidedCatalogCategory = {
   code: string;
   name: string;
   description: string;
   displayOrder: number;
+  presentationProfile: MarketPresentationProfile;
+  groupField: string;
   marketTypes: AdminGuidedCatalogMarketType[];
 };
 
@@ -75,9 +88,12 @@ function asMarketType(value: unknown): AdminGuidedCatalogMarketType | null {
   const code = String(raw.code ?? '').trim();
   const name = String(raw.name ?? '').trim();
   if (!code || !name) return null;
-  const handler = String(raw.handler ?? 'VERIFIED_EVENT').toUpperCase() === 'FOOTBALL_MATCH'
+  const handlerCode = String(raw.handler ?? 'VERIFIED_EVENT').toUpperCase();
+  const handler = handlerCode === 'FOOTBALL_MATCH'
     ? 'FOOTBALL_MATCH'
-    : 'VERIFIED_EVENT';
+    : handlerCode === 'CRYPTO_THRESHOLD'
+      ? 'CRYPTO_THRESHOLD'
+      : 'VERIFIED_EVENT';
   return {
     code,
     name,
@@ -111,6 +127,8 @@ export async function getAdminGuidedMarketCatalog(): Promise<AdminGuidedMarketCa
         name,
         description: String(category.description ?? '').trim(),
         displayOrder: Number.isFinite(Number(category.displayOrder)) ? Number(category.displayOrder) : 100,
+        presentationProfile: normalizePresentationProfile(category.presentationProfile),
+        groupField: String(category.groupField ?? '').trim(),
         marketTypes: Array.isArray(category.marketTypes)
           ? category.marketTypes.map(asMarketType).filter((item): item is AdminGuidedCatalogMarketType => Boolean(item))
           : [],
@@ -120,13 +138,39 @@ export async function getAdminGuidedMarketCatalog(): Promise<AdminGuidedMarketCa
   return { categories };
 }
 
+function normalizePresentationProfile(value: unknown): MarketPresentationProfile {
+  const allowed: MarketPresentationProfile[] = [
+    'EVENT', 'CRYPTO', 'SPORTS', 'MUSIC', 'AI', 'STOCKS',
+    'ECONOMICS', 'ENTERTAINMENT', 'PUBLIC_EVENTS',
+  ];
+  const profile = String(value ?? '').toUpperCase() as MarketPresentationProfile;
+  return allowed.includes(profile) ? profile : 'EVENT';
+}
+
+export async function setAdminGuidedCategoryPresentation(input: {
+  code: string;
+  presentationProfile: MarketPresentationProfile;
+  groupField: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_guided_category_presentation', {
+    p_category_code: input.code,
+    p_presentation_profile: input.presentationProfile,
+    p_group_field: input.groupField.trim(),
+  });
+  fail(error, 'We could not update this category display configuration right now.');
+  return data === true;
+}
+
 export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) {
   const details = Object.fromEntries(
     Object.entries(input.details)
       .map(([key, value]) => [key, String(value ?? '').trim()])
       .filter(([, value]) => Boolean(value)),
   );
-  const { data, error } = await supabase.rpc('admin_create_catalog_market_v2', {
+  const rpcName = input.marketTypeCode === 'CRYPTO_PRICE_THRESHOLD'
+    ? 'admin_create_crypto_threshold_market'
+    : 'admin_create_catalog_market_v2';
+  const { data, error } = await supabase.rpc(rpcName, {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_market_type_code: input.marketTypeCode,
@@ -183,5 +227,77 @@ export async function saveAdminSimpleGuidedMarketType(input: {
     p_enabled: input.enabled !== false,
   });
   fail(error, 'We could not save this market type right now.');
+  return data === true;
+}
+
+
+export type SportsMarketCompetition = {
+  sportCode: string;
+  status: 'ACTIVE' | 'DISABLED';
+  code: string;
+  name: string;
+  region: string;
+  resultMode: 'AUTOMATIC' | 'VERIFIED';
+  providerCode?: string | null;
+  providerCompetitionCode?: string | null;
+  aliases: string[];
+};
+export type SportsMarketTaxonomy = {
+  sports: { code: string; name: string; status: 'ACTIVE' | 'DISABLED' }[];
+  competitions: SportsMarketCompetition[];
+};
+export async function getSportsMarketTaxonomy(): Promise<SportsMarketTaxonomy> {
+  const { data, error } = await supabase.rpc('get_sports_market_catalog');
+  fail(error, 'Sports and competition choices could not be loaded.');
+  const payload = (data ?? {}) as Partial<SportsMarketTaxonomy>;
+  return {
+    sports: Array.isArray(payload.sports) ? payload.sports : [],
+    competitions: Array.isArray(payload.competitions) ? payload.competitions : [],
+  };
+}
+
+
+export async function setAdminSportsCompetitionStatus(input: {
+  sportCode: string;
+  competitionCode: string;
+  status: 'ACTIVE' | 'DISABLED';
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_sports_competition_status', {
+    p_sport_code: input.sportCode.trim().toUpperCase(),
+    p_competition_code: input.competitionCode.trim().toUpperCase(),
+    p_status: input.status,
+    p_reason: input.reason.trim(),
+  });
+  fail(error, 'The sports competition setting could not be updated.');
+  return data === true;
+}
+
+
+export async function upsertAdminSportsCompetition(input: {
+  sportCode: string;
+  sportName: string;
+  competitionCode: string;
+  competitionName: string;
+  region?: string;
+  aliases?: string[];
+  resultMode: 'AUTOMATIC' | 'VERIFIED';
+  providerCode?: string;
+  providerCompetitionCode?: string;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_upsert_sports_competition', {
+    p_sport_code: input.sportCode.trim().toUpperCase(),
+    p_sport_name: input.sportName.trim(),
+    p_competition_code: input.competitionCode.trim().toUpperCase(),
+    p_competition_name: input.competitionName.trim(),
+    p_region: input.region?.trim() || '',
+    p_aliases: input.aliases ?? [],
+    p_result_mode: input.resultMode,
+    p_provider_code: input.providerCode?.trim().toUpperCase() || null,
+    p_provider_competition_code: input.providerCompetitionCode?.trim().toUpperCase() || null,
+    p_reason: input.reason.trim(),
+  });
+  fail(error, 'The sports competition could not be saved.');
   return data === true;
 }

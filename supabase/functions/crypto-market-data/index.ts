@@ -44,6 +44,7 @@ type CoinMarketRow = {
 };
 
 function safeNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
   const n = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(n) ? n : null;
 }
@@ -85,7 +86,11 @@ async function providerJson(url: URL, apiKey: string | null) {
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
-        ...(apiKey ? { 'x-cg-demo-api-key': apiKey } : {}),
+        ...(apiKey
+          ? (url.hostname === 'pro-api.coingecko.com'
+            ? { 'x-cg-pro-api-key': apiKey }
+            : { 'x-cg-demo-api-key': apiKey })
+          : {}),
       },
     });
     if (!response.ok) {
@@ -108,18 +113,18 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
+  let stalePayload: Record<string, unknown> | null = null;
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const authorization = req.headers.get('Authorization') ?? '';
-    const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
-    if (!supabaseUrl || !serviceKey || !token) return json({ error: 'Authentication required' }, 401);
+    // This endpoint only returns public crypto quotes and public market-data
+    // status. It has no account, order, portfolio or settlement side effects, so
+    // it remains usable for anonymous market discovery as well as signed-in users.
+    if (!supabaseUrl || !serviceKey) return json({ error: 'Market data service is not configured.' }, 503);
 
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: authData, error: authError } = await admin.auth.getUser(token);
-    if (authError || !authData.user) return json({ error: 'Authentication required' }, 401);
 
     let body: Record<string, unknown>;
     try {
@@ -133,15 +138,12 @@ Deno.serve(async (req) => {
     }
 
     const page = Math.max(1, Math.min(1000, Math.floor(safeNumber(body.page) ?? 1)));
-    const requestedSize = Math.floor(safeNumber(body.perPage) ?? 24);
-    const perPage = Math.max(1, Math.min(100, requestedSize));
+    const requestedSize = safeNumber(body.perPage);
     const query = safeText(body.query, 100);
+    // Read the isolated configuration through a service-role-only public RPC.
+    // The internal market schema does not need to be exposed through PostgREST.
     const { data: source, error: sourceError } = await admin
-      .schema('market')
-      .from('market_data_sources')
-      .select('code,name,base_url,status,quote_currency,default_page_size,cache_seconds')
-      .eq('code', 'COINGECKO')
-      .maybeSingle();
+      .rpc('get_crypto_market_data_source_runtime');
 
     if (sourceError) return json({ error: 'Market data settings are unavailable.' }, 503);
     if (!source) return json({ error: 'The crypto market-data source is not configured.' }, 503);
@@ -165,7 +167,22 @@ Deno.serve(async (req) => {
       return json({ error: 'The configured crypto market-data source host is not permitted.' }, 503);
     }
     const apiKey = Deno.env.get('COINGECKO_API_KEY')?.trim() || null;
+    const perPage = Math.max(1, Math.min(100, Math.floor(requestedSize ?? feed.default_page_size)));
     const quoteCurrency = feed.quote_currency.toLowerCase();
+    const queryKey = query.trim().toLowerCase();
+    const cacheKey = `${feed.code}:${quoteCurrency}:${page}:${perPage}:${queryKey}`;
+    const { data: cachedRow, error: cacheReadError } = await admin
+      .rpc('get_crypto_market_data_cache', { p_request_key: cacheKey });
+
+    if (cacheReadError) {
+      console.warn('Crypto market-data cache read failed', cacheReadError.code);
+    } else if (cachedRow?.payload && typeof cachedRow.payload === 'object' && !Array.isArray(cachedRow.payload)) {
+      const payload = cachedRow.payload as Record<string, unknown>;
+      if (Date.parse(String(cachedRow.expires_at)) > Date.now()) {
+        return json({ ...payload, cached: true }, 200, Math.min(Math.max(feed.cache_seconds, 15), 3600));
+      }
+      if (Date.parse(String(cachedRow.stale_until)) > Date.now()) stalePayload = payload;
+    }
 
     let coinRows: CoinMarketRow[] = [];
     let hasMore = false;
@@ -211,7 +228,10 @@ Deno.serve(async (req) => {
       hasMore = coinRows.length === perPage && page < 1000;
     }
 
-    return json({
+    const fetchedAt = new Date();
+    const expiresAt = new Date(fetchedAt.getTime() + Math.min(Math.max(feed.cache_seconds, 15), 3600) * 1000);
+    const staleUntil = new Date(fetchedAt.getTime() + 6 * 60 * 60 * 1000);
+    const responsePayload = {
       ok: true,
       source: 'COINGECKO',
       dataPurpose: 'DISPLAY_ONLY',
@@ -220,10 +240,23 @@ Deno.serve(async (req) => {
       perPage,
       query: query || null,
       hasMore,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt: fetchedAt.toISOString(),
       coins: coinRows.map(normalizeCoin).filter((coin) => coin.id && coin.currentPrice !== null),
-    }, 200, Math.min(Math.max(feed.cache_seconds, 15), 3600));
+    };
+    const { error: cacheWriteError } = await admin.rpc('upsert_crypto_market_data_cache', {
+      p_request_key: cacheKey,
+      p_payload: responsePayload,
+      p_fetched_at: fetchedAt.toISOString(),
+      p_expires_at: expiresAt.toISOString(),
+      p_stale_until: staleUntil.toISOString(),
+    });
+    if (cacheWriteError) console.warn('Crypto market-data cache write failed', cacheWriteError.code);
+
+    return json(responsePayload, 200, Math.min(Math.max(feed.cache_seconds, 15), 3600));
   } catch (error) {
+    if (stalePayload) {
+      return json({ ...stalePayload, cached: true, stale: true }, 200, 15);
+    }
     return json({
       error: error instanceof Error ? error.message : 'Crypto market data is temporarily unavailable.',
     }, 502);

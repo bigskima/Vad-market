@@ -6,6 +6,7 @@ import {
   useVerifyOTP,
 } from '@dynamic-labs-sdk/react-hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert } from 'react-native';
 import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -117,6 +118,7 @@ function DynamicEmailWallet() {
   const [otpVerification, setOtpVerification] = useState<OtpVerification | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [vadWallets, setVadWallets] = useState<VerifiedVadWallet[]>([]);
   const [vadWalletOwnerId, setVadWalletOwnerId] = useState('');
   const [vadVerificationBusy, setVadVerificationBusy] = useState(false);
@@ -276,7 +278,24 @@ function DynamicEmailWallet() {
     }
   }, [walletsQuery, syncVadWalletVerification]);
 
-  const busy = sessionMismatch || sendOtp.isPending || verifyOtp.isPending || vadVerificationBusy;
+  const disconnectWallet = useCallback(async () => {
+    setDisconnecting(true);
+    setLocalError(null);
+    try {
+      await clearDynamicWalletSession();
+      setOtpVerification(null);
+      setVerificationCode('');
+      setVadWallets([]);
+      setVadWalletOwnerId('');
+      await walletsQuery.refetch();
+    } catch (reason) {
+      setLocalError(reason instanceof Error ? reason.message : 'VAD could not disconnect the embedded wallet session.');
+    } finally {
+      setDisconnecting(false);
+    }
+  }, [walletsQuery]);
+
+  const busy = sessionMismatch || sendOtp.isPending || verifyOtp.isPending || vadVerificationBusy || disconnecting;
 
   return (
     <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
@@ -336,6 +355,20 @@ function DynamicEmailWallet() {
           <VadText variant="caption" tone="tertiary">
             Private keys remain with the embedded-wallet security layer. Internal-ledger balances remain separate from self-custody USDC.
           </VadText>
+          <VadButton
+            label="Disconnect wallet session"
+            variant="secondary"
+            loading={disconnecting}
+            disabled={busy}
+            onPress={() => Alert.alert(
+              'Disconnect embedded wallet?',
+              'This disconnects the Dynamic embedded-wallet session only. It does not sign you out of VAD, delete your wallet, move funds, or change your VAD ledger.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Disconnect', style: 'destructive', onPress: () => void disconnectWallet() },
+              ],
+            )}
+          />
         </View>
       ) : otpVerification ? (
         <View style={{ gap: theme.spacing.sm }}>
