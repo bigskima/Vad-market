@@ -34,7 +34,10 @@ export type VadIconName =
   | 'globe'
   | 'lifeBuoy'
   | 'fileText'
-  | 'info';
+  | 'info'
+  | 'filter'
+  | 'clock'
+  | 'logOut';
 
 type Tone = 'primary' | 'secondary' | 'tertiary' | 'brand' | 'yes' | 'no' | 'inverse';
 
@@ -331,6 +334,36 @@ export function VadIcon({
         <View style={{ width: size * 0.86, height: size * 0.86, borderWidth: line, borderColor: ink, borderRadius: size }} />
         <View style={{ position: 'absolute', width: line * 1.2, height: line * 1.2, borderRadius: size, backgroundColor: ink, top: size * 0.27 }} />
         <View style={{ position: 'absolute', width: line * 1.2, height: size * 0.28, borderRadius: line, backgroundColor: ink, top: size * 0.43 }} />
+      </View>
+    );
+  }
+
+  if (name === 'clock') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size * 0.84, height: size * 0.84, borderRadius: size, borderWidth: line, borderColor: ink }} />
+        <View style={{ position: 'absolute', width: line, height: size * 0.28, top: size * 0.21, left: size * 0.48, backgroundColor: ink, borderRadius: line }} />
+        <View style={{ position: 'absolute', width: size * 0.25, height: line, top: size * 0.47, left: size * 0.48, backgroundColor: ink, borderRadius: line }} />
+      </View>
+    );
+  }
+
+  if (name === 'filter') {
+    return (
+      <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ width: size * 0.84, height: line, backgroundColor: ink, borderRadius: line }} />
+        <View style={{ width: size * 0.58, height: line, backgroundColor: ink, borderRadius: line, marginTop: size * 0.2 }} />
+        <View style={{ width: size * 0.28, height: line, backgroundColor: ink, borderRadius: line, marginTop: size * 0.2 }} />
+      </View>
+    );
+  }
+
+  if (name === 'logOut') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ position: 'absolute', left: size * 0.08, top: size * 0.12, width: size * 0.47, height: size * 0.76, borderWidth: line, borderColor: ink, borderRightWidth: 0, borderTopLeftRadius: size * 0.1, borderBottomLeftRadius: size * 0.1 }} />
+        <View style={{ position: 'absolute', left: size * 0.25, top: size * 0.45, width: size * 0.62, height: line, backgroundColor: ink, borderRadius: line }} />
+        <View style={{ position: 'absolute', right: size * 0.1, top: size * 0.3, width: size * 0.28, height: size * 0.28, borderTopWidth: line, borderRightWidth: line, borderColor: ink, transform: [{ rotate: '45deg' }] }} />
       </View>
     );
   }
