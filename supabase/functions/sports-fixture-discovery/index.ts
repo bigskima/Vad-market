@@ -252,16 +252,17 @@ async function handle(req: Request) {
   ].join(':');
 
   let stalePayload: JsonRecord | null = null;
-  if (!forceRefresh) {
-    const { data: cached, error: cacheError } = await admin.rpc('internal_get_sports_fixture_cache', { p_request_key: requestKey });
-    if (!cacheError && isRecord(cached) && isRecord(cached.payload)) {
-      const payload = cached.payload as JsonRecord;
-      const expiresAt = Date.parse(String(cached.expiresAt ?? ''));
-      const staleUntil = Date.parse(String(cached.staleUntil ?? ''));
-      if (Number.isFinite(expiresAt) && expiresAt > Date.now()) {
+  const { data: cached, error: cacheError } = await admin.rpc('internal_get_sports_fixture_cache', { p_request_key: requestKey });
+  if (!cacheError && isRecord(cached) && isRecord(cached.payload)) {
+    const payload = cached.payload as JsonRecord;
+    const expiresAt = Date.parse(String(cached.expiresAt ?? ''));
+    const staleUntil = Date.parse(String(cached.staleUntil ?? ''));
+    if (Number.isFinite(expiresAt) && expiresAt > Date.now()) {
+      if (!forceRefresh) {
         return json({ ...payload, cached: true }, 200, Math.max(15, Math.min(3600, safeNumber(payload.cacheSeconds, 900))));
       }
-      if (Number.isFinite(staleUntil) && staleUntil > Date.now()) stalePayload = payload;
+    } else if (Number.isFinite(staleUntil) && staleUntil > Date.now()) {
+      stalePayload = payload;
     }
   }
 
