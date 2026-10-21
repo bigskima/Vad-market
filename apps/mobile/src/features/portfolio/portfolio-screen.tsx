@@ -81,8 +81,8 @@ export function PortfolioScreen({
   const [performanceFilter, setPerformanceFilter] = useState<PerformanceFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [visiblePositionCount, setVisiblePositionCount] = useState(5);
-  const [visibleOrderCount, setVisibleOrderCount] = useState(5);
-  const [visibleHistoryCount, setVisibleHistoryCount] = useState(8);
+  const visibleOrderCount = 5;
+  const visibleHistoryCount = 8;
   const [marks, setMarks] = useState<PortfolioPositionMarkRow[]>([]);
   const [snapshots, setSnapshots] = useState<PortfolioValuationSnapshotRow[]>([]);
   const [marksLoading, setMarksLoading] = useState(true);
@@ -136,7 +136,6 @@ export function PortfolioScreen({
   );
   const asset = assetOptions.includes(selectedAsset) ? selectedAsset : assetOptions[0] ?? 'NGN';
   const isTngn = asset === 'TNGN';
-  const walletRow = wallet.find((row) => row.asset_code === asset);
 
   const marketsById = useMemo(() => new Map(markets.map((market) => [market.instrument_public_id, market])), [markets]);
   const marksByKey = useMemo(() => new Map(marks.map((mark) => [positionKey(mark.instrument_id, mark.outcome_code), mark])), [marks]);
