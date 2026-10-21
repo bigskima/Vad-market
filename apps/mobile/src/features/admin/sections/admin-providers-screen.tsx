@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
+import { VadCard } from '@/components/ui/vad-card';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
@@ -17,6 +18,8 @@ import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
 import {
+  getAdminMarketDataSources,
+  setAdminMarketDataSourceStatus,
   decideProviderStatusRequest,
   requestProviderStatus,
   runOracleProviderHealth,
@@ -397,6 +400,8 @@ export function AdminProvidersScreen() {
         />
       </View>
 
+      <AdminMarketDataSourcePanel canManage={canManage} />
+
       <AdminSectionTabs
         active={tab}
         onChange={setTab}
@@ -693,5 +698,106 @@ function EmptyText({ children }: { children: string }) {
     <View style={{ paddingVertical: 18 }}>
       <VadText tone="secondary">{children}</VadText>
     </View>
+  );
+}
+
+function AdminMarketDataSourcePanel({ canManage }: { canManage: boolean }) {
+  const theme = useVadTheme();
+  const [source, setSource] = useState<import('@/services/crypto-market-data-api').AdminMarketDataSource | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const sources = await getAdminMarketDataSources();
+      setSource(sources.find((item) => item.code === 'COINGECKO') ?? sources[0] ?? null);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Market-data source configuration is unavailable.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    void getAdminMarketDataSources()
+      .then((sources) => { if (active) setSource(sources.find((item) => item.code === 'COINGECKO') ?? sources[0] ?? null); })
+      .catch((value: unknown) => { if (active) setError(value instanceof Error ? value.message : 'Market-data source configuration is unavailable.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  async function changeStatus() {
+    if (!source || !canManage || reason.trim().length < 3) return;
+    setWorking(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const status = source.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
+      await setAdminMarketDataSourceStatus({ code: source.code, status, reason: reason.trim() });
+      setReason('');
+      setMessage(`${source.name} display feed ${status.toLowerCase()}.`);
+      await load();
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Market-data source status could not be changed.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  return (
+    <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: 3 }}>
+        <VadText variant="label" tone="brand">MARKET DATA · DISPLAY ONLY</VadText>
+        <VadText variant="heading">Crypto prices feed</VadText>
+        <VadText variant="caption" tone="secondary">
+          Controls the public CoinGecko coin catalogue and live display quotes. This is deliberately separate from Oracle providers, outcome consensus and settlement.
+        </VadText>
+      </View>
+      {loading ? (
+        <VadSkeleton height={72} radius={theme.radius.md} />
+      ) : source ? (
+        <>
+          <View style={{ gap: 4 }}>
+            <VadText variant="bodyStrong">{source.name}</VadText>
+            <VadText variant="caption" tone="secondary">{source.base_url}</VadText>
+            <VadText variant="caption" tone={source.status === 'ACTIVE' ? 'yes' : 'warning'}>
+              {source.status === 'ACTIVE' ? 'Active · public API quotes available' : 'Disabled · crypto live quotes hidden'}
+            </VadText>
+            <VadText variant="caption" tone="tertiary">
+              Quote currency: {source.quote_currency} · page size: {source.default_page_size} · cache: {source.cache_seconds}s
+            </VadText>
+          </View>
+          {canManage ? (
+            <>
+              <VadInput
+                label="Reason for status change"
+                value={reason}
+                onChangeText={setReason}
+                placeholder="Why are you changing this display feed?"
+              />
+              <VadButton
+                label={source.status === 'ACTIVE' ? 'Disable crypto display feed' : 'Enable crypto display feed'}
+                variant={source.status === 'ACTIVE' ? 'secondary' : 'primary'}
+                loading={working}
+                disabled={working || reason.trim().length < 3}
+                onPress={() => void changeStatus()}
+              />
+            </>
+          ) : (
+            <VadText variant="caption" tone="secondary">Read-only: provider management permission is required to change this setting.</VadText>
+          )}
+        </>
+      ) : (
+        <VadText variant="caption" tone="secondary">No display-only market data source has been configured.</VadText>
+      )}
+      {error ? <VadErrorState title="Market-data settings unavailable" message={error} onRetry={() => void load()} /> : null}
+      {message ? <VadText variant="caption" tone="yes">{message}</VadText> : null}
+    </VadCard>
   );
 }
