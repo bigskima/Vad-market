@@ -12,7 +12,7 @@ export type AdminGuidedCatalogMarketType = {
   code: string;
   name: string;
   description: string;
-  handler: 'VERIFIED_EVENT' | 'FOOTBALL_MATCH';
+  handler: 'VERIFIED_EVENT' | 'FOOTBALL_MATCH' | 'CRYPTO_THRESHOLD';
   questionTemplate: string;
   conditionTemplate: string;
   sourceLabel: string;
@@ -88,9 +88,12 @@ function asMarketType(value: unknown): AdminGuidedCatalogMarketType | null {
   const code = String(raw.code ?? '').trim();
   const name = String(raw.name ?? '').trim();
   if (!code || !name) return null;
-  const handler = String(raw.handler ?? 'VERIFIED_EVENT').toUpperCase() === 'FOOTBALL_MATCH'
+  const handlerCode = String(raw.handler ?? 'VERIFIED_EVENT').toUpperCase();
+  const handler = handlerCode === 'FOOTBALL_MATCH'
     ? 'FOOTBALL_MATCH'
-    : 'VERIFIED_EVENT';
+    : handlerCode === 'CRYPTO_THRESHOLD'
+      ? 'CRYPTO_THRESHOLD'
+      : 'VERIFIED_EVENT';
   return {
     code,
     name,
@@ -164,7 +167,10 @@ export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) 
       .map(([key, value]) => [key, String(value ?? '').trim()])
       .filter(([, value]) => Boolean(value)),
   );
-  const { data, error } = await supabase.rpc('admin_create_catalog_market_v2', {
+  const rpcName = input.marketTypeCode === 'CRYPTO_PRICE_THRESHOLD'
+    ? 'admin_create_crypto_threshold_market'
+    : 'admin_create_catalog_market_v2';
+  const { data, error } = await supabase.rpc(rpcName, {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_market_type_code: input.marketTypeCode,
@@ -222,4 +228,29 @@ export async function saveAdminSimpleGuidedMarketType(input: {
   });
   fail(error, 'We could not save this market type right now.');
   return data === true;
+}
+
+
+export type SportsMarketCompetition = {
+  sportCode: string;
+  code: string;
+  name: string;
+  region: string;
+  resultMode: 'AUTOMATIC' | 'VERIFIED';
+  providerCode?: string | null;
+  providerCompetitionCode?: string | null;
+  aliases: string[];
+};
+export type SportsMarketTaxonomy = {
+  sports: { code: string; name: string }[];
+  competitions: SportsMarketCompetition[];
+};
+export async function getSportsMarketTaxonomy(): Promise<SportsMarketTaxonomy> {
+  const { data, error } = await supabase.rpc('get_sports_market_catalog');
+  fail(error, 'Sports and competition choices could not be loaded.');
+  const payload = (data ?? {}) as Partial<SportsMarketTaxonomy>;
+  return {
+    sports: Array.isArray(payload.sports) ? payload.sports : [],
+    competitions: Array.isArray(payload.competitions) ? payload.competitions : [],
+  };
 }
