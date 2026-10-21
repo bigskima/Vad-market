@@ -170,7 +170,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       }
       setEnabledState(next);
       setPreferredCurrencyState(nextPreferred);
-      try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); catch { /* session fallback */ }
+      try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
       await refresh();
     })();
   }, [eligibleCurrencies, enabledCurrencies, preferredCurrency, refresh]);
