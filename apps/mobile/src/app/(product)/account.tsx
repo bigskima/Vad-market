@@ -63,7 +63,7 @@ export default function AccountScreen() {
 
   useEffect(() => {
     let ignore = false;
-    if (!userId) { setSavedProfile(null); setKycStatus(null); return; }
+    if (!userId) return;
     void getMyKycStatus().then((status) => { if (!ignore) setKycStatus(status); }).catch(() => { if (!ignore) setKycStatus(null); });
     void getMyProfile().then((profile) => { if (!ignore) setSavedProfile(profile); }).catch(() => { if (!ignore) setSavedProfile(null); });
     return () => { ignore = true; };
@@ -71,7 +71,7 @@ export default function AccountScreen() {
 
   useEffect(() => {
     let ignore = false;
-    if (!userId) { setHasAdminAccess(false); return; }
+    if (!userId) return;
     void getAdminAccess().then((access) => {
       if (!ignore) setHasAdminAccess(access.isSuperAdmin || access.roles.length > 0);
     }).catch(() => { if (!ignore) setHasAdminAccess(false); });
@@ -178,7 +178,7 @@ export default function AccountScreen() {
           <AccountRow icon="activity" title="About VAD Market" subtitle="App version and company information are not configured on this screen." last />
         </SettingsGroup>
 
-        {hasAdminAccess ? (
+        {userId && hasAdminAccess ? (
           <SettingsGroup title="Administration">
             <AccountRow icon="operations" title="Admin operations" subtitle="Operations dashboard" onPress={() => router.push('/admin')} last />
           </SettingsGroup>
