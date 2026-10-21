@@ -155,3 +155,22 @@ export async function checkCryptoOracleAsset(symbol: string): Promise<CryptoOrac
   }
   return payload as CryptoOracleAssetCheck;
 }
+
+
+export async function registerCryptoOracleAsset(input: {
+  symbol: string;
+  coinGeckoId: string;
+  pythFeedSymbol: string;
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_register_crypto_oracle_asset', {
+    p_symbol: input.symbol.trim().toUpperCase(),
+    p_coin_gecko_id: input.coinGeckoId.trim().toLowerCase(),
+    p_pyth_feed_symbol: input.pythFeedSymbol.trim(),
+    p_reason: input.reason.trim(),
+  });
+  if (error) throw userFacingError(error, 'admin', 'This asset could not be registered for Oracle resolution.');
+  const payload = data as { registered?: boolean; symbol?: string; coin_gecko_id?: string; pyth_feed_symbol?: string } | null;
+  if (payload?.registered !== true) throw new Error('The Oracle asset registration did not return confirmation.');
+  return payload;
+}
