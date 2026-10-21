@@ -112,11 +112,12 @@ export function AdminSportsFixturePicker({
             <VadChip label="Next 14 days" selected={daysAhead === 14} onPress={() => { setDaysAhead(14); setPage(null); }} />
           </View>
           <VadButton
-            label={loading ? 'Loading fixtures…' : page ? 'Reload fixtures' : 'Load upcoming fixtures'}
+            label={loading ? 'Loading fixtures…' : page ? 'Refresh from provider' : 'Load upcoming fixtures'}
             onPress={() => void loadFixtures()}
             disabled={loading}
             variant="secondary"
           />
+          {page ? <VadText variant="caption" tone="secondary">Refreshing calls the configured provider and uses one request from VAD’s daily budget; initial loads reuse cached results.</VadText> : null}
           {error ? <VadText variant="caption" tone="warning">{error}</VadText> : null}
           {page ? (
             <View style={{ gap: theme.spacing.sm }}>
