@@ -390,12 +390,30 @@ async function handle(req: Request) {
     return json({ error: 'AI_DRAFT_FAILED', message: 'AI could not prepare this draft. Review the fixture and template manually, or check the configured AI provider.' }, 503);
   }
 
+  const generatedTitle = safeText(generated.title, 180);
+  const genericTitleIsGrounded = generatedTitle.toLocaleLowerCase().includes(safeText(fixture.homeTeam, 160).toLocaleLowerCase())
+    && generatedTitle.toLocaleLowerCase().includes(safeText(fixture.awayTeam, 160).toLocaleLowerCase());
+  const finalTitle = selectedMarketType.handler === 'FOOTBALL_MATCH'
+    ? deterministicFootballTitle(fixture, selectedResult)
+    : selectedMarketType.code.toUpperCase() === 'SPORTS_MATCH_WINNER' && !genericTitleIsGrounded
+      ? genericMatchWinnerTitle(fixture)
+      : generatedTitle;
+  const draftPayload = {
+    title: finalTitle,
+    description: safeText(generated.description, 1000),
+    resolutionRules: safeText(generated.resolutionRules, 1800),
+    riskNotes: safeText(generated.riskNotes, 500),
+  };
+
   const { error: auditError } = await admin.rpc('internal_record_sports_market_draft_audit', {
     p_actor_user_id: userId,
     p_provider_code: safeText(fixture.providerCode, 80),
     p_fixture_id: fixtureId,
     p_market_type_code: selectedMarketType.code,
     p_selected_result: selectedResult,
+    p_ai_provider_id: selectedProvider.aiProviderId,
+    p_prompt_version_id: Number(prompt.id),
+    p_output_payload: draftPayload,
     p_metadata: {
       sport_code: safeText(fixture.sportCode, 80),
       competition_code: safeText(fixture.competitionCode, 80),
@@ -409,18 +427,8 @@ async function handle(req: Request) {
     return json({ error: 'DRAFT_AUDIT_FAILED', message: 'The draft was generated but could not be audited. Please retry before using it.' }, 503);
   }
 
-  const generatedTitle = safeText(generated.title, 180);
-  const genericTitleIsGrounded = generatedTitle.toLocaleLowerCase().includes(safeText(fixture.homeTeam, 160).toLocaleLowerCase())
-    && generatedTitle.toLocaleLowerCase().includes(safeText(fixture.awayTeam, 160).toLocaleLowerCase());
   return json({
-    title: selectedMarketType.handler === 'FOOTBALL_MATCH'
-      ? deterministicFootballTitle(fixture, selectedResult)
-      : selectedMarketType.code.toUpperCase() === 'SPORTS_MATCH_WINNER' && !genericTitleIsGrounded
-        ? genericMatchWinnerTitle(fixture)
-        : generatedTitle,
-    description: safeText(generated.description, 1000),
-    resolutionRules: safeText(generated.resolutionRules, 1800),
-    riskNotes: safeText(generated.riskNotes, 500),
+    ...draftPayload,
     providerCode: safeText(fixture.providerCode, 80),
     providerName: safeText(selectedProvider.providerName, 160),
     modelCode: safeText(selectedProvider.modelCode, 120),
