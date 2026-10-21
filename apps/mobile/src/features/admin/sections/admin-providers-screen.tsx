@@ -17,7 +17,7 @@ import {
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
-import { getAdminMarketDataSources, setAdminMarketDataSourceStatus } from '@/services/crypto-market-data-api';
+import { getAdminMarketDataSources, setAdminMarketDataSourceStatus, updateAdminMarketDataSourceSettings } from '@/services/crypto-market-data-api';
 import {
   decideProviderStatusRequest,
   requestProviderStatus,
@@ -706,6 +706,9 @@ function AdminMarketDataSourcePanel({ canManage }: { canManage: boolean }) {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [reason, setReason] = useState('');
+  const [quoteCurrencyDraft, setQuoteCurrencyDraft] = useState('USD');
+  const [pageSizeDraft, setPageSizeDraft] = useState('24');
+  const [cacheSecondsDraft, setCacheSecondsDraft] = useState('60');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -730,6 +733,50 @@ function AdminMarketDataSourcePanel({ canManage }: { canManage: boolean }) {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!source) return;
+    setQuoteCurrencyDraft(source.quote_currency);
+    setPageSizeDraft(String(source.default_page_size));
+    setCacheSecondsDraft(String(source.cache_seconds));
+  }, [source?.code, source?.updated_at]);
+
+  async function updateSettings() {
+    const pageSize = Number(pageSizeDraft);
+    const cacheSeconds = Number(cacheSecondsDraft);
+    if (!source || !canManage || reason.trim().length < 3) return;
+    if (!/^[A-Za-z]{3,8}$/.test(quoteCurrencyDraft.trim())) {
+      setError('Enter a valid quote currency code (3–8 letters).');
+      return;
+    }
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+      setError('Default page size must be between 1 and 100.');
+      return;
+    }
+    if (!Number.isInteger(cacheSeconds) || cacheSeconds < 15 || cacheSeconds > 3600) {
+      setError('Cache duration must be between 15 and 3600 seconds.');
+      return;
+    }
+    setWorking(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await updateAdminMarketDataSourceSettings({
+        code: source.code,
+        quoteCurrency: quoteCurrencyDraft,
+        defaultPageSize: pageSize,
+        cacheSeconds,
+        reason: reason.trim(),
+      });
+      setReason('');
+      setMessage('Crypto display feed settings saved.');
+      await load();
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Market-data source settings could not be updated.');
+    } finally {
+      setWorking(false);
+    }
+  }
 
   async function changeStatus() {
     if (!source || !canManage || reason.trim().length < 3) return;
@@ -775,11 +822,32 @@ function AdminMarketDataSourcePanel({ canManage }: { canManage: boolean }) {
           {canManage ? (
             <>
               <VadInput
-                label="Reason for status change"
+                label="Reason for feed change"
                 value={reason}
                 onChangeText={setReason}
-                placeholder="Why are you changing this display feed?"
+                placeholder="Why are you changing this display feed or its settings?"
               />
+              <VadButton
+                label={working ? 'Saving…' : 'Save crypto feed settings'}
+                variant="secondary"
+                loading={working}
+                disabled={working || reason.trim().length < 3}
+                onPress={() => void updateSettings()}
+              />
+              <VadInput
+                label="Quote currency"
+                value={quoteCurrencyDraft}
+                onChangeText={setQuoteCurrencyDraft}
+                placeholder="USD"
+              />
+              <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <VadInput label="Assets per page (1–100)" value={pageSizeDraft} onChangeText={setPageSizeDraft} placeholder="24" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <VadInput label="Cache seconds (15–3600)" value={cacheSecondsDraft} onChangeText={setCacheSecondsDraft} placeholder="60" />
+                </View>
+              </View>
               <VadButton
                 label={source.status === 'ACTIVE' ? 'Disable crypto display feed' : 'Enable crypto display feed'}
                 variant={source.status === 'ACTIVE' ? 'secondary' : 'primary'}
