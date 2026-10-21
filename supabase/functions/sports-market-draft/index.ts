@@ -254,6 +254,10 @@ async function handle(req: Request) {
   if (cacheError || !isRecord(cachedRow) || !isRecord(cachedRow.payload)) {
     return json({ error: 'FIXTURE_CACHE_MISSING', message: 'Reload the fixture list; this selected event is no longer available in the fixture cache.' }, 409);
   }
+  const cachedExpiresAt = Date.parse(String(cachedRow.expiresAt ?? ''));
+  if (!Number.isFinite(cachedExpiresAt) || cachedExpiresAt <= Date.now()) {
+    return json({ error: 'FIXTURE_CACHE_EXPIRED', message: 'These fixture results have expired. Refresh from the provider before drafting a market.' }, 409);
+  }
   const cachedPayload = cachedRow.payload;
   const fixtures = Array.isArray(cachedPayload.fixtures) ? cachedPayload.fixtures as unknown[] : [];
   const fixtureValue = fixtures.find((item) => isRecord(item) && safeText(item.fixtureId, 120) === fixtureId);
