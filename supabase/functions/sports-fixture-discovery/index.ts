@@ -270,9 +270,13 @@ async function handle(req: Request) {
 
   const publicMetadata = isRecord(provider.publicMetadata) ? provider.publicMetadata : {};
   const dailyLimit = Math.max(1, Math.min(10000, Math.floor(safeNumber(publicMetadata.fixture_requests_per_day, 100))));
+  // The Football-Data free plan is limited to 10 calls/minute; default to 8
+  // so VAD leaves headroom for other provider operations.
+  const minuteLimit = Math.max(1, Math.min(9, Math.floor(safeNumber(publicMetadata.fixture_requests_per_minute, 8))));
   const { data: reserved, error: reserveError } = await admin.rpc('internal_reserve_sports_fixture_request', {
     p_provider_code: provider.code,
     p_daily_limit: dailyLimit,
+    p_minute_limit: minuteLimit,
   });
   if (reserveError) return json({ error: 'REQUEST_LIMIT_CHECK_FAILED', message: 'VAD could not confirm the provider request budget. Please retry later.' }, 503);
   if (reserved !== true) {
