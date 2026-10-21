@@ -186,14 +186,10 @@ Deno.serve(async (req) => {
       return json({ error: message }, status);
     };
 
+    // The integration schema is intentionally not exposed through PostgREST.
+    // Read only the configured image provider's public metadata via a privileged RPC.
     const { data: provider, error: providerError } = await admin
-      .schema('integration')
-      .from('providers')
-      .select('secret_reference,public_metadata')
-      .eq('code', 'CLOUDFLARE_WORKERS_AI')
-      .eq('environment', 'PRODUCTION')
-      .in('status', ['ACTIVE', 'DEGRADED'])
-      .maybeSingle();
+      .rpc('get_cloudflare_market_image_provider_runtime');
     const accountId = String(provider?.public_metadata?.account_id || '').trim();
     const secretName = String(provider?.secret_reference || 'VAD_AI_CLOUDFLARE_API_TOKEN').trim();
     const apiToken = Deno.env.get(secretName);
