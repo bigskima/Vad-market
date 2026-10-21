@@ -28,6 +28,7 @@ export function CryptoMarketPricesPanel({
   const columns = width >= 1080 ? 3 : width >= 650 ? 2 : 1;
   const [coins, setCoins] = useState<CryptoMarketQuote[]>([]);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(24);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -43,11 +44,12 @@ export function CryptoMarketPricesPanel({
       if (showLoading) setLoading(true);
       setError(null);
       try {
-        const result = await getCryptoMarketPrices({ page: 1, perPage: 24, query });
+        const result = await getCryptoMarketPrices({ page: 1, query });
         if (!active) return;
         setCoins(result.coins);
         setQuoteCurrency(result.quoteCurrency);
         setPage(1);
+        setPageSize(result.perPage);
         setHasMore(result.hasMore);
         setFetchedAt(result.fetchedAt);
         setError(null);
@@ -76,7 +78,7 @@ export function CryptoMarketPricesPanel({
       const nextPage = page + 1;
       const result = await getCryptoMarketPrices({
         page: nextPage,
-        perPage: 24,
+        perPage: pageSize,
         query: search.trim(),
       });
       setQuoteCurrency(result.quoteCurrency);
@@ -85,6 +87,7 @@ export function CryptoMarketPricesPanel({
         return [...current, ...result.coins.filter((coin) => !seen.has(coin.id))];
       });
       setPage(nextPage);
+      setPageSize(result.perPage);
       setHasMore(result.hasMore);
       setFetchedAt(result.fetchedAt);
     } catch (reason) {
@@ -129,11 +132,12 @@ export function CryptoMarketPricesPanel({
           message={error}
           onRetry={() => {
             setLoading(true);
-            void getCryptoMarketPrices({ page: 1, perPage: 24, query: search.trim() })
+            void getCryptoMarketPrices({ page: 1, query: search.trim() })
               .then((result) => {
                 setCoins(result.coins);
                 setQuoteCurrency(result.quoteCurrency);
                 setPage(1);
+                setPageSize(result.perPage);
                 setHasMore(result.hasMore);
                 setFetchedAt(result.fetchedAt);
                 setError(null);
