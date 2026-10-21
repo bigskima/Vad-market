@@ -104,6 +104,19 @@ Deno.serve(async (req) => {
       .maybeSingle();
     let accountCountry = String(account?.country_code || '').trim().toUpperCase();
 
+    // Normalize common Nigeria aliases written by older onboarding clients. These
+    // values identify the same declared jurisdiction; all live-location and network
+    // checks below still have to pass before any NGN action is authorized.
+    if (['NG', 'NGA', 'NIGERIA'].includes(accountCountry)) {
+      if (accountCountry !== 'NG') {
+        const { error: normalizeError } = await admin
+          .from('user_accounts')
+          .update({ country_code: 'NG' })
+          .eq('user_id', authData.user.id);
+        if (!normalizeError) accountCountry = 'NG';
+      }
+    }
+
     // Repair an unset country only when device GPS and the client IP both resolve to
     // Nigeria and the request has no anonymous-network risk signals. Never overwrite
     // an existing country choice based merely on a traveller's current location.
