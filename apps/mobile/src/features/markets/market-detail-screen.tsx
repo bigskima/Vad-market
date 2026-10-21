@@ -143,6 +143,7 @@ function Overview({ market, timing, onTrade }: { market: MarketCatalogItem; timi
   return (
     <View style={{ gap: density.compact ? 8 : 12 }}>
       <MarketSnapshot market={market} timing={timing} />
+      <MarketContextPanel market={market} />
       <VadButton label="Trade this market" onPress={onTrade} size="small" leading={<VadIcon name="markets" size={15} tone="inverse" />} />
       <AssistantEntry
         label="Ask VAD AI about this market"
@@ -281,4 +282,78 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
       </VadCard>
     </View>
   );
+}
+
+function MarketContextPanel({ market }: { market: MarketCatalogItem }) {
+  const theme = useVadTheme();
+  const profile = String(market.presentation_profile ?? 'EVENT').toUpperCase();
+  const labels: Record<string, string> = {
+    CRYPTO: 'Crypto market context',
+    SPORTS: 'Fixture & competition',
+    MUSIC: 'Artist & chart context',
+    AI: 'Model & benchmark context',
+    STOCKS: 'Company & financial context',
+    ECONOMICS: 'Economic indicator context',
+    ENTERTAINMENT: 'Entertainment context',
+    PUBLIC_EVENTS: 'Event context',
+    EVENT: 'Market context',
+  };
+  const context = market.market_context && typeof market.market_context === 'object'
+    ? market.market_context
+    : {};
+  const nested = (key: string) => context[key] && typeof context[key] === 'object' && !Array.isArray(context[key])
+    ? context[key] as Record<string, unknown>
+    : {};
+  const subject = nested('subject');
+  const details = nested('details');
+  const preferredKeys = [
+    'asset', 'symbol', 'quote', 'model', 'benchmark', 'company', 'subject',
+    'artist', 'song', 'album', 'event_name', 'competition', 'home_team', 'away_team',
+    'team', 'achievement', 'reporting_period', 'threshold', 'operator',
+  ];
+  const entries = preferredKeys.flatMap((key) => {
+    const value = subject[key] ?? details[key] ?? context[key];
+    if (value == null || typeof value === 'object' || typeof value === 'boolean') return [];
+    const text = String(value).trim();
+    if (!text || text.length > 160) return [];
+    return [{ key, value: text }];
+  }).filter((entry, index, all) => all.findIndex((candidate) => candidate.key === entry.key) === index).slice(0, 6);
+
+  if (!entries.length) return null;
+
+  return (
+    <VadCard variant="surface" style={{ gap: theme.spacing.sm }}>
+      <View style={{ gap: 3 }}>
+        <VadText variant="label" tone="brand">{labels[profile] ?? labels.EVENT}</VadText>
+        <VadText variant="caption" tone="secondary">
+          Details come from the published market setup. The official resolution criteria remain authoritative.
+        </VadText>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+        {entries.map((entry) => (
+          <View
+            key={entry.key}
+            style={{
+              minWidth: '42%',
+              maxWidth: '100%',
+              flexGrow: 1,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.surfaceMuted,
+              borderRadius: theme.radius.md,
+              padding: theme.spacing.sm,
+              gap: 2,
+            }}
+          >
+            <VadText variant="caption" tone="tertiary">{contextLabel(entry.key)}</VadText>
+            <VadText variant="bodyStrong">{entry.value}</VadText>
+          </View>
+        ))}
+      </View>
+    </VadCard>
+  );
+}
+
+function contextLabel(key: string) {
+  return key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
