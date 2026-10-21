@@ -239,8 +239,9 @@ export function PortfolioScreen({
     resetKey: `${asset}|${historyEvents.length}`,
   });
   const settledPnl = settledRows.reduce((sum, row) => sum + amount(row.realized_pnl), 0);
-  const positiveSettlements = settledRows.filter((row) => row.result === 'WON').length;
-  const winRate = settledRows.length ? positiveSettlements / settledRows.length : null;
+  const winLossRows = settledRows.filter((row) => ['WON', 'LOST'].includes(String(row.result).toUpperCase()));
+  const positiveSettlements = winLossRows.filter((row) => String(row.result).toUpperCase() === 'WON').length;
+  const winRate = winLossRows.length ? positiveSettlements / winLossRows.length : null;
   const historicalPnlSeries = [...settledRows]
     .sort((a, b) => Date.parse(a.settled_at ?? '') - Date.parse(b.settled_at ?? ''))
     .reduce<{ at: string; value: number }[]>((series, row) => {
