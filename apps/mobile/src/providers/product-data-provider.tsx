@@ -57,7 +57,8 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
       orders: filterAssetRows(data.orders, realLedgerAssetCodes),
       // TNGN prediction stakes come from my_tngn_market_orders and remain isolated from real-money stakes.
       poolStakes: filterAssetRows(data.poolStakes, activeAssetCodes),
-      marketHistory: filterAssetRows(data.marketHistory, realLedgerAssetCodes),
+      // TNGN history is reconstructed from the isolated demo-order RPC, not the real-money history table.
+      marketHistory: filterAssetRows(data.marketHistory, activeAssetCodes),
       settlements: filterAssetRows(data.settlements, realLedgerAssetCodes),
       notifications,
       liveNotification,
