@@ -132,6 +132,7 @@ export function CryptoMarketPricesPanel({
             void getCryptoMarketPrices({ page: 1, perPage: 24, query: search.trim() })
               .then((result) => {
                 setCoins(result.coins);
+                setQuoteCurrency(result.quoteCurrency);
                 setPage(1);
                 setHasMore(result.hasMore);
                 setFetchedAt(result.fetchedAt);
