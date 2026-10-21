@@ -352,7 +352,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
       }
     };
     void refresh();
-    const timer = setInterval(() => void refresh(), 60_000);
+    const timer = setInterval(() => void refresh(), 30_000);
     return () => { active = false; clearInterval(timer); };
   }, [assetQuery]);
 
