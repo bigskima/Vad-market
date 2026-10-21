@@ -44,7 +44,7 @@ export function MarketsScreen({
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const { enabledCurrencies, isCurrencyEligible } = useCurrencyPreference();
+  const { enabledCurrencies } = useCurrencyPreference();
   const now = useLiveNow();
   const { width } = useWindowDimensions();
   const columns = width >= 920 ? 2 : 1;
@@ -73,7 +73,7 @@ export function MarketsScreen({
   const baseFilteredMarkets = useMemo(() => {
     const needle = debouncedQuery.toLowerCase();
     return markets
-      .filter((market) => market.asset_code === 'TNGN' ? isCurrencyEligible('TNGN') : enabledCurrencies.includes(market.asset_code as VADCurrency))
+      .filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency))
       .filter((market) => category === 'All' || market.category === category)
       .filter((market) => !needle || [market.title, market.category, market.asset_code, market.status, market.market_type, market.event_public_id, market.instrument_public_id].some((value) => String(value ?? '').toLowerCase().includes(needle)));
   }, [markets, category, debouncedQuery, enabledCurrencies, isCurrencyEligible]);
