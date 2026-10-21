@@ -137,7 +137,6 @@ export function PortfolioScreen({
   const asset = assetOptions.includes(selectedAsset) ? selectedAsset : assetOptions[0] ?? 'NGN';
   const isTngn = asset === 'TNGN';
   const walletRow = wallet.find((row) => row.asset_code === asset);
-  const cashBalance = amount(walletRow?.available) + amount(walletRow?.reserved) + amount(walletRow?.withdrawal_pending);
 
   const marketsById = useMemo(() => new Map(markets.map((market) => [market.instrument_public_id, market])), [markets]);
   const marksByKey = useMemo(() => new Map(marks.map((mark) => [positionKey(mark.instrument_id, mark.outcome_code), mark])), [marks]);
@@ -440,21 +439,28 @@ export function PortfolioScreen({
       ) : null}
 
       {tab === 'history' ? (
-        sectionErrors?.marketHistory || sectionErrors?.settlements ? (
-          <InlineError message={sectionErrors.marketHistory ?? sectionErrors.settlements ?? 'History is unavailable.'} onRetry={retry} />
-        ) : loading && visibleHistory.totalCount === 0 ? <LoadingState label="Loading your market history…" />
-        : visibleHistory.totalCount ? (
-          <View style={{ gap: theme.spacing.sm }}>
-            {visibleHistory.visibleItems.map((row, index) => <HistoryCard key={`${row.market_id}-${row.selected_outcome}-${row.settled_at ?? index}`} row={row} />)}
-            {visibleHistory.remainingCount > 0 ? <VadButton label={`Show next ${visibleHistory.nextCount} history records`} variant="secondary" onPress={visibleHistory.showMore} /> : null}
-            {orderHistoryError ? <InlineError message={orderHistoryError} onRetry={retry} /> : null}
-            {settlements.filter((row) => row.asset_code === asset).length ? (
-              <VadProgressiveSection title="Settlement receipts" icon="checkCircle" summary={<VadText variant="caption" tone="tertiary">{settlements.filter((row) => row.asset_code === asset).length} persisted records</VadText>}>
-                {settlements.filter((row) => row.asset_code === asset).slice(0, 8).map((receipt) => <SettlementCard key={receipt.settlement_id} receipt={receipt} />)}
-              </VadProgressiveSection>
-            ) : null}
-          </View>
-        ) : orderHistoryError ? <InlineError message={orderHistoryError} onRetry={retry} /> : <VadEmptyState title="No portfolio history yet" body="Trades, orders, outcomes, refunds and settlement results appear here from your account records." />
+        <View style={{ gap: theme.spacing.sm }}>
+          {sectionErrors?.marketHistory ? <InlineError message={sectionErrors.marketHistory} onRetry={retry} /> : null}
+          {sectionErrors?.settlements ? <InlineError message={sectionErrors.settlements} onRetry={retry} /> : null}
+          {orderHistoryError ? <InlineError message={orderHistoryError} onRetry={retry} /> : null}
+          {(loading || orderHistoryLoading) && historyEvents.length === 0 ? (
+            <LoadingState label="Loading your trading and settlement history…" />
+          ) : historyEvents.length ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              {visibleHistory.visibleItems.map((event) => event.kind === 'market'
+                ? <HistoryCard key={event.key} row={event.market} />
+                : <OrderHistoryCard key={event.key} order={event.order} onPress={() => onOpenOrder(event.order)} />)}
+              {visibleHistory.remainingCount > 0 ? <VadButton label={`Show next ${visibleHistory.nextCount} history records`} variant="secondary" onPress={visibleHistory.showMore} /> : null}
+            </View>
+          ) : !sectionErrors?.marketHistory && !orderHistoryError ? (
+            <VadEmptyState title="No portfolio history yet" body="Trades, orders, outcomes, refunds and settlement results appear here from your account records." />
+          ) : null}
+          {settlements.filter((row) => row.asset_code === asset).length ? (
+            <VadProgressiveSection title="Settlement receipts" icon="activity" summary={<VadText variant="caption" tone="tertiary">{settlements.filter((row) => row.asset_code === asset).length} persisted records</VadText>}>
+              {settlements.filter((row) => row.asset_code === asset).slice(0, 8).map((receipt) => <SettlementCard key={receipt.settlement_id} receipt={receipt} />)}
+            </VadProgressiveSection>
+          ) : null}
+        </View>
       ) : null}
 
       {tab === 'performance' ? (
