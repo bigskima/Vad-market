@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, View, type DimensionValue } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
+import { EmbeddedWalletModal } from '@/features/wallet/embedded-wallet-modal';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
@@ -358,6 +359,8 @@ export function PortfolioScreen({
           ) : null}
         </VadCard>
       </TourTarget>
+
+      <EmbeddedWalletModal showUsdcBalance={enabledCurrencies.includes('USDC')} compact />
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <SummaryMetric title="Winning Positions" count={winnersCount} amount={winnersValue} asset={asset} tone="yes" />
