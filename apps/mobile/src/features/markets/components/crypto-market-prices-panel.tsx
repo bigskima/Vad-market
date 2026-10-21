@@ -34,6 +34,7 @@ export function CryptoMarketPricesPanel({
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
+  const [staleSnapshot, setStaleSnapshot] = useState(false);
   const [quoteCurrency, setQuoteCurrency] = useState('USD');
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export function CryptoMarketPricesPanel({
         setPageSize(result.perPage);
         setHasMore(result.hasMore);
         setFetchedAt(result.fetchedAt);
+        setStaleSnapshot(result.stale === true);
         setError(null);
       } catch (reason) {
         if (!active) return;
@@ -90,6 +92,7 @@ export function CryptoMarketPricesPanel({
       setPageSize(result.perPage);
       setHasMore(result.hasMore);
       setFetchedAt(result.fetchedAt);
+      setStaleSnapshot(result.stale === true);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'More crypto prices could not be loaded.');
     } finally {
@@ -140,6 +143,7 @@ export function CryptoMarketPricesPanel({
                 setPageSize(result.perPage);
                 setHasMore(result.hasMore);
                 setFetchedAt(result.fetchedAt);
+                setStaleSnapshot(result.stale === true);
                 setError(null);
               })
               .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Crypto market prices are unavailable.'))
@@ -177,7 +181,7 @@ export function CryptoMarketPricesPanel({
       ) : null}
 
       <VadText variant="caption" tone="tertiary">
-        {fetchedAt ? `Public market-data snapshot · updated ${new Date(fetchedAt).toLocaleTimeString()}. ` : ''}
+        {fetchedAt ? `Public market-data snapshot · updated ${new Date(fetchedAt).toLocaleTimeString()}${staleSnapshot ? ' · STALE CACHED DATA — public source temporarily unavailable' : ''}. ` : ''}
         Prices and 24-hour changes are display data only. VAD's market odds and final outcomes remain separate.
       </VadText>
     </View>
@@ -301,6 +305,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
   const [coin, setCoin] = useState<CryptoMarketQuote | null>(null);
   const [quoteCurrency, setQuoteCurrency] = useState('USD');
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [staleSnapshot, setStaleSnapshot] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sparklineWidth, setSparklineWidth] = useState(180);
@@ -334,6 +339,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
         setCoin(exact ?? null);
         setQuoteCurrency(result.quoteCurrency);
         setUpdatedAt(result.fetchedAt);
+        setStaleSnapshot(result.stale === true);
         setError(exact ? null : `No exact public price match was returned for ${query}.`);
       } catch (reason) {
         if (active) setError(reason instanceof Error ? reason.message : 'Public crypto price is temporarily unavailable.');
@@ -413,7 +419,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
           })}
         </View>
       ) : null}
-      {coin && updatedAt ? <VadText variant="caption" tone="tertiary">Source snapshot: {new Date(updatedAt).toLocaleTimeString()} · CoinGecko</VadText> : null}
+      {coin && updatedAt ? <VadText variant="caption" tone={staleSnapshot ? 'warning' : 'tertiary'}>{staleSnapshot ? 'Stale cached snapshot' : 'Source snapshot'}: {new Date(updatedAt).toLocaleTimeString()} · CoinGecko</VadText> : null}
     </VadCard>
   );
 }
