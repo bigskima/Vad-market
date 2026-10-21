@@ -133,7 +133,7 @@ export function AdminSportsFixturePicker({
                     style={{
                       gap: theme.spacing.sm,
                       borderWidth: 1,
-                      borderColor: selected ? theme.colors.brand : theme.colors.border,
+                      borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
                     }}
                   >
                     <View style={{ gap: 4 }}>
