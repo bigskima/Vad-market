@@ -17,7 +17,7 @@ export default function PortfolioRoute() {
   };
 
   return (
-    <ProductRoute active="Portfolio">
+    <ProductRoute active="Portfolio" hideTopBar>
       <PortfolioScreen
         positions={data.positions}
         orders={data.orders}
