@@ -608,4 +608,23 @@ $$;
 revoke all on function public.admin_update_market_data_source_settings(text,text,integer,integer,text) from public,anon;
 grant execute on function public.admin_update_market_data_source_settings(text,text,integer,integer,text) to authenticated;
 
+
+-- Service-role-only response cache limits public upstream API traffic. Display prices
+-- may be stale during provider outages; this cache is never consulted by Oracle runtime.
+create table if not exists market.market_data_cache (
+  request_key text primary key check (char_length(request_key) between 1 and 300),
+  payload jsonb not null check (jsonb_typeof(payload)='object'),
+  fetched_at timestamptz not null,
+  expires_at timestamptz not null,
+  stale_until timestamptz not null,
+  updated_at timestamptz not null default statement_timestamp(),
+  check (expires_at >= fetched_at),
+  check (stale_until >= expires_at)
+);
+alter table market.market_data_cache enable row level security;
+revoke all on market.market_data_cache from public,anon,authenticated;
+grant select,insert,update,delete on market.market_data_cache to service_role;
+create index if not exists market_market_data_cache_expiry_idx
+  on market.market_data_cache(stale_until);
+
 commit;

@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
+  let stalePayload: Record<string, unknown> | null = null;
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -166,6 +167,24 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('COINGECKO_API_KEY')?.trim() || null;
     const perPage = Math.max(1, Math.min(100, Math.floor(requestedSize ?? feed.default_page_size)));
     const quoteCurrency = feed.quote_currency.toLowerCase();
+    const queryKey = query.trim().toLowerCase();
+    const cacheKey = `${feed.code}:${quoteCurrency}:${page}:${perPage}:${queryKey}`;
+    const { data: cachedRow, error: cacheReadError } = await admin
+      .schema('market')
+      .from('market_data_cache')
+      .select('payload,fetched_at,expires_at,stale_until')
+      .eq('request_key', cacheKey)
+      .maybeSingle();
+
+    if (cacheReadError) {
+      console.warn('Crypto market-data cache read failed', cacheReadError.code);
+    } else if (cachedRow?.payload && typeof cachedRow.payload === 'object' && !Array.isArray(cachedRow.payload)) {
+      const payload = cachedRow.payload as Record<string, unknown>;
+      if (Date.parse(String(cachedRow.expires_at)) > Date.now()) {
+        return json({ ...payload, cached: true }, 200, Math.min(Math.max(feed.cache_seconds, 15), 3600));
+      }
+      if (Date.parse(String(cachedRow.stale_until)) > Date.now()) stalePayload = payload;
+    }
 
     let coinRows: CoinMarketRow[] = [];
     let hasMore = false;
@@ -211,7 +230,10 @@ Deno.serve(async (req) => {
       hasMore = coinRows.length === perPage && page < 1000;
     }
 
-    return json({
+    const fetchedAt = new Date();
+    const expiresAt = new Date(fetchedAt.getTime() + Math.min(Math.max(feed.cache_seconds, 15), 3600) * 1000);
+    const staleUntil = new Date(fetchedAt.getTime() + 6 * 60 * 60 * 1000);
+    const responsePayload = {
       ok: true,
       source: 'COINGECKO',
       dataPurpose: 'DISPLAY_ONLY',
@@ -220,10 +242,24 @@ Deno.serve(async (req) => {
       perPage,
       query: query || null,
       hasMore,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt: fetchedAt.toISOString(),
       coins: coinRows.map(normalizeCoin).filter((coin) => coin.id && coin.currentPrice !== null),
-    }, 200, Math.min(Math.max(feed.cache_seconds, 15), 3600));
+    };
+    const { error: cacheWriteError } = await admin.schema('market').from('market_data_cache').upsert({
+      request_key: cacheKey,
+      payload: responsePayload,
+      fetched_at: fetchedAt.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      stale_until: staleUntil.toISOString(),
+      updated_at: fetchedAt.toISOString(),
+    }, { onConflict: 'request_key' });
+    if (cacheWriteError) console.warn('Crypto market-data cache write failed', cacheWriteError.code);
+
+    return json(responsePayload, 200, Math.min(Math.max(feed.cache_seconds, 15), 3600));
   } catch (error) {
+    if (stalePayload) {
+      return json({ ...stalePayload, cached: true, stale: true }, 200, 15);
+    }
     return json({
       error: error instanceof Error ? error.message : 'Crypto market data is temporarily unavailable.',
     }, 502);
