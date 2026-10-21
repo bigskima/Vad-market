@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, type DimensionValue } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
@@ -17,7 +17,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference } from '@/providers/currency-preference-provider';
-import { cancelOrder } from '@/services/market-api';
+import { cancelOrder, getPortfolioOrderHistory, type PortfolioOrderHistoryRow } from '@/services/market-api';
 
 export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string; onCancelled?: () => void }) {
   const theme = useVadTheme();
@@ -29,10 +29,35 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   const [cancelling, setCancelling] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [historicalOrders, setHistoricalOrders] = useState<PortfolioOrderHistoryRow[]>([]);
+  const [historicalLoading, setHistoricalLoading] = useState(true);
+  const [historicalError, setHistoricalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getPortfolioOrderHistory(200)
+      .then((rows) => {
+        if (!cancelled) {
+          setHistoricalOrders(rows);
+          setHistoricalError(null);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setHistoricalError(error instanceof Error ? error.message : 'Order history could not be loaded.');
+      })
+      .finally(() => {
+        if (!cancelled) setHistoricalLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const order = data.orders.find((row) => String(row.order_id) === orderId);
+  const archivedOrder = historicalOrders.find((row) =>
+    String(row.order_id) === orderId
+    && !['OPEN', 'PARTIALLY_FILLED'].includes(String(row.status).toUpperCase()),
+  );
 
-  if (data.loading) {
+  if (data.loading && !order) {
     return (
       <View style={{ gap: theme.spacing.sm }}>
         <VadSkeleton height={density.compact ? 104 : 124} radius={density.cardRadius} />
@@ -42,8 +67,90 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
     );
   }
 
+  if (!order && historicalLoading) {
+    return (
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadSkeleton height={density.compact ? 104 : 124} radius={density.cardRadius} />
+        <VadSkeleton height={92} radius={density.cardRadius} />
+      </View>
+    );
+  }
+
+  if (!order && archivedOrder) {
+    if (!currencyPreference.isCurrencyEnabled(archivedOrder.asset_code as 'NGN' | 'USDC')) {
+      return <VadEmptyState title="Order hidden" body="This order uses a currency that is not enabled for your account or region." />;
+    }
+    const archivedStatus = String(archivedOrder.status).toUpperCase();
+    const archivedFilled = Number(archivedOrder.filled_quantity);
+    const archivedQuantity = Number(archivedOrder.quantity);
+    const archivedPrice = Number(archivedOrder.limit_price);
+    const archivedTone = archivedStatus === 'FILLED' ? 'yes' : /CANCEL|EXPIRE|REJECT|FAIL/.test(archivedStatus) ? 'no' : 'brand';
+    const archivedAmount = (value: unknown) => assetMoney(value, archivedOrder.asset_code);
+    return (
+      <View style={{ gap: density.sectionGap, paddingBottom: density.phone ? theme.spacing.xl : 0 }}>
+        <View style={{ gap: theme.spacing.xs }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.spacing.xs }}>
+            <VadChip label={`${archivedOrder.side} order`} tone="brand" />
+            <VadChip label={archivedOrder.outcome_code} tone={archivedOrder.outcome_code === 'YES' ? 'yes' : 'no'} />
+            <VadChip label={archivedOrder.asset_code} />
+            <VadChip label={archivedStatus.replaceAll('_', ' ')} tone={archivedTone} />
+          </View>
+          <VadText variant="heading">{archivedOrder.market_title}</VadText>
+          <VadText variant="caption" tone="secondary">Archived order · Read-only record</VadText>
+        </View>
+
+        <VadCard variant="brand" style={{ gap: theme.spacing.md }}>
+          <VadText variant="caption" tone="secondary">RECORDED ORDER VALUE</VadText>
+          <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{archivedAmount(archivedPrice * archivedQuantity)}</VadText>
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <Snapshot label="Price per share" value={pct(archivedPrice)} />
+            <Snapshot label="Shares filled" value={archivedFilled.toLocaleString()} />
+            <Snapshot label="Shares ordered" value={archivedQuantity.toLocaleString()} />
+          </View>
+          <VadText variant="caption" tone="secondary">Last updated {new Date(archivedOrder.updated_at || archivedOrder.created_at).toLocaleString()}</VadText>
+        </VadCard>
+
+        <VadProgressiveSection
+          title="Historical order details"
+          eyebrow="READ-ONLY RECORD"
+          description="This order is no longer open. No cancellation or account balance changes are available from this record."
+          icon="activity"
+          defaultExpanded
+          summary={<VadText variant="caption" tone="tertiary">{archivedOrder.side} {archivedOrder.outcome_code}</VadText>}
+        >
+          <Detail label="Market" value={archivedOrder.market_title} />
+          <Detail label="Outcome" value={archivedOrder.outcome_code} />
+          <Detail label="Currency" value={archivedOrder.asset_code} />
+          <Detail label="Reference" value={String(archivedOrder.order_id)} selectable />
+          <Detail label="Created" value={new Date(archivedOrder.created_at).toLocaleString()} />
+          <Detail label="Last updated" value={new Date(archivedOrder.updated_at || archivedOrder.created_at).toLocaleString()} />
+          <Detail label="Action" value={archivedOrder.side} />
+          <Detail label="Limit price" value={pct(archivedPrice)} />
+          <Detail label="Shares ordered" value={archivedQuantity.toLocaleString()} />
+          <Detail label="Shares filled" value={archivedFilled.toLocaleString()} />
+          <Detail label="Shares remaining" value={Number(archivedOrder.remaining_quantity).toLocaleString()} />
+          <Detail label="Status" value={archivedStatus.replaceAll('_', ' ')} />
+        </VadProgressiveSection>
+        <VadButton
+          label="Open market"
+          variant="secondary"
+          onPress={() => router.push({ pathname: '/market/[marketId]', params: { marketId: archivedOrder.instrument_id } })}
+        />
+      </View>
+    );
+  }
+
+  if (!order && historicalError && !data.sectionErrors.orders) {
+    return <VadErrorState title="Order history unavailable" message={historicalError} onRetry={() => {
+      setHistoricalLoading(true);
+      setHistoricalError(null);
+      void getPortfolioOrderHistory(200).then((rows) => setHistoricalOrders(rows)).catch((error: unknown) => {
+        setHistoricalError(error instanceof Error ? error.message : 'Order history could not be loaded.');
+      }).finally(() => setHistoricalLoading(false));
+    }} />;
+  }
   if (!order && data.sectionErrors.orders) return <VadErrorState title="Order could not be loaded" message={data.sectionErrors.orders} onRetry={() => void data.load()} />;
-  if (!order) return <VadEmptyState title="Order unavailable" body="This order is no longer open. It may have filled, been cancelled or completed." />;
+  if (!order) return <VadEmptyState title="Order unavailable" body="This order is not available in the current account history." />;
   if (!currencyPreference.isCurrencyEnabled(order.asset_code as 'NGN' | 'USDC')) {
     return <VadEmptyState title="Order hidden" body="This order uses a currency that is not enabled for your account or region." />;
   }

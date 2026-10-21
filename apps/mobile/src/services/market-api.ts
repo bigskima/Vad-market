@@ -173,6 +173,22 @@ export type OrderRow = {
   created_at: string;
 };
 
+export type PortfolioOrderHistoryRow = {
+  order_id: string;
+  instrument_id: string;
+  market_title: string;
+  outcome_code: string;
+  asset_code: string;
+  side: string;
+  limit_price: number | string;
+  quantity: number | string;
+  filled_quantity: number | string;
+  remaining_quantity: number | string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SettlementReceiptRow = {
   settlement_id: string;
   market_id: string;
@@ -185,6 +201,45 @@ export type SettlementReceiptRow = {
   net_amount: number | string;
   settled_at: string;
 };
+
+export type PortfolioPositionMarkRow = {
+  instrument_id: string;
+  event_id: string;
+  market_title: string;
+  outcome_code: string;
+  asset_code: string;
+  quantity: number | string;
+  total_cost_basis: number | string;
+  fees_paid: number | string;
+  average_price: number | string;
+  market_status: string;
+  current_price: number | string | null;
+  current_value: number | string | null;
+  unrealized_pnl: number | string | null;
+  return_percentage: number | string | null;
+  marked_at: string | null;
+  mark_status: 'MARKED' | 'STALE' | 'UNPRICED' | 'SETTLED' | 'UNAVAILABLE' | string;
+  media_path: string | null;
+};
+
+export type PortfolioValuationSnapshotRow = {
+  snapshot_id: number;
+  observed_at: string;
+  asset_code: string;
+  cash_balance: number | string;
+  positions_value: number | string;
+  total_value: number | string | null;
+  valuation_complete: boolean;
+  open_position_count: number;
+  unpriced_position_count: number;
+  net_external_flow: number | string;
+};
+
+export function marketMediaUrl(path?: string | null) {
+  if (!path) return null;
+  if (path.startsWith('https://') || path.startsWith('http://')) return path;
+  return supabase.storage.from('market-media').getPublicUrl(path).data.publicUrl;
+}
 
 export type MarketAdmissionLane =
   | 'AUTO_PUBLISHED'
@@ -310,6 +365,14 @@ export async function getOpenOrders() {
   return (data ?? []) as OrderRow[];
 }
 
+export async function getPortfolioOrderHistory(limit = 100) {
+  const { data, error } = await supabase.rpc('my_portfolio_order_history', {
+    p_limit: limit,
+  });
+  assertNoError(error, 'portfolio', 'We could not load your order history right now. Please try again.');
+  return (data ?? []) as PortfolioOrderHistoryRow[];
+}
+
 export async function getPoolStakes() {
   const { data, error } = await supabase.rpc('my_pool_stakes');
   assertNoError(error, 'portfolio', 'We could not load your committed predictions right now. Please try again.');
@@ -403,6 +466,21 @@ export async function getSettlementReceipts() {
   const { data, error } = await supabase.rpc('my_settlement_receipts');
   assertNoError(error, 'portfolio', 'We could not load your payout history right now. Please try again.');
   return (data ?? []) as SettlementReceiptRow[];
+}
+
+export async function getPortfolioPositionMarks() {
+  const { data, error } = await supabase.rpc('my_portfolio_position_marks');
+  assertNoError(error, 'portfolio', 'We could not load current position valuations. Please try again.');
+  return (data ?? []) as PortfolioPositionMarkRow[];
+}
+
+export async function getPortfolioValuationHistory(days = 3650, limit = 600) {
+  const { data, error } = await supabase.rpc('my_portfolio_valuation_history', {
+    p_days: days,
+    p_limit: limit,
+  });
+  assertNoError(error, 'portfolio', 'We could not load portfolio performance history. Please try again.');
+  return (data ?? []) as PortfolioValuationSnapshotRow[];
 }
 
 export async function getMyProposals() {
