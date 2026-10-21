@@ -133,8 +133,7 @@ Deno.serve(async (req) => {
     }
 
     const page = Math.max(1, Math.min(1000, Math.floor(safeNumber(body.page) ?? 1)));
-    const requestedSize = Math.floor(safeNumber(body.perPage) ?? 24);
-    const perPage = Math.max(1, Math.min(100, requestedSize));
+    const requestedSize = safeNumber(body.perPage);
     const query = safeText(body.query, 100);
     const { data: source, error: sourceError } = await admin
       .schema('market')
@@ -165,6 +164,7 @@ Deno.serve(async (req) => {
       return json({ error: 'The configured crypto market-data source host is not permitted.' }, 503);
     }
     const apiKey = Deno.env.get('COINGECKO_API_KEY')?.trim() || null;
+    const perPage = Math.max(1, Math.min(100, Math.floor(requestedSize ?? feed.default_page_size)));
     const quoteCurrency = feed.quote_currency.toLowerCase();
 
     let coinRows: CoinMarketRow[] = [];
