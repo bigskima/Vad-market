@@ -235,7 +235,7 @@ function CryptoCoinCard({
       </View>
 
       <View style={{ gap: 2 }}>
-        <VadText variant="heading" numberOfLines={1}>{formatCoinPrice(coin.currentPrice)}</VadText>
+        <VadText variant="heading" numberOfLines={1}>{formatCoinPrice(coin.currentPrice, currency)}</VadText>
         <VadText variant="caption" tone={positive === null ? 'secondary' : positive ? 'yes' : 'no'}>
           {coin.change24hPercent == null ? '24h change unavailable' : `${coin.change24hPercent > 0 ? '+' : ''}${coin.change24hPercent.toFixed(2)}% · 24h`}
         </VadText>
