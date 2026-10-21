@@ -254,3 +254,20 @@ export async function getSportsMarketTaxonomy(): Promise<SportsMarketTaxonomy> {
     competitions: Array.isArray(payload.competitions) ? payload.competitions : [],
   };
 }
+
+
+export async function setAdminSportsCompetitionStatus(input: {
+  sportCode: string;
+  competitionCode: string;
+  status: 'ACTIVE' | 'DISABLED';
+  reason: string;
+}) {
+  const { data, error } = await supabase.rpc('admin_set_sports_competition_status', {
+    p_sport_code: input.sportCode.trim().toUpperCase(),
+    p_competition_code: input.competitionCode.trim().toUpperCase(),
+    p_status: input.status,
+    p_reason: input.reason.trim(),
+  });
+  fail(error, 'The sports competition setting could not be updated.');
+  return data === true;
+}
