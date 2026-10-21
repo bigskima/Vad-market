@@ -52,7 +52,10 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   }, []);
 
   const order = data.orders.find((row) => String(row.order_id) === orderId);
-  const archivedOrder = historicalOrders.find((row) => String(row.order_id) === orderId);
+  const archivedOrder = historicalOrders.find((row) =>
+    String(row.order_id) === orderId
+    && !['OPEN', 'PARTIALLY_FILLED'].includes(String(row.status).toUpperCase()),
+  );
 
   if (data.loading && !order) {
     return (
