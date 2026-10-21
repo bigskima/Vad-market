@@ -76,10 +76,20 @@ export function HomeScreen({
       setMarketHistoryById({});
       setWatchlistError(null);
       setWatchlistLoading(true);
+      // A slow watchlist endpoint must not leave the Home section in an
+      // infinite loading state. Race only this optional section against a
+      // bounded wait; do not cancel or alter the underlying authenticated query.
+      const watchlistRequest = listUserMarketWatchlist();
+      const watchlistWithTimeout = Promise.race([
+        watchlistRequest,
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Watchlist request timed out')), 12000);
+        }),
+      ]);
       const [profileResult, balanceResult, watchlistResult] = await Promise.allSettled([
         supabase.from('profiles').select('display_name, avatar_path').eq('user_id', userId).maybeSingle(),
         getWalletBalanceHistory(30),
-        listUserMarketWatchlist(),
+        watchlistWithTimeout,
       ]);
       if (!active) return;
       if (profileResult.status === 'fulfilled' && profileResult.value.data) {
