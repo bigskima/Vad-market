@@ -471,6 +471,30 @@ insert into market.market_data_sources(
 )
 on conflict(code) do nothing;
 
+
+create or replace function public.get_crypto_market_data_source_runtime()
+returns jsonb
+language sql
+stable
+security definer
+set search_path=''
+as $
+  select jsonb_build_object(
+    'code',s.code,
+    'name',s.name,
+    'base_url',s.base_url,
+    'status',s.status,
+    'quote_currency',s.quote_currency,
+    'default_page_size',s.default_page_size,
+    'cache_seconds',s.cache_seconds
+  )
+  from market.market_data_sources s
+  where s.code='COINGECKO'
+  limit 1;
+$;
+revoke all on function public.get_crypto_market_data_source_runtime() from public,anon,authenticated;
+grant execute on function public.get_crypto_market_data_source_runtime() to service_role;
+
 create or replace function public.admin_market_data_source_config()
 returns table(
   code text,

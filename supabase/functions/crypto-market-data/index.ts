@@ -140,12 +140,10 @@ Deno.serve(async (req) => {
     const page = Math.max(1, Math.min(1000, Math.floor(safeNumber(body.page) ?? 1)));
     const requestedSize = safeNumber(body.perPage);
     const query = safeText(body.query, 100);
+    // Read the isolated configuration through a service-role-only public RPC.
+    // The internal market schema does not need to be exposed through PostgREST.
     const { data: source, error: sourceError } = await admin
-      .schema('market')
-      .from('market_data_sources')
-      .select('code,name,base_url,status,quote_currency,default_page_size,cache_seconds')
-      .eq('code', 'COINGECKO')
-      .maybeSingle();
+      .rpc('get_crypto_market_data_source_runtime');
 
     if (sourceError) return json({ error: 'Market data settings are unavailable.' }, 503);
     if (!source) return json({ error: 'The crypto market-data source is not configured.' }, 503);
