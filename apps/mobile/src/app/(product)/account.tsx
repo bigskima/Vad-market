@@ -14,6 +14,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import type { VadThemePreference } from '@/theme/tokens';
 import { getAdminAccess } from '@/services/admin-control-api';
 import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
+import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
 
 export default function AccountScreen() {
   const { session, signOut } = useAuth();
@@ -24,6 +25,7 @@ export default function AccountScreen() {
   const density = useProductDensity();
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [savedProfile, setSavedProfile] = useState<UserProfile | null>(null);
+  const [kycStatus, setKycStatus] = useState<KycStatus | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const user = session?.user;
   const userId = user?.id ?? null;
@@ -37,6 +39,20 @@ export default function AccountScreen() {
   const avatarUrl = profileMediaUrl(savedProfile?.avatar_path) || metadataAvatar;
   const country = typeof metadata.country === 'string' ? metadata.country
     : typeof metadata.country_name === 'string' ? metadata.country_name : null;
+  const kycTitle = kycStatus?.status === 'VERIFIED' ? 'Account verified'
+    : kycStatus?.status === 'IN_REVIEW' || kycStatus?.status === 'PROVIDER_PENDING' ? 'Verification in progress'
+      : kycStatus?.status === 'REJECTED' ? 'Verification needs attention'
+        : kycStatus?.status === 'EXPIRED' ? 'Verification expired'
+          : kycStatus?.status === 'CANCELLED' ? 'Verification cancelled'
+            : kycStatus?.status === 'CREATED' ? 'Verification started'
+              : kycStatus ? 'Verify your account' : 'Verification status';
+  const kycDescription = kycStatus?.status === 'VERIFIED' ? 'Your identity verification is confirmed by VAD.'
+    : kycStatus?.status === 'IN_REVIEW' || kycStatus?.status === 'PROVIDER_PENDING' ? 'Your verification is being processed. Check details for updates.'
+      : kycStatus?.status === 'REJECTED' ? 'Review the verification details for the next available step.'
+        : kycStatus?.status === 'EXPIRED' ? 'Your verification may need to be renewed.'
+          : kycStatus?.status === 'CANCELLED' ? 'Open verification details to restart if eligible.'
+            : kycStatus?.status === 'CREATED' ? 'Continue the identity verification process.'
+              : kycStatus ? 'Complete identity verification to check applicable account limits.' : 'Open details to check your status.';
   const appearance = theme.preference === 'system' ? `System · ${theme.mode}`
     : theme.preference.charAt(0).toUpperCase() + theme.preference.slice(1);
 
@@ -47,7 +63,8 @@ export default function AccountScreen() {
 
   useEffect(() => {
     let ignore = false;
-    if (!userId) { setSavedProfile(null); return; }
+    if (!userId) { setSavedProfile(null); setKycStatus(null); return; }
+    void getMyKycStatus().then((status) => { if (!ignore) setKycStatus(status); }).catch(() => { if (!ignore) setKycStatus(null); });
     void getMyProfile().then((profile) => { if (!ignore) setSavedProfile(profile); }).catch(() => { if (!ignore) setSavedProfile(null); });
     return () => { ignore = true; };
   }, [userId]);
@@ -100,15 +117,15 @@ export default function AccountScreen() {
           <ActionButton label="Edit Profile" onPress={() => router.push('/account/profile')} />
         </VadCard>
 
-        <Pressable accessibilityRole="button" accessibilityLabel="View identity verification details" onPress={() => router.push('/account/verification')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
-          <View style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
-            <VadIcon name="operations" size={22} tone="brand" />
+        <Pressable accessibilityRole="button" accessibilityLabel="View identity verification details" onPress={() => router.push('/account/verification')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: kycStatus?.status === 'VERIFIED' ? theme.colors.yes : theme.colors.border, backgroundColor: kycStatus?.status === 'VERIFIED' ? theme.colors.yesSoft : theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
+          <View style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: kycStatus?.status === 'VERIFIED' ? theme.colors.yesSoft : theme.colors.brandSoft }}>
+            <VadIcon name="operations" size={22} tone={kycStatus?.status === 'VERIFIED' ? 'yes' : 'brand'} />
           </View>
           <View style={{ flex: 1, gap: 3 }}>
-            <VadText variant="bodyStrong">Verification status</VadText>
-            <VadText variant="caption" tone="secondary">View your actual identity-verification status and next steps.</VadText>
+            <VadText variant="bodyStrong">{kycTitle}</VadText>
+            <VadText variant="caption" tone="secondary">{kycDescription}</VadText>
           </View>
-          <VadText variant="caption" tone="brand">View</VadText>
+          <VadText variant="caption" tone={kycStatus?.status === 'VERIFIED' ? 'yes' : 'brand'}>View Details</VadText>
         </Pressable>
 
         <SettingsGroup title="Account">
