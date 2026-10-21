@@ -188,6 +188,18 @@ async function authenticate(req: Request) {
   return { user, admin, userId: authData.user.id, taxonomy, guidedCatalog };
 }
 
+function deterministicFootballTitle(fixture: JsonRecord, selectedResult: string) {
+  const home = safeText(fixture.homeTeam, 160);
+  const away = safeText(fixture.awayTeam, 160);
+  const competition = safeText(fixture.competitionName, 160);
+  if (!home || !away) throw new Error('The cached fixture is missing its team names.');
+  const suffix = competition ? ' in ' + competition : '';
+  if (selectedResult === 'DRAW') return 'Will ' + home + ' vs ' + away + ' end in a draw' + suffix + '?';
+  if (selectedResult === 'AWAY_WIN') return 'Will ' + away + ' beat ' + home + suffix + '?';
+  if (selectedResult === 'HOME_WIN') return 'Will ' + home + ' beat ' + away + suffix + '?';
+  return 'Will ' + home + ' defeat ' + away + suffix + '?';
+}
+
 async function handle(req: Request) {
   const { admin, userId, guidedCatalog } = await authenticate(req);
   let body: JsonRecord;
@@ -372,7 +384,9 @@ async function handle(req: Request) {
   }
 
   return json({
-    title: safeText(generated.title, 180),
+    title: selectedMarketType.handler === 'FOOTBALL_MATCH'
+      ? deterministicFootballTitle(fixture, selectedResult)
+      : safeText(generated.title, 180),
     description: safeText(generated.description, 1000),
     resolutionRules: safeText(generated.resolutionRules, 1800),
     riskNotes: safeText(generated.riskNotes, 500),
