@@ -386,13 +386,13 @@ function marketCryptoAssetQuery(market: MarketCatalogItem) {
   // an explicit ticker from the title before falling back to no spot-price panel.
   // This only selects the display quote; it does not affect the Oracle resolver.
   const title = market.title ?? '';
-  const pair = title.match(/\\b([A-Z0-9]{2,12})\\s*\\/\\s*(?:USD|USDT|USDC)\\b/i);
+  const pair = title.match(/\b([A-Z0-9]{2,12})\s*\/\s*(?:USD|USDT|USDC)\b/i);
   if (pair?.[1]) return pair[1].toUpperCase();
-  const parenthesizedSymbol = title.match(/\\(([A-Z0-9]{2,12})\\)/);
+  const parenthesizedSymbol = title.match(/\(([A-Z0-9]{2,12})\)/);
   if (parenthesizedSymbol?.[1]) return parenthesizedSymbol[1].toUpperCase();
-  const leadingSymbol = title.match(/^Will\\s+([A-Z0-9]{2,12})\\s+(?:be|reach|close|trade|finish)\\b/i);
+  const leadingSymbol = title.match(/^Will\s+([A-Z0-9]{2,12})\s+(?:be|reach|close|trade|finish)\b/i);
   if (leadingSymbol?.[1]) return leadingSymbol[1].toUpperCase();
-  const leadingName = title.match(/^Will\\s+(Bitcoin|Ethereum|Solana|BNB|XRP|Dogecoin|Cardano)\\b/i);
+  const leadingName = title.match(/^Will\s+(Bitcoin|Ethereum|Solana|BNB|XRP|Dogecoin|Cardano)\b/i);
   if (leadingName?.[1]) return leadingName[1];
   return '';
 }
