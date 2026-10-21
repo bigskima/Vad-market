@@ -109,23 +109,32 @@ Deno.serve(async (req) => {
     // checks below still have to pass before any NGN action is authorized.
     if (['NG', 'NGA', 'NIGERIA'].includes(accountCountry)) {
       if (accountCountry !== 'NG') {
-        const { error: normalizeError } = await admin
+        const { data: normalizedAccount, error: normalizeError } = await admin
           .from('user_accounts')
           .update({ country_code: 'NG' })
-          .eq('user_id', authData.user.id);
-        if (!normalizeError) accountCountry = 'NG';
+          .eq('user_id', authData.user.id)
+          .eq('country_code', account.country_code)
+          .select('country_code')
+          .maybeSingle();
+        if (!normalizeError && normalizedAccount?.country_code === 'NG') accountCountry = 'NG';
       }
     }
 
     // Repair an unset country only when device GPS and the client IP both resolve to
-    // Nigeria and the request has no anonymous-network risk signals. Never overwrite
-    // an existing country choice based merely on a traveller's current location.
+    // Nigeria and the request has no anonymous-network risk signals. Compare against
+    // the originally read value so a concurrent, explicit country change is preserved.
     if (!accountCountry && deviceCountry === 'NG' && ipCountry === 'NG' && !riskDetected) {
-      const { error: countryUpdateError } = await admin
+      let countryUpdate = admin
         .from('user_accounts')
         .update({ country_code: 'NG' })
         .eq('user_id', authData.user.id);
-      if (!countryUpdateError) accountCountry = 'NG';
+      countryUpdate = account?.country_code == null
+        ? countryUpdate.is('country_code', null)
+        : countryUpdate.eq('country_code', account.country_code);
+      const { data: updatedAccount, error: countryUpdateError } = await countryUpdate
+        .select('country_code')
+        .maybeSingle();
+      if (!countryUpdateError && updatedAccount?.country_code === 'NG') accountCountry = 'NG';
     }
 
     let decision: 'VERIFIED' | 'DENIED' | 'REVIEW' = 'DENIED';
