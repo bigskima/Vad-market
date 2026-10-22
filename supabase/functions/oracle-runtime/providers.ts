@@ -2,6 +2,7 @@ import { env } from './runtime.ts';
 import { resolveFinancialPriceThresholdWithProvider } from './financial.ts';
 import {
   type CryptoThresholdSpec,
+  type CryptoTouchThresholdSpec,
   type FootballResultSpec,
   type JsonRecord,
   type OracleProvider,
@@ -317,6 +318,107 @@ async function coinGeckoCryptoObservation(
         source_timestamp: observedAt.toISOString(),
         target_timestamp: spec.observationTime.toISOString(),
         timestamp_delta_seconds: deltaSeconds,
+        coin_id: resource.externalKey,
+      },
+    },
+  };
+}
+
+export async function resolveCryptoTouchWithCoinGecko(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: CryptoTouchThresholdSpec,
+): Promise<ProviderResolutionResult> {
+  if (provider.code !== 'COINGECKO') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
+  const secret = requiredSecret(provider);
+  const baseUrl = provider.baseUrl?.replace(/\/$/, '');
+  if (!baseUrl || baseUrl !== 'https://api.coingecko.com/api/v3') {
+    throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'CoinGecko must use its approved HTTPS API host', 500);
+  }
+  if (spec.windowEnd <= spec.windowStart || spec.windowEnd.getTime() > Date.now()) {
+    throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Crypto threshold-touch window must be valid and end in the past', 422);
+  }
+  const coverageGapSeconds = Math.max(60, Math.min(1800, metadataNumber(resource, 'maximum_coverage_gap_seconds', 900)));
+  const from = Math.floor(spec.windowStart.getTime() / 1000);
+  const to = Math.floor(spec.windowEnd.getTime() / 1000) + coverageGapSeconds;
+  const url = new URL(`${baseUrl}/coins/${encodeURIComponent(resource.externalKey)}/market_chart/range`);
+  url.searchParams.set('vs_currency', spec.quote.toLowerCase());
+  url.searchParams.set('from', String(from));
+  url.searchParams.set('to', String(to));
+  url.searchParams.set('precision', 'full');
+  const result = await fetchJson(url.toString(), {
+    headers: { 'x-cg-demo-api-key': String(secret), Accept: 'application/json' },
+  });
+  const prices = result.payload && typeof result.payload === 'object'
+    ? (result.payload as JsonRecord).prices
+    : null;
+  if (!Array.isArray(prices) || prices.length === 0) {
+    throw new OracleRuntimeError('COINGECKO_PRICE_NOT_FOUND', 'CoinGecko returned no prices for the threshold-touch window', 422);
+  }
+  const startMs = spec.windowStart.getTime();
+  const endMs = spec.windowEnd.getTime();
+  const points = prices
+    .filter((item: unknown) => Array.isArray(item) && item.length >= 2)
+    .map((item: unknown) => {
+      const pair = item as unknown[];
+      return {
+        timestamp: finiteNumber(pair[0], 'CoinGecko timestamp'),
+        price: finiteNumber(pair[1], 'CoinGecko price'),
+      };
+    })
+    .filter((point) => point.timestamp >= startMs && point.timestamp <= endMs && point.price > 0)
+    .sort((a, b) => a.timestamp - b.timestamp);
+  if (!points.length) {
+    return { kind: 'skipped', code: 'COINGECKO_WINDOW_EMPTY', detail: 'No provider price points fell inside the configured threshold-touch window' };
+  }
+  const hit = (value: number) => spec.operator === 'GT' ? value > spec.threshold
+    : spec.operator === 'GTE' ? value >= spec.threshold
+      : spec.operator === 'LT' ? value < spec.threshold
+        : value <= spec.threshold;
+  const hitPoints = points.filter((point) => hit(point.price));
+  const maxPrice = Math.max(...points.map((point) => point.price));
+  const minPrice = Math.min(...points.map((point) => point.price));
+  const first = points[0];
+  const last = points[points.length - 1];
+  const fullCoverage = first.timestamp <= startMs + coverageGapSeconds * 1000
+    && last.timestamp >= endMs - coverageGapSeconds * 1000;
+  // A qualifying historical datapoint is sufficient to prove a touch. A NO
+  // requires coverage near both window boundaries; missing coverage is never
+  // interpreted as proof that the price did not touch the threshold.
+  if (!hitPoints.length && !fullCoverage) {
+    return {
+      kind: 'skipped',
+      code: 'COINGECKO_WINDOW_INCOMPLETE',
+      detail: 'Historical samples did not cover both ends of the threshold-touch window; a negative result is not safe',
+    };
+  }
+  const selected = hitPoints.length
+    ? hitPoints.sort((a, b) => Math.abs(a.price - spec.threshold) - Math.abs(b.price - spec.threshold))[0]
+    : last;
+  const observedAt = new Date(selected.timestamp);
+  const evidenceUrl = new URL(url.toString());
+  return {
+    kind: 'observation',
+    observation: {
+      observedOutcome: hitPoints.length ? 'YES' : 'NO',
+      observedAt,
+      evidenceReference: evidenceUrl.toString(),
+      payload: {
+        resolver_type: spec.resolverType,
+        source: provider.code,
+        asset: spec.asset,
+        quote: spec.quote,
+        operator: spec.operator,
+        threshold: spec.threshold,
+        window_start: spec.windowStart.toISOString(),
+        window_end: spec.windowEnd.toISOString(),
+        sample_count: points.length,
+        minimum_price: minPrice,
+        maximum_price: maxPrice,
+        threshold_touched: hitPoints.length > 0,
+        evidence_timestamp: observedAt.toISOString(),
+        coverage_complete: fullCoverage,
         coin_id: resource.externalKey,
       },
     },
