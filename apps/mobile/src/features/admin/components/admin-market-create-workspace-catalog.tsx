@@ -134,17 +134,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
   }, []);
 
   useEffect(() => {
-    if (!(creationStyle === 'GUIDED' && marketTypeCode === 'CRYPTO_PRICE_THRESHOLD')) {
-      setCryptoOptions([]);
-      setCryptoOptionsLoading(false);
-      return;
-    }
+    if (!(creationStyle === 'GUIDED' && marketTypeCode === 'CRYPTO_PRICE_THRESHOLD')) return;
     const query = cryptoSearch.trim();
-    if (query.length === 1) {
-      setCryptoOptions([]);
-      setCryptoOptionsLoading(false);
-      return;
-    }
+    if (query.length === 1) return;
     let active = true;
     const timer = setTimeout(() => {
       setCryptoOptionsLoading(true);
@@ -772,6 +764,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                       <VadInput label="Search coin name or ticker" value={cryptoSearch} onChangeText={(value) => {
                         setCryptoSearch(value);
                         setCryptoOptions([]);
+                        setCryptoOptionsLoading(false);
                         setSelectedCryptoAsset(null);
                         setCryptoAssetCheck(null);
                         setCryptoAssetCheckLoading(false);
