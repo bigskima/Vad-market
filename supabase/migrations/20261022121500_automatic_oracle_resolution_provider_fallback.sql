@@ -16,15 +16,15 @@ alter table oracle.provider_resources
 insert into integration.providers as current_provider
   (code,name,provider_type,environment,status,priority,capabilities,public_metadata,secret_reference)
 values
-  ('TWELVE_DATA','Twelve Data Historical Market Data','ORACLE','PRODUCTION','ACTIVE',30,
+  ('TWELVE_DATA','Twelve Data Historical Market Data','ORACLE','PRODUCTION','DISABLED',30,
    '["CRYPTO_PRICE_THRESHOLD","FINANCIAL_PRICE_THRESHOLD"]'::jsonb,
    '{"configured":false,"adapter":"TWELVE_DATA_HISTORICAL_V1","base_url":"https://api.twelvedata.com","health_probe":"CREDENTIAL_ONLY","settlement_role":"HISTORICAL_PRICE_CORROBORATION"}'::jsonb,
    'TWELVE_DATA_API_KEY'),
-  ('FRED','Federal Reserve Economic Data','ORACLE','PRODUCTION','ACTIVE',40,
+  ('FRED','Federal Reserve Economic Data','ORACLE','PRODUCTION','DISABLED',40,
    '["FRED_SERIES_THRESHOLD"]'::jsonb,
    '{"configured":false,"adapter":"FRED_SERIES_V1","base_url":"https://api.stlouisfed.org/fred","health_probe":"CREDENTIAL_ONLY","settlement_role":"OFFICIAL_MACROECONOMIC_SOURCE"}'::jsonb,
    'FRED_API_KEY'),
-  ('ALPHA_VANTAGE','Alpha Vantage Historical Data','ORACLE','PRODUCTION','ACTIVE',50,
+  ('ALPHA_VANTAGE','Alpha Vantage Historical Data','ORACLE','PRODUCTION','DISABLED',50,
    '["FINANCIAL_PRICE_THRESHOLD","FRED_SERIES_THRESHOLD"]'::jsonb,
    '{"configured":false,"adapter":"ALPHA_VANTAGE_SERIES_V1","base_url":"https://www.alphavantage.co","health_probe":"CREDENTIAL_ONLY","settlement_role":"SECONDARY_FINANCIAL_CORROBORATION"}'::jsonb,
    'ALPHA_VANTAGE_API_KEY')
@@ -80,7 +80,7 @@ where p.code='US_SENATE' and p.environment='PRODUCTION' and p.provider_type='ORA
 -- Explicit mappings are required before a provider's answer can count toward a
 -- settlement quorum. Mapping presence alone does not assert that a secret exists.
 insert into oracle.provider_resources(provider_id,resource_type,canonical_key,external_key,status,metadata)
-select p.id,'FINANCIAL_SYMBOL',v.canonical_key,v.external_key,'ACTIVE',v.metadata::jsonb
+select p.id,'FINANCIAL_SYMBOL',v.canonical_key,v.external_key,'DISABLED',v.metadata::jsonb
 from integration.providers p
 join (values
   ('BTC/USD','BTC/USD','{"settlement_eligible":true,"interval":"1min","max_timestamp_delta_seconds":600,"maximum_coverage_gap_seconds":900,"asset_class":"CRYPTO"}'),
@@ -100,12 +100,11 @@ join (values
 where p.code='TWELVE_DATA' and p.environment='PRODUCTION'
 on conflict(provider_id,resource_type,canonical_key) do update set
   external_key=excluded.external_key,
-  status='ACTIVE',
   metadata=oracle.provider_resources.metadata || excluded.metadata,
   updated_at=statement_timestamp();
 
 insert into oracle.provider_resources(provider_id,resource_type,canonical_key,external_key,status,metadata)
-select p.id,'FINANCIAL_SYMBOL',v.canonical_key,v.external_key,'ACTIVE',v.metadata::jsonb
+select p.id,'FINANCIAL_SYMBOL',v.canonical_key,v.external_key,'DISABLED',v.metadata::jsonb
 from integration.providers p
 join (values
   ('AAPL/USD','AAPL','{"settlement_eligible":true,"alpha_vantage_function":"TIME_SERIES_INTRADAY","interval":"1min","max_timestamp_delta_seconds":600,"asset_class":"STOCKS"}'),
@@ -118,12 +117,11 @@ join (values
 where p.code='ALPHA_VANTAGE' and p.environment='PRODUCTION'
 on conflict(provider_id,resource_type,canonical_key) do update set
   external_key=excluded.external_key,
-  status='ACTIVE',
   metadata=oracle.provider_resources.metadata || excluded.metadata,
   updated_at=statement_timestamp();
 
 insert into oracle.provider_resources(provider_id,resource_type,canonical_key,external_key,status,metadata)
-select p.id,'FRED_SERIES',v.series_id,v.series_id,'ACTIVE',v.metadata::jsonb
+select p.id,'FRED_SERIES',v.series_id,v.series_id,'DISABLED',v.metadata::jsonb
 from integration.providers p
 join (values
   ('CPIAUCSL','{"title":"Consumer Price Index for All Urban Consumers","units":"Index 1982-1984=100"}'),
@@ -136,12 +134,11 @@ join (values
 where p.code='FRED' and p.environment='PRODUCTION'
 on conflict(provider_id,resource_type,canonical_key) do update set
   external_key=excluded.external_key,
-  status='ACTIVE',
   metadata=oracle.provider_resources.metadata || excluded.metadata,
   updated_at=statement_timestamp();
 
 insert into oracle.provider_resources(provider_id,resource_type,canonical_key,external_key,status,metadata)
-select p.id,'FRED_SERIES',v.series_id,v.series_id,'ACTIVE',v.metadata::jsonb
+select p.id,'FRED_SERIES',v.series_id,v.series_id,'DISABLED',v.metadata::jsonb
 from integration.providers p
 join (values
   ('CPIAUCSL','{"title":"Consumer Price Index for All Urban Consumers","units":"Index 1982-1984=100","alpha_vantage_function":"CPI"}'),
@@ -154,7 +151,6 @@ join (values
 where p.code='ALPHA_VANTAGE' and p.environment='PRODUCTION'
 on conflict(provider_id,resource_type,canonical_key) do update set
   external_key=excluded.external_key,
-  status='ACTIVE',
   metadata=oracle.provider_resources.metadata || excluded.metadata,
   updated_at=statement_timestamp();
 
