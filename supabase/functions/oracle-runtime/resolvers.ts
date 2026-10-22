@@ -10,6 +10,7 @@ import {
 import { resolveCryptoWithProvider } from './providers.ts';
 import { resolveFootballFixtureWithProvider } from './football.ts';
 import { resolvePublicRecord } from './public-record.ts';
+import { resolveFinancialPriceThresholdWithProvider, resolveFredSeriesThresholdWithProvider } from './financial.ts';
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -82,6 +83,69 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
     };
   }
 
+  if (resolverType === 'FINANCIAL_PRICE_THRESHOLD_V1') {
+    const symbol = stringValue(scope.symbol, subject.symbol, scope.asset, subject.asset)?.toUpperCase();
+    const quote = stringValue(scope.quote, subject.quote, 'USD')?.toUpperCase();
+    const operator = stringValue(scope.operator, condition.operator)?.toUpperCase();
+    const threshold = numericValue(scope.threshold, condition.threshold);
+    const observationRaw = stringValue(scope.observation_time, scope.observationTime, condition.observation_time, event.resolvesAfter);
+    const observationTime = observationRaw ? new Date(observationRaw) : null;
+    if (!symbol || !/^[A-Z0-9._-]{1,40}(?:\/[A-Z0-9]{2,12})?$/.test(symbol)) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Financial instrument symbol is missing or invalid', 422);
+    }
+    if (!quote || !/^[A-Z0-9]{2,12}$/.test(quote)) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Financial quote currency is missing or invalid', 422);
+    }
+    if (!['GT','GTE','LT','LTE'].includes(String(operator))) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Financial threshold operator must be GT, GTE, LT or LTE', 422);
+    }
+    if (threshold === null || threshold <= 0) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Financial threshold must be a positive number', 422);
+    }
+    if (!observationTime || !Number.isFinite(observationTime.getTime())) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Financial observation time is missing or invalid', 422);
+    }
+    return {
+      resolverType: 'FINANCIAL_PRICE_THRESHOLD_V1',
+      symbol: symbol.includes('/') ? symbol.split('/')[0] : symbol,
+      quote,
+      operator: operator as 'GT' | 'GTE' | 'LT' | 'LTE',
+      threshold,
+      observationTime,
+    };
+  }
+
+  if (resolverType === 'FRED_SERIES_THRESHOLD_V1') {
+    const seriesId = stringValue(scope.series_id, scope.seriesId, subject.series_id, subject.seriesId)?.toUpperCase();
+    const operator = stringValue(scope.operator, condition.operator)?.toUpperCase();
+    const threshold = numericValue(scope.threshold, condition.threshold);
+    const dateRaw = stringValue(scope.observation_date, scope.observationDate, scope.record_date, scope.recordDate, scope.resolution_time, scope.resolutionTime, event.resolvesAfter);
+    const observationDate = dateRaw ? dateRaw.slice(0, 10) : '';
+    const vintageRaw = stringValue(scope.vintage_date, scope.vintageDate);
+    const vintageDate = vintageRaw ? vintageRaw.slice(0, 10) : null;
+    const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(new Date(value + 'T00:00:00Z').getTime());
+    if (!seriesId || !/^[A-Z0-9_-]{1,40}$/.test(seriesId)) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'FRED series identifier is missing or invalid', 422);
+    }
+    if (!['GT','GTE','LT','LTE'].includes(String(operator))) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'FRED threshold operator must be GT, GTE, LT or LTE', 422);
+    }
+    if (threshold === null) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'FRED numeric threshold is missing or invalid', 422);
+    }
+    if (!validDate(observationDate) || (vintageDate !== null && !validDate(vintageDate))) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'FRED observation or vintage date is missing or invalid', 422);
+    }
+    return {
+      resolverType: 'FRED_SERIES_THRESHOLD_V1',
+      seriesId,
+      operator: operator as 'GT' | 'GTE' | 'LT' | 'LTE',
+      threshold,
+      observationDate,
+      vintageDate,
+    };
+  }
+
   if (resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
     const conditionValue = stringValue(
       typeof scope.condition === 'string' ? scope.condition : null,
@@ -117,6 +181,8 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
 function requiredCapability(spec: ResolverSpec) {
   if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') return 'CRYPTO_PRICE_THRESHOLD';
   if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') return 'FOOTBALL_MATCH_RESULT';
+  if (spec.resolverType === 'FINANCIAL_PRICE_THRESHOLD_V1') return 'FINANCIAL_PRICE_THRESHOLD';
+  if (spec.resolverType === 'FRED_SERIES_THRESHOLD_V1') return 'FRED_SERIES_THRESHOLD';
   return 'PUBLIC_RECORD_EVIDENCE';
 }
 
@@ -140,12 +206,27 @@ export function eligibleProviders(event: DueOracleEvent, spec: ResolverSpec, pro
   const knownCodes = new Set(providers.map((provider) => provider.code.toUpperCase()));
   const policyCodes = policyProviderCodes(event.sourceHierarchy, knownCodes);
   const capability = requiredCapability(spec);
+  const policyPriority = new Map<string, number>();
+  if (Array.isArray(event.sourceHierarchy)) {
+    event.sourceHierarchy.forEach((entry, index) => {
+      const code = typeof entry === 'string'
+        ? entry
+        : isRecord(entry) ? stringValue(entry.provider_code, entry.providerCode, entry.code) : null;
+      if (!code) return;
+      const explicit = isRecord(entry) ? numericValue(entry.priority) : null;
+      policyPriority.set(code.toUpperCase(), explicit === null ? index : explicit);
+    });
+  }
   return providers
     .filter((provider) => provider.environment === 'PRODUCTION')
     .filter((provider) => ['ACTIVE','DEGRADED'].includes(provider.status))
     .filter((provider) => provider.capabilities.map((item) => String(item).toUpperCase()).includes(capability))
     .filter((provider) => policyCodes.size === 0 || policyCodes.has(provider.code.toUpperCase()))
-    .sort((a, b) => a.priority - b.priority || a.code.localeCompare(b.code));
+    .sort((a, b) => {
+      const aPriority = policyPriority.get(a.code.toUpperCase()) ?? a.priority;
+      const bPriority = policyPriority.get(b.code.toUpperCase()) ?? b.priority;
+      return aPriority - bPriority || a.priority - b.priority || a.code.localeCompare(b.code);
+    });
 }
 
 export function resourceFor(provider: OracleProvider, event: DueOracleEvent, spec: ResolverSpec): OracleResource | null {
@@ -158,6 +239,20 @@ export function resourceFor(provider: OracleProvider, event: DueOracleEvent, spe
   if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
     return provider.resources.find((resource) =>
       resource.status === 'ACTIVE' && resource.resourceType === 'CANONICAL_EVENT' && resource.canonicalKey === event.eventPublicId,
+    ) ?? null;
+  }
+  if (spec.resolverType === 'FINANCIAL_PRICE_THRESHOLD_V1') {
+    const pair = `${spec.symbol}/${spec.quote}`.toUpperCase();
+    const allowedTypes = new Set(['FINANCIAL_SYMBOL', 'CRYPTO_PAIR']);
+    return provider.resources.find((resource) =>
+      resource.status === 'ACTIVE' && allowedTypes.has(resource.resourceType)
+      && resource.canonicalKey.toUpperCase() === pair,
+    ) ?? null;
+  }
+  if (spec.resolverType === 'FRED_SERIES_THRESHOLD_V1') {
+    return provider.resources.find((resource) =>
+      resource.status === 'ACTIVE' && resource.resourceType === 'FRED_SERIES'
+      && resource.canonicalKey.toUpperCase() === spec.seriesId,
     ) ?? null;
   }
   return provider.resources.find((resource) =>
@@ -175,6 +270,12 @@ export async function resolveWithProvider(
   }
   if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
     return resolveFootballFixtureWithProvider(provider, resource, spec);
+  }
+  if (spec.resolverType === 'FINANCIAL_PRICE_THRESHOLD_V1') {
+    return resolveFinancialPriceThresholdWithProvider(provider, resource, spec);
+  }
+  if (spec.resolverType === 'FRED_SERIES_THRESHOLD_V1') {
+    return resolveFredSeriesThresholdWithProvider(provider, resource, spec);
   }
   return resolvePublicRecord(resource, spec, provider);
 }
