@@ -1,7 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 
-import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -40,7 +39,7 @@ export default function MarketDetailRoute() {
   };
 
   return (
-    <ProductSubpage title="Market" maxWidth={980} bottomPadding={180}>
+    <ProductSubpage title="Market" maxWidth={980} bottomPadding={220}>
       {data.loading ? (
         <View style={{ gap: theme.spacing.md }}>
           <VadSkeleton width="62%" height={34} />
@@ -50,18 +49,6 @@ export default function MarketDetailRoute() {
         </View>
       ) : market ? (
         <View style={{ gap: theme.spacing.md }}>
-          <VadButton
-            label="Ask VAD Assistant about this market"
-            variant="secondary"
-            onPress={() => router.push({
-              pathname: '/assistant',
-              params: {
-                marketId: market.instrument_public_id,
-                from: `/market/${market.instrument_public_id}`,
-                prompt: 'Help me understand this market, its current prices and how it will be resolved.',
-              },
-            })}
-          />
           <MarketDetailScreen
             key={`${market.instrument_public_id}:${initialOutcome ?? 'default'}`}
             market={market}
