@@ -192,7 +192,6 @@ export function AdminOraclePolicyReviewPanel({ canReview }: Props) {
 }
 
 function PolicyLine({ label, value }: { label: string; value: string }) {
-  const theme = useVadTheme();
   return (
     <View style={{ gap: 2 }}>
       <VadText variant="caption" tone="secondary">{label}</VadText>
