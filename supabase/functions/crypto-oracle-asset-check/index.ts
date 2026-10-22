@@ -95,10 +95,11 @@ Deno.serve(async (req: Request) => {
     symbol,
     quote: 'USD',
     provider: 'COINBASE+KRAKEN',
-    coinGeckoId: mappedCoinGeckoId || null,
+    coinGeckoId,
     ...(supported ? {} : {
       reason: !coinbaseReady
         ? `Coinbase has no active keyless historical-price mapping for ${symbol}/USD.`
         : `Kraken has no active keyless historical-price mapping for ${symbol}/USD.`,
-    }),  });
+    }),
+  });
 });
