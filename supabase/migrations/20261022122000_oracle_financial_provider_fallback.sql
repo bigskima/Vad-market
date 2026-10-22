@@ -70,7 +70,7 @@ cross join (values
 where p.code='FRED' and p.environment='PRODUCTION'
 on conflict(provider_id,resource_type,canonical_key) do update set
   external_key=excluded.external_key,
-  metadata=excluded.metadata,
+  metadata=oracle.provider_resources.metadata || excluded.metadata,
   updated_at=statement_timestamp();
 
 commit;
