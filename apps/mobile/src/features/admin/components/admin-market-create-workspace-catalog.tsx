@@ -62,11 +62,14 @@ function cryptoThresholdReadinessError(readiness: CryptoOraclePolicyReadiness | 
   }
   if (!readiness.providersRuntimeReady) {
     const unavailable = [
-      readiness.coinbaseHealth === 'UNAVAILABLE' ? 'Coinbase' : null,
-      readiness.krakenHealth === 'UNAVAILABLE' ? 'Kraken' : null,
+      readiness.coinbaseHealth === 'UNAVAILABLE'
+        ? `Coinbase (${readiness.coinbaseFailureCode ?? 'unavailable'})`
+        : null,
+      readiness.krakenHealth === 'UNAVAILABLE'
+        ? `Kraken (${readiness.krakenFailureCode ?? 'unavailable'})`
+        : null,
     ].filter(Boolean).join(' and ');
-    return readiness.providerReason
-      ?? `${unavailable || 'A required Oracle source'} is marked unavailable. Open Admin → Providers, run “Check oracle providers”, then refresh the asset readiness check.`;
+    return `${unavailable || 'A required Oracle source'} is marked unavailable. Open Admin → Providers, run “Check oracle providers”, then refresh this asset readiness check.`;
   }
   const policyReady = sandbox ? readiness.sandboxPolicyReady : readiness.productionPolicyReady;
   if (!policyReady) {
