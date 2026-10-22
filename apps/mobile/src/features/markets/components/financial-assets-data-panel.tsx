@@ -33,7 +33,7 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
     const term = search.trim();
     setError(null);
     setNotice(null);
-    if (term.length < 2) {
+    if (term.length === 1) {
       setItems([]);
       setSource('');
       setFetchedAt(null);
@@ -93,12 +93,7 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
           <VadText variant="caption" tone="secondary">{help}</VadText>
         </View>
       ) : null}
-      {!search.trim() ? (
-        <VadEmptyState
-          title={'Search ' + title.toLowerCase()}
-          body={help + ' Enter at least two characters to query the configured provider catalogue.'}
-        />
-      ) : loading && !items.length ? (
+      {loading && !items.length ? (
         <View style={{ gap: theme.spacing.sm }}>
           <VadSkeleton height={142} radius={theme.radius.lg} />
           <VadSkeleton height={142} radius={theme.radius.lg} />
