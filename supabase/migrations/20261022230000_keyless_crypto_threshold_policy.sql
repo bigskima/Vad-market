@@ -60,22 +60,11 @@ cross join (values
 where p.code=x.provider_code and p.environment='PRODUCTION'
 on conflict(provider_id,resource_type,canonical_key) do nothing;
 
--- Keep two independently recorded observations mandatory. Do not lower the
--- quorum when one source is unavailable: the event remains pending instead.
-update oracle.policies
-set source_hierarchy = jsonb_build_array(
-      jsonb_build_object('role','PRIMARY','provider_code','COINBASE','priority',10),
-      jsonb_build_object('role','CORROBORATING','provider_code','KRAKEN','priority',20)
-    ),
-    consensus_rule = coalesce(consensus_rule, '{}'::jsonb)
-      || jsonb_build_object(
-        'finalization_mode','AUTO_AFTER_DISPUTE_WINDOW',
-        'distinct_providers',true,
-        'min_agreeing_providers',2
-      )
-where name in ('VAD Crypto Threshold Launch Policy', 'VAD Sandbox Crypto Threshold Policy')
-  and status='ACTIVE'
-  and approved_by is not null;
+-- Preserve the existing approved policy and any historical event bindings.
+-- The preceding keyless-source migration already created DRAFT Coinbase/Kraken
+-- policy versions. They must go through the existing Oracle reviewer workflow:
+-- admin_approve_oracle_policy enforces oracle.review and dual control. This
+-- migration deliberately does not mutate or auto-approve an ACTIVE policy.
 
 -- Admin event discovery has previously returned PostgREST schema-cache 404s
 -- for a function that exists and grants EXECUTE to authenticated users.
