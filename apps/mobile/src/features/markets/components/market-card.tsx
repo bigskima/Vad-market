@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
@@ -75,8 +76,8 @@ export function MarketCard({
         </View>
       </Pressable>
       <View style={{ width: tight ? 122 : 146, flexDirection: 'row', gap: 5 }}>
-        <OutcomeTile label="Yes" value={yes} positive compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('YES') : undefined} />
-        <OutcomeTile label="No" value={no} positive={false} compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('NO') : undefined} />
+        <OutcomeTile label="Yes" value={yes} rawValue={market.yes_price} positive compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('YES') : undefined} />
+        <OutcomeTile label="No" value={no} rawValue={market.no_price} positive={false} compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('NO') : undefined} />
       </View>
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Open ${market.title}`} hitSlop={6} style={({ pressed }) => ({ padding: 2, opacity: pressed ? 0.65 : 1 })}>
         <VadIcon name="chevronRight" size={19} tone="secondary" />
@@ -92,14 +93,49 @@ function formatVolume(value: number) {
   }).format(value);
 }
 
-function OutcomeTile({ label, value, positive, compact, onPress }: { label: string; value: string; positive: boolean; compact: boolean; onPress?: () => void }) {
+function OutcomeTile({ label, value, rawValue, positive, compact, onPress }: { label: string; value: string; rawValue?: number | string | null; positive: boolean; compact: boolean; onPress?: () => void }) {
   const theme = useVadTheme();
-  const foreground = positive ? theme.colors.yes : theme.colors.no;
-  const background = positive ? theme.colors.yesSoft : theme.colors.noSoft;
+  const numericValue = rawValue == null ? Number.NaN : Number(rawValue);
+  const previousValue = useRef(Number.isFinite(numericValue) ? numericValue : null);
+  const [movement, setMovement] = useState<'up' | 'down' | null>(null);
+
+  useEffect(() => {
+    const previous = previousValue.current;
+    if (!Number.isFinite(numericValue)) return;
+    previousValue.current = numericValue;
+    if (previous === null || previous === numericValue) return;
+
+    setMovement(numericValue > previous ? 'up' : 'down');
+    const timeout = setTimeout(() => setMovement(null), theme.motion.slow);
+    return () => clearTimeout(timeout);
+  }, [numericValue, theme.motion.slow]);
+
+  const foreground = movement === 'up'
+    ? theme.colors.yes
+    : movement === 'down'
+      ? theme.colors.no
+      : positive
+        ? theme.colors.yes
+        : theme.colors.no;
+  const background = movement === 'up'
+    ? theme.colors.yesSoft
+    : movement === 'down'
+      ? theme.colors.noSoft
+      : positive
+        ? theme.colors.yesSoft
+        : theme.colors.noSoft;
+  const borderColor = movement === 'up'
+    ? theme.colors.yes
+    : movement === 'down'
+      ? theme.colors.no
+      : positive
+        ? theme.colors.yes
+        : theme.colors.no;
+
   return (
-    <Pressable disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={onPress ? `Trade ${label} on this market at ${value}` : undefined} onPress={onPress} style={({ pressed }) => ({ flex: 1, minHeight: compact ? 47 : 54, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 3, gap: 0, backgroundColor: background, borderWidth: 1, borderColor: positive ? theme.colors.yes : theme.colors.no, opacity: pressed ? 0.72 : 1 })}>
+    <Pressable disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={onPress ? `Trade ${label} on this market at ${value}` : undefined} onPress={onPress} style={({ pressed }) => ({ flex: 1, minHeight: compact ? 47 : 54, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 3, gap: 0, backgroundColor: background, borderWidth: 1, borderColor, opacity: pressed ? 0.72 : 1 })}>
       <VadText variant="caption" style={{ color: foreground, fontSize: 10, lineHeight: 12 }}>{label}</VadText>
-      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 13 : 15, lineHeight: 18, fontWeight: '700' }}>{value}</VadText>
+      <VadText variant="bodyStrong" style={{ color: foreground, fontSize: compact ? 13 : 15, lineHeight: 18, fontWeight: '700', fontVariant: ['tabular-nums'] }}>{value}</VadText>
     </Pressable>
   );
 }

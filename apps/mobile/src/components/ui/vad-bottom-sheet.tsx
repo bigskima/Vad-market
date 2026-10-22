@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  Animated,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -29,9 +32,50 @@ export function VadBottomSheet({
   dismissible?: boolean;
 }) {
   const theme = useVadTheme();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const dialog = width >= 768;
   const compact = width < 380;
+  const [dragOffset] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    if (visible) dragOffset.setValue(0);
+  }, [dragOffset, visible]);
+
+  const panResponder = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_event, gesture) =>
+      dismissible && !dialog && gesture.dy > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+    onPanResponderMove: (_event, gesture) => {
+      dragOffset.setValue(Math.max(0, gesture.dy));
+    },
+    onPanResponderRelease: (_event, gesture) => {
+      if (dismissible && (gesture.dy > 112 || gesture.vy > 0.85)) {
+        Animated.timing(dragOffset, {
+          toValue: Math.max(height, 520),
+          duration: theme.motion.standard,
+          useNativeDriver: true,
+        }).start(({ finished }) => {
+          if (finished) onClose();
+        });
+      } else {
+        Animated.spring(dragOffset, {
+          toValue: 0,
+          stiffness: 240,
+          damping: 25,
+          mass: 0.8,
+          useNativeDriver: true,
+        }).start();
+      }
+    },
+    onPanResponderTerminate: () => {
+      Animated.spring(dragOffset, {
+        toValue: 0,
+        stiffness: 240,
+        damping: 25,
+        mass: 0.8,
+        useNativeDriver: true,
+      }).start();
+    },
+  }), [dialog, dismissible, dragOffset, height, onClose, theme.motion.standard]);
 
   return (
     <Modal
@@ -67,6 +111,13 @@ export function VadBottomSheet({
             <View pointerEvents="none" style={StyleSheet.absoluteFill} />
           )}
 
+          <Animated.View
+            style={{
+              width: '100%',
+              maxWidth: dialog ? 680 : undefined,
+              transform: [{ translateY: dialog ? 0 : dragOffset }],
+            }}
+          >
           <SafeAreaView
             edges={dialog ? [] : ['bottom']}
             style={[
@@ -86,7 +137,14 @@ export function VadBottomSheet({
             ]}
           >
             {!dialog ? (
-              <View style={{ alignItems: 'center', paddingTop: theme.spacing.xs }}>
+              <View
+                {...panResponder.panHandlers}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Drag down to dismiss"
+                accessibilityHint="Swipe down to close this sheet"
+                style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+              >
                 <View
                   style={{
                     width: 44,
@@ -150,6 +208,7 @@ export function VadBottomSheet({
               {children}
             </ScrollView>
           </SafeAreaView>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
