@@ -113,10 +113,10 @@ function OutcomeTile({ label, value, rawValue, positive, compact, onPress }: { l
   const foreground = movement === 'up'
     ? theme.colors.yes
     : movement === 'down'
-      ? theme.colors.noText
+      ? theme.colors.no
       : positive
         ? theme.colors.yes
-        : theme.colors.noText;
+        : theme.colors.no;
   const background = movement === 'up'
     ? theme.colors.yesSoft
     : movement === 'down'
