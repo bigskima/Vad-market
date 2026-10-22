@@ -9,6 +9,7 @@ import {
   type ProviderResolutionResult,
 } from './types.ts';
 import { env } from './runtime.ts';
+import { hasContinuousTimestampCoverage } from './coverage.ts';
 
 function record(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -319,11 +320,14 @@ export async function resolveFinancialPriceTouchThresholdWithProvider(
   const hitPoints = points.filter((point) => hit(point.value));
   const maxPrice = Math.max(...points.map((point) => point.value));
   const minPrice = Math.min(...points.map((point) => point.value));
-  const first = points[0];
   const last = points[points.length - 1];
-  const maxGapMs = Math.max(60, Math.min(1800, Number(resource.metadata?.maximum_coverage_gap_seconds ?? 900))) * 1000;
-  const fullCoverage = first.time.getTime() <= spec.windowStart.getTime() + maxGapMs
-    && last.time.getTime() >= spec.windowEnd.getTime() - maxGapMs;
+  const maxGapSeconds = Math.max(60, Math.min(1800, Number(resource.metadata?.maximum_coverage_gap_seconds ?? 900) || 900));
+  const fullCoverage = hasContinuousTimestampCoverage(
+    points.map((point) => point.time.getTime()),
+    spec.windowStart.getTime(),
+    spec.windowEnd.getTime(),
+    maxGapSeconds,
+  );
   if (!hitPoints.length && !fullCoverage) {
     return { kind: 'skipped', code: 'TWELVE_DATA_WINDOW_INCOMPLETE', detail: 'Historical data did not cover both ends of the time window; a negative result is unsafe' };
   }
