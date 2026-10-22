@@ -754,7 +754,41 @@ export function AdminMarketCreateWorkspaceCatalog() {
                       {selectedCryptoAsset ? <VadCard variant="muted" style={{ gap: 4 }}>
                         <VadText variant="bodyStrong">{selectedCryptoAsset.name} ({selectedCryptoAsset.symbol.toUpperCase()})</VadText>
                         <VadText variant="caption" tone="secondary">CoinGecko ID: {selectedCryptoAsset.id} · Public spot: {selectedCryptoAsset.currentPrice.toLocaleString(undefined, { maximumFractionDigits: 8 })} USD</VadText>
-                        {cryptoAssetCheckLoading ? <VadText variant="caption" tone="secondary">Checking Coinbase + Kraken historical support…</VadText> : cryptoAssetCheck?.supported ? <VadText variant="caption" tone="yes">Keyless settlement sources verified: Coinbase + Kraken ( {cryptoAssetCheck.coinGeckoId}). This asset can use the two-source threshold policy.</VadText> : <VadText variant="caption" tone="warning">{cryptoAssetCheck?.reason ?? 'Select an asset to check its Oracle feed.'}</VadText>}
+                        {cryptoAssetCheckLoading ? <VadText variant="caption" tone="secondary">Checking Coinbase + Kraken historical support…</VadText> : cryptoAssetCheck?.supported ? <VadText variant="caption" tone="yes">Coinbase + Kraken settlement mappings are verified for this asset. Policy approval and live Oracle health are checked separately below.</VadText> : <VadText variant="caption" tone="warning">{cryptoAssetCheck?.reason ?? 'Select an asset to check its Oracle feed.'}</VadText>}
+                        {cryptoAssetCheck?.supported ? (
+                          <View style={{ gap: 4, paddingTop: theme.spacing.xs }}>
+                            <VadText variant="bodyStrong" tone={cryptoAssetCheck.readiness?.available && cryptoAssetCheck.readiness.providersRuntimeReady ? 'yes' : 'warning'}>Oracle listing readiness</VadText>
+                            {cryptoAssetCheck.readiness?.available ? (
+                              <>
+                                <VadText variant="caption" tone="secondary">
+                                  Source health · Coinbase: {cryptoAssetCheck.readiness.coinbaseHealth} · Kraken: {cryptoAssetCheck.readiness.krakenHealth}
+                                </VadText>
+                                {!cryptoAssetCheck.readiness.providersRuntimeReady ? (
+                                  <VadText variant="caption" tone="warning">
+                                    {[
+                                      cryptoAssetCheck.readiness.coinbaseHealth === 'UNAVAILABLE' ? `Coinbase: ${cryptoAssetCheck.readiness.coinbaseFailureCode ?? 'unavailable'}.` : '',
+                                      cryptoAssetCheck.readiness.krakenHealth === 'UNAVAILABLE' ? `Kraken: ${cryptoAssetCheck.readiness.krakenFailureCode ?? 'unavailable'}.` : '',
+                                    ].filter(Boolean).join(' ')} Open Admin → Providers and run “Check oracle providers”, then refresh this readiness check.
+                                  </VadText>
+                                ) : null}
+                                <VadText variant="caption" tone={cryptoAssetCheck.readiness.productionPolicyReady ? 'yes' : 'warning'}>
+                                  Production policy: {cryptoAssetCheck.readiness.productionPolicyReady ? `approved (v${cryptoAssetCheck.readiness.productionPolicyVersion ?? 'current'})` : `pending independent Oracle review${cryptoAssetCheck.readiness.productionPolicyVersion ? ` (draft v${cryptoAssetCheck.readiness.productionPolicyVersion})` : ''}`}
+                                </VadText>
+                                <VadText variant="caption" tone={cryptoAssetCheck.readiness.sandboxPolicyReady ? 'yes' : 'warning'}>
+                                  TNGN sandbox policy: {cryptoAssetCheck.readiness.sandboxPolicyReady ? `approved (v${cryptoAssetCheck.readiness.sandboxPolicyVersion ?? 'current'})` : `pending independent Oracle review${cryptoAssetCheck.readiness.sandboxPolicyVersion ? ` (draft v${cryptoAssetCheck.readiness.sandboxPolicyVersion})` : ''}`}
+                                </VadText>
+                                {cryptoAssetCheck.readiness.productionReason && cryptoAssetCheck.readiness.sandboxReason ? (
+                                  <VadText variant="caption" tone="secondary">An active policy must use Coinbase as primary and Kraken as corroborating source, with distinct-source agreement required from both.</VadText>
+                                ) : null}
+                              </>
+                            ) : (
+                              <VadText variant="caption" tone="warning">
+                                {cryptoAssetCheck.readiness?.error ?? 'Oracle policy readiness is not available. Market creation remains protected until readiness can be verified.'}
+                              </VadText>
+                            )}
+                            <VadButton label="Refresh Oracle readiness" variant="secondary" size="small" fullWidth={false} loading={cryptoAssetCheckLoading} disabled={cryptoAssetCheckLoading || working} onPress={() => void refreshCryptoAssetReadiness()} />
+                          </View>
+                        ) : null}
                       </VadCard> : null}
                       <FieldGroup label="Price condition">
                         {([['GT', 'Above'], ['GTE', 'At or above'], ['LT', 'Below'], ['LTE', 'At or below']] as const).map(([value, label]) => <VadChip key={value} label={label} selected={(details.operator ?? 'GTE') === value} tone={(details.operator ?? 'GTE') === value ? 'brand' : 'neutral'} onPress={() => setDetail('operator', value)} />)}
