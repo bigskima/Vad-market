@@ -8,11 +8,10 @@ import {
   type ResolverSpec,
   type CryptoTouchThresholdSpec,
 } from './types.ts';
-import { resolveCryptoWithProvider } from './providers.ts';
+import { resolveCryptoWithProvider, resolveCryptoTouchWithCoinGecko } from './providers.ts';
 import { resolveFootballFixtureWithProvider } from './football.ts';
 import { resolvePublicRecord } from './public-record.ts';
 import { resolveFinancialPriceThresholdWithProvider, resolveFinancialPriceTouchThresholdWithProvider, resolveFredSeriesThresholdWithProvider } from './financial.ts';
-import { resolveFinancialPriceThresholdWithProvider, resolveFredSeriesThresholdWithProvider } from './financial.ts';
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
