@@ -1,4 +1,5 @@
 import { env } from './runtime.ts';
+import { hasContinuousTimestampCoverage } from './coverage.ts';
 import { resolveFinancialPriceThresholdWithProvider } from './financial.ts';
 import {
   type CryptoThresholdSpec,
@@ -408,10 +409,13 @@ export async function resolveCryptoTouchWithCoinGecko(
   const hitPoints = points.filter((point) => hit(point.price));
   const maxPrice = Math.max(...points.map((point) => point.price));
   const minPrice = Math.min(...points.map((point) => point.price));
-  const first = points[0];
   const last = points[points.length - 1];
-  const fullCoverage = first.timestamp <= startMs + coverageGapSeconds * 1000
-    && last.timestamp >= endMs - coverageGapSeconds * 1000;
+  const fullCoverage = hasContinuousTimestampCoverage(
+    points.map((point) => point.timestamp),
+    startMs,
+    endMs,
+    coverageGapSeconds,
+  );
   // A qualifying historical datapoint is sufficient to prove a touch. A NO
   // requires coverage near both window boundaries; missing coverage is never
   // interpreted as proof that the price did not touch the threshold.
