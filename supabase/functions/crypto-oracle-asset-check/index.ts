@@ -62,9 +62,9 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Choose a valid crypto ticker and USD quote.' }, 400);
   }
 
-  // Public Coinbase historical candles plus CoinGecko's configured Demo API key
-  // replace the paid Pyth subscription. Keep unsupported assets blocked until
-  // both providers have an explicit ACTIVE resource mapping.
+  // Automatic crypto threshold markets require two independent, keyless public
+  // historical-price sources. Do not make market creation depend on Pyth or a
+  // CoinGecko API key; those may still be configured for other approved policies.
   const { data: catalogData, error: catalogError } = await service.rpc('internal_oracle_provider_catalog');
   if (catalogError) return json({ error: 'The approved Oracle provider catalog could not be loaded.' }, 503);
   const providers = Array.isArray(catalogData) ? catalogData as Provider[] : [];
@@ -76,6 +76,7 @@ Deno.serve(async (req: Request) => {
       && row.capabilities.some((capability: unknown) => safeText(capability).toUpperCase() === 'CRYPTO_PRICE_THRESHOLD')
   );
   const coinbase = getProvider('COINBASE');
+  const kraken = getProvider('KRAKEN');
   const coinGecko = getProvider('COINGECKO');
   const canonicalKey = `${symbol}/${quote}`;
   const activeResource = (provider: Provider | undefined) =>
@@ -86,29 +87,26 @@ Deno.serve(async (req: Request) => {
     );
 
   const coinbaseResource = activeResource(coinbase);
+  const krakenResource = activeResource(kraken);
   const coinGeckoResource = activeResource(coinGecko);
-  const coinGeckoSecretName = safeText(coinGecko?.secretReference);
-  const coinGeckoKey = coinGeckoSecretName ? Deno.env.get(coinGeckoSecretName) ?? '' : '';
   const coinbaseReady = Boolean(coinbase && coinbase.baseUrl === 'https://api.coinbase.com' && coinbaseResource);
-  const coinGeckoReady = Boolean(coinGecko && coinGeckoKey && coinGeckoResource);
+  const krakenReady = Boolean(kraken && kraken.baseUrl === 'https://api.kraken.com' && krakenResource);
   const mappedCoinGeckoId = safeText(coinGeckoResource?.externalKey).toLowerCase();
-  const idsMatch = !requestedCoinGeckoId || requestedCoinGeckoId === mappedCoinGeckoId;
-  const supported = coinbaseReady && coinGeckoReady && idsMatch;
+  const idsMatch = !requestedCoinGeckoId || !mappedCoinGeckoId || requestedCoinGeckoId === mappedCoinGeckoId;
+  const supported = coinbaseReady && krakenReady && idsMatch;
 
   return json({
     supported,
     symbol,
     quote: 'USD',
-    provider: 'COINGECKO+COINBASE',
-    coinGeckoId: mappedCoinGeckoId || null,
+    provider: 'COINBASE+KRAKEN',
+    coinGeckoId: mappedCoinGeckoId || requestedCoinGeckoId || null,
     ...(supported ? {} : {
-      reason: !coinGeckoKey
-        ? 'CoinGecko Demo API is not configured yet. Add its free Demo API key in Supabase Edge Function secrets.'
-        : !coinbaseReady
-          ? `The keyless Coinbase public historical resolver is not enabled for ${symbol}/USD.`
-          : !coinGeckoReady
-            ? `CoinGecko does not have an active historical mapping for ${symbol}/USD.`
-            : 'The selected ticker and CoinGecko asset ID do not match the approved settlement mapping.',
+      reason: !coinbaseReady
+        ? `The keyless Coinbase public historical resolver is not mapped for ${symbol}/USD.`
+        : !krakenReady
+          ? `The keyless Kraken public historical resolver is not mapped for ${symbol}/USD.`
+          : 'The selected ticker and registered asset ID do not match the supported crypto mapping.',
     }),
   });
 });
