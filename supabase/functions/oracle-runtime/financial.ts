@@ -187,7 +187,9 @@ async function fetchCoinbaseCandles(
 export async function resolveFinancialPriceThresholdWithProvider(
   provider: OracleProvider,
   resource: OracleResource,
-  spec: FinancialPriceThresholdSpec,
+  spec: Omit<FinancialPriceThresholdSpec, 'resolverType'> & {
+    resolverType: FinancialPriceThresholdSpec['resolverType'] | 'CRYPTO_PRICE_THRESHOLD_V1';
+  },
 ): Promise<ProviderResolutionResult> {
   if (!['COINBASE','KRAKEN','TWELVE_DATA','ALPHA_VANTAGE'].includes(provider.code)) return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
