@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -192,61 +192,134 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
   const theme = useVadTheme();
   const density = useProductDensity();
   const pool = isPoolMarket(market);
+  const [scheduleExpanded, setScheduleExpanded] = useState(false);
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
-  const hasSignal = market.yes_price != null || market.no_price != null;
-  const schedule = [
-    market.opens_at ? `Opens ${exactTime(market.opens_at)}` : null,
-    market.closes_at ? `Closes ${exactTime(market.closes_at)}` : null,
-    market.resolves_after ? `Result check ${exactTime(market.resolves_after)}` : null,
-  ].filter(Boolean).join(' · ');
+  const hasCurrentQuote = timing.stage === 'OPEN' && (market.yes_price != null || market.no_price != null);
+  const scheduleRows: Array<{ label: string; value: string }> = [
+    { label: 'Market opens', value: exactTime(market.opens_at) ?? '' },
+    { label: 'Trading closes', value: exactTime(market.closes_at) ?? '' },
+    { label: 'Resolution target', value: exactTime(market.resolves_after) ?? '' },
+    { label: 'Result finalized', value: exactTime(market.resolution_finalized_at) ?? '' },
+  ].filter((row) => Boolean(row.value));
 
   return (
-    <View style={{ gap: density.compact ? 10 : 13 }}>
-      <VadCard variant="surface" accessibilityRole="summary" style={{ gap: 9, padding: density.compact ? 12 : 16, borderRadius: density.phone ? 20 : 24 }}>
+    <View style={{ gap: density.compact ? 8 : 10 }}>
+      <VadCard variant="surface" accessibilityRole="summary" style={{ gap: 9, padding: density.compact ? 12 : 15, borderRadius: density.phone ? 18 : 22 }}>
         {timing.resolutionOutcome ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-            <View style={{ flex: 1, gap: 1 }}>
-              <VadText variant="caption" tone="tertiary">FINAL RESULT</VadText>
-              <VadText variant="bodyStrong" tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'}>{timing.resolutionOutcome}</VadText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <VadText variant="caption" tone="tertiary">FINAL OUTCOME</VadText>
+              <VadText variant="heading" tone={timing.resolutionOutcome === 'YES' ? 'yes' : timing.resolutionOutcome === 'NO' ? 'no' : 'secondary'} style={{ fontSize: 20, lineHeight: 25 }}>
+                {timing.resolutionOutcome}
+              </VadText>
             </View>
-            <VadChip label="CONFIRMED" tone={timing.resolutionOutcome === 'YES' ? 'yes' : 'no'} />
+            <VadChip
+              label={timing.stage === 'SETTLED' ? 'SETTLED' : 'RESULT CONFIRMED'}
+              tone={timing.resolutionOutcome === 'YES' ? 'yes' : timing.resolutionOutcome === 'NO' ? 'no' : 'neutral'}
+            />
           </View>
         ) : null}
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          <View style={{ flex: 1, minWidth: 0, borderRadius: 9, backgroundColor: theme.colors.yesSoft, paddingHorizontal: 8, paddingVertical: 5, gap: 1 }}>
-            <VadText variant="caption" tone="yes">YES</VadText>
-            <VadText variant="bodyStrong" tone={hasSignal ? 'yes' : 'tertiary'}>{yes}</VadText>
+
+        {!timing.resolutionOutcome && timing.stage === 'VOIDED' ? (
+          <View style={{ borderRadius: 11, padding: 11, backgroundColor: theme.colors.noSoft, gap: 3 }}>
+            <VadText variant="bodyStrong" tone="no">Market voided</VadText>
+            <VadText variant="caption" tone="secondary">Refer to the published void and refund rules for the final handling of this market.</VadText>
           </View>
-          <View style={{ flex: 1, minWidth: 0, borderRadius: 9, backgroundColor: theme.colors.noSoft, paddingHorizontal: 8, paddingVertical: 5, gap: 1 }}>
-            <VadText variant="caption" tone="no">NO</VadText>
-            <VadText variant="bodyStrong" tone={hasSignal ? 'no' : 'tertiary'}>{no}</VadText>
+        ) : null}
+
+        {!timing.resolutionOutcome && timing.stage !== 'VOIDED' && hasCurrentQuote ? (
+          <>
+            <View style={{ flexDirection: 'row', gap: 7 }}>
+              <View style={{ flex: 1, minWidth: 0, borderRadius: 10, backgroundColor: theme.colors.yesSoft, paddingHorizontal: 10, paddingVertical: 8, gap: 2 }}>
+                <VadText variant="caption" tone="yes">YES</VadText>
+                <VadText variant="bodyStrong" tone="yes">{yes}</VadText>
+              </View>
+              <View style={{ flex: 1, minWidth: 0, borderRadius: 10, backgroundColor: theme.colors.noSoft, paddingHorizontal: 10, paddingVertical: 8, gap: 2 }}>
+                <VadText variant="caption" tone="no">NO</VadText>
+                <VadText variant="bodyStrong" tone="no">{no}</VadText>
+              </View>
+            </View>
+            <VadText variant="caption" tone="tertiary">{pool ? 'Pool allocation reflects participant stakes, not the final result.' : 'Current market pricing is not a guarantee of the final outcome.'}</VadText>
+          </>
+        ) : null}
+
+        {!timing.resolutionOutcome && timing.stage !== 'VOIDED' && !hasCurrentQuote ? (
+          <View style={{ paddingVertical: 2, gap: 3 }}>
+            <VadText variant="bodyStrong">
+              {timing.stage === 'OPEN' ? 'Waiting for a current quote' : timing.stage === 'SETTLED' ? 'Settlement status' : 'Current prices unavailable'}
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              {timing.stage === 'OPEN'
+                ? 'A price will appear when a valid market quote is available.'
+                : 'Inactive or settled markets do not show old quotes as current conviction. Recorded history remains available in Activity.'}
+            </VadText>
           </View>
-        </View>
-        <VadText variant="caption" tone="tertiary">{pool ? 'Pool split, not the final result.' : 'Current conviction; published rules decide the result.'}</VadText>
+        ) : null}
+
         {pool ? (
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            <View style={{ flex: 1, backgroundColor: theme.colors.surfaceMuted, borderRadius: 8, padding: 7, gap: 1 }}>
+          <View style={{ flexDirection: 'row', gap: 7 }}>
+            <View style={{ flex: 1, minWidth: 0, backgroundColor: theme.colors.surfaceMuted, borderRadius: 9, padding: 8, gap: 2 }}>
               <VadText variant="caption" tone="tertiary">Pool volume</VadText>
-              <VadText variant="caption">{assetMoney(market.total_volume ?? 0, market.asset_code)}</VadText>
+              <VadText variant="bodyStrong">{assetMoney(market.total_volume ?? 0, market.asset_code)}</VadText>
             </View>
-            <View style={{ flex: 1, backgroundColor: theme.colors.surfaceMuted, borderRadius: 8, padding: 7, gap: 1 }}>
-              <VadText variant="caption" tone="tertiary">Traders</VadText>
-              <VadText variant="caption">{String(Number(market.participant_count ?? 0))}</VadText>
+            <View style={{ flex: 1, minWidth: 0, backgroundColor: theme.colors.surfaceMuted, borderRadius: 9, padding: 8, gap: 2 }}>
+              <VadText variant="caption" tone="tertiary">Participants</VadText>
+              <VadText variant="bodyStrong">{String(Number(market.participant_count ?? 0))}</VadText>
             </View>
           </View>
         ) : null}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <VadChip label={timing.primaryTiming} tone="neutral" />
-          {timing.stage === 'OPEN' && timing.closeCountdown ? <VadText variant="caption" tone="tertiary">Closes in {timing.closeCountdown}</VadText> : null}
-          {timing.stage === 'SCHEDULED' && timing.openCountdown ? <VadText variant="caption" tone="tertiary">Opens in {timing.openCountdown}</VadText> : null}
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <VadChip
+            label={timing.statusLabel}
+            tone={timing.stage === 'OPEN' ? 'yes' : timing.stage === 'VOIDED' ? 'no' : 'neutral'}
+          />
+          {timing.stage === 'OPEN' && timing.closeCountdown ? (
+            <VadText variant="caption" tone="tertiary">Closes in {timing.closeCountdown}</VadText>
+          ) : null}
+          {timing.stage === 'SCHEDULED' && timing.openCountdown ? (
+            <VadText variant="caption" tone="tertiary">Opens in {timing.openCountdown}</VadText>
+          ) : null}
         </View>
       </VadCard>
-      {schedule ? <VadText variant="caption" tone="tertiary">{schedule}</VadText> : null}
+
+      {scheduleRows.length ? (
+        <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface, overflow: 'hidden' }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={scheduleExpanded ? 'Hide schedule and resolution details' : 'Show schedule and resolution details'}
+            onPress={() => setScheduleExpanded((current) => !current)}
+            style={({ pressed }) => ({ minHeight: 52, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10, opacity: pressed ? 0.76 : 1 })}
+          >
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <VadText variant="bodyStrong">Schedule & resolution</VadText>
+              <VadText variant="caption" tone="secondary">
+                {scheduleExpanded ? 'Published market timestamps' : market.closes_at ? `Trading closes ${new Date(market.closes_at).toLocaleDateString()}` : `${scheduleRows.length} timeline details`}
+              </VadText>
+            </View>
+            <View style={{ transform: [{ rotate: scheduleExpanded ? '-90deg' : '90deg' }] }}>
+              <VadIcon name="chevronRight" size={16} tone="secondary" />
+            </View>
+          </Pressable>
+          {scheduleExpanded ? (
+            <View style={{ paddingHorizontal: 12, paddingBottom: 10 }}>
+              {scheduleRows.map((row, index) => (
+                <View key={row.label} style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, paddingTop: 9, paddingBottom: 8, borderTopWidth: index === 0 ? 1 : 1, borderTopColor: theme.colors.border }}>
+                  <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>{row.label}</VadText>
+                  <VadText variant="caption" style={{ flex: 1.35, textAlign: 'right' }}>{row.value}</VadText>
+                </View>
+              ))}
+              <VadText variant="caption" tone="tertiary" style={{ paddingTop: 4 }}>
+                Published resolution criteria and finalized outcomes remain authoritative.
+              </VadText>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
-
 function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -302,6 +375,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
 
 function MarketContextPanel({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
+  const [expanded, setExpanded] = useState(false);
   const profile = String(market.presentation_profile ?? 'EVENT').toUpperCase();
   const labels: Record<string, string> = {
     CRYPTO: 'Crypto market context',
@@ -334,19 +408,36 @@ function MarketContextPanel({ market }: { market: MarketCatalogItem }) {
     if (!text || text.length > 160) return [];
     return [{ key, value: text }];
   }).filter((entry, index, all) => all.findIndex((candidate) => candidate.key === entry.key) === index).slice(0, 6);
+  const visibleEntries = expanded ? entries : entries.slice(0, 2);
+  const hiddenCount = entries.length - visibleEntries.length;
 
   if (!entries.length) return null;
 
   return (
-    <VadCard variant="surface" style={{ gap: theme.spacing.sm }}>
-      <View style={{ gap: 3 }}>
-        <VadText variant="label" tone="brand">{labels[profile] ?? labels.EVENT}</VadText>
-        <VadText variant="caption" tone="secondary">
-          Details come from the published market setup. The official resolution criteria remain authoritative.
-        </VadText>
+    <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <VadText variant="label" tone="brand">{labels[profile] ?? labels.EVENT}</VadText>
+          <VadText variant="caption" tone="secondary" numberOfLines={expanded ? undefined : 2}>
+            Details are taken from the published market setup. Official resolution criteria remain authoritative.
+          </VadText>
+        </View>
+        {hiddenCount > 0 || expanded ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={expanded ? 'Show fewer market details' : `Show ${hiddenCount} more market details`}
+            onPress={() => setExpanded((current) => !current)}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 3, opacity: pressed ? 0.72 : 1 })}
+          >
+            <VadText variant="caption" tone="brand">{expanded ? 'Show less' : `+${hiddenCount} more`}</VadText>
+            <View style={{ transform: [{ rotate: expanded ? '-90deg' : '90deg' }] }}>
+              <VadIcon name="chevronRight" size={14} tone="brand" />
+            </View>
+          </Pressable>
+        ) : null}
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-        {entries.map((entry) => (
+        {visibleEntries.map((entry) => (
           <View
             key={entry.key}
             style={{
@@ -358,11 +449,11 @@ function MarketContextPanel({ market }: { market: MarketCatalogItem }) {
               backgroundColor: theme.colors.surfaceMuted,
               borderRadius: theme.radius.md,
               padding: theme.spacing.sm,
-              gap: 2,
+              gap: 3,
             }}
           >
-            <VadText variant="caption" tone="tertiary">{contextLabel(entry.key)}</VadText>
-            <VadText variant="bodyStrong">{entry.value}</VadText>
+            <VadText variant="caption" tone="tertiary" numberOfLines={1}>{contextLabel(entry.key)}</VadText>
+            <VadText variant="bodyStrong" numberOfLines={expanded ? undefined : 1}>{entry.value}</VadText>
           </View>
         ))}
       </View>
