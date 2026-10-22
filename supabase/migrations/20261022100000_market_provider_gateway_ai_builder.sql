@@ -110,7 +110,7 @@ create table if not exists market.market_builder_runs (
   ai_model_code text,
   event_public_ids uuid[] not null default '{}'::uuid[],
   status text not null default 'PENDING'
-    check(status in ('SUCCEEDED','FAILED')),
+    check(status in ('PENDING','SUCCEEDED','FAILED')),
   input_snapshot jsonb not null default '{}'::jsonb,
   output_payload jsonb not null default '{}'::jsonb,
   failure_reason text,
@@ -377,17 +377,20 @@ begin
         'lastSeenAt',e.last_seen_at,
         'normalizedPayload',e.normalized_payload
       ) order by e.starts_at,e.participant_a,e.participant_b)
-      from market.provider_events e
-      where e.sport_code=upper(btrim(coalesce(p_sport_code,'')))
-        and e.competition_code=upper(btrim(coalesce(p_competition_code,'')))
-        and e.starts_at>=p_from_date::timestamptz
-        and e.starts_at<(p_to_date+1)::timestamptz
-        and (nullif(btrim(coalesce(p_search,'')),'') is null
-          or e.participant_a ilike '%'||btrim(p_search)||'%'
-          or e.participant_b ilike '%'||btrim(p_search)||'%'
-          or e.event_name ilike '%'||btrim(p_search)||'%')
-      order by e.starts_at,e.participant_a,e.participant_b
-      limit v_limit
+      from (
+        select e.*
+        from market.provider_events e
+        where e.sport_code=upper(btrim(coalesce(p_sport_code,'')))
+          and e.competition_code=upper(btrim(coalesce(p_competition_code,'')))
+          and e.starts_at>=p_from_date::timestamptz
+          and e.starts_at<(p_to_date+1)::timestamptz
+          and (nullif(btrim(coalesce(p_search,'')),'') is null
+            or e.participant_a ilike '%'||btrim(p_search)||'%'
+            or e.participant_b ilike '%'||btrim(p_search)||'%'
+            or e.event_name ilike '%'||btrim(p_search)||'%')
+        order by e.starts_at,e.participant_a,e.participant_b
+        limit v_limit
+      ) e
     ),'[]'::jsonb)
   ) into v_result;
   return v_result;
