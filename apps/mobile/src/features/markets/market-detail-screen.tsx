@@ -278,16 +278,36 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
           </View>
         ) : null}
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <VadChip
             label={timing.statusLabel}
             tone={timing.stage === 'OPEN' ? 'yes' : timing.stage === 'VOIDED' ? 'no' : 'neutral'}
           />
           {timing.stage === 'OPEN' && timing.closeCountdown ? (
-            <VadText variant="caption" tone="tertiary">Closes in {timing.closeCountdown}</VadText>
+            <View
+              accessibilityRole="timer"
+              accessibilityLabel={`Trading closes in ${timing.closeCountdown}`}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 10, paddingVertical: 7 }}
+            >
+              <VadIcon name="clock" size={16} tone="secondary" />
+              <View style={{ gap: 1 }}>
+                <VadText variant="label" tone="secondary">CLOSES IN</VadText>
+                <VadText variant="bodyStrong" style={{ fontVariant: ['tabular-nums'], fontSize: 15, lineHeight: 20 }}>{timing.closeCountdown}</VadText>
+              </View>
+            </View>
           ) : null}
           {timing.stage === 'SCHEDULED' && timing.openCountdown ? (
-            <VadText variant="caption" tone="tertiary">Opens in {timing.openCountdown}</VadText>
+            <View
+              accessibilityRole="timer"
+              accessibilityLabel={`Market opens in ${timing.openCountdown}`}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 10, paddingVertical: 7 }}
+            >
+              <VadIcon name="clock" size={16} tone="secondary" />
+              <View style={{ gap: 1 }}>
+                <VadText variant="label" tone="secondary">OPENS IN</VadText>
+                <VadText variant="bodyStrong" style={{ fontVariant: ['tabular-nums'], fontSize: 15, lineHeight: 20 }}>{timing.openCountdown}</VadText>
+              </View>
+            </View>
           ) : null}
         </View>
       </VadCard>
