@@ -18,7 +18,24 @@ function safeText(value: unknown) {
 type Resource = { canonicalKey: string; externalKey: string; status: string; resourceType: string };
 type Provider = {
   code: string; environment: string; status: string; capabilities: unknown[];
-  secretReference?: string | null; baseUrl?: string | null; resources?: Resource[];
+  configured?: boolean; secretReference?: string | null; baseUrl?: string | null; resources?: Resource[];
+};
+
+type PolicyReadiness = {
+  available: boolean;
+  productionPolicyReady: boolean;
+  sandboxPolicyReady: boolean;
+  productionPolicyVersion: number | null;
+  sandboxPolicyVersion: number | null;
+  providersRuntimeReady: boolean;
+  coinbaseHealth: string;
+  krakenHealth: string;
+  coinbaseFailureCode: string | null;
+  krakenFailureCode: string | null;
+  productionReason: string | null;
+  sandboxReason: string | null;
+  providerReason: string | null;
+  error?: string;
 };
 
 Deno.serve(async (req: Request) => {
@@ -82,13 +99,64 @@ Deno.serve(async (req: Request) => {
       safeText(resource.resourceType).toUpperCase() === 'CRYPTO_PAIR'
         && safeText(resource.canonicalKey).toUpperCase() === canonicalKey
         && safeText(resource.status).toUpperCase() === 'ACTIVE'
+        && Boolean(safeText(resource.externalKey))
     );
   const coinbaseResource = activeResource(coinbase);
   const krakenResource = activeResource(kraken);
-  const coinbaseReady = Boolean(coinbase && coinbase.baseUrl === 'https://api.coinbase.com' && coinbaseResource);
-  const krakenReady = Boolean(kraken && kraken.baseUrl === 'https://api.kraken.com' && krakenResource);
+  const coinbaseReady = Boolean(
+    coinbase
+      && coinbase.configured === true
+      && safeText(coinbase.baseUrl).replace(/\\/+$/, '') === 'https://api.coinbase.com'
+      && coinbaseResource
+      && safeText(coinbaseResource.externalKey).toUpperCase() === `${symbol}-${quote}`
+  );
+  const krakenReady = Boolean(
+    kraken
+      && kraken.configured === true
+      && safeText(kraken.baseUrl).replace(/\\/+$/, '') === 'https://api.kraken.com'
+      && krakenResource
+      && /^[A-Z0-9]{3,20}$/.test(safeText(krakenResource.externalKey).toUpperCase())
+  );
   const coinGeckoId = requestedCoinGeckoId || null;
   const supported = coinbaseReady && krakenReady;
+
+  // Keep mapping coverage distinct from runtime health and policy approval.
+  // A healthy mapping can still be unlistable when Oracle dual-control has not
+  // approved the required two-provider policy.
+  const { data: readinessData, error: readinessError } = await service.rpc('internal_crypto_threshold_policy_readiness');
+  const readinessRecord = isRecord(readinessData) ? readinessData : null;
+  const readiness: PolicyReadiness = readinessError || !readinessRecord
+    ? {
+      available: false,
+      productionPolicyReady: false,
+      sandboxPolicyReady: false,
+      productionPolicyVersion: null,
+      sandboxPolicyVersion: null,
+      providersRuntimeReady: false,
+      coinbaseHealth: 'UNKNOWN',
+      krakenHealth: 'UNKNOWN',
+      coinbaseFailureCode: null,
+      krakenFailureCode: null,
+      productionReason: null,
+      sandboxReason: null,
+      providerReason: null,
+      error: 'Oracle policy and provider readiness could not be verified. Refresh Admin readiness before creating this market.',
+    }
+    : {
+      available: readinessRecord.available === true,
+      productionPolicyReady: readinessRecord.productionPolicyReady === true,
+      sandboxPolicyReady: readinessRecord.sandboxPolicyReady === true,
+      productionPolicyVersion: typeof readinessRecord.productionPolicyVersion === 'number' ? readinessRecord.productionPolicyVersion : null,
+      sandboxPolicyVersion: typeof readinessRecord.sandboxPolicyVersion === 'number' ? readinessRecord.sandboxPolicyVersion : null,
+      providersRuntimeReady: readinessRecord.providersRuntimeReady === true,
+      coinbaseHealth: safeText(readinessRecord.coinbaseHealth) || 'UNKNOWN',
+      krakenHealth: safeText(readinessRecord.krakenHealth) || 'UNKNOWN',
+      coinbaseFailureCode: safeText(readinessRecord.coinbaseFailureCode) || null,
+      krakenFailureCode: safeText(readinessRecord.krakenFailureCode) || null,
+      productionReason: safeText(readinessRecord.productionReason) || null,
+      sandboxReason: safeText(readinessRecord.sandboxReason) || null,
+      providerReason: safeText(readinessRecord.providerReason) || null,
+    };
 
   return json({
     supported,
@@ -96,10 +164,11 @@ Deno.serve(async (req: Request) => {
     quote: 'USD',
     provider: 'COINBASE+KRAKEN',
     coinGeckoId,
+    readiness,
     ...(supported ? {} : {
       reason: !coinbaseReady
-        ? `Coinbase has no active keyless historical-price mapping for ${symbol}/USD.`
-        : `Kraken has no active keyless historical-price mapping for ${symbol}/USD.`,
+        ? `Coinbase has no active configured keyless historical-price mapping for ${symbol}/USD.`
+        : `Kraken has no active configured keyless historical-price mapping for ${symbol}/USD.`,
     }),
   });
 });
