@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
+import { VadDateTimeField } from '@/components/ui/vad-date-time-field';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
@@ -194,6 +195,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
   const [startsAt, setStartsAt] = useState(promotion?.starts_at ?? '');
   const [endsAt, setEndsAt] = useState(promotion?.ends_at ?? '');
   const [visualDirection, setVisualDirection] = useState('');
+  const suggestedVisualPrompt = useMemo(() => buildPromotionVisualPrompt(title, body, tag), [title, body, tag]);
   const [working, setWorking] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -224,7 +226,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
     setGenerating(true);
     setError(null);
     try {
-      const generated = await generateHomePromotionImage({ title, body, visualDirection });
+      const generated = await generateHomePromotionImage({ title, body, visualDirection: visualDirection.trim() || suggestedVisualPrompt });
       setKind('IMAGE');
       setImageUrl(generated.imageUrl);
       setGeneratedAt(generated.generatedAt);
@@ -292,13 +294,13 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
   }
 
   return (
-    <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.md, paddingBottom: theme.spacing.md }}>
+    <View style={{ gap: theme.spacing.md, paddingBottom: theme.spacing.md }}>
       <VadSegmentedControl value={kind} options={bannerKinds} onChange={setKind} />
 
       {kind === 'IMAGE' ? (
         <View style={{ gap: theme.spacing.sm }}>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: '100%', height: 148, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
+            <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 9, maxHeight: 210, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
           ) : (
             <VadCard variant="muted" style={{ minHeight: 92, justifyContent: 'center' }}>
               <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>Generate or upload campaign artwork to preview it here.</VadText>
@@ -312,19 +314,34 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
       <VadInput label="Campaign title" value={title} onChangeText={setTitle} placeholder="A short campaign headline" />
       <VadInput label="Supporting copy (optional)" value={body} onChangeText={setBody} placeholder="What should people know about this campaign?" multiline />
       <VadInput label="Campaign tag (optional)" value={tag} onChangeText={setTag} placeholder="e.g. FEATURED, NEW, LIVE" maxLength={32} hint="Shown as a small badge above the campaign headline." />
-      <VadInput label="AI visual direction (optional)" value={visualDirection} onChangeText={setVisualDirection} placeholder="E.g. cinematic football stadium, indigo lighting" hint="The image is generated without text or buttons; campaign copy stays in the app interface." />
-      <VadButton
-        label={kind === 'IMAGE' ? imageUrl ? 'Regenerate artwork with AI' : 'Generate artwork with AI' : 'Generate image campaign with AI'}
-        variant="secondary"
-        loading={generating}
-        disabled={uploading || working || title.trim().length < 3}
-        onPress={() => void generateArtwork()}
-      />
+      <View style={{ gap: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.lg, padding: theme.spacing.md, backgroundColor: theme.colors.surfaceMuted }}>
+        <View style={{ gap: 3 }}>
+          <VadText variant="bodyStrong">AI artwork prompt</VadText>
+          <VadText variant="caption" tone="secondary">Leave the prompt empty to generate one from your campaign title and copy. The image stays text-free so the app can display the headline and tag clearly.</VadText>
+        </View>
+        <VadInput
+          label="Custom visual direction (optional)"
+          value={visualDirection}
+          onChangeText={setVisualDirection}
+          placeholder="E.g. a cinematic football stadium at night, premium indigo lighting"
+          hint="You can override the automatic art direction without changing your campaign copy."
+          multiline
+        />
+        <VadButton label="Use suggested prompt" variant="secondary" size="small" disabled={uploading || generating || working || title.trim().length < 3} onPress={() => setVisualDirection(suggestedVisualPrompt)} />
+        <VadText variant="caption" tone="tertiary">Suggested style: 16:9 editorial artwork, one clear focal point, strong contrast, clean negative space, no text, logos, buttons or watermark.</VadText>
+        <VadButton
+          label={kind === 'IMAGE' ? imageUrl ? 'Regenerate artwork with AI' : 'Generate artwork with AI' : 'Generate image campaign with AI'}
+          variant="secondary"
+          loading={generating}
+          disabled={uploading || working || title.trim().length < 3}
+          onPress={() => void generateArtwork()}
+        />
+      </View>
 
       <VadInput label="Target route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Internal VAD route opened when someone taps this banner, for example /markets." />
       <VadInput label="Sort order" value={sortOrder} onChangeText={(value) => setSortOrder(value.replace(/\D/g, ''))} keyboardType="number-pad" hint="Lower numbers appear earlier in the carousel." />
-      <VadInput label="Starts at (optional, UTC ISO 8601)" value={startsAt} onChangeText={setStartsAt} placeholder="2026-11-01T09:00:00Z" autoCapitalize="none" autoCorrect={false} hint="Leave empty to start immediately when published." />
-      <VadInput label="Ends at (optional, UTC ISO 8601)" value={endsAt} onChangeText={setEndsAt} placeholder="2026-11-08T23:59:00Z" autoCapitalize="none" autoCorrect={false} hint="Leave empty for no scheduled end." />
+      <VadDateTimeField label="Starts at (optional)" value={startsAt} onChange={setStartsAt} clearable hint="Leave empty to start immediately when published." />
+      <VadDateTimeField label="Ends at (optional)" value={endsAt} onChange={setEndsAt} minDate={startsAt || undefined} clearable hint="Leave empty for no scheduled end. The end must be after the start." />
 
       {error ? <VadErrorState title="Campaign not saved" message={error} /> : null}
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
@@ -332,8 +349,16 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
         <VadButton label="Publish" loading={working} disabled={uploading || generating} onPress={() => void save('PUBLISHED')} style={{ flex: 1 }} />
       </View>
       {promotion ? <VadButton label="Archive campaign" variant="ghost" disabled={working || uploading || generating} onPress={() => void save('ARCHIVED')} /> : null}
-    </ScrollView>
+    </View>
   );
+}
+
+function buildPromotionVisualPrompt(title: string, body: string, tag: string) {
+  const campaign = [title.trim(), body.trim()].filter(Boolean).join(' — ').slice(0, 360)
+    || 'a timely premium VAD campaign';
+  const label = tag.trim() ? 'Campaign category: ' + tag.trim().slice(0, 32) + '. ' : '';
+  return 'Create premium cinematic 16:9 editorial campaign artwork for: ' + campaign + '. ' + label
+    + 'Choose one clear focal subject that communicates the topic instantly, with refined composition, dramatic but realistic lighting, a deep charcoal and indigo palette with restrained electric-violet highlights, crisp subject detail, mobile-crop-safe negative space, and a polished modern fintech editorial finish. No text, lettering, numbers, logos, brand marks, buttons, UI, borders, or watermark. The headline and tag will be rendered separately by the app.';
 }
 
 function normalizeCampaignDate(value: string, label: string): string | null {
