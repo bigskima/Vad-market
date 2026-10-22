@@ -27,7 +27,11 @@ values
   ('ALPHA_VANTAGE','Alpha Vantage Historical Data','ORACLE','PRODUCTION','DISABLED',50,
    '["FINANCIAL_PRICE_THRESHOLD","FRED_SERIES_THRESHOLD"]'::jsonb,
    '{"configured":false,"adapter":"ALPHA_VANTAGE_SERIES_V1","base_url":"https://www.alphavantage.co","health_probe":"CREDENTIAL_ONLY","settlement_role":"SECONDARY_FINANCIAL_CORROBORATION"}'::jsonb,
-   'ALPHA_VANTAGE_API_KEY')
+   'ALPHA_VANTAGE_API_KEY'),
+  ('COINBASE','Coinbase Public Historical Market Data','ORACLE','PRODUCTION','ACTIVE',25,
+   '["CRYPTO_PRICE_THRESHOLD","FINANCIAL_PRICE_THRESHOLD"]'::jsonb,
+   '{"configured":true,"adapter":"COINBASE_PUBLIC_CANDLES_V1","base_url":"https://api.coinbase.com","health_probe":"PUBLIC_MARKET_DATA","settlement_role":"KEYLESS_HISTORICAL_PRICE_CORROBORATION","notes":"Public Coinbase spot candles; no API key required."}'::jsonb,
+   null)
 on conflict(code,environment) do update set
   name=excluded.name,
   priority=excluded.priority,
@@ -80,6 +84,23 @@ set priority=15,
     ),
     updated_at=statement_timestamp()
 where p.code='US_SENATE' and p.environment='PRODUCTION' and p.provider_type='ORACLE';
+
+-- Coinbase public historical candles need no account or API key. Keep the
+-- supported USD spot pairs explicit so the resolver never substitutes USDT for USD.
+insert into oracle.provider_resources(provider_id,resource_type,canonical_key,external_key,status,metadata)
+select p.id,'CRYPTO_PAIR',v.canonical_key,v.external_key,'ACTIVE',v.metadata::jsonb
+from integration.providers p
+join (values
+  ('BTC/USD','BTC-USD','{"settlement_eligible":true,"max_timestamp_delta_seconds":600,"maximum_coverage_gap_seconds":900,"asset_class":"CRYPTO","interval":"ONE_MINUTE"}'),
+  ('ETH/USD','ETH-USD','{"settlement_eligible":true,"max_timestamp_delta_seconds":600,"maximum_coverage_gap_seconds":900,"asset_class":"CRYPTO","interval":"ONE_MINUTE"}'),
+  ('SOL/USD','SOL-USD','{"settlement_eligible":true,"max_timestamp_delta_seconds":600,"maximum_coverage_gap_seconds":900,"asset_class":"CRYPTO","interval":"ONE_MINUTE"}'),
+  ('XRP/USD','XRP-USD','{"settlement_eligible":true,"max_timestamp_delta_seconds":600,"maximum_coverage_gap_seconds":900,"asset_class":"CRYPTO","interval":"ONE_MINUTE"}')
+) as v(canonical_key,external_key,metadata) on true
+where p.code='COINBASE' and p.environment='PRODUCTION'
+on conflict(provider_id,resource_type,canonical_key) do update set
+  external_key=excluded.external_key,
+  metadata=oracle.provider_resources.metadata || excluded.metadata,
+  updated_at=statement_timestamp();
 
 -- Explicit mappings are required before a provider's answer can count toward a
 -- settlement quorum. Mapping presence alone does not assert that a secret exists.
@@ -164,7 +185,8 @@ update oracle.policies
 set source_hierarchy=jsonb_build_array(
       jsonb_build_object('role','PRIMARY','provider_code','PYTH','priority',10),
       jsonb_build_object('role','CORROBORATING','provider_code','COINGECKO','priority',20),
-      jsonb_build_object('role','FALLBACK','provider_code','TWELVE_DATA','priority',30)
+      jsonb_build_object('role','FALLBACK','provider_code','COINBASE','priority',30),
+      jsonb_build_object('role','PAID_FALLBACK','provider_code','TWELVE_DATA','priority',40)
     ),
     consensus_rule=consensus_rule || '{"finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":true,"min_agreeing_providers":2}'::jsonb
 where name in ('VAD Crypto Threshold Launch Policy','VAD Sandbox Crypto Threshold Policy')
