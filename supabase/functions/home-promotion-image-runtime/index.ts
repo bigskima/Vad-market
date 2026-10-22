@@ -46,7 +46,7 @@ Deno.serve(async (req: Request) => {
     });
     const { data: access, error: accessError } = await actor.rpc('admin_my_access');
     const permissions = Array.isArray(access?.permissions) ? access.permissions : [];
-    if (accessError || !permissions.includes('content.moderate')) {
+    if (accessError || !(permissions.includes('content.moderate') || access?.isSuperAdmin === true)) {
       return json({ error: 'The content.moderate permission is required to generate Home campaign artwork.' }, 403);
     }
 
