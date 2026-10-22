@@ -16,6 +16,7 @@ import { pickProfileImage } from '@/lib/profile-image-picker';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   deleteAdminPublicNotice,
+  generateHomePromotionImage,
   listAdminHomePromotions,
   listAdminPublicNotices,
   uploadHomePromotionImage,
@@ -89,9 +90,9 @@ export function AdminHomeContentScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: theme.spacing.md, flexWrap: 'wrap' }}>
         <View style={{ flex: 1, minWidth: 240, gap: 3 }}>
           <VadText variant="label" tone="brand">HOME CONTENT</VadText>
-          <VadText variant="title">Promotions & public notices.</VadText>
+          <VadText variant="title">Home campaigns & public notices.</VadText>
           <VadText variant="caption" tone="secondary">
-            Publish text or image banners and one short public-awareness notice. A new published notice automatically replaces the current one.
+            Manage live carousel campaigns, generate artwork with AI, schedule campaign windows, and publish one public-awareness notice.
           </VadText>
         </View>
         <VadButton label="Refresh" variant="secondary" size="small" fullWidth={false} loading={refreshing} onPress={() => void load(true)} />
@@ -110,7 +111,7 @@ export function AdminHomeContentScreen() {
         active={tab}
         onChange={(value) => setTab(value as Tab)}
         items={[
-          { key: 'promotions', label: 'Promotions', count: promotions.filter((item) => item.status === 'PUBLISHED').length },
+          { key: 'promotions', label: 'Campaigns', count: promotions.filter((item) => item.status === 'PUBLISHED').length },
           { key: 'notice', label: 'Public notice', count: notices.filter((item) => item.status === 'PUBLISHED').length },
         ]}
       />
@@ -121,7 +122,7 @@ export function AdminHomeContentScreen() {
         <NoticeEditor notices={notices} onSaved={async (nextMessage) => { setMessage(nextMessage); await load(true); }} />
       )}
 
-      <VadBottomSheet visible={Boolean(promotionEditor)} title={promotionEditor === 'NEW' ? 'New promotion' : 'Edit promotion'} onClose={() => setPromotionEditor(null)}>
+      <VadBottomSheet visible={Boolean(promotionEditor)} title={promotionEditor === 'NEW' ? 'New carousel campaign' : 'Edit carousel campaign'} onClose={() => setPromotionEditor(null)}>
         {promotionEditor ? (
           <PromotionEditor
             promotion={promotionEditor === 'NEW' ? null : promotionEditor}
@@ -139,10 +140,10 @@ function PromotionSection({ promotions, onEdit }: { promotions: HomePromotion[];
     <View style={{ gap: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
         <View style={{ flex: 1, gap: 2 }}>
-          <VadText variant="heading">Promotion carousel</VadText>
-          <VadText variant="caption" tone="secondary">Published banners swipe horizontally and auto-rotate on Home.</VadText>
+          <VadText variant="heading">Home campaign carousel</VadText>
+          <VadText variant="caption" tone="secondary">Campaign cards move automatically in both directions. Featured markets remain a separate live market rail.</VadText>
         </View>
-        <VadButton label="Add promotion" size="small" fullWidth={false} onPress={() => onEdit('NEW')} />
+        <VadButton label="Add campaign" size="small" fullWidth={false} onPress={() => onEdit('NEW')} />
       </View>
 
       {promotions.length ? (
@@ -155,8 +156,8 @@ function PromotionSection({ promotions, onEdit }: { promotions: HomePromotion[];
                     <Image source={{ uri: promotion.image_url }} resizeMode="cover" style={{ width: 72, height: 46, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceMuted }} />
                   ) : null}
                   <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                    <VadText variant="bodyStrong" numberOfLines={1}>{promotion.title || 'Image promotion'}</VadText>
-                    <VadText variant="caption" tone="secondary" numberOfLines={1}>{promotion.banner_kind} · {promotion.target_path}</VadText>
+                    <VadText variant="bodyStrong" numberOfLines={1}>{promotion.title || 'Image campaign'}</VadText>
+                    <VadText variant="caption" tone="secondary" numberOfLines={1}>{promotion.banner_kind} · {promotion.target_path}{promotion.starts_at || promotion.ends_at ? ' · Scheduled' : ''}</VadText>
                   </View>
                   <VadChip label={promotion.status} tone={promotion.status === 'PUBLISHED' ? 'yes' : promotion.status === 'DRAFT' ? 'warning' : 'neutral'} />
                 </View>
@@ -165,7 +166,7 @@ function PromotionSection({ promotions, onEdit }: { promotions: HomePromotion[];
           ))}
         </View>
       ) : (
-        <VadEmptyState title="No promotions configured" body="Home remains clean until an admin publishes a text or image banner." actionLabel="Create promotion" onAction={() => onEdit('NEW')} />
+        <VadEmptyState title="No carousel campaigns" body="Create a campaign, generate or upload artwork, and publish it to the Home promotion carousel." actionLabel="Create campaign" onAction={() => onEdit('NEW')} />
       )}
     </View>
   );
@@ -179,8 +180,13 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
   const [imageUrl, setImageUrl] = useState(promotion?.image_url ?? '');
   const [targetPath, setTargetPath] = useState(promotion?.target_path ?? '/markets');
   const [sortOrder, setSortOrder] = useState(String(promotion?.sort_order ?? 100));
+  const [startsAt, setStartsAt] = useState(promotion?.starts_at ?? '');
+  const [endsAt, setEndsAt] = useState(promotion?.ends_at ?? '');
+  const [visualDirection, setVisualDirection] = useState('');
   const [working, setWorking] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function chooseImage() {
@@ -190,26 +196,84 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
       const image = await pickProfileImage();
       if (!image) return;
       setImageUrl(await uploadHomePromotionImage(image.bytes, image.mimeType));
+      setGeneratedAt(null);
+      setKind('IMAGE');
     } catch (value) {
-      setError(value instanceof Error ? value.message : 'Banner image could not be uploaded.');
+      setError(value instanceof Error ? value.message : 'Campaign image could not be uploaded.');
     } finally {
       setUploading(false);
     }
   }
 
+  async function generateArtwork() {
+    if (title.trim().length < 3) {
+      setError('Add a campaign title before generating artwork.');
+      return;
+    }
+    setGenerating(true);
+    setError(null);
+    try {
+      const generated = await generateHomePromotionImage({ title, body, visualDirection });
+      setKind('IMAGE');
+      setImageUrl(generated.imageUrl);
+      setGeneratedAt(generated.generatedAt);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'AI campaign artwork could not be generated.');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   async function save(status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED') {
     const order = Number(sortOrder);
-    if (!Number.isInteger(order) || order < 0 || order > 10000) { setError('Sort order must be a whole number from 0 to 10000.'); return; }
-    if (kind === 'TEXT' && !title.trim()) { setError('Text banners require a title.'); return; }
-    if (kind === 'IMAGE' && !imageUrl.trim()) { setError('Choose an image before saving an image banner.'); return; }
+    if (!Number.isInteger(order) || order < 0 || order > 10000) {
+      setError('Sort order must be a whole number from 0 to 10000.');
+      return;
+    }
+    if (title.trim().length < 3) {
+      setError('Campaigns require a title of at least 3 characters.');
+      return;
+    }
+    if (kind === 'IMAGE' && !imageUrl.trim()) {
+      setError('Choose or generate artwork before saving an image campaign.');
+      return;
+    }
+
+    let normalizedStartsAt: string | null = null;
+    let normalizedEndsAt: string | null = null;
+    try {
+      normalizedStartsAt = normalizeCampaignDate(startsAt, 'Start time');
+      normalizedEndsAt = normalizeCampaignDate(endsAt, 'End time');
+      if (normalizedStartsAt && normalizedEndsAt && Date.parse(normalizedEndsAt) <= Date.parse(normalizedStartsAt)) {
+        throw new Error('Campaign end time must be later than its start time.');
+      }
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'Check the campaign schedule.');
+      return;
+    }
 
     setWorking(true);
     setError(null);
     try {
-      await upsertAdminHomePromotion({ publicId: promotion?.public_id, bannerKind: kind, title: title || null, body: body || null, imageUrl: kind === 'IMAGE' ? imageUrl : null, targetPath, status, sortOrder: order });
-      await onSaved(status === 'PUBLISHED' ? 'Promotion is now live on Home.' : status === 'ARCHIVED' ? 'Promotion archived and removed from Home.' : 'Promotion saved as a draft.');
+      await upsertAdminHomePromotion({
+        publicId: promotion?.public_id,
+        bannerKind: kind,
+        title: title.trim(),
+        body: body || null,
+        imageUrl: kind === 'IMAGE' ? imageUrl : null,
+        targetPath,
+        status,
+        sortOrder: order,
+        startsAt: normalizedStartsAt,
+        endsAt: normalizedEndsAt,
+      });
+      await onSaved(status === 'PUBLISHED'
+        ? 'Campaign published to the Home carousel.'
+        : status === 'ARCHIVED'
+          ? 'Campaign archived and removed from Home.'
+          : 'Campaign saved as a draft.');
     } catch (value) {
-      setError(value instanceof Error ? value.message : 'Promotion could not be saved.');
+      setError(value instanceof Error ? value.message : 'Campaign could not be saved.');
     } finally {
       setWorking(false);
     }
@@ -218,27 +282,55 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
   return (
     <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.md, paddingBottom: theme.spacing.md }}>
       <VadSegmentedControl value={kind} options={bannerKinds} onChange={setKind} />
+
       {kind === 'IMAGE' ? (
         <View style={{ gap: theme.spacing.sm }}>
-          {imageUrl ? <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: '100%', height: 118, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} /> : (
-            <VadCard variant="muted" style={{ minHeight: 82, justifyContent: 'center' }}><VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>No banner image selected</VadText></VadCard>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: '100%', height: 148, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
+          ) : (
+            <VadCard variant="muted" style={{ minHeight: 92, justifyContent: 'center' }}>
+              <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>Generate or upload campaign artwork to preview it here.</VadText>
+            </VadCard>
           )}
-          <VadButton label={imageUrl ? 'Replace image' : 'Choose image'} variant="secondary" size="small" loading={uploading} onPress={() => void chooseImage()} />
-          <VadInput label="Admin label (optional)" value={title} onChangeText={setTitle} placeholder="Label for this image banner" />
+          <VadButton label={imageUrl ? 'Replace uploaded image' : 'Upload image'} variant="secondary" size="small" loading={uploading} disabled={generating || working} onPress={() => void chooseImage()} />
+          {generatedAt ? <VadText variant="caption" tone="secondary">AI artwork generated {new Date(generatedAt).toLocaleString()}. Review the preview before publishing.</VadText> : null}
         </View>
-      ) : (
-        <><VadInput label="Banner title" value={title} onChangeText={setTitle} placeholder="Short promotional headline" /><VadInput label="Supporting text (optional)" value={body} onChangeText={setBody} placeholder="One short supporting line" /></>
-      )}
-      <VadInput label="Destination" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Choose where this banner should open, for example /markets." />
+      ) : null}
+
+      <VadInput label="Campaign title" value={title} onChangeText={setTitle} placeholder="A short campaign headline" />
+      <VadInput label="Supporting copy (optional)" value={body} onChangeText={setBody} placeholder="What should people know about this campaign?" multiline />
+      <VadInput label="AI visual direction (optional)" value={visualDirection} onChangeText={setVisualDirection} placeholder="E.g. cinematic football stadium, indigo lighting" hint="The image is generated without text or buttons; campaign copy stays in the app interface." />
+      <VadButton
+        label={kind === 'IMAGE' ? imageUrl ? 'Regenerate artwork with AI' : 'Generate artwork with AI' : 'Generate image campaign with AI'}
+        variant="secondary"
+        loading={generating}
+        disabled={uploading || working || title.trim().length < 3}
+        onPress={() => void generateArtwork()}
+      />
+
+      <VadInput label="Campaign destination" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Choose the real VAD screen this campaign should open, for example /markets." />
       <VadInput label="Sort order" value={sortOrder} onChangeText={(value) => setSortOrder(value.replace(/\D/g, ''))} keyboardType="number-pad" hint="Lower numbers appear earlier in the carousel." />
-      {error ? <VadErrorState title="Promotion not saved" message={error} /> : null}
+      <VadInput label="Starts at (optional, UTC ISO 8601)" value={startsAt} onChangeText={setStartsAt} placeholder="2026-11-01T09:00:00Z" autoCapitalize="none" autoCorrect={false} hint="Leave empty to start immediately when published." />
+      <VadInput label="Ends at (optional, UTC ISO 8601)" value={endsAt} onChangeText={setEndsAt} placeholder="2026-11-08T23:59:00Z" autoCapitalize="none" autoCorrect={false} hint="Leave empty for no scheduled end." />
+
+      {error ? <VadErrorState title="Campaign not saved" message={error} /> : null}
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-        <VadButton label="Save draft" variant="secondary" loading={working} disabled={uploading} onPress={() => void save('DRAFT')} style={{ flex: 1 }} />
-        <VadButton label="Publish" loading={working} disabled={uploading} onPress={() => void save('PUBLISHED')} style={{ flex: 1 }} />
+        <VadButton label="Save draft" variant="secondary" loading={working} disabled={uploading || generating} onPress={() => void save('DRAFT')} style={{ flex: 1 }} />
+        <VadButton label="Publish" loading={working} disabled={uploading || generating} onPress={() => void save('PUBLISHED')} style={{ flex: 1 }} />
       </View>
-      {promotion ? <VadButton label="Archive promotion" variant="ghost" disabled={working || uploading} onPress={() => void save('ARCHIVED')} /> : null}
+      {promotion ? <VadButton label="Archive campaign" variant="ghost" disabled={working || uploading || generating} onPress={() => void save('ARCHIVED')} /> : null}
     </ScrollView>
   );
+}
+
+function normalizeCampaignDate(value: string, label: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const timestamp = Date.parse(trimmed);
+  if (!Number.isFinite(timestamp)) {
+    throw new Error(`${label} must be a valid date/time. Use an ISO 8601 value such as 2026-11-01T09:00:00Z.`);
+  }
+  return new Date(timestamp).toISOString();
 }
 
 function NoticeEditor({ notices, onSaved }: { notices: PublicNotice[]; onSaved: (message: string) => Promise<void> }) {
