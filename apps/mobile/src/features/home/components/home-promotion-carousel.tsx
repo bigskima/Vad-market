@@ -8,6 +8,7 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
+import { VadChip } from '@/components/ui/vad-chip';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -146,6 +147,7 @@ export function HomePromotionCarousel({
                   }}
                 />
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-start', paddingHorizontal: density.cardPadding, paddingVertical: density.compact ? 8 : 10, paddingRight: density.cardPadding + 18, gap: 5 }}>
+                  {promotion.tag ? <VadChip label={promotion.tag} tone="brand" /> : null}
                   {promotion.title ? (
                     <VadText variant="heading" numberOfLines={2} adjustsFontSizeToFit style={{ color: '#FFFFFF', fontSize: density.compact ? 15 : 18, lineHeight: density.compact ? 19 : 22 }}>
                       {promotion.title}
@@ -173,6 +175,7 @@ export function HomePromotionCarousel({
                   gap: 5,
                 }}
               >
+                {promotion.tag ? <VadChip label={promotion.tag} tone="brand" /> : null}
                 {promotion.title ? (
                   <VadText
                     variant="heading"
