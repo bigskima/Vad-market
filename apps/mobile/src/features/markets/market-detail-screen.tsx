@@ -724,9 +724,10 @@ function MarketContextPanel({ market }: { market: MarketCatalogItem }) {
             accessibilityRole="button"
             accessibilityLabel={expanded ? 'Show fewer market details' : `Show ${hiddenCount} more market details`}
             onPress={() => setExpanded((current) => !current)}
-            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 3, opacity: pressed ? 0.72 : 1 })}
+            hitSlop={8}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 4, paddingVertical: 8, minHeight: 40, opacity: pressed ? 0.72 : 1 })}
           >
-            <VadText variant="caption" tone="brand">{expanded ? 'Show less' : `+${hiddenCount} more`}</VadText>
+            <VadText variant="label" tone="brand">{expanded ? 'Show fewer details' : `Show ${hiddenCount} more`}</VadText>
             <View style={{ transform: [{ rotate: expanded ? '-90deg' : '90deg' }] }}>
               <VadIcon name="chevronRight" size={14} tone="brand" />
             </View>
@@ -750,7 +751,7 @@ function MarketContextPanel({ market }: { market: MarketCatalogItem }) {
             }}
           >
             <VadText variant="caption" tone="tertiary" numberOfLines={1}>{contextLabel(entry.key)}</VadText>
-            <VadText variant="bodyStrong" numberOfLines={expanded ? undefined : 1}>{entry.value}</VadText>
+            <VadText variant="bodyStrong" numberOfLines={expanded ? undefined : 2}>{entry.value}</VadText>
           </View>
         ))}
       </View>
