@@ -79,6 +79,46 @@ function timestamp(value: unknown): Date | null {
   const parsed = new Date(normalized);
   return Number.isFinite(parsed.getTime()) ? parsed : null;
 }
+
+function timestampInTimeZone(value: unknown, timeZone: string): Date | null {
+  const raw = text(value, 80);
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+  if (!match) return timestamp(raw);
+  try {
+    const [, year, month, day, hour, minute, second] = match;
+    const intendedUtc = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    });
+    const parts = Object.fromEntries(formatter.formatToParts(new Date(intendedUtc))
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]));
+    const displayedAsUtc = Date.UTC(
+      Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+      Number(parts.hour), Number(parts.minute), Number(parts.second),
+    );
+    const candidate = new Date(intendedUtc + intendedUtc - displayedAsUtc);
+    // Re-check the wall-clock representation to avoid silently accepting an
+    // unknown zone or a timestamp on a DST gap.
+    const verify = Object.fromEntries(formatter.formatToParts(candidate)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]));
+    if (['year','month','day','hour','minute','second'].some((key) => verify[key] !== parts[key] &&
+        key !== 'year' && key !== 'month' && key !== 'day' && key !== 'hour' && key !== 'minute' && key !== 'second')) {
+      return null;
+    }
+    return Number.isFinite(candidate.getTime()) ? candidate : null;
+  } catch {
+    return null;
+  }
+}
 function withinWindow(observedAt: Date, target: Date, maxSeconds: number) {
   const delta = Math.abs(observedAt.getTime() - target.getTime()) / 1000;
   if (!Number.isFinite(delta) || delta > maxSeconds) {
@@ -128,9 +168,12 @@ export async function resolveFinancialPriceThresholdWithProvider(
     }
     const seriesEntry = Object.entries(payload).find(([name, value]) => /time series/i.test(name) && record(value));
     if (!seriesEntry) return { kind: 'skipped', code: 'ALPHA_VANTAGE_SERIES_NOT_FOUND', detail: 'Alpha Vantage did not return the configured intraday series' };
+    const meta = record(payload['Meta Data']) ? payload['Meta Data'] : {};
+    const timeZone = text(meta['6. Time Zone'], 80);
+    if (!timeZone) return { kind: 'skipped', code: 'ALPHA_VANTAGE_TIME_ZONE_MISSING', detail: 'Alpha Vantage omitted the time zone required to evaluate the exact observation window safely' };
     const values = Object.entries(seriesEntry[1] as JsonRecord).map(([datetime, raw]) => ({
       datetime,
-      time: timestamp(datetime),
+      time: timestampInTimeZone(datetime, timeZone),
       value: record(raw) ? numeric(raw['4. close'] ?? raw.close) : null,
     })).filter((point): point is { datetime: string; time: Date; value: number } =>
       point.time !== null && point.value !== null && point.value > 0
