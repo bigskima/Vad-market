@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -607,7 +607,7 @@ function ProgressiveMarketSection({
   subtitle: string;
   expanded: boolean;
   onPress: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const theme = useVadTheme();
   return (
