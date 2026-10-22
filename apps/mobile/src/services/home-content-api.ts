@@ -235,7 +235,7 @@ export async function upsertAdminHomePromotion(input: {
   if (!isSafeInternalRoute(input.targetPath)) {
     throw new Error('Enter a valid destination inside VAD, for example /markets.');
   }
-  const { data, error } = await supabase.rpc('admin_upsert_home_promotion_campaign', {
+  const { data, error } = await supabase.rpc('admin_upsert_home_promotion_campaign_with_tag', {
     p_public_id: input.publicId ?? null,
     p_banner_kind: input.bannerKind,
     p_title: input.title?.trim() || null,
