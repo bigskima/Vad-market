@@ -444,3 +444,13 @@ enabled = true
 # create trades, write market observations, resolve outcomes or settle positions.
 verify_jwt = false
 entrypoint = "./functions/crypto-market-data/index.ts"
+
+[functions.sports-fixture-discovery]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/sports-fixture-discovery/index.ts"
+
+[functions.sports-market-draft]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/sports-market-draft/index.ts"

@@ -10,6 +10,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { AdminSportsFixturePicker } from './admin-sports-fixture-picker';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   createAdminCatalogMarket,
@@ -25,6 +26,10 @@ import {
   getCryptoMarketPrices,
   type CryptoMarketQuote,
 } from '@/services/crypto-market-data-api';
+import {
+  createAdminSportsMarketDraft,
+  type AdminSportsFixture,
+} from '@/services/admin-sports-fixture-api';
 import {
   createAdminCustomMarket,
   createAdminGuidedMarket,
@@ -72,6 +77,10 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [categoryCode, setCategoryCode] = useState('');
   const [marketTypeCode, setMarketTypeCode] = useState('');
   const [details, setDetails] = useState<Record<string, string>>({});
+  const [selectedFixture, setSelectedFixture] = useState<{ fixture: AdminSportsFixture; cacheKey: string } | null>(null);
+  const [sportsDraftLoading, setSportsDraftLoading] = useState(false);
+  const [sportsDraftNotice, setSportsDraftNotice] = useState<string | null>(null);
+  const sportsDraftRequest = useRef(0);
   const [title, setTitle] = useState('');
   const [titleEdited, setTitleEdited] = useState(false);
   const [description, setDescription] = useState('');
@@ -187,6 +196,28 @@ export function AdminMarketCreateWorkspaceCatalog() {
     : options?.guided.football.automaticProductionAvailable === true;
   const footballCompetitions = options?.guided.football.competitions ?? [];
 
+  const selectedFootballCompetition = useMemo(() => {
+    const value = competition.trim().toLocaleLowerCase();
+    if (!value) return null;
+    return sportsTaxonomy.competitions.find((item) =>
+      item.status === 'ACTIVE'
+      && item.sportCode === 'FOOTBALL'
+      && [item.name, ...(item.aliases ?? [])].some((alias) => alias.trim().toLocaleLowerCase() === value),
+    ) ?? null;
+  }, [competition, sportsTaxonomy.competitions]);
+  const selectedGeneralSport = useMemo(
+    () => sportsTaxonomy.sports.find((item) => item.status === 'ACTIVE' && item.name === details.sport) ?? null,
+    [details.sport, sportsTaxonomy.sports],
+  );
+  const selectedGeneralCompetition = useMemo(
+    () => sportsTaxonomy.competitions.find((item) =>
+      item.status === 'ACTIVE'
+      && item.sportCode === selectedGeneralSport?.code
+      && item.name === details.competition,
+    ) ?? null,
+    [details.competition, selectedGeneralSport?.code, sportsTaxonomy.competitions],
+  );
+
   const scheduleValid = [opensAt, closesAt, resolvesAfter].every((value) => value && Number.isFinite(Date.parse(value)))
     && Date.parse(closesAt) > Date.parse(opensAt)
     && Date.parse(resolvesAfter) >= Date.parse(closesAt);
@@ -216,6 +247,10 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const effectiveTitle = !titleEdited && suggestedTitle ? suggestedTitle : title;
 
   function clearMarketDetails() {
+    sportsDraftRequest.current += 1;
+    setSelectedFixture(null);
+    setSportsDraftLoading(false);
+    setSportsDraftNotice(null);
     setDetails({});
     setTitle('');
     setTitleEdited(false);
@@ -251,19 +286,123 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setError(null);
   }
 
-  function setDetail(key: string, value: string) {
-    setDetails((current) => ({ ...current, [key]: value }));
+  function invalidateSportsDraft(clearSelectedFixture = false) {
+    sportsDraftRequest.current += 1;
+    setSportsDraftLoading(false);
+    setSportsDraftNotice(null);
     setTitleEdited(false);
+    if (clearSelectedFixture) setSelectedFixture(null);
+  }
+
+  function setDetail(key: string, value: string) {
+    invalidateSportsDraft(key === 'sport' || key === 'competition' || key === 'competitor_a' || key === 'competitor_b');
+    setDetails((current) => ({ ...current, [key]: value }));
     setError(null);
   }
 
   function updateMatchStart(value: string) {
+    invalidateSportsDraft(true);
     setMatchStartsAt(value);
     setError(null);
     const start = Date.parse(value);
     if (!Number.isFinite(start)) return;
     if (!closesAt) setClosesAt(new Date(start).toISOString());
     if (!resolvesAfter) setResolvesAfter(new Date(start + (2 * 60 + 15) * 60 * 1000).toISOString());
+  }
+
+  function chooseSportsFixture(fixture: AdminSportsFixture, cacheKey: string) {
+    sportsDraftRequest.current += 1;
+    setSportsDraftLoading(false);
+    setSelectedFixture({ fixture, cacheKey });
+    setSportsDraftNotice(null);
+    setTitle('');
+    setTitleEdited(false);
+    setDescription('');
+    setResultCondition('');
+    setSourceName(fixture.sourceName);
+    setSourceUrl(fixture.sourceUrl);
+    setError(null);
+
+    const kickoff = Date.parse(fixture.startsAt);
+    if (Number.isFinite(kickoff)) {
+      setOpensAt(new Date().toISOString());
+      setClosesAt(new Date(kickoff).toISOString());
+      setResolvesAfter(new Date(kickoff + (2 * 60 + 15) * 60 * 1000).toISOString());
+    }
+
+    if (football) {
+      setCompetition(fixture.competitionName);
+      setHomeTeam(fixture.homeTeam);
+      setAwayTeam(fixture.awayTeam);
+      setMatchStartsAt(fixture.startsAt);
+    } else {
+      const sportName = sportsTaxonomy.sports.find((item) => item.code === fixture.sportCode)?.name ?? fixture.sportCode;
+      setDetails((current) => ({
+        ...current,
+        sport: sportName,
+        competition: fixture.competitionName,
+        competitor_a: fixture.homeTeam,
+        competitor_b: fixture.awayTeam,
+      }));
+    }
+  }
+
+  async function generateSportsMarketDraft() {
+    if (!selectedFixture || !marketType) return;
+    const requestId = ++sportsDraftRequest.current;
+    setSportsDraftLoading(true);
+    setSportsDraftNotice(null);
+    setError(null);
+    try {
+      const draft = await createAdminSportsMarketDraft({
+        cacheKey: selectedFixture.cacheKey,
+        fixtureId: selectedFixture.fixture.fixtureId,
+        marketTypeCode: marketType.code,
+        selectedResult: football ? prediction : 'YES',
+      });
+      if (requestId !== sportsDraftRequest.current) return;
+      setTitle(draft.title);
+      setTitleEdited(true);
+      setDescription(draft.description);
+      if (!football) setResultCondition(draft.resolutionRules);
+      setSportsDraftNotice(
+        'Prepared by ' + draft.providerName + ' (' + draft.modelCode + '). Human review required before market creation. '
+        + (draft.riskNotes ? 'Review note: ' + draft.riskNotes + ' ' : '')
+        + 'Suggested resolution rules: ' + draft.resolutionRules,
+      );
+    } catch (value) {
+      if (requestId !== sportsDraftRequest.current) return;
+      setError(value instanceof Error ? value.message : 'The AI market draft could not be prepared.');
+    } finally {
+      if (requestId === sportsDraftRequest.current) setSportsDraftLoading(false);
+    }
+  }
+
+  function renderSportsDraftControls() {
+    if (!selectedFixture) return null;
+    return (
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadCard variant="muted" style={{ gap: 4 }}>
+          <VadText variant="bodyStrong">Fixture selected</VadText>
+          <VadText>{selectedFixture.fixture.homeTeam} vs {selectedFixture.fixture.awayTeam}</VadText>
+          <VadText variant="caption" tone="secondary">
+            {selectedFixture.fixture.competitionName} · {new Date(selectedFixture.fixture.startsAt).toLocaleString()} · Source: {selectedFixture.fixture.sourceName}
+          </VadText>
+        </VadCard>
+        <VadButton
+          label={sportsDraftLoading ? 'Preparing AI draft…' : 'Draft market with AI'}
+          onPress={() => void generateSportsMarketDraft()}
+          disabled={sportsDraftLoading || working || !marketType}
+          loading={sportsDraftLoading}
+        />
+        {sportsDraftNotice ? (
+          <VadCard variant="outlined" style={{ gap: 4 }}>
+            <VadText variant="bodyStrong">AI draft — review required</VadText>
+            <VadText variant="caption" tone="secondary">{sportsDraftNotice}</VadText>
+          </VadCard>
+        ) : null}
+      </View>
+    );
   }
 
   function continueFromMarket() {
@@ -450,26 +589,35 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
               {football ? (
                 <View style={{ gap: theme.spacing.md }}>
-                  <VadInput label="Competition" value={competition} onChangeText={(value) => { setCompetition(value); setTitleEdited(false); }} placeholder="La Liga" />
+                  <VadInput label="Competition" value={competition} onChangeText={(value) => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setCompetition(value); setTitleEdited(false); }} placeholder="La Liga" />
                   {footballCompetitions.length ? (
                     <View style={{ gap: 7 }}>
                       <VadText variant="caption" tone="secondary">Competitions available for automatic checking</VadText>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
-                        {footballCompetitions.map((item) => <VadChip key={item} label={item} selected={competition === item} onPress={() => { setCompetition(item); setTitleEdited(false); }} />)}
+                        {footballCompetitions.map((item) => <VadChip key={item} label={item} selected={competition === item} onPress={() => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setCompetition(item); setTitleEdited(false); }} />)}
                       </View>
                     </View>
                   ) : null}
-                  <VadInput label="Home team" value={homeTeam} onChangeText={(value) => { setHomeTeam(value); setTitleEdited(false); }} placeholder="Real Betis" />
-                  <VadInput label="Away team" value={awayTeam} onChangeText={(value) => { setAwayTeam(value); setTitleEdited(false); }} placeholder="Getafe" />
+                  <AdminSportsFixturePicker
+                    sportCode="FOOTBALL"
+                    competitionCode={selectedFootballCompetition?.code ?? ''}
+                    competitionName={selectedFootballCompetition?.name ?? competition.trim()}
+                    providerCode={selectedFootballCompetition?.providerCode}
+                    providerCompetitionCode={selectedFootballCompetition?.providerCompetitionCode}
+                    selectedFixtureId={selectedFixture?.fixture.fixtureId}
+                    onSelect={chooseSportsFixture}
+                  />
+                  <VadInput label="Home team" value={homeTeam} onChangeText={(value) => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setHomeTeam(value); setTitleEdited(false); }} placeholder="Real Betis" />
+                  <VadInput label="Away team" value={awayTeam} onChangeText={(value) => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setAwayTeam(value); setTitleEdited(false); }} placeholder="Getafe" />
                   <FieldGroup label="Prediction">
-                    <VadChip label="Home team wins" selected={prediction === 'HOME_WIN'} onPress={() => { setPrediction('HOME_WIN'); setTitleEdited(false); }} />
-                    <VadChip label="Draw" selected={prediction === 'DRAW'} onPress={() => { setPrediction('DRAW'); setTitleEdited(false); }} />
-                    <VadChip label="Away team wins" selected={prediction === 'AWAY_WIN'} onPress={() => { setPrediction('AWAY_WIN'); setTitleEdited(false); }} />
+                    <VadChip label="Home team wins" selected={prediction === 'HOME_WIN'} onPress={() => { invalidateSportsDraft(); setPrediction('HOME_WIN'); }} />
+                    <VadChip label="Draw" selected={prediction === 'DRAW'} onPress={() => { invalidateSportsDraft(); setPrediction('DRAW'); }} />
+                    <VadChip label="Away team wins" selected={prediction === 'AWAY_WIN'} onPress={() => { invalidateSportsDraft(); setPrediction('AWAY_WIN'); }} />
                   </FieldGroup>
                   <VadDateTimeField label="Match starts" value={matchStartsAt} onChange={updateMatchStart} hint="VAD identifies the fixture from the competition, teams and kickoff time." />
                   <FieldGroup label="Result checking">
-                    <VadChip label={`Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`} selected={resultChecking === 'AUTOMATIC'} tone={resultChecking === 'AUTOMATIC' ? 'brand' : 'neutral'} onPress={() => setResultChecking('AUTOMATIC')} />
-                    <VadChip label="Verified result" selected={resultChecking === 'VERIFIED'} tone={resultChecking === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => setResultChecking('VERIFIED')} />
+                    <VadChip label={`Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`} selected={resultChecking === 'AUTOMATIC'} tone={resultChecking === 'AUTOMATIC' ? 'brand' : 'neutral'} onPress={() => { invalidateSportsDraft(); setResultChecking('AUTOMATIC'); }} />
+                    <VadChip label="Verified result" selected={resultChecking === 'VERIFIED'} tone={resultChecking === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => { invalidateSportsDraft(); setResultChecking('VERIFIED'); }} />
                   </FieldGroup>
                   {resultChecking === 'VERIFIED' ? <SourceFields label="Official result source" sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} /> : null}
                 </View>
@@ -487,7 +635,16 @@ export function AdminMarketCreateWorkspaceCatalog() {
                         <FieldGroup label="Competition / league">
                           {sportsTaxonomy.competitions.filter((item) => item.status === 'ACTIVE' && (!details.sport || item.sportCode === sportsTaxonomy.sports.find((sport) => sport.name === details.sport)?.code)).map((item) => <VadChip key={`${item.sportCode}:${item.code}`} label={item.name} selected={details.competition === item.name} tone={details.competition === item.name ? 'brand' : 'neutral'} onPress={() => setDetail('competition', item.name)} />)}
                         </FieldGroup>
-                        <VadText variant="caption" tone="secondary">League and sport choices come from the VAD database. This general match market uses the verified-source workflow; automatic football results are offered by the dedicated football market type when a supported competition is configured.</VadText>
+                        <VadText variant="caption" tone="secondary">Sport and competition choices come from the VAD database. Result handling stays with the configured VAD template and source.</VadText>
+                        <AdminSportsFixturePicker
+                          sportCode={selectedGeneralSport?.code ?? ''}
+                          competitionCode={selectedGeneralCompetition?.code ?? ''}
+                          competitionName={selectedGeneralCompetition?.name ?? details.competition ?? ''}
+                          providerCode={selectedGeneralCompetition?.providerCode}
+                          providerCompetitionCode={selectedGeneralCompetition?.providerCompetitionCode}
+                          selectedFixtureId={selectedFixture?.fixture.fixtureId}
+                          onSelect={chooseSportsFixture}
+                        />
                       </View>
                     ) : (
                     <VadInput
@@ -519,7 +676,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                       <VadText variant="caption" tone="secondary">The observation time is the “Check result after” time in the next step. Oracle resolution uses historical observations at that time—not the current live chart.</VadText>
                     </View>
                   ) : null}
-                  {!marketType.conditionTemplate.trim() ? (
+                  {(!marketType.conditionTemplate.trim() || (category?.code === 'SPORTS' && !football)) ? (
                     <VadInput label="What must happen for YES to win?" value={resultCondition} onChangeText={setResultCondition} multiline placeholder="Describe the objective outcome in plain language." />
                   ) : null}
                   <VadCard variant="muted" style={{ gap: 4 }}>
@@ -531,6 +688,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
               ) : null}
             </View>
           ) : null}
+
+          {category?.code === 'SPORTS' ? renderSportsDraftControls() : null}
 
           <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write one clear YES/NO question.'} />
           <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
