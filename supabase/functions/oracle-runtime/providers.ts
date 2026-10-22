@@ -544,7 +544,7 @@ export async function resolveCryptoWithProvider(
     case 'COINBASE':
     case 'KRAKEN':
     case 'TWELVE_DATA': return resolveFinancialPriceThresholdWithProvider(provider, resource, {
-      resolverType: 'FINANCIAL_PRICE_THRESHOLD_V1',
+      resolverType: spec.resolverType,
       symbol: spec.asset,
       quote: spec.quote,
       operator: spec.operator,
