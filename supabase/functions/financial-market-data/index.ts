@@ -182,7 +182,7 @@ async function yahooChartQuote(symbol: string, name: string, source: Source): Pr
 }
 
 function yahooCommodityTicker(symbol: string) {
-  const normalized = symbol.toUpperCase().replace(/\\s+/g, '');
+  const normalized = symbol.toUpperCase().replace(/\s+/g, '');
   const aliases: Record<string, string> = {
     'GOLD': 'GC=F', 'XAU/USD': 'GC=F', 'XAUUSD': 'GC=F',
     'SILVER': 'SI=F', 'XAG/USD': 'SI=F', 'XAGUSD': 'SI=F',
@@ -274,9 +274,9 @@ async function freeFredCsvQuote(source: Source, series: JsonRecord): Promise<Ass
   const url = new URL('/graph/fredgraph.csv', 'https://fred.stlouisfed.org');
   url.searchParams.set('id', id);
   const raw = await requestText(url, 'fred.stlouisfed.org', '/graph/fredgraph.csv');
-  const lines = raw.replace(/^\\uFEFF/, '').trim().split(/\\r?\\n/);
+  const lines = raw.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
   if (lines.length < 2 || !/^observation_date,?/i.test(lines[0])) throw new Error('FRED returned an invalid public CSV export for ' + id + '.');
-  const observations = lines.slice(1).map((line) => {
+  }).filter((item) => /^\d{4}-\d{2}-\d{2}$/.test(item.date) && item.value !== null);
     const [date, value] = line.split(',');
     const parsed = numberValue(value);
     return { date: textValue(date, 30), value: parsed };
