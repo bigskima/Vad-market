@@ -53,6 +53,7 @@ export function PaymentReadinessCard({
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<PaymentQuote | null>(null);
   const [createdIntentId, setCreatedIntentId] = useState<string | null>(null);
+  const [createdQuote, setCreatedQuote] = useState<PaymentQuote | null>(null);
   const [working, setWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -86,6 +87,7 @@ export function PaymentReadinessCard({
 
   function resetFlow() {
     setCreatedIntentId(null);
+    setCreatedQuote(null);
     setQuote(null);
     setAmount('');
     setActionError(null);
@@ -136,6 +138,7 @@ export function PaymentReadinessCard({
 
     try {
       const publicId = await createPaymentIntent(mode, Number(amount));
+      setCreatedQuote(quote);
       setCreatedIntentId(publicId);
       setQuote(null);
     } catch (error) {
@@ -163,6 +166,7 @@ export function PaymentReadinessCard({
   if (createdIntentId) {
     return (
       <View style={{ gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
+        <PaymentProgress stage={3} />
         <VadCard variant="raised" style={{ borderColor: theme.colors.yes, gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
           <VadChip label={mode === 'DEPOSIT' ? 'DEPOSIT STARTED' : 'WITHDRAWAL STARTED'} tone="yes" />
           <View style={{ gap: 2 }}>
@@ -173,8 +177,16 @@ export function PaymentReadinessCard({
               We&apos;ll keep the status updated here and in your wallet activity.
             </VadText>
           </View>
+          {createdQuote ? (
+            <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: theme.spacing.xs }}>
+              <VadText variant="caption" tone="tertiary">PAYMENT SUMMARY</VadText>
+              <MoneyRow label={mode === 'DEPOSIT' ? 'Deposit amount' : 'Withdrawal amount'} value={'₦' + Number(createdQuote.amount).toLocaleString()} />
+              <MoneyRow label="VAD platform fee" value={'₦' + Number(createdQuote.feeAmount ?? 0).toLocaleString()} />
+              <MoneyRow label={mode === 'DEPOSIT' ? 'Expected wallet credit after VAD fee' : 'Expected amount after VAD fee'} value={'₦' + Number(createdQuote.netAmount ?? createdQuote.amount).toLocaleString()} emphasized />
+            </View>
+          ) : null}
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 1 }}>
-            <VadText variant="caption" tone="tertiary">REFERENCE</VadText>
+            <VadText variant="caption" tone="tertiary">REFERENCE ID</VadText>
             <VadText variant="bodyStrong" selectable>{createdIntentId}</VadText>
           </View>
         </VadCard>
