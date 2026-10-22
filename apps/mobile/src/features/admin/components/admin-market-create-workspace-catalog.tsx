@@ -30,6 +30,7 @@ import {
   createAdminSportsMarketDraft,
   type AdminSportsFixture,
 } from '@/services/admin-sports-fixture-api';
+import { createAdminCryptoMarketDraft } from '@/services/crypto-market-draft-api';
 import {
   createAdminCustomMarket,
   createAdminGuidedMarket,
@@ -61,6 +62,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [sportsTaxonomy, setSportsTaxonomy] = useState<SportsMarketTaxonomy>({ sports: [], competitions: [] });
   const [cryptoSearch, setCryptoSearch] = useState('');
   const [cryptoOptions, setCryptoOptions] = useState<CryptoMarketQuote[]>([]);
+  const [cryptoOptionsLoading, setCryptoOptionsLoading] = useState(false);
   const [selectedCryptoAsset, setSelectedCryptoAsset] = useState<CryptoMarketQuote | null>(null);
   const [cryptoAssetCheck, setCryptoAssetCheck] = useState<{ supported: boolean; reason?: string; feedSymbol?: string } | null>(null);
   const [cryptoAssetCheckLoading, setCryptoAssetCheckLoading] = useState(false);
@@ -81,6 +83,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [sportsDraftLoading, setSportsDraftLoading] = useState(false);
   const [sportsDraftNotice, setSportsDraftNotice] = useState<string | null>(null);
   const sportsDraftRequest = useRef(0);
+  const [cryptoDraftLoading, setCryptoDraftLoading] = useState(false);
+  const [cryptoDraftNotice, setCryptoDraftNotice] = useState<string | null>(null);
+  const cryptoDraftRequest = useRef(0);
   const [title, setTitle] = useState('');
   const [titleEdited, setTitleEdited] = useState(false);
   const [description, setDescription] = useState('');
@@ -129,20 +134,40 @@ export function AdminMarketCreateWorkspaceCatalog() {
   }, []);
 
   useEffect(() => {
-    if (!(creationStyle === 'GUIDED' && marketTypeCode === 'CRYPTO_PRICE_THRESHOLD') || cryptoSearch.trim().length < 2) {
+    if (!(creationStyle === 'GUIDED' && marketTypeCode === 'CRYPTO_PRICE_THRESHOLD')) {
+      setCryptoOptions([]);
+      setCryptoOptionsLoading(false);
+      return;
+    }
+    const query = cryptoSearch.trim();
+    if (query.length === 1) {
+      setCryptoOptions([]);
+      setCryptoOptionsLoading(false);
       return;
     }
     let active = true;
     const timer = setTimeout(() => {
-      void getCryptoMarketPrices({ page: 1, perPage: 8, query: cryptoSearch.trim() })
-        .then((result) => { if (active) setCryptoOptions(result.coins.slice(0, 8)); })
-        .catch(() => { if (active) setCryptoOptions([]); });
+      setCryptoOptionsLoading(true);
+      void getCryptoMarketPrices({
+        page: 1,
+        perPage: query ? 20 : 16,
+        ...(query ? { query } : {}),
+      })
+        .then((result) => { if (active) setCryptoOptions(result.coins.slice(0, 20)); })
+        .catch(() => { if (active) setCryptoOptions([]); })
+        .finally(() => { if (active) setCryptoOptionsLoading(false); });
     }, 250);
     return () => { active = false; clearTimeout(timer); };
   }, [cryptoSearch, creationStyle, marketTypeCode]);
 
   async function chooseCryptoAsset(coin: CryptoMarketQuote) {
     const requestId = ++cryptoAssetCheckRequest.current;
+    cryptoDraftRequest.current += 1;
+    setCryptoDraftLoading(false);
+    setCryptoDraftNotice(null);
+    setDescription('');
+    setResultCondition('');
+    setTitleEdited(false);
     setSelectedCryptoAsset(coin);
     setCryptoAssetCheck(null);
     setCryptoAssetCheckLoading(true);
@@ -248,6 +273,10 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   function clearMarketDetails() {
     sportsDraftRequest.current += 1;
+    cryptoDraftRequest.current += 1;
+    setCryptoDraftLoading(false);
+    setCryptoDraftNotice(null);
+    setCryptoOptionsLoading(false);
     setSelectedFixture(null);
     setSportsDraftLoading(false);
     setSportsDraftNotice(null);
@@ -296,6 +325,14 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   function setDetail(key: string, value: string) {
     invalidateSportsDraft(key === 'sport' || key === 'competition' || key === 'competitor_a' || key === 'competitor_b');
+    if (['asset_symbol', 'coingecko_id', 'operator', 'threshold'].includes(key)) {
+      cryptoDraftRequest.current += 1;
+      setCryptoDraftLoading(false);
+      setCryptoDraftNotice(null);
+      setTitleEdited(false);
+      setDescription('');
+      setResultCondition('');
+    }
     setDetails((current) => ({ ...current, [key]: value }));
     setError(null);
   }
@@ -376,6 +413,78 @@ export function AdminMarketCreateWorkspaceCatalog() {
     } finally {
       if (requestId === sportsDraftRequest.current) setSportsDraftLoading(false);
     }
+  }
+
+  async function generateCryptoMarketDraft() {
+    if (!selectedCryptoAsset) {
+      setError('Select a crypto asset from the live catalogue first.');
+      return;
+    }
+    if (cryptoAssetCheckLoading || !cryptoAssetCheck?.supported) {
+      setError(cryptoAssetCheck?.reason ?? 'Verify an exact Pyth/USD feed before drafting this market.');
+      return;
+    }
+    const threshold = details.threshold?.trim() ?? '';
+    if (!/^[0-9]+(?:\.[0-9]{1,18})?$/.test(threshold) || !Number.isFinite(Number(threshold)) || Number(threshold) <= 0) {
+      setError('Enter a valid positive USD price target before asking AI to prepare the draft.');
+      return;
+    }
+    const requestId = ++cryptoDraftRequest.current;
+    setCryptoDraftLoading(true);
+    setCryptoDraftNotice(null);
+    setError(null);
+    try {
+      const draft = await createAdminCryptoMarketDraft({
+        marketTypeCode: marketType?.code ?? 'CRYPTO_PRICE_THRESHOLD',
+        symbol: selectedCryptoAsset.symbol,
+        coinGeckoId: selectedCryptoAsset.id,
+        assetName: selectedCryptoAsset.name,
+        operator: details.operator ?? 'GTE',
+        threshold,
+        quote: 'USD',
+        sourceName: sourceName.trim() || 'Pyth Network + CoinGecko historical prices',
+        sourceUrl: sourceUrl.trim(),
+      });
+      if (requestId !== cryptoDraftRequest.current) return;
+      setTitle(draft.title);
+      setTitleEdited(true);
+      setDescription(draft.description);
+      setResultCondition(draft.resolutionRules);
+      setCryptoDraftNotice(
+        'Prepared by ' + draft.providerName + ' (' + draft.modelCode + '). Review the title, description and resolution rules before creating or publishing. '
+        + (draft.riskNotes ? 'Review note: ' + draft.riskNotes : ''),
+      );
+    } catch (value) {
+      if (requestId !== cryptoDraftRequest.current) return;
+      setError(value instanceof Error ? value.message : 'AI could not prepare the crypto market draft.');
+    } finally {
+      if (requestId === cryptoDraftRequest.current) setCryptoDraftLoading(false);
+    }
+  }
+
+  function renderCryptoDraftControls() {
+    if (!selectedCryptoAsset) return null;
+    const threshold = details.threshold?.trim() ?? '';
+    const targetValid = /^[0-9]+(?:\.[0-9]{1,18})?$/.test(threshold) && Number.isFinite(Number(threshold)) && Number(threshold) > 0;
+    return (
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadButton
+          label={cryptoDraftLoading ? 'Preparing AI draft…' : 'Draft crypto market with AI'}
+          onPress={() => void generateCryptoMarketDraft()}
+          disabled={cryptoDraftLoading || working || cryptoAssetCheckLoading || !cryptoAssetCheck?.supported || !targetValid}
+          loading={cryptoDraftLoading}
+        />
+        <VadText variant="caption" tone="secondary">
+          AI uses the selected asset, USD target and approved source configuration. It cannot publish or settle a market.
+        </VadText>
+        {cryptoDraftNotice ? (
+          <VadCard variant="outlined" style={{ gap: 4 }}>
+            <VadText variant="bodyStrong">AI draft — administrator review required</VadText>
+            <VadText variant="caption" tone="secondary">{cryptoDraftNotice}</VadText>
+          </VadCard>
+        ) : null}
+      </View>
+    );
   }
 
   function renderSportsDraftControls() {
@@ -659,11 +768,26 @@ export function AdminMarketCreateWorkspaceCatalog() {
                   {cryptoThreshold ? (
                     <View style={{ gap: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12, padding: theme.spacing.md }}>
                       <VadText variant="bodyStrong">Select a resolvable crypto asset</VadText>
-                      <VadText variant="caption" tone="secondary">Searches CoinGecko&apos;s live asset catalogue. VAD checks for an exact Pyth/USD historical feed before allowing creation.</VadText>
-                      <VadInput label="Search coin name or ticker" value={cryptoSearch} onChangeText={(value) => { setCryptoSearch(value); setCryptoOptions([]); setSelectedCryptoAsset(null); setCryptoAssetCheck(null); setCryptoAssetCheckLoading(false); cryptoAssetCheckRequest.current += 1; }} placeholder="Solana, SOL, Cardano, ADA…" />
+                      <VadText variant="caption" tone="secondary">The catalogue is populated by CoinGecko. Popular assets load automatically; search for other listings, then verify the exact Pyth/USD historical feed before creating a market.</VadText>
+                      <VadInput label="Search coin name or ticker" value={cryptoSearch} onChangeText={(value) => {
+                        setCryptoSearch(value);
+                        setCryptoOptions([]);
+                        setSelectedCryptoAsset(null);
+                        setCryptoAssetCheck(null);
+                        setCryptoAssetCheckLoading(false);
+                        cryptoAssetCheckRequest.current += 1;
+                        cryptoDraftRequest.current += 1;
+                        setCryptoDraftLoading(false);
+                        setCryptoDraftNotice(null);
+                        setTitleEdited(false);
+                        setDescription('');
+                        setResultCondition('');
+                        setDetails((current) => ({ ...current, asset_symbol: '', coingecko_id: '' }));
+                      }} placeholder="Solana, SOL, Cardano, ADA…" />
                       {cryptoOptions.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
                         {cryptoOptions.map((coin) => <VadChip key={coin.id} label={`${coin.name} (${coin.symbol.toUpperCase()})`} selected={selectedCryptoAsset?.id === coin.id} tone={selectedCryptoAsset?.id === coin.id ? 'brand' : 'neutral'} onPress={() => void chooseCryptoAsset(coin)} />)}
-                      </View> : cryptoSearch.trim().length >= 2 ? <VadText variant="caption" tone="secondary">No matching assets returned yet. Try a different name or ticker.</VadText> : null}
+                      </View> : cryptoOptionsLoading ? <VadText variant="caption" tone="secondary">Loading assets from CoinGecko…</VadText> : cryptoSearch.trim().length >= 2 ? <VadText variant="caption" tone="secondary">No matching assets returned. Try another name or ticker.</VadText> : cryptoSearch.trim().length === 1 ? <VadText variant="caption" tone="secondary">Enter at least two characters to search. Clear the field to browse popular assets.</VadText> : <VadText variant="caption" tone="secondary">The asset catalogue could not be loaded. Check the provider status and try again.</VadText>}
+                      {cryptoOptionsLoading && cryptoOptions.length ? <VadText variant="caption" tone="secondary">Refreshing catalogue…</VadText> : null}
                       {selectedCryptoAsset ? <VadCard variant="muted" style={{ gap: 4 }}>
                         <VadText variant="bodyStrong">{selectedCryptoAsset.name} ({selectedCryptoAsset.symbol.toUpperCase()})</VadText>
                         <VadText variant="caption" tone="secondary">CoinGecko ID: {selectedCryptoAsset.id} · Public spot: {selectedCryptoAsset.currentPrice.toLocaleString(undefined, { maximumFractionDigits: 8 })} USD</VadText>
@@ -690,6 +814,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           ) : null}
 
           {category?.code === 'SPORTS' ? renderSportsDraftControls() : null}
+          {cryptoThreshold ? renderCryptoDraftControls() : null}
 
           <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write one clear YES/NO question.'} />
           <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
