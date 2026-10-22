@@ -157,7 +157,11 @@ function PromotionSection({ promotions, onEdit }: { promotions: HomePromotion[];
                   ) : null}
                   <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                     <VadText variant="bodyStrong" numberOfLines={1}>{promotion.title || 'Image campaign'}</VadText>
-                    <VadText variant="caption" tone="secondary" numberOfLines={1}>{promotion.banner_kind} · {promotion.target_path}</VadText>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
+                      <VadText variant="caption" tone="secondary" numberOfLines={1}>{promotion.banner_kind}</VadText>
+                      {promotion.tag ? <VadChip label={promotion.tag} tone="brand" /> : null}
+                      <VadText variant="caption" tone="secondary" numberOfLines={1}>→ {promotion.target_path}</VadText>
+                    </View>
                     {promotion.starts_at || promotion.ends_at ? (
                       <VadText variant="caption" tone="secondary" numberOfLines={2}>
                         {promotion.starts_at ? `Starts ${new Date(promotion.starts_at).toLocaleString()}` : 'Starts when published'}
@@ -183,6 +187,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
   const [kind, setKind] = useState<BannerKind>(promotion?.banner_kind ?? 'TEXT');
   const [title, setTitle] = useState(promotion?.title ?? '');
   const [body, setBody] = useState(promotion?.body ?? '');
+  const [tag, setTag] = useState(promotion?.tag ?? '');
   const [imageUrl, setImageUrl] = useState(promotion?.image_url ?? '');
   const [targetPath, setTargetPath] = useState(promotion?.target_path ?? '/markets');
   const [sortOrder, setSortOrder] = useState(String(promotion?.sort_order ?? 100));
@@ -266,6 +271,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
         bannerKind: kind,
         title: title.trim(),
         body: body || null,
+        tag: tag.trim() || null,
         imageUrl: kind === 'IMAGE' ? imageUrl : null,
         targetPath,
         status,
@@ -305,6 +311,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
 
       <VadInput label="Campaign title" value={title} onChangeText={setTitle} placeholder="A short campaign headline" />
       <VadInput label="Supporting copy (optional)" value={body} onChangeText={setBody} placeholder="What should people know about this campaign?" multiline />
+      <VadInput label="Campaign tag (optional)" value={tag} onChangeText={setTag} placeholder="e.g. FEATURED, NEW, LIVE" maxLength={32} hint="Shown as a small badge above the campaign headline." />
       <VadInput label="AI visual direction (optional)" value={visualDirection} onChangeText={setVisualDirection} placeholder="E.g. cinematic football stadium, indigo lighting" hint="The image is generated without text or buttons; campaign copy stays in the app interface." />
       <VadButton
         label={kind === 'IMAGE' ? imageUrl ? 'Regenerate artwork with AI' : 'Generate artwork with AI' : 'Generate image campaign with AI'}
@@ -314,7 +321,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
         onPress={() => void generateArtwork()}
       />
 
-      <VadInput label="Campaign destination" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Choose the real VAD screen this campaign should open, for example /markets." />
+      <VadInput label="Target route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Internal VAD route opened when someone taps this banner, for example /markets." />
       <VadInput label="Sort order" value={sortOrder} onChangeText={(value) => setSortOrder(value.replace(/\D/g, ''))} keyboardType="number-pad" hint="Lower numbers appear earlier in the carousel." />
       <VadInput label="Starts at (optional, UTC ISO 8601)" value={startsAt} onChangeText={setStartsAt} placeholder="2026-11-01T09:00:00Z" autoCapitalize="none" autoCorrect={false} hint="Leave empty to start immediately when published." />
       <VadInput label="Ends at (optional, UTC ISO 8601)" value={endsAt} onChangeText={setEndsAt} placeholder="2026-11-08T23:59:00Z" autoCapitalize="none" autoCorrect={false} hint="Leave empty for no scheduled end." />
