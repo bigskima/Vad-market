@@ -261,6 +261,11 @@ export function eligibleProviders(event: DueOracleEvent, spec: ResolverSpec, pro
   return providers
     .filter((provider) => provider.environment === 'PRODUCTION')
     .filter((provider) => ['ACTIVE','DEGRADED'].includes(provider.status))
+    // Never attempt a settlement source until its secret/configuration is present.
+    .filter((provider) => provider.configured === true)
+    // A previously confirmed outage removes the provider from this run; UNKNOWN
+    // remains eligible because credential-only probes intentionally avoid spend.
+    .filter((provider) => !provider.healthStatus || !['UNAVAILABLE'].includes(String(provider.healthStatus).toUpperCase()))
     .filter((provider) => provider.capabilities.map((item) => String(item).toUpperCase()).includes(capability))
     .filter((provider) => policyCodes.size === 0 || policyCodes.has(provider.code.toUpperCase()))
     .sort((a, b) => {
