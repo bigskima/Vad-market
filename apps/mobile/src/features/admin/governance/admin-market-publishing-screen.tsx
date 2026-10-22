@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
@@ -40,6 +41,7 @@ export function AdminMarketPublishingScreen() {
   const [reason, setReason] = useState('');
   const [priority, setPriority] = useState<Priority>('STANDARD');
   const [working, setWorking] = useState(false);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async (background = false) => {
@@ -60,8 +62,29 @@ export function AdminMarketPublishingScreen() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  const ready = useMemo(() => rows.filter((row) => row.instrument_status === 'DRAFT' && row.event_status === 'APPROVED'), [rows]);
-  const scheduled = useMemo(() => rows.filter((row) => row.instrument_status === 'DRAFT' && row.event_status === 'SCHEDULED'), [rows]);
+  useEffect(() => {
+    const timer = setInterval(() => setClockNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // A draft is publishable only while its trading window is actually open.
+  // This prevents expired drafts from appearing to have a working Publish button.
+  const ready = useMemo(
+    () => rows.filter((row) =>
+      row.instrument_status === 'DRAFT'
+      && ['APPROVED', 'SCHEDULED'].includes(row.event_status)
+      && isPublishableNow(row, clockNow),
+    ),
+    [rows, clockNow],
+  );
+  const scheduled = useMemo(
+    () => rows.filter((row) => isBeforeOpen(row, clockNow)),
+    [rows, clockNow],
+  );
+  const expiredDrafts = useMemo(
+    () => rows.filter((row) => isExpiredDraft(row, clockNow)),
+    [rows, clockNow],
+  );
   const vad = useMemo(() => rows.filter((row) => row.instrument_status === 'OPEN' && row.is_vad_market), [rows]);
   const live = useMemo(() => rows.filter((row) => row.instrument_status === 'OPEN' && !row.is_vad_market), [rows]);
   const inactive = useMemo(() => rows.filter((row) => row.instrument_status === 'SUSPENDED' || row.instrument_status === 'CLOSED'), [rows]);
@@ -119,23 +142,57 @@ export function AdminMarketPublishingScreen() {
             Publishing makes an approved market live in All Markets and places it in VAD Markets. Featured and Trending rules are managed separately in Home Discovery.
           </VadText>
         </View>
-        <VadButton label="Refresh" variant="secondary" size="small" fullWidth={false} loading={refreshing} onPress={() => void load(true)} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+          <VadButton label="Create market" variant="primary" size="small" fullWidth={false} onPress={() => router.push('/admin/create-market')} />
+          <VadButton label="Refresh" variant="secondary" size="small" fullWidth={false} loading={refreshing} onPress={() => void load(true)} />
+        </View>
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
         <VadChip label={`${ready.length} ready`} tone={ready.length ? 'warning' : 'neutral'} />
         <VadChip label={`${vad.length} VAD Markets`} tone="brand" />
         <VadChip label={`${live.length} other live`} />
+        {expiredDrafts.length ? <VadChip label={`${expiredDrafts.length} expired draft${expiredDrafts.length === 1 ? '' : 's'}`} tone="warning" /> : null}
       </View>
 
       {message ? <View style={{ borderLeftWidth: 3, borderLeftColor: theme.colors.yes, backgroundColor: theme.colors.yesSoft, borderRadius: theme.radius.md, padding: theme.spacing.md, gap: 3 }}><VadText variant="bodyStrong" tone="yes">Updated</VadText><VadText variant="caption" tone="secondary">{message}</VadText></View> : null}
       {error ? <VadErrorState title="Some market information may be stale" message={error} onRetry={() => void load(true)} /> : null}
 
       <MarketSection title="Ready to publish" count={ready.length} countTone={ready.length ? 'warning' : 'neutral'}>
-        {ready.length ? ready.map((row) => <MarketRow key={row.instrument_public_id} row={row}><VadButton label="Publish market" size="small" onPress={() => openAction(row, 'PUBLISH')} /></MarketRow>) : <VadEmptyState title="No approved markets waiting" body="Approved markets appear here when they are ready to go live." />}
+        {ready.length
+          ? ready.map((row) => <MarketRow key={row.instrument_public_id} row={row}><VadButton label="Publish market" size="small" onPress={() => openAction(row, 'PUBLISH')} /></MarketRow>)
+          : <VadEmptyState title="No markets ready to publish" body="Create a new market, or wait for a scheduled market's opening time. Publish is available only before its closing time." />}
       </MarketSection>
 
-      {scheduled.length ? <MarketSection title="Scheduled" count={scheduled.length} countTone="neutral">{scheduled.map((row) => <MarketRow key={row.instrument_public_id} row={row}><VadText variant="caption" tone="secondary">Available to publish when its opening time arrives.</VadText></MarketRow>)}</MarketSection> : null}
+      {scheduled.length ? (
+        <MarketSection title="Scheduled" count={scheduled.length} countTone="neutral">
+          {scheduled.map((row) => (
+            <MarketRow key={row.instrument_public_id} row={row}>
+              <View style={{ gap: 7 }}>
+                <VadText variant="caption" tone="secondary">
+                  Opens {row.opens_at ? new Date(row.opens_at).toLocaleString() : 'when configured'}. The publish action becomes available during its trading window.
+                </VadText>
+              </View>
+            </MarketRow>
+          ))}
+        </MarketSection>
+      ) : null}
+
+      {expiredDrafts.length ? (
+        <MarketSection title="Expired drafts · cannot publish" count={expiredDrafts.length} countTone="warning">
+          {expiredDrafts.map((row) => (
+            <MarketRow key={row.instrument_public_id} row={row} badge="EXPIRED" badgeTone="warning">
+              <View style={{ gap: theme.spacing.sm }}>
+                <VadText variant="bodyStrong" tone="warning">This market's closing time has passed.</VadText>
+                <VadText variant="caption" tone="secondary">
+                  It cannot be published with an expired trading window. Create a replacement with a future closing time; this historical draft is left unchanged.
+                </VadText>
+                <VadButton label="Create replacement market" variant="secondary" size="small" fullWidth={false} onPress={() => router.push('/admin/create-market')} />
+              </View>
+            </MarketRow>
+          ))}
+        </MarketSection>
+      ) : null}
 
       <MarketSection title="VAD Markets" count={vad.length} countTone="brand">
         {vad.length ? vad.map((row) => <MarketRow key={row.instrument_public_id} row={row} badge="VAD MARKET" badgeTone="brand"><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><VadButton label="Change priority" variant="secondary" size="small" fullWidth={false} onPress={() => openAction(row, 'UPDATE_VAD')} /><VadButton label="Remove from VAD Markets" variant="ghost" size="small" fullWidth={false} onPress={() => openAction(row, 'REMOVE_VAD')} /></View></MarketRow>) : <VadEmptyState title="No VAD Markets are live" body="Publishing a market automatically adds it here." />}
@@ -171,9 +228,30 @@ function MarketRow({ row, badge, badgeTone = 'neutral', children }: { row: Admin
   return <VadCard variant="raised" style={{ gap: theme.spacing.sm }}><View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, flexWrap: 'wrap' }}><View style={{ flex: 1, minWidth: 200, gap: 3 }}><VadText variant="bodyStrong">{row.title}</VadText><VadText variant="caption" tone="secondary">{row.category} · {row.asset_code}</VadText><VadText variant="caption" tone="tertiary">{row.opens_at ? `Opens ${new Date(row.opens_at).toLocaleString()} · ` : ''}closes {new Date(row.closes_at).toLocaleString()}</VadText></View><View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}><VadChip label={friendlyStatus(row.instrument_status)} tone={row.instrument_status === 'OPEN' ? 'yes' : 'neutral'} />{badge ? <VadChip label={badge} tone={badgeTone} /> : null}</View></View>{children}</VadCard>;
 }
 
+function isPublishableNow(row: AdminMarketPublicationRow, now: number) {
+  const closesAt = Date.parse(row.closes_at);
+  const opensAt = row.opens_at ? Date.parse(row.opens_at) : null;
+  return Number.isFinite(closesAt)
+    && closesAt > now
+    && (opensAt === null || (Number.isFinite(opensAt) && opensAt <= now));
+}
+
+function isBeforeOpen(row: AdminMarketPublicationRow, now: number) {
+  if (row.instrument_status !== 'DRAFT' || !row.opens_at) return false;
+  const opensAt = Date.parse(row.opens_at);
+  const closesAt = Date.parse(row.closes_at);
+  return Number.isFinite(opensAt) && opensAt > now && Number.isFinite(closesAt) && closesAt > now;
+}
+
+function isExpiredDraft(row: AdminMarketPublicationRow, now: number) {
+  if (row.instrument_status !== 'DRAFT') return false;
+  const closesAt = Date.parse(row.closes_at);
+  return !Number.isFinite(closesAt) || closesAt <= now;
+}
+
 function priorityFromValue(value: number | null): Priority { if (value != null && value <= 25) return 'HIGH'; if (value != null && value >= 300) return 'LOW'; return 'STANDARD'; }
 function actionTitle(action?: Action) { if (action === 'PUBLISH') return 'Publish market'; if (action === 'ADD_VAD') return 'Add to VAD Markets'; if (action === 'UPDATE_VAD') return 'Change VAD Markets priority'; if (action === 'REMOVE_VAD') return 'Remove from VAD Markets'; return 'Market action'; }
 function actionButtonLabel(action: Action) { if (action === 'PUBLISH') return 'Publish market'; if (action === 'ADD_VAD') return 'Add to VAD Markets'; if (action === 'UPDATE_VAD') return 'Save priority'; return 'Remove from VAD Markets'; }
-function friendlyStatus(status: string) { if (status === 'OPEN') return 'LIVE'; if (status === 'DRAFT') return 'READY'; if (status === 'SUSPENDED') return 'PAUSED'; return status; }
+function friendlyStatus(status: string) { if (status === 'OPEN') return 'LIVE'; if (status === 'DRAFT') return 'DRAFT'; if (status === 'SUSPENDED') return 'PAUSED'; return status; }
 function marketFormatLabel(value: string) { return value === 'BINARY' ? 'YES / NO' : value.replaceAll('_', ' '); }
 function tradingMethodLabel(value: string) { return value === 'POOL' ? 'PEER POOL' : value === 'ORDER_BOOK' ? 'ORDER BOOK' : value.replaceAll('_', ' '); }
