@@ -191,7 +191,7 @@ export async function resolveFinancialPriceThresholdWithProvider(
 ): Promise<ProviderResolutionResult> {
   if (!['COINBASE','TWELVE_DATA','ALPHA_VANTAGE'].includes(provider.code)) return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
-  const key = provider.code === 'COINBASE' ? null : apiSecret(provider);
+  const key = provider.code === 'COINBASE' ? '' : (apiSecret(provider) ?? '');
   if (provider.code !== 'COINBASE' && !key) throw new OracleRuntimeError('SECRET_MISSING', `${provider.name} API credential is not configured`, 503);
   const base = provider.baseUrl?.replace(/\/$/, '');
   const maxDelta = Math.max(1, Math.min(3600, Number(resource.metadata?.max_timestamp_delta_seconds ?? 600)));
@@ -367,7 +367,7 @@ export async function resolveFinancialPriceTouchThresholdWithProvider(
 ): Promise<ProviderResolutionResult> {
   if (!['COINBASE','TWELVE_DATA'].includes(provider.code)) return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
-  const key = provider.code === 'COINBASE' ? null : apiSecret(provider);
+  const key = provider.code === 'COINBASE' ? '' : (apiSecret(provider) ?? '');
   if (provider.code !== 'COINBASE' && !key) throw new OracleRuntimeError('SECRET_MISSING', 'Twelve Data API credential is not configured', 503);
   const base = provider.baseUrl?.replace(/\/$/, '');
   if (spec.windowEnd <= spec.windowStart || spec.windowEnd.getTime() > Date.now()) {
