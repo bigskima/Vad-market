@@ -332,7 +332,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
 function normalizeCampaignDate(value: string, label: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
-  if (!/(Z|[+-]\\d{2}:?\\d{2})$/i.test(trimmed)) {
+  if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(trimmed)) {
     throw new Error(`${label} must include a timezone, preferably UTC (Z), e.g. 2026-11-01T09:00:00Z.`);
   }
   const timestamp = Date.parse(trimmed);
