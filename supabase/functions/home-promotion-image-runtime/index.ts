@@ -92,7 +92,7 @@ Deno.serve(async (req: Request) => {
     ].filter(Boolean).join(' ');
 
     const aiResponse = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${encodeURIComponent(model)}`,
+      `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${model}`,
       {
         method: 'POST',
         headers: {
