@@ -50,6 +50,7 @@ export function AdminDashboardScreen() {
   const theme = useVadTheme();
   const data = useAdminData();
   const canManageSettings = data.access.isSuperAdmin || hasAnyAdminPermission(data.access, ['policies.manage']);
+  const canManageHomeContent = hasAnyAdminPermission(data.access, ['content.moderate']);
   const responsive = useAdminResponsive();
 
   const canGovern = hasAnyAdminPermission(data.access, [
@@ -147,6 +148,49 @@ export function AdminDashboardScreen() {
   return (
     <View style={{ gap: theme.spacing.xl }}>
       {canManageSettings ? <TngnDemoAdminControl /> : null}
+      {canManageHomeContent ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open promotional banners and campaign editor"
+          onPress={() => router.push('/admin/home-content')}
+          style={({ pressed }) => ({ opacity: pressed ? 0.76 : 1 })}
+        >
+          <VadCard
+            variant="raised"
+            style={{
+              flexDirection: responsive.desktop ? 'row' : 'column',
+              alignItems: responsive.desktop ? 'center' : 'stretch',
+              justifyContent: 'space-between',
+              gap: theme.spacing.md,
+              borderColor: theme.colors.brandPrimary,
+              borderWidth: 1,
+            }}
+          >
+            <View style={{ flex: 1, gap: theme.spacing.xs }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
+                <VadChip label="HOME CAMPAIGNS" tone="brand" />
+                <VadChip label="AI ARTWORK" tone="neutral" />
+              </View>
+              <VadText variant="heading">Promotional banners & carousel</VadText>
+              <VadText variant="caption" tone="secondary">
+                Create a banner, add its tag, set the target route, generate or upload artwork, and publish or schedule the campaign. Featured markets remain separate.
+              </VadText>
+            </View>
+            <View
+              style={{
+                minHeight: 42,
+                paddingHorizontal: theme.spacing.md,
+                borderRadius: theme.radius.md,
+                backgroundColor: theme.colors.brandPrimary,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <VadText variant="bodyStrong" style={{ color: '#FFFFFF' }}>Manage banners →</VadText>
+            </View>
+          </VadCard>
+        </Pressable>
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open operations queue"
