@@ -127,12 +127,40 @@ export function HomePromotionCarousel({
             })}
           >
             {promotion.banner_kind === 'IMAGE' && promotion.image_url ? (
-              <Image
-                source={{ uri: promotion.image_url }}
-                resizeMode="cover"
-                accessibilityLabel={promotion.title ? `${promotion.title} campaign artwork` : 'VAD campaign artwork'}
-                style={{ width: '100%', height: '100%' }}
-              />
+              <>
+                <Image
+                  source={{ uri: promotion.image_url }}
+                  resizeMode="cover"
+                  accessibilityLabel={promotion.title ? `${promotion.title} campaign artwork` : 'VAD campaign artwork'}
+                  style={{ position: 'absolute', width: '100%', height: '100%' }}
+                />
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    left: 0,
+                    backgroundColor: 'rgba(5, 9, 28, 0.40)',
+                  }}
+                />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-start', paddingHorizontal: density.cardPadding, paddingVertical: density.compact ? 8 : 10, paddingRight: density.cardPadding + 18, gap: 5 }}>
+                  {promotion.title ? (
+                    <VadText variant="heading" numberOfLines={2} adjustsFontSizeToFit style={{ color: '#FFFFFF', fontSize: density.compact ? 15 : 18, lineHeight: density.compact ? 19 : 22 }}>
+                      {promotion.title}
+                    </VadText>
+                  ) : null}
+                  {promotion.body ? (
+                    <VadText variant="caption" numberOfLines={2} style={{ color: 'rgba(255,255,255,0.90)', fontSize: density.compact ? 11 : 12, lineHeight: density.compact ? 14 : 16 }}>
+                      {promotion.body}
+                    </VadText>
+                  ) : null}
+                  <View style={{ marginTop: 2, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18, backgroundColor: '#FFFFFF' }}>
+                    <VadText variant="caption" style={{ color: theme.colors.brandPrimary, fontWeight: '700' }}>Explore ›</VadText>
+                  </View>
+                </View>
+              </>
             ) : (
               <View
                 style={{
