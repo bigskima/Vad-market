@@ -210,6 +210,7 @@ export function HomeScreen({
           <VadText variant="bodyStrong" style={{ fontSize: 18, lineHeight: 22 }}>{(profileName || userName || 'VAD member').trim().split(/\s+/)[0]}</VadText>
         </View>
         <HomeHeaderAction label="Search markets" icon="search" onPress={() => onExploreMarkets()} />
+        <HomeHeaderAction label="Live crypto prices" icon="activity" onPress={onOpenCryptoAssets} />
         <HomeHeaderAction label="Notifications" icon="bell" badge={hasUnreadNotifications} onPress={onNotifications} />
       </View>
 
@@ -265,34 +266,6 @@ export function HomeScreen({
         <QuickAction label="Predict" icon="arrowUp" color="#3298F5" onPress={() => onExploreMarkets()} />
         <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
       </View>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Open crypto asset prices"
-        onPress={onOpenCryptoAssets}
-        style={({ pressed }) => ({
-          minHeight: 58,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 11,
-          paddingHorizontal: 12,
-          paddingVertical: 9,
-          borderRadius: theme.radius.lg,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          backgroundColor: theme.colors.surface,
-          opacity: pressed ? 0.78 : 1,
-        })}
-      >
-        <View style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: theme.colors.brandSoft }}>
-          <VadIcon name="activity" size={20} tone="brand" />
-        </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-          <VadText variant="bodyStrong">Crypto assets</VadText>
-          <VadText variant="caption" tone="secondary">Live public spot prices, separate from prediction markets</VadText>
-        </View>
-        <VadIcon name="chevronRight" size={17} tone="secondary" />
-      </Pressable>
 
       {promotions.length ? (
         promotionsToShow.length ? (
@@ -446,7 +419,7 @@ export function HomeScreen({
   );
 }
 
-function HomeHeaderAction({ label, icon, badge = false, onPress }: { label: string; icon: 'search' | 'bell'; badge?: boolean; onPress: () => void }) {
+function HomeHeaderAction({ label, icon, badge = false, onPress }: { label: string; icon: 'search' | 'bell' | 'activity'; badge?: boolean; onPress: () => void }) {
   const theme = useVadTheme();
   return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'transparent', opacity: pressed ? 0.7 : 1 })}><VadIcon name={icon} size={21} tone="secondary" />{badge ? <View style={{ position: 'absolute', right: 3, top: 3, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.background }} /> : null}</Pressable>;
 }
