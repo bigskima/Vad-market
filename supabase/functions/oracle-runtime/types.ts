@@ -57,9 +57,27 @@ export type FootballResultSpec = {
   condition: 'HOME_WIN' | 'AWAY_WIN' | 'DRAW';
 };
 
+export type FinancialPriceThresholdSpec = {
+  resolverType: 'FINANCIAL_PRICE_THRESHOLD_V1';
+  symbol: string;
+  quote: string;
+  operator: 'GT' | 'GTE' | 'LT' | 'LTE';
+  threshold: number;
+  observationTime: Date;
+};
+
+export type FredSeriesThresholdSpec = {
+  resolverType: 'FRED_SERIES_THRESHOLD_V1';
+  seriesId: string;
+  operator: 'GT' | 'GTE' | 'LT' | 'LTE';
+  threshold: number;
+  observationDate: string;
+  vintageDate: string | null;
+};
+
 export type PublicRecordSpec = {
   resolverType: 'PUBLIC_RECORD_RULE_V1';
-  operator: 'BEFORE_OR_AT' | 'AFTER' | 'EQUALS' | 'CONTAINS' | 'EXISTS';
+  operator: 'BEFORE_OR_AT' | 'AFTER' | 'EQUALS' | 'CONTAINS' | 'EXISTS' | 'GT' | 'GTE' | 'LT' | 'LTE';
   field?: string | null;
   expected?: string | number | boolean | null;
   cutoff?: string | null;
@@ -67,7 +85,7 @@ export type PublicRecordSpec = {
   recordDate?: string | null;
 };
 
-export type ResolverSpec = CryptoThresholdSpec | FootballResultSpec | PublicRecordSpec;
+export type ResolverSpec = CryptoThresholdSpec | FootballResultSpec | PublicRecordSpec | FinancialPriceThresholdSpec | FredSeriesThresholdSpec;
 
 export type ProviderObservation = {
   observedOutcome: 'YES' | 'NO';
