@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -41,6 +42,7 @@ export function AdminMarketPublishingScreen() {
   const [priority, setPriority] = useState<Priority>('STANDARD');
   const [working, setWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
 
   const load = useCallback(async (background = false) => {
     if (background) setRefreshing(true);
@@ -60,8 +62,30 @@ export function AdminMarketPublishingScreen() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  const ready = useMemo(() => rows.filter((row) => row.instrument_status === 'DRAFT' && row.event_status === 'APPROVED'), [rows]);
-  const scheduled = useMemo(() => rows.filter((row) => row.instrument_status === 'DRAFT' && row.event_status === 'SCHEDULED'), [rows]);
+  // Re-evaluate publication eligibility while the admin screen remains open.
+  useEffect(() => {
+    const timer = setInterval(() => setClockNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const ready = useMemo(() => rows.filter((row) => {
+    if (row.instrument_status !== 'DRAFT' || row.event_status !== 'APPROVED') return false;
+    const closesAt = Date.parse(row.closes_at);
+    const opensAt = row.opens_at ? Date.parse(row.opens_at) : null;
+    return Number.isFinite(closesAt) && closesAt > clockNow
+      && (opensAt === null || !Number.isFinite(opensAt) || opensAt <= clockNow);
+  }), [rows, clockNow]);
+  const scheduled = useMemo(() => rows.filter((row) => {
+    if (row.instrument_status !== 'DRAFT') return false;
+    const closesAt = Date.parse(row.closes_at);
+    const opensAt = row.opens_at ? Date.parse(row.opens_at) : null;
+    if (!Number.isFinite(closesAt) || closesAt <= clockNow) return false;
+    return row.event_status === 'SCHEDULED'
+      || (opensAt !== null && Number.isFinite(opensAt) && opensAt > clockNow);
+  }), [rows, clockNow]);
+  const expiredDrafts = useMemo(() => rows.filter((row) =>
+    row.instrument_status === 'DRAFT' && Number.isFinite(Date.parse(row.closes_at)) && Date.parse(row.closes_at) <= clockNow,
+  ), [rows, clockNow]);
   const vad = useMemo(() => rows.filter((row) => row.instrument_status === 'OPEN' && row.is_vad_market), [rows]);
   const live = useMemo(() => rows.filter((row) => row.instrument_status === 'OPEN' && !row.is_vad_market), [rows]);
   const inactive = useMemo(() => rows.filter((row) => row.instrument_status === 'SUSPENDED' || row.instrument_status === 'CLOSED'), [rows]);
@@ -80,6 +104,16 @@ export function AdminMarketPublishingScreen() {
     try {
       const selectedPriority = priorityValues[priority];
       if (pending.action === 'PUBLISH') {
+        const closesAt = Date.parse(pending.row.closes_at);
+        const opensAt = pending.row.opens_at ? Date.parse(pending.row.opens_at) : null;
+        if (!Number.isFinite(closesAt) || closesAt <= Date.now()) {
+          setActionError('This draft’s closing time has passed. It cannot be published; create a replacement with a future closing time.');
+          return;
+        }
+        if (opensAt !== null && Number.isFinite(opensAt) && opensAt > Date.now()) {
+          setActionError('This market is scheduled to open later. Publish it after its opening time, or keep it scheduled.');
+          return;
+        }
         await publishAdminMarket({ instrumentPublicId: pending.row.instrument_public_id, vadPriority: selectedPriority, reason });
         setMessage('Market published. It is now live in All Markets and included in VAD Markets.');
       } else {
@@ -124,6 +158,7 @@ export function AdminMarketPublishingScreen() {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
         <VadChip label={`${ready.length} ready`} tone={ready.length ? 'warning' : 'neutral'} />
+        {expiredDrafts.length ? <VadChip label={`${expiredDrafts.length} expired drafts`} tone="warning" /> : null}
         <VadChip label={`${vad.length} VAD Markets`} tone="brand" />
         <VadChip label={`${live.length} other live`} />
       </View>
@@ -136,6 +171,21 @@ export function AdminMarketPublishingScreen() {
       </MarketSection>
 
       {scheduled.length ? <MarketSection title="Scheduled" count={scheduled.length} countTone="neutral">{scheduled.map((row) => <MarketRow key={row.instrument_public_id} row={row}><VadText variant="caption" tone="secondary">Available to publish when its opening time arrives.</VadText></MarketRow>)}</MarketSection> : null}
+
+      {expiredDrafts.length ? (
+        <MarketSection title="Expired drafts — cannot publish" count={expiredDrafts.length} countTone="warning">
+          {expiredDrafts.map((row) => (
+            <MarketRow key={row.instrument_public_id} row={row} badge="EXPIRED" badgeTone="warning">
+              <View style={{ gap: 8 }}>
+                <VadText variant="caption" tone="secondary">
+                  This draft’s closing time has passed. The database correctly blocks publishing it, so its dates must not be bypassed. Create a replacement market with a future closing time.
+                </VadText>
+                <VadButton label="Create fresh market" size="small" fullWidth={false} onPress={() => router.push('/admin/create-market')} />
+              </View>
+            </MarketRow>
+          ))}
+        </MarketSection>
+      ) : null}
 
       <MarketSection title="VAD Markets" count={vad.length} countTone="brand">
         {vad.length ? vad.map((row) => <MarketRow key={row.instrument_public_id} row={row} badge="VAD MARKET" badgeTone="brand"><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><VadButton label="Change priority" variant="secondary" size="small" fullWidth={false} onPress={() => openAction(row, 'UPDATE_VAD')} /><VadButton label="Remove from VAD Markets" variant="ghost" size="small" fullWidth={false} onPress={() => openAction(row, 'REMOVE_VAD')} /></View></MarketRow>) : <VadEmptyState title="No VAD Markets are live" body="Publishing a market automatically adds it here." />}
