@@ -349,6 +349,12 @@ export type PublishedMarketDetail = {
 };
 
 export async function getPublishedMarketDetail(instrumentPublicId: string): Promise<PublishedMarketDetail> {
+  const { data: sessionResult, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw new Error('We could not verify your sign-in session. Please retry.');
+  if (!sessionResult.session) {
+    throw new Error('Sign in to view the full published criteria and resolution policy.');
+  }
+
   const { data, error } = await supabase.rpc('market_detail', {
     p_instrument_public_id: instrumentPublicId,
   });
