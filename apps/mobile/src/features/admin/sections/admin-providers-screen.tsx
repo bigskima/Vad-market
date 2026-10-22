@@ -581,13 +581,17 @@ export function AdminProvidersScreen() {
                     <VadText variant="caption" tone="secondary">{sources || 'No source hierarchy defined.'}</VadText>
                     <VadText variant="caption" tone="secondary">Consensus: {distinct ? 'distinct providers required' : 'distinct-provider rule not enabled'} · minimum agreeing providers: {quorum}</VadText>
                     <VadText variant="caption" tone="tertiary">Effective: {new Date(policy.effective_at).toLocaleString()} · {policy.approved_by ? 'Approved' : 'Not approved'}</VadText>
-                    {policy.status === 'DRAFT' && canReviewOracle ? (
+                    {policy.status === 'DRAFT' && canReviewOracle && isCoinbaseKrakenThresholdPolicy(policy) ? (
                       <VadButton
-                        label={policyWorking === policy.public_id ? 'Approving policy…' : 'Approve policy'}
+                        label={policyWorking === policy.public_id ? 'Approving policy…' : 'Approve Coinbase/Kraken policy'}
                         loading={policyWorking === policy.public_id}
                         disabled={Boolean(policyWorking)}
                         onPress={() => void reviewOraclePolicy(policy)}
                       />
+                    ) : policy.status === 'DRAFT' && canReviewOracle ? (
+                      <VadText variant="caption" tone="warning">
+                        Approval disabled: this draft does not match the required Coinbase PRIMARY + Kraken CORROBORATING two-provider policy.
+                      </VadText>
                     ) : null}
                   </VadCard>
                 );
@@ -790,6 +794,22 @@ export function AdminProvidersScreen() {
       </VadBottomSheet>
     </View>
   );
+}
+
+function isCoinbaseKrakenThresholdPolicy(policy: OraclePolicyRow) {
+  const hierarchy = policy.source_hierarchy;
+  if (hierarchy.length !== 2 || policy.consensus_rule.distinct_providers !== true) return false;
+  const minimum = Number(policy.consensus_rule.min_agreeing_providers);
+  if (!Number.isInteger(minimum) || minimum < 2) return false;
+  const normalized = hierarchy.map((entry) => {
+    if (typeof entry === 'string') return { provider: entry.toUpperCase(), role: '' };
+    return {
+      provider: String(entry.provider_code ?? entry.providerCode ?? entry.code ?? '').toUpperCase(),
+      role: String(entry.role ?? '').toUpperCase(),
+    };
+  });
+  return normalized.some((entry) => entry.provider === 'COINBASE' && entry.role === 'PRIMARY')
+    && normalized.some((entry) => entry.provider === 'KRAKEN' && entry.role === 'CORROBORATING');
 }
 
 function isReady(row: ProviderReadinessRow) {
