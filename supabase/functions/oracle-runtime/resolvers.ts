@@ -125,8 +125,12 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
   }
 
   if (resolverType === 'FINANCIAL_PRICE_THRESHOLD_V1') {
-    const symbol = stringValue(scope.symbol, subject.symbol, scope.asset, subject.asset)?.toUpperCase();
-    const quote = stringValue(scope.quote, subject.quote, 'USD')?.toUpperCase();
+    const symbolRaw = stringValue(scope.symbol, subject.symbol, scope.asset, subject.asset)?.toUpperCase();
+    const symbolParts = symbolRaw?.split('/');
+    const symbol = symbolParts?.length === 2 ? symbolParts[0] : symbolRaw;
+    // A canonical pair such as USD/JPY carries its own quote unless the contract
+    // explicitly supplies one. Do not silently default a slash-pair to USD/USD.
+    const quote = stringValue(scope.quote, subject.quote, symbolParts?.length === 2 ? symbolParts[1] : 'USD')?.toUpperCase();
     const operator = stringValue(scope.operator, condition.operator)?.toUpperCase();
     const threshold = numericValue(scope.threshold, condition.threshold);
     const observationRaw = stringValue(scope.observation_time, scope.observationTime, condition.observation_time, event.resolvesAfter);
