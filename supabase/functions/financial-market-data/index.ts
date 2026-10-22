@@ -250,6 +250,217 @@ async function fredQuotes(source: Source, query: string, apiKey: string): Promis
   return items;
 }
 
+
+async function requestText(url: URL): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'text/plain' }, redirect: 'error' });
+    if (!response.ok) throw new Error('Public data source returned HTTP ' + response.status + '.');
+    const raw = await response.text();
+    if (raw.length > 1_500_000) throw new Error('Public data response exceeded the size limit.');
+    return raw;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw new Error('Public data request timed out.');
+    throw error;
+  } finally { clearTimeout(timer); }
+}
+
+function publicQuote(input: {
+  id: string; symbol: string; name: string; assetClass: AssetClass; quoteCurrency: string;
+  currentPrice: number; previousClose?: number | null; open?: number | null;
+  high?: number | null; low?: number | null; volume?: number | null;
+  marketOpen?: boolean | null; sourceUpdatedAt?: string | null; exchange?: string | null;
+  source: string; sourceCode: string;
+}): AssetQuote {
+  const change = input.previousClose != null && input.previousClose !== 0
+    ? ((input.currentPrice / input.previousClose) - 1) * 100 : null;
+  return {
+    id: input.id, symbol: input.symbol, name: input.name, assetClass: input.assetClass,
+    quoteCurrency: input.quoteCurrency, currentPrice: input.currentPrice, change24hPercent: change,
+    open: input.open ?? null, high: input.high ?? null, low: input.low ?? null, volume: input.volume ?? null,
+    marketOpen: input.marketOpen ?? null, sourceUpdatedAt: input.sourceUpdatedAt ?? null,
+    exchange: input.exchange ?? null, source: input.source, sourceCode: input.sourceCode,
+  };
+}
+
+async function yahooChart(symbol: string, name: string, assetClass: AssetClass, quoteCurrency = 'USD'): Promise<AssetQuote | null> {
+  if (!/^[A-Za-z0-9.^=_-]{1,40}$/.test(symbol)) return null;
+  const url = new URL('https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol));
+  url.searchParams.set('range', '1d');
+  url.searchParams.set('interval', '5m');
+  const payload = await requestJson(url, { 'User-Agent': 'Mozilla/5.0 VADMarket/1.0' });
+  if (!isRecord(payload) || !isRecord(payload.chart) || !Array.isArray(payload.chart.result)) return null;
+  const result = payload.chart.result[0];
+  if (!isRecord(result) || !isRecord(result.meta)) return null;
+  const meta = result.meta;
+  const indicators = isRecord(result.indicators) ? result.indicators : {};
+  const quotes = Array.isArray(indicators.quote) ? indicators.quote : [];
+  const bars = isRecord(quotes[0]) ? quotes[0] : {};
+  const lastNumber = (value: unknown) => {
+    if (!Array.isArray(value)) return null;
+    for (let i = value.length - 1; i >= 0; i -= 1) {
+      const number = numberValue(value[i]);
+      if (number !== null) return number;
+    }
+    return null;
+  };
+  const price = numberValue(meta.regularMarketPrice) ?? lastNumber(bars.close);
+  if (price === null) return null;
+  const tradingPeriod = isRecord(meta.currentTradingPeriod) ? meta.currentTradingPeriod : {};
+  const regular = isRecord(tradingPeriod.regular) ? tradingPeriod.regular : {};
+  const start = numberValue(regular.start);
+  const end = numberValue(regular.end);
+  const now = Math.floor(Date.now() / 1000);
+  return publicQuote({
+    id: symbol, symbol: textValue(meta.symbol, 40) || symbol,
+    name: name || textValue(meta.longName, 180) || textValue(meta.shortName, 180) || symbol,
+    assetClass, quoteCurrency: textValue(meta.currency, 12) || quoteCurrency, currentPrice: price,
+    previousClose: numberValue(meta.chartPreviousClose) ?? numberValue(meta.previousClose),
+    open: lastNumber(bars.open), high: lastNumber(bars.high), low: lastNumber(bars.low), volume: lastNumber(bars.volume),
+    marketOpen: start !== null && end !== null ? now >= start && now < end : null,
+    sourceUpdatedAt: dateValue(meta.regularMarketTime) || (Array.isArray(result.timestamp) ? dateValue(result.timestamp[result.timestamp.length - 1]) : null),
+    exchange: textValue(meta.fullExchangeName, 100) || textValue(meta.exchangeName, 100) || null,
+    source: 'Yahoo Finance public chart (display only)', sourceCode: 'YAHOO_PUBLIC_CHART',
+  });
+}
+
+async function yahooSearch(query: string, count = 6): Promise<{ symbol: string; name: string; type: string }[]> {
+  const url = new URL('https://query1.finance.yahoo.com/v1/finance/search');
+  url.searchParams.set('q', query);
+  url.searchParams.set('quotesCount', String(Math.max(1, Math.min(10, count))));
+  url.searchParams.set('newsCount', '0');
+  const payload = await requestJson(url, { 'User-Agent': 'Mozilla/5.0 VADMarket/1.0' });
+  if (!isRecord(payload) || !Array.isArray(payload.quotes)) return [];
+  return payload.quotes.filter(isRecord).flatMap((row) => {
+    const symbol = textValue(row.symbol, 40);
+    if (!symbol || !/^[A-Za-z0-9.^=_-]{1,40}$/.test(symbol)) return [];
+    return [{ symbol, name: textValue(row.longname, 180) || textValue(row.shortname, 180) || symbol, type: textValue(row.quoteType, 30).toUpperCase() }];
+  });
+}
+
+function configuredSymbols(source: Source) {
+  return browseSymbols(source).map((item) => ({ symbol: item.symbol, name: item.name }));
+}
+
+function commodityTicker(symbol: string): string | null {
+  const map: Record<string, string> = {
+    'XAU/USD': 'GC=F', 'GOLD': 'GC=F', 'XAG/USD': 'SI=F', 'SILVER': 'SI=F',
+    'WTI/USD': 'CL=F', 'OIL': 'CL=F', 'CRUDE OIL': 'CL=F',
+    'BRENT/USD': 'BZ=F', 'BRENT': 'BZ=F', 'NATGAS/USD': 'NG=F', 'NATURAL GAS': 'NG=F',
+  };
+  return map[symbol.trim().toUpperCase()] ?? (/^[A-Z]{1,8}=F$/i.test(symbol.trim()) ? symbol.trim().toUpperCase() : null);
+}
+
+function parseForexPair(value: string) {
+  const match = value.trim().toUpperCase().match(/^([A-Z]{3})\s*[/_-]\s*([A-Z]{3})$/);
+  return match ? { base: match[1], quote: match[2], symbol: match[1] + '/' + match[2] } : null;
+}
+
+async function publicFinancialQuotes(source: Source, assetClass: AssetClass, query: string): Promise<AssetQuote[]> {
+  if (assetClass === 'FOREX') {
+    const catalog = configuredSymbols(source);
+    const pair = parseForexPair(query) ?? catalog.map((item) => parseForexPair(item.symbol))
+      .find((item) => item && (item.symbol.toLowerCase().includes(query.toLowerCase())
+        || query.toLowerCase().includes(item.base.toLowerCase()) || query.toLowerCase().includes(item.quote.toLowerCase())));
+    const requested = query.trim() ? (pair ? [pair] : []) : catalog.map((item) => parseForexPair(item.symbol)).filter((item): item is { base: string; quote: string; symbol: string } => Boolean(item)).slice(0, 6);
+    const result: AssetQuote[] = [];
+    for (const item of requested) {
+      try {
+        const url = new URL('https://api.frankfurter.dev/v1/latest');
+        url.searchParams.set('base', item.base);
+        url.searchParams.set('symbols', item.quote);
+        const value = await requestJson(url);
+        if (!isRecord(value) || !isRecord(value.rates)) continue;
+        const rate = numberValue(value.rates[item.quote]);
+        if (rate === null) continue;
+        result.push(publicQuote({
+          id: item.symbol, symbol: item.symbol, name: item.base + ' / ' + item.quote,
+          assetClass, quoteCurrency: item.quote, currentPrice: rate,
+          sourceUpdatedAt: typeof value.date === 'string' ? dateValue(value.date) : null,
+          source: 'Frankfurter / European Central Bank reference rates (display only)', sourceCode: 'FRANKFURTER_ECB',
+        }));
+      } catch {
+        // Unsupported public reference-rate pairs are omitted without blanking other pairs.
+      }
+    }
+    return result;
+  }
+
+  if (assetClass === 'ECONOMICS') {
+    const rawSeries = source.providerMetadata.featured_series;
+    const catalog = Array.isArray(rawSeries) ? rawSeries.filter(isRecord).map((item) => ({
+      id: textValue(item.id, 80),
+      title: textValue(item.title, 180) || textValue(item.id, 80),
+      units: textValue(item.units, 100),
+      frequency: textValue(item.frequency, 100),
+    })).filter((item) => item.id) : [];
+    const selected = (query.trim()
+      ? catalog.filter((item) => (item.id + ' ' + item.title + ' ' + item.units).toLowerCase().includes(query.toLowerCase()))
+      : catalog).slice(0, 6);
+    const results: AssetQuote[] = [];
+    for (const series of selected) {
+      try {
+        const url = new URL('https://fred.stlouisfed.org/graph/fredgraph.csv');
+        url.searchParams.set('id', series.id);
+        const csv = await requestText(url);
+        const observations = csv.trim().split(/\r?\n/).slice(1).reverse().flatMap((line) => {
+          const [date, raw] = line.split(',');
+          const price = numberValue(raw);
+          return date && price !== null ? [{ date, price }] : [];
+        });
+        const latest = observations[0];
+        if (!latest) continue;
+        results.push(publicQuote({
+          id: series.id, symbol: series.id, name: series.title, assetClass,
+          quoteCurrency: series.units || 'index', currentPrice: latest.price,
+          sourceUpdatedAt: dateValue(latest.date), exchange: [series.units, series.frequency].filter(Boolean).join(' · ') || null,
+          source: 'FRED public chart data (display only)', sourceCode: 'FRED_PUBLIC_CSV',
+        }));
+      } catch {
+        // One delayed or unavailable series should not hide the rest of the list.
+      }
+    }
+    return results;
+  }
+
+  let candidates: { symbol: string; name: string; type?: string }[] = [];
+  if (!query.trim()) candidates = configuredSymbols(source);
+  else if (assetClass === 'COMMODITIES') {
+    const all = configuredSymbols(source);
+    candidates = all.filter((item) => item.symbol.toLowerCase().includes(query.toLowerCase()) || item.name.toLowerCase().includes(query.toLowerCase()))
+      .map((item) => ({ ...item, symbol: commodityTicker(item.symbol) ?? item.symbol }));
+    if (!candidates.length) {
+      const knownTicker = commodityTicker(query);
+      if (knownTicker) candidates = [{ symbol: knownTicker, name: query }];
+      else candidates = (await yahooSearch(query, 8)).filter((item) => item.type === 'FUTURE').slice(0, 4);
+    }
+  } else {
+    try {
+      candidates = (await yahooSearch(query, 8)).filter((item) => ['EQUITY', 'ETF', 'MUTUALFUND', 'INDEX'].includes(item.type)).slice(0, 5);
+    } catch {
+      candidates = [];
+    }
+    if (!candidates.length && /^[A-Za-z0-9.^=_-]{1,40}$/.test(query.trim())) {
+      candidates = [{ symbol: query.trim().toUpperCase(), name: query.trim().toUpperCase() }];
+    }
+  }
+
+  const results: AssetQuote[] = [];
+  for (const candidate of candidates.slice(0, Math.max(1, Math.min(6, source.defaultPageSize)))) {
+    const displaySymbol = assetClass === 'COMMODITIES'
+      ? (configuredSymbols(source).find((item) => commodityTicker(item.symbol) === candidate.symbol)?.symbol ?? candidate.symbol)
+      : candidate.symbol;
+    try {
+      const quote = await yahooChart(candidate.symbol, candidate.name, assetClass, source.quoteCurrency);
+      if (quote) results.push({ ...quote, id: displaySymbol, symbol: displaySymbol, quoteCurrency: source.quoteCurrency });
+    } catch {
+      // An unsupported ticker must not blank the rest of the browsing catalogue.
+    }
+  }
+  return results;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -288,7 +499,8 @@ Deno.serve(async (req) => {
       message: 'An administrator must enable a provider and configure its secret in the secure Edge Function environment.',
     }, 503);
     const apiKey = configuredCredential(source);
-    if (!apiKey) return json({
+    const usePublicFallback = !apiKey && ['STOCKS', 'COMMODITIES', 'FOREX', 'ECONOMICS'].includes(assetClass);
+    if (!apiKey && !usePublicFallback) return json({
       error: 'The configured provider credential is missing.',
       code: 'FINANCIAL_SOURCE_CREDENTIAL_MISSING',
       message: 'Add ' + textValue(source.secretReference, 100) + ' to the secure Edge Function secrets before enabling this feed.',
@@ -326,16 +538,27 @@ Deno.serve(async (req) => {
 
     try {
       let items: AssetQuote[];
-      if (source.adapterCode === 'TWELVE_DATA_QUOTE') {
+      if (usePublicFallback) items = await publicFinancialQuotes(source, assetClass, query);
+      else if (source.adapterCode === 'TWELVE_DATA_QUOTE') {
         items = query.length === 0
           ? await twelveDataBrowse(source, apiKey)
           : await twelveDataQuotes(source, query, apiKey);
+      } else if (source.adapterCode === 'FRED_SERIES' && assetClass === 'ECONOMICS') {
+        items = await fredQuotes(source, query, apiKey);
+      } else {
+        throw new Error('The configured financial-data adapter does not support this asset class.');
       }
-      else if (source.adapterCode === 'FRED_SERIES' && assetClass === 'ECONOMICS') items = await fredQuotes(source, query, apiKey);
-      else throw new Error('The configured financial-data adapter does not support this asset class.');
       const now = new Date();
+      const fallbackName = usePublicFallback
+        ? (assetClass === 'FOREX' ? 'Frankfurter / European Central Bank reference rates (display only)'
+          : assetClass === 'ECONOMICS' ? 'FRED public chart data (display only)'
+            : 'Yahoo Finance public chart (display only)')
+        : null;
+      const fallbackCode = usePublicFallback
+        ? (assetClass === 'FOREX' ? 'FRANKFURTER_ECB' : assetClass === 'ECONOMICS' ? 'FRED_PUBLIC_CSV' : 'YAHOO_PUBLIC_CHART')
+        : null;
       const payload = {
-        ok: true, source: source.name, sourceCode: source.code,
+        ok: true, source: fallbackName ?? source.name, sourceCode: fallbackCode ?? source.code,
         dataPurpose: 'DISPLAY_ONLY', assetClass, quoteCurrency: source.quoteCurrency,
         query, fetchedAt: now.toISOString(), cacheSeconds: source.cacheSeconds,
         stale: false, cached: false, items,
