@@ -324,7 +324,7 @@ export async function resolveWithProvider(
   if (spec.resolverType === 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1') {
     if (provider.code === 'PYTH') return { kind: 'skipped', code: 'RESOLVER_NOT_SUPPORTED_BY_PROVIDER', detail: 'Pyth historical snapshots cannot prove whether a threshold was touched anywhere inside the full window' };
     if (provider.code === 'COINGECKO') return resolveCryptoTouchWithCoinGecko(provider, resource, spec);
-    if (provider.code === 'TWELVE_DATA') return resolveFinancialPriceTouchThresholdWithProvider(provider, resource, spec);
+    if (provider.code === 'TWELVE_DATA' || provider.code === 'COINBASE') return resolveFinancialPriceTouchThresholdWithProvider(provider, resource, spec);
     return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   }
   if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
