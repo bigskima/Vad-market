@@ -162,7 +162,9 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
     const threshold = numericValue(scope.threshold, condition.threshold);
     const dateRaw = stringValue(scope.observation_date, scope.observationDate, scope.record_date, scope.recordDate, scope.resolution_time, scope.resolutionTime, event.resolvesAfter);
     const observationDate = dateRaw ? dateRaw.slice(0, 10) : '';
-    const vintageRaw = stringValue(scope.vintage_date, scope.vintageDate);
+    const vintageRaw = stringValue(scope.vintage_date, scope.vintageDate, event.resolvesAfter);
+    // If the market does not specify a vintage, use the resolution cutoff rather
+    // than the observation date: many official macro series are published later.
     const vintageDate = vintageRaw ? vintageRaw.slice(0, 10) : null;
     const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(new Date(value + 'T00:00:00Z').getTime());
     if (!seriesId || !/^[A-Z0-9_-]{1,40}$/.test(seriesId)) {
