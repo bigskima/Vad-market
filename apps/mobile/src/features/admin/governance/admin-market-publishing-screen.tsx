@@ -69,19 +69,18 @@ export function AdminMarketPublishingScreen() {
   }, []);
 
   const ready = useMemo(() => rows.filter((row) => {
-    if (row.instrument_status !== 'DRAFT' || row.event_status !== 'APPROVED') return false;
+    if (row.instrument_status !== 'DRAFT' || !['APPROVED', 'SCHEDULED'].includes(row.event_status)) return false;
     const closesAt = Date.parse(row.closes_at);
     const opensAt = row.opens_at ? Date.parse(row.opens_at) : null;
     return Number.isFinite(closesAt) && closesAt > clockNow
-      && (opensAt === null || !Number.isFinite(opensAt) || opensAt <= clockNow);
+      && (opensAt === null || (Number.isFinite(opensAt) && opensAt <= clockNow));
   }), [rows, clockNow]);
   const scheduled = useMemo(() => rows.filter((row) => {
     if (row.instrument_status !== 'DRAFT') return false;
     const closesAt = Date.parse(row.closes_at);
     const opensAt = row.opens_at ? Date.parse(row.opens_at) : null;
     if (!Number.isFinite(closesAt) || closesAt <= clockNow) return false;
-    return row.event_status === 'SCHEDULED'
-      || (opensAt !== null && Number.isFinite(opensAt) && opensAt > clockNow);
+    return opensAt !== null && Number.isFinite(opensAt) && opensAt > clockNow;
   }), [rows, clockNow]);
   const expiredDrafts = useMemo(() => rows.filter((row) =>
     row.instrument_status === 'DRAFT' && Number.isFinite(Date.parse(row.closes_at)) && Date.parse(row.closes_at) <= clockNow,
