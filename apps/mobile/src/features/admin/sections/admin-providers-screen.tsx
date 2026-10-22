@@ -20,6 +20,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
 import { getAdminMarketDataSources, setAdminMarketDataSourceStatus, updateAdminMarketDataSourceSettings } from '@/services/crypto-market-data-api';
 import { AdminFinancialMarketDataSources } from './admin-financial-market-data-sources';
+import { AdminOraclePolicyReviewPanel } from './admin-oracle-policy-review-panel';
 import { getSportsMarketTaxonomy, setAdminSportsCompetitionStatus, upsertAdminSportsCompetition, type SportsMarketTaxonomy, type SportsMarketCompetition } from '@/services/admin-guided-market-catalog-api';
 import {
   decideProviderStatusRequest,
@@ -49,6 +50,8 @@ export function AdminProvidersScreen() {
   const canManage = hasAdminPermission(data.access, 'providers.manage');
   const canManageMarkets = hasAdminPermission(data.access, 'markets.manage');
   const canCheckOracle = canManage || hasAdminPermission(data.access, 'oracle.review');
+  const canReviewOracle = hasAdminPermission(data.access, 'oracle.review');
+  const canReadOraclePolicies = canManage || canManageMarkets || canReviewOracle;
   const [tab, setTab] = useState('readiness');
   const [selectedProvider, setSelectedProvider] = useState<ProviderReadinessRow | null>(null);
   const [targetStatus, setTargetStatus] = useState<ProviderStatus | null>(null);
@@ -421,6 +424,7 @@ export function AdminProvidersScreen() {
             label: 'Approvals',
             count: data.providerChanges.length,
           },
+          ...(canReadOraclePolicies ? [{ key: 'oracle-policies', label: 'Oracle policies' }] : []),
         ]}
       />
 
@@ -468,7 +472,7 @@ export function AdminProvidersScreen() {
             <EmptyText>No provider readiness rows are available.</EmptyText>
           )}
         </OperationsSection>
-      ) : (
+      ) : tab === 'changes' ? (
         <OperationsSection
           title="Pending approvals"
           description="Provider status changes waiting for an independent approver."
@@ -490,7 +494,9 @@ export function AdminProvidersScreen() {
             <EmptyText>No provider changes are awaiting approval.</EmptyText>
           )}
         </OperationsSection>
-      )}
+      ) : canReadOraclePolicies ? (
+        <AdminOraclePolicyReviewPanel canReview={canReviewOracle} />
+      ) : null}
 
       <View
         style={{
