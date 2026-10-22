@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
-import { VadButton } from '@/components/ui/vad-button';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
@@ -17,7 +16,6 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
   showHeader?: boolean;
 }) {
   const theme = useVadTheme();
-  const density = useProductDensity();
   const [items, setItems] = useState<FinancialMarketQuote[]>([]);
   const [source, setSource] = useState('');
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
@@ -31,20 +29,23 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     const term = search.trim();
-    setError(null);
-    setNotice(null);
-    if (term.length === 1) {
-      setItems([]);
-      setSource('');
-      setFetchedAt(null);
-      setStale(false);
-      setLoading(false);
-      return () => { active = false; };
-    }
 
-    setLoading(true);
     const refresh = async () => {
       if (!active) return;
+      if (term.length === 1) {
+        setItems([]);
+        setSource('');
+        setFetchedAt(null);
+        setStale(false);
+        setError(null);
+        setNotice(null);
+        setLoading(false);
+        return;
+      }
+
+      setError(null);
+      setNotice(null);
+      setLoading(true);
       try {
         const page = await getFinancialMarketData({ assetClass, query: term });
         if (!active) return;
@@ -53,7 +54,6 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
         setFetchedAt(page.fetchedAt ?? null);
         setStale(page.stale === true);
         setNotice(page.message ?? null);
-        setError(null);
         refreshTimer = setTimeout(() => { void refresh(); }, Math.max(15, Math.min(3600, page.cacheSeconds ?? 300)) * 1000);
       } catch (value) {
         if (!active) return;
@@ -64,6 +64,7 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
         if (active) setLoading(false);
       }
     };
+
     debounceTimer = setTimeout(() => { void refresh(); }, 250);
     return () => {
       active = false;
