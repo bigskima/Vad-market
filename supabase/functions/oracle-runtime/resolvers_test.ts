@@ -1,3 +1,4 @@
+import { hasContinuousTimestampCoverage } from './coverage.ts';
 import { eligibleProviders, parseResolverSpec } from './resolvers.ts';
 import type { DueOracleEvent, OracleProvider } from './types.ts';
 
@@ -80,4 +81,23 @@ Deno.test('provider selection respects the approved source hierarchy and provide
   ];
   const eligible = eligibleProviders(event, spec, providers);
   assert(eligible.length === 1 && eligible[0].code === 'TWELVE_DATA', 'only a configured, production, healthy-or-unknown provider in the approved hierarchy should be eligible');
+});
+
+Deno.test('negative threshold-touch evidence rejects a hidden gap between boundary samples', () => {
+  const start = Date.UTC(2026, 9, 22, 0, 0, 0);
+  const end = start + 60 * 60 * 1000;
+  const sparsePoints = [start + 60_000, end - 60_000];
+  assert(
+    !hasContinuousTimestampCoverage(sparsePoints, start, end, 900),
+    'boundary samples do not prove coverage when the internal gap exceeds the maximum',
+  );
+});
+
+Deno.test('continuous historical samples satisfy the configured coverage gap', () => {
+  const start = Date.UTC(2026, 9, 22, 0, 0, 0);
+  const points = [start, start + 10 * 60_000, start + 20 * 60_000, start + 30 * 60_000];
+  assert(
+    hasContinuousTimestampCoverage(points, start, start + 30 * 60_000, 900),
+    'all sample gaps are within the configured maximum',
+  );
 });
