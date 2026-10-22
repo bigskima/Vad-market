@@ -214,7 +214,9 @@ export async function resolveFinancialPriceThresholdWithProvider(
   if (base !== 'https://api.twelvedata.com') {
     throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Twelve Data must use its approved HTTPS API host', 500);
   }
-  const start = new Date(spec.observationTime.getTime() - maxDelta * 1000);
+  // The observation must be at or after the contract's timestamp. A nearby
+  // pre-cutoff quote is not a valid substitute for the required post-cutoff sample.
+  const start = new Date(spec.observationTime.getTime());
   const end = new Date(spec.observationTime.getTime() + maxDelta * 1000);
   const format = (date: Date) => date.toISOString().slice(0, 19).replace('T', ' ');
   const url = new URL('/time_series', base);
@@ -237,8 +239,8 @@ export async function resolveFinancialPriceThresholdWithProvider(
     time: timestamp(row.datetime ?? row.timestamp),
     value: numeric(row.close ?? row.price),
   })).filter((point): point is { row: JsonRecord; time: Date; value: number } =>
-    point.time !== null && point.value !== null
-  ).sort((a, b) => Math.abs(a.time.getTime() - spec.observationTime.getTime()) - Math.abs(b.time.getTime() - spec.observationTime.getTime()));
+    point.time !== null && point.value !== null && point.time.getTime() >= spec.observationTime.getTime()
+  ).sort((a, b) => a.time.getTime() - b.time.getTime());
   const selected = points[0];
   if (!selected) return { kind: 'skipped', code: 'FINANCIAL_OBSERVATION_MISSING', detail: 'Twelve Data returned no usable price point in the configured time window' };
   const deltaSeconds = withinWindow(selected.time, spec.observationTime, maxDelta);
