@@ -30,7 +30,6 @@ values
    'ALPHA_VANTAGE_API_KEY')
 on conflict(code,environment) do update set
   name=excluded.name,
-  status='ACTIVE',
   priority=excluded.priority,
   capabilities=excluded.capabilities,
   public_metadata=current_provider.public_metadata || excluded.public_metadata,
