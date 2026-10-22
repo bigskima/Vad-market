@@ -167,14 +167,28 @@ async function runHealth(admin: SupabaseClient, providers: OracleProvider[], fil
   for (const provider of selected) {
     const started = Date.now();
     const credentialPresent = configuredFor(provider);
+    if (provider.status === 'DISABLED') {
+      results.push({ provider: provider.code, providerStatus: provider.status, health: 'UNKNOWN', configured: credentialPresent, reason: 'PROVIDER_DISABLED' });
+      continue;
+    }
+    if (provider.publicMetadata?.health_probe === 'CREDENTIAL_ONLY') {
+      await recordHealth(admin, provider, 'UNKNOWN', credentialPresent, null, {
+        checked_by: 'oracle-runtime',
+        probe: 'CREDENTIAL_ONLY',
+        note: 'A live probe is intentionally skipped to preserve the configured provider request budget. Resolution requests are the authoritative runtime test.',
+      });
+      results.push({ provider: provider.code, providerStatus: provider.status, health: 'UNKNOWN', configured: credentialPresent, reason: 'CREDENTIAL_ONLY_PROBE' });
+      continue;
+    }
     try {
       const probe = await probeProvider(provider);
-      await recordHealth(admin, provider, 'HEALTHY', true, probe.latencyMs, {
+      const healthStatus = probe.metadata?.probe === 'CONFIGURED_RESOURCES_ONLY' ? 'UNKNOWN' : 'HEALTHY';
+      await recordHealth(admin, provider, healthStatus, credentialPresent, probe.latencyMs, {
         ...probe.metadata,
         credential_present: credentialPresent,
         checked_by: 'oracle-runtime',
       });
-      results.push({ provider: provider.code, providerStatus: provider.status, health: 'HEALTHY', configured: true, latencyMs: probe.latencyMs });
+      results.push({ provider: provider.code, providerStatus: provider.status, health: healthStatus, configured: credentialPresent, latencyMs: probe.latencyMs });
     } catch (error) {
       const safe = safeError(error);
       const failure = providerFailureHealth(error, credentialPresent);
