@@ -28,13 +28,31 @@ export function HomePromotionCarousel({
   const scrollRef = useRef<ScrollView>(null);
   const directionRef = useRef<1 | -1>(1);
   const indexRef = useRef(0);
+  const draggingRef = useRef(false);
+  const signatureRef = useRef('');
   const [width, setWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const signature = promotions.map((promotion) => promotion.public_id).join('|');
+
+  useEffect(() => {
+    if (!width) return;
+    if (signatureRef.current !== signature) {
+      signatureRef.current = signature;
+      indexRef.current = 0;
+      directionRef.current = 1;
+      setActiveIndex(0);
+      scrollRef.current?.scrollTo({ x: 0, animated: false });
+      return;
+    }
+    const next = Math.min(indexRef.current, Math.max(0, promotions.length - 1));
+    indexRef.current = next;
+    scrollRef.current?.scrollTo({ x: next * (width + CARD_GAP), animated: false });
+  }, [signature, width, promotions.length]);
 
   useEffect(() => {
     if (promotions.length <= 1 || width <= 0) return;
-
     const timer = setInterval(() => {
+      if (draggingRef.current) return;
       let next = indexRef.current + directionRef.current;
       if (next >= promotions.length) {
         directionRef.current = -1;
@@ -43,7 +61,6 @@ export function HomePromotionCarousel({
         directionRef.current = 1;
         next = Math.min(promotions.length - 1, 1);
       }
-
       indexRef.current = next;
       setActiveIndex(next);
       scrollRef.current?.scrollTo({
@@ -51,23 +68,14 @@ export function HomePromotionCarousel({
         animated: true,
       });
     }, AUTO_SCROLL_MS);
-
     return () => clearInterval(timer);
-  }, [promotions.length, width]);
-
-  useEffect(() => {
-    if (indexRef.current >= promotions.length) {
-      indexRef.current = 0;
-      directionRef.current = 1;
-      setActiveIndex(0);
-      scrollRef.current?.scrollTo({ x: 0, animated: false });
-    }
-  }, [promotions.length]);
+  }, [promotions.length, signature, width]);
 
   if (!promotions.length) return null;
 
-  function onMomentumEnd(event: NativeSyntheticEvent<NativeScrollEvent>) {
+  const onMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!width) return;
+    draggingRef.current = false;
     const next = Math.max(
       0,
       Math.min(
@@ -75,19 +83,19 @@ export function HomePromotionCarousel({
         Math.round(event.nativeEvent.contentOffset.x / (width + CARD_GAP)),
       ),
     );
+    const previous = indexRef.current;
     indexRef.current = next;
     setActiveIndex(next);
+    if (next > previous) directionRef.current = 1;
+    if (next < previous) directionRef.current = -1;
     if (next === promotions.length - 1) directionRef.current = -1;
     if (next === 0) directionRef.current = 1;
-  }
+  };
 
   const bannerHeight = density.compact ? 116 : density.phone ? 128 : density.desktop ? 176 : 148;
 
   return (
-    <View
-      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-      style={{ gap: 7 }}
-    >
+    <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ gap: 7 }}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -96,6 +104,8 @@ export function HomePromotionCarousel({
         snapToAlignment="start"
         snapToInterval={width ? width + CARD_GAP : undefined}
         disableIntervalMomentum
+        onScrollBeginDrag={() => { draggingRef.current = true; }}
+        onScrollEndDrag={() => { draggingRef.current = false; }}
         onMomentumScrollEnd={onMomentumEnd}
         contentContainerStyle={{ gap: CARD_GAP }}
       >
@@ -103,7 +113,7 @@ export function HomePromotionCarousel({
           <Pressable
             key={promotion.public_id}
             accessibilityRole="button"
-            accessibilityLabel={promotion.title || 'Open VAD promotion'}
+            accessibilityLabel={promotion.title || 'Open VAD campaign'}
             onPress={() => onOpen(promotion.target_path)}
             style={({ pressed }) => ({
               width: width || Math.max(260, density.width - density.horizontalPadding * 2),
@@ -111,14 +121,8 @@ export function HomePromotionCarousel({
               overflow: 'hidden',
               borderRadius: density.phone ? 14 : 18,
               borderWidth: 1,
-              borderColor:
-                promotion.banner_kind === 'TEXT'
-                  ? theme.colors.brandPrimary
-                  : theme.colors.border,
-              backgroundColor:
-                promotion.banner_kind === 'TEXT'
-                  ? theme.colors.brandSoft
-                  : theme.colors.surfaceRaised,
+              borderColor: promotion.banner_kind === 'TEXT' ? theme.colors.brandPrimary : theme.colors.border,
+              backgroundColor: promotion.banner_kind === 'TEXT' ? theme.colors.brandSoft : theme.colors.surfaceRaised,
               opacity: pressed ? 0.84 : 1,
             })}
           >
@@ -126,6 +130,7 @@ export function HomePromotionCarousel({
               <Image
                 source={{ uri: promotion.image_url }}
                 resizeMode="cover"
+                accessibilityLabel={promotion.title ? `${promotion.title} campaign artwork` : 'VAD campaign artwork'}
                 style={{ width: '100%', height: '100%' }}
               />
             ) : (
@@ -171,24 +176,30 @@ export function HomePromotionCarousel({
 
       {promotions.length > 1 ? (
         <View
-          accessibilityLabel={`Promotion ${activeIndex + 1} of ${promotions.length}`}
-          style={{
-            flexDirection: 'row',
-            alignSelf: 'center',
-            gap: 4,
-          }}
+          accessibilityLabel={`Campaign ${activeIndex + 1} of ${promotions.length}`}
+          style={{ flexDirection: 'row', alignSelf: 'center', gap: 4 }}
         >
           {promotions.map((promotion, index) => (
-            <View
+            <Pressable
               key={`dot-${promotion.public_id}`}
+              accessibilityRole="button"
+              accessibilityLabel={`Show campaign ${index + 1}`}
+              accessibilityState={{ selected: index === activeIndex }}
+              onPress={() => {
+                const previous = indexRef.current;
+                indexRef.current = index;
+                directionRef.current = index >= previous ? 1 : -1;
+                if (index === promotions.length - 1) directionRef.current = -1;
+                if (index === 0) directionRef.current = 1;
+                setActiveIndex(index);
+                scrollRef.current?.scrollTo({ x: index * (width + CARD_GAP), animated: true });
+              }}
+              hitSlop={6}
               style={{
                 width: index === activeIndex ? 14 : 5,
                 height: 5,
                 borderRadius: 3,
-                backgroundColor:
-                  index === activeIndex
-                    ? theme.colors.brandPrimary
-                    : theme.colors.borderStrong,
+                backgroundColor: index === activeIndex ? theme.colors.brandPrimary : theme.colors.borderStrong,
               }}
             />
           ))}
