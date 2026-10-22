@@ -18,7 +18,7 @@ insert into integration.providers as p
   (code,name,provider_type,environment,status,priority,capabilities,public_metadata,secret_reference)
 values
   ('TWELVE_DATA','Twelve Data Oracle','ORACLE','PRODUCTION','DISABLED',30,
-   '["FINANCIAL_PRICE_THRESHOLD"]'::jsonb,
+   '["CRYPTO_PRICE_THRESHOLD","FINANCIAL_PRICE_THRESHOLD"]'::jsonb,
    '{"configured":false,"adapter":"TWELVE_DATA_HISTORICAL","base_url":"https://api.twelvedata.com","health_probe":"CREDENTIAL_ONLY","settlement_role":"CORROBORATING","notes":"Requires admin approval and TWELVE_DATA_API_KEY Edge Function secret."}'::jsonb,
    'TWELVE_DATA_API_KEY'),
   ('FRED','Federal Reserve Economic Data Oracle','ORACLE','PRODUCTION','DISABLED',40,
@@ -26,7 +26,7 @@ values
    '{"configured":false,"adapter":"FRED_SERIES_OBSERVATIONS","base_url":"https://api.stlouisfed.org/fred","health_probe":"CREDENTIAL_ONLY","settlement_role":"CORROBORATING","notes":"Requires admin approval and FRED_API_KEY Edge Function secret."}'::jsonb,
    'FRED_API_KEY'),
   ('ALPHA_VANTAGE','Alpha Vantage Economic Data Oracle','ORACLE','PRODUCTION','DISABLED',50,
-   '["FRED_SERIES_THRESHOLD"]'::jsonb,
+   '["FINANCIAL_PRICE_THRESHOLD","FRED_SERIES_THRESHOLD"]'::jsonb,
    '{"configured":false,"adapter":"ALPHA_VANTAGE_ECONOMIC_SERIES","base_url":"https://www.alphavantage.co","health_probe":"CREDENTIAL_ONLY","settlement_role":"CORROBORATING","notes":"Secondary series only; requires explicit per-series mapping and ALPHA_VANTAGE_API_KEY."}'::jsonb,
    'ALPHA_VANTAGE_API_KEY')
 on conflict (code,environment) do update set
