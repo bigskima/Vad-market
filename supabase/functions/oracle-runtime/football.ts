@@ -12,8 +12,8 @@ function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function text(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
+function text(value: unknown, max = 180) {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
 function normalizeTeam(value: unknown) {
