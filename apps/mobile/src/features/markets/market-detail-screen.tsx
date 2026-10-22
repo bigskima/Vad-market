@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -117,7 +117,13 @@ export function MarketDetailScreen({
     <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: 200 }}>
       <MarketDetailHeader market={market} />
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingVertical: 4, paddingHorizontal: 1 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 4, paddingHorizontal: 1, paddingRight: 12 }}
+        accessibilityLabel="Market detail sections"
+      >
         {tabs.filter((item) => isCryptoMarket || item.value !== 'Live price').map((item) => (
           <VadChip
             key={item.value}
@@ -127,7 +133,7 @@ export function MarketDetailScreen({
             onPress={() => setTab(item.value)}
           />
         ))}
-      </View>
+      </ScrollView>
 
       {tab === 'Overview' ? (
         <Overview market={market} timing={timing} onTrade={() => setTab('Trade')} />
