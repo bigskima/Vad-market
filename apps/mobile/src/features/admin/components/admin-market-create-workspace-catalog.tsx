@@ -164,7 +164,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
       if (!check.supported) setError(check.reason ?? 'This asset does not have active Coinbase + Kraken historical mappings. Choose another supported asset.');
     } catch (reason) {
       if (requestId !== cryptoAssetCheckRequest.current) return;
-      setCryptoAssetCheck({ supported: false, symbol: coin.symbol.toUpperCase(), quote: 'USD', provider: 'COINGECKO+COINBASE', reason: reason instanceof Error ? reason.message : 'Free-source Oracle coverage could not be verified.' });
+      setCryptoAssetCheck({ supported: false, symbol: coin.symbol.toUpperCase(), quote: 'USD', provider: 'COINBASE+KRAKEN', reason: reason instanceof Error ? reason.message : 'Free-source Oracle coverage could not be verified.' });
       setError(reason instanceof Error ? reason.message : 'Free-source Oracle coverage could not be verified.');
     } finally {
       if (requestId === cryptoAssetCheckRequest.current) setCryptoAssetCheckLoading(false);
