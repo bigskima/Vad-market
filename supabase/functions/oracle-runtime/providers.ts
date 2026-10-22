@@ -91,6 +91,19 @@ export async function probeProvider(provider: OracleProvider) {
       });
       return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'PING' } };
     }
+    case 'COINBASE': {
+      if (baseUrl !== 'https://api.coinbase.com') {
+        throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Coinbase must use its approved HTTPS API host', 500);
+      }
+      const result = await fetchJson(`${baseUrl}/api/v3/brokerage/market/products/BTC-USD`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!result.payload || typeof result.payload !== 'object'
+          || String((result.payload as JsonRecord).product_id ?? '') !== 'BTC-USD') {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Coinbase public market-data probe returned an invalid BTC-USD product', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'PUBLIC_PRODUCT' } };
+    }
     case 'FOOTBALL_DATA': {
       const secret = requiredSecret(provider);
       const result = await fetchJson(`${baseUrl}/competitions/PL`, {
@@ -511,6 +524,7 @@ export async function resolveCryptoWithProvider(
     case 'PYTH': return pythCryptoObservation(provider, resource, spec);
     case 'COINGECKO': return coinGeckoCryptoObservation(provider, resource, spec);
     case 'DIA': return diaCryptoObservation(provider, resource, spec);
+    case 'COINBASE':
     case 'TWELVE_DATA': return resolveFinancialPriceThresholdWithProvider(provider, resource, {
       resolverType: 'FINANCIAL_PRICE_THRESHOLD_V1',
       symbol: spec.asset,
