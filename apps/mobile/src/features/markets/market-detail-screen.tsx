@@ -335,7 +335,8 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
     detail: PublishedMarketDetail | null;
     loading: boolean;
     failed: boolean;
-  }>({ instrumentId: '', requestId: -1, detail: null, loading: true, failed: false });
+    errorMessage: string | null;
+  }>({ instrumentId: '', requestId: -1, detail: null, loading: true, failed: false, errorMessage: null });
   const [retryCount, setRetryCount] = useState(0);
   const [criteriaExpanded, setCriteriaExpanded] = useState(false);
   const [scopeExpanded, setScopeExpanded] = useState(false);
@@ -347,10 +348,10 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
     let active = true;
     void getPublishedMarketDetail(market.instrument_public_id)
       .then((detail) => {
-        if (active) setDetailState({ instrumentId: market.instrument_public_id, requestId: retryCount, detail, loading: false, failed: false });
+        if (active) setDetailState({ instrumentId: market.instrument_public_id, requestId: retryCount, detail, loading: false, failed: false, errorMessage: null });
       })
-      .catch(() => {
-        if (active) setDetailState({ instrumentId: market.instrument_public_id, requestId: retryCount, detail: null, loading: false, failed: true });
+      .catch((error: unknown) => {
+        if (active) setDetailState({ instrumentId: market.instrument_public_id, requestId: retryCount, detail: null, loading: false, failed: true, errorMessage: error instanceof Error ? error.message : 'Published market details are temporarily unavailable.' });
       });
     return () => { active = false; };
   }, [market.instrument_public_id, retryCount]);
@@ -461,7 +462,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
               {failed ? 'Full published details could not be loaded' : 'Published description unavailable'}
             </VadText>
             <VadText variant="caption" tone="secondary">
-              The market remains connected to its live status and available context. VAD has not substituted invented resolution wording.
+              {failed ? detailState.errorMessage ?? 'Published details are temporarily unavailable. Please retry.' : 'The market remains connected to its live status and available context. VAD has not substituted invented resolution wording.'}
             </VadText>
             {failed ? (
               <Pressable
