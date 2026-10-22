@@ -148,7 +148,7 @@ export function MarketDetailScreen({
       {tab === 'Discussion' ? (
         <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} marketFilter={market} />
       ) : null}
-      {tab === 'Rules' ? <Rules market={market} timing={timing} /> : null}
+      {tab === 'Rules' ? <Rules key={market.instrument_public_id} market={market} timing={timing} /> : null}
 
     </View>
   );
@@ -158,8 +158,8 @@ function Overview({ market, timing, onTrade }: { market: MarketCatalogItem; timi
   const density = useProductDensity();
   return (
     <View style={{ gap: density.compact ? 8 : 12 }}>
-      <MarketSnapshot market={market} timing={timing} />
-      <MarketContextPanel market={market} />
+      <MarketSnapshot key={market.instrument_public_id} market={market} timing={timing} />
+      <MarketContextPanel key={market.instrument_public_id} market={market} />
       <VadButton label="Trade this market" onPress={onTrade} size="small" leading={<VadIcon name="markets" size={15} tone="inverse" />} />
       <AssistantEntry
         label="Ask VAD AI about this market"
@@ -331,10 +331,11 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
   const density = useProductDensity();
   const [detailState, setDetailState] = useState<{
     instrumentId: string;
+    requestId: number;
     detail: PublishedMarketDetail | null;
     loading: boolean;
     failed: boolean;
-  }>({ instrumentId: market.instrument_public_id, detail: null, loading: true, failed: false });
+  }>({ instrumentId: '', requestId: -1, detail: null, loading: true, failed: false });
   const [retryCount, setRetryCount] = useState(0);
   const [criteriaExpanded, setCriteriaExpanded] = useState(false);
   const [scopeExpanded, setScopeExpanded] = useState(false);
@@ -344,26 +345,17 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
 
   useEffect(() => {
     let active = true;
-    setDetailState({ instrumentId: market.instrument_public_id, detail: null, loading: true, failed: false });
     void getPublishedMarketDetail(market.instrument_public_id)
       .then((detail) => {
-        if (active) setDetailState({ instrumentId: market.instrument_public_id, detail, loading: false, failed: false });
+        if (active) setDetailState({ instrumentId: market.instrument_public_id, requestId: retryCount, detail, loading: false, failed: false });
       })
       .catch(() => {
-        if (active) setDetailState({ instrumentId: market.instrument_public_id, detail: null, loading: false, failed: true });
+        if (active) setDetailState({ instrumentId: market.instrument_public_id, requestId: retryCount, detail: null, loading: false, failed: true });
       });
     return () => { active = false; };
   }, [market.instrument_public_id, retryCount]);
 
-  useEffect(() => {
-    setCriteriaExpanded(false);
-    setScopeExpanded(false);
-    setVerificationExpanded(false);
-    setScheduleExpanded(false);
-    setOutcomesExpanded(false);
-  }, [market.instrument_public_id]);
-
-  const stateMatchesMarket = detailState.instrumentId === market.instrument_public_id;
+  const stateMatchesMarket = detailState.instrumentId === market.instrument_public_id && detailState.requestId === retryCount;
   const detail = stateMatchesMarket ? detailState.detail : null;
   const loading = !stateMatchesMarket || detailState.loading;
   const failed = stateMatchesMarket && detailState.failed;
