@@ -114,7 +114,7 @@ export function MarketDetailScreen({
   }
 
   return (
-    <View style={{ gap: density.compact ? 12 : density.sectionGap }}>
+    <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: density.phone ? 124 : 72 }}>
       <MarketDetailHeader market={market} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingVertical: 2 }}>
