@@ -157,7 +157,13 @@ function PromotionSection({ promotions, onEdit }: { promotions: HomePromotion[];
                   ) : null}
                   <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                     <VadText variant="bodyStrong" numberOfLines={1}>{promotion.title || 'Image campaign'}</VadText>
-                    <VadText variant="caption" tone="secondary" numberOfLines={1}>{promotion.banner_kind} · {promotion.target_path}{promotion.starts_at || promotion.ends_at ? ' · Scheduled' : ''}</VadText>
+                    <VadText variant="caption" tone="secondary" numberOfLines={1}>{promotion.banner_kind} · {promotion.target_path}</VadText>
+                    {promotion.starts_at || promotion.ends_at ? (
+                      <VadText variant="caption" tone="secondary" numberOfLines={2}>
+                        {promotion.starts_at ? `Starts ${new Date(promotion.starts_at).toLocaleString()}` : 'Starts when published'}
+                        {promotion.ends_at ? ` · Ends ${new Date(promotion.ends_at).toLocaleString()}` : ''}
+                      </VadText>
+                    ) : null}
                   </View>
                   <VadChip label={promotion.status} tone={promotion.status === 'PUBLISHED' ? 'yes' : promotion.status === 'DRAFT' ? 'warning' : 'neutral'} />
                 </View>
@@ -326,9 +332,12 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
 function normalizeCampaignDate(value: string, label: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
+  if (!/(Z|[+-]\\d{2}:?\\d{2})$/i.test(trimmed)) {
+    throw new Error(`${label} must include a timezone, preferably UTC (Z), e.g. 2026-11-01T09:00:00Z.`);
+  }
   const timestamp = Date.parse(trimmed);
   if (!Number.isFinite(timestamp)) {
-    throw new Error(`${label} must be a valid date/time. Use an ISO 8601 value such as 2026-11-01T09:00:00Z.`);
+    throw new Error(`${label} must be a valid ISO 8601 date/time, e.g. 2026-11-01T09:00:00Z.`);
   }
   return new Date(timestamp).toISOString();
 }
