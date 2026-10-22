@@ -19,8 +19,14 @@ values
    null)
 on conflict (code,environment) do update set
   provider_type=excluded.provider_type,
-  capabilities=(select coalesce(jsonb_agg(distinct capability), '[]'::jsonb)
-    from jsonb_array_elements_text(coalesce(integration.providers.capabilities,'[]'::jsonb) || excluded.capabilities) as capability),
+  capabilities=(
+    select coalesce(jsonb_agg(to_jsonb(merged.capability)), '[]'::jsonb)
+    from (
+      select jsonb_array_elements_text(coalesce(integration.providers.capabilities,'[]'::jsonb)) as capability
+      union
+      select jsonb_array_elements_text(excluded.capabilities) as capability
+    ) as merged
+  ),
   public_metadata=integration.providers.public_metadata || excluded.public_metadata,
   secret_reference=null,
   updated_at=statement_timestamp();
