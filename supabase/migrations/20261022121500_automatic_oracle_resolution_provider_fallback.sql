@@ -40,8 +40,7 @@ on conflict(code,environment) do update set
 -- Enable provider adapters that can supply corroborating sports results. Fixture
 -- IDs remain event-specific provider-resource mappings, never guessed from titles.
 update integration.providers p
-set status='ACTIVE',
-    priority=80,
+set priority=80,
     capabilities=case when p.capabilities ? 'FOOTBALL_MATCH_RESULT'
       then p.capabilities else p.capabilities || '["FOOTBALL_MATCH_RESULT"]'::jsonb end,
     public_metadata=p.public_metadata || jsonb_build_object(
@@ -54,8 +53,7 @@ set status='ACTIVE',
 where p.code='THESPORTSDB' and p.environment='PRODUCTION' and p.provider_type='ORACLE';
 
 update integration.providers p
-set status='ACTIVE',
-    priority=60,
+set priority=60,
     capabilities=case when p.capabilities ? 'FOOTBALL_MATCH_RESULT'
       then p.capabilities else p.capabilities || '["FOOTBALL_MATCH_RESULT"]'::jsonb end,
     public_metadata=p.public_metadata || jsonb_build_object(
@@ -68,8 +66,9 @@ set status='ACTIVE',
 where p.code='API_SPORTS' and p.environment='PRODUCTION' and p.provider_type='ORACLE';
 
 update integration.providers p
-set status='ACTIVE',
-    priority=15,
+set priority=15,
+    capabilities=case when p.capabilities ? 'PUBLIC_RECORD_EVIDENCE'
+      then p.capabilities else p.capabilities || '["PUBLIC_RECORD_EVIDENCE"]'::jsonb end,
     public_metadata=p.public_metadata || jsonb_build_object(
       'adapter','US_SENATE_FLOOR_V1',
       'base_url','https://www.senate.gov',
