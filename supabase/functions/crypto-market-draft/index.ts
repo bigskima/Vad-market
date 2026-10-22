@@ -162,7 +162,6 @@ async function authenticate(req: Request) {
   const configured = categories.some((category) => {
     const marketTypes = Array.isArray(category.marketTypes) ? category.marketTypes.filter(isRecord) : [];
     return safeText(category.code).toUpperCase() === 'CRYPTO_WEB3'
-      && safeText(category.presentationProfile).toUpperCase() === 'CRYPTO'
       && marketTypes.some((type) =>
         safeText(type.code).toUpperCase() === 'CRYPTO_PRICE_THRESHOLD'
         && safeText(type.handler).toUpperCase() === 'CRYPTO_THRESHOLD',
