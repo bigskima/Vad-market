@@ -115,6 +115,11 @@ export function VadBottomSheet({
             style={{
               width: '100%',
               maxWidth: dialog ? 680 : undefined,
+              // Bound the sheet to the modal viewport so long content scrolls
+              // inside it instead of expanding beyond the visible screen.
+              height: '100%',
+              maxHeight: dialog ? '84%' : '90%',
+              flexShrink: 1,
               transform: [{ translateY: dialog ? 0 : dragOffset }],
             }}
           >
@@ -125,7 +130,9 @@ export function VadBottomSheet({
               {
                 width: '100%',
                 maxWidth: dialog ? 680 : undefined,
-                maxHeight: dialog ? '84%' : '90%',
+                flex: 1,
+                minHeight: 0,
+                maxHeight: '100%',
                 backgroundColor: theme.colors.surface,
                 borderRadius: dialog ? theme.radius.xxl : 0,
                 borderTopLeftRadius: theme.radius.xxl,
@@ -194,8 +201,9 @@ export function VadBottomSheet({
             </View>
 
             <ScrollView
-              style={{ flexShrink: 1 }}
+              style={{ flex: 1, minHeight: 0 }}
               contentContainerStyle={{
+                flexGrow: 1,
                 paddingHorizontal: compact ? theme.spacing.md : theme.spacing.lg,
                 paddingTop: theme.spacing.md,
                 paddingBottom: theme.spacing.lg,

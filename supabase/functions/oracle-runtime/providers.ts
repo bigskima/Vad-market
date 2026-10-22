@@ -91,6 +91,23 @@ export async function probeProvider(provider: OracleProvider) {
       });
       return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'PING' } };
     }
+    case 'KRAKEN': {
+      if (baseUrl !== 'https://api.kraken.com') {
+        throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Kraken must use its approved public HTTPS API host', 500);
+      }
+      const url = new URL('/0/public/OHLC', baseUrl);
+      url.searchParams.set('pair', 'XBTUSD');
+      url.searchParams.set('interval', '1');
+      const result = await fetchJson(url.toString(), { headers: { Accept: 'application/json' } });
+      const payload = result.payload;
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)
+        || !Array.isArray((payload as JsonRecord).error)
+        || ((payload as JsonRecord).error as unknown[]).length > 0
+        || !((payload as JsonRecord).result && typeof (payload as JsonRecord).result === 'object')) {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Kraken public OHLC health payload was invalid', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'PUBLIC_OHLC', pair: 'XBTUSD' } };
+    }
     case 'COINBASE': {
       if (baseUrl !== 'https://api.coinbase.com') {
         throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Coinbase must use its approved HTTPS API host', 500);
@@ -525,8 +542,9 @@ export async function resolveCryptoWithProvider(
     case 'COINGECKO': return coinGeckoCryptoObservation(provider, resource, spec);
     case 'DIA': return diaCryptoObservation(provider, resource, spec);
     case 'COINBASE':
+    case 'KRAKEN':
     case 'TWELVE_DATA': return resolveFinancialPriceThresholdWithProvider(provider, resource, {
-      resolverType: 'FINANCIAL_PRICE_THRESHOLD_V1',
+      resolverType: spec.resolverType,
       symbol: spec.asset,
       quote: spec.quote,
       operator: spec.operator,

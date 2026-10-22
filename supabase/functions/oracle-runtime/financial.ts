@@ -187,12 +187,14 @@ async function fetchCoinbaseCandles(
 export async function resolveFinancialPriceThresholdWithProvider(
   provider: OracleProvider,
   resource: OracleResource,
-  spec: FinancialPriceThresholdSpec,
+  spec: Omit<FinancialPriceThresholdSpec, 'resolverType'> & {
+    resolverType: FinancialPriceThresholdSpec['resolverType'] | 'CRYPTO_PRICE_THRESHOLD_V1';
+  },
 ): Promise<ProviderResolutionResult> {
-  if (!['COINBASE','TWELVE_DATA','ALPHA_VANTAGE'].includes(provider.code)) return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (!['COINBASE','KRAKEN','TWELVE_DATA','ALPHA_VANTAGE'].includes(provider.code)) return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
-  const key = provider.code === 'COINBASE' ? '' : (apiSecret(provider) ?? '');
-  if (provider.code !== 'COINBASE' && !key) throw new OracleRuntimeError('SECRET_MISSING', `${provider.name} API credential is not configured`, 503);
+  const key = ['COINBASE','KRAKEN'].includes(provider.code) ? '' : (apiSecret(provider) ?? '');
+  if (!['COINBASE','KRAKEN'].includes(provider.code) && !key) throw new OracleRuntimeError('SECRET_MISSING', `${provider.name} API credential is not configured`, 503);
   const base = provider.baseUrl?.replace(/\/$/, '');
   const maxDelta = Math.max(1, Math.min(3600, Number(resource.metadata?.max_timestamp_delta_seconds ?? 600)));
 
@@ -225,6 +227,68 @@ export async function resolveFinancialPriceThresholdWithProvider(
           threshold: spec.threshold,
           price: selected.close,
           source_timestamp: new Date(selected.endMs).toISOString(),
+          target_timestamp: spec.observationTime.toISOString(),
+          timestamp_delta_seconds: deltaSeconds,
+          interval: 'ONE_MINUTE',
+        },
+      },
+    };
+  }
+
+
+  if (provider.code === 'KRAKEN') {
+    if (base !== 'https://api.kraken.com') {
+      throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Kraken must use its approved public HTTPS host', 500);
+    }
+    const pair = text(resource.externalKey, 40).toUpperCase();
+    if (!/^[A-Z0-9]{3,20}$/.test(pair)) {
+      throw new OracleRuntimeError('KRAKEN_PAIR_INVALID', 'The approved Kraken pair mapping is invalid', 422);
+    }
+    const target = spec.observationTime.getTime();
+    const url = new URL('/0/public/OHLC', base);
+    url.searchParams.set('pair', pair);
+    url.searchParams.set('interval', '1');
+    url.searchParams.set('since', String(Math.max(0, Math.floor(target / 1000) - maxDelta)));
+    const payload = await fetchJson(url);
+    if (!record(payload)) throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Kraken returned an invalid public OHLC response', 502);
+    const errors = Array.isArray(payload.error) ? payload.error.filter((item) => typeof item === 'string' && item.trim()) : [];
+    if (errors.length) throw new OracleRuntimeError('KRAKEN_PUBLIC_OHLC_FAILED', text(errors[0], 220) || 'Kraken public OHLC returned an error', 502);
+    const result = record(payload.result) ? payload.result : {};
+    const rows = Object.entries(result).find(([name, value]) => name !== 'last' && Array.isArray(value))?.[1];
+    if (!Array.isArray(rows)) return { kind: 'skipped', code: 'KRAKEN_OHLC_MISSING', detail: 'Kraken returned no historical candle series for the approved pair' };
+    const candles = rows.filter((row) => Array.isArray(row) && row.length >= 5).map((row) => {
+      const startSeconds = numeric(row[0]);
+      const close = numeric(row[4]);
+      return startSeconds !== null && close !== null && close > 0
+        ? { endMs: startSeconds * 1000 + 60_000, close }
+        : null;
+    }).filter((candle): candle is { endMs: number; close: number } => candle !== null)
+      .filter((candle) => candle.endMs >= target && candle.endMs <= target + maxDelta * 1000)
+      .sort((a, b) => a.endMs - b.endMs);
+    const selected = candles[0];
+    if (!selected) return {
+      kind: 'skipped',
+      code: 'KRAKEN_TARGET_OBSERVATION_MISSING',
+      detail: 'Kraken has no closed one-minute historical candle within the permitted post-cutoff window',
+    };
+    const observedAt = new Date(selected.endMs);
+    const deltaSeconds = withinWindow(observedAt, spec.observationTime, maxDelta);
+    return {
+      kind: 'observation',
+      observation: {
+        observedOutcome: outcome(selected.close, spec.operator, spec.threshold),
+        observedAt,
+        evidenceReference: url.toString(),
+        payload: {
+          resolver_type: spec.resolverType,
+          provider: provider.code,
+          symbol: spec.symbol,
+          quote: spec.quote,
+          kraken_pair: pair,
+          operator: spec.operator,
+          threshold: spec.threshold,
+          price: selected.close,
+          source_timestamp: observedAt.toISOString(),
           target_timestamp: spec.observationTime.toISOString(),
           timestamp_delta_seconds: deltaSeconds,
           interval: 'ONE_MINUTE',

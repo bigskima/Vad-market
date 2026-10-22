@@ -120,43 +120,43 @@ Deno.test('keyless Coinbase public candles can be eligible under an approved pol
 });
 
 
-Deno.test('free crypto settlement policy uses CoinGecko and keyless Coinbase, not paid Pyth', () => {
+Deno.test('keyless crypto threshold policy selects Coinbase and Kraken, not paid Pyth', () => {
   const event = eventFixture({
     category: 'CRYPTO_WEB3',
     resolutionScope: {
-      resolver_type: 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1',
+      resolver_type: 'CRYPTO_PRICE_THRESHOLD_V1',
       asset: 'BTC',
       quote: 'USD',
       operator: 'GTE',
       threshold: 90_000,
-      window_start: '2026-10-20T00:00:00.000Z',
-      window_end: '2026-10-21T00:00:00.000Z',
+      observation_time: '2026-10-22T12:00:00.000Z',
     },
     sourceHierarchy: [
-      { role: 'PRIMARY', provider_code: 'COINGECKO', priority: 10 },
-      { role: 'CORROBORATING', provider_code: 'COINBASE', priority: 20 },
+      { role: 'PRIMARY', provider_code: 'COINBASE', priority: 10 },
+      { role: 'CORROBORATING', provider_code: 'KRAKEN', priority: 20 },
     ],
     consensusRule: { min_agreeing_providers: 2, distinct_providers: true },
   });
   const spec = parseResolverSpec(event);
-  const coinGecko = providerFixture({
-    id: 31,
-    code: 'COINGECKO',
-    name: 'CoinGecko Demo API',
-    configured: true,
-    secretReference: 'COINGECKO_DEMO_API_KEY',
-    adapter: 'COINGECKO_MARKET_CHART',
-    baseUrl: 'https://api.coingecko.com/api/v3',
-    capabilities: ['CRYPTO_PRICE_THRESHOLD'],
-  });
+  assert(spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1', 'expected a timestamped crypto threshold resolver');
   const coinbase = providerFixture({
-    id: 32,
+    id: 30,
     code: 'COINBASE',
     name: 'Coinbase Public Market Data',
     configured: true,
     secretReference: null,
     adapter: 'COINBASE_PUBLIC_CANDLES_V1',
     baseUrl: 'https://api.coinbase.com',
+    capabilities: ['CRYPTO_PRICE_THRESHOLD'],
+  });
+  const kraken = providerFixture({
+    id: 31,
+    code: 'KRAKEN',
+    name: 'Kraken Public OHLC',
+    configured: true,
+    secretReference: null,
+    adapter: 'KRAKEN_PUBLIC_OHLC_V1',
+    baseUrl: 'https://api.kraken.com',
     capabilities: ['CRYPTO_PRICE_THRESHOLD', 'FINANCIAL_PRICE_THRESHOLD'],
   });
   const pyth = providerFixture({
@@ -166,9 +166,9 @@ Deno.test('free crypto settlement policy uses CoinGecko and keyless Coinbase, no
     configured: true,
     capabilities: ['CRYPTO_PRICE_THRESHOLD'],
   });
-  const eligible = eligibleProviders(event, spec, [pyth, coinbase, coinGecko]);
+  const eligible = eligibleProviders(event, spec, [pyth, kraken, coinbase]);
   assert(
-    eligible.length === 2 && eligible[0].code === 'COINGECKO' && eligible[1].code === 'COINBASE',
-    'the approved free hierarchy must select the two independent free sources in priority order and exclude Pyth',
+    eligible.length === 2 && eligible[0].code === 'COINBASE' && eligible[1].code === 'KRAKEN',
+    'the approved two-source hierarchy must use keyless Coinbase and Kraken and exclude Pyth',
   );
 });

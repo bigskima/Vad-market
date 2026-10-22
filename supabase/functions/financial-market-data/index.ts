@@ -94,6 +94,230 @@ function configuredCredential(source: Source) {
   return ref ? Deno.env.get(ref)?.trim() ?? '' : '';
 }
 
+async function requestText(url: URL, approvedHost: string, approvedPrefix: string): Promise<string> {
+  if (url.protocol !== 'https:' || url.hostname !== approvedHost || !url.pathname.startsWith(approvedPrefix)) {
+    throw new Error('The requested public data URL is not approved.');
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 9000);
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      redirect: 'error',
+      headers: { Accept: 'text/csv,text/plain;q=0.9,*/*;q=0.5', 'User-Agent': 'VAD-Financial-Data/1.0' },
+    });
+    if (!response.ok) throw new Error('The public data source returned HTTP ' + response.status + '.');
+    const raw = await response.text();
+    if (raw.length > 2_000_000 || !raw.includes(',')) throw new Error('The public data source returned an invalid data file.');
+    return raw;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw new Error('The public data request timed out.');
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function definitionsForQuery(source: Source, query: string, limit = 8) {
+  const definitions = browseSymbols(source);
+  if (!query.trim()) return definitions.slice(0, limit);
+  const normalized = query.trim().toLowerCase();
+  const matched = definitions.filter((item) => item.symbol.toLowerCase().includes(normalized) || item.name.toLowerCase().includes(normalized));
+  if (matched.length) return matched.slice(0, limit);
+  return [];
+}
+
+async function yahooChartQuote(symbol: string, name: string, source: Source): Promise<AssetQuote | null> {
+  if (!/^[A-Z0-9^=._-]{1,20}$/.test(symbol)) return null;
+  const url = new URL('/v8/finance/chart/' + encodeURIComponent(symbol), 'https://query1.finance.yahoo.com');
+  url.searchParams.set('range', '5d');
+  url.searchParams.set('interval', '1d');
+  url.searchParams.set('events', 'div,splits');
+  const payload = await requestJson(url);
+  if (!isRecord(payload) || !isRecord(payload.chart)) throw new Error('The public chart source returned invalid data.');
+  if (payload.chart.error) throw new Error('No current public chart data is available for ' + symbol + '.');
+  const rows = Array.isArray(payload.chart.result) ? payload.chart.result.filter(isRecord) : [];
+  const row = rows[0];
+  if (!row) return null;
+  const meta = isRecord(row.meta) ? row.meta : {};
+  const indicators = isRecord(row.indicators) ? row.indicators : {};
+  const quoteRows = Array.isArray(indicators.quote) ? indicators.quote.filter(isRecord) : [];
+  const quote = quoteRows[0] ?? {};
+  const timestamps = Array.isArray(row.timestamp) ? row.timestamp : [];
+  const closes = Array.isArray(quote.close) ? quote.close : [];
+  let lastIndex = -1;
+  for (let index = Math.min(timestamps.length, closes.length) - 1; index >= 0; index -= 1) {
+    if (numberValue(timestamps[index]) !== null && numberValue(closes[index]) !== null) {
+      lastIndex = index;
+      break;
+    }
+  }
+  const close = lastIndex >= 0 ? numberValue(closes[lastIndex]) : null;
+  const currentPrice = numberValue(meta.regularMarketPrice) ?? close;
+  if (currentPrice === null) return null;
+  const previousClose = numberValue(meta.chartPreviousClose) ?? numberValue(meta.previousClose)
+    ?? (lastIndex > 0 ? numberValue(closes[lastIndex - 1]) : null);
+  const pctChange = previousClose && previousClose !== 0 ? ((currentPrice - previousClose) / previousClose) * 100 : null;
+  const values = (key: string) => Array.isArray(quote[key]) && lastIndex >= 0 ? numberValue((quote[key] as unknown[])[lastIndex]) : null;
+  const timestamp = numberValue(meta.regularMarketTime) ?? (lastIndex >= 0 ? numberValue(timestamps[lastIndex]) : null);
+  return {
+    id: symbol,
+    symbol,
+    name: name || textValue(meta.longName, 180) || textValue(meta.shortName, 180) || symbol,
+    assetClass: source.assetClass,
+    quoteCurrency: textValue(meta.currency, 12) || (source.assetClass === 'FOREX' ? 'USD' : source.quoteCurrency),
+    currentPrice,
+    change24hPercent: pctChange,
+    open: values('open'),
+    high: values('high'),
+    low: values('low'),
+    volume: values('volume'),
+    marketOpen: null,
+    sourceUpdatedAt: dateValue(timestamp),
+    exchange: (textValue(meta.exchangeName, 80) || textValue(meta.fullExchangeName, 80) || 'Public chart') + ' · delayed/unofficial reference',
+    source: 'Yahoo Finance public chart · delayed display data',
+    sourceCode: 'YAHOO_PUBLIC_CHART',
+  };
+}
+
+function yahooCommodityTicker(symbol: string) {
+  const normalized = symbol.toUpperCase().replace(/\s+/g, '');
+  const aliases: Record<string, string> = {
+    'GOLD': 'GC=F', 'XAU/USD': 'GC=F', 'XAUUSD': 'GC=F',
+    'SILVER': 'SI=F', 'XAG/USD': 'SI=F', 'XAGUSD': 'SI=F',
+    'WTI/USD': 'CL=F', 'WTI': 'CL=F', 'CL=F': 'CL=F',
+    'BRENT/USD': 'BZ=F', 'BRENT': 'BZ=F', 'BZ=F': 'BZ=F',
+    'NATGAS/USD': 'NG=F', 'NATURAL GAS': 'NG=F', 'NATGAS': 'NG=F', 'NG=F': 'NG=F',
+  };
+  return aliases[normalized] ?? (/^[A-Z0-9^=._-]{1,20}$/.test(normalized) ? normalized : null);
+}
+
+async function freeYahooQuotes(source: Source, query: string): Promise<AssetQuote[]> {
+  let definitions = definitionsForQuery(source, query, 5);
+  if (source.assetClass === 'COMMODITIES') {
+    if (query.trim() && definitions.length === 0) {
+      const ticker = yahooCommodityTicker(query);
+      if (ticker) definitions = [{ symbol: ticker, name: query.trim() }];
+    }
+    if (!query.trim()) definitions = browseSymbols(source).slice(0, 6);
+  } else if (source.assetClass === 'STOCKS' && query.trim() && definitions.length === 0 && /^[A-Z0-9^=._-]{1,10}$/i.test(query.trim())) {
+    definitions = [{ symbol: query.trim().toUpperCase(), name: query.trim().toUpperCase() }];
+  }
+  const results: AssetQuote[] = [];
+  for (const definition of definitions) {
+    const ticker = source.assetClass === 'COMMODITIES' ? yahooCommodityTicker(definition.symbol) : definition.symbol.toUpperCase();
+    if (!ticker) continue;
+    try {
+      const quote = await yahooChartQuote(ticker, definition.name, source);
+      if (quote) results.push({
+        ...quote,
+        id: definition.symbol,
+        symbol: definition.symbol,
+        name: definition.name || quote.name,
+        quoteCurrency: source.quoteCurrency || 'USD',
+        exchange: source.assetClass === 'COMMODITIES'
+          ? 'Futures contract · delayed, display-only reference'
+          : quote.exchange,
+      });
+    } catch (error) {
+      console.warn('Free Yahoo display quote unavailable for ' + ticker + ': ' + (error instanceof Error ? error.message : 'request failed'));
+    }
+  }
+  return results;
+}
+
+async function freeForexQuotes(source: Source, query: string): Promise<AssetQuote[]> {
+  let definitions = definitionsForQuery(source, query, 6);
+  if (query.trim() && !definitions.length) {
+    const compact = query.trim().toUpperCase().replace(/[^A-Z]/g, '');
+    if (compact.length === 6) definitions = [{ symbol: compact.slice(0, 3) + '/' + compact.slice(3), name: compact.slice(0, 3) + ' / ' + compact.slice(3) }];
+  }
+  const results: AssetQuote[] = [];
+  for (const definition of definitions) {
+    const parts = definition.symbol.toUpperCase().split('/');
+    if (parts.length !== 2 || !/^[A-Z]{3}$/.test(parts[0]) || !/^[A-Z]{3}$/.test(parts[1])) continue;
+    try {
+      const url = new URL('/v2/rate/' + parts[0] + '/' + parts[1], 'https://api.frankfurter.dev');
+      const payload = await requestJson(url);
+      if (!isRecord(payload) || numberValue(payload.rate) === null) continue;
+      const rate = numberValue(payload.rate)!;
+      results.push({
+        id: parts[0] + '/' + parts[1], symbol: parts[0] + '/' + parts[1],
+        name: definition.name || parts[0] + ' / ' + parts[1],
+        assetClass: 'FOREX', quoteCurrency: parts[1], currentPrice: rate,
+        change24hPercent: null, open: null, high: null, low: null, volume: null,
+        marketOpen: false, sourceUpdatedAt: dateValue(payload.date),
+        exchange: 'Daily mid-market reference · not an executable trading quote',
+        source: 'Frankfurter daily reference rates', sourceCode: 'FRANKFURTER_FREE',
+      });
+    } catch (error) {
+      console.warn('Free FX reference unavailable for ' + definition.symbol + ': ' + (error instanceof Error ? error.message : 'request failed'));
+    }
+  }
+  return results;
+}
+
+function featuredFredSeries(source: Source): JsonRecord[] {
+  const raw = source.providerMetadata.featured_series;
+  return Array.isArray(raw) ? raw.filter(isRecord).map((item) => ({
+    id: textValue(item.id ?? item.series_id ?? item.seriesId ?? item.symbol, 40).toUpperCase(),
+    title: textValue(item.title ?? item.name ?? item.label, 180),
+    units: textValue(item.units, 80),
+    frequency: textValue(item.frequency, 80),
+  })).filter((item) => textValue(item.id, 40)) : [];
+}
+
+async function freeFredCsvQuote(source: Source, series: JsonRecord): Promise<AssetQuote | null> {
+  const id = textValue(series.id, 40).toUpperCase();
+  if (!/^[A-Z0-9_-]{1,40}$/.test(id)) return null;
+  const url = new URL('/graph/fredgraph.csv', 'https://fred.stlouisfed.org');
+  url.searchParams.set('id', id);
+  const raw = await requestText(url, 'fred.stlouisfed.org', '/graph/fredgraph.csv');
+  const lines = raw.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
+  if (lines.length < 2 || !/^observation_date,?/i.test(lines[0])) throw new Error('FRED returned an invalid public CSV export for ' + id + '.');
+  }).filter((item) => /^\d{4}-\d{2}-\d{2}$/.test(item.date) && item.value !== null);
+    const [date, value] = line.split(',');
+    const parsed = numberValue(value);
+    return { date: textValue(date, 30), value: parsed };
+  }).filter((item) => /^\\d{4}-\\d{2}-\\d{2}$/.test(item.date) && item.value !== null);
+  const last = observations[observations.length - 1];
+  if (!last || last.value === null) return null;
+  const title = textValue(series.title, 180) || id;
+  return {
+    id, symbol: id, name: title, assetClass: 'ECONOMICS', quoteCurrency: 'index',
+    currentPrice: last.value, change24hPercent: null, open: null, high: null, low: null, volume: null,
+    marketOpen: false, sourceUpdatedAt: last.date,
+    exchange: [textValue(series.units, 80), textValue(series.frequency, 80), 'official series observation'].filter(Boolean).join(' · '),
+    source: 'FRED public CSV export', sourceCode: 'FRED_PUBLIC_CSV',
+  };
+}
+
+async function freeFredQuotes(source: Source, query: string): Promise<AssetQuote[]> {
+  const featured = featuredFredSeries(source);
+  let definitions: JsonRecord[];
+  if (!query.trim()) {
+    definitions = featured.slice(0, 6);
+  } else {
+    definitions = featured.filter((item) => textValue(item.id).toLowerCase().includes(query.toLowerCase())
+      || textValue(item.title).toLowerCase().includes(query.toLowerCase()));
+    if (!definitions.length && /^[A-Z0-9_-]{1,40}$/i.test(query.trim())) {
+      definitions = [{ id: query.trim().toUpperCase(), title: query.trim().toUpperCase() }];
+    }
+    definitions = definitions.slice(0, 4);
+  }
+  const results: AssetQuote[] = [];
+  for (const series of definitions) {
+    try {
+      const quote = await freeFredCsvQuote(source, series);
+      if (quote) results.push(quote);
+    } catch (error) {
+      console.warn('Free FRED public CSV unavailable for ' + textValue(series.id) + ': ' + (error instanceof Error ? error.message : 'request failed'));
+    }
+  }
+  return results;
+}
+
 async function twelveDataQuotes(source: Source, query: string, apiKey: string): Promise<AssetQuote[]> {
   const origin = safeEndpoint(source);
   const searchUrl = new URL('/symbol_search', origin);
@@ -288,12 +512,9 @@ Deno.serve(async (req) => {
       message: 'An administrator must enable a provider and configure its secret in the secure Edge Function environment.',
     }, 503);
     const apiKey = configuredCredential(source);
-    if (!apiKey) return json({
-      error: 'The configured provider credential is missing.',
-      code: 'FINANCIAL_SOURCE_CREDENTIAL_MISSING',
-      message: 'Add ' + textValue(source.secretReference, 100) + ' to the secure Edge Function secrets before enabling this feed.',
-    }, 503);
-
+    // Prefer governed free display fallbacks when an optional paid-provider
+    // credential is absent. These values never feed Oracle resolution or trading.
+    const useFreeFallback = !apiKey;
     const cacheKey = await hash([source.code, assetClass, query.toLowerCase()].join('|'));
     const { data: cached, error: cacheError } = await admin.rpc('internal_get_financial_market_data_cache', { p_request_key: cacheKey });
     let staleItems: AssetQuote[] | null = null;
@@ -311,6 +532,13 @@ Deno.serve(async (req) => {
     const requestCost = source.adapterCode === 'FRED_SERIES'
       ? (query.length === 0 ? Math.max(1, Math.min(8, Array.isArray(source.providerMetadata.featured_series) ? source.providerMetadata.featured_series.length : 4)) : 4)
       : (query.length === 0 ? Math.max(1, Math.min(8, browseSymbols(source).length)) : 5);
+    if (useFreeFallback && !['STOCKS', 'COMMODITIES', 'FOREX', 'ECONOMICS'].includes(assetClass)) {
+      return json({
+        error: 'The configured provider credential is missing.',
+        code: 'FINANCIAL_SOURCE_CREDENTIAL_MISSING',
+        message: 'Add ' + textValue(source.secretReference, 100) + ' to secure Edge Function secrets or choose a supported free display source.',
+      }, 503);
+    }
     const { data: reserved, error: reserveError } = await admin.rpc('internal_reserve_financial_market_request', {
       p_source_code: source.code, p_request_cost: requestCost,
     });
@@ -326,16 +554,30 @@ Deno.serve(async (req) => {
 
     try {
       let items: AssetQuote[];
-      if (source.adapterCode === 'TWELVE_DATA_QUOTE') {
+      if (useFreeFallback) {
+        if (assetClass === 'FOREX') items = await freeForexQuotes(source, query);
+        else if (assetClass === 'ECONOMICS') items = await freeFredQuotes(source, query);
+        else items = await freeYahooQuotes(source, query);
+        if (!items.length) {
+          throw new Error(assetClass === 'FOREX'
+            ? 'No matching public daily FX reference rates were returned. Search by a currency pair such as EUR/USD or USD/NGN.'
+            : assetClass === 'ECONOMICS'
+              ? 'The official public series is temporarily unavailable. Try a configured series such as GDP, CPIAUCSL, UNRATE, FEDFUNDS or DGS10.'
+              : 'No public delayed quote was returned for this symbol. Try a ticker or a configured watchlist item.');
+        }
+      } else if (source.adapterCode === 'TWELVE_DATA_QUOTE') {
         items = query.length === 0
           ? await twelveDataBrowse(source, apiKey)
           : await twelveDataQuotes(source, query, apiKey);
-      }
-      else if (source.adapterCode === 'FRED_SERIES' && assetClass === 'ECONOMICS') items = await fredQuotes(source, query, apiKey);
-      else throw new Error('The configured financial-data adapter does not support this asset class.');
+      } else if (source.adapterCode === 'FRED_SERIES' && assetClass === 'ECONOMICS') {
+        items = await fredQuotes(source, query, apiKey);
+      } else throw new Error('The configured financial-data adapter does not support this asset class.');
       const now = new Date();
+      const displaySource = useFreeFallback ? (items[0]?.source ?? 'Free public display source') : source.name;
+      const displaySourceCode = useFreeFallback ? (items[0]?.sourceCode ?? 'FREE_DISPLAY_SOURCE') : source.code;
       const payload = {
-        ok: true, source: source.name, sourceCode: source.code,
+        ok: true, source: displaySource, sourceCode: displaySourceCode,
+        configuredSourceCode: source.code,
         dataPurpose: 'DISPLAY_ONLY', assetClass, quoteCurrency: source.quoteCurrency,
         query, fetchedAt: now.toISOString(), cacheSeconds: source.cacheSeconds,
         stale: false, cached: false, items,
