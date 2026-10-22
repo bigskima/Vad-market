@@ -22,9 +22,9 @@ import {
 } from '@/services/admin-guided-market-catalog-api';
 import {
   checkCryptoOracleAsset,
-  registerCryptoOracleAsset,
   getCryptoMarketPrices,
   type CryptoMarketQuote,
+  type CryptoOracleAssetCheck,
 } from '@/services/crypto-market-data-api';
 import {
   createAdminSportsMarketDraft,
@@ -444,7 +444,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     if (working || !scheduleValid || !footballScheduleValid || !category) return;
     if (cryptoThreshold && (!selectedCryptoAsset || !cryptoAssetCheck?.supported || cryptoAssetCheckLoading)) {
       setStep(1);
-      setError(cryptoAssetCheck?.reason ?? 'Select a crypto asset with verified Pyth/USD coverage before creating the market.');
+      setError(cryptoAssetCheck?.reason ?? 'Select a crypto asset supported by both free historical-price sources before creating the market.');
       return;
     }
     if (publicationChoice === 'NOW' && !canPublishNow) return setError('Publish now needs an opening time that has already started and a closing time still in the future.');
@@ -483,15 +483,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
         });
       } else if (marketType) {
         if (cryptoThreshold) {
-          if (!selectedCryptoAsset || !cryptoAssetCheck?.supported || !cryptoAssetCheck.feedSymbol) {
-            throw new Error('Select an asset with a verified exact Pyth/USD feed before creating this market.');
+          if (!selectedCryptoAsset || !cryptoAssetCheck?.supported || cryptoAssetCheck.coinGeckoId !== selectedCryptoAsset.id) {
+            throw new Error('Select an asset with matching, active CoinGecko and Coinbase historical mappings before creating this market.');
           }
-          await registerCryptoOracleAsset({
-            symbol: selectedCryptoAsset.symbol,
-            coinGeckoId: selectedCryptoAsset.id,
-            pythFeedSymbol: cryptoAssetCheck.feedSymbol,
-            reason: 'Admin guided crypto threshold market creation',
-          });
         }
         result = await createAdminCatalogMarket({
           ...common,
@@ -659,7 +653,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                   {cryptoThreshold ? (
                     <View style={{ gap: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12, padding: theme.spacing.md }}>
                       <VadText variant="bodyStrong">Select a resolvable crypto asset</VadText>
-                      <VadText variant="caption" tone="secondary">Searches CoinGecko&apos;s live asset catalogue. VAD checks for an exact Pyth/USD historical feed before allowing creation.</VadText>
+                      <VadText variant="caption" tone="secondary">Searches CoinGecko&apos;s live asset catalogue. VAD checks for active CoinGecko and Coinbase historical mappings before allowing creation.</VadText>
                       <VadInput label="Search coin name or ticker" value={cryptoSearch} onChangeText={(value) => { setCryptoSearch(value); setCryptoOptions([]); setSelectedCryptoAsset(null); setCryptoAssetCheck(null); setCryptoAssetCheckLoading(false); cryptoAssetCheckRequest.current += 1; }} placeholder="Solana, SOL, Cardano, ADA…" />
                       {cryptoOptions.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
                         {cryptoOptions.map((coin) => <VadChip key={coin.id} label={`${coin.name} (${coin.symbol.toUpperCase()})`} selected={selectedCryptoAsset?.id === coin.id} tone={selectedCryptoAsset?.id === coin.id ? 'brand' : 'neutral'} onPress={() => void chooseCryptoAsset(coin)} />)}
