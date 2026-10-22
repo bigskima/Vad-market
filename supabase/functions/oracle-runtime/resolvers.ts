@@ -233,7 +233,7 @@ function requiredCapability(spec: ResolverSpec) {
   return 'PUBLIC_RECORD_EVIDENCE';
 }
 
-function policyProviderCodes(sourceHierarchy: unknown, knownProviderCodes: Set<string>) {
+function policyProviderCodes(sourceHierarchy: unknown) {
   if (!Array.isArray(sourceHierarchy)) return new Set<string>();
   const selected = new Set<string>();
   for (const entry of sourceHierarchy) {
@@ -243,15 +243,14 @@ function policyProviderCodes(sourceHierarchy: unknown, knownProviderCodes: Set<s
         ? stringValue(entry.provider_code, entry.providerCode, entry.code)
         : null;
     if (!candidate) continue;
-    const normalized = candidate.toUpperCase();
-    if (knownProviderCodes.has(normalized)) selected.add(normalized);
+    selected.add(candidate.toUpperCase());
   }
   return selected;
 }
 
 export function eligibleProviders(event: DueOracleEvent, spec: ResolverSpec, providers: OracleProvider[]) {
-  const knownCodes = new Set(providers.map((provider) => provider.code.toUpperCase()));
-  const policyCodes = policyProviderCodes(event.sourceHierarchy, knownCodes);
+  const policyCodes = policyProviderCodes(event.sourceHierarchy);
+  const hasPolicyHierarchy = Array.isArray(event.sourceHierarchy) && event.sourceHierarchy.length > 0;
   const capability = requiredCapability(spec);
   const policyPriority = new Map<string, number>();
   if (Array.isArray(event.sourceHierarchy)) {
@@ -273,7 +272,7 @@ export function eligibleProviders(event: DueOracleEvent, spec: ResolverSpec, pro
     // remains eligible because credential-only probes intentionally avoid spend.
     .filter((provider) => !provider.healthStatus || !['UNAVAILABLE'].includes(String(provider.healthStatus).toUpperCase()))
     .filter((provider) => provider.capabilities.map((item) => String(item).toUpperCase()).includes(capability))
-    .filter((provider) => policyCodes.size === 0 || policyCodes.has(provider.code.toUpperCase()))
+    .filter((provider) => !hasPolicyHierarchy || policyCodes.has(provider.code.toUpperCase()))
     .sort((a, b) => {
       const aPriority = policyPriority.get(a.code.toUpperCase()) ?? a.priority;
       const bPriority = policyPriority.get(b.code.toUpperCase()) ?? b.priority;
