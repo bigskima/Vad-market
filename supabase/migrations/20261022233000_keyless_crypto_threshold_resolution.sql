@@ -192,8 +192,8 @@ $new$ || substring(v_definition from v_end);
     'Resolution uses approved public historical Coinbase and Kraken observations in the configured observation window. Live display quotes do not determine outcomes.'
   );
   v_definition:=replace(v_definition,
-    `jsonb_build_array('PYTH','COINGECKO')`,
-    `jsonb_build_array('COINBASE','KRAKEN')`
+    'jsonb_build_array(''PYTH'',''COINGECKO'')',
+    'jsonb_build_array(''COINBASE'',''KRAKEN'')'
   );
   v_definition:=replace(v_definition,
     'using approved historical Oracle providers',
