@@ -195,6 +195,12 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
   const [scheduleExpanded, setScheduleExpanded] = useState(false);
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
+  const rawOutcome = String(timing.resolutionOutcome ?? '').toUpperCase();
+  const finalOutcome = timing.resolutionOutcome && (timing.resolutionFinal || timing.stage === 'SETTLED')
+    && rawOutcome !== 'VOID' && rawOutcome !== 'VOIDED'
+    ? timing.resolutionOutcome
+    : null;
+  const outcomeTone = rawOutcome === 'YES' ? 'yes' : rawOutcome === 'NO' ? 'no' : 'neutral';
   const hasCurrentQuote = timing.stage === 'OPEN' && (market.yes_price != null || market.no_price != null);
   const scheduleRows: Array<{ label: string; value: string }> = [
     { label: 'Market opens', value: exactTime(market.opens_at) ?? '' },
@@ -206,29 +212,29 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
   return (
     <View style={{ gap: density.compact ? 8 : 10 }}>
       <VadCard variant="surface" accessibilityRole="summary" style={{ gap: 9, padding: density.compact ? 12 : 15, borderRadius: density.phone ? 18 : 22 }}>
-        {timing.resolutionOutcome ? (
+        {finalOutcome ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
               <VadText variant="caption" tone="tertiary">FINAL OUTCOME</VadText>
-              <VadText variant="heading" tone={timing.resolutionOutcome === 'YES' ? 'yes' : timing.resolutionOutcome === 'NO' ? 'no' : 'secondary'} style={{ fontSize: 20, lineHeight: 25 }}>
-                {timing.resolutionOutcome}
+              <VadText variant="heading" tone={outcomeTone === 'neutral' ? 'secondary' : outcomeTone} style={{ fontSize: 20, lineHeight: 25 }}>
+                {finalOutcome}
               </VadText>
             </View>
             <VadChip
               label={timing.stage === 'SETTLED' ? 'SETTLED' : 'RESULT CONFIRMED'}
-              tone={timing.resolutionOutcome === 'YES' ? 'yes' : timing.resolutionOutcome === 'NO' ? 'no' : 'neutral'}
+              tone={outcomeTone}
             />
           </View>
         ) : null}
 
-        {!timing.resolutionOutcome && timing.stage === 'VOIDED' ? (
+        {!finalOutcome && timing.stage === 'VOIDED' ? (
           <View style={{ borderRadius: 11, padding: 11, backgroundColor: theme.colors.noSoft, gap: 3 }}>
             <VadText variant="bodyStrong" tone="no">Market voided</VadText>
             <VadText variant="caption" tone="secondary">Refer to the published void and refund rules for the final handling of this market.</VadText>
           </View>
         ) : null}
 
-        {!timing.resolutionOutcome && timing.stage !== 'VOIDED' && hasCurrentQuote ? (
+        {!finalOutcome && timing.stage !== 'VOIDED' && hasCurrentQuote ? (
           <>
             <View style={{ flexDirection: 'row', gap: 7 }}>
               <View style={{ flex: 1, minWidth: 0, borderRadius: 10, backgroundColor: theme.colors.yesSoft, paddingHorizontal: 10, paddingVertical: 8, gap: 2 }}>
@@ -244,7 +250,7 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
           </>
         ) : null}
 
-        {!timing.resolutionOutcome && timing.stage !== 'VOIDED' && !hasCurrentQuote ? (
+        {!finalOutcome && timing.stage !== 'VOIDED' && !hasCurrentQuote ? (
           <View style={{ paddingVertical: 2, gap: 3 }}>
             <VadText variant="bodyStrong">
               {timing.stage === 'OPEN' ? 'Waiting for a current quote' : timing.stage === 'SETTLED' ? 'Settlement status' : 'Current prices unavailable'}
@@ -305,7 +311,7 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
           {scheduleExpanded ? (
             <View style={{ paddingHorizontal: 12, paddingBottom: 10 }}>
               {scheduleRows.map((row, index) => (
-                <View key={row.label} style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, paddingTop: 9, paddingBottom: 8, borderTopWidth: index === 0 ? 1 : 1, borderTopColor: theme.colors.border }}>
+                <View key={row.label} style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, paddingTop: 9, paddingBottom: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
                   <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>{row.label}</VadText>
                   <VadText variant="caption" style={{ flex: 1.35, textAlign: 'right' }}>{row.value}</VadText>
                 </View>
