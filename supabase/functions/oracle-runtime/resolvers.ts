@@ -11,7 +11,7 @@ import {
 import { resolveCryptoWithProvider } from './providers.ts';
 import { resolveFootballFixtureWithProvider } from './football.ts';
 import { resolvePublicRecord } from './public-record.ts';
-import { resolveFinancialPriceThresholdWithProvider, resolveFredSeriesThresholdWithProvider, resolveFredSeriesTouchThresholdWithProvider } from './financial.ts';
+import { resolveFinancialPriceThresholdWithProvider, resolveFredSeriesThresholdWithProvider } from './financial.ts';
 import { resolveFinancialPriceThresholdWithProvider, resolveFredSeriesThresholdWithProvider } from './financial.ts';
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -90,9 +90,14 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
     const quote = stringValue(scope.quote, subject.quote, 'USD')?.toUpperCase();
     const operator = stringValue(scope.operator, condition.operator)?.toUpperCase();
     const threshold = numericValue(scope.threshold, condition.threshold);
-    const startRaw = stringValue(scope.window_start, scope.windowStart, scope.period_start, scope.periodStart, event.opensAt);
     const endRaw = stringValue(scope.window_end, scope.windowEnd, scope.observation_time, scope.observationTime, event.closesAt);
-    const windowStart = startRaw ? new Date(startRaw) : null;
+    const endFallback = endRaw ? new Date(endRaw) : null;
+    const startRaw = stringValue(scope.window_start, scope.windowStart, scope.period_start, scope.periodStart);
+    const windowStart = startRaw
+      ? new Date(startRaw)
+      : endFallback && Number.isFinite(endFallback.getTime())
+        ? new Date(endFallback.toISOString().slice(0, 10) + 'T00:00:00.000Z')
+        : null;
     const windowEnd = endRaw ? new Date(endRaw) : null;
     if (!asset || !/^[A-Z0-9]{2,20}$/.test(asset)) {
       throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Crypto touch resolver asset is missing or invalid', 422);
