@@ -4,7 +4,7 @@ import { AdminProvidersScreen } from '@/features/admin/sections/admin-providers-
 
 export default function AdminProvidersRoute() {
   return (
-    <AdminPermissionGate permissions={['providers.manage', 'finance.read']}>
+    <AdminPermissionGate permissions={['providers.manage', 'finance.read', 'oracle.review']}>
       <AdminRouteContainer>
         <AdminProvidersScreen />
       </AdminRouteContainer>
