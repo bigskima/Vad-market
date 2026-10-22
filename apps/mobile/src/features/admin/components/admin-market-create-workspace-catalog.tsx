@@ -459,7 +459,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     );
   }
 
-  function continueFromMarket() {
+  async function continueFromMarket() {
     setError(null);
     if (!category) return setError('Choose a market category.');
     if (!effectiveTitle.trim()) return setError('Enter a clear YES/NO market question before continuing.');
@@ -467,9 +467,41 @@ export function AdminMarketCreateWorkspaceCatalog() {
     if (!marketType) return setError('Choose the kind of event you are creating.');
 
     if (cryptoThreshold) {
-      if (!selectedCryptoAsset) return setError('Search for and select a crypto asset from the live CoinGecko catalogue.');
-      if (cryptoAssetCheckLoading) return setError('Wait for the approved Oracle feed check to finish.');
-      if (!cryptoAssetCheck?.supported || cryptoAssetCheck.coinGeckoId !== selectedCryptoAsset?.id) return setError(cryptoAssetCheck?.reason ?? 'This asset does not have matching free historical-price mappings and cannot be created as an automatic threshold market.');
+      const selectedAsset = selectedCryptoAsset;
+      if (!selectedAsset) return setError('Search for and select a crypto asset from the live CoinGecko catalogue.');
+      if (cryptoAssetCheckLoading) return setError('The asset source check is still running. Please wait for it to finish.');
+
+      let check = cryptoAssetCheck;
+      // The selected coin and the async checker can briefly get out of sync
+      // after a search change or stale preview response. Recheck instead of
+      // showing the misleading "missing mapping" error for a missing result.
+      if (!check?.supported || check.coinGeckoId !== selectedAsset.id) {
+        const requestId = ++cryptoAssetCheckRequest.current;
+        setCryptoAssetCheckLoading(true);
+        try {
+          const refreshed = await checkCryptoOracleAsset(selectedAsset.symbol, selectedAsset.id);
+          if (requestId !== cryptoAssetCheckRequest.current || selectedCryptoAsset?.id !== selectedAsset.id) return;
+          check = refreshed;
+          setCryptoAssetCheck(refreshed);
+        } catch (reason) {
+          if (requestId !== cryptoAssetCheckRequest.current || selectedCryptoAsset?.id !== selectedAsset.id) return;
+          const message = reason instanceof Error ? reason.message : 'The Coinbase/Kraken source check could not be completed.';
+          setCryptoAssetCheck({
+            supported: false,
+            symbol: selectedAsset.symbol.toUpperCase(),
+            quote: 'USD',
+            provider: 'COINBASE+KRAKEN',
+            coinGeckoId: selectedAsset.id,
+            reason: message,
+          });
+          return setError(message);
+        } finally {
+          if (requestId === cryptoAssetCheckRequest.current) setCryptoAssetCheckLoading(false);
+        }
+      }
+      if (!check?.supported || check.coinGeckoId !== selectedAsset.id) {
+        return setError(check?.reason ?? `No active Coinbase + Kraken historical-price mapping is available for ${selectedAsset.symbol.toUpperCase()}/USD.`);
+      }
       if (!details.threshold?.trim() || !Number.isFinite(Number(details.threshold)) || Number(details.threshold) <= 0) return setError('Enter a price target greater than zero.');
     } else if (football) {
       if (!competition.trim() || !homeTeam.trim() || !awayTeam.trim()) return setError('Add the competition, home team and away team.');
