@@ -18,13 +18,13 @@ begin
 end;
 $constraint$;
 
--- Replace the existing campaign RPC signature so tag is saved in the same
--- authorized/audited write as the rest of the campaign configuration.
-drop function if exists public.admin_upsert_home_promotion_campaign(
-  uuid, text, text, text, text, text, text, integer, timestamptz, timestamptz
+-- Keep the original campaign RPC available for already-deployed app builds.
+-- New clients use a distinct function and send the tag explicitly.
+drop function if exists public.admin_upsert_home_promotion_campaign_with_tag(
+  uuid, text, text, text, text, text, text, integer, text, timestamptz, timestamptz
 );
 
-create function public.admin_upsert_home_promotion_campaign(
+create function public.admin_upsert_home_promotion_campaign_with_tag(
   p_public_id uuid,
   p_banner_kind text,
   p_title text,
@@ -33,9 +33,9 @@ create function public.admin_upsert_home_promotion_campaign(
   p_target_path text,
   p_status text,
   p_sort_order integer,
+  p_tag text,
   p_starts_at timestamptz default null,
-  p_ends_at timestamptz default null,
-  p_tag text default null
+  p_ends_at timestamptz default null
 )
 returns uuid
 language plpgsql
@@ -137,9 +137,9 @@ begin
 end;
 $function$;
 
-revoke all on function public.admin_upsert_home_promotion_campaign(
-  uuid, text, text, text, text, text, text, integer, timestamptz, timestamptz, text
+revoke all on function public.admin_upsert_home_promotion_campaign_with_tag(
+  uuid, text, text, text, text, text, text, integer, text, timestamptz, timestamptz
 ) from public, anon;
-grant execute on function public.admin_upsert_home_promotion_campaign(
-  uuid, text, text, text, text, text, text, integer, timestamptz, timestamptz, text
+grant execute on function public.admin_upsert_home_promotion_campaign_with_tag(
+  uuid, text, text, text, text, text, text, integer, text, timestamptz, timestamptz
 ) to authenticated;
