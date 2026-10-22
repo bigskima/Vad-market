@@ -106,14 +106,14 @@ Deno.serve(async (req: Request) => {
   const coinbaseReady = Boolean(
     coinbase
       && coinbase.configured === true
-      && safeText(coinbase.baseUrl).replace(/\\/+$/, '') === 'https://api.coinbase.com'
+      && safeText(coinbase.baseUrl).replace(/\/+$/, '') === 'https://api.coinbase.com'
       && coinbaseResource
       && safeText(coinbaseResource.externalKey).toUpperCase() === `${symbol}-${quote}`
   );
   const krakenReady = Boolean(
     kraken
       && kraken.configured === true
-      && safeText(kraken.baseUrl).replace(/\\/+$/, '') === 'https://api.kraken.com'
+      && safeText(kraken.baseUrl).replace(/\/+$/, '') === 'https://api.kraken.com'
       && krakenResource
       && /^[A-Z0-9]{3,20}$/.test(safeText(krakenResource.externalKey).toUpperCase())
   );
