@@ -22,11 +22,14 @@ import { getAdminMarketDataSources, setAdminMarketDataSourceStatus, updateAdminM
 import { AdminFinancialMarketDataSources } from './admin-financial-market-data-sources';
 import { getSportsMarketTaxonomy, setAdminSportsCompetitionStatus, upsertAdminSportsCompetition, type SportsMarketTaxonomy, type SportsMarketCompetition } from '@/services/admin-guided-market-catalog-api';
 import {
+  approveOraclePolicy,
   decideProviderStatusRequest,
+  getOraclePolicyCatalog,
   requestProviderStatus,
   runOracleProviderHealth,
   setProviderSafetyStatus,
   type OracleHealthResult,
+  type OraclePolicyRow,
   type ProviderChangeRequest,
   type ProviderReadinessRow,
 } from '@/services/provider-admin-api';
@@ -48,8 +51,14 @@ export function AdminProvidersScreen() {
   const data = useAdminData();
   const canManage = hasAdminPermission(data.access, 'providers.manage');
   const canManageMarkets = hasAdminPermission(data.access, 'markets.manage');
-  const canCheckOracle = canManage || hasAdminPermission(data.access, 'oracle.review');
+  const canReviewOracle = hasAdminPermission(data.access, 'oracle.review');
+  const canCheckOracle = canManage || canReviewOracle;
   const [tab, setTab] = useState('readiness');
+  const [oraclePolicies, setOraclePolicies] = useState<OraclePolicyRow[]>([]);
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policyWorking, setPolicyWorking] = useState<string | null>(null);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+  const [policyMessage, setPolicyMessage] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<ProviderReadinessRow | null>(null);
   const [targetStatus, setTargetStatus] = useState<ProviderStatus | null>(null);
   const [selectedChange, setSelectedChange] = useState<ProviderChangeRequest | null>(null);
@@ -60,6 +69,20 @@ export function AdminProvidersScreen() {
   const [healthResults, setHealthResults] = useState<OracleHealthResult[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (tab !== 'oracle-policies' || !canReviewOracle) return;
+    let active = true;
+    setPolicyLoading(true);
+    setPolicyError(null);
+    getOraclePolicyCatalog()
+      .then((policies) => { if (active) setOraclePolicies(policies); })
+      .catch((value: unknown) => {
+        if (active) setPolicyError(value instanceof Error ? value.message : 'Oracle policy catalog could not be loaded.');
+      })
+      .finally(() => { if (active) setPolicyLoading(false); });
+    return () => { active = false; };
+  }, [tab, canReviewOracle]);
 
   if (data.loading) {
     return (
@@ -125,6 +148,24 @@ export function AdminProvidersScreen() {
       setActionError(value instanceof Error ? value.message : 'Oracle provider health could not be checked.');
     } finally {
       setHealthChecking(false);
+    }
+  }
+
+  async function reviewOraclePolicy(policy: OraclePolicyRow) {
+    if (!canReviewOracle || policy.status !== 'DRAFT' || policyWorking) return;
+    setPolicyWorking(policy.public_id);
+    setPolicyError(null);
+    setPolicyMessage(null);
+    try {
+      await approveOraclePolicy(policy.public_id);
+      setPolicyMessage(`${policy.name} v${policy.version} was approved. Refresh the crypto asset readiness check before creating a market.`);
+      const updated = await getOraclePolicyCatalog();
+      setOraclePolicies(updated);
+      await data.refresh();
+    } catch (value) {
+      setPolicyError(value instanceof Error ? value.message : 'Oracle policy approval failed. A separate reviewer with oracle.review must approve draft policies.');
+    } finally {
+      setPolicyWorking(null);
     }
   }
 
@@ -421,6 +462,11 @@ export function AdminProvidersScreen() {
             label: 'Approvals',
             count: data.providerChanges.length,
           },
+          ...(canReviewOracle ? [{
+            key: 'oracle-policies',
+            label: 'Oracle policies',
+            count: oraclePolicies.filter((policy) => policy.status === 'DRAFT').length,
+          }] : []),
         ]}
       />
 
@@ -468,7 +514,7 @@ export function AdminProvidersScreen() {
             <EmptyText>No provider readiness rows are available.</EmptyText>
           )}
         </OperationsSection>
-      ) : (
+      ) : tab === 'changes' ? (
         <OperationsSection
           title="Pending approvals"
           description="Provider status changes waiting for an independent approver."
@@ -490,6 +536,69 @@ export function AdminProvidersScreen() {
             <EmptyText>No provider changes are awaiting approval.</EmptyText>
           )}
         </OperationsSection>
+      ) : (
+        <View style={{ gap: theme.spacing.md }}>
+          <VadCard variant="muted" style={{ gap: theme.spacing.xs }}>
+            <VadText variant="heading">Oracle policy review</VadText>
+            <VadText variant="caption" tone="secondary">
+              Review the exact policy version and source quorum before approving it. Approval is audited; the person who created a draft cannot approve that same policy.
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              Crypto threshold settlement requires exactly two providers: Coinbase as PRIMARY and Kraken as CORROBORATING, with distinct-provider agreement from both.
+            </VadText>
+          </VadCard>
+          {policyError ? <VadErrorState title="Oracle policy review failed" message={policyError} /> : null}
+          {policyMessage ? (
+            <VadCard variant="muted" style={{ gap: 2 }}>
+              <VadText variant="bodyStrong" tone="yes">Policy updated</VadText>
+              <VadText variant="caption" tone="secondary">{policyMessage}</VadText>
+            </VadCard>
+          ) : null}
+          {policyLoading ? (
+            <VadSkeleton height={96} radius={theme.radius.lg} />
+          ) : (
+            oraclePolicies
+              .filter((policy) => policy.name.toLowerCase().includes('crypto threshold')
+                || policy.source_hierarchy.some((item) =>
+                  typeof item !== 'string'
+                    && ['COINBASE', 'KRAKEN'].includes(String(item.provider_code ?? '').toUpperCase())))
+              .map((policy) => {
+                const sources = policy.source_hierarchy.map((item) => typeof item === 'string'
+                  ? item
+                  : `${String(item.role ?? 'SOURCE')}: ${String(item.provider_code ?? item.code ?? 'provider')}`).join(' · ');
+                const environment = String(policy.consensus_rule.environment ?? 'PRODUCTION').toUpperCase();
+                const quorum = String(policy.consensus_rule.min_agreeing_providers ?? 'not specified');
+                const distinct = policy.consensus_rule.distinct_providers === true;
+                return (
+                  <VadCard key={policy.public_id} variant="raised" style={{ gap: theme.spacing.sm }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+                      <View style={{ flex: 1, gap: 3 }}>
+                        <VadText variant="bodyStrong">{policy.name} · v{policy.version}</VadText>
+                        <VadText variant="caption" tone="secondary">{environment} · {policy.capability_code}</VadText>
+                      </View>
+                      <VadChip label={policy.status} tone={policy.status === 'ACTIVE' ? 'yes' : policy.status === 'DRAFT' ? 'warning' : 'neutral'} />
+                    </View>
+                    <VadText variant="caption" tone="secondary">{sources || 'No source hierarchy defined.'}</VadText>
+                    <VadText variant="caption" tone="secondary">Consensus: {distinct ? 'distinct providers required' : 'distinct-provider rule not enabled'} · minimum agreeing providers: {quorum}</VadText>
+                    <VadText variant="caption" tone="tertiary">Effective: {new Date(policy.effective_at).toLocaleString()} · {policy.approved_by ? 'Approved' : 'Not approved'}</VadText>
+                    {policy.status === 'DRAFT' && canReviewOracle ? (
+                      <VadButton
+                        label={policyWorking === policy.public_id ? 'Approving policy…' : 'Approve policy'}
+                        loading={policyWorking === policy.public_id}
+                        disabled={Boolean(policyWorking)}
+                        onPress={() => void reviewOraclePolicy(policy)}
+                      />
+                    ) : null}
+                  </VadCard>
+                );
+              })
+          )}
+          {!policyLoading && !oraclePolicies.some((policy) => policy.name.toLowerCase().includes('crypto threshold')
+            || policy.source_hierarchy.some((item) => typeof item !== 'string
+              && ['COINBASE', 'KRAKEN'].includes(String(item.provider_code ?? '').toUpperCase()))) ? (
+            <EmptyText>No crypto threshold Oracle policies were returned.</EmptyText>
+          ) : null}
+        </View>
       )}
 
       <View
