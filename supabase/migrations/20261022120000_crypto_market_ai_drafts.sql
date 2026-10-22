@@ -59,7 +59,7 @@ begin
       ap.capabilities @> '["CRYPTO_MARKET_DRAFT"]'::jsonb
       or ap.capabilities @> '["MARKET_BUILDER_DRAFTING"]'::jsonb
     )
-    and coalesce(ap.cost_policy->>'billing_mode','') in ('FREE_ONLY','FREE_TIER','FREE');
+    and coalesce(ap.cost_policy->>'billing_mode','')='FREE_ONLY';
 
   return jsonb_build_object(
     'prompt',case when v_prompt.id is null then null else jsonb_build_object(

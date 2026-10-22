@@ -350,7 +350,7 @@ function ConfigureAiSheet({
   const [secretReference, setSecretReference] = useState('VAD_AI_');
   const [priority, setPriority] = useState('100');
   const [apiVersion, setApiVersion] = useState('');
-  const [billingMode, setBillingMode] = useState<'FREE_ONLY' | 'DISABLED_UNTIL_REVENUE'>('FREE_ONLY');
+  const [billingMode, setBillingMode] = useState<'FREE_ONLY' | 'DISABLED_UNTIL_REVENUE'>('DISABLED_UNTIL_REVENUE');
 
   const priorityValue = Number(priority);
   const secretReady = /^VAD_AI_[A-Z0-9_]+$/.test(secretReference.trim().toUpperCase());
