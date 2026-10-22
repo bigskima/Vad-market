@@ -11,7 +11,7 @@ import {
 import { resolveCryptoWithProvider } from './providers.ts';
 import { resolveFootballFixtureWithProvider } from './football.ts';
 import { resolvePublicRecord } from './public-record.ts';
-import { resolveFinancialPriceThresholdWithProvider, resolveFredSeriesThresholdWithProvider } from './financial.ts';
+import { resolveFinancialPriceThresholdWithProvider, resolveFinancialPriceTouchThresholdWithProvider, resolveFredSeriesThresholdWithProvider } from './financial.ts';
 import { resolveFinancialPriceThresholdWithProvider, resolveFredSeriesThresholdWithProvider } from './financial.ts';
 
 function isRecord(value: unknown): value is JsonRecord {
