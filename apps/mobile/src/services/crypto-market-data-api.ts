@@ -134,7 +134,7 @@ export type CryptoOracleAssetCheck = {
   supported: boolean;
   symbol: string;
   quote: 'USD';
-  provider: 'COINGECKO+COINBASE';
+  provider: 'COINGECKO+COINBASE' | 'COINBASE+KRAKEN';
   coinGeckoId?: string | null;
   reason?: string;
 };
