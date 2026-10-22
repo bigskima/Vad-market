@@ -6,6 +6,7 @@ export type HomePromotion = {
   banner_kind: 'TEXT' | 'IMAGE';
   title: string | null;
   body: string | null;
+  tag: string | null;
   image_url: string | null;
   target_path: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -227,11 +228,14 @@ export async function upsertAdminHomePromotion(input: {
   targetPath: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   sortOrder?: number;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  tag?: string | null;
 }) {
   if (!isSafeInternalRoute(input.targetPath)) {
     throw new Error('Enter a valid destination inside VAD, for example /markets.');
   }
-  const { data, error } = await supabase.rpc('admin_upsert_home_promotion', {
+  const { data, error } = await supabase.rpc('admin_upsert_home_promotion_campaign_with_tag', {
     p_public_id: input.publicId ?? null,
     p_banner_kind: input.bannerKind,
     p_title: input.title?.trim() || null,
@@ -240,9 +244,43 @@ export async function upsertAdminHomePromotion(input: {
     p_target_path: input.targetPath.trim(),
     p_status: input.status,
     p_sort_order: input.sortOrder ?? 100,
+    p_starts_at: input.startsAt ?? null,
+    p_ends_at: input.endsAt ?? null,
+    p_tag: input.tag?.trim() || null,
   });
-  fail(error, 'We could not save this promotion right now. Please try again.');
+  fail(error, 'We could not save this campaign right now. Please try again.');
   return String(data);
+}
+
+export async function generateHomePromotionImage(input: {
+  title: string;
+  body?: string | null;
+  visualDirection?: string | null;
+}): Promise<{ imageUrl: string; generatedAt: string; model?: string }> {
+  const title = input.title.trim();
+  if (title.length < 3) {
+    throw new Error('Add a campaign title before generating its artwork.');
+  }
+  if (title.length > 120 || (input.body?.length ?? 0) > 320 || (input.visualDirection?.length ?? 0) > 160) {
+    throw new Error('Campaign artwork instructions are too long. Shorten the title, copy, or visual direction.');
+  }
+
+  const { data, error } = await supabase.functions.invoke('home-promotion-image-runtime', {
+    body: {
+      title,
+      body: input.body?.trim() || '',
+      visualDirection: input.visualDirection?.trim() || '',
+    },
+  });
+  if (error) throw userFacingError(error, 'admin', 'AI campaign artwork could not be generated. Check AI provider configuration and try again.');
+  if (!data || typeof data.imageUrl !== 'string' || !data.imageUrl.startsWith('https://')) {
+    throw new Error(typeof data?.error === 'string' ? data.error : 'AI image generation returned no usable image.');
+  }
+  return {
+    imageUrl: data.imageUrl,
+    generatedAt: typeof data.generatedAt === 'string' ? data.generatedAt : new Date().toISOString(),
+    model: typeof data.model === 'string' ? data.model : undefined,
+  };
 }
 
 export async function upsertAdminPublicNotice(input: {

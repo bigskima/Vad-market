@@ -582,7 +582,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
             <VadChip label={outcome.code} tone={outcome.code.toUpperCase() === 'YES' ? 'yes' : outcome.code.toUpperCase() === 'NO' ? 'no' : 'neutral'} />
           </View>
         )) : (
-          <VadText variant="caption" tone="secondary">The market's configured outcomes will appear here when returned by the detail service.</VadText>
+          <VadText variant="caption" tone="secondary">The market&apos;s configured outcomes will appear here when returned by the detail service.</VadText>
         )}
       </ProgressiveMarketSection>
     </View>

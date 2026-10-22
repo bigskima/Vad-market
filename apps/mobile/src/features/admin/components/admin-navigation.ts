@@ -151,10 +151,10 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         permissions: ['growth.read', 'growth.manage', 'growth.review', 'growth.finance'],
       },
       {
-        label: 'Home Content',
-        shortLabel: 'Promos',
+        label: 'Campaigns & Banners',
+        shortLabel: 'Banners',
         href: '/admin/home-content',
-        description: 'Promotional banners and public awareness notices',
+        description: 'Create promotional banners, set campaign tags and target routes, generate AI artwork, and schedule or publish campaigns',
         permissions: ['content.moderate'],
       },
     ],
