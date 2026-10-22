@@ -31,30 +31,30 @@ insert into market.market_data_sources(
 ) values
   (
     'TWELVE_DATA_STOCKS','Twelve Data equities and ETF display quotes',
-    'https://api.twelvedata.com','DISABLED','USD',20,300,
+    'https://api.twelvedata.com','ACTIVE','USD',20,1800,
     'STOCKS','TWELVE_DATA_QUOTE',20,250,'TWELVE_DATA_API_KEY',
-    '{"catalog_mode":"SYMBOL_SEARCH","quote_mode":"QUOTE","purpose":"DISPLAY_ONLY","notes":"Enable only after TWELVE_DATA_API_KEY is added to the Edge Function secrets. Data plan and exchange entitlements vary by symbol."}'::jsonb,
+    '{"catalog_mode":"SYMBOL_SEARCH","browse_symbols":[{"symbol":"AAPL","name":"Apple"},{"symbol":"MSFT","name":"Microsoft"},{"symbol":"NVDA","name":"NVIDIA"},{"symbol":"GOOGL","name":"Alphabet"},{"symbol":"AMZN","name":"Amazon"}],"quote_mode":"QUOTE","purpose":"DISPLAY_ONLY","notes":"Requires TWELVE_DATA_API_KEY. Browse symbols are provider configuration, not prediction-market outcomes. Data entitlements vary by symbol."}'::jsonb,
     '{"asset_classes":["STOCKS","ETFS"],"source_type":"QUOTE"}'::jsonb
   ),
   (
     'TWELVE_DATA_COMMODITIES','Twelve Data commodities and energy',
-    'https://api.twelvedata.com','DISABLED','USD',20,300,
+    'https://api.twelvedata.com','ACTIVE','USD',20,1800,
     'COMMODITIES','TWELVE_DATA_QUOTE',30,250,'TWELVE_DATA_API_KEY',
-    '{"catalog_mode":"SYMBOL_SEARCH","quote_mode":"QUOTE","purpose":"DISPLAY_ONLY","notes":"Enable only after TWELVE_DATA_API_KEY is added to the Edge Function secrets. Symbol availability depends on provider entitlements."}'::jsonb,
+    '{"catalog_mode":"SYMBOL_SEARCH","browse_symbols":[{"symbol":"XAU/USD","name":"Gold Spot"},{"symbol":"XAG/USD","name":"Silver Spot"},{"symbol":"WTI/USD","name":"WTI Crude Oil"},{"symbol":"BRENT/USD","name":"Brent Crude Oil"},{"symbol":"NATGAS/USD","name":"Natural Gas"}],"quote_mode":"QUOTE","purpose":"DISPLAY_ONLY","notes":"Requires TWELVE_DATA_API_KEY. Symbols may be unavailable under some provider plans."}'::jsonb,
     '{"asset_classes":["COMMODITIES","ENERGY"],"source_type":"QUOTE"}'::jsonb
   ),
   (
     'TWELVE_DATA_FOREX','Twelve Data FX display quotes',
-    'https://api.twelvedata.com','DISABLED','USD',20,300,
+    'https://api.twelvedata.com','ACTIVE','USD',20,1800,
     'FOREX','TWELVE_DATA_QUOTE',40,250,'TWELVE_DATA_API_KEY',
-    '{"catalog_mode":"SYMBOL_SEARCH","quote_mode":"QUOTE","purpose":"DISPLAY_ONLY","notes":"Enable only after TWELVE_DATA_API_KEY is added to the Edge Function secrets."}'::jsonb,
+    '{"catalog_mode":"SYMBOL_SEARCH","browse_symbols":[{"symbol":"EUR/USD","name":"Euro / US Dollar"},{"symbol":"GBP/USD","name":"British Pound / US Dollar"},{"symbol":"USD/JPY","name":"US Dollar / Japanese Yen"},{"symbol":"USD/NGN","name":"US Dollar / Nigerian Naira"},{"symbol":"AUD/USD","name":"Australian Dollar / US Dollar"}],"quote_mode":"QUOTE","purpose":"DISPLAY_ONLY","notes":"Requires TWELVE_DATA_API_KEY. FX availability depends on current provider entitlements."}'::jsonb,
     '{"asset_classes":["FOREX"],"source_type":"QUOTE"}'::jsonb
   ),
   (
     'FRED_ECONOMICS','Federal Reserve Economic Data series',
-    'https://api.stlouisfed.org/fred','DISABLED','USD',20,3600,
+    'https://api.stlouisfed.org/fred','ACTIVE','USD',20,3600,
     'ECONOMICS','FRED_SERIES',50,800,'FRED_API_KEY',
-    '{"catalog_mode":"SERIES_SEARCH","quote_mode":"LATEST_OBSERVATION","purpose":"DISPLAY_ONLY","notes":"Enable only after FRED_API_KEY is added to the Edge Function secrets. Observations may be delayed or revised by the publisher."}'::jsonb,
+    '{"catalog_mode":"SERIES_SEARCH","featured_series":[{"id":"CPIAUCSL","title":"Consumer Price Index for All Urban Consumers","units":"Index 1982-1984=100","frequency":"Monthly"},{"id":"UNRATE","title":"Unemployment Rate","units":"Percent","frequency":"Monthly"},{"id":"GDP","title":"Gross Domestic Product","units":"Billions of Dollars","frequency":"Quarterly"},{"id":"FEDFUNDS","title":"Federal Funds Effective Rate","units":"Percent","frequency":"Monthly"},{"id":"DGS10","title":"10-Year Treasury Constant Maturity Rate","units":"Percent","frequency":"Daily"},{"id":"DFF","title":"Effective Federal Funds Rate","units":"Percent","frequency":"Daily"}],"quote_mode":"LATEST_OBSERVATION","purpose":"DISPLAY_ONLY","notes":"Requires FRED_API_KEY. Observations may be delayed or revised by the publisher."}'::jsonb,
     '{"asset_classes":["ECONOMICS","INDICATORS"],"source_type":"SERIES"}'::jsonb
   )
 on conflict(code) do update set
