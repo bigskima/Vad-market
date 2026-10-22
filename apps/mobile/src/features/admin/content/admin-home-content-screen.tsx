@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
+import { VadDateTimeField } from '@/components/ui/vad-date-time-field';
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
@@ -182,6 +183,22 @@ function PromotionSection({ promotions, onEdit }: { promotions: HomePromotion[];
   );
 }
 
+function buildPromotionVisualPrompt(title: string, body: string, tag: string) {
+  const brief = [title.trim(), body.trim(), tag.trim() ? 'Campaign tag: ' + tag.trim() : '']
+    .filter(Boolean)
+    .join(' — ')
+    .slice(0, 500);
+  return [
+    'Create premium, cinematic, landscape 16:9 artwork for the Home carousel of a modern prediction-market product.',
+    'Campaign concept: ' + brief + '.',
+    'Translate the concept into one clear visual metaphor and an instantly readable focal subject.',
+    'Use refined editorial photography or high-end 3D illustration, rich contrast, believable materials, elegant lighting and restrained indigo/violet accents.',
+    'Compose for a wide mobile carousel crop with safe margins and generous clean negative space where interface copy can sit outside the image.',
+    'No text, letters, numbers, logos, watermarks, charts, interface elements, UI panels, buttons or typography.',
+    'Avoid visual clutter, collages, tiny details, duplicate objects and generic stock-photo compositions.',
+  ].join(' ');
+}
+
 function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | null; onSaved: (message: string) => Promise<void> }) {
   const theme = useVadTheme();
   const [kind, setKind] = useState<BannerKind>(promotion?.banner_kind ?? 'TEXT');
@@ -216,6 +233,11 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
     }
   }
 
+  function useSuggestedPrompt() {
+    setVisualDirection(buildPromotionVisualPrompt(title, body, tag));
+    setError(null);
+  }
+
   async function generateArtwork() {
     if (title.trim().length < 3) {
       setError('Add a campaign title before generating artwork.');
@@ -224,7 +246,9 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
     setGenerating(true);
     setError(null);
     try {
-      const generated = await generateHomePromotionImage({ title, body, visualDirection });
+      const prompt = visualDirection.trim() || buildPromotionVisualPrompt(title, body, tag);
+      if (!visualDirection.trim()) setVisualDirection(prompt);
+      const generated = await generateHomePromotionImage({ title, body, visualDirection: prompt });
       setKind('IMAGE');
       setImageUrl(generated.imageUrl);
       setGeneratedAt(generated.generatedAt);
@@ -292,39 +316,75 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
   }
 
   return (
-    <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.md, paddingBottom: theme.spacing.md }}>
-      <VadSegmentedControl value={kind} options={bannerKinds} onChange={setKind} />
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ gap: theme.spacing.lg, paddingBottom: theme.spacing.lg, paddingHorizontal: 2 }}
+    >
+      <View style={{ gap: theme.spacing.xs }}>
+        <VadText variant="label" tone="brand">CAMPAIGN FORMAT</VadText>
+        <VadSegmentedControl value={kind} options={bannerKinds} onChange={setKind} />
+      </View>
 
       {kind === 'IMAGE' ? (
-        <View style={{ gap: theme.spacing.sm }}>
+        <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <VadText variant="bodyStrong">Campaign artwork</VadText>
+              <VadText variant="caption" tone="secondary">Wide imagery works best in the Home carousel.</VadText>
+            </View>
+            <VadChip label={generatedAt ? 'AI generated' : imageUrl ? 'Image selected' : 'No image'} tone={imageUrl ? 'brand' : 'neutral'} />
+          </View>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: '100%', height: 148, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
+            <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 7, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
           ) : (
-            <VadCard variant="muted" style={{ minHeight: 92, justifyContent: 'center' }}>
-              <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>Generate or upload campaign artwork to preview it here.</VadText>
-            </VadCard>
+            <View style={{ minHeight: 104, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.border, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: 4 }}>
+              <VadText variant="bodyStrong">No artwork selected</VadText>
+              <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>Generate artwork with AI or upload an image from your device.</VadText>
+            </View>
           )}
-          <VadButton label={imageUrl ? 'Replace uploaded image' : 'Upload image'} variant="secondary" size="small" loading={uploading} disabled={generating || working} onPress={() => void chooseImage()} />
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+            <VadButton label={imageUrl ? 'Replace image' : 'Upload image'} variant="secondary" size="small" fullWidth={false} loading={uploading} disabled={generating || working} onPress={() => void chooseImage()} style={{ flexGrow: 1 }} />
+            {imageUrl ? <VadButton label="Remove image" variant="ghost" size="small" fullWidth={false} disabled={uploading || generating || working} onPress={() => { setImageUrl(''); setGeneratedAt(null); }} style={{ flexGrow: 1 }} /> : null}
+          </View>
           {generatedAt ? <VadText variant="caption" tone="secondary">AI artwork generated {new Date(generatedAt).toLocaleString()}. Review the preview before publishing.</VadText> : null}
-        </View>
+        </VadCard>
       ) : null}
 
-      <VadInput label="Campaign title" value={title} onChangeText={setTitle} placeholder="A short campaign headline" />
-      <VadInput label="Supporting copy (optional)" value={body} onChangeText={setBody} placeholder="What should people know about this campaign?" multiline />
-      <VadInput label="Campaign tag (optional)" value={tag} onChangeText={setTag} placeholder="e.g. FEATURED, NEW, LIVE" maxLength={32} hint="Shown as a small badge above the campaign headline." />
-      <VadInput label="AI visual direction (optional)" value={visualDirection} onChangeText={setVisualDirection} placeholder="E.g. cinematic football stadium, indigo lighting" hint="The image is generated without text or buttons; campaign copy stays in the app interface." />
-      <VadButton
-        label={kind === 'IMAGE' ? imageUrl ? 'Regenerate artwork with AI' : 'Generate artwork with AI' : 'Generate image campaign with AI'}
-        variant="secondary"
-        loading={generating}
-        disabled={uploading || working || title.trim().length < 3}
-        onPress={() => void generateArtwork()}
-      />
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadText variant="label" tone="brand">CAMPAIGN COPY</VadText>
+        <VadInput label="Campaign title" value={title} onChangeText={setTitle} placeholder="A short campaign headline" />
+        <VadInput label="Supporting copy (optional)" value={body} onChangeText={setBody} placeholder="What should people know about this campaign?" multiline />
+        <VadInput label="Campaign tag (optional)" value={tag} onChangeText={setTag} placeholder="e.g. FEATURED, NEW, LIVE" maxLength={32} hint="Shown as a small badge above the campaign headline." />
+      </View>
 
-      <VadInput label="Target route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Internal VAD route opened when someone taps this banner, for example /markets." />
-      <VadInput label="Sort order" value={sortOrder} onChangeText={(value) => setSortOrder(value.replace(/\D/g, ''))} keyboardType="number-pad" hint="Lower numbers appear earlier in the carousel." />
-      <VadInput label="Starts at (optional, UTC ISO 8601)" value={startsAt} onChangeText={setStartsAt} placeholder="2026-11-01T09:00:00Z" autoCapitalize="none" autoCorrect={false} hint="Leave empty to start immediately when published." />
-      <VadInput label="Ends at (optional, UTC ISO 8601)" value={endsAt} onChangeText={setEndsAt} placeholder="2026-11-08T23:59:00Z" autoCapitalize="none" autoCorrect={false} hint="Leave empty for no scheduled end." />
+      <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
+        <View style={{ gap: 3 }}>
+          <VadText variant="bodyStrong">AI image assistant</VadText>
+          <VadText variant="caption" tone="secondary">The prompt is based on your campaign copy. Use the suggestion or edit it before generating.</VadText>
+        </View>
+        <VadInput
+          label="Visual direction"
+          value={visualDirection}
+          onChangeText={setVisualDirection}
+          placeholder="Use the suggested prompt or describe the scene you want."
+          multiline
+          hint="Images are generated without text, logos, or buttons. Campaign copy stays in the interface."
+        />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+          <VadButton label="Suggest prompt" variant="secondary" size="small" fullWidth={false} disabled={uploading || generating || working || title.trim().length < 3} onPress={useSuggestedPrompt} style={{ flexGrow: 1 }} />
+          <VadButton label={imageUrl ? 'Regenerate artwork' : 'Generate artwork'} variant="primary" size="small" fullWidth={false} loading={generating} disabled={uploading || working || title.trim().length < 3} onPress={() => void generateArtwork()} style={{ flexGrow: 1 }} />
+        </View>
+      </VadCard>
+
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadText variant="label" tone="brand">PLACEMENT & SCHEDULE</VadText>
+        <VadInput label="Target route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Internal VAD route opened when someone taps this banner, for example /markets." />
+        <VadInput label="Sort order" value={sortOrder} onChangeText={(value) => setSortOrder(value.replace(/\D/g, ''))} keyboardType="number-pad" hint="Lower numbers appear earlier." />
+        <VadDateTimeField label="Starts at (optional)" value={startsAt} onChange={setStartsAt} clearable hint="Leave empty to start immediately when published." />
+        <VadDateTimeField label="Ends at (optional)" value={endsAt} onChange={setEndsAt} minDate={startsAt || undefined} clearable hint="Leave empty for no scheduled end." />
+        <VadText variant="caption" tone="tertiary">Times are saved as an exact ISO timestamp in UTC, so the schedule stays consistent across devices.</VadText>
+      </View>
 
       {error ? <VadErrorState title="Campaign not saved" message={error} /> : null}
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
