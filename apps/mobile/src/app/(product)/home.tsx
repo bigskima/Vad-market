@@ -56,7 +56,7 @@ export default function HomeRoute() {
         onDeposit={() => router.push('/wallet/deposit')}
         onWithdraw={() => router.push('/wallet/withdraw')}
         onSend={() => router.push('/wallet/send')}
-        onOpenCryptoAssets={() => router.push('/crypto-assets')}
+        onOpenCryptoAssets={() => router.push('/financial-markets')}
       />
     </ProductRoute>
   );

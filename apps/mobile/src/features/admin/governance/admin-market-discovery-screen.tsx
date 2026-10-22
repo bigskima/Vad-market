@@ -9,6 +9,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { getAdminFeaturedMarketSettings, getAdminMarketPublicationQueue, getAdminTrendingMarketSnapshot, type AdminFeaturedMarketSettings, type AdminMarketPublicationRow, type AdminTrendingMarketSnapshot } from '@/services/admin-market-publishing-api';
 import { AdminFeaturedMarketPanel } from './admin-featured-market-panel';
 import { AdminMarketDiscoveryModeration } from './admin-market-discovery-moderation';
+import { AdminEventDiscoveryPanel } from './admin-event-discovery-panel';
 import { AdminTrendingMarketPanel } from './admin-trending-market-panel';
 
 export function AdminMarketDiscoveryScreen() {
@@ -78,5 +79,6 @@ export function AdminMarketDiscoveryScreen() {
     <AdminFeaturedMarketPanel key={featuredFormKey} rows={rows} settings={featured} onChanged={changed} />
     <AdminTrendingMarketPanel key={trendingFormKey} rows={rows} snapshot={trending} onChanged={changed} />
     <AdminMarketDiscoveryModeration rows={rows} snapshot={trending} onChanged={changed} />
+    <AdminEventDiscoveryPanel />
   </View>;
 }

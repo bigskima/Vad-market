@@ -186,7 +186,7 @@ export function CryptoMarketPricesPanel({
 
       <VadText variant="caption" tone="tertiary">
         {fetchedAt ? `Public market-data snapshot · updated ${new Date(fetchedAt).toLocaleTimeString()}${staleSnapshot ? ' · STALE CACHED DATA — public source temporarily unavailable' : ''}. ` : ''}
-        Prices and 24-hour changes are display data only. VAD&apos;s market odds and final outcomes remain separate.
+        Quotes refresh automatically. Historical sparklines may update less frequently than the current quote. Display prices and 24-hour changes never determine VAD market odds or final outcomes.
       </VadText>
     </View>
   );

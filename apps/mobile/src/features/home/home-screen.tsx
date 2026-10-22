@@ -230,7 +230,7 @@ export function HomeScreen({
           <VadText variant="bodyStrong" style={{ fontSize: 18, lineHeight: 22 }}>{(profileName || userName || 'VAD member').trim().split(/\s+/)[0]}</VadText>
         </View>
         <HomeHeaderAction label="Search markets" icon="search" onPress={() => onExploreMarkets()} />
-        <HomeHeaderAction label="Live crypto prices" icon="activity" onPress={onOpenCryptoAssets} />
+        <HomeHeaderAction label="Financial markets" icon="activity" onPress={onOpenCryptoAssets} />
         <HomeHeaderAction label="Notifications" icon="bell" badge={hasUnreadNotifications} onPress={onNotifications} />
       </View>
 

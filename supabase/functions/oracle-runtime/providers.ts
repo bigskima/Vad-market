@@ -1,6 +1,9 @@
 import { env } from './runtime.ts';
+import { hasContinuousTimestampCoverage } from './coverage.ts';
+import { resolveFinancialPriceThresholdWithProvider } from './financial.ts';
 import {
   type CryptoThresholdSpec,
+  type CryptoTouchThresholdSpec,
   type FootballResultSpec,
   type JsonRecord,
   type OracleProvider,
@@ -66,6 +69,9 @@ function requiredSecret(provider: OracleProvider) {
 
 export async function probeProvider(provider: OracleProvider) {
   const baseUrl = provider.baseUrl?.replace(/\/$/, '');
+  if (provider.code === 'PUBLIC_RECORD' && !baseUrl) {
+    return { latencyMs: 0, metadata: { adapter: provider.adapter, probe: 'CONFIGURED_RESOURCES_ONLY', resourceCount: provider.resources.length } };
+  }
   if (!baseUrl) throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', `${provider.code} base URL is missing`, 500);
 
   switch (provider.code) {
@@ -85,6 +91,19 @@ export async function probeProvider(provider: OracleProvider) {
       });
       return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'PING' } };
     }
+    case 'COINBASE': {
+      if (baseUrl !== 'https://api.coinbase.com') {
+        throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Coinbase must use its approved HTTPS API host', 500);
+      }
+      const result = await fetchJson(`${baseUrl}/api/v3/brokerage/market/products/BTC-USD`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!result.payload || typeof result.payload !== 'object'
+          || String((result.payload as JsonRecord).product_id ?? '') !== 'BTC-USD') {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Coinbase public market-data probe returned an invalid BTC-USD product', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'PUBLIC_PRODUCT' } };
+    }
     case 'FOOTBALL_DATA': {
       const secret = requiredSecret(provider);
       const result = await fetchJson(`${baseUrl}/competitions/PL`, {
@@ -103,6 +122,81 @@ export async function probeProvider(provider: OracleProvider) {
         throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'DIA health payload was invalid', 502);
       }
       return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'REFERENCE_QUOTATION' } };
+    }
+    case 'TWELVE_DATA': {
+      const secret = requiredSecret(provider);
+      const url = new URL('/quote', baseUrl);
+      url.searchParams.set('symbol', 'AAPL');
+      url.searchParams.set('apikey', String(secret));
+      const result = await fetchJson(url.toString());
+      if (!result.payload || typeof result.payload !== 'object' || (result.payload as JsonRecord).status === 'error') {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Twelve Data health quote was invalid', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'SAMPLE_QUOTE' } };
+    }
+    case 'FRED': {
+      const secret = requiredSecret(provider);
+      const url = new URL('/fred/series', baseUrl);
+      url.searchParams.set('series_id', 'GDP');
+      url.searchParams.set('api_key', String(secret));
+      url.searchParams.set('file_type', 'json');
+      const result = await fetchJson(url.toString());
+      if (!result.payload || typeof result.payload !== 'object' || (result.payload as JsonRecord).error_code) {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'FRED health response was invalid', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'SERIES_METADATA' } };
+    }
+    case 'TAVILY': {
+      const secret = requiredSecret(provider);
+      const url = `${baseUrl}/search`;
+      const started = Date.now();
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ api_key: secret, query: 'official public information', search_depth: 'basic', max_results: 1, include_answer: false }),
+        signal: AbortSignal.timeout(12000),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload || typeof payload !== 'object' || !Array.isArray((payload as JsonRecord).results)) {
+        throw new OracleRuntimeError(`PROVIDER_HTTP_${response.status}`, 'Tavily health search failed', 502);
+      }
+      return { latencyMs: Date.now() - started, metadata: { adapter: provider.adapter, probe: 'MINIMAL_SEARCH' } };
+    }
+    case 'THESPORTSDB': {
+      const result = await fetchJson(`${baseUrl}/all_sports.php`);
+      if (!result.payload || typeof result.payload !== 'object' || !Array.isArray((result.payload as JsonRecord).sports)) {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'TheSportsDB health response was invalid', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'SPORTS_CATALOG' } };
+    }
+    case 'API_SPORTS': {
+      const secret = requiredSecret(provider);
+      if (baseUrl !== 'https://v3.football.api-sports.io') {
+        throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'API-Sports must use its approved HTTPS API host', 500);
+      }
+      const result = await fetchJson(`${baseUrl}/status`, {
+        headers: { 'x-apisports-key': String(secret), Accept: 'application/json' },
+      });
+      if (!result.payload || typeof result.payload !== 'object' || (result.payload as JsonRecord).errors && Object.keys((result.payload as JsonRecord).errors as object).length > 0) {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'API-Sports health response was invalid', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'ACCOUNT_STATUS' } };
+    }
+    case 'US_SENATE': {
+      if (baseUrl !== 'https://www.senate.gov') {
+        throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'US Senate source must use its approved HTTPS host', 500);
+      }
+      const started = Date.now();
+      const response = await fetch(`${baseUrl}/`, {
+        headers: { Accept: 'text/html,application/xhtml+xml' },
+        redirect: 'error',
+        signal: AbortSignal.timeout(10000),
+      });
+      const html = await response.text();
+      if (!response.ok || !html.toLowerCase().includes('senate')) {
+        throw new OracleRuntimeError(`PROVIDER_HTTP_${response.status}`, 'US Senate official-site health check failed', 502);
+      }
+      return { latencyMs: Date.now() - started, metadata: { adapter: provider.adapter, probe: 'OFFICIAL_SITE' } };
     }
     default:
       throw new OracleRuntimeError('PROVIDER_ADAPTER_UNSUPPORTED', `No adapter is installed for ${provider.code}`, 501);
@@ -273,6 +367,110 @@ async function coinGeckoCryptoObservation(
   };
 }
 
+export async function resolveCryptoTouchWithCoinGecko(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: CryptoTouchThresholdSpec,
+): Promise<ProviderResolutionResult> {
+  if (provider.code !== 'COINGECKO') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
+  const secret = requiredSecret(provider);
+  const baseUrl = provider.baseUrl?.replace(/\/$/, '');
+  if (!baseUrl || baseUrl !== 'https://api.coingecko.com/api/v3') {
+    throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'CoinGecko must use its approved HTTPS API host', 500);
+  }
+  if (spec.windowEnd <= spec.windowStart || spec.windowEnd.getTime() > Date.now()) {
+    throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Crypto threshold-touch window must be valid and end in the past', 422);
+  }
+  const coverageGapSeconds = Math.max(60, Math.min(1800, metadataNumber(resource, 'maximum_coverage_gap_seconds', 900)));
+  const from = Math.floor(spec.windowStart.getTime() / 1000);
+  const to = Math.floor(spec.windowEnd.getTime() / 1000) + coverageGapSeconds;
+  const url = new URL(`${baseUrl}/coins/${encodeURIComponent(resource.externalKey)}/market_chart/range`);
+  url.searchParams.set('vs_currency', spec.quote.toLowerCase());
+  url.searchParams.set('from', String(from));
+  url.searchParams.set('to', String(to));
+  url.searchParams.set('precision', 'full');
+  const result = await fetchJson(url.toString(), {
+    headers: { 'x-cg-demo-api-key': String(secret), Accept: 'application/json' },
+  });
+  const prices = result.payload && typeof result.payload === 'object'
+    ? (result.payload as JsonRecord).prices
+    : null;
+  if (!Array.isArray(prices) || prices.length === 0) {
+    throw new OracleRuntimeError('COINGECKO_PRICE_NOT_FOUND', 'CoinGecko returned no prices for the threshold-touch window', 422);
+  }
+  const startMs = spec.windowStart.getTime();
+  const endMs = spec.windowEnd.getTime();
+  const points = prices
+    .filter((item: unknown) => Array.isArray(item) && item.length >= 2)
+    .map((item: unknown) => {
+      const pair = item as unknown[];
+      return {
+        timestamp: finiteNumber(pair[0], 'CoinGecko timestamp'),
+        price: finiteNumber(pair[1], 'CoinGecko price'),
+      };
+    })
+    .filter((point) => point.timestamp >= startMs && point.timestamp <= endMs && point.price > 0)
+    .sort((a, b) => a.timestamp - b.timestamp);
+  if (!points.length) {
+    return { kind: 'skipped', code: 'COINGECKO_WINDOW_EMPTY', detail: 'No provider price points fell inside the configured threshold-touch window' };
+  }
+  const hit = (value: number) => spec.operator === 'GT' ? value > spec.threshold
+    : spec.operator === 'GTE' ? value >= spec.threshold
+      : spec.operator === 'LT' ? value < spec.threshold
+        : value <= spec.threshold;
+  const hitPoints = points.filter((point) => hit(point.price));
+  const maxPrice = Math.max(...points.map((point) => point.price));
+  const minPrice = Math.min(...points.map((point) => point.price));
+  const last = points[points.length - 1];
+  const fullCoverage = hasContinuousTimestampCoverage(
+    points.map((point) => point.timestamp),
+    startMs,
+    endMs,
+    coverageGapSeconds,
+  );
+  // A qualifying historical datapoint is sufficient to prove a touch. A NO
+  // requires coverage near both window boundaries; missing coverage is never
+  // interpreted as proof that the price did not touch the threshold.
+  if (!hitPoints.length && !fullCoverage) {
+    return {
+      kind: 'skipped',
+      code: 'COINGECKO_WINDOW_INCOMPLETE',
+      detail: 'Historical samples did not cover both ends of the threshold-touch window; a negative result is not safe',
+    };
+  }
+  const selected = hitPoints.length
+    ? hitPoints.sort((a, b) => Math.abs(a.price - spec.threshold) - Math.abs(b.price - spec.threshold))[0]
+    : last;
+  const observedAt = new Date(selected.timestamp);
+  const evidenceUrl = new URL(url.toString());
+  return {
+    kind: 'observation',
+    observation: {
+      observedOutcome: hitPoints.length ? 'YES' : 'NO',
+      observedAt,
+      evidenceReference: evidenceUrl.toString(),
+      payload: {
+        resolver_type: spec.resolverType,
+        source: provider.code,
+        asset: spec.asset,
+        quote: spec.quote,
+        operator: spec.operator,
+        threshold: spec.threshold,
+        window_start: spec.windowStart.toISOString(),
+        window_end: spec.windowEnd.toISOString(),
+        sample_count: points.length,
+        minimum_price: minPrice,
+        maximum_price: maxPrice,
+        threshold_touched: hitPoints.length > 0,
+        evidence_timestamp: observedAt.toISOString(),
+        coverage_complete: fullCoverage,
+        coin_id: resource.externalKey,
+      },
+    },
+  };
+}
+
 async function diaCryptoObservation(
   provider: OracleProvider,
   resource: OracleResource,
@@ -326,6 +524,15 @@ export async function resolveCryptoWithProvider(
     case 'PYTH': return pythCryptoObservation(provider, resource, spec);
     case 'COINGECKO': return coinGeckoCryptoObservation(provider, resource, spec);
     case 'DIA': return diaCryptoObservation(provider, resource, spec);
+    case 'COINBASE':
+    case 'TWELVE_DATA': return resolveFinancialPriceThresholdWithProvider(provider, resource, {
+      resolverType: 'FINANCIAL_PRICE_THRESHOLD_V1',
+      symbol: spec.asset,
+      quote: spec.quote,
+      operator: spec.operator,
+      threshold: spec.threshold,
+      observationTime: spec.observationTime,
+    });
     default: return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   }
 }

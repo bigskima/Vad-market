@@ -22,9 +22,9 @@ import {
 } from '@/services/admin-guided-market-catalog-api';
 import {
   checkCryptoOracleAsset,
-  registerCryptoOracleAsset,
   getCryptoMarketPrices,
   type CryptoMarketQuote,
+  type CryptoOracleAssetCheck,
 } from '@/services/crypto-market-data-api';
 import {
   createAdminSportsMarketDraft,
@@ -62,7 +62,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [cryptoSearch, setCryptoSearch] = useState('');
   const [cryptoOptions, setCryptoOptions] = useState<CryptoMarketQuote[]>([]);
   const [selectedCryptoAsset, setSelectedCryptoAsset] = useState<CryptoMarketQuote | null>(null);
-  const [cryptoAssetCheck, setCryptoAssetCheck] = useState<{ supported: boolean; reason?: string; feedSymbol?: string } | null>(null);
+  const [cryptoAssetCheck, setCryptoAssetCheck] = useState<CryptoOracleAssetCheck | null>(null);
   const [cryptoAssetCheckLoading, setCryptoAssetCheckLoading] = useState(false);
   const cryptoAssetCheckRequest = useRef(0);
   const [loading, setLoading] = useState(true);
@@ -154,18 +154,18 @@ export function AdminMarketCreateWorkspaceCatalog() {
       operator: current.operator || 'GTE',
     }));
     setTitleEdited(false);
-    setSourceName('Pyth Network + CoinGecko historical prices');
+    setSourceName('CoinGecko + Coinbase public historical prices');
     setSourceUrl('');
     setError(null);
     try {
-      const check = await checkCryptoOracleAsset(coin.symbol);
+      const check = await checkCryptoOracleAsset(coin.symbol, coin.id);
       if (requestId !== cryptoAssetCheckRequest.current) return;
       setCryptoAssetCheck(check);
-      if (!check.supported) setError(check.reason ?? 'This asset does not have an approved Pyth historical feed. Choose another asset.');
+      if (!check.supported) setError(check.reason ?? 'This asset does not have active CoinGecko + Coinbase historical mappings. Choose another supported asset.');
     } catch (reason) {
       if (requestId !== cryptoAssetCheckRequest.current) return;
-      setCryptoAssetCheck({ supported: false, reason: reason instanceof Error ? reason.message : 'Pyth feed coverage could not be verified.' });
-      setError(reason instanceof Error ? reason.message : 'Pyth feed coverage could not be verified.');
+      setCryptoAssetCheck({ supported: false, symbol: coin.symbol.toUpperCase(), quote: 'USD', provider: 'COINGECKO+COINBASE', reason: reason instanceof Error ? reason.message : 'Free-source Oracle coverage could not be verified.' });
+      setError(reason instanceof Error ? reason.message : 'Free-source Oracle coverage could not be verified.');
     } finally {
       if (requestId === cryptoAssetCheckRequest.current) setCryptoAssetCheckLoading(false);
     }
@@ -218,9 +218,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
     [details.competition, selectedGeneralSport?.code, sportsTaxonomy.competitions],
   );
 
-  const scheduleValid = [opensAt, closesAt, resolvesAfter].every((value) => value && Number.isFinite(Date.parse(value)))
+  const scheduleFieldsValid = [opensAt, closesAt, resolvesAfter].every((value) => value && Number.isFinite(Date.parse(value)))
     && Date.parse(closesAt) > Date.parse(opensAt)
     && Date.parse(resolvesAfter) >= Date.parse(closesAt);
+  // Do not create drafts which can never be published because they expire before
+  // the Admin gets to the Publishing queue.
+  const scheduleValid = scheduleFieldsValid && Date.parse(closesAt) > clockNow;
   const footballScheduleValid = !automaticFootball || (
     Boolean(matchStartsAt)
     && Number.isFinite(Date.parse(matchStartsAt))
@@ -415,7 +418,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     if (cryptoThreshold) {
       if (!selectedCryptoAsset) return setError('Search for and select a crypto asset from the live CoinGecko catalogue.');
       if (cryptoAssetCheckLoading) return setError('Wait for the approved Oracle feed check to finish.');
-      if (!cryptoAssetCheck?.supported) return setError(cryptoAssetCheck?.reason ?? 'This asset does not have a verified Pyth USD feed and cannot be created as an automatic threshold market.');
+      if (!cryptoAssetCheck?.supported || cryptoAssetCheck.coinGeckoId !== selectedCryptoAsset?.id) return setError(cryptoAssetCheck?.reason ?? 'This asset does not have matching free historical-price mappings and cannot be created as an automatic threshold market.');
       if (!details.threshold?.trim() || !Number.isFinite(Number(details.threshold)) || Number(details.threshold) <= 0) return setError('Enter a price target greater than zero.');
     } else if (football) {
       if (!competition.trim() || !homeTeam.trim() || !awayTeam.trim()) return setError('Add the competition, home team and away team.');
@@ -433,7 +436,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function continueFromSetup() {
     setError(null);
     if (!resolvedCountryCode || !resolvedAssetCode) return setError('Choose a market currency before continuing.');
-    if (!scheduleValid) return setError('Choose valid opening, closing and result-checking times.');
+    if (!scheduleValid) return setError(scheduleFieldsValid && Date.parse(closesAt) <= clockNow
+      ? 'The closing time has already passed. Choose a future closing time; expired markets cannot be published.'
+      : 'Choose valid opening, closing and result-checking times.');
     if (automaticFootball && !automaticFootballAvailable) return setError('Automatic football results are not enabled for this currency. Choose Verified result or a supported test currency.');
     if (automaticFootball && Date.parse(closesAt) > Date.parse(matchStartsAt)) return setError('For this match-result market, trading must close no later than kickoff.');
     if (automaticFootball && Date.parse(resolvesAfter) < Date.parse(matchStartsAt) + (2 * 60 * 60 * 1000)) return setError('Set result checking to at least two hours after kickoff so VAD waits for the final result.');
@@ -441,10 +446,27 @@ export function AdminMarketCreateWorkspaceCatalog() {
   }
 
   async function createMarket() {
-    if (working || !scheduleValid || !footballScheduleValid || !category) return;
-    if (cryptoThreshold && (!selectedCryptoAsset || !cryptoAssetCheck?.supported || cryptoAssetCheckLoading)) {
+    if (working) return;
+    if (!scheduleValid) {
+      setError(scheduleFieldsValid && Date.parse(closesAt) <= clockNow
+        ? 'The closing time has already passed. Choose a future closing time before creating the market.'
+        : 'Choose valid opening, closing and result-checking times.');
+      setStep(2);
+      return;
+    }
+    if (!footballScheduleValid) {
+      setError('For automatic football markets, trading must close by kickoff and result checking must be at least two hours after kickoff.');
+      setStep(2);
+      return;
+    }
+    if (!category) {
+      setError('Choose a market category before creating it.');
       setStep(1);
-      setError(cryptoAssetCheck?.reason ?? 'Select a crypto asset with verified Pyth/USD coverage before creating the market.');
+      return;
+    }
+    if (cryptoThreshold && (!selectedCryptoAsset || !cryptoAssetCheck?.supported || cryptoAssetCheck.coinGeckoId !== selectedCryptoAsset.id || cryptoAssetCheckLoading)) {
+      setStep(1);
+      setError(cryptoAssetCheck?.reason ?? 'Select a crypto asset supported by both free historical-price sources before creating the market.');
       return;
     }
     if (publicationChoice === 'NOW' && !canPublishNow) return setError('Publish now needs an opening time that has already started and a closing time still in the future.');
@@ -483,15 +505,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
         });
       } else if (marketType) {
         if (cryptoThreshold) {
-          if (!selectedCryptoAsset || !cryptoAssetCheck?.supported || !cryptoAssetCheck.feedSymbol) {
-            throw new Error('Select an asset with a verified exact Pyth/USD feed before creating this market.');
+          if (!selectedCryptoAsset || !cryptoAssetCheck?.supported || cryptoAssetCheck.coinGeckoId !== selectedCryptoAsset.id) {
+            throw new Error('Select an asset with matching, active CoinGecko and Coinbase historical mappings before creating this market.');
           }
-          await registerCryptoOracleAsset({
-            symbol: selectedCryptoAsset.symbol,
-            coinGeckoId: selectedCryptoAsset.id,
-            pythFeedSymbol: cryptoAssetCheck.feedSymbol,
-            reason: 'Admin guided crypto threshold market creation',
-          });
         }
         result = await createAdminCatalogMarket({
           ...common,
@@ -659,7 +675,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                   {cryptoThreshold ? (
                     <View style={{ gap: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12, padding: theme.spacing.md }}>
                       <VadText variant="bodyStrong">Select a resolvable crypto asset</VadText>
-                      <VadText variant="caption" tone="secondary">Searches CoinGecko&apos;s live asset catalogue. VAD checks for an exact Pyth/USD historical feed before allowing creation.</VadText>
+                      <VadText variant="caption" tone="secondary">Searches CoinGecko&apos;s live asset catalogue. VAD checks for active CoinGecko and Coinbase historical mappings before allowing creation.</VadText>
                       <VadInput label="Search coin name or ticker" value={cryptoSearch} onChangeText={(value) => { setCryptoSearch(value); setCryptoOptions([]); setSelectedCryptoAsset(null); setCryptoAssetCheck(null); setCryptoAssetCheckLoading(false); cryptoAssetCheckRequest.current += 1; }} placeholder="Solana, SOL, Cardano, ADA…" />
                       {cryptoOptions.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
                         {cryptoOptions.map((coin) => <VadChip key={coin.id} label={`${coin.name} (${coin.symbol.toUpperCase()})`} selected={selectedCryptoAsset?.id === coin.id} tone={selectedCryptoAsset?.id === coin.id ? 'brand' : 'neutral'} onPress={() => void chooseCryptoAsset(coin)} />)}
@@ -667,7 +683,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                       {selectedCryptoAsset ? <VadCard variant="muted" style={{ gap: 4 }}>
                         <VadText variant="bodyStrong">{selectedCryptoAsset.name} ({selectedCryptoAsset.symbol.toUpperCase()})</VadText>
                         <VadText variant="caption" tone="secondary">CoinGecko ID: {selectedCryptoAsset.id} · Public spot: {selectedCryptoAsset.currentPrice.toLocaleString(undefined, { maximumFractionDigits: 8 })} USD</VadText>
-                        {cryptoAssetCheckLoading ? <VadText variant="caption" tone="secondary">Verifying exact Pyth historical feed…</VadText> : cryptoAssetCheck?.supported ? <VadText variant="caption" tone="yes">Oracle feed verified: {cryptoAssetCheck.feedSymbol}. This asset can use the two-source threshold policy.</VadText> : <VadText variant="caption" tone="warning">{cryptoAssetCheck?.reason ?? 'Select an asset to check its Oracle feed.'}</VadText>}
+                        {cryptoAssetCheckLoading ? <VadText variant="caption" tone="secondary">Checking CoinGecko + Coinbase historical support…</VadText> : cryptoAssetCheck?.supported ? <VadText variant="caption" tone="yes">Free sources verified: CoinGecko + Coinbase ({cryptoAssetCheck.coinGeckoId}). This asset can use the two-source threshold policy.</VadText> : <VadText variant="caption" tone="warning">{cryptoAssetCheck?.reason ?? 'Select an asset to check its Oracle feed.'}</VadText>}
                       </VadCard> : null}
                       <FieldGroup label="Price condition">
                         {([['GT', 'Above'], ['GTE', 'At or above'], ['LT', 'Below'], ['LTE', 'At or below']] as const).map(([value, label]) => <VadChip key={value} label={label} selected={(details.operator ?? 'GTE') === value} tone={(details.operator ?? 'GTE') === value ? 'brand' : 'neutral'} onPress={() => setDetail('operator', value)} />)}
@@ -681,7 +697,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                   ) : null}
                   <VadCard variant="muted" style={{ gap: 4 }}>
                     <VadText variant="bodyStrong">{cryptoThreshold ? 'Automated historical-price resolution' : 'Verified result'}</VadText>
-                    <VadText variant="caption" tone="secondary">{cryptoThreshold ? 'The Oracle checks approved Pyth and CoinGecko historical observations at the scheduled time. The live chart is display-only and cannot settle the market.' : 'VAD will verify the outcome from the source below. You do not need to configure oracle IDs, resolver types or internal event records.'}</VadText>
+                    <VadText variant="caption" tone="secondary">{cryptoThreshold ? 'The Oracle compares CoinGecko historical prices with Coinbase public historical candles at the scheduled time. No paid Pyth key is required. The live chart is display-only and cannot settle the market.' : 'VAD will verify the outcome from the source below. You do not need to configure oracle IDs, resolver types or internal event records.'}</VadText>
                   </VadCard>
                   <SourceFields label={marketType.sourceLabel} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
                 </View>

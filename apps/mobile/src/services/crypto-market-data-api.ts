@@ -44,6 +44,7 @@ export type CryptoMarketDataPage = {
   query: string | null;
   hasMore: boolean;
   fetchedAt: string;
+  cacheSeconds?: number;
   cached?: boolean;
   stale?: boolean;
   coins: CryptoMarketQuote[];
@@ -133,25 +134,27 @@ export type CryptoOracleAssetCheck = {
   supported: boolean;
   symbol: string;
   quote: 'USD';
-  provider: 'PYTH';
-  feedSymbol?: string;
-  feedId?: string;
+  provider: 'COINGECKO+COINBASE';
+  coinGeckoId?: string | null;
   reason?: string;
 };
 
-export async function checkCryptoOracleAsset(symbol: string): Promise<CryptoOracleAssetCheck> {
+export async function checkCryptoOracleAsset(
+  symbol: string,
+  coinGeckoId?: string,
+): Promise<CryptoOracleAssetCheck> {
   const normalized = symbol.trim().toUpperCase();
   if (!/^[A-Z0-9]{2,20}$/.test(normalized)) {
     throw new Error('Select a valid crypto asset symbol.');
   }
   const { data, error } = await supabase.functions.invoke('crypto-oracle-asset-check', {
-    body: { symbol: normalized, quote: 'USD' },
+    body: { symbol: normalized, quote: 'USD', ...(coinGeckoId ? { coinGeckoId: coinGeckoId.trim().toLowerCase() } : {}) },
   });
-  if (error) throw userFacingError(error, 'admin', 'Oracle support for this crypto asset could not be checked.');
+  if (error) throw userFacingError(error, 'admin', 'Free Oracle support for this crypto asset could not be checked.');
   const payload = data as Partial<CryptoOracleAssetCheck> & { error?: string };
   if (payload?.error) throw new Error(payload.error);
   if (payload?.symbol !== normalized || typeof payload?.supported !== 'boolean') {
-    throw new Error('The crypto Oracle support check returned an invalid response.');
+    throw new Error('The free Oracle support check returned an invalid response.');
   }
   return payload as CryptoOracleAssetCheck;
 }

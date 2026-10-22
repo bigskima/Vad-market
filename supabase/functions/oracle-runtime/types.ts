@@ -2,7 +2,7 @@ export type JsonRecord = Record<string, unknown>;
 
 export type OracleResource = {
   id: number;
-  resourceType: 'CRYPTO_PAIR' | 'CANONICAL_EVENT' | 'SPORTS_COMPETITION' | 'PUBLIC_EVENT';
+  resourceType: 'CRYPTO_PAIR' | 'CANONICAL_EVENT' | 'SPORTS_COMPETITION' | 'PUBLIC_EVENT' | 'FINANCIAL_SYMBOL' | 'FRED_SERIES';
   canonicalKey: string;
   externalKey: string;
   status: 'ACTIVE' | 'DISABLED';
@@ -15,6 +15,7 @@ export type OracleProvider = {
   name: string;
   environment: 'SANDBOX' | 'PRODUCTION';
   status: 'ACTIVE' | 'DISABLED' | 'DEGRADED' | 'UNAVAILABLE';
+  healthStatus?: 'HEALTHY' | 'DEGRADED' | 'UNAVAILABLE' | 'UNKNOWN' | string;
   priority: number;
   capabilities: string[];
   configured: boolean;
@@ -52,14 +53,42 @@ export type CryptoThresholdSpec = {
   observationTime: Date;
 };
 
+export type CryptoTouchThresholdSpec = {
+  resolverType: 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1';
+  asset: string;
+  quote: string;
+  operator: 'GT' | 'GTE' | 'LT' | 'LTE';
+  threshold: number;
+  windowStart: Date;
+  windowEnd: Date;
+};
+
 export type FootballResultSpec = {
   resolverType: 'FOOTBALL_MATCH_RESULT_V1';
   condition: 'HOME_WIN' | 'AWAY_WIN' | 'DRAW';
 };
 
+export type FinancialPriceThresholdSpec = {
+  resolverType: 'FINANCIAL_PRICE_THRESHOLD_V1';
+  symbol: string;
+  quote: string;
+  operator: 'GT' | 'GTE' | 'LT' | 'LTE';
+  threshold: number;
+  observationTime: Date;
+};
+
+export type FredSeriesThresholdSpec = {
+  resolverType: 'FRED_SERIES_THRESHOLD_V1';
+  seriesId: string;
+  operator: 'GT' | 'GTE' | 'LT' | 'LTE';
+  threshold: number;
+  observationDate: string;
+  vintageDate: string | null;
+};
+
 export type PublicRecordSpec = {
   resolverType: 'PUBLIC_RECORD_RULE_V1';
-  operator: 'BEFORE_OR_AT' | 'AFTER' | 'EQUALS' | 'CONTAINS' | 'EXISTS';
+  operator: 'BEFORE_OR_AT' | 'AFTER' | 'EQUALS' | 'CONTAINS' | 'EXISTS' | 'GT' | 'GTE' | 'LT' | 'LTE';
   field?: string | null;
   expected?: string | number | boolean | null;
   cutoff?: string | null;
@@ -67,7 +96,7 @@ export type PublicRecordSpec = {
   recordDate?: string | null;
 };
 
-export type ResolverSpec = CryptoThresholdSpec | FootballResultSpec | PublicRecordSpec;
+export type ResolverSpec = CryptoThresholdSpec | CryptoTouchThresholdSpec | FootballResultSpec | PublicRecordSpec | FinancialPriceThresholdSpec | FredSeriesThresholdSpec;
 
 export type ProviderObservation = {
   observedOutcome: 'YES' | 'NO';
