@@ -1,4 +1,5 @@
 import { env } from './runtime.ts';
+import { resolveFinancialPriceThresholdWithProvider } from './financial.ts';
 import {
   type CryptoThresholdSpec,
   type FootballResultSpec,
@@ -66,6 +67,9 @@ function requiredSecret(provider: OracleProvider) {
 
 export async function probeProvider(provider: OracleProvider) {
   const baseUrl = provider.baseUrl?.replace(/\/$/, '');
+  if (provider.code === 'PUBLIC_RECORD' && !baseUrl) {
+    return { latencyMs: 0, metadata: { adapter: provider.adapter, probe: 'CONFIGURED_RESOURCES_ONLY', resourceCount: provider.resources.length } };
+  }
   if (!baseUrl) throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', `${provider.code} base URL is missing`, 500);
 
   switch (provider.code) {
@@ -103,6 +107,52 @@ export async function probeProvider(provider: OracleProvider) {
         throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'DIA health payload was invalid', 502);
       }
       return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'REFERENCE_QUOTATION' } };
+    }
+    case 'TWELVE_DATA': {
+      const secret = requiredSecret(provider);
+      const url = new URL('/quote', baseUrl);
+      url.searchParams.set('symbol', 'AAPL');
+      url.searchParams.set('apikey', String(secret));
+      const result = await fetchJson(url.toString());
+      if (!result.payload || typeof result.payload !== 'object' || (result.payload as JsonRecord).status === 'error') {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Twelve Data health quote was invalid', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'SAMPLE_QUOTE' } };
+    }
+    case 'FRED': {
+      const secret = requiredSecret(provider);
+      const url = new URL('/fred/series', baseUrl);
+      url.searchParams.set('series_id', 'GDP');
+      url.searchParams.set('api_key', String(secret));
+      url.searchParams.set('file_type', 'json');
+      const result = await fetchJson(url.toString());
+      if (!result.payload || typeof result.payload !== 'object' || (result.payload as JsonRecord).error_code) {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'FRED health response was invalid', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'SERIES_METADATA' } };
+    }
+    case 'TAVILY': {
+      const secret = requiredSecret(provider);
+      const url = `${baseUrl}/search`;
+      const started = Date.now();
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ api_key: secret, query: 'official public information', search_depth: 'basic', max_results: 1, include_answer: false }),
+        signal: AbortSignal.timeout(12000),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload || typeof payload !== 'object' || !Array.isArray((payload as JsonRecord).results)) {
+        throw new OracleRuntimeError(`PROVIDER_HTTP_${response.status}`, 'Tavily health search failed', 502);
+      }
+      return { latencyMs: Date.now() - started, metadata: { adapter: provider.adapter, probe: 'MINIMAL_SEARCH' } };
+    }
+    case 'THESPORTSDB': {
+      const result = await fetchJson(`${baseUrl}/all_sports.php`);
+      if (!result.payload || typeof result.payload !== 'object' || !Array.isArray((result.payload as JsonRecord).sports)) {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'TheSportsDB health response was invalid', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'SPORTS_CATALOG' } };
     }
     default:
       throw new OracleRuntimeError('PROVIDER_ADAPTER_UNSUPPORTED', `No adapter is installed for ${provider.code}`, 501);
@@ -326,6 +376,14 @@ export async function resolveCryptoWithProvider(
     case 'PYTH': return pythCryptoObservation(provider, resource, spec);
     case 'COINGECKO': return coinGeckoCryptoObservation(provider, resource, spec);
     case 'DIA': return diaCryptoObservation(provider, resource, spec);
+    case 'TWELVE_DATA': return resolveFinancialPriceThresholdWithProvider(provider, resource, {
+      resolverType: 'FINANCIAL_PRICE_THRESHOLD_V1',
+      symbol: spec.asset,
+      quote: spec.quote,
+      operator: spec.operator,
+      threshold: spec.threshold,
+      observationTime: spec.observationTime,
+    });
     default: return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   }
 }
