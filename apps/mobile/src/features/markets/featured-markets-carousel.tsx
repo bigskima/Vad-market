@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
@@ -10,6 +10,9 @@ import type { FeaturedMarketRow, VadMarketRow } from '@/services/home-content-ap
 import type { MarketCatalogItem } from '@/services/market-api';
 import { probability } from './format';
 import { MarketThumbnail } from './components/market-thumbnail';
+
+const AUTO_SCROLL_MS = 4500;
+const CARD_GAP = 8;
 
 export function FeaturedMarketsCarousel({
   markets,
@@ -28,8 +31,13 @@ export function FeaturedMarketsCarousel({
   const density = useProductDensity();
   const now = useLiveNow();
   const scrollRef = useRef<ScrollView>(null);
+  const indexRef = useRef(0);
+  const directionRef = useRef<1 | -1>(-1);
+  const draggingRef = useRef(false);
+  const signatureRef = useRef('');
   const [width, setWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
+
   const curatedIds = new Set(curated.map((entry) => entry.instrument_public_id));
   const liveMarkets = [
     ...curated
@@ -44,6 +52,62 @@ export function FeaturedMarketsCarousel({
     .filter(({ market }) => category === 'All' || market.category === category)
     .slice(0, 8);
 
+  const marketSignature = liveMarkets.map(({ market }) => market.instrument_public_id).join('|');
+
+  // Start from the last featured card, so this rail initially moves in the
+  // opposite visual direction to the Home campaign carousel.
+  useEffect(() => {
+    if (!width || !liveMarkets.length) return;
+    if (signatureRef.current !== marketSignature) {
+      signatureRef.current = marketSignature;
+      const startIndex = liveMarkets.length > 1 ? liveMarkets.length - 1 : 0;
+      indexRef.current = startIndex;
+      directionRef.current = -1;
+      draggingRef.current = false;
+      setActiveIndex(startIndex);
+      scrollRef.current?.scrollTo({ x: startIndex * (width + CARD_GAP), animated: false });
+      return;
+    }
+    const next = Math.min(indexRef.current, liveMarkets.length - 1);
+    indexRef.current = next;
+    scrollRef.current?.scrollTo({ x: next * (width + CARD_GAP), animated: false });
+  }, [marketSignature, width, liveMarkets.length]);
+
+  useEffect(() => {
+    if (!width || liveMarkets.length <= 1) return;
+    const timer = setInterval(() => {
+      if (draggingRef.current) return;
+      let next = indexRef.current + directionRef.current;
+      if (next >= liveMarkets.length) {
+        directionRef.current = -1;
+        next = Math.max(0, liveMarkets.length - 2);
+      } else if (next < 0) {
+        directionRef.current = 1;
+        next = Math.min(liveMarkets.length - 1, 1);
+      }
+      indexRef.current = next;
+      setActiveIndex(next);
+      scrollRef.current?.scrollTo({ x: next * (width + CARD_GAP), animated: true });
+    }, AUTO_SCROLL_MS);
+    return () => clearInterval(timer);
+  }, [marketSignature, width, liveMarkets.length]);
+
+  const onMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!width) return;
+    draggingRef.current = false;
+    const next = Math.max(0, Math.min(
+      liveMarkets.length - 1,
+      Math.round(event.nativeEvent.contentOffset.x / (width + CARD_GAP)),
+    ));
+    const previous = indexRef.current;
+    indexRef.current = next;
+    setActiveIndex(next);
+    if (next > previous) directionRef.current = 1;
+    if (next < previous) directionRef.current = -1;
+    if (next === liveMarkets.length - 1) directionRef.current = -1;
+    if (next === 0) directionRef.current = 1;
+  };
+
   if (!liveMarkets.length) return (
     <View style={{ minHeight: 64, justifyContent: 'center', gap: 4, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, paddingHorizontal: 14, paddingVertical: 10 }}>
       <VadText variant="bodyStrong">{category === 'All' ? 'No featured markets right now' : `No featured ${category.toLowerCase()} markets right now`}</VadText>
@@ -53,14 +117,9 @@ export function FeaturedMarketsCarousel({
 
   const displayedIndex = Math.min(activeIndex, Math.max(0, liveMarkets.length - 1));
 
-  const onMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!width) return;
-    setActiveIndex(Math.max(0, Math.min(liveMarkets.length - 1, Math.round(event.nativeEvent.contentOffset.x / (width + 8)))));
-  };
-
   return (
     <View style={{ gap: 8 }} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <VadText variant="bodyStrong" style={{ fontSize: 16 }}>Featured markets</VadText>
         <VadText variant="caption" tone="secondary">Admin-curated and live-ranked markets</VadText>
       </View>
@@ -70,10 +129,12 @@ export function FeaturedMarketsCarousel({
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
         snapToAlignment="start"
-        snapToInterval={width ? width + 8 : undefined}
+        snapToInterval={width ? width + CARD_GAP : undefined}
         disableIntervalMomentum
+        onScrollBeginDrag={() => { draggingRef.current = true; }}
+        onScrollEndDrag={() => { draggingRef.current = false; }}
         onMomentumScrollEnd={onMomentumEnd}
-        contentContainerStyle={{ gap: 8 }}
+        contentContainerStyle={{ gap: CARD_GAP }}
       >
         {liveMarkets.map(({ market, source }) => (
           <Pressable
@@ -127,9 +188,15 @@ export function FeaturedMarketsCarousel({
               key={item.market.instrument_public_id}
               accessibilityRole="button"
               accessibilityLabel={`Show featured market ${index + 1}`}
+              accessibilityState={{ selected: index === displayedIndex }}
               onPress={() => {
+                const previous = indexRef.current;
+                indexRef.current = index;
+                directionRef.current = index >= previous ? 1 : -1;
+                if (index === liveMarkets.length - 1) directionRef.current = -1;
+                if (index === 0) directionRef.current = 1;
                 setActiveIndex(index);
-                scrollRef.current?.scrollTo({ x: index * (width + 8), animated: true });
+                scrollRef.current?.scrollTo({ x: index * (width + CARD_GAP), animated: true });
               }}
               hitSlop={6}
               style={{ width: index === displayedIndex ? 15 : 5, height: 5, borderRadius: 3, backgroundColor: index === displayedIndex ? theme.colors.brandPrimary : theme.colors.borderStrong }}
