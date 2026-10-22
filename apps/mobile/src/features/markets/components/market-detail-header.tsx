@@ -23,14 +23,14 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <VadText variant="caption" tone="secondary">{market.category ?? 'General'} · {market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type)} · {isPool ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')}</VadText>
       </View>
 
-      {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={`${market.title} market image`} style={{ width: '100%', aspectRatio: density.phone ? 2.62 : 16 / 7, borderRadius: density.phone ? 18 : 24, backgroundColor: theme.colors.surfaceMuted }} resizeMode="cover" /> : null}
+      {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={`${market.title} market image`} style={{ width: '100%', aspectRatio: density.phone ? 3.25 : 16 / 7, borderRadius: density.phone ? 18 : 24, backgroundColor: theme.colors.surfaceMuted }} resizeMode="cover" /> : null}
 
       <View style={{ gap: 2, paddingTop: density.phone ? 1 : 3 }}>
         <VadText
           variant={density.phone ? 'heading' : 'title'}
           style={{
-            fontSize: density.phone ? (density.narrow ? 20 : 22) : 25,
-            lineHeight: density.phone ? (density.narrow ? 25 : 28) : 31,
+            fontSize: density.phone ? (density.narrow ? 18 : 19) : 24,
+            lineHeight: density.phone ? (density.narrow ? 23 : 24) : 29,
             letterSpacing: -0.35,
             flexShrink: 1,
           }}
