@@ -8,7 +8,7 @@ import {
   type ResolverSpec,
   type CryptoTouchThresholdSpec,
 } from './types.ts';
-import { resolveCryptoWithProvider, resolveCryptoTouchWithCoinGecko } from './providers.ts';
+import { resolveCryptoWithProvider, resolveCryptoTouchWithCoinGecko, resolveCryptoTouchWithKraken } from './providers.ts';
 import { resolveFootballFixtureWithProvider } from './football.ts';
 import { resolvePublicRecord } from './public-record.ts';
 import { resolveFinancialPriceThresholdWithProvider, resolveFinancialPriceTouchThresholdWithProvider, resolveFredSeriesThresholdWithProvider } from './financial.ts';
@@ -324,6 +324,7 @@ export async function resolveWithProvider(
   if (spec.resolverType === 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1') {
     if (provider.code === 'PYTH') return { kind: 'skipped', code: 'RESOLVER_NOT_SUPPORTED_BY_PROVIDER', detail: 'Pyth historical snapshots cannot prove whether a threshold was touched anywhere inside the full window' };
     if (provider.code === 'COINGECKO') return resolveCryptoTouchWithCoinGecko(provider, resource, spec);
+    if (provider.code === 'KRAKEN') return resolveCryptoTouchWithKraken(provider, resource, spec);
     if (provider.code === 'TWELVE_DATA' || provider.code === 'COINBASE') return resolveFinancialPriceTouchThresholdWithProvider(provider, resource, spec);
     return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   }
