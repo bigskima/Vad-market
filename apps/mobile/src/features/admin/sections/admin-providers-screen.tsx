@@ -594,7 +594,7 @@ export function AdminProvidersScreen() {
               })
           )}
           {!policyLoading && !oraclePolicies.some((policy) => policy.name.toLowerCase().includes('crypto threshold')
-            || policy.source_hierarchy.some((item) => typeof item !== 'string
+            || policy.source_hierarchy.some((item) => typeof item !== 'string'
               && ['COINBASE', 'KRAKEN'].includes(String(item.provider_code ?? '').toUpperCase()))) ? (
             <EmptyText>No crypto threshold Oracle policies were returned.</EmptyText>
           ) : null}
