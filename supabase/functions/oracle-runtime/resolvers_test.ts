@@ -73,7 +73,7 @@ Deno.test('provider selection respects the approved source hierarchy and provide
   const spec = parseResolverSpec(event);
   const providers = [
     providerFixture(),
-    providerFixture({ id: 21, code: 'ALPHA_VANTAGE', capabilities: ['FINANCIAL_PRICE_THRESHOLD'] }),
+    providerFixture({ id: 21, code: 'ALPHA_VANTAGE', status: 'DISABLED', capabilities: ['FINANCIAL_PRICE_THRESHOLD'] }),
     providerFixture({ id: 22, code: 'UNAVAILABLE_SOURCE', healthStatus: 'UNAVAILABLE' }),
     providerFixture({ id: 23, code: 'NOT_CONFIGURED', configured: false }),
     providerFixture({ id: 24, code: 'SANDBOX_SOURCE', environment: 'SANDBOX' }),
