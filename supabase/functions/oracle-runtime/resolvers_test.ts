@@ -118,3 +118,57 @@ Deno.test('keyless Coinbase public candles can be eligible under an approved pol
   const eligible = eligibleProviders(event, spec, [coinbase]);
   assert(eligible.length === 1 && eligible[0].code === 'COINBASE', 'keyless public market-data provider should not be excluded for missing an API key');
 });
+
+
+Deno.test('free crypto settlement policy uses CoinGecko and keyless Coinbase, not paid Pyth', () => {
+  const event = eventFixture({
+    category: 'CRYPTO_WEB3',
+    resolutionScope: {
+      resolver_type: 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1',
+      asset: 'BTC',
+      quote: 'USD',
+      operator: 'GTE',
+      threshold: 90_000,
+      window_start: '2026-10-20T00:00:00.000Z',
+      window_end: '2026-10-21T00:00:00.000Z',
+    },
+    sourceHierarchy: [
+      { role: 'PRIMARY', provider_code: 'COINGECKO', priority: 10 },
+      { role: 'CORROBORATING', provider_code: 'COINBASE', priority: 20 },
+    ],
+    consensusRule: { min_agreeing_providers: 2, distinct_providers: true },
+  });
+  const spec = parseResolverSpec(event);
+  const coinGecko = providerFixture({
+    id: 31,
+    code: 'COINGECKO',
+    name: 'CoinGecko Demo API',
+    configured: true,
+    secretReference: 'COINGECKO_DEMO_API_KEY',
+    adapter: 'COINGECKO_MARKET_CHART',
+    baseUrl: 'https://api.coingecko.com/api/v3',
+    capabilities: ['CRYPTO_PRICE_THRESHOLD'],
+  });
+  const coinbase = providerFixture({
+    id: 32,
+    code: 'COINBASE',
+    name: 'Coinbase Public Market Data',
+    configured: true,
+    secretReference: null,
+    adapter: 'COINBASE_PUBLIC_CANDLES_V1',
+    baseUrl: 'https://api.coinbase.com',
+    capabilities: ['CRYPTO_PRICE_THRESHOLD', 'FINANCIAL_PRICE_THRESHOLD'],
+  });
+  const pyth = providerFixture({
+    id: 33,
+    code: 'PYTH',
+    name: 'Pyth Paid API',
+    configured: true,
+    capabilities: ['CRYPTO_PRICE_THRESHOLD'],
+  });
+  const eligible = eligibleProviders(event, spec, [pyth, coinbase, coinGecko]);
+  assert(
+    eligible.length === 2 && eligible[0].code === 'COINGECKO' && eligible[1].code === 'COINBASE',
+    'the approved free hierarchy must select the two independent free sources in priority order and exclude Pyth',
+  );
+});
