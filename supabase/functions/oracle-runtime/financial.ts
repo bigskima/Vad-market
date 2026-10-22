@@ -110,8 +110,12 @@ function timestampInTimeZone(value: unknown, timeZone: string): Date | null {
     const verify = Object.fromEntries(formatter.formatToParts(candidate)
       .filter((part) => part.type !== 'literal')
       .map((part) => [part.type, part.value]));
-    if (['year','month','day','hour','minute','second'].some((key) => verify[key] !== parts[key] &&
-        key !== 'year' && key !== 'month' && key !== 'day' && key !== 'hour' && key !== 'minute' && key !== 'second')) {
+    if (Number(verify.year) !== Number(year)
+        || Number(verify.month) !== Number(month)
+        || Number(verify.day) !== Number(day)
+        || Number(verify.hour) !== Number(hour)
+        || Number(verify.minute) !== Number(minute)
+        || Number(verify.second) !== Number(second)) {
       return null;
     }
     return Number.isFinite(candidate.getTime()) ? candidate : null;
