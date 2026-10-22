@@ -73,15 +73,21 @@ export function AdminProvidersScreen() {
   useEffect(() => {
     if (tab !== 'oracle-policies' || !canReviewOracle) return;
     let active = true;
-    setPolicyLoading(true);
-    setPolicyError(null);
-    getOraclePolicyCatalog()
-      .then((policies) => { if (active) setOraclePolicies(policies); })
-      .catch((value: unknown) => {
-        if (active) setPolicyError(value instanceof Error ? value.message : 'Oracle policy catalog could not be loaded.');
-      })
-      .finally(() => { if (active) setPolicyLoading(false); });
-    return () => { active = false; };
+    const timer = setTimeout(() => {
+      if (!active) return;
+      setPolicyLoading(true);
+      setPolicyError(null);
+      getOraclePolicyCatalog()
+        .then((policies) => { if (active) setOraclePolicies(policies); })
+        .catch((value: unknown) => {
+          if (active) setPolicyError(value instanceof Error ? value.message : 'Oracle policy catalog could not be loaded.');
+        })
+        .finally(() => { if (active) setPolicyLoading(false); });
+    }, 0);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [tab, canReviewOracle]);
 
   if (data.loading) {
