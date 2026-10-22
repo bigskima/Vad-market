@@ -159,10 +159,55 @@ export async function resolveFredSeriesThresholdWithProvider(
   resource: OracleResource,
   spec: FredSeriesThresholdSpec,
 ): Promise<ProviderResolutionResult> {
-  if (provider.code !== 'FRED') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (!['FRED', 'ALPHA_VANTAGE'].includes(provider.code)) return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
   const key = apiSecret(provider);
-  if (!key) throw new OracleRuntimeError('SECRET_MISSING', 'FRED API credential is not configured', 503);
+  if (!key) throw new OracleRuntimeError('SECRET_MISSING', `${provider.name} API credential is not configured`, 503);
+
+  if (provider.code === 'ALPHA_VANTAGE') {
+    const fn = text(resource.metadata?.alpha_vantage_function, 60);
+    if (!fn || !/^[A-Z_]+$/.test(fn)) return { kind: 'skipped', code: 'ALPHA_VANTAGE_MAPPING_MISSING' };
+    const base = provider.baseUrl?.replace(/\/$/, '');
+    if (base !== 'https://www.alphavantage.co') {
+      throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Alpha Vantage must use its approved HTTPS API host', 500);
+    }
+    const alternateUrl = new URL('/query', base);
+    alternateUrl.searchParams.set('function', fn);
+    alternateUrl.searchParams.set('apikey', key);
+    const altPayload = await fetchJson(alternateUrl);
+    if (!record(altPayload) || altPayload.Note || altPayload.Information || altPayload['Error Message']) {
+      const message = record(altPayload) ? text(altPayload.Note ?? altPayload.Information ?? altPayload['Error Message'], 220) : '';
+      throw new OracleRuntimeError('PROVIDER_LIMIT_OR_PAYLOAD_INVALID', message || 'Alpha Vantage returned no usable economic series data', 502);
+    }
+    const data = Array.isArray(altPayload.data) ? altPayload.data.filter(record) : [];
+    const row = data.find((item) => text(item.date, 20) === spec.observationDate && numeric(item.value) !== null);
+    if (!row) return { kind: 'skipped', code: 'ALPHA_VANTAGE_OBSERVATION_NOT_FOUND', detail: 'The secondary economic source has no value for the requested observation date' };
+    const value = numeric(row.value);
+    if (value === null) return { kind: 'skipped', code: 'ALPHA_VANTAGE_OBSERVATION_INVALID' };
+    const evidence = new URL(alternateUrl.toString());
+    evidence.searchParams.delete('apikey');
+    return {
+      kind: 'observation',
+      observation: {
+        observedOutcome: outcome(value, spec.operator, spec.threshold),
+        observedAt: new Date(spec.observationDate + 'T00:00:00.000Z'),
+        evidenceReference: evidence.toString(),
+        payload: {
+          resolver_type: spec.resolverType,
+          provider: provider.code,
+          series_id: spec.seriesId,
+          alpha_vantage_function: fn,
+          observation_date: spec.observationDate,
+          value,
+          operator: spec.operator,
+          threshold: spec.threshold,
+          revision_handling: 'CURRENT_SERIES_VALUE_NOT_VINTAGE_SPECIFIC',
+          corroboration_role: 'SECONDARY_ONLY',
+        },
+      },
+    };
+  }
+
   const base = provider.baseUrl?.replace(/\/$/, '');
   if (base !== 'https://api.stlouisfed.org/fred') {
     throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'FRED must use its approved HTTPS API host and path', 500);
