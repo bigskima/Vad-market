@@ -92,15 +92,81 @@ export async function resolveFinancialPriceThresholdWithProvider(
   resource: OracleResource,
   spec: FinancialPriceThresholdSpec,
 ): Promise<ProviderResolutionResult> {
-  if (provider.code !== 'TWELVE_DATA') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (!['TWELVE_DATA','ALPHA_VANTAGE'].includes(provider.code)) return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
   const key = apiSecret(provider);
-  if (!key) throw new OracleRuntimeError('SECRET_MISSING', 'Twelve Data API credential is not configured', 503);
+  if (!key) throw new OracleRuntimeError('SECRET_MISSING', `${provider.name} API credential is not configured`, 503);
   const base = provider.baseUrl?.replace(/\/$/, '');
+  const maxDelta = Math.max(1, Math.min(3600, Number(resource.metadata?.max_timestamp_delta_seconds ?? 600)));
+
+  if (provider.code === 'ALPHA_VANTAGE') {
+    if (base !== 'https://www.alphavantage.co') {
+      throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Alpha Vantage must use its approved HTTPS API host', 500);
+    }
+    const fn = text(resource.metadata?.alpha_vantage_function, 60);
+    if (!['TIME_SERIES_INTRADAY','FX_INTRADAY'].includes(fn)) {
+      return { kind: 'skipped', code: 'ALPHA_VANTAGE_MAPPING_UNSUPPORTED', detail: 'Alpha Vantage has no approved historical mapping for this instrument' };
+    }
+    const symbol = text(resource.externalKey, 80) || spec.symbol;
+    const parts = symbol.split('/');
+    const url = new URL('/query', base);
+    url.searchParams.set('function', fn);
+    if (fn === 'FX_INTRADAY') {
+      if (parts.length !== 2) return { kind: 'skipped', code: 'ALPHA_VANTAGE_SYMBOL_INVALID' };
+      url.searchParams.set('from_symbol', parts[0]);
+      url.searchParams.set('to_symbol', parts[1]);
+    } else {
+      url.searchParams.set('symbol', parts[0]);
+      url.searchParams.set('interval', text(resource.metadata?.interval, 20) || '1min');
+    }
+    url.searchParams.set('outputsize', 'full');
+    url.searchParams.set('apikey', key);
+    const payload = await fetchJson(url);
+    if (!record(payload)) throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Alpha Vantage returned an invalid time-series response', 502);
+    if (payload.Note || payload.Information || payload['Error Message']) {
+      throw new OracleRuntimeError('PROVIDER_LIMIT_OR_PAYLOAD_INVALID', text(payload.Note ?? payload.Information ?? payload['Error Message'], 220) || 'Alpha Vantage returned no usable historical data', 502);
+    }
+    const seriesEntry = Object.entries(payload).find(([name, value]) => /time series/i.test(name) && record(value));
+    if (!seriesEntry) return { kind: 'skipped', code: 'ALPHA_VANTAGE_SERIES_NOT_FOUND', detail: 'Alpha Vantage did not return the configured intraday series' };
+    const values = Object.entries(seriesEntry[1] as JsonRecord).map(([datetime, raw]) => ({
+      datetime,
+      time: timestamp(datetime),
+      value: record(raw) ? numeric(raw['4. close'] ?? raw.close) : null,
+    })).filter((point): point is { datetime: string; time: Date; value: number } =>
+      point.time !== null && point.value !== null && point.value > 0
+    );
+    const target = spec.observationTime.getTime();
+    const selected = values.filter((point) => point.time.getTime() >= target)
+      .filter((point) => (point.time.getTime() - target) / 1000 <= maxDelta)
+      .sort((a, b) => a.time.getTime() - b.time.getTime())[0];
+    if (!selected) return { kind: 'skipped', code: 'ALPHA_VANTAGE_TARGET_OBSERVATION_MISSING', detail: 'Alpha Vantage has no timestamped price inside the post-observation tolerance window' };
+    const safeUrl = new URL(url.toString());
+    safeUrl.searchParams.delete('apikey');
+    return {
+      kind: 'observation',
+      observation: {
+        observedOutcome: outcome(selected.value, spec.operator, spec.threshold),
+        observedAt: selected.time,
+        evidenceReference: safeUrl.toString(),
+        payload: {
+          resolver_type: spec.resolverType,
+          provider: provider.code,
+          symbol: spec.symbol,
+          quote: spec.quote,
+          operator: spec.operator,
+          threshold: spec.threshold,
+          price: selected.value,
+          source_timestamp: selected.time.toISOString(),
+          target_timestamp: spec.observationTime.toISOString(),
+          timestamp_delta_seconds: (selected.time.getTime() - target) / 1000,
+          alpha_vantage_function: fn,
+        },
+      },
+    };
+  }
   if (base !== 'https://api.twelvedata.com') {
     throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Twelve Data must use its approved HTTPS API host', 500);
   }
-  const maxDelta = Math.max(1, Math.min(3600, Number(resource.metadata?.max_timestamp_delta_seconds ?? 600)));
   const start = new Date(spec.observationTime.getTime() - maxDelta * 1000);
   const end = new Date(spec.observationTime.getTime() + maxDelta * 1000);
   const format = (date: Date) => date.toISOString().slice(0, 19).replace('T', ' ');
