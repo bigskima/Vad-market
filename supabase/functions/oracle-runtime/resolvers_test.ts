@@ -67,7 +67,9 @@ Deno.test('provider selection fails closed when policy source codes do not match
 });
 
 Deno.test('provider selection respects the approved source hierarchy and provider readiness', () => {
-  const event = eventFixture({ sourceHierarchy: ['TWELVE_DATA'] });
+  const event = eventFixture({
+    sourceHierarchy: ['TWELVE_DATA', 'ALPHA_VANTAGE', 'UNAVAILABLE_SOURCE', 'NOT_CONFIGURED', 'SANDBOX_SOURCE'],
+  });
   const spec = parseResolverSpec(event);
   const providers = [
     providerFixture(),
