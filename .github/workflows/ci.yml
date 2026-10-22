@@ -26,6 +26,8 @@ jobs:
           deno-version: v2.x
       - name: Type-check automatic Oracle and settlement resolution adapters
         run: deno check --no-lock supabase/functions/oracle-runtime/index.ts
+      - name: Type-check public financial-market and event-discovery adapters
+        run: deno check --no-lock supabase/functions/financial-market-data/index.ts supabase/functions/market-event-discovery/index.ts
       - name: Test Oracle resolver policy and financial symbol parsing
         run: deno test --no-lock supabase/functions/oracle-runtime/resolvers_test.ts
       - id: lint
