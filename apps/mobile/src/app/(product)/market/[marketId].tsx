@@ -39,7 +39,7 @@ export default function MarketDetailRoute() {
   };
 
   return (
-    <ProductSubpage title="Market" maxWidth={980} bottomPadding={220}>
+    <ProductSubpage title="Market" maxWidth={980} bottomPadding={104}>
       {data.loading ? (
         <View style={{ gap: theme.spacing.md }}>
           <VadSkeleton width="62%" height={34} />
