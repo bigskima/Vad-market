@@ -1,6 +1,7 @@
 import {
   type FinancialPriceThresholdSpec,
   type FredSeriesThresholdSpec,
+  type CryptoTouchThresholdSpec,
   type JsonRecord,
   type OracleProvider,
   type OracleResource,
@@ -149,6 +150,95 @@ export async function resolveFinancialPriceThresholdWithProvider(
         target_timestamp: spec.observationTime.toISOString(),
         timestamp_delta_seconds: deltaSeconds,
         interval: text(payload.meta && record(payload.meta) ? payload.meta.interval : null, 20) || '1min',
+      },
+    },
+  };
+}
+
+export async function resolveFinancialPriceTouchThresholdWithProvider(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: CryptoTouchThresholdSpec,
+): Promise<ProviderResolutionResult> {
+  if (provider.code !== 'TWELVE_DATA') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
+  const key = apiSecret(provider);
+  if (!key) throw new OracleRuntimeError('SECRET_MISSING', 'Twelve Data API credential is not configured', 503);
+  const base = provider.baseUrl?.replace(/\/$/, '');
+  if (base !== 'https://api.twelvedata.com') {
+    throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Twelve Data must use its approved HTTPS API host', 500);
+  }
+  if (spec.windowEnd <= spec.windowStart || spec.windowEnd.getTime() > Date.now()) {
+    throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Financial threshold-touch window must be valid and end in the past', 422);
+  }
+  const symbol = text(resource.externalKey, 80) || `${spec.asset}/${spec.quote}`;
+  const interval = text(resource.metadata?.interval, 20) || '1min';
+  const url = new URL('/time_series', base);
+  url.searchParams.set('symbol', symbol);
+  url.searchParams.set('interval', interval);
+  url.searchParams.set('start_date', spec.windowStart.toISOString().slice(0, 19).replace('T', ' '));
+  url.searchParams.set('end_date', spec.windowEnd.toISOString().slice(0, 19).replace('T', ' '));
+  url.searchParams.set('timezone', 'UTC');
+  url.searchParams.set('order', 'ASC');
+  url.searchParams.set('outputsize', '5000');
+  url.searchParams.set('apikey', key);
+  const payload = await fetchJson(url);
+  if (!record(payload) || payload.status === 'error') {
+    const message = record(payload) ? text(payload.message, 240) : '';
+    throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', message || 'Twelve Data returned no usable historical price range', 502);
+  }
+  const rawValues = Array.isArray(payload.values) ? payload.values.filter(record) : [];
+  const points = rawValues.map((row) => ({
+    row,
+    time: timestamp(row.datetime ?? row.timestamp),
+    value: numeric(row.close ?? row.price),
+  })).filter((point): point is { row: JsonRecord; time: Date; value: number } =>
+    point.time !== null && point.value !== null && point.value > 0
+  ).filter((point) => point.time >= spec.windowStart && point.time <= spec.windowEnd)
+    .sort((a, b) => a.time.getTime() - b.time.getTime());
+  if (!points.length) return { kind: 'skipped', code: 'TWELVE_DATA_WINDOW_EMPTY', detail: 'No historical price points fell inside the configured window' };
+  const hit = (value: number) => spec.operator === 'GT' ? value > spec.threshold
+    : spec.operator === 'GTE' ? value >= spec.threshold
+      : spec.operator === 'LT' ? value < spec.threshold
+        : value <= spec.threshold;
+  const hitPoints = points.filter((point) => hit(point.value));
+  const maxPrice = Math.max(...points.map((point) => point.value));
+  const minPrice = Math.min(...points.map((point) => point.value));
+  const first = points[0];
+  const last = points[points.length - 1];
+  const maxGapMs = Math.max(60, Math.min(1800, Number(resource.metadata?.maximum_coverage_gap_seconds ?? 900))) * 1000;
+  const fullCoverage = first.time.getTime() <= spec.windowStart.getTime() + maxGapMs
+    && last.time.getTime() >= spec.windowEnd.getTime() - maxGapMs;
+  if (!hitPoints.length && !fullCoverage) {
+    return { kind: 'skipped', code: 'TWELVE_DATA_WINDOW_INCOMPLETE', detail: 'Historical data did not cover both ends of the time window; a negative result is unsafe' };
+  }
+  const selected = hitPoints.length
+    ? hitPoints.sort((a, b) => Math.abs(a.value - spec.threshold) - Math.abs(b.value - spec.threshold))[0]
+    : last;
+  const safeUrl = new URL(url.toString());
+  safeUrl.searchParams.delete('apikey');
+  return {
+    kind: 'observation',
+    observation: {
+      observedOutcome: hitPoints.length ? 'YES' : 'NO',
+      observedAt: selected.time,
+      evidenceReference: safeUrl.toString(),
+      payload: {
+        resolver_type: spec.resolverType,
+        provider: provider.code,
+        symbol,
+        quote: spec.quote,
+        operator: spec.operator,
+        threshold: spec.threshold,
+        window_start: spec.windowStart.toISOString(),
+        window_end: spec.windowEnd.toISOString(),
+        sample_count: points.length,
+        minimum_price: minPrice,
+        maximum_price: maxPrice,
+        threshold_touched: hitPoints.length > 0,
+        evidence_timestamp: selected.time.toISOString(),
+        coverage_complete: fullCoverage,
+        interval,
       },
     },
   };
