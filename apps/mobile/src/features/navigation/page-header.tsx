@@ -6,7 +6,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 
 type HeaderAction = {
-  icon: 'bell' | 'operations' | 'search' | 'close' | 'settings';
+  icon: 'bell' | 'operations' | 'search' | 'close' | 'settings' | 'globe';
   label: string;
   onPress: () => void;
   badge?: boolean;

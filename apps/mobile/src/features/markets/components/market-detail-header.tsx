@@ -15,13 +15,17 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const { width } = useWindowDimensions();
   const compactViewport = density.phone || width <= 600;
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  const [imageRatioState, setImageRatioState] = useState<{ url: string; ratio: number } | null>(null);
   const [titleState, setTitleState] = useState({ instrumentId: market.instrument_public_id, expanded: false });
   const isPool = market.liquidity_mode === 'POOL' || String(market.liquidity_mode ?? '').toUpperCase().includes('POOL');
   const imageUrl = marketMediaUrl(market.media_path);
   const imageFailed = Boolean(imageUrl && failedImageUrl === imageUrl);
   const titleExpanded = titleState.instrumentId === market.instrument_public_id && titleState.expanded;
   const titleIsLong = market.title.trim().length > 80;
-  const imageAspectRatio = compactViewport ? 16 / 9 : 16 / 7;
+  const fallbackImageAspectRatio = compactViewport ? 16 / 9 : 16 / 7;
+  const imageAspectRatio = imageRatioState?.url === imageUrl
+    ? imageRatioState.ratio
+    : fallbackImageAspectRatio;
 
   return (
     <View style={{ gap: density.compact || compactViewport ? 7 : 12 }}>
@@ -84,6 +88,16 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
               source={{ uri: imageUrl }}
               accessibilityLabel={`${market.title} market image`}
               resizeMode="contain"
+              onLoad={(event) => {
+                const sourceWidth = event.nativeEvent.source?.width;
+                const sourceHeight = event.nativeEvent.source?.height;
+                if (sourceWidth && sourceHeight && Number.isFinite(sourceWidth) && Number.isFinite(sourceHeight)) {
+                  const sourceRatio = sourceWidth / sourceHeight;
+                  if (sourceRatio > 0) {
+                    setImageRatioState({ url: imageUrl, ratio: Math.max(1.1, Math.min(2.4, sourceRatio)) });
+                  }
+                }
+              }}
               onError={() => setFailedImageUrl(imageUrl)}
               style={{ width: '100%', height: '100%' }}
             />

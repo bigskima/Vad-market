@@ -19,6 +19,7 @@ import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
 import { getAdminMarketDataSources, setAdminMarketDataSourceStatus, updateAdminMarketDataSourceSettings } from '@/services/crypto-market-data-api';
+import { AdminFinancialMarketDataSources } from './admin-financial-market-data-sources';
 import { getSportsMarketTaxonomy, setAdminSportsCompetitionStatus, upsertAdminSportsCompetition, type SportsMarketTaxonomy, type SportsMarketCompetition } from '@/services/admin-guided-market-catalog-api';
 import {
   decideProviderStatusRequest,
@@ -403,6 +404,7 @@ export function AdminProvidersScreen() {
       </View>
 
       {canManage ? <AdminMarketDataSourcePanel canManage={canManage} /> : null}
+      {canManage ? <AdminFinancialMarketDataSources /> : null}
       {canManageMarkets ? <AdminSportsCompetitionPanel /> : null}
 
       <AdminSectionTabs
