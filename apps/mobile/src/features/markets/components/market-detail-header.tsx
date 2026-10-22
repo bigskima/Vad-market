@@ -23,7 +23,16 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         <VadText variant="caption" tone="secondary">{market.category ?? 'General'} · {market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type)} · {isPool ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')}</VadText>
       </View>
 
-      {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={`${market.title} market image`} style={{ width: '100%', aspectRatio: density.phone ? 2.62 : 16 / 7, borderRadius: density.phone ? 18 : 24, backgroundColor: theme.colors.surfaceMuted }} resizeMode="cover" /> : null}
+      {imageUrl ? (
+        <View style={{ width: '100%', aspectRatio: density.phone ? 16 / 9 : 16 / 7, borderRadius: density.phone ? 18 : 24, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' }}>
+          <Image
+            source={{ uri: imageUrl }}
+            accessibilityLabel={`${market.title} market image`}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="contain"
+          />
+        </View>
+      ) : null}
 
       <View style={{ gap: 2, paddingTop: density.phone ? 1 : 3 }}>
         <VadText
