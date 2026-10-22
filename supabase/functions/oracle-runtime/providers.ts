@@ -172,11 +172,17 @@ export async function probeProvider(provider: OracleProvider) {
       if (baseUrl !== 'https://www.senate.gov') {
         throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'US Senate source must use its approved HTTPS host', 500);
       }
-      const result = await fetchJson(`${baseUrl}/`, { headers: { Accept: 'text/html,application/xhtml+xml' } });
-      if (typeof result.payload === 'string' && !result.payload.toLowerCase().includes('senate')) {
-        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'US Senate health response was not the expected site', 502);
+      const started = Date.now();
+      const response = await fetch(`${baseUrl}/`, {
+        headers: { Accept: 'text/html,application/xhtml+xml' },
+        redirect: 'error',
+        signal: AbortSignal.timeout(10000),
+      });
+      const html = await response.text();
+      if (!response.ok || !html.toLowerCase().includes('senate')) {
+        throw new OracleRuntimeError(`PROVIDER_HTTP_${response.status}`, 'US Senate official-site health check failed', 502);
       }
-      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'OFFICIAL_SITE' } };
+      return { latencyMs: Date.now() - started, metadata: { adapter: provider.adapter, probe: 'OFFICIAL_SITE' } };
     }
     default:
       throw new OracleRuntimeError('PROVIDER_ADAPTER_UNSUPPORTED', `No adapter is installed for ${provider.code}`, 501);
