@@ -1,42 +1,105 @@
-import { Image, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Pressable, View } from 'react-native';
 
 import { VadChip } from '@/components/ui/vad-chip';
+import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
-import { supabase } from '@/lib/supabase';
+import { marketMediaUrl } from '@/services/market-api';
 
 export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  const [titleState, setTitleState] = useState({ instrumentId: market.instrument_public_id, expanded: false });
   const isPool = market.liquidity_mode === 'POOL' || String(market.liquidity_mode ?? '').toUpperCase().includes('POOL');
-  const imageUrl = market.media_path ? supabase.storage.from('market-media').getPublicUrl(market.media_path).data.publicUrl : null;
+  const imageUrl = marketMediaUrl(market.media_path);
+  const imageFailed = Boolean(imageUrl && failedImageUrl === imageUrl);
+  const titleExpanded = titleState.instrumentId === market.instrument_public_id && titleState.expanded;
+  const titleIsLong = market.title.trim().length > 80;
+  const imageAspectRatio = density.phone ? 16 / 9 : 16 / 7;
 
   return (
-    <View style={{ gap: density.compact ? 7 : density.phone ? 8 : 11 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-        <VadChip label={(market.status ?? 'MARKET').toString().replaceAll('_', ' ').toUpperCase()} tone="neutral" />
+    <View style={{ gap: density.compact ? 7 : density.phone ? 9 : 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <VadChip
+          label={friendlyEnum(market.status ?? 'MARKET')}
+          tone={String(market.status ?? '').toUpperCase() === 'OPEN' ? 'yes' : 'neutral'}
+        />
         <VadChip label={market.asset_code} tone="brand" />
-        
-        
-        <VadText variant="caption" tone="secondary">{market.category ?? 'General'} · {market.market_type === 'BINARY' ? 'YES / NO' : friendlyEnum(market.market_type)} · {isPool ? 'Peer Pool' : market.liquidity_mode === 'ORDER_BOOK' ? 'Order Book' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')}</VadText>
+        <VadChip
+          label={isPool ? 'Peer pool' : friendlyEnum(market.liquidity_mode ?? 'ORDER_BOOK')}
+          tone="neutral"
+        />
       </View>
 
-      {imageUrl ? (
-        <View style={{ width: '100%', aspectRatio: density.phone ? 16 / 9 : 16 / 7, borderRadius: density.phone ? 18 : 24, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' }}>
-          <Image
-            source={{ uri: imageUrl }}
-            accessibilityLabel={`${market.title} market image`}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="contain"
-          />
-        </View>
-      ) : null}
+      <VadText variant="caption" tone="secondary" numberOfLines={1}>
+        {market.category ?? 'General'} · {market.market_type === 'BINARY' ? 'Yes / No market' : friendlyEnum(market.market_type)}
+      </VadText>
 
-      <View style={{ gap: 2, paddingTop: density.phone ? 1 : 3 }}>
+      <View
+        style={{
+          width: '100%',
+          aspectRatio: imageAspectRatio,
+          borderRadius: density.phone ? 18 : 24,
+          overflow: 'hidden',
+          backgroundColor: theme.colors.surfaceMuted,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {imageUrl && !imageFailed ? (
+          <>
+            <Image
+              source={{ uri: imageUrl }}
+              accessibilityLabel=""
+              blurRadius={18}
+              resizeMode="cover"
+              onError={() => setFailedImageUrl(imageUrl)}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '100%',
+                height: '100%',
+                opacity: 0.66,
+              }}
+            />
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(5, 10, 22, 0.34)',
+              }}
+            />
+            <Image
+              source={{ uri: imageUrl }}
+              accessibilityLabel={`${market.title} market image`}
+              resizeMode="contain"
+              onError={() => setFailedImageUrl(imageUrl)}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </>
+        ) : (
+          <View style={{ alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16 }}>
+            <VadIcon name="markets" size={30} tone="brand" />
+            <VadText variant="caption" tone="secondary">
+              {imageFailed ? 'Market artwork is temporarily unavailable' : 'Market overview'}
+            </VadText>
+          </View>
+        )}
+      </View>
+
+      <View style={{ gap: 5, paddingTop: density.phone ? 0 : 2 }}>
         <VadText
           variant={density.phone ? 'heading' : 'title'}
+          numberOfLines={titleExpanded ? undefined : 3}
           style={{
             fontSize: density.phone ? (density.narrow ? 20 : 22) : 25,
             lineHeight: density.phone ? (density.narrow ? 25 : 28) : 31,
@@ -46,6 +109,19 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         >
           {market.title}
         </VadText>
+        {titleIsLong ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={titleExpanded ? 'Show less of the market question' : 'Read the full market question'}
+            onPress={() => setTitleState({ instrumentId: market.instrument_public_id, expanded: !titleExpanded })}
+            style={({ pressed }) => ({ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 2, opacity: pressed ? 0.72 : 1 })}
+          >
+            <VadText variant="caption" tone="brand">{titleExpanded ? 'Show less' : 'Read full question'}</VadText>
+            <View style={{ transform: [{ rotate: titleExpanded ? '-90deg' : '90deg' }] }}>
+              <VadIcon name="chevronRight" size={13} tone="brand" />
+            </View>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

@@ -313,6 +313,58 @@ export async function listMarkets() {
   return (data ?? []) as MarketCatalogItem[];
 }
 
+export type PublishedMarketDetail = {
+  instrumentId: string;
+  eventId: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  status: string;
+  assetCode: string;
+  settlementUnit: number | string | null;
+  minimumOrderNotional: number | string | null;
+  opensAt: string | null;
+  closesAt: string | null;
+  resolvesAfter: string | null;
+  mediaPath: string | null;
+  resolutionScope: Record<string, unknown> | null;
+  outcomes: Array<{
+    id: number;
+    code: string;
+    label: string;
+    displayOrder: number;
+  }>;
+  oracle: {
+    policyId: string;
+    policyName: string;
+    policyVersion: number;
+    sourceHierarchy: Array<{ role: string; provider_code: string }>;
+    consensusRule: Record<string, unknown> | null;
+    closeRule: Record<string, unknown> | null;
+    postponementRule: Record<string, unknown> | null;
+    cancellationRule: Record<string, unknown> | null;
+    voidRule: Record<string, unknown> | null;
+    disputeWindowSeconds: number | null;
+  } | null;
+};
+
+export async function getPublishedMarketDetail(instrumentPublicId: string): Promise<PublishedMarketDetail> {
+  const { data: sessionResult, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw new Error('We could not verify your sign-in session. Please retry.');
+  if (!sessionResult.session) {
+    throw new Error('Sign in to view the full published criteria and resolution policy.');
+  }
+
+  const { data, error } = await supabase.rpc('market_detail', {
+    p_instrument_public_id: instrumentPublicId,
+  });
+  assertNoError(error, 'markets', 'We could not load the published resolution details right now.');
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('Published market details are not available for this market.');
+  }
+  return data as PublishedMarketDetail;
+}
+
 export async function getWalletBalanceHistory(days = 30) {
   const { data, error } = await supabase.rpc('my_wallet_balance_history', {
     p_days: Math.max(7, Math.min(90, Math.floor(days))),
