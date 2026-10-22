@@ -1,0 +1,214 @@
+import {
+  type FinancialPriceThresholdSpec,
+  type FredSeriesThresholdSpec,
+  type JsonRecord,
+  type OracleProvider,
+  type OracleResource,
+  OracleRuntimeError,
+  type ProviderResolutionResult,
+} from './types.ts';
+import { env } from './runtime.ts';
+
+function record(value: unknown): value is JsonRecord {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+function text(value: unknown, max = 180) {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+function numeric(value: unknown): number | null {
+  if (value === null || value === undefined || value === '' || value === '.') return null;
+  const result = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(result) ? result : null;
+}
+function outcome(value: number, operator: 'GT' | 'GTE' | 'LT' | 'LTE', threshold: number): 'YES' | 'NO' {
+  const yes = operator === 'GT' ? value > threshold
+    : operator === 'GTE' ? value >= threshold
+      : operator === 'LT' ? value < threshold
+        : value <= threshold;
+  return yes ? 'YES' : 'NO';
+}
+function apiSecret(provider: OracleProvider) {
+  const secretName = text(provider.secretReference, 120);
+  return secretName ? env(secretName) : null;
+}
+async function fetchJson(url: URL, timeoutMs = 15_000): Promise<unknown> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'error',
+      signal: controller.signal,
+      headers: { Accept: 'application/json', 'User-Agent': 'VAD-Oracle/1.0' },
+    });
+    const raw = await response.text();
+    if (raw.length > 1_500_000) {
+      throw new OracleRuntimeError('PROVIDER_PAYLOAD_TOO_LARGE', 'Financial source response exceeded the allowed size', 502);
+    }
+    let payload: unknown;
+    try { payload = JSON.parse(raw); } catch {
+      throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Financial source returned invalid JSON', 502);
+    }
+    if (!response.ok) {
+      throw new OracleRuntimeError(`PROVIDER_HTTP_${response.status}`, `Financial source returned HTTP ${response.status}`, 502);
+    }
+    return payload;
+  } catch (error) {
+    if (error instanceof OracleRuntimeError) throw error;
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new OracleRuntimeError('PROVIDER_TIMEOUT', 'Financial source request timed out', 504);
+    }
+    throw new OracleRuntimeError('PROVIDER_NETWORK_ERROR', 'Financial source request failed', 502);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+function safeEvidenceUrl(url: URL) {
+  const safe = new URL(url.toString());
+  safe.searchParams.delete('apikey');
+  safe.searchParams.delete('api_key');
+  return safe.toString();
+}
+function timestamp(value: unknown): Date | null {
+  const raw = text(value, 80);
+  if (!raw) return null;
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)
+    ? raw.replace(' ', 'T') + 'Z'
+    : raw;
+  const parsed = new Date(normalized);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+function withinWindow(observedAt: Date, target: Date, maxSeconds: number) {
+  const delta = Math.abs(observedAt.getTime() - target.getTime()) / 1000;
+  if (!Number.isFinite(delta) || delta > maxSeconds) {
+    throw new OracleRuntimeError('SOURCE_TIMESTAMP_OUTSIDE_WINDOW', 'No source observation exists inside the market resolution window', 422);
+  }
+  return delta;
+}
+
+export async function resolveFinancialPriceThresholdWithProvider(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: FinancialPriceThresholdSpec,
+): Promise<ProviderResolutionResult> {
+  if (provider.code !== 'TWELVE_DATA') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
+  const key = apiSecret(provider);
+  if (!key) throw new OracleRuntimeError('SECRET_MISSING', 'Twelve Data API credential is not configured', 503);
+  const base = provider.baseUrl?.replace(/\/$/, '');
+  if (base !== 'https://api.twelvedata.com') {
+    throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Twelve Data must use its approved HTTPS API host', 500);
+  }
+  const maxDelta = Math.max(1, Math.min(3600, Number(resource.metadata?.max_timestamp_delta_seconds ?? 600)));
+  const start = new Date(spec.observationTime.getTime() - maxDelta * 1000);
+  const end = new Date(spec.observationTime.getTime() + maxDelta * 1000);
+  const format = (date: Date) => date.toISOString().slice(0, 19).replace('T', ' ');
+  const url = new URL('/time_series', base);
+  url.searchParams.set('symbol', text(resource.externalKey, 80) || `${spec.symbol}/${spec.quote}`);
+  url.searchParams.set('interval', text(resource.metadata?.interval, 20) || '1min');
+  url.searchParams.set('start_date', format(start));
+  url.searchParams.set('end_date', format(end));
+  url.searchParams.set('timezone', 'UTC');
+  url.searchParams.set('order', 'ASC');
+  url.searchParams.set('outputsize', '5000');
+  url.searchParams.set('apikey', key);
+  const payload = await fetchJson(url);
+  if (!record(payload) || payload.status === 'error') {
+    const msg = record(payload) ? text(payload.message, 240) : '';
+    throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', msg || 'Twelve Data returned no usable time-series payload', 502);
+  }
+  const values = Array.isArray(payload.values) ? payload.values.filter(record) : [];
+  const points = values.map((row) => ({
+    row,
+    time: timestamp(row.datetime ?? row.timestamp),
+    value: numeric(row.close ?? row.price),
+  })).filter((point): point is { row: JsonRecord; time: Date; value: number } =>
+    point.time !== null && point.value !== null
+  ).sort((a, b) => Math.abs(a.time.getTime() - spec.observationTime.getTime()) - Math.abs(b.time.getTime() - spec.observationTime.getTime()));
+  const selected = points[0];
+  if (!selected) return { kind: 'skipped', code: 'FINANCIAL_OBSERVATION_MISSING', detail: 'Twelve Data returned no usable price point in the configured time window' };
+  const deltaSeconds = withinWindow(selected.time, spec.observationTime, maxDelta);
+  const price = selected.value;
+  if (!Number.isFinite(price) || price <= 0) throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Twelve Data returned an invalid instrument price', 502);
+  const evidence = new URL(url.toString());
+  return {
+    kind: 'observation',
+    observation: {
+      observedOutcome: outcome(price, spec.operator, spec.threshold),
+      observedAt: selected.time,
+      evidenceReference: safeEvidenceUrl(evidence),
+      payload: {
+        resolver_type: spec.resolverType,
+        provider: provider.code,
+        symbol: spec.symbol,
+        quote: spec.quote,
+        operator: spec.operator,
+        threshold: spec.threshold,
+        price,
+        observation_timestamp: selected.time.toISOString(),
+        target_timestamp: spec.observationTime.toISOString(),
+        timestamp_delta_seconds: deltaSeconds,
+        interval: text(payload.meta && record(payload.meta) ? payload.meta.interval : null, 20) || '1min',
+      },
+    },
+  };
+}
+
+export async function resolveFredSeriesThresholdWithProvider(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: FredSeriesThresholdSpec,
+): Promise<ProviderResolutionResult> {
+  if (provider.code !== 'FRED') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
+  const key = apiSecret(provider);
+  if (!key) throw new OracleRuntimeError('SECRET_MISSING', 'FRED API credential is not configured', 503);
+  const base = provider.baseUrl?.replace(/\/$/, '');
+  if (base !== 'https://api.stlouisfed.org/fred') {
+    throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'FRED must use its approved HTTPS API host and path', 500);
+  }
+  const url = new URL('/fred/series/observations', base);
+  url.searchParams.set('series_id', spec.seriesId);
+  url.searchParams.set('observation_start', spec.observationDate);
+  url.searchParams.set('observation_end', spec.observationDate);
+  url.searchParams.set('realtime_start', spec.vintageDate ?? spec.observationDate);
+  url.searchParams.set('realtime_end', spec.vintageDate ?? spec.observationDate);
+  url.searchParams.set('file_type', 'json');
+  url.searchParams.set('sort_order', 'asc');
+  url.searchParams.set('api_key', key);
+  const payload = await fetchJson(url);
+  if (!record(payload) || payload.error_code) {
+    throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', record(payload)
+      ? text(payload.error_message, 240) || 'FRED returned an invalid series response'
+      : 'FRED returned an invalid series response', 502);
+  }
+  const rows = Array.isArray(payload.observations) ? payload.observations.filter(record) : [];
+  const row = rows.find((item) => text(item.date, 20) === spec.observationDate && numeric(item.value) !== null);
+  if (!row) return { kind: 'skipped', code: 'FRED_OBSERVATION_NOT_PUBLISHED', detail: 'FRED has not published a numeric value for the configured observation date and vintage' };
+  const value = numeric(row.value);
+  if (value === null) return { kind: 'skipped', code: 'FRED_OBSERVATION_NOT_PUBLISHED' };
+  const observedAt = new Date(spec.observationDate + 'T00:00:00.000Z');
+  const evidence = new URL(url.toString());
+  return {
+    kind: 'observation',
+    observation: {
+      observedOutcome: outcome(value, spec.operator, spec.threshold),
+      observedAt,
+      evidenceReference: safeEvidenceUrl(evidence),
+      payload: {
+        resolver_type: spec.resolverType,
+        provider: provider.code,
+        series_id: spec.seriesId,
+        observation_date: spec.observationDate,
+        vintage_date: spec.vintageDate ?? null,
+        value,
+        units: resource.metadata?.units ?? null,
+        realtime_start: row.realtime_start ?? null,
+        realtime_end: row.realtime_end ?? null,
+        operator: spec.operator,
+        threshold: spec.threshold,
+        revision_handling: 'REQUESTED_VINTAGE_DATE',
+      },
+    },
+  };
+}
