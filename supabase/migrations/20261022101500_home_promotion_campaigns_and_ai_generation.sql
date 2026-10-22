@@ -47,8 +47,8 @@ begin
   if p_sort_order is null or p_sort_order < 0 or p_sort_order > 10000 then
     raise exception 'Campaign sort order must be between 0 and 10000' using errcode = '22023';
   end if;
-  if v_kind = 'TEXT' and v_title is null then
-    raise exception 'Text campaigns require a title' using errcode = '22023';
+  if v_title is null then
+    raise exception 'Campaigns require a title' using errcode = '22023';
   end if;
   if v_kind = 'IMAGE' and coalesce(v_image_url, '') !~ '^https://[^[:space:]]+$' then
     raise exception 'Image campaigns require a secure HTTPS image URL' using errcode = '22023';
