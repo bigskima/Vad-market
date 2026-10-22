@@ -130,10 +130,6 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
 
     initialTimer = setTimeout(() => {
       if (!active) return;
-      setQuote(null);
-      setSamples([]);
-      setLoading(true);
-      setError(null);
       void refresh();
     }, 0);
     return () => {
