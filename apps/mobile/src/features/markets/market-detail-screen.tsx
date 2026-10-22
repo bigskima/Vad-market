@@ -112,7 +112,7 @@ export function MarketDetailScreen({
   return (
     <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: 200 }}>
       <MarketDetailHeader market={market} />
-      {hasLiveFinancialContext(market) ? <FinancialMarketLivePanel market={market} now={now} /> : null}
+      {hasLiveFinancialContext(market) ? <FinancialMarketLivePanel key={market.instrument_public_id} market={market} now={now} /> : null}
 
       <ScrollView
         horizontal
