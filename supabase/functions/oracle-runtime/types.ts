@@ -2,7 +2,7 @@ export type JsonRecord = Record<string, unknown>;
 
 export type OracleResource = {
   id: number;
-  resourceType: 'CRYPTO_PAIR' | 'CANONICAL_EVENT' | 'SPORTS_COMPETITION' | 'PUBLIC_EVENT';
+  resourceType: 'CRYPTO_PAIR' | 'CANONICAL_EVENT' | 'SPORTS_COMPETITION' | 'PUBLIC_EVENT' | 'FINANCIAL_SYMBOL' | 'FRED_SERIES';
   canonicalKey: string;
   externalKey: string;
   status: 'ACTIVE' | 'DISABLED';
