@@ -81,11 +81,136 @@ function finalResult(payload: JsonRecord) {
   return { score, actual } as const;
 }
 
+async function resolveTheSportsDbResult(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: FootballResultSpec,
+): Promise<ProviderResolutionResult> {
+  if (!/^\d+$/.test(resource.externalKey.trim())) {
+    return { kind: 'skipped', code: 'SPORTS_RESOURCE_INVALID', detail: 'TheSportsDB event ID must be numeric' };
+  }
+  const baseUrl = provider.baseUrl?.replace(/\/$/, '');
+  if (!baseUrl || !baseUrl.startsWith('https://www.thesportsdb.com/api/v1/json/')) {
+    throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'TheSportsDB must use its approved HTTPS API host and versioned path', 500);
+  }
+  const url = new URL(`${baseUrl}/lookupevent.php`);
+  url.searchParams.set('id', resource.externalKey.trim());
+  const raw = await fetchJson(url.toString());
+  if (!isRecord(raw) || !Array.isArray(raw.events)) {
+    throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'TheSportsDB returned an invalid event payload', 502);
+  }
+  const event = raw.events.find(isRecord);
+  if (!event) return { kind: 'skipped', code: 'MATCH_NOT_FOUND', detail: 'TheSportsDB did not return the configured event' };
+  const status = text(event.strStatus ?? event.strProgress).toUpperCase();
+  if (!/(FINISHED|AFTER EXTRA TIME|AFTER PENALTIES|FULL.?TIME|^FT$|^AET$|^PEN$)/.test(status)) {
+    return { kind: 'skipped', code: 'MATCH_NOT_FINAL', detail: 'TheSportsDB has not published a verified final score yet' };
+  }
+  const homeScore = Number(event.intHomeScore);
+  const awayScore = Number(event.intAwayScore);
+  if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
+    return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'TheSportsDB final scores are not numeric' };
+  }
+  const actual = homeScore > awayScore ? 'HOME_WIN' : awayScore > homeScore ? 'AWAY_WIN' : 'DRAW';
+  const rawTimestamp = text(event.strTimestamp);
+  const eventTime = rawTimestamp ? new Date(rawTimestamp) : new Date();
+  const observedAt = Number.isFinite(eventTime.getTime()) ? eventTime : new Date();
+  const evidenceUrl = url.toString();
+  return {
+    kind: 'observation',
+    observation: {
+      observedOutcome: actual === spec.condition ? 'YES' : 'NO',
+      observedAt,
+      evidenceReference: evidenceUrl,
+      payload: {
+        resolver_type: spec.resolverType,
+        provider: provider.code,
+        event_id: text(event.idEvent, 80) || resource.externalKey,
+        sport: text(event.strSport, 80) || null,
+        home_team: text(event.strHomeTeam, 120) || null,
+        away_team: text(event.strAwayTeam, 120) || null,
+        home_score: homeScore,
+        away_score: awayScore,
+        status,
+        requested_condition: spec.condition,
+        actual_result: actual,
+        timestamp: rawTimestamp || null,
+      },
+    },
+  };
+}
+
+async function resolveApiSportsResult(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: FootballResultSpec,
+): Promise<ProviderResolutionResult> {
+  if (!/^\d+$/.test(resource.externalKey.trim())) {
+    return { kind: 'skipped', code: 'SPORTS_RESOURCE_INVALID', detail: 'API-Sports fixture ID must be numeric' };
+  }
+  const baseUrl = provider.baseUrl?.replace(/\/$/, '');
+  if (baseUrl !== 'https://v3.football.api-sports.io') {
+    throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'API-Sports must use its approved HTTPS API host', 500);
+  }
+  const secret = providerSecret(provider);
+  if (!secret) throw new OracleRuntimeError('SECRET_MISSING', 'API-Sports credential is not configured', 503);
+  const url = new URL('/fixtures', baseUrl);
+  url.searchParams.set('id', resource.externalKey.trim());
+  const raw = await fetchJson(url.toString(), {
+    headers: { 'x-apisports-key': String(secret), Accept: 'application/json' },
+  });
+  if (!isRecord(raw) || !Array.isArray(raw.response)) {
+    throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'API-Sports returned an invalid fixture payload', 502);
+  }
+  const row = raw.response.find(isRecord);
+  if (!row) return { kind: 'skipped', code: 'MATCH_NOT_FOUND', detail: 'API-Sports did not return the configured fixture' };
+  const fixture = isRecord(row.fixture) ? row.fixture : {};
+  const score = isRecord(row.score) ? row.score : {};
+  const goals = isRecord(row.goals) ? row.goals : {};
+  const statusNode = isRecord(fixture.status) ? fixture.status : {};
+  const status = text(statusNode.short).toUpperCase();
+  if (!['FT','AET','PEN'].includes(status)) {
+    return { kind: 'skipped', code: `MATCH_${status || 'NOT_FINAL'}`, detail: 'API-Sports has not published a verified full-time result yet' };
+  }
+  const homeScore = Number(goals.home);
+  const awayScore = Number(goals.away);
+  if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
+    return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'API-Sports final scores are not numeric' };
+  }
+  const actual = homeScore > awayScore ? 'HOME_WIN' : awayScore > homeScore ? 'AWAY_WIN' : 'DRAW';
+  const updatedAt = new Date(text(fixture.date));
+  const observedAt = Number.isFinite(updatedAt.getTime()) ? updatedAt : new Date();
+  return {
+    kind: 'observation',
+    observation: {
+      observedOutcome: actual === spec.condition ? 'YES' : 'NO',
+      observedAt,
+      evidenceReference: url.toString(),
+      payload: {
+        resolver_type: spec.resolverType,
+        provider: provider.code,
+        fixture_id: text(fixture.id, 80) || resource.externalKey,
+        home_team: isRecord(row.teams) && isRecord(row.teams.home) ? text(row.teams.home.name, 120) || null : null,
+        away_team: isRecord(row.teams) && isRecord(row.teams.away) ? text(row.teams.away.name, 120) || null : null,
+        home_score: homeScore,
+        away_score: awayScore,
+        halftime_score: isRecord(score.halftime) ? score.halftime : null,
+        extra_time_score: isRecord(score.extratime) ? score.extratime : null,
+        penalty_score: isRecord(score.penalty) ? score.penalty : null,
+        status,
+        requested_condition: spec.condition,
+        actual_result: actual,
+      },
+    },
+  };
+}
+
 export async function resolveFootballFixtureWithProvider(
   provider: OracleProvider,
   resource: OracleResource,
   spec: FootballResultSpec,
 ): Promise<ProviderResolutionResult> {
+  if (provider.code === 'THESPORTSDB') return resolveTheSportsDbResult(provider, resource, spec);
+  if (provider.code === 'API_SPORTS') return resolveApiSportsResult(provider, resource, spec);
   if (/^\d+$/.test(resource.externalKey.trim())) {
     return resolveLegacyFootball(provider, resource, spec);
   }
