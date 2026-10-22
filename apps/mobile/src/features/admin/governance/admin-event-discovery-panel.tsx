@@ -326,7 +326,7 @@ export function AdminEventDiscoveryPanel() {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
           <View style={{ flex: 1, minWidth: 180, gap: 2 }}>
             <VadText variant="heading">Discovered events</VadText>
-            <VadText variant="caption" tone="secondary">{newCandidates} new candidate(s). These are not live prediction markets until they pass VAD's market template, evidence, review and publication flow.</VadText>
+            <VadText variant="caption" tone="secondary">{newCandidates} new candidate(s). These are not live prediction markets until they pass VAD&apos;s market template, evidence, review and publication flow.</VadText>
           </View>
           <VadButton label="Refresh" variant="secondary" size="small" fullWidth={false} onPress={() => void refreshCandidates(categoryCode)} />
         </View>
