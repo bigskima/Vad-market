@@ -103,8 +103,9 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
           variant={compactViewport ? 'heading' : 'title'}
           numberOfLines={titleExpanded ? undefined : 3}
           style={{
-            fontSize: compactViewport ? (width <= 380 || density.narrow ? 19 : 21) : 25,
-            lineHeight: compactViewport ? (width <= 380 || density.narrow ? 24 : 27) : 31,
+            fontSize: compactViewport ? (width <= 380 || density.narrow ? 18 : 19) : 25,
+            lineHeight: compactViewport ? (width <= 380 || density.narrow ? 23 : 25) : 31,
+            paddingRight: compactViewport ? 44 : 0,
             letterSpacing: -0.35,
             flexShrink: 1,
           }}
