@@ -155,6 +155,29 @@ export async function probeProvider(provider: OracleProvider) {
       }
       return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'SPORTS_CATALOG' } };
     }
+    case 'API_SPORTS': {
+      const secret = requiredSecret(provider);
+      if (baseUrl !== 'https://v3.football.api-sports.io') {
+        throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'API-Sports must use its approved HTTPS API host', 500);
+      }
+      const result = await fetchJson(`${baseUrl}/status`, {
+        headers: { 'x-apisports-key': String(secret), Accept: 'application/json' },
+      });
+      if (!result.payload || typeof result.payload !== 'object' || (result.payload as JsonRecord).errors && Object.keys((result.payload as JsonRecord).errors as object).length > 0) {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'API-Sports health response was invalid', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'ACCOUNT_STATUS' } };
+    }
+    case 'US_SENATE': {
+      if (baseUrl !== 'https://www.senate.gov') {
+        throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'US Senate source must use its approved HTTPS host', 500);
+      }
+      const result = await fetchJson(`${baseUrl}/`, { headers: { Accept: 'text/html,application/xhtml+xml' } });
+      if (typeof result.payload === 'string' && !result.payload.toLowerCase().includes('senate')) {
+        throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'US Senate health response was not the expected site', 502);
+      }
+      return { latencyMs: result.latencyMs, metadata: { adapter: provider.adapter, probe: 'OFFICIAL_SITE' } };
+    }
     default:
       throw new OracleRuntimeError('PROVIDER_ADAPTER_UNSUPPORTED', `No adapter is installed for ${provider.code}`, 501);
   }
