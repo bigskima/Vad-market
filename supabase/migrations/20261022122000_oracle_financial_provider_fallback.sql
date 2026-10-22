@@ -32,7 +32,12 @@ values
 on conflict (code,environment) do update set
   name=excluded.name,
   capabilities=excluded.capabilities,
-  public_metadata=integration.providers.public_metadata || excluded.public_metadata,
+  public_metadata=(integration.providers.public_metadata || excluded.public_metadata)
+    || jsonb_build_object('configured',coalesce(
+      (integration.providers.public_metadata->>'configured')::boolean,
+      (excluded.public_metadata->>'configured')::boolean,
+      false
+    )),
   secret_reference=excluded.secret_reference,
   updated_at=statement_timestamp();
 
