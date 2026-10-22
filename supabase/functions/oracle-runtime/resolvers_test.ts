@@ -101,3 +101,20 @@ Deno.test('continuous historical samples satisfy the configured coverage gap', (
     'all sample gaps are within the configured maximum',
   );
 });
+
+Deno.test('keyless Coinbase public candles can be eligible under an approved policy', () => {
+  const event = eventFixture({ sourceHierarchy: ['COINBASE'] });
+  const spec = parseResolverSpec(event);
+  const coinbase = providerFixture({
+    id: 30,
+    code: 'COINBASE',
+    name: 'Coinbase Public Market Data',
+    configured: true,
+    secretReference: null,
+    adapter: 'COINBASE_PUBLIC_CANDLES_V1',
+    baseUrl: 'https://api.coinbase.com',
+    capabilities: ['CRYPTO_PRICE_THRESHOLD', 'FINANCIAL_PRICE_THRESHOLD'],
+  });
+  const eligible = eligibleProviders(event, spec, [coinbase]);
+  assert(eligible.length === 1 && eligible[0].code === 'COINBASE', 'keyless public market-data provider should not be excluded for missing an API key');
+});
