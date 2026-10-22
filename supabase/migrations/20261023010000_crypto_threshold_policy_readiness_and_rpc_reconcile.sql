@@ -70,6 +70,24 @@ begin
     raise exception 'This crypto asset has no active Kraken public historical-price mapping. Re-run the free Oracle coverage check.' using errcode='P0001';
   end if;
 
+  -- A catalog mapping is not proof that the deployed Oracle runtime can
+  -- resolve an observation. Do not create automatic markets while a source
+  -- is excluded from routing by a currently confirmed UNAVAILABLE health state.
+  if exists(
+    select 1
+    from integration.providers p
+    left join lateral (
+      select h.status from integration.provider_health h
+      where h.provider_id=p.id order by h.checked_at desc nulls last limit 1
+    ) latest_health on true
+    where p.code in ('COINBASE','KRAKEN')
+      and p.environment='PRODUCTION' and p.provider_type='ORACLE'
+      and upper(coalesce(latest_health.status,'UNKNOWN'))='UNAVAILABLE'
+  ) then
+    raise exception 'A required Coinbase/Kraken Oracle source is marked unavailable. Deploy the current Oracle runtime and run Admin > Providers > Check oracle providers before creating an automatic crypto threshold market.'
+      using errcode='P0001';
+  end if;
+
   v_result:=public.admin_create_catalog_market_v2(
     p_title,p_description,p_market_type_code,v_details,p_condition,p_source_name,p_source_url,
     p_opens_at,p_closes_at,p_resolves_after,p_country_code,p_asset_code,p_liquidity_model,p_publish_now
@@ -224,7 +242,7 @@ $function$
   return v_result||jsonb_build_object('resolver_type','CRYPTO_PRICE_THRESHOLD_V1',
     'oracle_policy_id',v_policy_id,'crypto_asset',v_symbol,'coin_gecko_id',v_coin_id);
 end;
-$function$
+$function$;
 
 
 
@@ -250,7 +268,7 @@ declare
   v_sources_ready boolean:=false;
   v_result jsonb;
 begin
-  if auth.role()<>'service_role' then
+  if coalesce(auth.role(),'')<>'service_role' then
     raise exception 'Service role required' using errcode='42501';
   end if;
 
@@ -285,30 +303,40 @@ begin
   into v_production_ready,v_sandbox_ready,v_production_version,v_sandbox_version
   from eligible;
 
-  select
-    coalesce((select h.status from integration.provider_health h
-      where h.provider_id=cb.id order by h.checked_at desc nulls last limit 1),'UNKNOWN'),
-    (select h.metadata->>'failure_code' from integration.provider_health h
-      where h.provider_id=cb.id order by h.checked_at desc nulls last limit 1),
-    coalesce((select h.status from integration.provider_health h
-      where h.provider_id=kr.id order by h.checked_at desc nulls last limit 1),'UNKNOWN'),
-    (select h.metadata->>'failure_code' from integration.provider_health h
-      where h.provider_id=kr.id order by h.checked_at desc nulls last limit 1)
-  into v_coinbase_health,v_coinbase_failure,v_kraken_health,v_kraken_failure
-  from integration.providers cb
-  cross join integration.providers kr
-  where cb.code='COINBASE' and cb.environment='PRODUCTION'
-    and kr.code='KRAKEN' and kr.environment='PRODUCTION'
-    and cb.provider_type='ORACLE' and kr.provider_type='ORACLE'
-    and cb.status in ('ACTIVE','DEGRADED')
-    and kr.status in ('ACTIVE','DEGRADED')
-    and cb.capabilities @> '["CRYPTO_PRICE_THRESHOLD"]'::jsonb
-    and kr.capabilities @> '["CRYPTO_PRICE_THRESHOLD"]'::jsonb
-    and coalesce((cb.public_metadata->>'configured')::boolean,false)
-    and coalesce((kr.public_metadata->>'configured')::boolean,false);
+  select coalesce(h.status,'UNKNOWN'),h.metadata->>'failure_code'
+  into v_coinbase_health,v_coinbase_failure
+  from integration.providers p
+  left join lateral (
+    select status,metadata from integration.provider_health
+    where provider_id=p.id order by checked_at desc nulls last limit 1
+  ) h on true
+  where p.code='COINBASE' and p.environment='PRODUCTION'
+    and p.provider_type='ORACLE' and p.status in ('ACTIVE','DEGRADED')
+    and p.capabilities @> '["CRYPTO_PRICE_THRESHOLD"]'::jsonb
+    and coalesce((p.public_metadata->>'configured')::boolean,false);
+  if not found then
+    v_coinbase_health:='UNAVAILABLE';
+    v_coinbase_failure:='PROVIDER_NOT_CONFIGURED';
+  end if;
 
-  v_sources_ready := coalesce(v_coinbase_health,'UNKNOWN')<>'UNAVAILABLE'
-    and coalesce(v_kraken_health,'UNKNOWN')<>'UNAVAILABLE';
+  select coalesce(h.status,'UNKNOWN'),h.metadata->>'failure_code'
+  into v_kraken_health,v_kraken_failure
+  from integration.providers p
+  left join lateral (
+    select status,metadata from integration.provider_health
+    where provider_id=p.id order by checked_at desc nulls last limit 1
+  ) h on true
+  where p.code='KRAKEN' and p.environment='PRODUCTION'
+    and p.provider_type='ORACLE' and p.status in ('ACTIVE','DEGRADED')
+    and p.capabilities @> '["CRYPTO_PRICE_THRESHOLD"]'::jsonb
+    and coalesce((p.public_metadata->>'configured')::boolean,false);
+  if not found then
+    v_kraken_health:='UNAVAILABLE';
+    v_kraken_failure:='PROVIDER_NOT_CONFIGURED';
+  end if;
+
+  v_sources_ready := v_coinbase_health<>'UNAVAILABLE'
+    and v_kraken_health<>'UNAVAILABLE';
 
   v_result:=jsonb_build_object(
     'available',true,
