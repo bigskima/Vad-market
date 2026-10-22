@@ -174,9 +174,9 @@ set source_hierarchy=jsonb_build_array(
       jsonb_build_object('role','CORROBORATING','provider_code','COINGECKO','priority',20),
       jsonb_build_object('role','FALLBACK','provider_code','TWELVE_DATA','priority',30)
     ),
-    consensus_rule=consensus_rule || '{"finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":true,"min_agreeing_providers":2}'::jsonb,
-    updated_at=statement_timestamp()
-where id in (2,3) and status='ACTIVE' and approved_by is not null;
+    consensus_rule=consensus_rule || '{"finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":true,"min_agreeing_providers":2}'::jsonb
+where name in ('VAD Crypto Threshold Launch Policy','VAD Sandbox Crypto Threshold Policy')
+  and status='ACTIVE' and approved_by is not null;
 
 -- The production market resolver can now try independently mapped sports sources,
 -- in order. Where less than two providers return a verified final result, the market
@@ -187,9 +187,9 @@ set source_hierarchy=jsonb_build_array(
       jsonb_build_object('role','CORROBORATING','provider_code','THESPORTSDB','priority',20),
       jsonb_build_object('role','FALLBACK','provider_code','API_SPORTS','priority',30)
     ),
-    consensus_rule=consensus_rule || '{"finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":true,"min_agreeing_providers":2}'::jsonb,
-    updated_at=statement_timestamp()
-where id=4 and status='ACTIVE' and approved_by is not null;
+    consensus_rule=consensus_rule || '{"finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":true,"min_agreeing_providers":2}'::jsonb
+where name='VAD Football Match Result Test Policy'
+  and status='ACTIVE' and approved_by is not null;
 
 -- Public-record and generic evidence policies cannot pass the existing system
 -- finalizer with a one-provider quorum. Use corroborating provider paths instead.
@@ -199,18 +199,18 @@ set source_hierarchy=jsonb_build_array(
       jsonb_build_object('role','CORROBORATING','provider_code','PUBLIC_RECORD','priority',20),
       jsonb_build_object('role','FALLBACK','provider_code','TAVILY','priority',30)
     ),
-    consensus_rule=consensus_rule || '{"finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":true,"min_agreeing_providers":2}'::jsonb,
-    updated_at=statement_timestamp()
-where id=6 and status='ACTIVE' and approved_by is not null;
+    consensus_rule=consensus_rule || '{"finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":true,"min_agreeing_providers":2}'::jsonb
+where name='VAD Automatic Official Public Record Policy'
+  and status='ACTIVE' and approved_by is not null;
 
 update oracle.policies
 set source_hierarchy=jsonb_build_array(
       jsonb_build_object('role','PRIMARY','provider_code','PUBLIC_RECORD','priority',10),
       jsonb_build_object('role','CORROBORATING','provider_code','TAVILY','priority',20)
     ),
-    consensus_rule=consensus_rule || '{"finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":true,"min_agreeing_providers":2}'::jsonb,
-    updated_at=statement_timestamp()
-where id in (5,7,9) and status='ACTIVE' and approved_by is not null;
+    consensus_rule=consensus_rule || '{"finalization_mode":"AUTO_AFTER_DISPUTE_WINDOW","distinct_providers":true,"min_agreeing_providers":2}'::jsonb
+where name in ('VAD Verified Public Event Test Policy','VAD Generic Public Record Policy','VAD Generic Evidence Gateway Policy')
+  and status='ACTIVE' and approved_by is not null;
 
 -- Upgrade two expired BTC threshold-touch markets created under the legacy VAD_REVIEW
 -- resolver. The manual provisional record on event 21 is preserved as CONFLICT for
@@ -220,10 +220,8 @@ with legacy as (
   select e.id,e.public_id,e.title,e.closes_at,e.resolves_after,
          regexp_match(e.title,'reach or exceed \$([0-9,]+) by') as parts
   from market.canonical_events e
-  where e.public_id in (
-    '1d446c00-a64b-4e57-8a1f-46939975a78f'::uuid,
-    'b2624f30-6e18-4272-9d1a-dcf26b27672c'::uuid
-  )
+  where e.category='CRYPTO_WEB3'
+    and e.title ~* '^Will BTC/USD reach or exceed \$[0-9,]+ by '
     and e.status in ('AWAITING_ORACLE','PROVISIONALLY_RESOLVED')
     and upper(coalesce(e.resolution_scope->>'resolver_type',''))='VAD_REVIEW_V1'
 )
@@ -245,20 +243,115 @@ from legacy
 where e.id=legacy.id and legacy.parts is not null;
 
 update oracle.event_policy_bindings b
-set oracle_policy_id=3,bound_at=statement_timestamp(),bound_by=null
+set oracle_policy_id=(
+      select p.id from oracle.policies p
+      where p.name='VAD Sandbox Crypto Threshold Policy' and p.status='ACTIVE' and p.approved_by is not null
+      order by p.version desc limit 1
+    ),
+    bound_at=statement_timestamp(),bound_by=null
 from market.canonical_events e
 where e.id=b.event_id
-  and e.public_id in (
-    '1d446c00-a64b-4e57-8a1f-46939975a78f'::uuid,
-    'b2624f30-6e18-4272-9d1a-dcf26b27672c'::uuid
-  )
-  and upper(coalesce(e.resolution_scope->>'resolver_type',''))='CRYPTO_PRICE_TOUCH_THRESHOLD_V1';
+  and e.category='CRYPTO_WEB3'
+  and e.title ~* '^Will BTC/USD reach or exceed \$[0-9,]+ by '
+  and upper(coalesce(e.resolution_scope->>'resolver_type',''))='CRYPTO_PRICE_TOUCH_THRESHOLD_V1'
+  and exists(select 1 from oracle.policies p where p.name='VAD Sandbox Crypto Threshold Policy' and p.status='ACTIVE' and p.approved_by is not null);
 
 with legacy_manual as (
   select r.id,r.event_id,e.public_id,e.title
   from oracle.resolutions r
   join market.canonical_events e on e.id=r.event_id
-  where e.public_id='b2624f30-6e18-4272-9d1a-dcf26b27672c'::uuid
+  where e.category='CRYPTO_WEB3'
+    and e.title ~* '^Will BTC/USD reach or exceed \$100,000 by October 20, 2026\?
+    and r.created_by is not null
+    and not exists(select 1 from oracle.resolutions other where other.event_id=r.event_id and other.status='CONFLICT')
+)
+update oracle.resolutions r
+set status='CONFLICT',
+    consensus_evidence=r.consensus_evidence || jsonb_build_object(
+      'superseded_by_automatic_oracle',jsonb_build_object(
+        'recorded_at',statement_timestamp(),
+        'reason','Legacy manual provisional result has no verified provider-quorum evidence; retained as conflict for audit.'
+      )
+    )
+from legacy_manual
+where r.id=legacy_manual.id;
+
+update market.canonical_events e
+set status='AWAITING_ORACLE',updated_at=statement_timestamp()
+where e.category='CRYPTO_WEB3'
+  and e.title ~* '^Will BTC/USD reach or exceed \$100,000 by October 20, 2026\?
+  and upper(coalesce(e.resolution_scope->>'resolver_type',''))='CRYPTO_PRICE_TOUCH_THRESHOLD_V1'
+  and exists(select 1 from oracle.resolutions r where r.event_id=e.id and r.status='CONFLICT')
+  and not exists(select 1 from oracle.disputes d where d.event_id=e.id and d.status in ('OPEN','UNDER_REVIEW','ESCALATED'));
+
+insert into audit.records(actor_type,action,resource_type,resource_id,reason,metadata)
+select 'SYSTEM','LEGACY_MARKET_MOVED_TO_AUTOMATIC_ORACLE','CANONICAL_EVENT',e.public_id::text,
+       'Legacy threshold-touch rule upgraded to provider-backed history with a quorum of two.',
+       jsonb_build_object('resolver_type',e.resolution_scope->>'resolver_type','policy_id',b.oracle_policy_id,'source','automatic_oracle_resolution_provider_fallback')
+from market.canonical_events e
+left join oracle.event_policy_bindings b on b.event_id=e.id
+where e.category='CRYPTO_WEB3'
+  and e.title ~* '^Will BTC/USD reach or exceed \$[0-9,]+ by '
+  and upper(coalesce(e.resolution_scope->>'resolver_type',''))='CRYPTO_PRICE_TOUCH_THRESHOLD_V1';
+
+commit;
+
+    and r.status='PROVISIONAL'
+    and r.created_by is not null
+    and not exists(select 1 from oracle.resolutions other where other.event_id=r.event_id and other.status='CONFLICT')
+)
+update oracle.resolutions r
+set status='CONFLICT',
+    consensus_evidence=r.consensus_evidence || jsonb_build_object(
+      'superseded_by_automatic_oracle',jsonb_build_object(
+        'recorded_at',statement_timestamp(),
+        'reason','Legacy manual provisional result has no verified provider-quorum evidence; retained as conflict for audit.'
+      )
+    )
+from legacy_manual
+where r.id=legacy_manual.id;
+
+update market.canonical_events e
+set status='AWAITING_ORACLE',updated_at=statement_timestamp()
+where e.public_id='b2624f30-6e18-4272-9d1a-dcf26b27672c'::uuid
+  and e.status='PROVISIONALLY_RESOLVED'
+  and upper(coalesce(e.resolution_scope->>'resolver_type',''))='CRYPTO_PRICE_TOUCH_THRESHOLD_V1'
+  and exists(select 1 from oracle.resolutions r where r.event_id=e.id and r.status='CONFLICT')
+  and not exists(select 1 from oracle.disputes d where d.event_id=e.id and d.status in ('OPEN','UNDER_REVIEW','ESCALATED'));
+
+insert into audit.records(actor_type,action,resource_type,resource_id,reason,metadata)
+select 'SYSTEM','LEGACY_MARKET_MOVED_TO_AUTOMATIC_ORACLE','CANONICAL_EVENT',e.public_id::text,
+       'Legacy threshold-touch rule upgraded to provider-backed history with a quorum of two.',
+       jsonb_build_object('resolver_type',e.resolution_scope->>'resolver_type','policy_id',b.oracle_policy_id,'source','automatic_oracle_resolution_provider_fallback')
+from market.canonical_events e
+left join oracle.event_policy_bindings b on b.event_id=e.id
+where e.public_id in (
+  '1d446c00-a64b-4e57-8a1f-46939975a78f'::uuid,
+  'b2624f30-6e18-4272-9d1a-dcf26b27672c'::uuid
+)
+  and upper(coalesce(e.resolution_scope->>'resolver_type',''))='CRYPTO_PRICE_TOUCH_THRESHOLD_V1';
+
+commit;
+
+  and e.status='PROVISIONALLY_RESOLVED'
+  and upper(coalesce(e.resolution_scope->>'resolver_type',''))='CRYPTO_PRICE_TOUCH_THRESHOLD_V1'
+  and exists(select 1 from oracle.resolutions r where r.event_id=e.id and r.status='CONFLICT')
+  and not exists(select 1 from oracle.disputes d where d.event_id=e.id and d.status in ('OPEN','UNDER_REVIEW','ESCALATED'));
+
+insert into audit.records(actor_type,action,resource_type,resource_id,reason,metadata)
+select 'SYSTEM','LEGACY_MARKET_MOVED_TO_AUTOMATIC_ORACLE','CANONICAL_EVENT',e.public_id::text,
+       'Legacy threshold-touch rule upgraded to provider-backed history with a quorum of two.',
+       jsonb_build_object('resolver_type',e.resolution_scope->>'resolver_type','policy_id',b.oracle_policy_id,'source','automatic_oracle_resolution_provider_fallback')
+from market.canonical_events e
+left join oracle.event_policy_bindings b on b.event_id=e.id
+where e.public_id in (
+  '1d446c00-a64b-4e57-8a1f-46939975a78f'::uuid,
+  'b2624f30-6e18-4272-9d1a-dcf26b27672c'::uuid
+)
+  and upper(coalesce(e.resolution_scope->>'resolver_type',''))='CRYPTO_PRICE_TOUCH_THRESHOLD_V1';
+
+commit;
+
     and r.status='PROVISIONAL'
     and r.created_by is not null
     and not exists(select 1 from oracle.resolutions other where other.event_id=r.event_id and other.status='CONFLICT')
