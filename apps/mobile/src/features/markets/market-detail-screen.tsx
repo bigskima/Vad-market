@@ -287,12 +287,12 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
             <View
               accessibilityRole="timer"
               accessibilityLabel={`Trading closes in ${timing.closeCountdown}`}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 10, paddingVertical: 7 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 9, minWidth: density.phone ? 154 : 174, justifyContent: 'center', borderRadius: 14, borderWidth: 1, borderColor: theme.colors.brandPrimary, backgroundColor: theme.colors.brandSoft, paddingHorizontal: 13, paddingVertical: 10 }}
             >
-              <VadIcon name="clock" size={16} tone="secondary" />
+              <VadIcon name="clock" size={18} tone="brand" />
               <View style={{ gap: 1 }}>
-                <VadText variant="label" tone="secondary">CLOSES IN</VadText>
-                <VadText variant="bodyStrong" style={{ fontVariant: ['tabular-nums'], fontSize: 15, lineHeight: 20 }}>{timing.closeCountdown}</VadText>
+                <VadText variant="caption" tone="brand" style={{ fontWeight: '700', letterSpacing: 0.5 }}>TRADING CLOSES IN</VadText>
+                <VadText variant="heading" style={{ fontVariant: ['tabular-nums'], fontSize: density.phone ? 20 : 23, lineHeight: density.phone ? 25 : 29 }}>{timing.closeCountdown}</VadText>
               </View>
             </View>
           ) : null}
@@ -304,8 +304,8 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
             >
               <VadIcon name="clock" size={16} tone="secondary" />
               <View style={{ gap: 1 }}>
-                <VadText variant="label" tone="secondary">OPENS IN</VadText>
-                <VadText variant="bodyStrong" style={{ fontVariant: ['tabular-nums'], fontSize: 15, lineHeight: 20 }}>{timing.openCountdown}</VadText>
+                <VadText variant="caption" tone="brand" style={{ fontWeight: '700', letterSpacing: 0.5 }}>MARKET OPENS IN</VadText>
+                <VadText variant="heading" style={{ fontVariant: ['tabular-nums'], fontSize: density.phone ? 20 : 23, lineHeight: density.phone ? 25 : 29 }}>{timing.openCountdown}</VadText>
               </View>
             </View>
           ) : null}
