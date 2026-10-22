@@ -44,10 +44,7 @@ export function hasLiveFinancialContext(market: MarketCatalogItem): boolean {
 export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalogItem; now: number }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const details = useMemo(() => readDetails(market), [
-    market.category_code, market.category, market.presentation_profile, market.market_context, market.title,
-    market.closes_at, market.resolves_after,
-  ]);
+  const details = useMemo(() => readDetails(market), [market]);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [samples, setSamples] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,15 +57,9 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
     let active = true;
     let initialTimer: ReturnType<typeof setTimeout> | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    // No asset context means this panel renders nothing. Avoid state resets
+    // inside the effect; the parent keys this panel to the instrument identity.
     if (!details) {
-      initialTimer = setTimeout(() => {
-        if (!active) return;
-        setQuote(null);
-        setSamples([]);
-        setLoading(false);
-        setRefreshing(false);
-        setError(null);
-      }, 0);
       return () => {
         active = false;
         if (initialTimer) clearTimeout(initialTimer);
@@ -137,7 +128,7 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
       if (initialTimer) clearTimeout(initialTimer);
       if (timer) clearTimeout(timer);
     };
-  }, [details?.assetClass, details?.query, details?.symbol, details?.coinId, retryNonce]);
+  }, [details, retryNonce]);
 
   if (!details) return null;
 

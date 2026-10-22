@@ -127,6 +127,16 @@ export function userFacingErrorMessage(
     return 'Your session has expired. Sign in again to continue.';
   }
 
+  // TNGN uses an explicit per-account preference. Treat that guard as an
+  // actionable setup requirement rather than the generic forbidden message.
+  if (hasAny(raw, [
+    'enable tngn in account',
+    'tngn demo mode is not available for this account',
+    'ensure platform tngn is enabled',
+  ])) {
+    return 'To trade TNGN markets, enable TNGN in Account settings. TNGN is isolated test balance, not real money.';
+  }
+
   if (
     hasAny(raw, [
       'permission denied',
