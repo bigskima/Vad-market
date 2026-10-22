@@ -12,6 +12,7 @@ as $function$
 declare
   target oracle.policies;
   expected_environment text;
+  minimum_agreeing_text text;
 begin
   if auth.uid() is null or not private.has_permission('oracle.review') then
     raise exception 'Oracle review permission required' using errcode='42501';
@@ -33,34 +34,45 @@ begin
   end if;
 
   if target.name in ('VAD Crypto Threshold Launch Policy','VAD Sandbox Crypto Threshold Policy') then
-    expected_environment:=case
-      when target.name='VAD Sandbox Crypto Threshold Policy' then 'SANDBOX'
-      else 'PRODUCTION'
-    end;
+    if target.name='VAD Sandbox Crypto Threshold Policy' then
+      expected_environment:='SANDBOX';
+    else
+      expected_environment:='PRODUCTION';
+    end if;
 
     if upper(coalesce(nullif(target.consensus_rule->>'environment',''),'PRODUCTION'))<>expected_environment then
       raise exception 'Crypto threshold policy environment does not match its approved policy name' using errcode='22023';
     end if;
-    if jsonb_typeof(target.source_hierarchy) is distinct from 'array'
-       or jsonb_array_length(target.source_hierarchy)<>2 then
+
+    if jsonb_typeof(target.source_hierarchy) is distinct from 'array' then
+      raise exception 'Crypto threshold policy source hierarchy must be an array' using errcode='22023';
+    end if;
+    if jsonb_array_length(target.source_hierarchy)<>2 then
       raise exception 'Crypto threshold policy must define exactly Coinbase and Kraken as two independent sources' using errcode='22023';
     end if;
-    if upper(coalesce(target.consensus_rule->>'distinct_providers','false'))<>'TRUE'
-       or case
-         when coalesce(target.consensus_rule->>'min_agreeing_providers','') ~ '^[0-9]+$'
-           then (target.consensus_rule->>'min_agreeing_providers')::integer
-         else 0
-       end < 2 then
-      raise exception 'Crypto threshold policy must require distinct-provider consensus from both sources' using errcode='22023';
+
+    if upper(coalesce(target.consensus_rule->>'distinct_providers','false'))<>'TRUE' then
+      raise exception 'Crypto threshold policy must require distinct-provider consensus' using errcode='22023';
     end if;
-    if not exists(
-      select 1 from jsonb_array_elements(target.source_hierarchy) h
-      where upper(coalesce(h->>'provider_code',''))='COINBASE'
-        and upper(coalesce(h->>'role',''))='PRIMARY'
-    ) or not exists(
-      select 1 from jsonb_array_elements(target.source_hierarchy) h
-      where upper(coalesce(h->>'provider_code',''))='KRAKEN'
-        and upper(coalesce(h->>'role',''))='CORROBORATING'
+    minimum_agreeing_text:=coalesce(target.consensus_rule->>'min_agreeing_providers','');
+    if minimum_agreeing_text !~ '^[0-9]+$' then
+      raise exception 'Crypto threshold policy must specify a numeric two-provider quorum' using errcode='22023';
+    end if;
+    if minimum_agreeing_text::integer<2 then
+      raise exception 'Crypto threshold policy must require agreement from both providers' using errcode='22023';
+    end if;
+
+    if not (
+      exists(
+        select 1 from jsonb_array_elements(target.source_hierarchy) h
+        where upper(coalesce(h->>'provider_code',''))='COINBASE'
+          and upper(coalesce(h->>'role',''))='PRIMARY'
+      )
+      and exists(
+        select 1 from jsonb_array_elements(target.source_hierarchy) h
+        where upper(coalesce(h->>'provider_code',''))='KRAKEN'
+          and upper(coalesce(h->>'role',''))='CORROBORATING'
+      )
     ) then
       raise exception 'Crypto threshold policy must use Coinbase as PRIMARY and Kraken as CORROBORATING' using errcode='22023';
     end if;
