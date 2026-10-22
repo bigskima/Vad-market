@@ -6,6 +6,7 @@ export type HomePromotion = {
   banner_kind: 'TEXT' | 'IMAGE';
   title: string | null;
   body: string | null;
+  tag: string | null;
   image_url: string | null;
   target_path: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -229,6 +230,7 @@ export async function upsertAdminHomePromotion(input: {
   sortOrder?: number;
   startsAt?: string | null;
   endsAt?: string | null;
+  tag?: string | null;
 }) {
   if (!isSafeInternalRoute(input.targetPath)) {
     throw new Error('Enter a valid destination inside VAD, for example /markets.');
@@ -244,6 +246,7 @@ export async function upsertAdminHomePromotion(input: {
     p_sort_order: input.sortOrder ?? 100,
     p_starts_at: input.startsAt ?? null,
     p_ends_at: input.endsAt ?? null,
+    p_tag: input.tag?.trim() || null,
   });
   fail(error, 'We could not save this campaign right now. Please try again.');
   return String(data);
