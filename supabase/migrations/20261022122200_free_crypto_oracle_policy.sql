@@ -8,7 +8,7 @@ insert into integration.providers as p
 values
   ('COINBASE','Coinbase Exchange Public Candles','ORACLE','PRODUCTION','ACTIVE',20,
    '["CRYPTO_PRICE_THRESHOLD"]'::jsonb,
-   '{"configured":true,"adapter":"COINBASE_PUBLIC_CANDLES","base_url":"https://api.exchange.coinbase.com","health_probe":"PUBLIC_ENDPOINT","credential_mode":"NONE","settlement_role":"CORROBORATING"}'::jsonb,
+   '{"configured":true,"adapter":"COINBASE_PUBLIC_CANDLES","base_url":"https://api.coinbase.com","health_probe":"PUBLIC_ENDPOINT","credential_mode":"NONE","settlement_role":"CORROBORATING"}'::jsonb,
    null)
 on conflict (code,environment) do update set
   name=excluded.name,
