@@ -183,7 +183,7 @@ export function AdminMarketPublishingScreen() {
           {expiredDrafts.map((row) => (
             <MarketRow key={row.instrument_public_id} row={row} badge="EXPIRED" badgeTone="warning">
               <View style={{ gap: theme.spacing.sm }}>
-                <VadText variant="bodyStrong" tone="warning">This market's closing time has passed.</VadText>
+                <VadText variant="bodyStrong" tone="warning">This market&apos;s closing time has passed.</VadText>
                 <VadText variant="caption" tone="secondary">
                   It cannot be published with an expired trading window. Create a replacement with a future closing time; this historical draft is left unchanged.
                 </VadText>
