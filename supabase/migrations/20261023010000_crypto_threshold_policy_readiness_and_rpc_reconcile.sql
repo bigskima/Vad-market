@@ -1,7 +1,8 @@
 begin;
 
--- Keep the checked-in database RPC aligned with the production Coinbase/Kraken
--- implementation while preserving Oracle dual-control policy approval.
+-- Reconcile the production crypto-threshold creation RPC into migration history.
+-- Preserve the Oracle reviewer approval boundary and require the exact Coinbase
+-- primary + Kraken corroboration quorum before creating an automatic market.
 CREATE OR REPLACE FUNCTION public.admin_create_crypto_threshold_market(p_title text, p_description text, p_market_type_code text, p_details jsonb, p_condition text, p_source_name text, p_source_url text, p_opens_at timestamp with time zone, p_closes_at timestamp with time zone, p_resolves_after timestamp with time zone, p_country_code text, p_asset_code text, p_liquidity_model text, p_publish_now boolean DEFAULT false)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -133,57 +134,7 @@ begin
     and p.approved_by is not null
     and upper(coalesce(p.consensus_rule->>'distinct_providers','false'))='TRUE'
     and case
-      when coalesce(p.consensus_rule->>'min_agreeing_providers','') ~ '^[0-9]+
-  order by p.effective_at desc,p.version desc limit 1;
-  if v_policy_id is null then
-    raise exception 'The Coinbase/Kraken policy is not approved yet. An Oracle reviewer must approve the latest free-source policy before automatic threshold markets can be created.' using errcode='P0001';
-  end if;
-
-  update oracle.event_policy_bindings
-  set oracle_policy_id=v_policy_id,bound_at=statement_timestamp(),bound_by=auth.uid()
-  where event_id=v_event.id;
-  if not found then
-    insert into oracle.event_policy_bindings(event_id,oracle_policy_id,bound_at,bound_by)
-    values(v_event.id,v_policy_id,statement_timestamp(),auth.uid());
-  end if;
-
-
-  insert into oracle.provider_resources(provider_id,resource_type,canonical_key,external_key,status,metadata)
-  select p.id,'CRYPTO_PAIR',v_symbol||'/'||v_quote,
-    case p.code
-      when 'COINBASE' then v_symbol||'-'||v_quote
-      when 'KRAKEN' then case v_symbol
-        when 'BTC' then 'XBTUSD'
-        else v_symbol||'USD'
-      end
-    end,
-    'ACTIVE',jsonb_build_object(
-      'quote',v_quote,
-      'max_timestamp_delta_seconds',600,
-      'maximum_coverage_gap_seconds',900,
-      'historical_mode',case p.code when 'KRAKEN' then 'OHLC' else 'CANDLE' end,
-      'settlement_eligible',true,
-      'discovery','ADMIN_APPROVED_KEYLESS_SOURCE_MAPPINGS'
-    )
-  from integration.providers p
-  where p.provider_type='ORACLE' and p.environment='PRODUCTION'
-    and p.code in ('COINBASE','KRAKEN')
-  on conflict(provider_id,resource_type,canonical_key) do update set
-    external_key=excluded.external_key,status='ACTIVE',
-    metadata=excluded.metadata,updated_at=statement_timestamp();
-
-  perform command.refresh_market_catalog(v_instrument.id);
-  insert into audit.records(actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata)
-  values(auth.uid(),'ADMIN','CRYPTO_THRESHOLD_MARKET_CONFIGURED','MARKET',v_instrument.public_id::text,
-    'Created a crypto threshold market using approved keyless public historical Oracle providers',
-    jsonb_build_object('symbol',v_symbol,'coin_gecko_id',v_coin_id,'quote',v_quote,
-      'operator',v_operator,'threshold',v_threshold,'observation_time',p_resolves_after,
-      'oracle_policy_id',v_policy_id,'providers',jsonb_build_array('COINBASE','KRAKEN')));
-  return v_result||jsonb_build_object('resolver_type','CRYPTO_PRICE_THRESHOLD_V1',
-    'oracle_policy_id',v_policy_id,'crypto_asset',v_symbol,'coin_gecko_id',v_coin_id);
-end;
-$function$
-
+      when coalesce(p.consensus_rule->>'min_agreeing_providers','') ~ '^[0-9]+$'
         then (p.consensus_rule->>'min_agreeing_providers')::integer
       else 0
     end >= 2
@@ -243,9 +194,6 @@ $function$
     'oracle_policy_id',v_policy_id,'crypto_asset',v_symbol,'coin_gecko_id',v_coin_id);
 end;
 $function$;
-
-
-
 
 -- A single service-only readiness view keeps the admin preflight aligned with
 -- the exact policy quorum and provider-health gates used by market creation.
@@ -362,7 +310,6 @@ $function$;
 
 revoke all on function public.internal_crypto_threshold_policy_readiness() from public,anon,authenticated;
 grant execute on function public.internal_crypto_threshold_policy_readiness() to service_role;
-
 
 select pg_notify('pgrst','reload schema');
 commit;
