@@ -114,10 +114,10 @@ export function MarketDetailScreen({
   }
 
   return (
-    <View style={{ gap: density.compact ? 12 : density.sectionGap }}>
+    <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: 152 }}>
       <MarketDetailHeader market={market} />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingVertical: 2 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingVertical: 4, paddingHorizontal: 1 }} style={{ flexGrow: 0 }}>
         {tabs.filter((item) => isCryptoMarket || item.value !== 'Live price').map((item) => (
           <VadChip
             key={item.value}
