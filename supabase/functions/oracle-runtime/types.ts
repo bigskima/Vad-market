@@ -52,6 +52,16 @@ export type CryptoThresholdSpec = {
   observationTime: Date;
 };
 
+export type CryptoTouchThresholdSpec = {
+  resolverType: 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1';
+  asset: string;
+  quote: string;
+  operator: 'GT' | 'GTE' | 'LT' | 'LTE';
+  threshold: number;
+  windowStart: Date;
+  windowEnd: Date;
+};
+
 export type FootballResultSpec = {
   resolverType: 'FOOTBALL_MATCH_RESULT_V1';
   condition: 'HOME_WIN' | 'AWAY_WIN' | 'DRAW';
@@ -85,7 +95,7 @@ export type PublicRecordSpec = {
   recordDate?: string | null;
 };
 
-export type ResolverSpec = CryptoThresholdSpec | FootballResultSpec | PublicRecordSpec | FinancialPriceThresholdSpec | FredSeriesThresholdSpec;
+export type ResolverSpec = CryptoThresholdSpec | CryptoTouchThresholdSpec | FootballResultSpec | PublicRecordSpec | FinancialPriceThresholdSpec | FredSeriesThresholdSpec;
 
 export type ProviderObservation = {
   observedOutcome: 'YES' | 'NO';
