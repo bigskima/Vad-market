@@ -60,6 +60,7 @@ export function AdminDashboardScreen() {
   const canProviders = hasAnyAdminPermission(data.access, [
     'providers.manage',
     'finance.read',
+    'oracle.review',
   ]);
   const canCompliance = hasAnyAdminPermission(data.access, [
     'compliance.manage',

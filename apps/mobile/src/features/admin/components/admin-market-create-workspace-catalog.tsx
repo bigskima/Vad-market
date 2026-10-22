@@ -25,6 +25,7 @@ import {
   getCryptoMarketPrices,
   type CryptoMarketQuote,
   type CryptoOracleAssetCheck,
+  type CryptoOraclePolicyReadiness,
 } from '@/services/crypto-market-data-api';
 import {
   createAdminSportsMarketDraft,
@@ -53,6 +54,32 @@ function suggestedFromTemplate(template: string, details: Record<string, string>
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+function cryptoThresholdReadinessError(readiness: CryptoOraclePolicyReadiness | undefined, sandbox: boolean) {
+  if (!readiness?.available) {
+    return readiness?.error
+      ?? 'Oracle settlement readiness could not be verified. Refresh the source check before creating this automatic market.';
+  }
+  if (!readiness.providersRuntimeReady) {
+    const unavailable = [
+      readiness.coinbaseHealth === 'UNAVAILABLE'
+        ? `Coinbase (${readiness.coinbaseFailureCode ?? 'unavailable'})`
+        : null,
+      readiness.krakenHealth === 'UNAVAILABLE'
+        ? `Kraken (${readiness.krakenFailureCode ?? 'unavailable'})`
+        : null,
+    ].filter(Boolean).join(' and ');
+    return `${unavailable || 'A required Oracle source'} is marked unavailable. Open Admin → Providers, run “Check oracle providers”, then refresh this asset readiness check.`;
+  }
+  const policyReady = sandbox ? readiness.sandboxPolicyReady : readiness.productionPolicyReady;
+  if (!policyReady) {
+    const version = sandbox ? readiness.sandboxPolicyVersion : readiness.productionPolicyVersion;
+    const environment = sandbox ? 'TNGN sandbox' : 'production';
+    return `Automatic crypto markets in ${environment} are blocked until an authorized, independent Oracle reviewer approves the Coinbase + Kraken two-source policy${version ? ` (draft version ${version})` : ''}. Approve it in the Oracle policy controls; this app will not bypass settlement-policy approval.`;
+  }
+  return null;
+}
+
 
 export function AdminMarketCreateWorkspaceCatalog() {
   const theme = useVadTheme();
@@ -166,6 +193,30 @@ export function AdminMarketCreateWorkspaceCatalog() {
       if (requestId !== cryptoAssetCheckRequest.current) return;
       setCryptoAssetCheck({ supported: false, symbol: coin.symbol.toUpperCase(), quote: 'USD', provider: 'COINBASE+KRAKEN', reason: reason instanceof Error ? reason.message : 'Free-source Oracle coverage could not be verified.' });
       setError(reason instanceof Error ? reason.message : 'Free-source Oracle coverage could not be verified.');
+    } finally {
+      if (requestId === cryptoAssetCheckRequest.current) setCryptoAssetCheckLoading(false);
+    }
+  }
+
+  async function refreshCryptoAssetReadiness() {
+    const coin = selectedCryptoAsset;
+    if (!coin) return;
+    const requestId = ++cryptoAssetCheckRequest.current;
+    setCryptoAssetCheckLoading(true);
+    setError(null);
+    try {
+      const check = await checkCryptoOracleAsset(coin.symbol, coin.id);
+      if (requestId !== cryptoAssetCheckRequest.current) return;
+      setCryptoAssetCheck(check);
+      if (!check.supported) setError(check.reason ?? 'This asset does not have active Coinbase + Kraken historical mappings.');
+    } catch (reason) {
+      if (requestId !== cryptoAssetCheckRequest.current) return;
+      const message = reason instanceof Error ? reason.message : 'Oracle readiness could not be refreshed.';
+      setError(message);
+      setCryptoAssetCheck((current) => current ? {
+        ...current,
+        readiness: current.readiness ? { ...current.readiness, available: false, error: message } : undefined,
+      } : current);
     } finally {
       if (requestId === cryptoAssetCheckRequest.current) setCryptoAssetCheckLoading(false);
     }
@@ -408,7 +459,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     );
   }
 
-  function continueFromMarket() {
+  async function continueFromMarket() {
     setError(null);
     if (!category) return setError('Choose a market category.');
     if (!effectiveTitle.trim()) return setError('Enter a clear YES/NO market question before continuing.');
@@ -416,9 +467,41 @@ export function AdminMarketCreateWorkspaceCatalog() {
     if (!marketType) return setError('Choose the kind of event you are creating.');
 
     if (cryptoThreshold) {
-      if (!selectedCryptoAsset) return setError('Search for and select a crypto asset from the live CoinGecko catalogue.');
-      if (cryptoAssetCheckLoading) return setError('Wait for the approved Oracle feed check to finish.');
-      if (!cryptoAssetCheck?.supported || cryptoAssetCheck.coinGeckoId !== selectedCryptoAsset?.id) return setError(cryptoAssetCheck?.reason ?? 'This asset does not have matching free historical-price mappings and cannot be created as an automatic threshold market.');
+      const selectedAsset = selectedCryptoAsset;
+      if (!selectedAsset) return setError('Search for and select a crypto asset from the live CoinGecko catalogue.');
+      if (cryptoAssetCheckLoading) return setError('The asset source check is still running. Please wait for it to finish.');
+
+      let check = cryptoAssetCheck;
+      // The selected coin and the async checker can briefly get out of sync
+      // after a search change or stale preview response. Recheck instead of
+      // showing the misleading "missing mapping" error for a missing result.
+      if (!check?.supported || check.coinGeckoId !== selectedAsset.id) {
+        const requestId = ++cryptoAssetCheckRequest.current;
+        setCryptoAssetCheckLoading(true);
+        try {
+          const refreshed = await checkCryptoOracleAsset(selectedAsset.symbol, selectedAsset.id);
+          if (requestId !== cryptoAssetCheckRequest.current || selectedCryptoAsset?.id !== selectedAsset.id) return;
+          check = refreshed;
+          setCryptoAssetCheck(refreshed);
+        } catch (reason) {
+          if (requestId !== cryptoAssetCheckRequest.current || selectedCryptoAsset?.id !== selectedAsset.id) return;
+          const message = reason instanceof Error ? reason.message : 'The Coinbase/Kraken source check could not be completed.';
+          setCryptoAssetCheck({
+            supported: false,
+            symbol: selectedAsset.symbol.toUpperCase(),
+            quote: 'USD',
+            provider: 'COINBASE+KRAKEN',
+            coinGeckoId: selectedAsset.id,
+            reason: message,
+          });
+          return setError(message);
+        } finally {
+          if (requestId === cryptoAssetCheckRequest.current) setCryptoAssetCheckLoading(false);
+        }
+      }
+      if (!check?.supported || check.coinGeckoId !== selectedAsset.id) {
+        return setError(check?.reason ?? `No active Coinbase + Kraken historical-price mapping is available for ${selectedAsset.symbol.toUpperCase()}/USD.`);
+      }
       if (!details.threshold?.trim() || !Number.isFinite(Number(details.threshold)) || Number(details.threshold) <= 0) return setError('Enter a price target greater than zero.');
     } else if (football) {
       if (!competition.trim() || !homeTeam.trim() || !awayTeam.trim()) return setError('Add the competition, home team and away team.');
@@ -442,6 +525,14 @@ export function AdminMarketCreateWorkspaceCatalog() {
     if (automaticFootball && !automaticFootballAvailable) return setError('Automatic football results are not enabled for this currency. Choose Verified result or a supported test currency.');
     if (automaticFootball && Date.parse(closesAt) > Date.parse(matchStartsAt)) return setError('For this match-result market, trading must close no later than kickoff.');
     if (automaticFootball && Date.parse(resolvesAfter) < Date.parse(matchStartsAt) + (2 * 60 * 60 * 1000)) return setError('Set result checking to at least two hours after kickoff so VAD waits for the final result.');
+    if (cryptoThreshold) {
+      if (!cryptoAssetCheck?.supported || !selectedCryptoAsset || cryptoAssetCheck.coinGeckoId !== selectedCryptoAsset.id) {
+        setStep(1);
+        return setError(cryptoAssetCheck?.reason ?? 'Recheck the selected crypto asset before continuing.');
+      }
+      const readinessError = cryptoThresholdReadinessError(cryptoAssetCheck.readiness, sandbox);
+      if (readinessError) return setError(readinessError);
+    }
     setStep(3);
   }
 
@@ -473,6 +564,21 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setWorking(true);
     setError(null);
     try {
+      // Re-fetch readiness at the final mutation boundary; the policy or
+      // provider health may have changed while the admin completed the form.
+      if (cryptoThreshold && selectedCryptoAsset) {
+        const latestCheck = await checkCryptoOracleAsset(selectedCryptoAsset.symbol, selectedCryptoAsset.id);
+        setCryptoAssetCheck(latestCheck);
+        if (!latestCheck.supported || latestCheck.coinGeckoId !== selectedCryptoAsset.id) {
+          setStep(1);
+          throw new Error(latestCheck.reason ?? 'The selected crypto asset no longer has verified settlement mappings.');
+        }
+        const readinessError = cryptoThresholdReadinessError(latestCheck.readiness, sandbox);
+        if (readinessError) {
+          setStep(2);
+          throw new Error(readinessError);
+        }
+      }
       const common = {
         title: effectiveTitle,
         description,
@@ -683,7 +789,41 @@ export function AdminMarketCreateWorkspaceCatalog() {
                       {selectedCryptoAsset ? <VadCard variant="muted" style={{ gap: 4 }}>
                         <VadText variant="bodyStrong">{selectedCryptoAsset.name} ({selectedCryptoAsset.symbol.toUpperCase()})</VadText>
                         <VadText variant="caption" tone="secondary">CoinGecko ID: {selectedCryptoAsset.id} · Public spot: {selectedCryptoAsset.currentPrice.toLocaleString(undefined, { maximumFractionDigits: 8 })} USD</VadText>
-                        {cryptoAssetCheckLoading ? <VadText variant="caption" tone="secondary">Checking Coinbase + Kraken historical support…</VadText> : cryptoAssetCheck?.supported ? <VadText variant="caption" tone="yes">Keyless settlement sources verified: Coinbase + Kraken ( {cryptoAssetCheck.coinGeckoId}). This asset can use the two-source threshold policy.</VadText> : <VadText variant="caption" tone="warning">{cryptoAssetCheck?.reason ?? 'Select an asset to check its Oracle feed.'}</VadText>}
+                        {cryptoAssetCheckLoading ? <VadText variant="caption" tone="secondary">Checking Coinbase + Kraken historical support…</VadText> : cryptoAssetCheck?.supported ? <VadText variant="caption" tone="yes">Coinbase + Kraken settlement mappings are verified for this asset. Policy approval and live Oracle health are checked separately below.</VadText> : <VadText variant="caption" tone="warning">{cryptoAssetCheck?.reason ?? 'Select an asset to check its Oracle feed.'}</VadText>}
+                        {cryptoAssetCheck?.supported ? (
+                          <View style={{ gap: 4, paddingTop: theme.spacing.xs }}>
+                            <VadText variant="bodyStrong" tone={cryptoAssetCheck.readiness?.available && cryptoAssetCheck.readiness.providersRuntimeReady ? 'yes' : 'warning'}>Oracle listing readiness</VadText>
+                            {cryptoAssetCheck.readiness?.available ? (
+                              <>
+                                <VadText variant="caption" tone="secondary">
+                                  Source health · Coinbase: {cryptoAssetCheck.readiness.coinbaseHealth} · Kraken: {cryptoAssetCheck.readiness.krakenHealth}
+                                </VadText>
+                                {!cryptoAssetCheck.readiness.providersRuntimeReady ? (
+                                  <VadText variant="caption" tone="warning">
+                                    {[
+                                      cryptoAssetCheck.readiness.coinbaseHealth === 'UNAVAILABLE' ? `Coinbase: ${cryptoAssetCheck.readiness.coinbaseFailureCode ?? 'unavailable'}.` : '',
+                                      cryptoAssetCheck.readiness.krakenHealth === 'UNAVAILABLE' ? `Kraken: ${cryptoAssetCheck.readiness.krakenFailureCode ?? 'unavailable'}.` : '',
+                                    ].filter(Boolean).join(' ')} Open Admin → Providers and run “Check oracle providers”, then refresh this readiness check.
+                                  </VadText>
+                                ) : null}
+                                <VadText variant="caption" tone={cryptoAssetCheck.readiness.productionPolicyReady ? 'yes' : 'warning'}>
+                                  Production policy: {cryptoAssetCheck.readiness.productionPolicyReady ? `approved (v${cryptoAssetCheck.readiness.productionPolicyVersion ?? 'current'})` : `pending independent Oracle review${cryptoAssetCheck.readiness.productionPolicyVersion ? ` (draft v${cryptoAssetCheck.readiness.productionPolicyVersion})` : ''}`}
+                                </VadText>
+                                <VadText variant="caption" tone={cryptoAssetCheck.readiness.sandboxPolicyReady ? 'yes' : 'warning'}>
+                                  TNGN sandbox policy: {cryptoAssetCheck.readiness.sandboxPolicyReady ? `approved (v${cryptoAssetCheck.readiness.sandboxPolicyVersion ?? 'current'})` : `pending independent Oracle review${cryptoAssetCheck.readiness.sandboxPolicyVersion ? ` (draft v${cryptoAssetCheck.readiness.sandboxPolicyVersion})` : ''}`}
+                                </VadText>
+                                {cryptoAssetCheck.readiness.productionReason && cryptoAssetCheck.readiness.sandboxReason ? (
+                                  <VadText variant="caption" tone="secondary">An active policy must use Coinbase as primary and Kraken as corroborating source, with distinct-source agreement required from both.</VadText>
+                                ) : null}
+                              </>
+                            ) : (
+                              <VadText variant="caption" tone="warning">
+                                {cryptoAssetCheck.readiness?.error ?? 'Oracle policy readiness is not available. Market creation remains protected until readiness can be verified.'}
+                              </VadText>
+                            )}
+                            <VadButton label="Refresh Oracle readiness" variant="secondary" size="small" fullWidth={false} loading={cryptoAssetCheckLoading} disabled={cryptoAssetCheckLoading || working} onPress={() => void refreshCryptoAssetReadiness()} />
+                          </View>
+                        ) : null}
                       </VadCard> : null}
                       <FieldGroup label="Price condition">
                         {([['GT', 'Above'], ['GTE', 'At or above'], ['LT', 'Below'], ['LTE', 'At or below']] as const).map(([value, label]) => <VadChip key={value} label={label} selected={(details.operator ?? 'GTE') === value} tone={(details.operator ?? 'GTE') === value ? 'brand' : 'neutral'} onPress={() => setDetail('operator', value)} />)}

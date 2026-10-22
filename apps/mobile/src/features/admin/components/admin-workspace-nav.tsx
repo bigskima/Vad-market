@@ -23,7 +23,7 @@ const sections = [
     label: 'Providers',
     short: 'Providers',
     href: '/admin/providers',
-    permissions: ['providers.manage', 'finance.read'],
+    permissions: ['providers.manage', 'finance.read', 'oracle.review'],
   },
   {
     label: 'Compliance',

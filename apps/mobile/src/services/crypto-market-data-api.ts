@@ -130,12 +130,30 @@ export async function setAdminMarketDataSourceStatus(input: {
 }
 
 
+export type CryptoOraclePolicyReadiness = {
+  available: boolean;
+  productionPolicyReady: boolean;
+  sandboxPolicyReady: boolean;
+  productionPolicyVersion: number | null;
+  sandboxPolicyVersion: number | null;
+  providersRuntimeReady: boolean;
+  coinbaseHealth: string;
+  krakenHealth: string;
+  coinbaseFailureCode: string | null;
+  krakenFailureCode: string | null;
+  productionReason: string | null;
+  sandboxReason: string | null;
+  providerReason: string | null;
+  error?: string;
+};
+
 export type CryptoOracleAssetCheck = {
   supported: boolean;
   symbol: string;
   quote: 'USD';
   provider: 'COINBASE+KRAKEN';
   coinGeckoId?: string | null;
+  readiness?: CryptoOraclePolicyReadiness;
   reason?: string;
 };
 
