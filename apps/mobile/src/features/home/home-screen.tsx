@@ -21,7 +21,7 @@ type Category = string;
 
 export function HomeScreen({
   markets, wallets, promotions, trendingMarkets, trendingSettings, marketError, onRetryMarkets,
-  userName, userId, hasUnreadNotifications, onOpenMarket, onOpenPromotion, onExploreMarkets, onNotifications, onDeposit, onWithdraw, onSend,
+  userName, userId, hasUnreadNotifications, onOpenMarket, onOpenPromotion, onExploreMarkets, onNotifications, onDeposit, onWithdraw, onSend, onOpenCryptoAssets,
 }: {
   markets: MarketCatalogItem[];
   wallets: WalletRow[];
@@ -40,6 +40,7 @@ export function HomeScreen({
   onDeposit: () => void;
   onWithdraw: () => void;
   onSend: () => void;
+  onOpenCryptoAssets: () => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -264,6 +265,34 @@ export function HomeScreen({
         <QuickAction label="Predict" icon="arrowUp" color="#3298F5" onPress={() => onExploreMarkets()} />
         <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open crypto asset prices"
+        onPress={onOpenCryptoAssets}
+        style={({ pressed }) => ({
+          minHeight: 58,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 11,
+          paddingHorizontal: 12,
+          paddingVertical: 9,
+          borderRadius: theme.radius.lg,
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.surface,
+          opacity: pressed ? 0.78 : 1,
+        })}
+      >
+        <View style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: theme.colors.brandSoft }}>
+          <VadIcon name="activity" size={20} tone="brand" />
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <VadText variant="bodyStrong">Crypto assets</VadText>
+          <VadText variant="caption" tone="secondary">Live public spot prices, separate from prediction markets</VadText>
+        </View>
+        <VadIcon name="chevronRight" size={17} tone="secondary" />
+      </Pressable>
 
       {promotions.length ? (
         promotionsToShow.length ? (

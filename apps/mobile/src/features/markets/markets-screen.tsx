@@ -19,7 +19,6 @@ import type { FeaturedMarketRow, TrendingMarketRow, VadMarketRow } from '@/servi
 import { FeaturedMarketsCarousel } from './featured-markets-carousel';
 import { requestMarketImageGeneration } from '@/services/market-image-generation';
 import { getMarketCategoryExperiences, type MarketCategoryExperience } from '@/services/crypto-market-data-api';
-import { CryptoMarketPricesPanel } from './components/crypto-market-prices-panel';
 import { MarketCard } from './components/market-card';
 import { PageHeader } from '@/features/navigation/page-header';
 import {
@@ -104,10 +103,6 @@ export function MarketsScreen({
       ?? null,
     [categoryExperiences, category],
   );
-  const selectedProfile = activeCategoryExperience?.presentation_profile
-    ?? markets.find((market) => market.category === category)?.presentation_profile
-    ?? 'EVENT';
-
   const baseFilteredMarkets = useMemo(() => {
     const needle = debouncedQuery.toLowerCase();
     return markets
@@ -236,17 +231,7 @@ export function MarketsScreen({
       </TourTarget>
 
 
-      {selectedProfile === 'CRYPTO' ? (
-        <CryptoMarketPricesPanel
-          search={debouncedQuery}
-          onSelectCoin={(coin) => {
-            setQuery(coin.name);
-            setCategory(categoryExperiences.find((item) => item.presentation_profile === 'CRYPTO')?.name ?? category);
-          }}
-        />
-      ) : null}
-
-            <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} category={category} onOpenMarket={onOpenMarket} />
+      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} category={category} onOpenMarket={onOpenMarket} />
 
       {orderedMarkets.length ? (
         <View style={{ gap: theme.spacing.sm, paddingTop: 2 }}>

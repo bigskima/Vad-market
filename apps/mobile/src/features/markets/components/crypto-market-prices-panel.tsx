@@ -18,9 +18,11 @@ import {
 export function CryptoMarketPricesPanel({
   search,
   onSelectCoin,
+  showHeader = true,
 }: {
   search: string;
   onSelectCoin?: (coin: CryptoMarketQuote) => void;
+  showHeader?: boolean;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -108,18 +110,20 @@ export function CryptoMarketPricesPanel({
 
   return (
     <View style={{ gap: theme.spacing.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-          <VadText variant="label" tone="brand">CRYPTO MARKET DATA</VadText>
-          <VadText variant="heading" style={{ fontSize: density.phone ? 18 : 21 }}>
-            {search.trim() ? 'Matching crypto assets' : 'Crypto prices'}
-          </VadText>
-          <VadText variant="caption" tone="secondary">
-            Browse assets returned by the configured public API—not a fixed Bitcoin/Ethereum list.
-          </VadText>
+      {showHeader ? (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+            <VadText variant="label" tone="brand">CRYPTO MARKET DATA</VadText>
+            <VadText variant="heading" style={{ fontSize: density.phone ? 18 : 21 }}>
+              {search.trim() ? 'Matching crypto assets' : 'Crypto prices'}
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              Browse assets returned by the configured public API—not a fixed Bitcoin/Ethereum list.
+            </VadText>
+          </View>
+          <VadIcon name="markets" size={22} tone="brand" />
         </View>
-        <VadIcon name="markets" size={22} tone="brand" />
-      </View>
+      ) : null}
 
       {loading && !coins.length ? (
         <View style={gridStyle}>
