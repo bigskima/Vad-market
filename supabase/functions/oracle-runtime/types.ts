@@ -15,6 +15,7 @@ export type OracleProvider = {
   name: string;
   environment: 'SANDBOX' | 'PRODUCTION';
   status: 'ACTIVE' | 'DISABLED' | 'DEGRADED' | 'UNAVAILABLE';
+  healthStatus?: 'HEALTHY' | 'DEGRADED' | 'UNAVAILABLE' | 'UNKNOWN' | string;
   priority: number;
   capabilities: string[];
   configured: boolean;
