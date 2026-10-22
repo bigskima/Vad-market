@@ -155,19 +155,74 @@ async function twelveDataQuotes(source: Source, query: string, apiKey: string): 
   return quotes;
 }
 
+
+function browseSymbols(source: Source): Array<{ symbol: string; name: string }> {
+  const raw = source.providerMetadata.browse_symbols;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isRecord).map((row) => ({
+    symbol: textValue(row.symbol, 80),
+    name: textValue(row.name, 180),
+  })).filter((row) => row.symbol);
+}
+
+async function twelveDataBrowse(source: Source, apiKey: string): Promise<AssetQuote[]> {
+  const origin = safeEndpoint(source);
+  const definitions = browseSymbols(source).slice(0, Math.max(1, Math.min(8, source.defaultPageSize)));
+  const results: AssetQuote[] = [];
+  for (const definition of definitions) {
+    const quoteUrl = new URL('/quote', origin);
+    quoteUrl.searchParams.set('symbol', definition.symbol);
+    quoteUrl.searchParams.set('apikey', apiKey);
+    let payload: unknown;
+    try {
+      payload = await requestJson(quoteUrl);
+    } catch {
+      continue; // A provider may not entitle every symbol; keep the rest of the catalogue usable.
+    }
+    if (!isRecord(payload) || payload.status === 'error') continue;
+    const price = numberValue(payload.close) ?? numberValue(payload.price);
+    if (price === null) continue;
+    results.push({
+      id: definition.symbol,
+      symbol: textValue(payload.symbol, 80) || definition.symbol,
+      name: textValue(payload.name, 180) || definition.name || definition.symbol,
+      assetClass: source.assetClass,
+      quoteCurrency: textValue(payload.currency, 12) || source.quoteCurrency,
+      currentPrice: price,
+      change24hPercent: numberValue(payload.percent_change),
+      open: numberValue(payload.open),
+      high: numberValue(payload.high),
+      low: numberValue(payload.low),
+      volume: numberValue(payload.volume),
+      marketOpen: typeof payload.is_market_open === 'boolean' ? payload.is_market_open : null,
+      sourceUpdatedAt: dateValue(payload.timestamp) || dateValue(payload.datetime),
+      exchange: textValue(payload.exchange, 120) || null,
+      source: source.name,
+      sourceCode: source.code,
+    });
+  }
+  return results;
+}
+
 async function fredQuotes(source: Source, query: string, apiKey: string): Promise<AssetQuote[]> {
   const origin = safeEndpoint(source);
-  const searchUrl = new URL('/fred/series/search', origin);
-  searchUrl.searchParams.set('search_text', query);
-  searchUrl.searchParams.set('api_key', apiKey);
-  searchUrl.searchParams.set('file_type', 'json');
-  searchUrl.searchParams.set('limit', '4');
-  searchUrl.searchParams.set('order_by', 'popularity');
-  searchUrl.searchParams.set('sort_order', 'desc');
-  const payload = await requestJson(searchUrl);
-  if (!isRecord(payload)) throw new Error('FRED returned an invalid series-search response.');
-  if (payload.error_code) throw new Error(textValue(payload.error_message, 500) || 'FRED series search failed.');
-  const rows = Array.isArray(payload.seriess) ? payload.seriess.filter(isRecord) : [];
+  let rows: JsonRecord[] = [];
+  if (!query.trim()) {
+    const featured = source.providerMetadata.featured_series;
+    rows = Array.isArray(featured) ? featured.filter(isRecord).slice(0, 6) : [];
+  } else {
+    const searchUrl = new URL('/fred/series/search', origin);
+    searchUrl.searchParams.set('search_text', query);
+    searchUrl.searchParams.set('api_key', apiKey);
+    searchUrl.searchParams.set('file_type', 'json');
+    searchUrl.searchParams.set('limit', '4');
+    searchUrl.searchParams.set('order_by', 'popularity');
+    searchUrl.searchParams.set('sort_order', 'desc');
+    const payload = await requestJson(searchUrl);
+    if (!isRecord(payload)) throw new Error('FRED returned an invalid series-search response.');
+    if (payload.error_code) throw new Error(textValue(payload.error_message, 500) || 'FRED series search failed.');
+    rows = Array.isArray(payload.seriess) ? payload.seriess.filter(isRecord) : [];
+  }
   const items: AssetQuote[] = [];
   for (const row of rows.slice(0, 3)) {
     const id = textValue(row.id, 80);
@@ -216,9 +271,9 @@ Deno.serve(async (req) => {
       return json({ error: 'Choose Stocks, Commodities, Forex or Economic Indicators.' }, 400);
     }
     const query = textValue(body.query, 120);
-    if (query.length < 2) return json({
+    if (query.length === 1) return json({
       ok: true, assetClass, query, items: [],
-      message: 'Search by a ticker, instrument name, commodity, currency pair or economic indicator.',
+      message: 'Enter at least two characters to search. Leave the search blank to browse the provider-configured asset watchlist.',
     });
 
     const { data: sourceRow, error: sourceError } = await admin.rpc('internal_financial_market_data_source_runtime', {
@@ -253,7 +308,9 @@ Deno.serve(async (req) => {
       if (Number.isFinite(staleUntil) && staleUntil > Date.now()) staleItems = items;
     }
 
-    const requestCost = source.adapterCode === 'FRED_SERIES' ? 4 : 5;
+    const requestCost = source.adapterCode === 'FRED_SERIES'
+      ? (query.length === 0 ? Math.max(1, Math.min(8, Array.isArray(source.providerMetadata.featured_series) ? source.providerMetadata.featured_series.length : 4)) : 4)
+      : (query.length === 0 ? Math.max(1, Math.min(8, browseSymbols(source).length)) : 5);
     const { data: reserved, error: reserveError } = await admin.rpc('internal_reserve_financial_market_request', {
       p_source_code: source.code, p_request_cost: requestCost,
     });
@@ -269,7 +326,11 @@ Deno.serve(async (req) => {
 
     try {
       let items: AssetQuote[];
-      if (source.adapterCode === 'TWELVE_DATA_QUOTE') items = await twelveDataQuotes(source, query, apiKey);
+      if (source.adapterCode === 'TWELVE_DATA_QUOTE') {
+        items = query.length === 0
+          ? await twelveDataBrowse(source, apiKey)
+          : await twelveDataQuotes(source, query, apiKey);
+      }
       else if (source.adapterCode === 'FRED_SERIES' && assetClass === 'ECONOMICS') items = await fredQuotes(source, query, apiKey);
       else throw new Error('The configured financial-data adapter does not support this asset class.');
       const now = new Date();
