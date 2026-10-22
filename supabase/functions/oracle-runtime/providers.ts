@@ -542,6 +542,7 @@ export async function resolveCryptoWithProvider(
     case 'COINGECKO': return coinGeckoCryptoObservation(provider, resource, spec);
     case 'DIA': return diaCryptoObservation(provider, resource, spec);
     case 'COINBASE':
+    case 'KRAKEN':
     case 'TWELVE_DATA': return resolveFinancialPriceThresholdWithProvider(provider, resource, {
       resolverType: 'FINANCIAL_PRICE_THRESHOLD_V1',
       symbol: spec.asset,
