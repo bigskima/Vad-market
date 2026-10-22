@@ -132,17 +132,106 @@ function withinWindow(observedAt: Date, target: Date, maxSeconds: number) {
   return delta;
 }
 
+type CoinbaseCandle = {
+  startMs: number;
+  endMs: number;
+  low: number;
+  high: number;
+  open: number;
+  close: number;
+};
+
+type CoinbaseGranularity = 'ONE_MINUTE' | 'FIVE_MINUTE';
+
+async function fetchCoinbaseCandles(
+  productId: string,
+  startMs: number,
+  endMs: number,
+  granularity: CoinbaseGranularity,
+): Promise<{ url: URL; candles: CoinbaseCandle[] }> {
+  if (!/^[A-Z0-9]+-[A-Z0-9]+$/.test(productId)) {
+    throw new OracleRuntimeError('COINBASE_PRODUCT_INVALID', 'Coinbase product mapping is invalid', 422);
+  }
+  const intervalMs = granularity === 'ONE_MINUTE' ? 60_000 : 300_000;
+  const url = new URL(`/api/v3/brokerage/market/products/${encodeURIComponent(productId)}/candles`, 'https://api.coinbase.com');
+  url.searchParams.set('start', String(Math.floor(startMs / 1000)));
+  url.searchParams.set('end', String(Math.ceil(endMs / 1000)));
+  url.searchParams.set('granularity', granularity);
+  url.searchParams.set('limit', '350');
+  const payload = await fetchJson(url);
+  if (!record(payload) || !Array.isArray(payload.candles)) {
+    throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Coinbase returned an invalid public candle response', 502);
+  }
+  const candles = payload.candles.filter(record).map((candle) => {
+    const startSeconds = numeric(candle.start);
+    const low = numeric(candle.low);
+    const high = numeric(candle.high);
+    const open = numeric(candle.open);
+    const close = numeric(candle.close);
+    if (startSeconds === null || low === null || high === null || open === null || close === null
+      || low <= 0 || high <= 0 || open <= 0 || close <= 0 || low > high) return null;
+    const candleStartMs = startSeconds * 1000;
+    return {
+      startMs: candleStartMs,
+      endMs: candleStartMs + intervalMs,
+      low,
+      high,
+      open,
+      close,
+    };
+  }).filter((candle): candle is CoinbaseCandle => candle !== null)
+    .sort((a, b) => a.startMs - b.startMs);
+  return { url, candles };
+}
+
 export async function resolveFinancialPriceThresholdWithProvider(
   provider: OracleProvider,
   resource: OracleResource,
   spec: FinancialPriceThresholdSpec,
 ): Promise<ProviderResolutionResult> {
-  if (!['TWELVE_DATA','ALPHA_VANTAGE'].includes(provider.code)) return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (!['COINBASE','TWELVE_DATA','ALPHA_VANTAGE'].includes(provider.code)) return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
-  const key = apiSecret(provider);
-  if (!key) throw new OracleRuntimeError('SECRET_MISSING', `${provider.name} API credential is not configured`, 503);
+  const key = provider.code === 'COINBASE' ? null : apiSecret(provider);
+  if (provider.code !== 'COINBASE' && !key) throw new OracleRuntimeError('SECRET_MISSING', `${provider.name} API credential is not configured`, 503);
   const base = provider.baseUrl?.replace(/\/$/, '');
   const maxDelta = Math.max(1, Math.min(3600, Number(resource.metadata?.max_timestamp_delta_seconds ?? 600)));
+
+  if (provider.code === 'COINBASE') {
+    if (base !== 'https://api.coinbase.com') {
+      throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Coinbase must use its approved HTTPS host', 500);
+    }
+    const target = spec.observationTime.getTime();
+    const productId = text(resource.externalKey, 80) || `${spec.symbol}-${spec.quote}`;
+    const { url, candles } = await fetchCoinbaseCandles(productId, target - 60_000, target + maxDelta * 1000, 'ONE_MINUTE');
+    const selected = candles
+      .filter((candle) => candle.endMs >= target && candle.endMs <= target + maxDelta * 1000)
+      .sort((a, b) => a.endMs - b.endMs)[0];
+    if (!selected) return { kind: 'skipped', code: 'COINBASE_TARGET_OBSERVATION_MISSING', detail: 'Coinbase has no closed one-minute candle within the post-cutoff tolerance window' };
+    const deltaSeconds = withinWindow(new Date(selected.endMs), spec.observationTime, maxDelta);
+    const evidence = new URL(url.toString());
+    return {
+      kind: 'observation',
+      observation: {
+        observedOutcome: outcome(selected.close, spec.operator, spec.threshold),
+        observedAt: new Date(selected.endMs),
+        evidenceReference: evidence.toString(),
+        payload: {
+          resolver_type: spec.resolverType,
+          provider: provider.code,
+          symbol: spec.symbol,
+          quote: spec.quote,
+          product_id: productId,
+          operator: spec.operator,
+          threshold: spec.threshold,
+          price: selected.close,
+          source_timestamp: new Date(selected.endMs).toISOString(),
+          target_timestamp: spec.observationTime.toISOString(),
+          timestamp_delta_seconds: deltaSeconds,
+          interval: 'ONE_MINUTE',
+        },
+      },
+    };
+  }
 
   if (provider.code === 'ALPHA_VANTAGE') {
     if (base !== 'https://www.alphavantage.co') {
@@ -276,16 +365,77 @@ export async function resolveFinancialPriceTouchThresholdWithProvider(
   resource: OracleResource,
   spec: CryptoTouchThresholdSpec,
 ): Promise<ProviderResolutionResult> {
-  if (provider.code !== 'TWELVE_DATA') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (!['COINBASE','TWELVE_DATA'].includes(provider.code)) return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
-  const key = apiSecret(provider);
-  if (!key) throw new OracleRuntimeError('SECRET_MISSING', 'Twelve Data API credential is not configured', 503);
+  const key = provider.code === 'COINBASE' ? null : apiSecret(provider);
+  if (provider.code !== 'COINBASE' && !key) throw new OracleRuntimeError('SECRET_MISSING', 'Twelve Data API credential is not configured', 503);
   const base = provider.baseUrl?.replace(/\/$/, '');
-  if (base !== 'https://api.twelvedata.com') {
-    throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Twelve Data must use its approved HTTPS API host', 500);
-  }
   if (spec.windowEnd <= spec.windowStart || spec.windowEnd.getTime() > Date.now()) {
     throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Financial threshold-touch window must be valid and end in the past', 422);
+  }
+  if (provider.code === 'COINBASE') {
+    if (base !== 'https://api.coinbase.com') {
+      throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Coinbase must use its approved HTTPS host', 500);
+    }
+    const durationMs = spec.windowEnd.getTime() - spec.windowStart.getTime();
+    const candleCount = Math.ceil(durationMs / 300_000);
+    // The public endpoint returns at most 350 buckets per request. Do not
+    // stretch sparse candles over longer windows and accidentally prove a NO.
+    if (candleCount < 1 || candleCount > 350) {
+      return { kind: 'skipped', code: 'COINBASE_WINDOW_TOO_LARGE', detail: 'Coinbase free public candles support up to 350 five-minute buckets per request; this window needs a provider with broader continuous-history coverage' };
+    }
+    const productId = text(resource.externalKey, 80) || `${spec.asset}-${spec.quote}`;
+    const { url, candles } = await fetchCoinbaseCandles(productId, spec.windowStart.getTime(), spec.windowEnd.getTime(), 'FIVE_MINUTE');
+    const points = candles.filter((candle) =>
+      candle.startMs >= spec.windowStart.getTime() && candle.endMs <= spec.windowEnd.getTime()
+    );
+    if (!points.length) return { kind: 'skipped', code: 'COINBASE_WINDOW_EMPTY', detail: 'Coinbase returned no complete five-minute candles inside the configured threshold-touch window' };
+    const hit = (candle: CoinbaseCandle) => spec.operator === 'GT' ? candle.high > spec.threshold
+      : spec.operator === 'GTE' ? candle.high >= spec.threshold
+        : spec.operator === 'LT' ? candle.low < spec.threshold
+          : candle.low <= spec.threshold;
+    const hitPoints = points.filter(hit);
+    const maxGapSeconds = Math.max(300, Math.min(1800, Number(resource.metadata?.maximum_coverage_gap_seconds ?? 900) || 900));
+    const fullCoverage = hasContinuousTimestampCoverage(
+      points.map((point) => point.endMs),
+      spec.windowStart.getTime(),
+      spec.windowEnd.getTime(),
+      maxGapSeconds,
+    );
+    if (!hitPoints.length && !fullCoverage) {
+      return { kind: 'skipped', code: 'COINBASE_WINDOW_INCOMPLETE', detail: 'Coinbase candles do not continuously cover the window; a negative threshold-touch result is unsafe' };
+    }
+    const selected = hitPoints[0] ?? points[points.length - 1];
+    const minimumPrice = Math.min(...points.map((point) => point.low));
+    const maximumPrice = Math.max(...points.map((point) => point.high));
+    return {
+      kind: 'observation',
+      observation: {
+        observedOutcome: hitPoints.length ? 'YES' : 'NO',
+        observedAt: new Date(selected.endMs),
+        evidenceReference: url.toString(),
+        payload: {
+          resolver_type: spec.resolverType,
+          provider: provider.code,
+          symbol: spec.asset,
+          quote: spec.quote,
+          product_id: productId,
+          operator: spec.operator,
+          threshold: spec.threshold,
+          window_start: spec.windowStart.toISOString(),
+          window_end: spec.windowEnd.toISOString(),
+          sample_count: points.length,
+          minimum_price: minimumPrice,
+          maximum_price: maximumPrice,
+          threshold_touched: hitPoints.length > 0,
+          coverage_complete: fullCoverage,
+          interval: 'FIVE_MINUTE',
+        },
+      },
+    };
+  }
+  if (base !== 'https://api.twelvedata.com') {
+    throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Twelve Data must use its approved HTTPS API host', 500);
   }
   const symbol = text(resource.externalKey, 80) || `${spec.asset}/${spec.quote}`;
   const interval = text(resource.metadata?.interval, 20) || '1min';
