@@ -190,6 +190,49 @@ function isPoolMarket(market: MarketCatalogItem) {
   return String(market.liquidity_mode ?? '').toUpperCase().includes('POOL');
 }
 
+function CountdownStatus({ label, value }: { label: string; value: string }) {
+  const theme = useVadTheme();
+  return (
+    <View
+      accessibilityRole="timer"
+      accessibilityLabel={`${label} ${value}`}
+      style={{
+        minWidth: 168,
+        maxWidth: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        borderWidth: 1,
+        borderColor: theme.colors.brandPrimary,
+        backgroundColor: theme.colors.brandSoft,
+        borderRadius: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+      }}
+    >
+      <View style={{
+        width: 36,
+        height: 36,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.colors.brandPrimary,
+      }}>
+        <VadIcon name="clock" size={19} tone="inverse" />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <VadText variant="label" tone="brand">{label}</VadText>
+        <VadText
+          variant="heading"
+          style={{ fontSize: 22, lineHeight: 27, fontVariant: ['tabular-nums'], letterSpacing: -0.35 }}
+        >
+          {value}
+        </VadText>
+      </View>
+    </View>
+  );
+}
+
 function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -284,30 +327,10 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
             tone={timing.stage === 'OPEN' ? 'yes' : timing.stage === 'VOIDED' ? 'no' : 'neutral'}
           />
           {timing.stage === 'OPEN' && timing.closeCountdown ? (
-            <View
-              accessibilityRole="timer"
-              accessibilityLabel={`Trading closes in ${timing.closeCountdown}`}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 10, paddingVertical: 7 }}
-            >
-              <VadIcon name="clock" size={16} tone="secondary" />
-              <View style={{ gap: 1 }}>
-                <VadText variant="label" tone="secondary">CLOSES IN</VadText>
-                <VadText variant="bodyStrong" style={{ fontVariant: ['tabular-nums'], fontSize: 15, lineHeight: 20 }}>{timing.closeCountdown}</VadText>
-              </View>
-            </View>
+            <CountdownStatus label="Trading closes in" value={timing.closeCountdown} />
           ) : null}
           {timing.stage === 'SCHEDULED' && timing.openCountdown ? (
-            <View
-              accessibilityRole="timer"
-              accessibilityLabel={`Market opens in ${timing.openCountdown}`}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 10, paddingVertical: 7 }}
-            >
-              <VadIcon name="clock" size={16} tone="secondary" />
-              <View style={{ gap: 1 }}>
-                <VadText variant="label" tone="secondary">OPENS IN</VadText>
-                <VadText variant="bodyStrong" style={{ fontVariant: ['tabular-nums'], fontSize: 15, lineHeight: 20 }}>{timing.openCountdown}</VadText>
-              </View>
-            </View>
+            <CountdownStatus label="Market opens in" value={timing.openCountdown} />
           ) : null}
         </View>
       </VadCard>
@@ -335,7 +358,7 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
               {scheduleRows.map((row, index) => (
                 <View key={row.label} style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, paddingTop: 9, paddingBottom: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
                   <VadText variant="caption" tone="secondary" style={{ flex: 1 }}>{row.label}</VadText>
-                  <VadText variant="caption" style={{ flex: 1.35, textAlign: 'right' }}>{row.value}</VadText>
+                  <VadText variant="bodyStrong" style={{ flex: 1.35, textAlign: 'right' }}>{row.value}</VadText>
                 </View>
               ))}
               <VadText variant="caption" tone="tertiary" style={{ paddingTop: 4 }}>
@@ -653,8 +676,8 @@ function DetailValueRow({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-      <VadText variant="caption" tone="secondary" style={{ flex: 1, minWidth: 0 }}>{label}</VadText>
-      <VadText variant="caption" style={{ flex: 1.4, minWidth: 0, textAlign: 'right' }}>{value}</VadText>
+      <VadText variant="label" tone="secondary" style={{ flex: 1, minWidth: 0 }}>{label}</VadText>
+      <VadText variant="bodyStrong" style={{ flex: 1.4, minWidth: 0, textAlign: 'right' }}>{value}</VadText>
     </View>
   );
 }
