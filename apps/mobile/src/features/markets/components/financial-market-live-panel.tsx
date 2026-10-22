@@ -58,14 +58,21 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
 
   useEffect(() => {
     let active = true;
+    let initialTimer: ReturnType<typeof setTimeout> | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    setQuote(null);
-    setSamples([]);
-    setLoading(true);
-    setError(null);
     if (!details) {
-      setLoading(false);
-      return () => { active = false; };
+      initialTimer = setTimeout(() => {
+        if (!active) return;
+        setQuote(null);
+        setSamples([]);
+        setLoading(false);
+        setRefreshing(false);
+        setError(null);
+      }, 0);
+      return () => {
+        active = false;
+        if (initialTimer) clearTimeout(initialTimer);
+      };
     }
 
     let nextDelaySeconds = details.assetClass === 'CRYPTO' ? 15 : 300;
@@ -120,9 +127,18 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
         }
       }
     };
-    void refresh();
+
+    initialTimer = setTimeout(() => {
+      if (!active) return;
+      setQuote(null);
+      setSamples([]);
+      setLoading(true);
+      setError(null);
+      void refresh();
+    }, 0);
     return () => {
       active = false;
+      if (initialTimer) clearTimeout(initialTimer);
       if (timer) clearTimeout(timer);
     };
   }, [details?.assetClass, details?.query, details?.symbol, details?.coinId, retryNonce]);
