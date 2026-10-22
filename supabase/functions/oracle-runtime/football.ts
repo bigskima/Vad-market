@@ -105,8 +105,14 @@ async function resolveTheSportsDbResult(
   if (!/(FINISHED|AFTER EXTRA TIME|AFTER PENALTIES|FULL.?TIME|^FT$|^AET$|^PEN$)/.test(status)) {
     return { kind: 'skipped', code: 'MATCH_NOT_FINAL', detail: 'TheSportsDB has not published a verified final score yet' };
   }
-  const homeScore = Number(event.intHomeScore);
-  const awayScore = Number(event.intAwayScore);
+  const homeRaw = event.intHomeScore;
+  const awayRaw = event.intAwayScore;
+  if (homeRaw === null || homeRaw === undefined || String(homeRaw).trim() === ''
+      || awayRaw === null || awayRaw === undefined || String(awayRaw).trim() === '') {
+    return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'TheSportsDB has not published both final scores' };
+  }
+  const homeScore = Number(homeRaw);
+  const awayScore = Number(awayRaw);
   if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
     return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'TheSportsDB final scores are not numeric' };
   }
@@ -171,8 +177,14 @@ async function resolveApiSportsResult(
   if (!['FT','AET','PEN'].includes(status)) {
     return { kind: 'skipped', code: `MATCH_${status || 'NOT_FINAL'}`, detail: 'API-Sports has not published a verified full-time result yet' };
   }
-  const homeScore = Number(goals.home);
-  const awayScore = Number(goals.away);
+  const homeRaw = goals.home;
+  const awayRaw = goals.away;
+  if (homeRaw === null || homeRaw === undefined || String(homeRaw).trim() === ''
+      || awayRaw === null || awayRaw === undefined || String(awayRaw).trim() === '') {
+    return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'API-Sports has not published both final scores' };
+  }
+  const homeScore = Number(homeRaw);
+  const awayScore = Number(awayRaw);
   if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
     return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'API-Sports final scores are not numeric' };
   }
