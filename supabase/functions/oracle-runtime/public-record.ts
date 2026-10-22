@@ -49,6 +49,20 @@ export async function resolvePublicRecord(resource: OracleResource,spec: PublicR
   if(spec.operator==='EXISTS'){outcome=match?'YES':'NO'; observedValue=Boolean(match);}
   else if(spec.operator==='CONTAINS'){const needle=String(spec.expected??''); if(!needle) throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID','Expected public-record text is missing',422); outcome=text.toLowerCase().includes(needle.toLowerCase())?'YES':'NO'; observedValue=needle;}
   else if(spec.operator==='EQUALS'){if(!match) return {kind:'skipped',code:'OFFICIAL_RECORD_INCONCLUSIVE',detail:'Configured evidence field was not found'}; observedValue=match[1]??match[0]; outcome=String(observedValue).trim().toLowerCase()===String(spec.expected??'').trim().toLowerCase()?'YES':'NO';}
+  else if(['GT','GTE','LT','LTE'].includes(spec.operator)) {
+    if(!match) return {kind:'skipped',code:'OFFICIAL_RECORD_INCONCLUSIVE',detail:'Configured numeric evidence field was not found'};
+    const rawObserved=String(match[1]??match[0]).replace(/[^0-9.+eE-]/g,'');
+    const observed=Number(rawObserved);
+    const expected=Number(spec.expected);
+    if(!rawObserved || !Number.isFinite(observed) || !Number.isFinite(expected)) {
+      return {kind:'skipped',code:'OFFICIAL_RECORD_INCONCLUSIVE',detail:'A comparable numeric value could not be extracted'};
+    }
+    observedValue=observed;
+    outcome=spec.operator==='GT'?(observed>expected?'YES':'NO')
+      :spec.operator==='GTE'?(observed>=expected?'YES':'NO')
+      :spec.operator==='LT'?(observed<expected?'YES':'NO')
+      :(observed<=expected?'YES':'NO');
+  }
   else {
     if(!match) return {kind:'skipped',code:'OFFICIAL_RECORD_INCONCLUSIVE',detail:'Configured evidence field was not found'};
     const observed=minutes(match[1]??match[0]); const cutoff=minutes(String(spec.cutoff??spec.expected??''));
