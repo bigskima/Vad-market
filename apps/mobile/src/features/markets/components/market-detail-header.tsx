@@ -26,7 +26,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
       {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={`${market.title} market image`} style={{ width: '100%', aspectRatio: 16 / 5.5, borderRadius: density.phone ? 20 : 24, backgroundColor: theme.colors.surfaceMuted }} resizeMode="cover" /> : null}
 
       <View style={{ gap: 4 }}>
-        <VadText variant={density.compact ? 'heading' : 'title'} style={{ fontSize: density.compact ? 19 : 22, lineHeight: density.compact ? 24 : 28, letterSpacing: -0.35 }}>{market.title}</VadText>
+        <VadText variant={density.compact ? 'heading' : 'title'} style={{ fontSize: density.phone ? (density.compact ? 19 : 21) : 22, lineHeight: density.phone ? (density.compact ? 24 : 27) : 28, letterSpacing: -0.35, flexShrink: 1 }}>{market.title}</VadText>
       </View>
     </View>
   );
