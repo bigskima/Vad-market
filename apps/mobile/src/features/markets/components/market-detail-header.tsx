@@ -41,7 +41,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         />
       </View>
 
-      <VadText variant="caption" tone="secondary" numberOfLines={1}>
+      <VadText variant="caption" tone="secondary" numberOfLines={2} style={{ fontSize: 13, lineHeight: 18 }}>
         {market.category ?? 'General'} · {market.market_type === 'BINARY' ? 'Yes / No market' : friendlyEnum(market.market_type)}
       </VadText>
 
@@ -117,8 +117,8 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
           variant={compactViewport ? 'heading' : 'title'}
           numberOfLines={titleExpanded ? undefined : 3}
           style={{
-            fontSize: compactViewport ? (width <= 380 || density.narrow ? 18 : 19) : 25,
-            lineHeight: compactViewport ? (width <= 380 || density.narrow ? 23 : 25) : 31,
+            fontSize: compactViewport ? (width <= 380 || density.narrow ? 21 : 22) : 27,
+            lineHeight: compactViewport ? (width <= 380 || density.narrow ? 27 : 29) : 34,
             paddingRight: compactViewport ? 44 : 0,
             letterSpacing: -0.35,
             flexShrink: 1,
