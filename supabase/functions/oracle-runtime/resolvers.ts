@@ -6,10 +6,12 @@ import {
   OracleRuntimeError,
   type ProviderResolutionResult,
   type ResolverSpec,
+  type CryptoTouchThresholdSpec,
 } from './types.ts';
 import { resolveCryptoWithProvider } from './providers.ts';
 import { resolveFootballFixtureWithProvider } from './football.ts';
 import { resolvePublicRecord } from './public-record.ts';
+import { resolveFinancialPriceThresholdWithProvider, resolveFredSeriesThresholdWithProvider, resolveFredSeriesTouchThresholdWithProvider } from './financial.ts';
 import { resolveFinancialPriceThresholdWithProvider, resolveFredSeriesThresholdWithProvider } from './financial.ts';
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -80,6 +82,41 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
       operator: operator as 'GT' | 'GTE' | 'LT' | 'LTE',
       threshold,
       observationTime,
+    };
+  }
+
+  if (resolverType === 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1') {
+    const asset = stringValue(scope.asset, subject.asset, scope.crypto_asset_symbol)?.toUpperCase();
+    const quote = stringValue(scope.quote, subject.quote, 'USD')?.toUpperCase();
+    const operator = stringValue(scope.operator, condition.operator)?.toUpperCase();
+    const threshold = numericValue(scope.threshold, condition.threshold);
+    const startRaw = stringValue(scope.window_start, scope.windowStart, scope.period_start, scope.periodStart, event.opensAt);
+    const endRaw = stringValue(scope.window_end, scope.windowEnd, scope.observation_time, scope.observationTime, event.closesAt);
+    const windowStart = startRaw ? new Date(startRaw) : null;
+    const windowEnd = endRaw ? new Date(endRaw) : null;
+    if (!asset || !/^[A-Z0-9]{2,20}$/.test(asset)) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Crypto touch resolver asset is missing or invalid', 422);
+    }
+    if (!quote || !/^[A-Z0-9]{2,20}$/.test(quote)) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Crypto touch resolver quote is missing or invalid', 422);
+    }
+    if (!['GT','GTE','LT','LTE'].includes(String(operator))) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Crypto touch threshold operator must be GT, GTE, LT or LTE', 422);
+    }
+    if (threshold === null || threshold <= 0) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Crypto touch threshold must be a positive number', 422);
+    }
+    if (!windowStart || !Number.isFinite(windowStart.getTime()) || !windowEnd || !Number.isFinite(windowEnd.getTime()) || windowEnd <= windowStart) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Crypto touch window start and end are invalid', 422);
+    }
+    return {
+      resolverType: 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1',
+      asset,
+      quote,
+      operator: operator as 'GT' | 'GTE' | 'LT' | 'LTE',
+      threshold,
+      windowStart,
+      windowEnd,
     };
   }
 
@@ -179,7 +216,7 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
 }
 
 function requiredCapability(spec: ResolverSpec) {
-  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') return 'CRYPTO_PRICE_THRESHOLD';
+  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1' || spec.resolverType === 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1') return 'CRYPTO_PRICE_THRESHOLD';
   if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') return 'FOOTBALL_MATCH_RESULT';
   if (spec.resolverType === 'FINANCIAL_PRICE_THRESHOLD_V1') return 'FINANCIAL_PRICE_THRESHOLD';
   if (spec.resolverType === 'FRED_SERIES_THRESHOLD_V1') return 'FRED_SERIES_THRESHOLD';
@@ -230,10 +267,12 @@ export function eligibleProviders(event: DueOracleEvent, spec: ResolverSpec, pro
 }
 
 export function resourceFor(provider: OracleProvider, event: DueOracleEvent, spec: ResolverSpec): OracleResource | null {
-  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') {
-    const canonicalKey = `${spec.asset}/${spec.quote}`;
+  if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1' || spec.resolverType === 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1') {
+    const canonicalKey = `${spec.asset}/${spec.quote}`.toUpperCase();
     return provider.resources.find((resource) =>
-      resource.status === 'ACTIVE' && resource.resourceType === 'CRYPTO_PAIR' && resource.canonicalKey.toUpperCase() === canonicalKey,
+      resource.status === 'ACTIVE'
+      && (resource.resourceType === 'CRYPTO_PAIR' || resource.resourceType === 'FINANCIAL_SYMBOL')
+      && resource.canonicalKey.toUpperCase() === canonicalKey,
     ) ?? null;
   }
   if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
@@ -267,6 +306,12 @@ export async function resolveWithProvider(
 ): Promise<ProviderResolutionResult> {
   if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') {
     return resolveCryptoWithProvider(provider, resource, spec);
+  }
+  if (spec.resolverType === 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1') {
+    if (provider.code === 'PYTH') return { kind: 'skipped', code: 'RESOLVER_NOT_SUPPORTED_BY_PROVIDER', detail: 'Pyth historical snapshots cannot prove whether a threshold was touched anywhere inside the full window' };
+    if (provider.code === 'COINGECKO') return resolveCryptoTouchWithCoinGecko(provider, resource, spec);
+    if (provider.code === 'TWELVE_DATA') return resolveFinancialPriceTouchThresholdWithProvider(provider, resource, spec);
+    return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   }
   if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
     return resolveFootballFixtureWithProvider(provider, resource, spec);
