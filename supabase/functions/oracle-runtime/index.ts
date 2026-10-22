@@ -51,7 +51,31 @@ function safeError(error: unknown) {
 async function providerCatalog(admin: SupabaseClient) {
   const { data, error } = await admin.rpc('internal_oracle_provider_catalog');
   if (error) throw new OracleRuntimeError('PROVIDER_CATALOG_FAILED', 'Could not load oracle provider catalog', 500);
-  return (Array.isArray(data) ? data : []) as OracleProvider[];
+  const providers = (Array.isArray(data) ? data : []) as OracleProvider[];
+  // The database flag is an admin/configuration hint, not proof that an Edge
+  // Function secret exists. Derive readiness from the actual runtime environment.
+  const { data: healthRows, error: healthError } = await admin
+    .schema('integration')
+    .from('provider_health')
+    .select('provider_id,status,checked_at');
+  if (healthError) {
+    throw new OracleRuntimeError('PROVIDER_HEALTH_CATALOG_FAILED', 'Could not load provider health state', 500);
+  }
+  const healthById = new Map<number, { status: string; checkedAt: string | null }>();
+  for (const row of Array.isArray(healthRows) ? healthRows : []) {
+    const providerId = Number(row.provider_id);
+    if (!Number.isFinite(providerId)) continue;
+    const previous = healthById.get(providerId);
+    const checkedAt = typeof row.checked_at === 'string' ? row.checked_at : null;
+    if (!previous || (checkedAt && (!previous.checkedAt || checkedAt > previous.checkedAt))) {
+      healthById.set(providerId, { status: String(row.status ?? 'UNKNOWN'), checkedAt });
+    }
+  }
+  return providers.map((provider) => ({
+    ...provider,
+    configured: configuredFor(provider),
+    healthStatus: healthById.get(provider.id)?.status ?? 'UNKNOWN',
+  }));
 }
 
 async function dueEvents(admin: SupabaseClient, eventPublicId: string | null, limit: number) {
