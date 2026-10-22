@@ -66,7 +66,7 @@ export function CryptoMarketPricesPanel({
     };
 
     const initial = setTimeout(() => void refresh(true), 0);
-    const refreshInterval = setInterval(() => void refresh(false), 15_000);
+    const refreshInterval = setInterval(() => void refresh(false), 30_000);
     return () => {
       active = false;
       clearTimeout(initial);

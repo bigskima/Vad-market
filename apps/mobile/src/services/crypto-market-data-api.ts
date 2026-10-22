@@ -44,6 +44,7 @@ export type CryptoMarketDataPage = {
   query: string | null;
   hasMore: boolean;
   fetchedAt: string;
+  cacheSeconds?: number;
   cached?: boolean;
   stale?: boolean;
   coins: CryptoMarketQuote[];

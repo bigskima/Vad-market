@@ -83,7 +83,7 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
             ?? result.coins[0];
           if (match) {
             nextQuote = quoteFromCrypto(match, result.quoteCurrency, result.source);
-            nextDelaySeconds = 15;
+            nextDelaySeconds = Math.max(15, Math.min(3600, result.cacheSeconds ?? 30));
           }
         } else {
           const result = await getFinancialMarketData({
@@ -262,10 +262,10 @@ function readDetails(market: MarketCatalogItem): Details | null {
   const nestedDetails = isRecord(context.details) ? context.details : {};
   const instrument = isRecord(context.financial_asset) ? context.financial_asset : isRecord(context.asset_data) ? context.asset_data : {};
   const values: unknown[] = [
-    instrument.symbol, instrument.ticker, instrument.asset_symbol, instrument.company_ticker,
-    subject.asset, subject.symbol, subject.ticker, subject.asset_symbol, subject.coin, subject.token, subject.stock_symbol, subject.company_ticker, subject.series_id, subject.indicator,
-    context.asset, context.symbol, context.ticker, context.asset_symbol, context.crypto_asset_symbol, context.series_id, context.indicator,
-    nestedDetails.symbol, nestedDetails.ticker, nestedDetails.asset_symbol, nestedDetails.stock_symbol, nestedDetails.company_ticker, nestedDetails.series_id, nestedDetails.indicator,
+    instrument.symbol, instrument.ticker, instrument.asset_symbol, instrument.company_ticker, instrument.benchmark, instrument.currency_pair,
+    subject.asset, subject.symbol, subject.ticker, subject.asset_symbol, subject.coin, subject.token, subject.stock_symbol, subject.company_ticker, subject.series_id, subject.indicator, subject.benchmark, subject.currency_pair, subject.pair,
+    context.asset, context.symbol, context.ticker, context.asset_symbol, context.crypto_asset_symbol, context.series_id, context.indicator, context.benchmark, context.currency_pair, context.pair,
+    nestedDetails.symbol, nestedDetails.ticker, nestedDetails.asset_symbol, nestedDetails.stock_symbol, nestedDetails.company_ticker, nestedDetails.series_id, nestedDetails.indicator, nestedDetails.benchmark, nestedDetails.currency_pair, nestedDetails.pair,
   ];
   const candidate = values.find((value) => typeof value === 'string' && value.trim());
   const query = typeof candidate === 'string' ? candidate.split('/')[0].split('.').pop()?.trim() ?? '' : '';

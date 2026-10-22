@@ -96,7 +96,7 @@ export function AdminFinancialMarketDataSources() {
                       <VadText variant="caption" tone="secondary">{source.code} · {source.adapter_code}</VadText>
                       <VadText variant="caption" tone="tertiary">{source.base_url}</VadText>
                       <VadText variant="caption" tone="tertiary">
-                        Secret reference: {source.secret_reference || 'Not required'} · cache {source.cache_seconds}s · budget {source.daily_request_limit}/day
+                        Secret reference: {source.secret_reference || 'Not required'} · cache {source.cache_seconds}s · request-budget units {source.daily_request_limit}/day
                       </VadText>
                     </View>
                     <VadChip label={source.status} tone={source.status === 'ACTIVE' ? 'yes' : 'neutral'} />

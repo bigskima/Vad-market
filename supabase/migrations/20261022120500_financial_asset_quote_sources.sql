@@ -20,8 +20,8 @@ set asset_class='CRYPTO',
     adapter_code='COINGECKO_MARKETS',
     priority=10,
     daily_request_limit=2500,
-    provider_metadata=provider_metadata || '{"fresh_quote_ttl_seconds":15,"purpose":"DISPLAY_ONLY","oracle_role":"NONE"}'::jsonb,
-    cache_seconds=least(cache_seconds,15),
+    provider_metadata=provider_metadata || '{"fresh_quote_ttl_seconds":30,"purpose":"DISPLAY_ONLY","oracle_role":"NONE"}'::jsonb,
+    cache_seconds=least(cache_seconds,30),
     updated_at=statement_timestamp()
 where code='COINGECKO';
 
@@ -32,21 +32,21 @@ insert into market.market_data_sources(
   (
     'TWELVE_DATA_STOCKS','Twelve Data equities and ETF display quotes',
     'https://api.twelvedata.com','DISABLED','USD',20,300,
-    'STOCKS','TWELVE_DATA_QUOTE',20,800,'TWELVE_DATA_API_KEY',
+    'STOCKS','TWELVE_DATA_QUOTE',20,250,'TWELVE_DATA_API_KEY',
     '{"catalog_mode":"SYMBOL_SEARCH","quote_mode":"QUOTE","purpose":"DISPLAY_ONLY","notes":"Enable only after TWELVE_DATA_API_KEY is added to the Edge Function secrets. Data plan and exchange entitlements vary by symbol."}'::jsonb,
     '{"asset_classes":["STOCKS","ETFS"],"source_type":"QUOTE"}'::jsonb
   ),
   (
     'TWELVE_DATA_COMMODITIES','Twelve Data commodities and energy',
     'https://api.twelvedata.com','DISABLED','USD',20,300,
-    'COMMODITIES','TWELVE_DATA_QUOTE',30,800,'TWELVE_DATA_API_KEY',
+    'COMMODITIES','TWELVE_DATA_QUOTE',30,250,'TWELVE_DATA_API_KEY',
     '{"catalog_mode":"SYMBOL_SEARCH","quote_mode":"QUOTE","purpose":"DISPLAY_ONLY","notes":"Enable only after TWELVE_DATA_API_KEY is added to the Edge Function secrets. Symbol availability depends on provider entitlements."}'::jsonb,
     '{"asset_classes":["COMMODITIES","ENERGY"],"source_type":"QUOTE"}'::jsonb
   ),
   (
     'TWELVE_DATA_FOREX','Twelve Data FX display quotes',
     'https://api.twelvedata.com','DISABLED','USD',20,300,
-    'FOREX','TWELVE_DATA_QUOTE',40,800,'TWELVE_DATA_API_KEY',
+    'FOREX','TWELVE_DATA_QUOTE',40,250,'TWELVE_DATA_API_KEY',
     '{"catalog_mode":"SYMBOL_SEARCH","quote_mode":"QUOTE","purpose":"DISPLAY_ONLY","notes":"Enable only after TWELVE_DATA_API_KEY is added to the Edge Function secrets."}'::jsonb,
     '{"asset_classes":["FOREX"],"source_type":"QUOTE"}'::jsonb
   ),

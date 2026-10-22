@@ -188,25 +188,35 @@ Deno.serve(async (req) => {
     let hasMore = false;
 
     if (query) {
-      const searchUrl = new URL('/api/v3/search', baseUrl.origin);
-      searchUrl.searchParams.set('query', query);
-      const searchPayload = await providerJson(searchUrl, apiKey) as { coins?: unknown };
-      const coins = Array.isArray(searchPayload?.coins)
-        ? searchPayload.coins as Array<Record<string, unknown>>
-        : [];
-      const start = (page - 1) * perPage;
-      const matches = coins
-        .filter((coin) => safeText(coin.id, 100))
-        .slice(start, start + perPage);
-      hasMore = coins.length > start + matches.length;
+      // Approved market context may supply the CoinGecko asset slug directly.
+      // For long lowercase slugs, skip the search call; tickers such as BTC
+      // still use provider search to avoid mistaking a symbol for an asset ID.
+      const directCoinId = query.length >= 5 && query === query.toLowerCase()
+        && /^[a-z0-9][a-z0-9-]{1,89}$/.test(query);
+      let matchingIds: string[] = [];
+      if (directCoinId) {
+        matchingIds = [query];
+      } else {
+        const searchUrl = new URL('/api/v3/search', baseUrl.origin);
+        searchUrl.searchParams.set('query', query);
+        const searchPayload = await providerJson(searchUrl, apiKey) as { coins?: unknown };
+        const coins = Array.isArray(searchPayload?.coins)
+          ? searchPayload.coins as Array<Record<string, unknown>>
+          : [];
+        const start = (page - 1) * perPage;
+        const matches = coins
+          .filter((coin) => safeText(coin.id, 100))
+          .slice(start, start + perPage);
+        hasMore = coins.length > start + matches.length;
+        matchingIds = matches.map((coin) => safeText(coin.id, 100)).filter(Boolean);
+      }
 
-      if (matches.length) {
-        const ids = matches.map((coin) => safeText(coin.id, 100)).join(',');
+      if (matchingIds.length) {
         const marketsUrl = new URL('/api/v3/coins/markets', baseUrl.origin);
         marketsUrl.searchParams.set('vs_currency', quoteCurrency);
-        marketsUrl.searchParams.set('ids', ids);
+        marketsUrl.searchParams.set('ids', matchingIds.join(','));
         marketsUrl.searchParams.set('order', 'market_cap_desc');
-        marketsUrl.searchParams.set('per_page', String(perPage));
+        marketsUrl.searchParams.set('per_page', String(Math.min(perPage, matchingIds.length)));
         marketsUrl.searchParams.set('page', '1');
         marketsUrl.searchParams.set('sparkline', 'true');
         marketsUrl.searchParams.set('price_change_percentage', '24h');
@@ -241,6 +251,7 @@ Deno.serve(async (req) => {
       query: query || null,
       hasMore,
       fetchedAt: fetchedAt.toISOString(),
+      cacheSeconds: Math.min(Math.max(feed.cache_seconds, 15), 3600),
       coins: coinRows.map(normalizeCoin).filter((coin) => coin.id && coin.currentPrice !== null),
     };
     const { error: cacheWriteError } = await admin.rpc('upsert_crypto_market_data_cache', {

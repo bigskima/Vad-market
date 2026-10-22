@@ -206,7 +206,7 @@ export function MarketsScreen({
         subtitle="Discover and trade on real-world events."
         actions={[
           { icon: 'bell', label: 'Notifications', onPress: () => router.push('/notifications'), badge: unreadNotifications },
-          { icon: 'globe', label: 'Crypto assets', onPress: () => router.push('/financial-markets') },
+          { icon: 'globe', label: 'Financial markets', onPress: () => router.push('/financial-markets') },
           { icon: 'operations', label: 'Market filters', onPress: () => setFiltersExpanded((value) => !value) },
         ]}
       />
