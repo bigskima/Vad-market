@@ -178,14 +178,18 @@ function deterministicTitle(symbol: string, operator: string, threshold: string)
   return 'Will ' + symbol + ' be ' + (phrase[operator] ?? 'at or above') + ' $' + threshold + ' USD at the scheduled observation time?';
 }
 function canonicalRules(symbol: string, coinGeckoId: string, operator: string, threshold: string) {
+  const comparator: Record<string, string> = {
+    GT: 'strictly greater than',
+    GTE: 'greater than or equal to',
+    LT: 'strictly less than',
+    LTE: 'less than or equal to',
+  };
   return 'Resolve YES only if VAD’s approved historical Pyth and CoinGecko observations for '
-    + symbol + '/USD at the configured observation time satisfy the exact comparison '
-    + operator + ' ' + threshold + ' USD. Apply the active CRYPTO_PRICE_THRESHOLD resolution policy. '
+    + symbol + '/USD at the configured observation time show a price '
+    + (comparator[operator] ?? 'matching the configured comparison') + ' ' + threshold + ' USD. '
+    + 'Apply the active CRYPTO_PRICE_THRESHOLD resolution policy. '
     + 'Public live-price quotes and charts are display-only and are not settlement evidence. '
     + 'CoinGecko asset ID: ' + coinGeckoId + '. The administrator must configure the observation time in trading setup before publishing.';
-}
-function normalizeCompare(value: string) {
-  return value.replace(/[^0-9.]/g, '');
 }
 async function handle(req: Request) {
   const { service, userId } = await authenticate(req);
