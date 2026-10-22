@@ -13,9 +13,9 @@ values
 on conflict (code,environment) do update set
   name=excluded.name,
   provider_type=excluded.provider_type,
-  status=case when integration.providers.status='DISABLED' then 'ACTIVE' else integration.providers.status end,
+  status=case when p.status='DISABLED' then 'ACTIVE' else p.status end,
   capabilities=excluded.capabilities,
-  public_metadata=integration.providers.public_metadata || excluded.public_metadata,
+  public_metadata=p.public_metadata || excluded.public_metadata,
   secret_reference=null,
   updated_at=statement_timestamp();
 
