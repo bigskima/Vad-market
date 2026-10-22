@@ -158,7 +158,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setSourceUrl('');
     setError(null);
     try {
-      const check = await checkCryptoOracleAsset(coin.symbol);
+      const check = await checkCryptoOracleAsset(coin.symbol, coin.id);
       if (requestId !== cryptoAssetCheckRequest.current) return;
       setCryptoAssetCheck(check);
       if (!check.supported) setError(check.reason ?? 'This asset does not have active CoinGecko + Coinbase historical mappings. Choose another supported asset.');
@@ -218,9 +218,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
     [details.competition, selectedGeneralSport?.code, sportsTaxonomy.competitions],
   );
 
-  const scheduleValid = [opensAt, closesAt, resolvesAfter].every((value) => value && Number.isFinite(Date.parse(value)))
+  const scheduleFieldsValid = [opensAt, closesAt, resolvesAfter].every((value) => value && Number.isFinite(Date.parse(value)))
     && Date.parse(closesAt) > Date.parse(opensAt)
     && Date.parse(resolvesAfter) >= Date.parse(closesAt);
+  // Do not create drafts which can never be published because they expire before
+  // the Admin gets to the Publishing queue.
+  const scheduleValid = scheduleFieldsValid && Date.parse(closesAt) > clockNow;
   const footballScheduleValid = !automaticFootball || (
     Boolean(matchStartsAt)
     && Number.isFinite(Date.parse(matchStartsAt))
@@ -433,7 +436,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function continueFromSetup() {
     setError(null);
     if (!resolvedCountryCode || !resolvedAssetCode) return setError('Choose a market currency before continuing.');
-    if (!scheduleValid) return setError('Choose valid opening, closing and result-checking times.');
+    if (!scheduleValid) return setError(scheduleFieldsValid && Date.parse(closesAt) <= clockNow
+      ? 'The closing time has already passed. Choose a future closing time; expired markets cannot be published.'
+      : 'Choose valid opening, closing and result-checking times.');
     if (automaticFootball && !automaticFootballAvailable) return setError('Automatic football results are not enabled for this currency. Choose Verified result or a supported test currency.');
     if (automaticFootball && Date.parse(closesAt) > Date.parse(matchStartsAt)) return setError('For this match-result market, trading must close no later than kickoff.');
     if (automaticFootball && Date.parse(resolvesAfter) < Date.parse(matchStartsAt) + (2 * 60 * 60 * 1000)) return setError('Set result checking to at least two hours after kickoff so VAD waits for the final result.');
@@ -441,7 +446,24 @@ export function AdminMarketCreateWorkspaceCatalog() {
   }
 
   async function createMarket() {
-    if (working || !scheduleValid || !footballScheduleValid || !category) return;
+    if (working) return;
+    if (!scheduleValid) {
+      setError(scheduleFieldsValid && Date.parse(closesAt) <= clockNow
+        ? 'The closing time has already passed. Choose a future closing time before creating the market.'
+        : 'Choose valid opening, closing and result-checking times.');
+      setStep(2);
+      return;
+    }
+    if (!footballScheduleValid) {
+      setError('For automatic football markets, trading must close by kickoff and result checking must be at least two hours after kickoff.');
+      setStep(2);
+      return;
+    }
+    if (!category) {
+      setError('Choose a market category before creating it.');
+      setStep(1);
+      return;
+    }
     if (cryptoThreshold && (!selectedCryptoAsset || !cryptoAssetCheck?.supported || cryptoAssetCheck.coinGeckoId !== selectedCryptoAsset.id || cryptoAssetCheckLoading)) {
       setStep(1);
       setError(cryptoAssetCheck?.reason ?? 'Select a crypto asset supported by both free historical-price sources before creating the market.');
