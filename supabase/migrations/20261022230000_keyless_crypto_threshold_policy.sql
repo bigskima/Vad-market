@@ -6,7 +6,7 @@ begin;
 -- These providers are public, keyless historical sources; Pyth and a CoinGecko
 -- credential are not prerequisites for a new BTC/USD threshold market.
 
-insert into integration.providers
+insert into integration.providers as existing_provider
   (code,name,provider_type,environment,status,priority,capabilities,public_metadata,secret_reference)
 values
   ('COINBASE','Coinbase Exchange Public Candles','ORACLE','PRODUCTION','ACTIVE',20,
@@ -22,12 +22,12 @@ on conflict (code,environment) do update set
   capabilities=(
     select coalesce(jsonb_agg(to_jsonb(merged.capability)), '[]'::jsonb)
     from (
-      select jsonb_array_elements_text(coalesce(integration.providers.capabilities,'[]'::jsonb)) as capability
+      select jsonb_array_elements_text(coalesce(existing_provider.capabilities,'[]'::jsonb)) as capability
       union
       select jsonb_array_elements_text(excluded.capabilities) as capability
     ) as merged
   ),
-  public_metadata=integration.providers.public_metadata || excluded.public_metadata,
+  public_metadata=existing_provider.public_metadata || excluded.public_metadata,
   secret_reference=null,
   updated_at=statement_timestamp();
 
