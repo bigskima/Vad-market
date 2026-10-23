@@ -38,10 +38,10 @@ export default function WithdrawRoute() {
     return (
       <ProductSubpage title="Withdraw" maxWidth={980}>
         <VadCard variant="surface" style={{ gap: theme.spacing.sm, borderColor: theme.colors.brandPrimary }}>
-          <VadText variant="bodyStrong">{creditStatus.active ? 'NGN ' +( 'withdrawals') +' temporarily locked' : 'Checking NGN test-credit restrictions'}</VadText>
+          <VadText variant="bodyStrong">{creditStatus.active ? 'NGN withdrawals temporarily locked' : 'Checking NGN test-credit restrictions'}</VadText>
           <VadText variant="caption" tone="secondary">
             {creditStatus.active
-              ? 'A temporary market-testing credit is active. NGN '+( 'withdrawals are') +' blocked until the test credit is revoked. No bank withdrawal or deposit is created.'
+              ? 'A temporary market-testing credit is active. NGN withdrawals are blocked until the test credit is revoked. No bank withdrawal is created.'
               : 'Verifying whether a temporary NGN market-test credit is active before enabling this action.'}
           </VadText>
         </VadCard>
