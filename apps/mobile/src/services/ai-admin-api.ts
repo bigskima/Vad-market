@@ -7,7 +7,7 @@ export type AiProviderAdapter =
   | 'ANTHROPIC_MESSAGES'
   | 'CLOUDFLARE_WORKERS_AI';
 
-export type AiCapability = 'MARKET_ADMISSION' | 'USER_ASSISTANT';
+export type AiCapability = 'MARKET_ADMISSION' | 'MARKET_BUILDER_DRAFTING' | 'USER_ASSISTANT';
 
 export type AiProviderModelRow = {
   ai_provider_id: number;

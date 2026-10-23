@@ -531,6 +531,143 @@ async function diaCryptoObservation(
   };
 }
 
+type KrakenCandle = { startMs: number; endMs: number; open: number; high: number; low: number; close: number };
+
+async function fetchKrakenCandles(
+  provider: OracleProvider,
+  resource: OracleResource,
+  intervalMinutes: 1 | 5 | 15,
+  sinceSeconds: number,
+): Promise<{ url: URL; candles: KrakenCandle[] }> {
+  const baseUrl = provider.baseUrl?.replace(/\/$/, '');
+  if (baseUrl !== 'https://api.kraken.com') {
+    throw new OracleRuntimeError('PROVIDER_CONFIG_INVALID', 'Kraken must use its approved public HTTPS API host', 500);
+  }
+  const pair = String(resource.externalKey ?? '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,24}$/.test(pair)) {
+    throw new OracleRuntimeError('KRAKEN_PAIR_INVALID', 'Kraken pair mapping is invalid', 422);
+  }
+  const url = new URL('/0/public/OHLC', baseUrl);
+  url.searchParams.set('pair', pair);
+  url.searchParams.set('interval', String(intervalMinutes));
+  url.searchParams.set('since', String(Math.max(0, Math.floor(sinceSeconds))));
+  const result = await fetchJson(url.toString(), { headers: { Accept: 'application/json' } });
+  const payload = result.payload;
+  if (!payload || typeof payload !== 'object') {
+    throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Kraken returned an invalid public OHLC payload', 502);
+  }
+  const body = payload as JsonRecord;
+  if (Array.isArray(body.error) && body.error.length) {
+    throw new OracleRuntimeError('KRAKEN_OHLC_ERROR', 'Kraken could not retrieve the mapped OHLC range', 502);
+  }
+  const content = body.result && typeof body.result === 'object' ? body.result as JsonRecord : null;
+  if (!content) throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Kraken OHLC candles were missing', 502);
+  const series = Object.entries(content).find(([key, value]) => key !== 'last' && Array.isArray(value));
+  if (!series || !Array.isArray(series[1])) return { url, candles: [] };
+  const intervalMs = intervalMinutes * 60_000;
+  const candles = (series[1] as unknown[]).flatMap((raw) => {
+    if (!Array.isArray(raw) || raw.length < 5) return [];
+    const startSeconds = finiteNumber(raw[0], 'Kraken candle timestamp');
+    const open = finiteNumber(raw[1], 'Kraken candle open');
+    const high = finiteNumber(raw[2], 'Kraken candle high');
+    const low = finiteNumber(raw[3], 'Kraken candle low');
+    const close = finiteNumber(raw[4], 'Kraken candle close');
+    if (startSeconds < 0 || low <= 0 || high <= 0 || open <= 0 || close <= 0 || low > high) return [];
+    return [{ startMs: startSeconds * 1000, endMs: startSeconds * 1000 + intervalMs, open, high, low, close }];
+  }).sort((a, b) => a.startMs - b.startMs);
+  return { url, candles };
+}
+
+export async function resolveCryptoWithKraken(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: CryptoThresholdSpec,
+): Promise<ProviderResolutionResult> {
+  if (provider.code !== 'KRAKEN') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
+  const maxDelta = Math.max(60, Math.min(3600, metadataNumber(resource, 'max_timestamp_delta_seconds', 600)));
+  const targetMs = spec.observationTime.getTime();
+  const { url, candles } = await fetchKrakenCandles(provider, resource, 1, Math.floor((targetMs - 60_000) / 1000));
+  const selected = candles.filter((candle) =>
+    candle.endMs >= targetMs && candle.endMs <= targetMs + maxDelta * 1000 && candle.endMs <= Date.now()
+  ).sort((a, b) => a.endMs - b.endMs)[0];
+  if (!selected) {
+    return { kind: 'skipped', code: 'KRAKEN_TARGET_OBSERVATION_MISSING', detail: 'Kraken has no closed one-minute candle within the market observation tolerance window' };
+  }
+  if (selected.close <= 0) throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'Kraken candle close price was invalid', 502);
+  const observedAt = new Date(selected.endMs);
+  const deltaSeconds = Math.abs(selected.endMs - targetMs) / 1000;
+  return {
+    kind: 'observation',
+    observation: {
+      observedOutcome: outcomeForThreshold(selected.close, spec),
+      observedAt,
+      evidenceReference: url.toString(),
+      payload: {
+        resolver_type: spec.resolverType, provider: provider.code,
+        asset: spec.asset, quote: spec.quote, pair: resource.externalKey,
+        operator: spec.operator, threshold: spec.threshold, price: selected.close,
+        source_timestamp: observedAt.toISOString(), target_timestamp: spec.observationTime.toISOString(),
+        timestamp_delta_seconds: deltaSeconds, interval: 'ONE_MINUTE',
+      },
+    },
+  };
+}
+
+export async function resolveCryptoTouchWithKraken(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: CryptoTouchThresholdSpec,
+): Promise<ProviderResolutionResult> {
+  if (provider.code !== 'KRAKEN') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
+  if (resource.status !== 'ACTIVE') return { kind: 'skipped', code: 'RESOURCE_DISABLED' };
+  if (spec.windowEnd <= spec.windowStart || spec.windowEnd.getTime() > Date.now()) {
+    throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Crypto threshold-touch window must be valid and end in the past', 422);
+  }
+  const durationMs = spec.windowEnd.getTime() - spec.windowStart.getTime();
+  const intervalMinutes: 5 | 15 = durationMs <= 5 * 60_000 * 700 ? 5 : 15;
+  // Kraken returns at most 720 recent bars. If even 15-minute candles cannot
+  // cover this window, keep it pending rather than infer a NO from sparse data.
+  if (durationMs > 15 * 60_000 * 700) {
+    return { kind: 'skipped', code: 'KRAKEN_WINDOW_TOO_LARGE', detail: 'Kraken public OHLC history cannot continuously prove a window longer than the supported coverage range' };
+  }
+  const { url, candles } = await fetchKrakenCandles(provider, resource, intervalMinutes, Math.floor(spec.windowStart.getTime() / 1000));
+  const startMs = spec.windowStart.getTime();
+  const endMs = spec.windowEnd.getTime();
+  const points = candles.filter((item) => item.startMs >= startMs && item.endMs <= endMs);
+  if (!points.length) return { kind: 'skipped', code: 'KRAKEN_WINDOW_EMPTY', detail: 'Kraken returned no complete candles inside the configured threshold-touch window' };
+  const hit = (item: KrakenCandle) => spec.operator === 'GT' ? item.high > spec.threshold
+    : spec.operator === 'GTE' ? item.high >= spec.threshold
+      : spec.operator === 'LT' ? item.low < spec.threshold
+        : item.low <= spec.threshold;
+  const hitPoints = points.filter(hit);
+  const maxGapSeconds = Math.max(intervalMinutes * 60, Math.min(1800, metadataNumber(resource, 'maximum_coverage_gap_seconds', intervalMinutes * 60 * 2)));
+  const fullCoverage = hasContinuousTimestampCoverage(points.map((item) => item.endMs), startMs, endMs, maxGapSeconds);
+  if (!hitPoints.length && !fullCoverage) {
+    return { kind: 'skipped', code: 'KRAKEN_WINDOW_INCOMPLETE', detail: 'Kraken candles do not continuously cover the window; a negative threshold-touch result is unsafe' };
+  }
+  const selected = hitPoints[0] ?? points[points.length - 1];
+  const observedAt = new Date(selected.endMs);
+  return {
+    kind: 'observation',
+    observation: {
+      observedOutcome: hitPoints.length ? 'YES' : 'NO',
+      observedAt,
+      evidenceReference: url.toString(),
+      payload: {
+        resolver_type: spec.resolverType, provider: provider.code, asset: spec.asset, quote: spec.quote,
+        pair: resource.externalKey, operator: spec.operator, threshold: spec.threshold,
+        window_start: spec.windowStart.toISOString(), window_end: spec.windowEnd.toISOString(),
+        hit: hitPoints.length > 0, hit_timestamp: hitPoints.length ? new Date(hitPoints[0].endMs).toISOString() : null,
+        minimum_price: Math.min(...points.map((item) => item.low)),
+        maximum_price: Math.max(...points.map((item) => item.high)),
+        source_timestamp: observedAt.toISOString(), interval: intervalMinutes + '_MINUTE',
+        observed_candles: points.length, continuous_coverage: fullCoverage,
+      },
+    },
+  };
+}
+
 export async function resolveCryptoWithProvider(
   provider: OracleProvider,
   resource: OracleResource,
@@ -540,9 +677,9 @@ export async function resolveCryptoWithProvider(
   switch (provider.code) {
     case 'PYTH': return pythCryptoObservation(provider, resource, spec);
     case 'COINGECKO': return coinGeckoCryptoObservation(provider, resource, spec);
+    case 'KRAKEN': return resolveCryptoWithKraken(provider, resource, spec);
     case 'DIA': return diaCryptoObservation(provider, resource, spec);
     case 'COINBASE':
-    case 'KRAKEN':
     case 'TWELVE_DATA': return resolveFinancialPriceThresholdWithProvider(provider, resource, {
       resolverType: spec.resolverType,
       symbol: spec.asset,
