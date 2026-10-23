@@ -301,51 +301,49 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
       showsVerticalScrollIndicator
       contentContainerStyle={{ flexGrow: 1, gap: theme.spacing.lg, paddingBottom: theme.spacing.lg, paddingHorizontal: 2 }}
     >
-      <VadSegmentedControl value={kind} options={bannerKinds} onChange={setKind} />
+      <View style={{ gap: theme.spacing.xs }}>
+        <VadText variant="label" tone="brand">CAMPAIGN FORMAT</VadText>
+        <VadSegmentedControl value={kind} options={bannerKinds} onChange={setKind} />
+      </View>
 
       {kind === 'IMAGE' ? (
-        <View style={{ gap: theme.spacing.sm }}>
+        <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <VadText variant="bodyStrong">Campaign artwork</VadText>
+              <VadText variant="caption" tone="secondary">Wide 16:9 imagery works best in the Home carousel.</VadText>
+            </View>
+            <VadChip label={generatedAt ? 'AI generated' : imageUrl ? 'Image selected' : 'No image'} tone={imageUrl ? 'brand' : 'neutral'} />
+          </View>
           {imageUrl ? (
             <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 9, maxHeight: 210, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
           ) : (
-            <VadCard variant="muted" style={{ minHeight: 92, justifyContent: 'center' }}>
-              <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>Generate or upload campaign artwork to preview it here.</VadText>
-            </VadCard>
+            <View style={{ minHeight: 104, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.border, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: 4 }}>
+              <VadText variant="bodyStrong">No artwork selected</VadText>
+              <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>Generate artwork with AI or upload an image from your device.</VadText>
+            </View>
           )}
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
-            <VadButton
-              label={imageUrl ? 'Replace uploaded image' : 'Upload image'}
-              variant="secondary"
-              size="small"
-              fullWidth={false}
-              loading={uploading}
-              disabled={generating || working}
-              onPress={() => void chooseImage()}
-              style={{ flexGrow: 1 }}
-            />
+            <VadButton label={imageUrl ? 'Replace image' : 'Upload image'} variant="secondary" size="small" fullWidth={false} loading={uploading} disabled={generating || working} onPress={() => void chooseImage()} style={{ flexGrow: 1 }} />
             {imageUrl ? (
-              <VadButton
-                label="Remove image"
-                variant="ghost"
-                size="small"
-                fullWidth={false}
-                disabled={uploading || generating || working}
-                onPress={() => { setImageUrl(''); setGeneratedAt(null); }}
-                style={{ flexGrow: 1 }}
-              />
+              <VadButton label="Remove image" variant="ghost" size="small" fullWidth={false} disabled={uploading || generating || working} onPress={() => { setImageUrl(''); setGeneratedAt(null); }} style={{ flexGrow: 1 }} />
             ) : null}
           </View>
           {generatedAt ? <VadText variant="caption" tone="secondary">AI artwork generated {new Date(generatedAt).toLocaleString()}. Review the preview before publishing.</VadText> : null}
-        </View>
+        </VadCard>
       ) : null}
 
-      <VadInput label="Campaign title" value={title} onChangeText={setTitle} placeholder="A short campaign headline" />
-      <VadInput label="Supporting copy (optional)" value={body} onChangeText={setBody} placeholder="What should people know about this campaign?" multiline />
-      <VadInput label="Campaign tag (optional)" value={tag} onChangeText={setTag} placeholder="e.g. FEATURED, NEW, LIVE" maxLength={32} hint="Shown as a small badge above the campaign headline." />
-      <View style={{ gap: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.lg, padding: theme.spacing.md, backgroundColor: theme.colors.surfaceMuted }}>
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadText variant="label" tone="brand">CAMPAIGN COPY</VadText>
+        <VadInput label="Campaign title" value={title} onChangeText={setTitle} placeholder="A short campaign headline" />
+        <VadInput label="Supporting copy (optional)" value={body} onChangeText={setBody} placeholder="What should people know about this campaign?" multiline />
+        <VadInput label="Campaign tag (optional)" value={tag} onChangeText={setTag} placeholder="e.g. FEATURED, NEW, LIVE" maxLength={32} hint="Shown as a small badge above the campaign headline." />
+      </View>
+      <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
         <View style={{ gap: 3 }}>
-          <VadText variant="bodyStrong">AI artwork prompt</VadText>
-          <VadText variant="caption" tone="secondary">Leave the prompt empty to generate one from your campaign title and copy. The image stays text-free so the app can display the headline and tag clearly.</VadText>
+          <VadText variant="label" tone="brand">AI ARTWORK ASSISTANT</VadText>
+          <VadText variant="bodyStrong">Describe the visual direction</VadText>
+          <VadText variant="caption" tone="secondary">The suggested prompt uses your campaign title, copy and tag. Generate or edit the scene before creating artwork; the image stays text-free so the app renders its copy separately.</VadText>
         </View>
         <VadInput
           label="Custom visual direction (optional)"
@@ -364,12 +362,16 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
           disabled={uploading || working || title.trim().length < 3}
           onPress={() => void generateArtwork()}
         />
-      </View>
+      </VadCard>
 
-      <VadInput label="Target route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Internal VAD route opened when someone taps this banner, for example /markets." />
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadText variant="label" tone="brand">PLACEMENT & SCHEDULE</VadText>
+        <VadInput label="Target route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Internal VAD route opened when someone taps this banner, for example /markets." />
       <VadInput label="Sort order" value={sortOrder} onChangeText={(value) => setSortOrder(value.replace(/\D/g, ''))} keyboardType="number-pad" hint="Lower numbers appear earlier in the carousel." />
       <VadDateTimeField label="Starts at (optional)" value={startsAt} onChange={setStartsAt} clearable hint="Leave empty to start immediately when published." />
-      <VadDateTimeField label="Ends at (optional)" value={endsAt} onChange={setEndsAt} minDate={startsAt || undefined} clearable hint="Leave empty for no scheduled end. The end must be after the start." />
+        <VadDateTimeField label="Ends at (optional)" value={endsAt} onChange={setEndsAt} minDate={startsAt || undefined} clearable hint="Leave empty for no scheduled end. The end must be after the start." />
+        <VadText variant="caption" tone="tertiary">Times are saved as exact ISO timestamps in UTC, so campaign scheduling remains consistent across devices.</VadText>
+      </View>
 
       {error ? <VadErrorState title="Campaign not saved" message={error} /> : null}
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
