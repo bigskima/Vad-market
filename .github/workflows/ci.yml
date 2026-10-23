@@ -26,6 +26,8 @@ jobs:
           deno-version: v2.x
       - name: Type-check automatic Oracle and settlement resolution adapters
         run: deno check --no-lock supabase/functions/oracle-runtime/index.ts
+      - name: Type-check authenticated crypto AI draft endpoint
+        run: deno check --no-lock supabase/functions/crypto-market-draft/index.ts
       - name: Test Oracle resolver policy and financial symbol parsing
         run: deno test --no-lock supabase/functions/oracle-runtime/resolvers_test.ts
       - id: lint
