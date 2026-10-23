@@ -294,13 +294,8 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1, minHeight: 0 }}
-      keyboardShouldPersistTaps="handled"
-      nestedScrollEnabled
-      showsVerticalScrollIndicator
-      contentContainerStyle={{ flexGrow: 1, gap: theme.spacing.lg, paddingBottom: theme.spacing.lg, paddingHorizontal: 2 }}
-    >
+    <View style={{ gap: theme.spacing.lg, paddingBottom: theme.spacing.lg }}>
+
       <View style={{ gap: theme.spacing.xs }}>
         <VadText variant="label" tone="brand">CAMPAIGN FORMAT</VadText>
         <VadSegmentedControl value={kind} options={bannerKinds} onChange={setKind} />
@@ -379,7 +374,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
         <VadButton label="Publish" loading={working} disabled={uploading || generating} onPress={() => void save('PUBLISHED')} style={{ flex: 1 }} />
       </View>
       {promotion ? <VadButton label="Archive campaign" variant="ghost" disabled={working || uploading || generating} onPress={() => void save('ARCHIVED')} /> : null}
-    </ScrollView>
+    </View>
   );
 }
 

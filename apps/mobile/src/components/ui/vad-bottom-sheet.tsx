@@ -88,8 +88,9 @@ export function VadBottomSheet({
       }}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
+        // Keep Android form focus stable while the modal viewport resizes for the keyboard.
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1, minHeight: 0 }}
       >
         <View
           style={{
@@ -208,8 +209,9 @@ export function VadBottomSheet({
                 paddingTop: theme.spacing.md,
                 paddingBottom: theme.spacing.lg,
               }}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
+              keyboardShouldPersistTaps="always"
+              // A form must not lose focus when the sheet's viewport adjusts for the keyboard.
+              keyboardDismissMode="none"
               nestedScrollEnabled
               showsVerticalScrollIndicator
             >
