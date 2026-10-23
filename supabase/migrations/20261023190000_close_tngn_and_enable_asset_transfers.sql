@@ -76,6 +76,13 @@ drop trigger if exists market_catalog_sync_tngn_variant on public.market_catalog
 revoke all on function public.place_tngn_market_stake(uuid,text,numeric,text) from public,anon,authenticated;
 revoke all on function public.tngn_pool_quote(uuid,text,numeric) from public,anon,authenticated;
 revoke all on function public.admin_set_tngn_demo_mode(boolean) from public,anon,authenticated;
+revoke all on function public.set_my_demo_mode(boolean) from public,anon,authenticated;
+revoke all on function public.place_demo_order(text,text,numeric,text) from public,anon,authenticated;
+revoke all on function public.admin_create_demo_market(text,text,jsonb) from public,anon,authenticated;
+revoke all on function public.admin_resolve_demo_market(text,text) from public,anon,authenticated;
+
+-- Read-only demo history RPCs remain available for audit; no account can
+-- create new TNGN activity or create/resolve new synthetic demo markets.
 
 -- Peer asset transfers must move real, available ledger funds only. The request
 -- key makes client retries idempotent; the balanced finance journal is the
