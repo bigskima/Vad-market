@@ -13,21 +13,37 @@ set enabled=false,
 
 with normalized as (
   select p.user_id,
-         array_remove(p.enabled_asset_codes,'TNGN') as without_tngn,
+         p.enabled_asset_codes,
          p.preferred_asset_code,
-         case when upper(trim(coalesce(ua.country_code,''))) in ('NG','NGA','NIGERIA') then 'NG' else upper(trim(coalesce(ua.country_code,''))) end as country_code
+         case when upper(trim(coalesce(ua.country_code,''))) in ('NG','NGA','NIGERIA') then 'NG' else upper(trim(coalesce(ua.country_code,''))) end as country_code,
+         exists (
+           select 1 from public.assets a
+           join public.jurisdiction_assets ja on ja.asset_id=a.id and ja.status='ACTIVE'
+           join public.jurisdictions j on j.id=ja.jurisdiction_id and j.status='ACTIVE'
+           where a.code='NGN' and a.status='ACTIVE'
+             and upper(trim(j.country_code)) in ('NG','NGA','NIGERIA')
+         ) as ngn_available
   from public.user_currency_preferences p
   left join public.user_accounts ua on ua.user_id=p.user_id
+), eligible as (
+  select n.user_id,n.preferred_asset_code,n.country_code,n.ngn_available,
+         array(
+           select requested.code
+           from unnest(n.enabled_asset_codes) with ordinality as requested(code,ordinality)
+           where requested.code='USDC'
+              or (requested.code='NGN' and n.country_code='NG' and n.ngn_available)
+           order by requested.ordinality
+         ) as remaining_eligible
+  from normalized n
 ), replacements as (
   select user_id,
          case
-           when cardinality(without_tngn)>0 then without_tngn
-           when country_code='NG' then array['NGN']::text[]
+           when cardinality(remaining_eligible)>0 then remaining_eligible
+           when country_code='NG' and ngn_available then array['NGN']::text[]
            else array['USDC']::text[]
          end as enabled_asset_codes,
-         preferred_asset_code,
-         country_code
-  from normalized
+         preferred_asset_code
+  from eligible
 )
 update public.user_currency_preferences p
 set enabled_asset_codes=r.enabled_asset_codes,
@@ -189,6 +205,9 @@ begin
   -- USD Coin is available to supported VAD accounts. NGN transfers require
   -- both accounts to be Nigerian and NGN to be enabled for that jurisdiction.
   if v_asset_code='NGN' then
+    if not coalesce((select gate.allowed from public.can_access_ngn_services() gate limit 1),false) then
+      raise exception 'NGN transfers require current location verification in Nigeria.' using errcode='42501';
+    end if;
     if v_sender_country<>'NG' or v_recipient_country<>'NG' then
       raise exception 'NGN transfers are only available between eligible Nigerian VAD accounts.' using errcode='42501';
     end if;
