@@ -26,10 +26,13 @@ export function formatCountdown(targetMs: number | null, nowMs: number) {
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
 
-  if (days > 0) return `${days}d ${hours}h left`;
-  if (hours > 0) return `${hours}h ${minutes}m left`;
-  if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
-  return `${seconds}s left`;
+  // Keep countdowns glanceable at a glance: seconds matter only as the
+  // deadline gets close, while long windows should not look like a wall of digits.
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (totalSeconds >= 300) return `${minutes}m`;
+  if (totalSeconds >= 60) return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+  return `${totalSeconds}s`;
 }
 
 export function exactTime(value?: string | null) {
