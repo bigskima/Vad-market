@@ -241,7 +241,7 @@ export function AdminAiScreen() {
             const modelId = await upsertAdminAiProviderModel(input);
             setShowConfigure(false);
             const billingMode = String(input.costPolicy?.billing_mode ?? 'DISABLED_UNTIL_REVENUE');
-            setMessage(`AI model ${modelId} is configured with market admission, market drafting and user assistant capabilities (${billingMode}). Activate the provider through Provider status controls after its referenced Edge Function secret is available.`);
+            setMessage(`AI model ${modelId} is configured with spend policy ${billingMode}. Provider activation and individual capabilities remain separate controls.`);
             await load();
             await data.refresh();
           } catch (reason) {
@@ -335,6 +335,7 @@ function ConfigureAiSheet({
     modelCode: string;
     secretReference: string;
     priority: number;
+    costPolicy?: Record<string, unknown>;
     apiVersion?: string | null;
   }) => Promise<void>;
 }) {
