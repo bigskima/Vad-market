@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -46,14 +46,11 @@ export default function SendRoute() {
   const assets = useMemo<TransferAssetCode[]>(() => (['NGN', 'USDC'] as const)
     .filter((code) => currency.isCurrencyEligible(code)), [currency.isCurrencyEligible]);
 
-  useEffect(() => {
-    if (!assets.includes(assetCode) && assets[0]) setAssetCode(assets[0]);
-  }, [assets, assetCode]);
-
-  const selectedWallet = data.wallet.find((wallet) => wallet.asset_code === assetCode);
+  const activeAssetCode: TransferAssetCode = assets.includes(assetCode) ? assetCode : assets[0] ?? 'NGN';
+  const selectedWallet = data.wallet.find((wallet) => wallet.asset_code === activeAssetCode);
   const availableBalance = selectedWallet?.available ?? null;
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim());
-  const precision = assetCode === 'NGN' ? 2 : 6;
+  const precision = activeAssetCode === 'NGN' ? 2 : 6;
   const amountValid = new RegExp(`^\\d+(?:\\.\\d{1,${precision}})?$`).test(amount.trim())
     && Number.isFinite(Number(amount))
     && Number(amount) > 0;
@@ -86,7 +83,7 @@ export default function SendRoute() {
     try {
       const result = await transferAssetToEmail({
         recipientEmail: recipientEmail.trim(),
-        assetCode,
+        assetCode: activeAssetCode,
         amount: Number(amount),
         idempotencyKey,
       });
@@ -114,8 +111,8 @@ export default function SendRoute() {
                 <VadChip
                   key={asset}
                   label={asset === 'NGN' ? 'NGN · Nigerian Naira' : 'USDC · VAD ledger'}
-                  selected={assetCode === asset}
-                  tone={assetCode === asset ? 'brand' : 'neutral'}
+                  selected={activeAssetCode === asset}
+                  tone={activeAssetCode === asset ? 'brand' : 'neutral'}
                   onPress={() => changeForm(() => setAssetCode(asset))}
                 />
               ))}
@@ -148,12 +145,12 @@ export default function SendRoute() {
           />
 
           <VadInput
-            label={assetCode === 'NGN' ? 'Amount (NGN)' : 'Amount (USDC)'}
+            label={activeAssetCode === 'NGN' ? 'Amount (NGN)' : 'Amount (USDC)'}
             value={amount}
             onChangeText={(value) => changeForm(() => setAmount(value.replace(/[^0-9.]/g, '')))}
             keyboardType="decimal-pad"
             autoCapitalize="none"
-            placeholder={assetCode === 'NGN' ? 'e.g. 5000.00' : 'e.g. 12.500000'}
+            placeholder={activeAssetCode === 'NGN' ? 'e.g. 5000.00' : 'e.g. 12.500000'}
             hint={`Maximum precision: ${precision} decimal places. The server enforces the real available balance.`}
           />
 
