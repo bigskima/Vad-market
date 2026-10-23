@@ -181,8 +181,6 @@ as $function$
 declare
   v_sender_id uuid:=auth.uid();
   v_recipient_id uuid;
-  v_recipient_email text;
-  v_sender_email text;
   v_sender_country text;
   v_recipient_country text;
   v_sender_status text;
@@ -192,7 +190,6 @@ declare
   v_minor_units integer;
   v_amount numeric;
   v_sender_eligible text[];
-  v_sender_enabled text[];
   v_sender_policy record;
   v_source_account_id bigint;
   v_recipient_account_id bigint;
@@ -222,7 +219,7 @@ begin
     raise exception 'Enter an amount greater than zero.' using errcode='22023';
   end if;
 
-  select u.id,lower(u.email) into v_recipient_id,v_recipient_email
+  select u.id into v_recipient_id
   from auth.users u
   where lower(u.email)=v_email
   limit 1;
@@ -233,7 +230,6 @@ begin
     raise exception 'Choose another VAD account. You cannot transfer assets to yourself.' using errcode='22023';
   end if;
 
-  select u.email into v_sender_email from auth.users u where u.id=v_sender_id;
   select ua.status,case when upper(trim(coalesce(ua.country_code,''))) in ('NG','NGA','NIGERIA') then 'NG' else upper(trim(coalesce(ua.country_code,''))) end
     into v_sender_status,v_sender_country
   from public.user_accounts ua where ua.user_id=v_sender_id;
@@ -260,7 +256,6 @@ begin
 
   select * into v_sender_policy from public.get_my_currency_policy() limit 1;
   v_sender_eligible:=coalesce(v_sender_policy.eligible_asset_codes,array[]::text[]);
-  v_sender_enabled:=coalesce(v_sender_policy.enabled_asset_codes,array[]::text[]);
   if not (v_asset_code=any(v_sender_eligible)) then
     raise exception 'Your account is not eligible to hold %.',v_asset_code using errcode='42501';
   end if;
@@ -393,7 +388,7 @@ begin
 end;
 $function$;
 
-revoke all on function public.transfer_asset_to_email(text,text,numeric,uuid) from public,anon;
+revoke all on function public.transfer_asset_to_email(text,text,numeric,uuid) from public,anon,authenticated;
 grant execute on function public.transfer_asset_to_email(text,text,numeric,uuid) to authenticated;
 
 select pg_notify('pgrst','reload schema');
