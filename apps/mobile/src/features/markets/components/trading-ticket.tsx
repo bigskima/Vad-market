@@ -57,6 +57,10 @@ type TicketProps = {
 };
 
 export function TradingTicket(props: TicketProps) {
+  // TNGN is an isolated demo ledger, not a real-money order-book asset.
+  // Always route it through the synthetic stake/settlement pipeline, even if
+  // an older market instrument was created with ORDER_BOOK liquidity metadata.
+  if (props.market.asset_code === 'TNGN') return <PoolTradingTicket {...props} />;
   if (props.market.asset_code === 'USDC' && props.market.liquidity_mode !== 'POOL') {
     return <UnsupportedUsdcOrderBook />;
   }
