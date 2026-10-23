@@ -6,7 +6,7 @@ import { Alert } from 'react-native';
 import { supabase, supabaseConfiguration } from '@/lib/supabase';
 import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
-export type VADCurrency = 'NGN' | 'USDC' | 'TNGN';
+export type VADCurrency = 'NGN' | 'USDC';
 type CurrencyPolicy = {
   country_code: string;
   eligible_asset_codes: VADCurrency[];
