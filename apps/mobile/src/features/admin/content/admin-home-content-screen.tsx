@@ -306,7 +306,29 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
               <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>Generate or upload campaign artwork to preview it here.</VadText>
             </VadCard>
           )}
-          <VadButton label={imageUrl ? 'Replace uploaded image' : 'Upload image'} variant="secondary" size="small" loading={uploading} disabled={generating || working} onPress={() => void chooseImage()} />
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+            <VadButton
+              label={imageUrl ? 'Replace uploaded image' : 'Upload image'}
+              variant="secondary"
+              size="small"
+              fullWidth={false}
+              loading={uploading}
+              disabled={generating || working}
+              onPress={() => void chooseImage()}
+              style={{ flexGrow: 1 }}
+            />
+            {imageUrl ? (
+              <VadButton
+                label="Remove image"
+                variant="ghost"
+                size="small"
+                fullWidth={false}
+                disabled={uploading || generating || working}
+                onPress={() => { setImageUrl(''); setGeneratedAt(null); }}
+                style={{ flexGrow: 1 }}
+              />
+            ) : null}
+          </View>
           {generatedAt ? <VadText variant="caption" tone="secondary">AI artwork generated {new Date(generatedAt).toLocaleString()}. Review the preview before publishing.</VadText> : null}
         </View>
       ) : null}
