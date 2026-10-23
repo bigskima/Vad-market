@@ -53,7 +53,7 @@ export default function WalletRoute() {
       ) : (
         <View style={{ gap: theme.spacing.lg }}>
           {temporaryTestCredit?.active ? (
-            <VadCard variant="surface" style={{ gap: theme.spacing.sm, borderColor: theme.colors.warning }}>
+            <VadCard variant="surface" style={{ gap: theme.spacing.sm, borderColor: theme.colors.brandPrimary }}>
               <View style={{ gap: 4 }}>
                 <VadText variant="label" tone="brand">TEMPORARY NGN MARKET-TEST CREDIT</VadText>
                 <VadText variant="title">₦{Number(temporaryTestCredit.amount ?? 0).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</VadText>
