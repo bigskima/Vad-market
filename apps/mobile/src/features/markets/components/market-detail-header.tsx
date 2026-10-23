@@ -20,14 +20,17 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const [imageRatioState, setImageRatioState] = useState<{ url: string; ratio: number } | null>(null);
   const [titleState, setTitleState] = useState({ instrumentId: market.instrument_public_id, expanded: false });
   const [watchlistUserId, setWatchlistUserId] = useState<string | null>(null);
-  const [watchlistSaved, setWatchlistSaved] = useState(false);
+  const [watchlistState, setWatchlistState] = useState<{
+    instrumentId: string;
+    saved: boolean;
+    message: string | null;
+  } | null>(null);
   const [watchlistBusy, setWatchlistBusy] = useState(false);
-  const [watchlistMessage, setWatchlistMessage] = useState<string | null>(null);
+  const watchlistSaved = watchlistState?.instrumentId === market.instrument_public_id && watchlistState.saved;
+  const watchlistMessage = watchlistState?.instrumentId === market.instrument_public_id ? watchlistState.message : null;
 
   useEffect(() => {
     let active = true;
-    setWatchlistSaved(false);
-    setWatchlistMessage(null);
     void (async () => {
       try {
         const { data, error } = await supabase.auth.getUser();
@@ -39,9 +42,17 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         const rows = await listUserMarketWatchlist();
         if (!active) return;
         setWatchlistUserId(data.user.id);
-        setWatchlistSaved(rows.some((row) => row.instrument_public_id === market.instrument_public_id));
+        setWatchlistState({
+          instrumentId: market.instrument_public_id,
+          saved: rows.some((row) => row.instrument_public_id === market.instrument_public_id),
+          message: null,
+        });
       } catch {
-        if (active) setWatchlistMessage('Watchlist status could not be loaded. You can still try saving this market.');
+        if (active) setWatchlistState({
+          instrumentId: market.instrument_public_id,
+          saved: false,
+          message: 'Watchlist status could not be loaded. You can still try saving this market.',
+        });
       }
     })();
     return () => { active = false; };
@@ -50,18 +61,28 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const toggleWatchlist = async () => {
     if (watchlistBusy) return;
     if (!watchlistUserId) {
-      setWatchlistMessage('Sign in to save markets to your watchlist.');
+      setWatchlistState({
+        instrumentId: market.instrument_public_id,
+        saved: false,
+        message: 'Sign in to save markets to your watchlist.',
+      });
       return;
     }
     setWatchlistBusy(true);
-    setWatchlistMessage(null);
     try {
       if (watchlistSaved) await removeMarketFromWatchlist(watchlistUserId, market.instrument_public_id);
       else await saveMarketToWatchlist(watchlistUserId, market.instrument_public_id);
-      setWatchlistSaved(!watchlistSaved);
-      setWatchlistMessage(watchlistSaved ? 'Removed from your watchlist.' : 'Added to your watchlist.');
+      setWatchlistState({
+        instrumentId: market.instrument_public_id,
+        saved: !watchlistSaved,
+        message: watchlistSaved ? 'Removed from your watchlist.' : 'Added to your watchlist.',
+      });
     } catch (reason) {
-      setWatchlistMessage(reason instanceof Error ? reason.message : 'This market could not be saved to your watchlist.');
+      setWatchlistState({
+        instrumentId: market.instrument_public_id,
+        saved: watchlistSaved,
+        message: reason instanceof Error ? reason.message : 'This market could not be saved to your watchlist.',
+      });
     } finally {
       setWatchlistBusy(false);
     }
