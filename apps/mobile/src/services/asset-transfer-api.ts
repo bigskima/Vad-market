@@ -1,6 +1,7 @@
 import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
+import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 export type TransferAssetCode = 'NGN' | 'USDC';
 
@@ -38,10 +39,26 @@ export async function transferAssetToEmail(input: {
     p_idempotency_key: input.idempotencyKey,
   });
   if (error) {
+    const raw = String(error.message ?? '').toLowerCase();
+    if (raw.includes('no vad account exists for that email')) {
+      throw new Error('No VAD account exists for that email address. No funds were moved.');
+    }
+    if (raw.includes('insufficient available') || raw.includes('insufficient balance')) {
+      throw new Error(`Your available ${input.assetCode} balance is not enough. No funds were moved.`);
+    }
+    if (raw.includes('location verification')) {
+      throw new Error('NGN transfers require current location verification in Nigeria. Enable location permission and try again.');
+    }
+    if (raw.includes('recipient account is registered') || raw.includes('recipient account is not active')) {
+      throw new Error('The recipient VAD account is not active for transfers. No funds were moved.');
+    }
+    if (raw.includes('frozen or closed')) {
+      throw new Error('One of the wallets is frozen or closed. No funds were moved.');
+    }
     throw userFacingError(
       error,
       'portfolio',
-      'The transfer could not be completed. Check the recipient email and available balance, then try again.',
+      'The transfer could not be completed. Check the recipient email, asset eligibility and available balance, then try again.',
     );
   }
   if (!data || typeof data !== 'object' || typeof data.transferId !== 'string'
