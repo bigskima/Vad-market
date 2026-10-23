@@ -34,6 +34,7 @@ export function WalletScreen({
   onRetryActivity,
   onNotifications,
   activeAssetCodes,
+  temporaryNgnCreditActive = false,
 }: {
   wallets: WalletRow[];
   walletActivity: WalletActivityRow[];
@@ -46,6 +47,7 @@ export function WalletScreen({
   onRetryActivity: () => void;
   onNotifications: () => void;
   activeAssetCodes: string[];
+  temporaryNgnCreditActive?: boolean;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -263,8 +265,22 @@ export function WalletScreen({
 
       <TourTarget id="wallet-actions">
         <View style={{ flexDirection: 'row', gap: density.phone ? 6 : theme.spacing.sm }}>
-          <WalletAction label="Deposit" detail="Add funds" icon="plus" tone="yes" onPress={onDeposit} disabled={!hasNgn} />
-          <WalletAction label="Withdraw" detail="Send to bank" icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn} />
+          <WalletAction
+            label="Deposit"
+            detail={temporaryNgnCreditActive ? 'Locked during test credit' : 'Add funds'}
+            icon="plus"
+            tone="yes"
+            onPress={onDeposit}
+            disabled={!hasNgn || temporaryNgnCreditActive}
+          />
+          <WalletAction
+            label="Withdraw"
+            detail={temporaryNgnCreditActive ? 'Locked during test credit' : 'Send to bank'}
+            icon="arrowUp"
+            tone="brand"
+            onPress={onWithdraw}
+            disabled={!hasNgn || temporaryNgnCreditActive}
+          />
           <WalletAction label="Transfer" detail="To another user" icon="transfer" tone="purple" onPress={onTransfer} />
           <WalletAction label="History" detail="View transactions" icon="fileText" tone="primary" onPress={onActivity} />
         </View>
