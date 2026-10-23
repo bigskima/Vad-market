@@ -77,8 +77,20 @@ update public.market_catalog
 set status='CLOSED',updated_at=statement_timestamp()
 where asset_code='TNGN' and status not in ('CLOSED','SETTLED');
 
--- Retain the initial-grant ledger trigger as an audit control, but prohibit any
--- new demo account after the global switch has been disabled.
+-- Close existing practice markets and cancel outstanding synthetic orders.
+-- This changes only sandbox status fields: it does not mint TNGN, post payouts,
+-- alter real ledgers, or convert any test balance to NGN.
+update public.demo_markets
+set status='CLOSED'
+where status='OPEN';
+
+update public.demo_orders
+set status='CANCELLED'
+where status='OPEN';
+
+-- Retain the initial-grant ledger trigger as an audit control. Because the TNGN
+-- asset itself is disabled below and the global flag is off, no new sandbox
+-- accounts, balances, orders, markets, or demo-ledger entries can be created.
 create or replace function private.guard_tngn_demo_account_creation()
 returns trigger
 language plpgsql
@@ -89,8 +101,16 @@ begin
   if not coalesce((
     select f.enabled from public.platform_feature_flags f
     where f.flag_key='TNGN_DEMO_MODE'
-  ),false) then
-    raise exception 'TNGN demo account creation is permanently disabled.' using errcode='42501';
+  ),false)
+  or exists (
+    select 1 from public.assets a
+    where a.code='TNGN' and a.status<>'ACTIVE'
+  ) then
+    if tg_op='INSERT' then
+      raise exception 'TNGN demo accounts are retired.' using errcode='42501';
+    elsif new.available_balance is distinct from old.available_balance then
+      raise exception 'TNGN demo balances are frozen after retirement.' using errcode='42501';
+    end if;
   end if;
   return new;
 end;
@@ -98,15 +118,96 @@ $function$;
 
 drop trigger if exists prevent_retired_tngn_demo_account_creation on public.demo_accounts;
 create trigger prevent_retired_tngn_demo_account_creation
-before insert on public.demo_accounts
+before insert or update of available_balance on public.demo_accounts
 for each row execute function private.guard_tngn_demo_account_creation();
 
 -- No further synthetic settlement events may credit old test accounts. Keep all
--- already-posted historical settlements and ledger rows for audit.
+-- existing demo account balances, grant records and prior settlements for audit.
 drop trigger if exists market_catalog_settle_tngn_orders on public.market_catalog;
 
--- Guard the materialized public market catalogue against TNGN reintroduction,
--- including attempts from privileged market-publishing code.
+-- Prevent any future insertion or reopening of a practice market after retirement.
+create or replace function private.guard_tngn_demo_market_retirement()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $function$
+begin
+  if not coalesce((
+    select f.enabled from public.platform_feature_flags f
+    where f.flag_key='TNGN_DEMO_MODE'
+  ),false)
+  or exists (
+    select 1 from public.assets a
+    where a.code='TNGN' and a.status<>'ACTIVE'
+  ) then
+    raise exception 'TNGN demo markets are retired.' using errcode='42501';
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists prevent_retired_tngn_demo_market_write on public.demo_markets;
+create trigger prevent_retired_tngn_demo_market_write
+before insert or update of status on public.demo_markets
+for each row execute function private.guard_tngn_demo_market_retirement();
+
+-- Prevent new synthetic orders or demo-ledger entries, including privileged
+-- publishing/trading code that bypasses application-level currency settings.
+create or replace function private.guard_tngn_demo_order_retirement()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $function$
+begin
+  if not coalesce((
+    select f.enabled from public.platform_feature_flags f
+    where f.flag_key='TNGN_DEMO_MODE'
+  ),false)
+  or exists (
+    select 1 from public.assets a
+    where a.code='TNGN' and a.status<>'ACTIVE'
+  ) then
+    raise exception 'TNGN demo orders are retired.' using errcode='42501';
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists prevent_retired_tngn_demo_order_write on public.demo_orders;
+create trigger prevent_retired_tngn_demo_order_write
+before insert or update of status on public.demo_orders
+for each row execute function private.guard_tngn_demo_order_retirement();
+
+create or replace function private.guard_tngn_demo_ledger_retirement()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $function$
+begin
+  if not coalesce((
+    select f.enabled from public.platform_feature_flags f
+    where f.flag_key='TNGN_DEMO_MODE'
+  ),false)
+  or exists (
+    select 1 from public.assets a
+    where a.code='TNGN' and a.status<>'ACTIVE'
+  ) then
+    raise exception 'TNGN demo-ledger writes are retired.' using errcode='42501';
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists prevent_retired_tngn_demo_ledger_write on public.demo_ledger_entries;
+create trigger prevent_retired_tngn_demo_ledger_write
+before insert on public.demo_ledger_entries
+for each row execute function private.guard_tngn_demo_ledger_retirement();
+
+-- Guard the public market catalogue as well, including writes from privileged
+-- market-publishing code.
 create or replace function private.guard_tngn_market_catalog_retirement()
 returns trigger
 language plpgsql
@@ -114,10 +215,16 @@ security definer
 set search_path=''
 as $function$
 begin
-  if new.asset_code='TNGN' and not coalesce((
-    select f.enabled from public.platform_feature_flags f
-    where f.flag_key='TNGN_DEMO_MODE'
-  ),false) then
+  if new.asset_code='TNGN' and (
+    not coalesce((
+      select f.enabled from public.platform_feature_flags f
+      where f.flag_key='TNGN_DEMO_MODE'
+    ),false)
+    or exists (
+      select 1 from public.assets a
+      where a.code='TNGN' and a.status<>'ACTIVE'
+    )
+  ) then
     raise exception 'TNGN markets have been retired; publish markets using a supported real asset.' using errcode='42501';
   end if;
   return new;
