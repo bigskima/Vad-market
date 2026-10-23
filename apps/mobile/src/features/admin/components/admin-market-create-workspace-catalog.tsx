@@ -89,6 +89,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [sportsTaxonomy, setSportsTaxonomy] = useState<SportsMarketTaxonomy>({ sports: [], competitions: [] });
   const [cryptoSearch, setCryptoSearch] = useState('');
   const [cryptoOptions, setCryptoOptions] = useState<CryptoMarketQuote[]>([]);
+  const [cryptoOptionsLoading, setCryptoOptionsLoading] = useState(false);
   const [selectedCryptoAsset, setSelectedCryptoAsset] = useState<CryptoMarketQuote | null>(null);
   const [cryptoAssetCheck, setCryptoAssetCheck] = useState<CryptoOracleAssetCheck | null>(null);
   const [cryptoAssetCheckLoading, setCryptoAssetCheckLoading] = useState(false);
@@ -160,14 +161,26 @@ export function AdminMarketCreateWorkspaceCatalog() {
   }, []);
 
   useEffect(() => {
-    if (!(creationStyle === 'GUIDED' && marketTypeCode === 'CRYPTO_PRICE_THRESHOLD') || cryptoSearch.trim().length < 2) {
-      return;
+    if (!(creationStyle === 'GUIDED' && marketTypeCode === 'CRYPTO_PRICE_THRESHOLD')) {
+      const timer = setTimeout(() => setCryptoOptionsLoading(false), 0);
+      return () => clearTimeout(timer);
+    }
+    const query = cryptoSearch.trim();
+    if (query.length === 1) {
+      const timer = setTimeout(() => setCryptoOptionsLoading(false), 0);
+      return () => clearTimeout(timer);
     }
     let active = true;
     const timer = setTimeout(() => {
-      void getCryptoMarketPrices({ page: 1, perPage: 8, query: cryptoSearch.trim() })
-        .then((result) => { if (active) setCryptoOptions(result.coins.slice(0, 8)); })
-        .catch(() => { if (active) setCryptoOptions([]); });
+      setCryptoOptionsLoading(true);
+      void getCryptoMarketPrices({
+        page: 1,
+        perPage: query ? 20 : 16,
+        ...(query ? { query } : {}),
+      })
+        .then((result) => { if (active) setCryptoOptions(result.coins.slice(0, 20)); })
+        .catch(() => { if (active) setCryptoOptions([]); })
+        .finally(() => { if (active) setCryptoOptionsLoading(false); });
     }, 250);
     return () => { active = false; clearTimeout(timer); };
   }, [cryptoSearch, creationStyle, marketTypeCode]);
@@ -870,7 +883,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
                       <VadInput label="Search coin name or ticker" value={cryptoSearch} onChangeText={(value) => { setCryptoSearch(value); setCryptoOptions([]); setSelectedCryptoAsset(null); setCryptoAssetCheck(null); setCryptoAssetCheckLoading(false); cryptoAssetCheckRequest.current += 1; }} placeholder="Solana, SOL, Cardano, ADA…" />
                       {cryptoOptions.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
                         {cryptoOptions.map((coin) => <VadChip key={coin.id} label={`${coin.name} (${coin.symbol.toUpperCase()})`} selected={selectedCryptoAsset?.id === coin.id} tone={selectedCryptoAsset?.id === coin.id ? 'brand' : 'neutral'} onPress={() => void chooseCryptoAsset(coin)} />)}
-                      </View> : cryptoSearch.trim().length >= 2 ? <VadText variant="caption" tone="secondary">No matching assets returned yet. Try a different name or ticker.</VadText> : null}
+                      </View> : cryptoOptionsLoading ? <VadText variant="caption" tone="secondary">Loading assets from the live catalogue…</VadText> : cryptoSearch.trim().length >= 2 ? <VadText variant="caption" tone="secondary">No matching assets returned. Try another name or ticker.</VadText> : cryptoSearch.trim().length === 1 ? <VadText variant="caption" tone="secondary">Enter at least two characters to search, or clear the field to browse popular assets.</VadText> : <VadText variant="caption" tone="secondary">The public asset catalogue returned no results. Search by asset name or ticker.</VadText>}
+                      {cryptoOptionsLoading && cryptoOptions.length ? <VadText variant="caption" tone="secondary">Refreshing catalogue…</VadText> : null}
                       {selectedCryptoAsset ? <VadCard variant="muted" style={{ gap: 4 }}>
                         <VadText variant="bodyStrong">{selectedCryptoAsset.name} ({selectedCryptoAsset.symbol.toUpperCase()})</VadText>
                         <VadText variant="caption" tone="secondary">CoinGecko ID: {selectedCryptoAsset.id} · Public spot: {selectedCryptoAsset.currentPrice.toLocaleString(undefined, { maximumFractionDigits: 8 })} USD</VadText>
