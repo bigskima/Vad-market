@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -43,8 +43,8 @@ export default function SendRoute() {
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<(AssetTransferReceipt & { requestKey: string }) | null>(null);
 
-  const assets = useMemo<TransferAssetCode[]>(() => (['NGN', 'USDC'] as const)
-    .filter((code) => currency.isCurrencyEligible(code)), [currency.isCurrencyEligible]);
+  const assets: TransferAssetCode[] = (['NGN', 'USDC'] as const)
+    .filter((code) => currency.isCurrencyEligible(code));
 
   const activeAssetCode: TransferAssetCode = assets.includes(assetCode) ? assetCode : assets[0] ?? 'NGN';
   const selectedWallet = data.wallet.find((wallet) => wallet.asset_code === activeAssetCode);
