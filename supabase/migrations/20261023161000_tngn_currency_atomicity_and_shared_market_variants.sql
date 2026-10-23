@@ -116,7 +116,7 @@ grant execute on function public.set_my_currency_preferences(text[],text) to aut
 insert into public.user_demo_preferences(user_id,tngn_demo_enabled,updated_at)
 select
   preference.user_id,
-  ('TNGN'=any(preference.enabled_asset_codes)) and coalesce(flag.enabled,false),
+  coalesce('TNGN'=any(preference.enabled_asset_codes),false) and coalesce(flag.enabled,false),
   statement_timestamp()
 from public.user_currency_preferences preference
 left join public.platform_feature_flags flag on flag.flag_key='TNGN_DEMO_MODE'
