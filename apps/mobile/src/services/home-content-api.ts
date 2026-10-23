@@ -252,24 +252,37 @@ export async function upsertAdminHomePromotion(input: {
   return String(data);
 }
 
+const MAX_PROMOTION_TITLE_LENGTH = 120;
+const MAX_PROMOTION_COPY_LENGTH = 320;
+const MAX_PROMOTION_VISUAL_DIRECTION_LENGTH = 1200;
+
 export async function generateHomePromotionImage(input: {
   title: string;
   body?: string | null;
   visualDirection?: string | null;
 }): Promise<{ imageUrl: string; generatedAt: string; model?: string }> {
   const title = input.title.trim();
+  const body = input.body?.trim() ?? '';
+  const visualDirection = input.visualDirection?.trim() ?? '';
+
   if (title.length < 3) {
     throw new Error('Add a campaign title before generating its artwork.');
   }
-  if (title.length > 120 || (input.body?.length ?? 0) > 320 || (input.visualDirection?.length ?? 0) > 160) {
-    throw new Error('Campaign artwork instructions are too long. Shorten the title, copy, or visual direction.');
+  if (title.length > MAX_PROMOTION_TITLE_LENGTH) {
+    throw new Error(`Campaign title must be ${MAX_PROMOTION_TITLE_LENGTH} characters or fewer.`);
+  }
+  if (body.length > MAX_PROMOTION_COPY_LENGTH) {
+    throw new Error(`Supporting copy must be ${MAX_PROMOTION_COPY_LENGTH} characters or fewer.`);
+  }
+  if (visualDirection.length > MAX_PROMOTION_VISUAL_DIRECTION_LENGTH) {
+    throw new Error(`Visual direction must be ${MAX_PROMOTION_VISUAL_DIRECTION_LENGTH} characters or fewer.`);
   }
 
   const { data, error } = await supabase.functions.invoke('home-promotion-image-runtime', {
     body: {
       title,
-      body: input.body?.trim() || '',
-      visualDirection: input.visualDirection?.trim() || '',
+      body,
+      visualDirection,
     },
   });
   if (error) throw userFacingError(error, 'admin', 'AI campaign artwork could not be generated. Check AI provider configuration and try again.');
