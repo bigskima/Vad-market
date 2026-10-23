@@ -551,6 +551,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     if (!marketType) return setError('Choose the kind of event you are creating.');
 
     if (cryptoThreshold) {
+      if (cryptoDraftLoading) return setError('Wait for the AI draft to finish before continuing to trading setup.');
       const selectedAsset = selectedCryptoAsset;
       if (!selectedAsset) return setError('Search for and select a crypto asset from the live CoinGecko catalogue.');
       if (cryptoAssetCheckLoading) return setError('The asset source check is still running. Please wait for it to finish.');
@@ -910,9 +911,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
                         ) : null}
                       </VadCard> : null}
                       <FieldGroup label="Price condition">
-                        {([['GT', 'Above'], ['GTE', 'At or above'], ['LT', 'Below'], ['LTE', 'At or below']] as const).map(([value, label]) => <VadChip key={value} label={label} selected={(details.operator ?? 'GTE') === value} tone={(details.operator ?? 'GTE') === value ? 'brand' : 'neutral'} onPress={() => setDetail('operator', value)} />)}
+                        {([['GT', 'Above'], ['GTE', 'At or above'], ['LT', 'Below'], ['LTE', 'At or below']] as const).map(([value, label]) => <VadChip key={value} label={label} selected={(details.operator ?? 'GTE') === value} tone={(details.operator ?? 'GTE') === value ? 'brand' : 'neutral'} onPress={() => { setDetail('operator', value); setCryptoDraftNotice(null); }} />)}
                       </FieldGroup>
-                      <VadInput label="USD price target" value={details.threshold ?? ''} onChangeText={(value) => setDetail('threshold', value.replace(/[^0-9.]/g, ''))} placeholder="e.g. 250" />
+                      <VadInput label="USD price target" value={details.threshold ?? ''} onChangeText={(value) => { setDetail('threshold', value.replace(/[^0-9.]/g, '')); setCryptoDraftNotice(null); }} placeholder="e.g. 250" />
                       <VadText variant="caption" tone="secondary">The observation time is the “Check result after” time in the next step. Oracle resolution uses historical observations at that time—not the current live chart.</VadText>
                       {renderCryptoDraftControls()}
                     </View>
