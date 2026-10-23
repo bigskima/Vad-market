@@ -93,7 +93,7 @@ begin
       v_after,
       'Requested VAD Nigeria trading activation; existing location and account eligibility checks remain required.',
       jsonb_build_object(
-        'migration', '20261023010200_enable_ng_trade_capability',
+        'migration', '20261023051641_enable_ng_trade_capability',
         'capability_key', 'trade',
         'country_code', 'NG',
         'preserved_guards', jsonb_build_array(
