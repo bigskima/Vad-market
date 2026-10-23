@@ -552,6 +552,23 @@ export function AdminProvidersScreen() {
             <VadText variant="caption" tone="secondary">
               Crypto threshold settlement requires exactly two providers: Coinbase as PRIMARY and Kraken as CORROBORATING, with distinct-provider agreement from both.
             </VadText>
+            <VadText variant="caption" tone="secondary">
+              This list shows only policy versions eligible for the current Coinbase/Kraken settlement runtime. Older drafts using CoinGecko or Pyth are obsolete and cannot be approved.
+            </VadText>
+            {oraclePolicies.some((policy) => policy.name === 'VAD Crypto Threshold Launch Policy'
+              && policy.status === 'ACTIVE' && Boolean(policy.approved_by)
+              && isCoinbaseKrakenThresholdPolicy(policy)) ? (
+              <VadText variant="caption" tone="secondary">
+                Production already has an approved, active Coinbase/Kraken policy. You do not need to approve an older production draft.
+              </VadText>
+            ) : null}
+            {oraclePolicies.some((policy) => policy.name === 'VAD Sandbox Crypto Threshold Policy'
+              && policy.status === 'ACTIVE' && Boolean(policy.approved_by)
+              && isCoinbaseKrakenThresholdPolicy(policy)) ? (
+              <VadText variant="caption" tone="secondary">
+                TNGN sandbox already has an approved, active Coinbase/Kraken policy. You do not need to approve an older sandbox draft.
+              </VadText>
+            ) : null}
           </VadCard>
           {policyError ? <VadErrorState title="Oracle policy review failed" message={policyError} /> : null}
           {policyMessage ? (
@@ -564,10 +581,10 @@ export function AdminProvidersScreen() {
             <VadSkeleton height={96} radius={theme.radius.lg} />
           ) : (
             oraclePolicies
-              .filter((policy) => policy.name.toLowerCase().includes('crypto threshold')
-                || policy.source_hierarchy.some((item) =>
-                  typeof item !== 'string'
-                    && ['COINBASE', 'KRAKEN'].includes(String(item.provider_code ?? '').toUpperCase())))
+              .filter((policy) =>
+                ['VAD Crypto Threshold Launch Policy', 'VAD Sandbox Crypto Threshold Policy'].includes(policy.name)
+                && ['ACTIVE', 'DRAFT'].includes(policy.status)
+                && isCoinbaseKrakenThresholdPolicy(policy))
               .map((policy) => {
                 const sources = policy.source_hierarchy.map((item) => typeof item === 'string'
                   ? item
@@ -603,10 +620,11 @@ export function AdminProvidersScreen() {
                 );
               })
           )}
-          {!policyLoading && !oraclePolicies.some((policy) => policy.name.toLowerCase().includes('crypto threshold')
-            || policy.source_hierarchy.some((item) => typeof item !== 'string'
-              && ['COINBASE', 'KRAKEN'].includes(String(item.provider_code ?? '').toUpperCase()))) ? (
-            <EmptyText>No crypto threshold Oracle policies were returned.</EmptyText>
+          {!policyLoading && !oraclePolicies.some((policy) =>
+            ['VAD Crypto Threshold Launch Policy', 'VAD Sandbox Crypto Threshold Policy'].includes(policy.name)
+            && ['ACTIVE', 'DRAFT'].includes(policy.status)
+            && isCoinbaseKrakenThresholdPolicy(policy)) ? (
+            <EmptyText>No eligible Coinbase/Kraken threshold policy was returned. Check Oracle provider health and policy migrations before creating an automatic crypto market.</EmptyText>
           ) : null}
         </View>
       )}
