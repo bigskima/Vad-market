@@ -285,9 +285,18 @@ export async function generateHomePromotionImage(input: {
       visualDirection,
     },
   });
-  if (error) throw userFacingError(error, 'admin', 'AI campaign artwork could not be generated. Check AI provider configuration and try again.');
+  if (error) {
+    // Supabase wraps non-2xx Edge Function responses. Prefer the function's
+    // actionable Cloudflare configuration message over the generic SDK error.
+    const context = (error as unknown as { context?: unknown }).context;
+    if (context && typeof context === 'object' && typeof (context as { clone?: unknown }).clone === 'function') {
+      const payload = await (context as Response).clone().json().catch(() => null) as { error?: unknown } | null;
+      if (typeof payload?.error === 'string' && payload.error.trim()) throw new Error(payload.error);
+    }
+    throw userFacingError(error, 'admin', 'Cloudflare Workers AI campaign artwork failed. Check the Cloudflare API token in Supabase Edge Function secrets and retry.');
+  }
   if (!data || typeof data.imageUrl !== 'string' || !data.imageUrl.startsWith('https://')) {
-    throw new Error(typeof data?.error === 'string' ? data.error : 'AI image generation returned no usable image.');
+    throw new Error(typeof data?.error === 'string' ? data.error : 'Cloudflare Workers AI returned no usable image.');
   }
   return {
     imageUrl: data.imageUrl,
