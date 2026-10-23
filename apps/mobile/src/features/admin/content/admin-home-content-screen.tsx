@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, View } from 'react-native';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 
 import { VadBottomSheet } from '@/components/ui/vad-bottom-sheet';
 import { VadButton } from '@/components/ui/vad-button';
@@ -294,7 +294,13 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
   }
 
   return (
-    <View style={{ gap: theme.spacing.md, paddingBottom: theme.spacing.md }}>
+    <ScrollView
+      style={{ flex: 1, minHeight: 0 }}
+      keyboardShouldPersistTaps="handled"
+      nestedScrollEnabled
+      showsVerticalScrollIndicator
+      contentContainerStyle={{ flexGrow: 1, gap: theme.spacing.lg, paddingBottom: theme.spacing.lg, paddingHorizontal: 2 }}
+    >
       <VadSegmentedControl value={kind} options={bannerKinds} onChange={setKind} />
 
       {kind === 'IMAGE' ? (
@@ -371,7 +377,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
         <VadButton label="Publish" loading={working} disabled={uploading || generating} onPress={() => void save('PUBLISHED')} style={{ flex: 1 }} />
       </View>
       {promotion ? <VadButton label="Archive campaign" variant="ghost" disabled={working || uploading || generating} onPress={() => void save('ARCHIVED')} /> : null}
-    </View>
+    </ScrollView>
   );
 }
 
