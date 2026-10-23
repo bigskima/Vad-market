@@ -366,7 +366,7 @@ export function HomeScreen({
           ) : (
             <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 7 }}>
               <VadText variant="bodyStrong">Your watchlist is empty</VadText>
-              <VadText variant="caption" tone="secondary">Save markets to keep their latest prices and trends close by.</VadText>
+              <VadText variant="caption" tone="secondary">Tap the bookmark on any market card or its detail page to save it here, along with its latest prices and trends.</VadText>
               <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                 <VadText variant="caption" tone="brand">Browse markets</VadText>
               </Pressable>
