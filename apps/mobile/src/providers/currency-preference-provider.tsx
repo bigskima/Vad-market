@@ -205,24 +205,32 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
   const setPreferredCurrency = useCallback((currency: VADCurrency) => {
     if (!eligibleCurrencies.includes(currency) || !enabledCurrencies.includes(currency)) return;
     void (async () => {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError || !authData.user) {
-        Alert.alert('Sign in required', 'Sign in to save your preferred display currency.');
-        return;
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData.user) {
+          Alert.alert('Sign in required', 'Sign in to save your preferred display currency.');
+          return;
+        }
+        const { data, error } = await supabase.rpc('set_my_currency_preferences', {
+          p_enabled_asset_codes: enabledCurrencies,
+          p_preferred_asset_code: currency,
+        });
+        if (error) throw error;
+        const response = data as { preferred_asset_code?: unknown } | null;
+        const saved = asCurrencies([response?.preferred_asset_code])[0];
+        if (!saved || !enabledCurrencies.includes(saved)) {
+          throw new Error('The server did not confirm your preferred display currency.');
+        }
+        setPreferredCurrencyState(saved);
+      } catch (reason) {
+        Alert.alert(
+          'Could not save currency preference',
+          reason instanceof Error ? reason.message : 'Your display currency was not saved. Please try again.',
+        );
+        await refresh();
       }
-      const { error } = await supabase.from('user_currency_preferences').upsert({
-        user_id: authData.user.id,
-        enabled_asset_codes: enabledCurrencies,
-        preferred_asset_code: currency,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-      if (error) {
-        Alert.alert('Could not save currency preference', 'Your display currency was not saved. Please try again.');
-        return;
-      }
-      setPreferredCurrencyState(currency);
     })();
-  }, [eligibleCurrencies, enabledCurrencies]);
+  }, [eligibleCurrencies, enabledCurrencies, refresh]);
 
   const isCurrencyEligible = useCallback((currency: VADCurrency) => eligibleCurrencies.includes(currency), [eligibleCurrencies]);
   const isCurrencyEnabled = useCallback((currency: VADCurrency) => eligibleCurrencies.includes(currency) && enabledCurrencies.includes(currency), [eligibleCurrencies, enabledCurrencies]);
