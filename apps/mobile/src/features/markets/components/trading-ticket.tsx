@@ -57,15 +57,27 @@ type TicketProps = {
 };
 
 export function TradingTicket(props: TicketProps) {
-  // TNGN is an isolated demo ledger, not a real-money order-book asset.
-  // Always route it through the synthetic stake/settlement pipeline, even if
-  // an older market instrument was created with ORDER_BOOK liquidity metadata.
-  if (props.market.asset_code === 'TNGN') return <PoolTradingTicket {...props} />;
+  // Hard stop in the client as well as the database: historic TNGN markets
+  // remain viewable, but can never open a new ticket or submit a stake.
+  if (props.market.asset_code === 'TNGN') return <RetiredTngnTicket />;
+
   if (props.market.asset_code === 'USDC' && props.market.liquidity_mode !== 'POOL') {
     return <UnsupportedUsdcOrderBook />;
   }
   if (props.market.liquidity_mode === 'POOL') return <PoolTradingTicket {...props} />;
   return <OrderBookTradingTicket {...props} />;
+}
+
+function RetiredTngnTicket() {
+  const theme = useVadTheme();
+  return (
+    <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
+      <VadText variant="bodyStrong">Test NGN markets are permanently closed</VadText>
+      <VadText variant="caption" tone="secondary">
+        This is a historical sandbox market. It cannot accept new predictions or affect your real NGN wallet. Use a currently open real-NGN market instead.
+      </VadText>
+    </VadCard>
+  );
 }
 
 function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = false, onPlaced, initialOutcome }: TicketProps) {
