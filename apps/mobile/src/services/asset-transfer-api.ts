@@ -1,7 +1,6 @@
 import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
-import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 export type TransferAssetCode = 'NGN' | 'USDC';
 
