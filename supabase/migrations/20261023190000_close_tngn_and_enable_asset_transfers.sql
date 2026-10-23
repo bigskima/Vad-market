@@ -70,7 +70,11 @@ set status='DISABLED',
     updated_at=statement_timestamp()
 where code='TNGN' and status<>'DISABLED';
 
-drop trigger if exists market_catalog_sync_tngn_variant on public.market_catalog;
+-- Stop both automatic creation of fresh synthetic TNGN grant entries and any
+-- future settlement of abandoned sandbox orders. Preserve the existing demo
+-- records and balances unchanged for audit; none are converted into NGN.
+drop trigger if exists demo_accounts_record_initial_grant on public.demo_accounts;
+drop trigger if exists market_catalog_settle_tngn_orders on public.market_catalog;
 
 revoke all on function public.place_tngn_market_stake(uuid,text,numeric,text) from public,anon,authenticated;
 revoke all on function public.tngn_pool_quote(uuid,text,numeric) from public,anon,authenticated;
