@@ -8,8 +8,7 @@ values('TNGN_DEMO_MODE',false,'TNGN sandbox decommissioned; use the real NGN wal
 on conflict(flag_key) do update
 set enabled=false,
     description='TNGN sandbox decommissioned; use the real NGN wallet.',
-    updated_at=statement_timestamp(),
-    updated_by=null;
+    updated_at=statement_timestamp();
 
 with normalized as (
   select p.user_id,
@@ -108,7 +107,7 @@ drop policy if exists asset_transfers_read_participants on public.asset_transfer
 create policy asset_transfers_read_participants
 on public.asset_transfers for select to authenticated
 using (auth.uid()=sender_user_id or auth.uid()=recipient_user_id);
-revoke all on public.asset_transfers from anon,authenticated;
+revoke all on public.asset_transfers from public,anon,authenticated;
 grant select on public.asset_transfers to authenticated;
 
 create or replace function public.transfer_asset_to_email(
