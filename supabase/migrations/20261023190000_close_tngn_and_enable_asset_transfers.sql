@@ -155,7 +155,7 @@ begin
   if p_idempotency_key is null then
     raise exception 'A transfer request key is required. Please retry.' using errcode='22023';
   end if;
-  if v_email='' or length(v_email)>254 or position('@' in v_email)<2 or v_email ~ '\s' then
+  if v_email='' or length(v_email)>254 or position('@' in v_email)<2 or v_email ~ '[[:space:]]' then
     raise exception 'Enter a valid recipient email address.' using errcode='22023';
   end if;
   if v_asset_code not in ('NGN','USDC') then
