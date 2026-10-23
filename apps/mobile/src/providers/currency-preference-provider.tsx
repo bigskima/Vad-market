@@ -133,47 +133,65 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
     };
   }, [refresh]);
 
-  const setEnabledCurrencies = useCallback((currencies: VADCurrency[]) => {
-    void (async () => {
-      const next = [...new Set(currencies.filter((currency) => eligibleCurrencies.includes(currency)))];
-      if (!next.length) return;
-      if (!supabaseConfiguration.ready) {
-        Alert.alert('Currency settings unavailable', 'Connect to VAD before changing trading currencies.');
-        return;
-      }
+  const persistCurrencies = useCallback(async (currencies: VADCurrency[]) => {
+    const next = [...new Set(currencies.filter((currency) => eligibleCurrencies.includes(currency)))];
+    if (!next.length) return;
+    if (!supabaseConfiguration.ready) {
+      Alert.alert('Currency settings unavailable', 'Connect to VAD before changing trading currencies.');
+      return;
+    }
+
+    try {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || !authData.user) {
         Alert.alert('Sign in required', 'Sign in to change trading currencies.');
         return;
       }
-      if (next.includes('TNGN') !== enabledCurrencies.includes('TNGN')) {
-        const { data: tngnEnabled, error: tngnError } = await supabase.rpc('set_my_demo_mode', {
-          p_enabled: next.includes('TNGN'),
-        });
-        if (tngnError || (next.includes('TNGN') && tngnEnabled !== true)) {
-          Alert.alert('TNGN unavailable', 'TNGN test trading is disabled by platform settings. Your currency selection was not changed.');
-          await refresh();
-          return;
-        }
+
+      const nextPreferred = preferredCurrency && next.includes(preferredCurrency)
+        ? preferredCurrency
+        : next[0] ?? null;
+      // This RPC persists both the currency preference and TNGN demo opt-in in
+      // one transaction, avoiding a split mode between wallet/markets/portfolio.
+      const { data, error } = await supabase.rpc('set_my_currency_preferences', {
+        p_enabled_asset_codes: next,
+        p_preferred_asset_code: nextPreferred,
+      });
+      if (error) throw error;
+
+      const response = data as {
+        enabled_asset_codes?: unknown;
+        preferred_asset_code?: unknown;
+      } | null;
+      const savedCurrencies = asCurrencies(response?.enabled_asset_codes);
+      if (!savedCurrencies.length) {
+        throw new Error('The server did not confirm your enabled currency selection.');
       }
-      const nextPreferred = preferredCurrency && next.includes(preferredCurrency) ? preferredCurrency : next[0] ?? null;
-      const { error: preferenceError } = await supabase.from('user_currency_preferences').upsert({
-        user_id: authData.user.id,
-        enabled_asset_codes: next,
-        preferred_asset_code: nextPreferred,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-      if (preferenceError) {
-        Alert.alert('Could not save currency settings', 'Your trading currency preference was not saved. Please try again.');
-        await refresh();
-        return;
+      const savedPreferred = asCurrencies([response?.preferred_asset_code])[0]
+        ?? savedCurrencies[0];
+
+      setEnabledState(savedCurrencies);
+      setPreferredCurrencyState(savedPreferred);
+      try {
+        globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(savedCurrencies));
+      } catch {
+        // The database remains the source of truth when local storage is unavailable.
       }
-      setEnabledState(next);
-      setPreferredCurrencyState(nextPreferred);
-      try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
       await refresh();
-    })();
-  }, [eligibleCurrencies, enabledCurrencies, preferredCurrency, refresh]);
+    } catch (reason) {
+      Alert.alert(
+        'Could not save currency settings',
+        reason instanceof Error
+          ? reason.message
+          : 'Your currency preference was not saved. Please try again.',
+      );
+      await refresh();
+    }
+  }, [eligibleCurrencies, preferredCurrency, refresh]);
+
+  const setEnabledCurrencies = useCallback((currencies: VADCurrency[]) => {
+    void persistCurrencies(currencies);
+  }, [persistCurrencies]);
 
   const toggleCurrency = useCallback((currency: VADCurrency) => {
     if (!eligibleCurrencies.includes(currency)) return;
@@ -181,45 +199,8 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       ? enabledCurrencies.filter((item) => item !== currency)
       : [...enabledCurrencies, currency];
     if (!next.length) return;
-
-    void (async () => {
-      if (!supabaseConfiguration.ready) {
-        Alert.alert('Currency settings unavailable', 'Connect to VAD before changing trading currencies.');
-        return;
-      }
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError || !authData.user) {
-        Alert.alert('Sign in required', 'Sign in to change trading currencies.');
-        return;
-      }
-      if (currency === 'TNGN') {
-        const { data: tngnEnabled, error: tngnError } = await supabase.rpc('set_my_demo_mode', {
-          p_enabled: next.includes('TNGN'),
-        });
-        if (tngnError || (next.includes('TNGN') && tngnEnabled !== true)) {
-          Alert.alert('TNGN unavailable', 'TNGN test trading is disabled by platform settings. Your currency selection was not changed.');
-          await refresh();
-          return;
-        }
-      }
-      const nextPreferred = preferredCurrency && next.includes(preferredCurrency) ? preferredCurrency : next[0] ?? null;
-      const { error: preferenceError } = await supabase.from('user_currency_preferences').upsert({
-        user_id: authData.user.id,
-        enabled_asset_codes: next,
-        preferred_asset_code: nextPreferred,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-      if (preferenceError) {
-        Alert.alert('Could not save currency settings', 'Your trading currency preference was not saved. Please try again.');
-        await refresh();
-        return;
-      }
-      setEnabledState(next);
-      setPreferredCurrencyState(nextPreferred);
-      try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* session fallback */ }
-      await refresh();
-    })();
-  }, [eligibleCurrencies, enabledCurrencies, preferredCurrency, refresh]);
+    void persistCurrencies(next);
+  }, [eligibleCurrencies, enabledCurrencies, persistCurrencies]);
 
   const setPreferredCurrency = useCallback((currency: VADCurrency) => {
     if (!eligibleCurrencies.includes(currency) || !enabledCurrencies.includes(currency)) return;
