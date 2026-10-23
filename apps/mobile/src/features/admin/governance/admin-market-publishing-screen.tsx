@@ -82,9 +82,13 @@ export function AdminMarketPublishingScreen() {
     if (!Number.isFinite(closesAt) || closesAt <= clockNow) return false;
     return opensAt !== null && Number.isFinite(opensAt) && opensAt > clockNow;
   }), [rows, clockNow]);
-  const expiredDrafts = useMemo(() => rows.filter((row) =>
-    row.instrument_status === 'DRAFT' && Number.isFinite(Date.parse(row.closes_at)) && Date.parse(row.closes_at) <= clockNow,
-  ), [rows, clockNow]);
+  const expiredDrafts = useMemo(() => rows.filter((row) => {
+    if (row.instrument_status !== 'DRAFT') return false;
+    const closesAt = Date.parse(row.closes_at);
+    // Invalid closing timestamps are not publishable either; keep them visible
+    // in the repair queue instead of making the draft disappear from admin.
+    return !Number.isFinite(closesAt) || closesAt <= clockNow;
+  }), [rows, clockNow]);
   const vad = useMemo(() => rows.filter((row) => row.instrument_status === 'OPEN' && row.is_vad_market), [rows]);
   const live = useMemo(() => rows.filter((row) => row.instrument_status === 'OPEN' && !row.is_vad_market), [rows]);
   const inactive = useMemo(() => rows.filter((row) => row.instrument_status === 'SUSPENDED' || row.instrument_status === 'CLOSED'), [rows]);
@@ -177,7 +181,7 @@ export function AdminMarketPublishingScreen() {
             <MarketRow key={row.instrument_public_id} row={row} badge="EXPIRED" badgeTone="warning">
               <View style={{ gap: 8 }}>
                 <VadText variant="caption" tone="secondary">
-                  This draft’s closing time has passed. The database correctly blocks publishing it, so its dates must not be bypassed. Create a replacement market with a future closing time.
+                  This draft has an invalid or expired closing time. The database correctly blocks publishing it; do not bypass the date guard. Create a replacement market with valid future trading dates.
                 </VadText>
                 <VadButton label="Create fresh market" size="small" fullWidth={false} onPress={() => router.push('/admin/create-market')} />
               </View>
