@@ -28,6 +28,10 @@ jobs:
         run: deno check --no-lock supabase/functions/oracle-runtime/index.ts
       - name: Type-check authenticated crypto AI draft endpoint
         run: deno check --no-lock supabase/functions/crypto-market-draft/index.ts
+      - name: Type-check public financial data and event-discovery adapters
+        run: deno check --no-lock supabase/functions/financial-market-data/index.ts supabase/functions/market-event-discovery/index.ts
+      - name: Type-check crypto Oracle asset coverage endpoint
+        run: deno check --no-lock supabase/functions/crypto-oracle-asset-check/index.ts
       - name: Test Oracle resolver policy and financial symbol parsing
         run: deno test --no-lock supabase/functions/oracle-runtime/resolvers_test.ts
       - id: lint
