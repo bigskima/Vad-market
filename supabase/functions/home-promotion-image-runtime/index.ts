@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
     }
     if (!apiToken) {
       return json({
-        error: `Cloudflare Workers AI is selected, but the Supabase Edge Function secret ${secretName} is missing. Add the Cloudflare API token under Supabase Edge Function secrets; no Gemini provider is used for campaign artwork.`,
+        error: `Cloudflare Workers AI is selected, but the Supabase Edge Function secret ${secretName} is missing. Add the Cloudflare API token under Supabase Edge Function secrets to enable campaign artwork generation.`,
         code: 'CLOUDFLARE_SECRET_MISSING',
         requiredSecret: secretName,
       }, 503);
