@@ -110,6 +110,29 @@ $function$;
 revoke all on function public.set_my_currency_preferences(text[],text) from public,anon;
 grant execute on function public.set_my_currency_preferences(text[],text) to authenticated;
 
+-- Repair preference/mode drift left by the old two-write client flow. The
+-- saved enabled-currency selection is the user's declared preference; the
+-- global kill switch still wins. No demo balance or ledger entry is changed.
+insert into public.user_demo_preferences(user_id,tngn_demo_enabled,updated_at)
+select
+  preference.user_id,
+  ('TNGN'=any(preference.enabled_asset_codes)) and coalesce(flag.enabled,false),
+  statement_timestamp()
+from public.user_currency_preferences preference
+left join public.platform_feature_flags flag on flag.flag_key='TNGN_DEMO_MODE'
+on conflict(user_id) do update
+set tngn_demo_enabled=excluded.tngn_demo_enabled,
+    updated_at=excluded.updated_at
+where public.user_demo_preferences.tngn_demo_enabled is distinct from excluded.tngn_demo_enabled;
+
+insert into public.demo_accounts(user_id)
+select preference.user_id
+from public.user_currency_preferences preference
+join public.user_demo_preferences demo on demo.user_id=preference.user_id and demo.tngn_demo_enabled
+join public.platform_feature_flags flag on flag.flag_key='TNGN_DEMO_MODE' and flag.enabled
+where 'TNGN'=any(preference.enabled_asset_codes)
+on conflict(user_id) do nothing;
+
 -- Create one isolated TNGN instrument for eligible binary catalog markets. The
 -- variant shares the canonical event and resolution, but uses the synthetic demo
 -- ledger, has POOL liquidity, and never inherits NGN volume or participant counts.
