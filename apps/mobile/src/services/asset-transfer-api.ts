@@ -1,5 +1,6 @@
 import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
+import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 export type TransferAssetCode = 'NGN' | 'USDC';
 
@@ -21,6 +22,13 @@ export async function transferAssetToEmail(input: {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData.user) {
     throw new Error('Your sign-in session has expired. Sign in again before sending assets.');
+  }
+
+  if (input.assetCode === 'NGN') {
+    const location = await verifyCurrentServiceLocation().catch(() => ({ allowed: false, reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE' }));
+    if (!location.allowed) {
+      throw new Error('NGN transfers require current location verification in Nigeria. Enable location permission and try again.');
+    }
   }
 
   const { data, error } = await supabase.rpc('transfer_asset_to_email', {
