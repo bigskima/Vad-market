@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Cloudflare image generation is not configured', code: 'CLOUDFLARE_NOT_CONFIGURED' }, 503);
     }
 
-    const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-1-schnell';
+    const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-2-klein-4b';
     const prompt = [
       'Create a premium, cinematic, full-bleed 16:9 background artwork for a sophisticated global prediction-markets app.',
       'An elegant luminous globe with subtle latitude and longitude lines, surrounded by a few refined floating visual symbols suggesting finance, world events, sport and technology.',
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, steps: 4 }),
+        body: JSON.stringify(model.toLowerCase().includes('flux-2-klein') ? { prompt, width: 1280, height: 720 } : { prompt, steps: 4 }),
       },
     );
 
