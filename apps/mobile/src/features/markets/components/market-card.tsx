@@ -16,11 +16,17 @@ export function MarketCard({
   onPress,
   compact = false,
   onSelectOutcome,
+  watchlistSaved = false,
+  watchlistBusy = false,
+  onToggleWatchlist,
 }: {
   market: MarketCatalogItem;
   onPress: () => void;
   compact?: boolean;
   onSelectOutcome?: (outcome: 'YES' | 'NO') => void;
+  watchlistSaved?: boolean;
+  watchlistBusy?: boolean;
+  onToggleWatchlist?: () => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -79,6 +85,19 @@ export function MarketCard({
         <OutcomeTile label="Yes" value={yes} rawValue={market.yes_price} positive compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('YES') : undefined} />
         <OutcomeTile label="No" value={no} rawValue={market.no_price} positive={false} compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('NO') : undefined} />
       </View>
+      {onToggleWatchlist ? (
+        <Pressable
+          onPress={onToggleWatchlist}
+          disabled={watchlistBusy}
+          accessibilityRole="button"
+          accessibilityLabel={watchlistSaved ? 'Remove from watchlist' : 'Add to watchlist'}
+          accessibilityState={{ selected: watchlistSaved, disabled: watchlistBusy }}
+          hitSlop={6}
+          style={({ pressed }) => ({ width: 30, minHeight: 38, alignItems: 'center', justifyContent: 'center', opacity: watchlistBusy ? 0.45 : pressed ? 0.65 : 1 })}
+        >
+          <VadIcon name="bookmark" size={17} tone={watchlistSaved ? 'brand' : 'secondary'} />
+        </Pressable>
+      ) : null}
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Open ${market.title}`} hitSlop={6} style={({ pressed }) => ({ padding: 2, opacity: pressed ? 0.65 : 1 })}>
         <VadIcon name="chevronRight" size={19} tone="secondary" />
       </Pressable>
