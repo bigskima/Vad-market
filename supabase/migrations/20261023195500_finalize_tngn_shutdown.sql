@@ -23,11 +23,43 @@ update public.user_demo_preferences
 set tngn_demo_enabled=false,updated_at=statement_timestamp()
 where tngn_demo_enabled is distinct from false;
 
-update public.user_currency_preferences
-set enabled_asset_codes=array_remove(enabled_asset_codes,'TNGN'),
-    preferred_asset_code=case when preferred_asset_code='TNGN' then null else preferred_asset_code end,
+with normalized as (
+  select p.user_id,
+         array_remove(p.enabled_asset_codes,'TNGN') as remaining_codes,
+         p.preferred_asset_code,
+         case
+           when upper(trim(coalesce(ua.country_code,''))) in ('NG','NGA','NIGERIA') then 'NG'
+           else upper(trim(coalesce(ua.country_code,'')))
+         end as country_code,
+         exists (
+           select 1 from public.assets a
+           join public.jurisdiction_assets ja on ja.asset_id=a.id and ja.status='ACTIVE'
+           join public.jurisdictions j on j.id=ja.jurisdiction_id and j.status='ACTIVE'
+           where a.code='NGN' and a.status='ACTIVE'
+             and upper(trim(j.country_code)) in ('NG','NGA','NIGERIA')
+         ) as ngn_available
+  from public.user_currency_preferences p
+  left join public.user_accounts ua on ua.user_id=p.user_id
+), replacements as (
+  select user_id,
+         case
+           when cardinality(remaining_codes)>0 then remaining_codes
+           when country_code='NG' and ngn_available then array['NGN']::text[]
+           else array['USDC']::text[]
+         end as next_codes,
+         preferred_asset_code
+  from normalized
+)
+update public.user_currency_preferences p
+set enabled_asset_codes=r.next_codes,
+    preferred_asset_code=case
+      when r.preferred_asset_code is not null and r.preferred_asset_code=any(r.next_codes) then r.preferred_asset_code
+      else r.next_codes[1]
+    end,
     updated_at=statement_timestamp()
-where 'TNGN'=any(enabled_asset_codes) or preferred_asset_code='TNGN';
+from replacements r
+where p.user_id=r.user_id
+  and ('TNGN'=any(p.enabled_asset_codes) or p.preferred_asset_code='TNGN');
 
 -- Remove all server triggers that can auto-grant demo balances or create TNGN
 -- market variants. Do not delete historical demo accounts/orders/ledger entries.
@@ -36,22 +68,22 @@ drop trigger if exists demo_accounts_record_initial_grant on public.demo_account
 drop trigger if exists market_catalog_sync_tngn_variant on public.market_catalog;
 
 -- Stop the old sandbox RPC surface completely, including read endpoints.
-revoke all on function public.get_demo_mode_status() from public,anon,authenticated;
-revoke all on function public.my_demo_account() from public,anon,authenticated;
-revoke all on function public.my_demo_markets() from public,anon,authenticated;
-revoke all on function public.my_demo_orders() from public,anon,authenticated;
-revoke all on function public.my_tngn_demo_ledger_activity(integer) from public,anon,authenticated;
-revoke all on function public.my_tngn_market_orders() from public,anon,authenticated;
-revoke all on function public.admin_demo_markets() from public,anon,authenticated;
-revoke all on function public.set_my_demo_mode(boolean) from public,anon,authenticated;
-revoke all on function public.admin_set_tngn_demo_mode(boolean) from public,anon,authenticated;
-revoke all on function public.place_demo_order(text,text,numeric,text) from public,anon,authenticated;
-revoke all on function public.admin_create_demo_market(text,text,jsonb) from public,anon,authenticated;
-revoke all on function public.admin_resolve_demo_market(text,text) from public,anon,authenticated;
-revoke all on function public.place_tngn_market_stake(uuid,text,numeric,text) from public,anon,authenticated;
-revoke all on function public.tngn_pool_quote(uuid,text,numeric) from public,anon,authenticated;
+revoke all on function public.get_demo_mode_status() from public,anon,authenticated,service_role;
+revoke all on function public.my_demo_account() from public,anon,authenticated,service_role;
+revoke all on function public.my_demo_markets() from public,anon,authenticated,service_role;
+revoke all on function public.my_demo_orders() from public,anon,authenticated,service_role;
+revoke all on function public.my_tngn_demo_ledger_activity(integer) from public,anon,authenticated,service_role;
+revoke all on function public.my_tngn_market_orders() from public,anon,authenticated,service_role;
+revoke all on function public.admin_demo_markets() from public,anon,authenticated,service_role;
+revoke all on function public.set_my_demo_mode(boolean) from public,anon,authenticated,service_role;
+revoke all on function public.admin_set_tngn_demo_mode(boolean) from public,anon,authenticated,service_role;
+revoke all on function public.place_demo_order(text,text,numeric,text) from public,anon,authenticated,service_role;
+revoke all on function public.admin_create_demo_market(text,text,jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.admin_resolve_demo_market(text,text) from public,anon,authenticated,service_role;
+revoke all on function public.place_tngn_market_stake(uuid,text,numeric,text) from public,anon,authenticated,service_role;
+revoke all on function public.tngn_pool_quote(uuid,text,numeric) from public,anon,authenticated,service_role;
 
-revoke all on table public.demo_accounts,public.demo_ledger_entries,public.demo_markets,public.demo_orders,public.user_demo_preferences from public,anon,authenticated;
+revoke all on table public.demo_accounts,public.demo_ledger_entries,public.demo_markets,public.demo_orders,public.user_demo_preferences from public,anon,authenticated,service_role;
 
 -- These legacy trigger functions must not be callable by application roles.
 revoke all on function private.grant_test_ngn(uuid,text) from public,anon,authenticated,service_role;
