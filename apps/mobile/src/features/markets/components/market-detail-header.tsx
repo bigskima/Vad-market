@@ -92,7 +92,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const imageFailed = Boolean(imageUrl && failedImageUrl === imageUrl);
   const titleExpanded = titleState.instrumentId === market.instrument_public_id && titleState.expanded;
   const titleIsLong = market.title.trim().length > 80;
-  const fallbackImageAspectRatio = compactViewport ? 16 / 9 : 16 / 7;
+  const fallbackImageAspectRatio = 16 / 9;
   const imageAspectRatio = imageRatioState?.url === imageUrl
     ? imageRatioState.ratio
     : fallbackImageAspectRatio;
@@ -127,51 +127,25 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         }}
       >
         {imageUrl && !imageFailed ? (
-          <>
-            <Image
-              source={{ uri: imageUrl }}
-              accessibilityLabel=""
-              blurRadius={18}
-              resizeMode="cover"
-              onError={() => setFailedImageUrl(imageUrl)}
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                width: '100%',
-                height: '100%',
-                opacity: 0.66,
-              }}
-            />
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(5, 10, 22, 0.34)',
-              }}
-            />
-            <Image
-              source={{ uri: imageUrl }}
-              accessibilityLabel={`${market.title} market image`}
-              resizeMode="contain"
-              onLoad={(event) => {
-                const sourceWidth = event.nativeEvent.source?.width;
-                const sourceHeight = event.nativeEvent.source?.height;
-                if (sourceWidth && sourceHeight && Number.isFinite(sourceWidth) && Number.isFinite(sourceHeight)) {
-                  const sourceRatio = sourceWidth / sourceHeight;
-                  if (sourceRatio > 0) {
-                    setImageRatioState({ url: imageUrl, ratio: Math.max(1.1, Math.min(2.4, sourceRatio)) });
-                  }
+          <Image
+            source={{ uri: imageUrl }}
+            accessibilityLabel={`${market.title} market image`}
+            resizeMode="cover"
+            onLoad={(event) => {
+              const sourceWidth = event.nativeEvent.source?.width;
+              const sourceHeight = event.nativeEvent.source?.height;
+              if (sourceWidth && sourceHeight && Number.isFinite(sourceWidth) && Number.isFinite(sourceHeight)) {
+                const sourceRatio = sourceWidth / sourceHeight;
+                if (sourceRatio > 0) {
+                  // Match the real artwork dimensions: old square covers stay square,
+                  // while new 16:9 Cloudflare covers fill the wide display edge-to-edge.
+                  setImageRatioState({ url: imageUrl, ratio: Math.max(0.5, Math.min(2.4, sourceRatio)) });
                 }
-              }}
-              onError={() => setFailedImageUrl(imageUrl)}
-              style={{ width: '100%', height: '100%' }}
-            />
-          </>
+              }
+            }}
+            onError={() => setFailedImageUrl(imageUrl)}
+            style={{ width: '100%', height: '100%' }}
+          />
         ) : (
           <View style={{ alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16 }}>
             <VadIcon name="markets" size={30} tone="brand" />
