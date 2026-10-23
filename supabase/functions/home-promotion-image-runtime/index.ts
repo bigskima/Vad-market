@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
     }
     const title = clean(requestBody.title, 120);
     const body = clean(requestBody.body, 320);
-    const visualDirection = clean(requestBody.visualDirection, 160);
+    const visualDirection = clean(requestBody.visualDirection, 1200);
     if (title.length < 3) return json({ error: 'Add a campaign title of at least 3 characters.' }, 400);
 
     const { data: provider, error: providerError } = await admin
