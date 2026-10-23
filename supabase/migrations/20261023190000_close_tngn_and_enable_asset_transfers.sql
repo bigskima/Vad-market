@@ -70,11 +70,64 @@ set status='DISABLED',
     updated_at=statement_timestamp()
 where code='TNGN' and status<>'DISABLED';
 
--- Stop both automatic creation of fresh synthetic TNGN grant entries and any
--- future settlement of abandoned sandbox orders. Preserve the existing demo
--- records and balances unchanged for audit; none are converted into NGN.
-drop trigger if exists demo_accounts_record_initial_grant on public.demo_accounts;
+-- The live catalogue currently has no open TNGN rows, but close any that appear
+-- before the guard is installed. Historical records and synthetic balances remain
+-- unchanged; nothing is converted into real NGN.
+update public.market_catalog
+set status='CLOSED',updated_at=statement_timestamp()
+where asset_code='TNGN' and status not in ('CLOSED','SETTLED');
+
+-- Retain the initial-grant ledger trigger as an audit control, but prohibit any
+-- new demo account after the global switch has been disabled.
+create or replace function private.guard_tngn_demo_account_creation()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $function$
+begin
+  if not coalesce((
+    select f.enabled from public.platform_feature_flags f
+    where f.flag_key='TNGN_DEMO_MODE'
+  ),false) then
+    raise exception 'TNGN demo account creation is permanently disabled.' using errcode='42501';
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists prevent_retired_tngn_demo_account_creation on public.demo_accounts;
+create trigger prevent_retired_tngn_demo_account_creation
+before insert on public.demo_accounts
+for each row execute function private.guard_tngn_demo_account_creation();
+
+-- No further synthetic settlement events may credit old test accounts. Keep all
+-- already-posted historical settlements and ledger rows for audit.
 drop trigger if exists market_catalog_settle_tngn_orders on public.market_catalog;
+
+-- Guard the materialized public market catalogue against TNGN reintroduction,
+-- including attempts from privileged market-publishing code.
+create or replace function private.guard_tngn_market_catalog_retirement()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $function$
+begin
+  if new.asset_code='TNGN' and not coalesce((
+    select f.enabled from public.platform_feature_flags f
+    where f.flag_key='TNGN_DEMO_MODE'
+  ),false) then
+    raise exception 'TNGN markets have been retired; publish markets using a supported real asset.' using errcode='42501';
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists prevent_retired_tngn_market_catalog_write on public.market_catalog;
+create trigger prevent_retired_tngn_market_catalog_write
+before insert or update of asset_code on public.market_catalog
+for each row execute function private.guard_tngn_market_catalog_retirement();
 
 revoke all on function public.place_tngn_market_stake(uuid,text,numeric,text) from public,anon,authenticated;
 revoke all on function public.tngn_pool_quote(uuid,text,numeric) from public,anon,authenticated;
@@ -137,7 +190,7 @@ declare
   v_asset_code text:=upper(trim(coalesce(p_asset_code,'')));
   v_asset_id bigint;
   v_minor_units integer;
-  v_amount numeric(38,8);
+  v_amount numeric;
   v_sender_eligible text[];
   v_sender_enabled text[];
   v_sender_policy record;
@@ -200,10 +253,10 @@ begin
   if v_asset_id is null then
     raise exception 'The selected asset is not currently available for transfers.' using errcode='42501';
   end if;
-  v_amount:=p_amount;
-  if v_amount<>round(v_amount,v_minor_units) then
+  if p_amount<>round(p_amount,v_minor_units) then
     raise exception 'The amount has too many decimal places for %.',v_asset_code using errcode='22023';
   end if;
+  v_amount:=p_amount;
 
   select * into v_sender_policy from public.get_my_currency_policy() limit 1;
   v_sender_eligible:=coalesce(v_sender_policy.eligible_asset_codes,array[]::text[]);
