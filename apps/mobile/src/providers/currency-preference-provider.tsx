@@ -27,7 +27,7 @@ type CurrencyPreferenceValue = {
 
 const STORAGE_KEY = 'vad:enabled-currencies';
 const CurrencyPreferenceContext = createContext<CurrencyPreferenceValue | null>(null);
-const SUPPORTED: VADCurrency[] = ['NGN', 'USDC', 'TNGN'];
+const SUPPORTED: VADCurrency[] = ['NGN', 'USDC'];
 
 function asCurrencies(value: unknown): VADCurrency[] {
   if (!Array.isArray(value)) return [];
