@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       'Deep indigo and electric violet palette, restrained blue highlights, dimensional glass materials, soft atmospheric glow, high-end 3D editorial art direction.',
       'Strong focal point toward the right half and quieter dark indigo negative space toward the left for optional app controls to overlay.',
       'Edge-to-edge composition, no frame, no cards, no buttons, no interface mockup.',
-      'Absolutely no text, no letters, no words, no numbers, no typography, no watermarks, no logos.',
+      'ABSOLUTE TEXT-FREE OUTPUT: image pixels must contain no text of any kind. No letters, words, numbers, symbols, currency signs, ticker symbols, typography, labels, captions, signs, signage, logos, watermarks, UI, badges, buttons, or pseudo-readable marks. Any signs or labels in the scene must be blank. The app renders every title and message separately outside the image.',
     ].join(' ');
 
     const ai = await fetch(
