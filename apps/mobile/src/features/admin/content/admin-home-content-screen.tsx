@@ -201,6 +201,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
   const [generating, setGenerating] = useState(false);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState('Campaign not saved');
 
   async function chooseImage() {
     setUploading(true);
@@ -212,6 +213,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
       setGeneratedAt(null);
       setKind('IMAGE');
     } catch (value) {
+      setErrorTitle('Artwork upload failed');
       setError(value instanceof Error ? value.message : 'Campaign image could not be uploaded.');
     } finally {
       setUploading(false);
@@ -231,6 +233,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
       setImageUrl(generated.imageUrl);
       setGeneratedAt(generated.generatedAt);
     } catch (value) {
+      setErrorTitle('Artwork generation failed');
       setError(value instanceof Error ? value.message : 'AI campaign artwork could not be generated.');
     } finally {
       setGenerating(false);
@@ -266,6 +269,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
     }
 
     setWorking(true);
+    setErrorTitle('Campaign not saved');
     setError(null);
     try {
       await upsertAdminHomePromotion({
@@ -330,8 +334,8 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
 
       <View style={{ gap: theme.spacing.sm }}>
         <VadText variant="label" tone="brand">CAMPAIGN COPY</VadText>
-        <VadInput label="Campaign title" value={title} onChangeText={setTitle} placeholder="A short campaign headline" />
-        <VadInput label="Supporting copy (optional)" value={body} onChangeText={setBody} placeholder="What should people know about this campaign?" multiline />
+        <VadInput label="Campaign title" value={title} onChangeText={setTitle} placeholder="A short campaign headline" maxLength={120} hint={`${title.length}/120 characters`} />
+        <VadInput label="Supporting copy (optional)" value={body} onChangeText={setBody} placeholder="What should people know about this campaign?" multiline maxLength={320} hint={`${body.length}/320 characters`} />
         <VadInput label="Campaign tag (optional)" value={tag} onChangeText={setTag} placeholder="e.g. FEATURED, NEW, LIVE" maxLength={32} hint="Shown as a small badge above the campaign headline." />
       </View>
       <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
@@ -344,8 +348,9 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
           label="Custom visual direction (optional)"
           value={visualDirection}
           onChangeText={setVisualDirection}
-          placeholder="E.g. a cinematic football stadium at night, premium indigo lighting"
-          hint="You can override the automatic art direction without changing your campaign copy."
+          placeholder="E.g. cinematic stadium at night, indigo lighting, one clear focal subject"
+          maxLength={1200}
+          hint={`${visualDirection.length}/1200 characters. Leave blank to use the AI-suggested direction.`}
           multiline
         />
         <VadButton label="Use suggested prompt" variant="secondary" size="small" disabled={uploading || generating || working || title.trim().length < 3} onPress={() => setVisualDirection(suggestedVisualPrompt)} />
@@ -368,7 +373,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
         <VadText variant="caption" tone="tertiary">Times are saved as exact ISO timestamps in UTC, so campaign scheduling remains consistent across devices.</VadText>
       </View>
 
-      {error ? <VadErrorState title="Campaign not saved" message={error} /> : null}
+      {error ? <VadErrorState title={errorTitle} message={error} /> : null}
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
         <VadButton label="Save draft" variant="secondary" loading={working} disabled={uploading || generating} onPress={() => void save('DRAFT')} style={{ flex: 1 }} />
         <VadButton label="Publish" loading={working} disabled={uploading || generating} onPress={() => void save('PUBLISHED')} style={{ flex: 1 }} />
