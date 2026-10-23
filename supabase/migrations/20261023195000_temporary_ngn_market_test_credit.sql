@@ -118,7 +118,7 @@ begin
   if exists (
     select 1 from trading.orders o join market.instruments i on i.id=o.instrument_id
     where o.user_id=v_grant.user_id and o.status in ('OPEN','PARTIALLY_FILLED') and i.asset_id=v_grant.asset_id
-  ) then raise exception 'Cancel or complete the user's open NGN orders before revoking the test credit.' using errcode='55000'; end if;
+  ) then raise exception 'Cancel or complete the user''s open NGN orders before revoking the test credit.' using errcode='55000'; end if;
   if exists (
     select 1 from trading.pool_stakes s join market.instruments i on i.id=s.instrument_id
     where s.user_id=v_grant.user_id and i.asset_id=v_grant.asset_id and i.status='OPEN'
