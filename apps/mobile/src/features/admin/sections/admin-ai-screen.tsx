@@ -15,7 +15,9 @@ import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getAdminAiProviderCatalog,
+  setAdminAiModelCapabilities,
   upsertAdminAiProviderModel,
+  type AiCapability,
   type AiProviderAdapter,
   type AiProviderModelRow,
 } from '@/services/ai-admin-api';
@@ -43,6 +45,12 @@ const ADAPTERS: { value: AiProviderAdapter; label: string; detail: string }[] = 
   },
 ];
 
+const CAPABILITY_CHOICES: { code: AiCapability; label: string }[] = [
+  { code: 'MARKET_ADMISSION', label: 'Market admission' },
+  { code: 'MARKET_BUILDER_DRAFTING', label: 'Market builder' },
+  { code: 'USER_ASSISTANT', label: 'User assistant' },
+];
+
 export function AdminAiScreen() {
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
@@ -55,6 +63,7 @@ export function AdminAiScreen() {
   const [showConfigure, setShowConfigure] = useState(false);
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [savingCapabilitiesId, setSavingCapabilitiesId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -83,6 +92,38 @@ export function AdminAiScreen() {
     () => models.filter((row) => row.capabilities?.includes('MARKET_ADMISSION')),
     [models],
   );
+  const draftingModels = useMemo(
+    () => models.filter((row) => row.capabilities?.includes('MARKET_BUILDER_DRAFTING')),
+    [models],
+  );
+
+  async function toggleModelCapability(row: AiProviderModelRow, capability: AiCapability) {
+    if (!isSuperAdmin || savingCapabilitiesId !== null) return;
+    const current = (row.capabilities ?? []).filter(
+      (value): value is AiCapability => CAPABILITY_CHOICES.some((item) => item.code === value),
+    );
+    const enabled = current.includes(capability);
+    const next = enabled ? current.filter((value) => value !== capability) : [...current, capability];
+    if (!next.length) {
+      setError('At least one capability must remain enabled for an AI model.');
+      return;
+    }
+    setSavingCapabilitiesId(row.ai_provider_id);
+    setError(null);
+    try {
+      const updated = await setAdminAiModelCapabilities(row.ai_provider_id, next);
+      setModels((existing) => existing.map((item) => item.ai_provider_id === row.ai_provider_id
+        ? { ...item, capabilities: updated }
+        : item));
+      const label = CAPABILITY_CHOICES.find((item) => item.code === capability)?.label ?? capability;
+      setMessage(label + ' capability ' + (enabled ? 'disabled' : 'enabled') + ' for ' + row.provider_name + ' · ' + row.model_code + '.');
+      await data.refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'AI model capabilities could not be updated.');
+    } finally {
+      setSavingCapabilitiesId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -102,7 +143,7 @@ export function AdminAiScreen() {
           <VadText variant="label" tone="brand">AI SERVICES</VadText>
           <VadText variant="title">Configure AI for market review.</VadText>
           <VadText tone="secondary">
-            VAD can use multiple AI providers for market-proposal review. Models are selected by capability and priority, with another eligible model available when one cannot complete a request. Publication rules remain separate from AI review.
+            VAD can use approved AI models for market admission, guided market drafting and the user assistant. Models are selected by capability and priority; AI proposes drafts but never bypasses market review or publication controls.
           </VadText>
         </View>
         <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.sm }}>
@@ -134,6 +175,7 @@ export function AdminAiScreen() {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
         <Metric label="Configured models" value={models.length} />
         <Metric label="Admission capable" value={admissionModels.length} />
+        <Metric label="Market drafting capable" value={draftingModels.length} />
         <Metric label="Currently routable" value={active.length} tone={active.length ? 'yes' : 'warning'} />
       </View>
 
@@ -142,7 +184,7 @@ export function AdminAiScreen() {
           <View style={{ flex: 1, gap: 3 }}>
             <VadText variant="bodyStrong">Market admission routing</VadText>
             <VadText variant="caption" tone="secondary">
-              A provider is considered when its integration and model are active or degraded, it supports MARKET_ADMISSION, and its configured endpoint is usable. Lower priority numbers run first; if one model cannot complete the request, the next eligible model can be used.
+              A provider is eligible only for capabilities enabled on its model. Market-builder models must also meet VAD’s free-only routing policy; lower priority numbers run first and another eligible model may be tried if one fails.
             </VadText>
           </View>
           <VadChip label={active.length ? `${active.length} ROUTABLE` : 'NO ACTIVE MODEL'} tone={active.length ? 'yes' : 'warning'} />
@@ -165,10 +207,16 @@ export function AdminAiScreen() {
         <View style={{ gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="heading">Configured models</VadText>
-            <VadText variant="caption" tone="secondary">Review the providers and models available for market admission.</VadText>
+            <VadText variant="caption" tone="secondary">Review model capabilities here. Super Admins can enable Market builder for free-tier AI models without changing provider status.</VadText>
           </View>
           {models.map((row) => (
-            <AiModelRow key={row.ai_provider_id} row={row} />
+            <AiModelRow
+              key={row.ai_provider_id}
+              row={row}
+              isSuperAdmin={isSuperAdmin}
+              savingCapabilities={savingCapabilitiesId === row.ai_provider_id}
+              onToggleCapability={(capability) => void toggleModelCapability(row, capability)}
+            />
           ))}
         </View>
       )}
@@ -192,7 +240,8 @@ export function AdminAiScreen() {
           try {
             const modelId = await upsertAdminAiProviderModel(input);
             setShowConfigure(false);
-            setMessage(`AI model ${modelId} is configured for MARKET_ADMISSION. Activate the provider through Provider status controls after its referenced Edge Function secret is available.`);
+            const billingMode = String(input.costPolicy?.billing_mode ?? 'DISABLED_UNTIL_REVENUE');
+            setMessage(`AI model ${modelId} is configured with market admission, market drafting and user assistant capabilities (${billingMode}). Activate the provider through Provider status controls after its referenced Edge Function secret is available.`);
             await load();
             await data.refresh();
           } catch (reason) {
@@ -216,7 +265,12 @@ function Metric({ label, value, tone = 'brand' }: { label: string; value: number
   );
 }
 
-function AiModelRow({ row }: { row: AiProviderModelRow }) {
+function AiModelRow({ row, isSuperAdmin, savingCapabilities, onToggleCapability }: {
+  row: AiProviderModelRow;
+  isSuperAdmin: boolean;
+  savingCapabilities: boolean;
+  onToggleCapability: (capability: AiCapability) => void;
+}) {
   const theme = useVadTheme();
   const routable = ['ACTIVE', 'DEGRADED'].includes(row.provider_status) && ['ACTIVE', 'DEGRADED'].includes(row.model_status);
   return (
@@ -235,6 +289,27 @@ function AiModelRow({ row }: { row: AiProviderModelRow }) {
         <VadChip label={row.model_status} tone={row.model_status === 'ACTIVE' ? 'yes' : 'warning'} />
         {row.capabilities?.map((capability) => <VadChip key={capability} label={capability.replaceAll('_', ' ')} tone="brand" />)}
       </View>
+      {isSuperAdmin ? (
+        <View style={{ gap: theme.spacing.xs }}>
+          <VadText variant="caption" tone="secondary">Model capabilities · tap to enable or disable</VadText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+            {CAPABILITY_CHOICES.map((item) => {
+              const selected = row.capabilities?.includes(item.code) === true;
+              return (
+                <VadChip
+                  key={item.code}
+                  label={savingCapabilities ? item.label + ' · saving' : item.label}
+                  selected={selected}
+                  tone={selected ? 'brand' : 'neutral'}
+                  disabled={savingCapabilities}
+                  onPress={() => onToggleCapability(item.code)}
+                />
+              );
+            })}
+          </View>
+          {savingCapabilities ? <VadText variant="caption" tone="secondary">Saving capabilities…</VadText> : null}
+        </View>
+      ) : null}
       <VadText variant="caption" tone="tertiary" numberOfLines={2}>
         Endpoint: {row.endpoint ?? 'not configured'} · Secret reference: {row.secret_reference ?? 'not configured'}
       </VadText>
@@ -273,6 +348,7 @@ function ConfigureAiSheet({
   const [secretReference, setSecretReference] = useState('VAD_AI_');
   const [priority, setPriority] = useState('100');
   const [apiVersion, setApiVersion] = useState('');
+  const [billingMode, setBillingMode] = useState<'FREE_ONLY' | 'DISABLED_UNTIL_REVENUE'>('DISABLED_UNTIL_REVENUE');
 
   const priorityValue = Number(priority);
   const secretReady = /^VAD_AI_[A-Z0-9_]+$/.test(secretReference.trim().toUpperCase());
@@ -329,6 +405,15 @@ function ConfigureAiSheet({
         <VadInput label="Edge Function secret reference" value={secretReference} onChangeText={(value) => setSecretReference(value.toUpperCase())} autoCapitalize="characters" autoCorrect={false} placeholder="VAD_AI_PRIMARY_API_KEY" hint="Reference only. The API-key value belongs in Edge Function secrets and is never stored here." error={secretReference.length > 0 && !secretReady ? 'Use only the VAD_AI_ secret namespace.' : undefined} />
         <VadInput label="Priority" value={priority} onChangeText={setPriority} keyboardType="number-pad" placeholder="100" hint="Lower number = attempted earlier. Another configured model is used automatically when this one fails." />
 
+        <View style={{ gap: theme.spacing.xs }}>
+          <VadText variant="bodyStrong">AI spend policy</VadText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+            <VadChip label="Free-only routing" selected={billingMode === 'FREE_ONLY'} tone={billingMode === 'FREE_ONLY' ? 'brand' : 'neutral'} onPress={() => setBillingMode('FREE_ONLY')} />
+            <VadChip label="Disabled until revenue" selected={billingMode === 'DISABLED_UNTIL_REVENUE'} tone={billingMode === 'DISABLED_UNTIL_REVENUE' ? 'brand' : 'neutral'} onPress={() => setBillingMode('DISABLED_UNTIL_REVENUE')} />
+          </View>
+          <VadText variant="caption" tone="secondary">Choose Free-only routing only when this model is available at $0 for VAD’s intended usage. Paid providers must remain disabled until the revenue gate is lifted.</VadText>
+        </View>
+
         <View style={{ borderLeftWidth: 3, borderLeftColor: theme.colors.warning, backgroundColor: theme.colors.warningSoft, padding: theme.spacing.md, gap: 2 }}>
           <VadText variant="caption" tone="warning">ACTIVATION IS SEPARATE</VadText>
           <VadText variant="caption" tone="secondary">
@@ -349,6 +434,12 @@ function ConfigureAiSheet({
             modelCode,
             secretReference,
             priority: priorityValue,
+            costPolicy: {
+              billing_mode: billingMode,
+              paid_spend_limit: 0,
+              revenue_gate_required: true,
+              updated_reason: 'Super Admin AI model setup',
+            },
             apiVersion: apiVersion.trim() || null,
           })}
         />
