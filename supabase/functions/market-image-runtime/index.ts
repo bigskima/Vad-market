@@ -199,21 +199,33 @@ Deno.serve(async (req) => {
     const accountId = String(provider?.public_metadata?.account_id || '').trim();
     const secretName = String(provider?.secret_reference || 'VAD_AI_CLOUDFLARE_API_TOKEN').trim();
     const apiToken = Deno.env.get(secretName);
-    if (providerError || !accountId || !apiToken) {
-      return await failJob('Cloudflare image generation is not configured', 503);
+    if (providerError) {
+      return await failJob('Cloudflare provider configuration could not be loaded. Check the configured image provider and runtime metadata.', 503);
+    }
+    if (!accountId) {
+      return await failJob('Cloudflare account ID is missing from the image-provider configuration.', 503);
+    }
+    if (!apiToken) {
+      return await failJob(`Cloudflare image generation is blocked because Supabase Edge Function secret ${secretName} is missing. Add the Cloudflare API token in Supabase project Edge Function secrets; Gemini is not used for this artwork.`, 503);
     }
 
-    const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-1-schnell';
+    const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-2-klein-4b';
     const prompt = [
       'Generate a premium, text-free 16:9 editorial cover image for a prediction-market question. Use one clear, accurate visual subject, polished photographic/editorial style, high detail, restrained colors, and clean composition.',
       `Market question is semantic guidance only; do not write or reproduce any part of it: ${title}. Category: ${category}.`,
       'Depict only the specific subject/asset named by the question. Never substitute a different company, person, team, cryptocurrency, ticker, brand, coin, or logo. For financial/crypto price questions, prefer an abstract asset-themed scene without coin logos or currency symbols. If the named subject cannot be depicted accurately without branding, use neutral abstract imagery instead.',
       'ABSOLUTE NO-TEXT REQUIREMENT: no text, letters, words, numbers, ticker symbols, logos, typography, labels, signs, packaging text, prices, odds, captions, fake headlines, YES/NO controls, UI, watermark, or pseudo-writing. Do not render the question; the app displays the market title separately.',
     ].join(' ');
+    // Flux 2 Klein supports explicit output dimensions. Flux 1 Schnell
+    // ignores width/height, so only send those options to a dimension-capable model.
+    const modelInput = model.toLowerCase().includes('flux-2-klein')
+      ? { prompt, width: 1280, height: 720 }
+      : { prompt, steps: 4 };
+
     const ai = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, steps: 4 }),
+      body: JSON.stringify(modelInput),
     });
     if (!ai.ok) {
       const detail = (await ai.text()).slice(0, 500);
