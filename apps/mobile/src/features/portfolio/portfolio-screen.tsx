@@ -24,7 +24,6 @@ import {
   type MarketCatalogItem,
   type MarketHistoryRow,
   type OrderRow,
-  type PoolStakeRow,
   type PortfolioOrderHistoryRow,
   type PortfolioPositionMarkRow,
   type PortfolioValuationSnapshotRow,
@@ -46,7 +45,6 @@ export function PortfolioScreen({
   orders,
   settlements,
   marketHistory,
-  poolStakes,
   markets,
   sectionErrors,
   loading = false,
@@ -58,9 +56,8 @@ export function PortfolioScreen({
   orders: OrderRow[];
   settlements: SettlementReceiptRow[];
   marketHistory: MarketHistoryRow[];
-  poolStakes: PoolStakeRow[];
   markets: MarketCatalogItem[];
-  sectionErrors?: { positions?: string | null; orders?: string | null; poolStakes?: string | null; marketHistory?: string | null; settlements?: string | null };
+  sectionErrors?: { positions?: string | null; orders?: string | null; marketHistory?: string | null; settlements?: string | null };
   loading?: boolean;
   onRetry: () => void;
   onOpenPosition: (position: PositionRow) => void;
@@ -139,11 +136,10 @@ export function PortfolioScreen({
   }, []);
 
   const assetOptions = useMemo(
-    () => enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC', 'TNGN'].includes(code)),
+    () => enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC'].includes(code)),
     [enabledCurrencies],
   );
   const asset = assetOptions.includes(selectedAsset) ? selectedAsset : assetOptions[0] ?? 'NGN';
-  const isTngn = asset === 'TNGN';
 
   const marketsById = useMemo(() => new Map(markets.map((market) => [market.instrument_public_id, market])), [markets]);
   const marksByKey = useMemo(() => new Map(marks.map((mark) => [positionKey(mark.instrument_id, mark.outcome_code), mark])), [marks]);
@@ -153,8 +149,6 @@ export function PortfolioScreen({
       const mark = marksByKey.get(positionKey(position.instrument_id, position.outcome_code));
       return mark ? { ...position, ...mark } : position;
     }), [positions, asset, marksByKey]);
-  const activeStakes = useMemo(() => poolStakes.filter((stake) => stake.asset_code === asset
-    && !['SETTLED', 'VOIDED', 'CANCELLED', 'REFUNDED'].includes(String(stake.market_status).toUpperCase())), [poolStakes, asset]);
   const historyRows = useMemo(() => marketHistory
     .filter((row) => row.asset_code === asset)
     .sort((a, b) => (Date.parse(b.settled_at ?? '') || 0) - (Date.parse(a.settled_at ?? '') || 0)), [marketHistory, asset]);
@@ -190,20 +184,12 @@ export function PortfolioScreen({
   const openPositionValue = openMarkedPositions.every((position) => position.mark_status === 'MARKED')
     ? openMarkedPositions.reduce((sum, position) => sum + amount(position.current_value), 0)
     : null;
-  const tngnWins = isTngn ? settledRows.filter((row) => String(row.result).toUpperCase() === 'WON') : [];
-  const tngnLosses = isTngn ? settledRows.filter((row) => String(row.result).toUpperCase() === 'LOST') : [];
-  const winnersCount = isTngn ? tngnWins.length : winningPositions.length;
-  const losersCount = isTngn ? tngnLosses.length : losingPositions.length;
-  const winnersValue = isTngn
-    ? tngnWins.reduce((sum, row) => sum + Math.max(0, amount(row.realized_pnl)), 0)
-    : winningPnl;
-  const losersValue = isTngn
-    ? tngnLosses.reduce((sum, row) => sum + Math.min(0, amount(row.realized_pnl)), 0)
-    : losingPnl;
-  const openCount = isTngn ? activeStakes.length : openMarkedPositions.length;
-  const openValueText = isTngn
-    ? (activeStakes.length ? 'Unmarked' : assetMoney(0, asset))
-    : openPositionValue == null ? '—' : assetMoney(openPositionValue, asset);
+  const winnersCount = winningPositions.length;
+  const losersCount = losingPositions.length;
+  const winnersValue = winningPnl;
+  const losersValue = losingPnl;
+  const openCount = openMarkedPositions.length;
+  const openValueText = openPositionValue == null ? '—' : assetMoney(openPositionValue, asset);
 
   const categories = useMemo(() => [...new Set(markets
     .filter((market) => market.asset_code === asset && market.category)
@@ -426,20 +412,7 @@ export function PortfolioScreen({
             </VadCard>
           ) : null}
 
-          {isTngn ? (
-            sectionErrors?.poolStakes ? (
-              <InlineError message={sectionErrors.poolStakes} onRetry={retry} />
-            ) : loading && poolStakes.length === 0 ? (
-              <LoadingState label="Loading your TNGN predictions…" />
-            ) : activeStakes.length ? (
-              <View style={{ gap: theme.spacing.sm }}>
-                {activeStakes.slice(0, visiblePositionCount).map((stake) => <DemoStakeCard key={stake.stake_id} stake={stake} />)}
-                {activeStakes.length > visiblePositionCount ? <VadButton label="Show more positions" variant="secondary" onPress={() => setVisiblePositionCount((count) => count + 5)} /> : null}
-              </View>
-            ) : (
-              <VadEmptyState title="No open TNGN predictions" body="TNGN is a practice balance. Open demo predictions appear here; settled results remain in History." />
-            )
-          ) : sectionErrors?.positions ? (
+          {sectionErrors?.positions ? (
             <InlineError message={sectionErrors.positions} onRetry={retry} />
           ) : loading && positionsForAsset.length === 0 ? (
             <LoadingState label="Loading your positions…" />
@@ -464,16 +437,7 @@ export function PortfolioScreen({
       ) : null}
 
       {tab === 'orders' ? (
-        isTngn ? (
-          sectionErrors?.poolStakes ? <InlineError message={sectionErrors.poolStakes} onRetry={retry} />
-            : (loading || orderHistoryLoading) && activeStakes.length === 0 ? <LoadingState label="Loading your open TNGN predictions…" />
-            : activeStakes.length ? (
-              <View style={{ gap: theme.spacing.sm }}>
-                {activeStakes.slice(0, visibleOrderCount).map((stake) => <DemoStakeCard key={stake.stake_id} stake={stake} />)}
-                {activeStakes.length > visibleOrderCount ? <VadButton label="Show more TNGN orders" variant="secondary" onPress={() => setVisiblePositionCount((count) => count + 5)} /> : null}
-              </View>
-            ) : <VadEmptyState title="No open TNGN orders" body="Your TNGN practice predictions will appear here while awaiting market settlement. Real NGN and USDC orders stay separate." />
-        ) : sectionErrors?.orders ? <InlineError message={sectionErrors.orders} onRetry={retry} />
+        sectionErrors?.orders ? <InlineError message={sectionErrors.orders} onRetry={retry} />
           : loading && visibleOrders.totalCount === 0 ? <LoadingState label="Loading your open orders…" />
           : visibleOrders.totalCount ? (
             <View style={{ gap: theme.spacing.sm }}>
@@ -594,32 +558,6 @@ function PositionCard({ position, market, onPress }: { position: PositionModel; 
         </View>
       </VadCard>
     </Pressable>
-  );
-}
-
-function DemoStakeCard({ stake }: { stake: PoolStakeRow }) {
-  const theme = useVadTheme();
-  return (
-    <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-        <View style={{ flex: 1, gap: 3 }}>
-          <VadText variant="caption" tone="brand">TNGN PRACTICE PREDICTION</VadText>
-          <VadText variant="bodyStrong" numberOfLines={3}>{stake.market_title}</VadText>
-          <VadText variant="caption" tone="secondary">{stake.outcome_code} · {stake.market_status}</VadText>
-        </View>
-        <VadIcon name="activity" size={18} tone="brand" />
-      </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-        <View style={{ gap: 2 }}>
-          <VadText variant="caption" tone="tertiary">Recorded stake</VadText>
-          <VadText variant="bodyStrong">{assetMoney(stake.amount, 'TNGN')}</VadText>
-        </View>
-        <View style={{ flex: 1, alignItems: 'flex-end', gap: 2 }}>
-          <VadText variant="caption" tone="tertiary">Current value</VadText>
-          <VadText variant="bodyStrong">Unavailable until a valid mark or settlement</VadText>
-        </View>
-      </View>
-    </VadCard>
   );
 }
 

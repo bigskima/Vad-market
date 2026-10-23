@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Pressable, View, useWindowDimensions } from 'react-native';
 
 import { VadChip } from '@/components/ui/vad-chip';
@@ -8,6 +8,8 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { marketMediaUrl } from '@/services/market-api';
+import { supabase } from '@/lib/supabase';
+import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchlist } from '@/services/market-watchlist-api';
 
 export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const theme = useVadTheme();
@@ -17,6 +19,74 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const [imageRatioState, setImageRatioState] = useState<{ url: string; ratio: number } | null>(null);
   const [titleState, setTitleState] = useState({ instrumentId: market.instrument_public_id, expanded: false });
+  const [watchlistUserId, setWatchlistUserId] = useState<string | null>(null);
+  const [watchlistState, setWatchlistState] = useState<{
+    instrumentId: string;
+    saved: boolean;
+    message: string | null;
+  } | null>(null);
+  const [watchlistBusy, setWatchlistBusy] = useState(false);
+  const watchlistSaved = watchlistState?.instrumentId === market.instrument_public_id && watchlistState.saved;
+  const watchlistMessage = watchlistState?.instrumentId === market.instrument_public_id ? watchlistState.message : null;
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        if (!data.user) {
+          if (active) setWatchlistUserId(null);
+          return;
+        }
+        const rows = await listUserMarketWatchlist();
+        if (!active) return;
+        setWatchlistUserId(data.user.id);
+        setWatchlistState({
+          instrumentId: market.instrument_public_id,
+          saved: rows.some((row) => row.instrument_public_id === market.instrument_public_id),
+          message: null,
+        });
+      } catch {
+        if (active) setWatchlistState({
+          instrumentId: market.instrument_public_id,
+          saved: false,
+          message: 'Watchlist status could not be loaded. You can still try saving this market.',
+        });
+      }
+    })();
+    return () => { active = false; };
+  }, [market.instrument_public_id]);
+
+  const toggleWatchlist = async () => {
+    if (watchlistBusy) return;
+    if (!watchlistUserId) {
+      setWatchlistState({
+        instrumentId: market.instrument_public_id,
+        saved: false,
+        message: 'Sign in to save markets to your watchlist.',
+      });
+      return;
+    }
+    setWatchlistBusy(true);
+    try {
+      if (watchlistSaved) await removeMarketFromWatchlist(watchlistUserId, market.instrument_public_id);
+      else await saveMarketToWatchlist(watchlistUserId, market.instrument_public_id);
+      setWatchlistState({
+        instrumentId: market.instrument_public_id,
+        saved: !watchlistSaved,
+        message: watchlistSaved ? 'Removed from your watchlist.' : 'Added to your watchlist.',
+      });
+    } catch (reason) {
+      setWatchlistState({
+        instrumentId: market.instrument_public_id,
+        saved: watchlistSaved,
+        message: reason instanceof Error ? reason.message : 'This market could not be saved to your watchlist.',
+      });
+    } finally {
+      setWatchlistBusy(false);
+    }
+  };
   const isPool = market.liquidity_mode === 'POOL' || String(market.liquidity_mode ?? '').toUpperCase().includes('POOL');
   const imageUrl = marketMediaUrl(market.media_path);
   const imageFailed = Boolean(imageUrl && failedImageUrl === imageUrl);
@@ -139,6 +209,34 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
             </View>
           </Pressable>
         ) : null}
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingTop: 2 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={watchlistSaved ? 'Remove this market from your watchlist' : 'Add this market to your watchlist'}
+          accessibilityState={{ selected: watchlistSaved, disabled: watchlistBusy }}
+          disabled={watchlistBusy}
+          onPress={() => void toggleWatchlist()}
+          style={({ pressed }) => ({
+            minHeight: 36,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 7,
+            borderWidth: 1,
+            borderColor: watchlistSaved ? theme.colors.brandPrimary : theme.colors.border,
+            borderRadius: theme.radius.pill,
+            paddingHorizontal: 13,
+            backgroundColor: watchlistSaved ? theme.colors.brandSoft : theme.colors.surface,
+            opacity: watchlistBusy ? 0.55 : pressed ? 0.72 : 1,
+          })}
+        >
+          <VadIcon name="bookmark" size={16} tone={watchlistSaved ? 'brand' : 'secondary'} />
+          <VadText variant="caption" tone={watchlistSaved ? 'brand' : 'secondary'}>
+            {watchlistBusy ? 'Saving…' : watchlistSaved ? 'Saved to watchlist' : 'Add to watchlist'}
+          </VadText>
+        </Pressable>
+        {watchlistMessage ? <VadText variant="caption" tone="secondary">{watchlistMessage}</VadText> : null}
       </View>
     </View>
   );

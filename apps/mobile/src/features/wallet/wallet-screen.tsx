@@ -87,7 +87,7 @@ export function WalletScreen({
   const orderedWallets = useMemo(
     () => wallets
       .filter((wallet) => (
-        (wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC' || wallet.asset_code === 'TNGN')
+        (wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC')
         && currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency)
       ))
       .sort((a, b) => assetRank(a.asset_code) - assetRank(b.asset_code)),
@@ -207,8 +207,6 @@ export function WalletScreen({
                 <VadText variant="caption" numberOfLines={1} adjustsFontSizeToFit style={{ color: '#C9D0FF', fontSize: 12 }}>
                   {balanceVisible ? `${secondaryWallet.asset_code} balance · ${assetMoney(secondaryTotal, secondaryWallet.asset_code)}` : `${secondaryWallet.asset_code} balance · ••••••`}
                 </VadText>
-              ) : primaryCode === 'TNGN' ? (
-                <VadText variant="caption" style={{ color: '#C9D0FF', fontSize: 12 }}>Practice ledger · separate from real money</VadText>
               ) : (
                 <VadText variant="caption" style={{ color: '#C9D0FF', fontSize: 12 }}>Wallet balance for {primaryCode || 'your selected currency'}</VadText>
               )}
@@ -253,7 +251,7 @@ export function WalletScreen({
               <CurrencyToggle
                 key={currency}
                 currency={currency}
-                displayName={currency === 'TNGN' ? 'TNGN practice balance' : currency === 'NGN' ? 'Nigerian Naira' : currency === 'USDC' ? 'USDC' : currency}
+                displayName={currency === 'NGN' ? 'Nigerian Naira' : 'USDC'}
                 enabled={currencyPreference.isCurrencyEnabled(currency)}
                 available={currencyPreference.isCurrencyEligible(currency)}
                 onToggle={() => currencyPreference.toggleCurrency(currency)}
@@ -361,16 +359,8 @@ function CompactCurrencyBalance({ wallet, selected, balanceVisible }: { wallet: 
   const reserved = Number(wallet.reserved ?? 0);
   const pending = Number(wallet.withdrawal_pending ?? 0);
   const total = available + reserved + pending;
-  const name = wallet.asset_code === 'NGN'
-    ? 'Nigerian Naira'
-    : wallet.asset_code === 'TNGN'
-      ? 'Test Naira'
-      : 'USD Coin';
-  const subtitle = wallet.asset_code === 'USDC'
-    ? 'USDC · VAD ledger'
-    : wallet.asset_code === 'TNGN'
-      ? 'Practice balance · isolated demo ledger'
-      : 'NGN';
+  const name = wallet.asset_code === 'NGN' ? 'Nigerian Naira' : 'USD Coin';
+  const subtitle = wallet.asset_code === 'USDC' ? 'USDC · VAD ledger' : 'NGN';
 
   return (
     <VadCard
@@ -548,16 +538,12 @@ function RecentWalletActivityRow({ row, onPress }: { row: WalletActivityRow; onP
 }
 
 function ledgerMovementIsIncoming(row: WalletActivityRow) {
-  if (row.account_type === 'USER_AVAILABLE' || row.account_type === 'DEMO') return row.direction === 'CREDIT';
+  if (row.account_type === 'USER_AVAILABLE') return row.direction === 'CREDIT';
   return ['ORDER_FEE_RESERVE_RELEASE', 'MARKET_CLOSE_ORDER_RELEASE'].includes(row.activity_type);
 }
 
 function ledgerMovementLabel(type: string) {
   const labels: Record<string, string> = {
-    DEMO_GRANT: 'TNGN practice balance',
-    DEMO_STAKE: 'Prediction Purchase',
-    DEMO_REFUND: 'Prediction Refund',
-    DEMO_SETTLEMENT: 'Prediction Payout',
     POOL_STAKE: 'Prediction Purchase',
     TRADING_FEE: 'Trading Fee',
     ORDER_RESERVE: 'Order Reserve',
@@ -690,6 +676,5 @@ function WalletAction({
 function assetRank(code: string) {
   if (code === 'NGN') return 0;
   if (code === 'USDC') return 1;
-  if (code === 'TNGN') return 2;
   return 10;
 }

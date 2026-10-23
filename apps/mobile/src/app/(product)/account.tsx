@@ -53,12 +53,10 @@ export default function AccountScreen() {
     : data.countryCode;
   const countryCode = normalizeCountryCode(contextCountryCode, countryValue);
   const country = countryValue || countryNameFromCode(countryCode) || 'Country not set';
-  const tngnEnabled = currencyPreference.isCurrencyEnabled('TNGN');
-
   useEffect(() => {
     if (!userId || currencyPreference.loading) return;
     void refreshPortfolio();
-  }, [currencyPreference.loading, refreshPortfolio, tngnEnabled, userId]);
+  }, [currencyPreference.loading, refreshPortfolio, userId]);
 
   useEffect(() => {
     if (!userId) return;

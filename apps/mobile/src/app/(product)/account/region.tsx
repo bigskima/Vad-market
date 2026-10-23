@@ -12,7 +12,7 @@ export default function LanguageRegionScreen() {
   const data = useProductDataContext();
   const currency = useCurrencyPreference();
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Device default';
-  const available = (['NGN', 'USDC', 'TNGN'] as VADCurrency[])
+  const available = (['NGN', 'USDC'] as VADCurrency[])
     .filter((code) => currency.isCurrencyEligible(code));
 
   return (
@@ -32,14 +32,14 @@ export default function LanguageRegionScreen() {
 
         <VadCard style={{ gap: theme.spacing.sm }}>
           <VadText variant="heading">Eligible currencies</VadText>
-          <VadText variant="caption" tone="secondary">Toggle which currency areas are shown in Markets, Wallet and Portfolio. TNGN remains a separate practice ledger.</VadText>
+          <VadText variant="caption" tone="secondary">Toggle which eligible real currencies are shown in Markets, Wallet and Portfolio. These choices do not convert or move your balances.</VadText>
           {available.map((code) => {
             const enabled = currency.isCurrencyEnabled(code);
             return (
               <Pressable key={code} accessibilityRole="switch" accessibilityLabel={`Show ${code} in trading`} accessibilityState={{ checked: enabled, disabled: currency.loading }} disabled={currency.loading} onPress={() => void currency.toggleCurrency(code)} style={({ pressed }) => ({ minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingVertical: 7, opacity: pressed ? 0.75 : 1 })}>
                 <View style={{ flex: 1, gap: 2 }}>
-                  <VadText variant="bodyStrong">{code}{code === 'TNGN' ? ' demo trading' : ''}</VadText>
-                  <VadText variant="caption" tone="secondary">{code === 'TNGN' ? 'Practice funds and order history never mix with real-money ledgers.' : code === 'NGN' ? 'Nigerian naira account and eligible markets.' : 'USDC account and eligible markets.'}</VadText>
+                  <VadText variant="bodyStrong">{code}</VadText>
+                  <VadText variant="caption" tone="secondary">{code === 'NGN' ? 'Nigerian naira account and eligible markets.' : 'USDC account and eligible markets.'}</VadText>
                 </View>
                 <View style={{ width: 43, height: 25, borderRadius: 14, padding: 3, justifyContent: 'center', alignItems: enabled ? 'flex-end' : 'flex-start', backgroundColor: enabled ? theme.colors.brandPrimary : theme.colors.border }}>
                   <View style={{ width: 19, height: 19, borderRadius: 10, backgroundColor: theme.colors.surface }} />

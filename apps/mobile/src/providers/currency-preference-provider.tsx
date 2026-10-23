@@ -6,7 +6,7 @@ import { Alert } from 'react-native';
 import { supabase, supabaseConfiguration } from '@/lib/supabase';
 import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
-export type VADCurrency = 'NGN' | 'USDC' | 'TNGN';
+export type VADCurrency = 'NGN' | 'USDC';
 type CurrencyPolicy = {
   country_code: string;
   eligible_asset_codes: VADCurrency[];
@@ -27,7 +27,7 @@ type CurrencyPreferenceValue = {
 
 const STORAGE_KEY = 'vad:enabled-currencies';
 const CurrencyPreferenceContext = createContext<CurrencyPreferenceValue | null>(null);
-const SUPPORTED: VADCurrency[] = ['NGN', 'USDC', 'TNGN'];
+const SUPPORTED: VADCurrency[] = ['NGN', 'USDC'];
 
 function asCurrencies(value: unknown): VADCurrency[] {
   if (!Array.isArray(value)) return [];
@@ -151,8 +151,7 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
       const nextPreferred = preferredCurrency && next.includes(preferredCurrency)
         ? preferredCurrency
         : next[0] ?? null;
-      // This RPC persists both the currency preference and TNGN demo opt-in in
-      // one transaction, avoiding a split mode between wallet/markets/portfolio.
+      // This RPC persists the enabled/preferred real-currency selection atomically.
       const { data, error } = await supabase.rpc('set_my_currency_preferences', {
         p_enabled_asset_codes: next,
         p_preferred_asset_code: nextPreferred,

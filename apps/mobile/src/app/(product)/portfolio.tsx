@@ -23,7 +23,6 @@ export default function PortfolioRoute() {
         orders={data.orders}
         settlements={data.settlements}
         marketHistory={data.marketHistory}
-        poolStakes={data.poolStakes}
         markets={data.markets}
         sectionErrors={data.sectionErrors}
         loading={data.loading}

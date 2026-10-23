@@ -76,19 +76,27 @@ Deno.serve(async (req: Request) => {
     const accountId = String(provider?.public_metadata?.account_id || '').trim();
     const secretName = String(provider?.secret_reference || 'VAD_AI_CLOUDFLARE_API_TOKEN').trim();
     const apiToken = Deno.env.get(secretName);
-    if (!accountId || !apiToken) {
-      return json({ error: 'AI image generation is not configured. Check the active Cloudflare Workers AI provider and its server secret.' }, 503);
+    if (!accountId) {
+      return json({
+        error: 'Cloudflare Workers AI is selected, but its account ID is missing from the provider configuration.',
+        code: 'CLOUDFLARE_ACCOUNT_ID_MISSING',
+      }, 503);
+    }
+    if (!apiToken) {
+      return json({
+        error: `Cloudflare Workers AI is selected, but the Supabase Edge Function secret ${secretName} is missing. Add the Cloudflare API token under Supabase Edge Function secrets to enable campaign artwork generation.`,
+        code: 'CLOUDFLARE_SECRET_MISSING',
+        requiredSecret: secretName,
+      }, 503);
     }
 
     const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-1-schnell';
     const prompt = [
-      'Create a premium, cinematic, wide landscape campaign image for VAD Market, a real-world prediction markets platform.',
-      'Compose a sophisticated 16:9 promotional banner that feels editorial, modern, polished, and suitable for a dark indigo mobile app.',
-      `Campaign theme: ${title}.`,
-      body ? `Supporting context: ${body}.` : '',
-      visualDirection ? `Creative direction: ${visualDirection}.` : '',
-      'Infer relevant visual subject matter from the campaign theme. Use clear visual hierarchy, vivid but controlled color, crisp details, dimensional lighting, and strong composition that remains legible when cropped on a phone.',
-      'Artwork only: no text, no letters, no words, no numbers, no typography, no buttons, no interface mockup, no watermark, and no logos.',
+      'Generate a premium, cinematic 16:9 editorial photograph/illustration for a dark, premium prediction-market app. One clear visual subject, realistic materials, controlled lighting, crisp detail, clean negative space, composition that crops well on a phone.',
+      `Use this campaign only as semantic subject guidance; do not reproduce its wording: ${title}.`,
+      body ? `Additional context for subject selection only (never render these words): ${body}.` : '',
+      visualDirection ? `Visual style guidance only (never render these words): ${visualDirection}.` : '',
+      'STRICT TEXT-FREE IMAGE: image pixels must contain no text of any kind. No letters, words, numbers, symbols, typography, captions, labels, signs, lettering, logos, watermarks, UI, badges, buttons, price tags, ticker symbols, or readable/pseudo-readable marks. Do not typeset or spell the campaign title or copy. If the subject normally has a logo, use a generic non-branded visual instead. The app renders all copy outside the image.',
     ].filter(Boolean).join(' ');
 
     const aiResponse = await fetch(
