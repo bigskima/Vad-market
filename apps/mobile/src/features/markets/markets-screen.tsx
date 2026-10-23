@@ -21,6 +21,8 @@ import { requestMarketImageGeneration } from '@/services/market-image-generation
 import { getMarketCategoryExperiences, type MarketCategoryExperience } from '@/services/crypto-market-data-api';
 import { MarketCard } from './components/market-card';
 import { PageHeader } from '@/features/navigation/page-header';
+import { supabase } from '@/lib/supabase';
+import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchlist } from '@/services/market-watchlist-api';
 import {
   MarketDiscoveryControls,
   type MarketSortMode,
@@ -53,6 +55,10 @@ export function MarketsScreen({
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [categoryExperiences, setCategoryExperiences] = useState<MarketCategoryExperience[]>([]);
+  const [watchlistUserId, setWatchlistUserId] = useState<string | null>(null);
+  const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
+  const [watchlistBusyId, setWatchlistBusyId] = useState<string | null>(null);
+  const [watchlistError, setWatchlistError] = useState<string | null>(null);
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(query.trim()), 250);
@@ -66,6 +72,53 @@ export function MarketsScreen({
       .catch(() => { if (active) setCategoryExperiences([]); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        if (!authData.user) {
+          if (active) {
+            setWatchlistUserId(null);
+            setWatchlistIds([]);
+          }
+          return;
+        }
+        const rows = await listUserMarketWatchlist();
+        if (!active) return;
+        setWatchlistUserId(authData.user.id);
+        setWatchlistIds(rows.map((row) => row.instrument_public_id));
+        setWatchlistError(null);
+      } catch {
+        if (active) setWatchlistError('Your watchlist could not be loaded. You can retry by refreshing the page.');
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const toggleMarketWatchlist = async (instrumentPublicId: string) => {
+    if (watchlistBusyId) return;
+    if (!watchlistUserId) {
+      setWatchlistError('Sign in to add markets to your watchlist.');
+      return;
+    }
+    const alreadySaved = watchlistIds.includes(instrumentPublicId);
+    setWatchlistBusyId(instrumentPublicId);
+    setWatchlistError(null);
+    try {
+      if (alreadySaved) await removeMarketFromWatchlist(watchlistUserId, instrumentPublicId);
+      else await saveMarketToWatchlist(watchlistUserId, instrumentPublicId);
+      setWatchlistIds((current) => alreadySaved
+        ? current.filter((id) => id !== instrumentPublicId)
+        : [instrumentPublicId, ...current]);
+    } catch (reason) {
+      setWatchlistError(reason instanceof Error ? reason.message : 'This market could not be saved to your watchlist. Try again.');
+    } finally {
+      setWatchlistBusyId(null);
+    }
+  };
 
   // Lazily fill missing AI artwork for the live catalogue while keeping the
   // requests bounded by the shared generation queue and server-side idempotency.
@@ -213,6 +266,7 @@ export function MarketsScreen({
       <View style={{ alignItems: 'flex-end', marginTop: -8 }}>
         <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
       </View>
+      {watchlistError ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
 
       <TourTarget id="markets-discovery">
         <MarketDiscoveryControls
@@ -274,7 +328,15 @@ export function MarketsScreen({
                   }}>
                     {group.markets.map((market) => (
                       <View key={market.instrument_public_id} style={{ width: cardWidth }}>
-                        <MarketCard market={market} onPress={() => onOpenMarket(market)} onSelectOutcome={(outcome) => router.push({ pathname: '/market/[marketId]', params: { marketId: market.instrument_public_id, outcome } })} compact />
+                        <MarketCard
+                          market={market}
+                          onPress={() => onOpenMarket(market)}
+                          onSelectOutcome={(outcome) => router.push({ pathname: '/market/[marketId]', params: { marketId: market.instrument_public_id, outcome } })}
+                          compact
+                          watchlistSaved={watchlistIds.includes(market.instrument_public_id)}
+                          watchlistBusy={watchlistBusyId === market.instrument_public_id}
+                          onToggleWatchlist={() => void toggleMarketWatchlist(market.instrument_public_id)}
+                        />
                       </View>
                     ))}
                   </View>
