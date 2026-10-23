@@ -452,7 +452,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
       return;
     }
     const threshold = details.threshold?.trim() ?? '';
-    if (!/^[0-9]+(?:\\.[0-9]{1,18})?$/.test(threshold) || !Number.isFinite(Number(threshold)) || Number(threshold) <= 0) {
+    if (!/^[0-9]+(?:\.[0-9]{1,18})?$/.test(threshold) || !Number.isFinite(Number(threshold)) || Number(threshold) <= 0) {
       setError('Enter a valid positive USD price target before asking AI to prepare the draft.');
       return;
     }
@@ -492,7 +492,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function renderCryptoDraftControls() {
     if (!selectedCryptoAsset) return null;
     const threshold = details.threshold?.trim() ?? '';
-    const targetValid = /^[0-9]+(?:\\.[0-9]{1,18})?$/.test(threshold)
+    const targetValid = /^[0-9]+(?:\.[0-9]{1,18})?$/.test(threshold)
       && Number.isFinite(Number(threshold))
       && Number(threshold) > 0;
     return (
