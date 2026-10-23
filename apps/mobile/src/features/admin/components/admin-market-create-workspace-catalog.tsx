@@ -31,6 +31,7 @@ import {
   createAdminSportsMarketDraft,
   type AdminSportsFixture,
 } from '@/services/admin-sports-fixture-api';
+import { createAdminCryptoMarketDraft } from '@/services/crypto-market-draft-api';
 import {
   createAdminCustomMarket,
   createAdminGuidedMarket,
@@ -92,6 +93,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [cryptoAssetCheck, setCryptoAssetCheck] = useState<CryptoOracleAssetCheck | null>(null);
   const [cryptoAssetCheckLoading, setCryptoAssetCheckLoading] = useState(false);
   const cryptoAssetCheckRequest = useRef(0);
+  const [cryptoDraftLoading, setCryptoDraftLoading] = useState(false);
+  const [cryptoDraftNotice, setCryptoDraftNotice] = useState<string | null>(null);
+  const cryptoDraftRequest = useRef(0);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,6 +174,11 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   async function chooseCryptoAsset(coin: CryptoMarketQuote) {
     const requestId = ++cryptoAssetCheckRequest.current;
+    cryptoDraftRequest.current += 1;
+    setCryptoDraftLoading(false);
+    setCryptoDraftNotice(null);
+    setDescription('');
+    setResultCondition('');
     setSelectedCryptoAsset(coin);
     setCryptoAssetCheck(null);
     setCryptoAssetCheckLoading(true);
@@ -430,6 +439,81 @@ export function AdminMarketCreateWorkspaceCatalog() {
     } finally {
       if (requestId === sportsDraftRequest.current) setSportsDraftLoading(false);
     }
+  }
+
+  async function generateCryptoMarketDraft() {
+    const asset = selectedCryptoAsset;
+    if (!asset) {
+      setError('Select a crypto asset from the live catalogue first.');
+      return;
+    }
+    if (cryptoAssetCheckLoading || !cryptoAssetCheck?.supported || cryptoAssetCheck.coinGeckoId !== asset.id) {
+      setError(cryptoAssetCheck?.reason ?? 'Verify the selected asset has active Coinbase + Kraken historical mappings first.');
+      return;
+    }
+    const threshold = details.threshold?.trim() ?? '';
+    if (!/^[0-9]+(?:\\.[0-9]{1,18})?$/.test(threshold) || !Number.isFinite(Number(threshold)) || Number(threshold) <= 0) {
+      setError('Enter a valid positive USD price target before asking AI to prepare the draft.');
+      return;
+    }
+    const requestId = ++cryptoDraftRequest.current;
+    setCryptoDraftLoading(true);
+    setCryptoDraftNotice(null);
+    setError(null);
+    try {
+      const draft = await createAdminCryptoMarketDraft({
+        marketTypeCode: marketType?.code ?? 'CRYPTO_PRICE_THRESHOLD',
+        symbol: asset.symbol,
+        coinGeckoId: asset.id,
+        assetName: asset.name,
+        operator: details.operator ?? 'GTE',
+        threshold,
+        quote: 'USD',
+        sourceName: sourceName.trim() || 'Coinbase + Kraken public historical prices',
+        sourceUrl: sourceUrl.trim(),
+      });
+      if (requestId !== cryptoDraftRequest.current || selectedCryptoAsset?.id !== asset.id) return;
+      setTitle(draft.title);
+      setTitleEdited(true);
+      setDescription(draft.description);
+      setResultCondition(draft.resolutionRules);
+      setCryptoDraftNotice(
+        'Prepared by ' + draft.providerName + ' (' + draft.modelCode + '). Review the title, description and resolution rules before creating or publishing. '
+        + (draft.riskNotes ? 'Review note: ' + draft.riskNotes : ''),
+      );
+    } catch (value) {
+      if (requestId !== cryptoDraftRequest.current || selectedCryptoAsset?.id !== asset.id) return;
+      setError(value instanceof Error ? value.message : 'AI could not prepare the crypto market draft.');
+    } finally {
+      if (requestId === cryptoDraftRequest.current) setCryptoDraftLoading(false);
+    }
+  }
+
+  function renderCryptoDraftControls() {
+    if (!selectedCryptoAsset) return null;
+    const threshold = details.threshold?.trim() ?? '';
+    const targetValid = /^[0-9]+(?:\\.[0-9]{1,18})?$/.test(threshold)
+      && Number.isFinite(Number(threshold))
+      && Number(threshold) > 0;
+    return (
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadButton
+          label={cryptoDraftLoading ? 'Preparing AI draft…' : 'Draft crypto market with AI'}
+          onPress={() => void generateCryptoMarketDraft()}
+          disabled={cryptoDraftLoading || working || cryptoAssetCheckLoading || !cryptoAssetCheck?.supported || !targetValid}
+          loading={cryptoDraftLoading}
+        />
+        <VadText variant="caption" tone="secondary">
+          AI drafts the market copy from the selected asset and exact USD threshold. Review the output; AI cannot approve, publish or settle a market.
+        </VadText>
+        {cryptoDraftNotice ? (
+          <VadCard variant="outlined" style={{ gap: 4 }}>
+            <VadText variant="bodyStrong">AI draft — administrator review required</VadText>
+            <VadText variant="caption" tone="secondary">{cryptoDraftNotice}</VadText>
+          </VadCard>
+        ) : null}
+      </View>
+    );
   }
 
   function renderSportsDraftControls() {
@@ -830,6 +914,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                       </FieldGroup>
                       <VadInput label="USD price target" value={details.threshold ?? ''} onChangeText={(value) => setDetail('threshold', value.replace(/[^0-9.]/g, ''))} placeholder="e.g. 250" />
                       <VadText variant="caption" tone="secondary">The observation time is the “Check result after” time in the next step. Oracle resolution uses historical observations at that time—not the current live chart.</VadText>
+                      {renderCryptoDraftControls()}
                     </View>
                   ) : null}
                   {(!marketType.conditionTemplate.trim() || (category?.code === 'SPORTS' && !football)) ? (
