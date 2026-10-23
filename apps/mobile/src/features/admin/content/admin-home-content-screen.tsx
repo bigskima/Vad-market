@@ -49,7 +49,6 @@ export function AdminHomeContentScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [errorTitle, setErrorTitle] = useState('Campaign not saved');
   const [message, setMessage] = useState<string | null>(null);
   const [promotionEditor, setPromotionEditor] = useState<HomePromotion | 'NEW' | null>(null);
 
@@ -202,6 +201,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
   const [generating, setGenerating] = useState(false);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState('Campaign not saved');
 
   async function chooseImage() {
     setUploading(true);
