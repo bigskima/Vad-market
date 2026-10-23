@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -12,6 +12,7 @@ import { useProductDataContext } from '@/providers/product-data-provider';
 import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { transferAssetToEmail, type AssetTransferReceipt, type TransferAssetCode } from '@/services/asset-transfer-api';
+import { supabase } from '@/lib/supabase';
 
 function makeRequestKey() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
@@ -42,9 +43,20 @@ export default function SendRoute() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<(AssetTransferReceipt & { requestKey: string }) | null>(null);
+  const [temporaryNgnCreditActive, setTemporaryNgnCreditActive] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void supabase.rpc('my_temporary_ngn_test_credit_status')
+      .then(({ data: status, error }) => {
+        if (active) setTemporaryNgnCreditActive(!error && Boolean(status && typeof status === 'object' && (status as { active?: boolean }).active));
+      })
+      .catch(() => { if (active) setTemporaryNgnCreditActive(false); });
+    return () => { active = false; };
+  }, []);
 
   const assets: TransferAssetCode[] = (['NGN', 'USDC'] as const)
-    .filter((code) => currency.isCurrencyEligible(code));
+    .filter((code) => currency.isCurrencyEligible(code) && !(temporaryNgnCreditActive && code === 'NGN'));
 
   const activeAssetCode: TransferAssetCode = assets.includes(assetCode) ? assetCode : assets[0] ?? 'NGN';
   const selectedWallet = data.wallet.find((wallet) => wallet.asset_code === activeAssetCode);
@@ -102,6 +114,14 @@ export default function SendRoute() {
         <VadText variant="caption" tone="secondary">
           Send real NGN or VAD ledger USDC to another existing VAD account by email. The server verifies the recipient, account eligibility and available balance, then posts a balanced ledger transfer. This does not send funds to a bank or blockchain wallet.
         </VadText>
+        {temporaryNgnCreditActive ? (
+          <VadCard variant="surface" style={{ gap: theme.spacing.xs, borderColor: theme.colors.brandPrimary }}>
+            <VadText variant="bodyStrong">NGN transfers temporarily locked</VadText>
+            <VadText variant="caption" tone="secondary">
+              Your temporary NGN market-test credit can be traded on actual published markets, but it cannot be sent to another user. You can still transfer eligible ledger USDC. The server enforces this restriction as well.
+            </VadText>
+          </VadCard>
+        ) : null}
 
         <VadCard variant="surface" style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
           <View style={{ gap: theme.spacing.xs }}>
