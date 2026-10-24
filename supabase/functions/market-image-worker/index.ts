@@ -137,7 +137,9 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     selected: jobs?.length ?? 0,
-    completed: results.filter((row) => row.status === 'DONE').length,
+    completed: results.filter((row) => row.status === 'DONE' || row.status === 'SOURCE_IMAGE').length,
+    sourceImages: results.filter((row) => row.status === 'SOURCE_IMAGE').length,
+    aiGenerated: results.filter((row) => row.status === 'DONE').length,
     failed: results.filter((row) => row.status === 'FAILED').length,
     remainingQueuedEstimate: Math.max(0, (jobs?.length ?? 0) - results.length),
     results,
