@@ -108,8 +108,7 @@ export function WalletScreen({
         setTemporaryNgnCredit(data && typeof data === 'object'
           ? data as NonNullable<typeof temporaryNgnCredit>
           : null);
-      })
-      .catch(() => {
+      }, () => {
         if (active) setTemporaryNgnCredit(null);
       });
     return () => { active = false; };
