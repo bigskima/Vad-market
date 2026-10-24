@@ -272,7 +272,7 @@ export function WalletScreen({
       </TourTarget>
 
       {temporaryNgnCredit?.active ? (
-        <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md, borderColor: theme.colors.warning }}>
+        <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
             <VadText variant="bodyStrong">Temporary NGN market-test allocation</VadText>
             <VadChip label="Non-withdrawable" tone="warning" />
