@@ -473,17 +473,45 @@ async function getMarketAssetCode(instrumentPublicId: string) {
   return data?.asset_code ?? null;
 }
 
+function tradingErrorMessage(error: { message: string; code?: string } | null, fallback: string) {
+  const message = String(error?.message ?? '').toLowerCase();
+  if (message.includes('location verification') || message.includes('current location') || message.includes('network are verified')) {
+    return 'NGN trading requires current Nigeria location and network verification. Complete the location check in your account, then retry. Temporary test credit does not bypass this requirement.';
+  }
+  if (message.includes('trading is not available for this account and market')) {
+    return 'This account is not currently eligible to trade this market. For NGN testing, confirm your current Nigeria location is verified and that the market is open.';
+  }
+  if (message.includes('market is not open')) {
+    return 'This market is no longer open for new trades. Choose an OPEN market; settled markets remain viewable but cannot accept stakes.';
+  }
+  if (message.includes('temporary test credit cannot join') || message.includes('restricted to non-cash test-credit trading')) {
+    return 'This market cannot mix temporary test funds with cash-funded stakes. Choose an eligible OPEN NGN market with no existing real-money exposure.';
+  }
+  if (message.includes('below the market minimum') || message.includes('below market minimum')) {
+    return 'The stake is below this market’s minimum. Increase the amount and review the quote again.';
+  }
+  if (message.includes('insufficient available balance')) {
+    return 'Your available NGN balance does not cover the stake and trading fee.';
+  }
+  return fallback;
+}
+
 export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; amount: number }) {
   const assetCode = await getMarketAssetCode(input.instrumentPublicId);
   if (assetCode !== 'NGN' && assetCode !== 'USDC') {
-    throw new Error('Test NGN markets are permanently closed.');
+    throw new Error('TNGN markets are permanently retired. Select a real NGN or supported USDC market.');
   }
+  // Validate the real-time location before quoting, so the user sees the actual
+  // prerequisite instead of the generic "Prediction review unavailable" fallback.
+  await ensureNgnLocationForInstrument(input.instrumentPublicId);
   const { data, error } = await supabase.rpc('pool_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
     p_amount: input.amount,
   });
-  assertNoError(error, 'trading', 'We could not prepare this prediction right now. Please try again.');
+  if (error) {
+    throw new Error(tradingErrorMessage(error, 'We could not prepare this prediction right now. Please retry after checking account eligibility and market status.'));
+  }
   return data as PoolQuote;
 }
 
@@ -500,7 +528,9 @@ export async function placePoolStake(quote: PoolQuote) {
     p_amount: Number(quote.amount),
     p_idempotency_key: idempotencyKey,
   });
-  assertNoError(error, 'trading', 'We could not commit this prediction right now. Please try again.');
+  if (error) {
+    throw new Error(tradingErrorMessage(error, 'We could not commit this prediction right now. Check your location, available balance and whether the market is still OPEN.'));
+  }
   return data as PoolStakeStatus;
 }
 
