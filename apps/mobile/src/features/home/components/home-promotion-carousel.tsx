@@ -93,7 +93,10 @@ export function HomePromotionCarousel({
     if (next === 0) directionRef.current = 1;
   };
 
-  const bannerHeight = density.compact ? 116 : density.phone ? 128 : density.desktop ? 176 : 148;
+  // Cloudflare returns native 1024x576 artwork. Keep the banner frame at
+  // that same 16:9 ratio instead of vertically cropping it into a short strip.
+  const bannerWidth = width || Math.max(260, density.width - density.horizontalPadding * 2);
+  const bannerHeight = Math.round(bannerWidth * 9 / 16);
 
   return (
     <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ gap: 7 }}>
@@ -117,7 +120,7 @@ export function HomePromotionCarousel({
             accessibilityLabel={promotion.title || 'Open VAD campaign'}
             onPress={() => onOpen(promotion.target_path)}
             style={({ pressed }) => ({
-              width: width || Math.max(260, density.width - density.horizontalPadding * 2),
+              width: bannerWidth,
               height: bannerHeight,
               overflow: 'hidden',
               borderRadius: density.phone ? 14 : 18,
@@ -143,7 +146,7 @@ export function HomePromotionCarousel({
                     right: 0,
                     bottom: 0,
                     left: 0,
-                    backgroundColor: 'rgba(5, 9, 28, 0.40)',
+                    backgroundColor: 'rgba(5, 9, 28, 0.12)',
                   }}
                 />
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-start', paddingHorizontal: density.cardPadding, paddingVertical: density.compact ? 8 : 10, paddingRight: density.cardPadding + 18, gap: 5 }}>
