@@ -973,7 +973,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                 </VadCard>
               ) : (
                 <VadErrorState title="No eligible market currency" message="This jurisdiction has no enabled production currency. Update asset eligibility before creating a market." />
-              )
+              )}
             </View>
           ) : null}
           {automaticFootball ? (
