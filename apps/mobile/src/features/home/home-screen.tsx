@@ -354,7 +354,7 @@ export function HomeScreen({
                       <MarketThumb market={market} size={38} />
                       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
                         <VadText variant="caption" numberOfLines={3} style={{ fontSize: 12, lineHeight: 15 }}>{market.title}</VadText>
-                        <VadText variant="caption" tone="yes" style={{ fontWeight: '700' }}>Yes · {formatProbability(market.yes_price)}</VadText>
+                        <VadText variant="caption" tone={market.market_type === 'MULTI_OUTCOME' ? 'brand' : 'yes'} style={{ fontWeight: '700' }}>{market.market_type === 'MULTI_OUTCOME' ? 'Multiple outcomes' : `Yes · ${formatProbability(market.yes_price)}`}</VadText>
                       </View>
                     </Pressable>
                     <Pressable accessibilityRole="button" accessibilityLabel="Remove from watchlist" disabled={watchlistBusyId === market.instrument_public_id} onPress={() => void toggleWatchlist(market.instrument_public_id)} hitSlop={8}>
@@ -422,7 +422,7 @@ export function HomeScreen({
                   <VadText variant="caption" tone="secondary">{formatVolume(market.total_volume, market.asset_code)} volume</VadText>
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 3, minWidth: 54 }}>
-                  <VadText variant="bodyStrong" style={{ fontSize: 14 }}>{formatProbability(market.yes_price)}</VadText>
+                  <VadText variant="bodyStrong" style={{ fontSize: 12 }}>{market.market_type === 'MULTI_OUTCOME' ? 'Multiple options' : formatProbability(market.yes_price)}</VadText>
                   {entry && isRanked ? (
                     <VadText variant="caption" tone={Number(entry.price_movement) >= 0 ? 'yes' : 'no'}>{Number(entry.price_movement) > 0 ? '▲ ' : Number(entry.price_movement) < 0 ? '▼ ' : ''}{Math.abs(Number(entry.price_movement) || 0).toFixed(1)}%</VadText>
                   ) : (

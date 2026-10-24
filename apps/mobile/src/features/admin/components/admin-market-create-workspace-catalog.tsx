@@ -14,6 +14,7 @@ import { AdminSportsFixturePicker } from './admin-sports-fixture-picker';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   createAdminCatalogMarket,
+  createAdminMultiOutcomeMarket,
   getAdminGuidedMarketCatalog,
   type AdminGuidedCatalogCategory,
   type AdminGuidedCatalogMarketType,
@@ -41,6 +42,7 @@ import {
 
 type Step = 1 | 2 | 3;
 type CreationStyle = 'GUIDED' | 'CUSTOM';
+type MarketFormat = 'BINARY' | 'MULTI_OUTCOME';
 type ResultChecking = 'AUTOMATIC' | 'VERIFIED';
 type Prediction = 'HOME_WIN' | 'DRAW' | 'AWAY_WIN';
 type PublicationChoice = 'DRAFT' | 'NOW';
@@ -103,6 +105,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   const [step, setStep] = useState<Step>(1);
   const [creationStyle, setCreationStyle] = useState<CreationStyle>('GUIDED');
+  const [marketFormat, setMarketFormat] = useState<MarketFormat>('BINARY');
+  const [multiOutcomeOptionsText, setMultiOutcomeOptionsText] = useState('');
   const [publicationChoice, setPublicationChoice] = useState<PublicationChoice>('DRAFT');
   const [categoryCode, setCategoryCode] = useState('');
   const [marketTypeCode, setMarketTypeCode] = useState('');
@@ -250,6 +254,14 @@ export function AdminMarketCreateWorkspaceCatalog() {
     () => category?.marketTypes.find((item) => item.code === marketTypeCode) ?? category?.marketTypes[0] ?? null,
     [category, marketTypeCode],
   );
+  const multiOutcomeOptions = useMemo(
+    () => multiOutcomeOptionsText.split(/\\r?\\n/).map((option) => option.trim()).filter(Boolean),
+    [multiOutcomeOptionsText],
+  );
+  const multiOutcomeOptionsValid = multiOutcomeOptions.length >= 2
+    && multiOutcomeOptions.length <= 20
+    && new Set(multiOutcomeOptions.map((option) => option.toLocaleLowerCase())).size === multiOutcomeOptions.length
+    && multiOutcomeOptions.every((option) => option.length <= 80);
 
   const resolvedCountryCode = countryCode || (options?.jurisdictions.length === 1 ? options.jurisdictions[0].countryCode : '');
   const jurisdiction = useMemo(
@@ -265,8 +277,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
       ? 'NGN'
       : availableAssets[0] ?? '';
   const guided = creationStyle === 'GUIDED';
-  const football = guided && marketType?.handler === 'FOOTBALL_MATCH';
-  const cryptoThreshold = guided && marketType?.handler === 'CRYPTO_THRESHOLD';
+  const football = marketFormat === 'BINARY' && guided && marketType?.handler === 'FOOTBALL_MATCH';
+  const cryptoThreshold = marketFormat === 'BINARY' && guided && marketType?.handler === 'CRYPTO_THRESHOLD';
   const automaticFootball = football && resultChecking === 'AUTOMATIC';
   const automaticFootballAvailable = options?.guided.football.automaticProductionAvailable === true;
   const footballCompetitions = options?.guided.football.competitions ?? [];
@@ -322,7 +334,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
     return suggestedFromTemplate(marketType.questionTemplate, details);
   }, [awayTeam, competition, cryptoThreshold, details, football, guided, homeTeam, marketType, prediction, selectedCryptoAsset]);
 
-  const effectiveTitle = !titleEdited && suggestedTitle ? suggestedTitle : title;
+  const effectiveTitle = marketFormat === 'MULTI_OUTCOME'
+    ? title
+    : !titleEdited && suggestedTitle ? suggestedTitle : title;
 
   function clearMarketDetails() {
     sportsDraftRequest.current += 1;
@@ -336,6 +350,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setSourceName('');
     setSourceUrl('');
     setResultCondition('');
+    setMultiOutcomeOptionsText('');
     setCryptoSearch('');
     setCryptoOptions([]);
     setSelectedCryptoAsset(null);
@@ -561,7 +576,21 @@ export function AdminMarketCreateWorkspaceCatalog() {
   async function continueFromMarket() {
     setError(null);
     if (!category) return setError('Choose a market category.');
-    if (!effectiveTitle.trim()) return setError('Enter a clear YES/NO market question before continuing.');
+    if (!effectiveTitle.trim()) return setError('Enter a clear market question before continuing.');
+    if (marketFormat === 'MULTI_OUTCOME') {
+      if (multiOutcomeOptions.length < 2) return setError('Add at least two outcome choices, one per line.');
+      if (multiOutcomeOptions.length > 20) return setError('A market can have at most 20 outcome choices.');
+      if (multiOutcomeOptions.some((option) => option.length > 80)) return setError('Each outcome choice must be 80 characters or fewer.');
+      if (new Set(multiOutcomeOptions.map((option) => option.toLocaleLowerCase())).size !== multiOutcomeOptions.length) {
+        return setError('Outcome choices must be unique. Remove duplicate names and try again.');
+      }
+      if (resultCondition.trim().length < 10) return setError('Describe how VAD should determine the winning option.');
+      if (!sourceName.trim()) return setError('Add the authoritative result source for this market.');
+      if (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim())) return setError('The source link must start with https://.');
+      setLiquidityModel('POOL');
+      setStep(2);
+      return;
+    }
     if (!guided) return setStep(2);
     if (!marketType) return setError('Choose the kind of event you are creating.');
 
@@ -655,6 +684,16 @@ export function AdminMarketCreateWorkspaceCatalog() {
       setStep(1);
       return;
     }
+    if (marketFormat === 'MULTI_OUTCOME' && (
+      !multiOutcomeOptionsValid
+      || resultCondition.trim().length < 10
+      || !sourceName.trim()
+      || (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim()))
+    )) {
+      setStep(1);
+      setError('Review the market question, 2–20 unique choices, resolution instructions and official source.');
+      return;
+    }
     if (cryptoThreshold && (!selectedCryptoAsset || !cryptoAssetCheck?.supported || cryptoAssetCheck.coinGeckoId !== selectedCryptoAsset.id || cryptoAssetCheckLoading)) {
       setStep(1);
       setError(cryptoAssetCheck?.reason ?? 'Select a crypto asset supported by both keyless historical-price sources before creating the market.');
@@ -691,7 +730,16 @@ export function AdminMarketCreateWorkspaceCatalog() {
         publishNow: publicationChoice === 'NOW',
       };
       let result: Record<string, unknown>;
-      if (!guided) {
+      if (marketFormat === 'MULTI_OUTCOME') {
+        result = await createAdminMultiOutcomeMarket({
+          ...common,
+          category: category.name,
+          outcomes: multiOutcomeOptions,
+          resolutionInstructions: resultCondition,
+          sourceName,
+          sourceUrl,
+        });
+      } else if (!guided) {
         result = await createAdminCustomMarket({ ...common, category: category.name });
       } else if (football) {
         result = await createAdminGuidedMarket({
@@ -738,6 +786,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setCreated(null);
     setStep(1);
     setCreationStyle('GUIDED');
+    setMarketFormat('BINARY');
     setPublicationChoice('DRAFT');
     const firstCategory = categories[0];
     setCategoryCode(firstCategory?.code ?? '');
@@ -756,11 +805,13 @@ export function AdminMarketCreateWorkspaceCatalog() {
   if (loading) return <View style={{ gap: theme.spacing.md }}><VadSkeleton width="50%" height={32} /><VadSkeleton height={120} /><VadSkeleton height={280} /></View>;
 
   const publicationStatus = String(created?.publication_status ?? 'DRAFT').toUpperCase();
-  const resultLabel = guided
-    ? automaticFootball
-      ? `Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`
-      : `Verified result${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
-    : 'VAD configured result checking';
+  const resultLabel = marketFormat === 'MULTI_OUTCOME'
+    ? `Manual review${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
+    : guided
+      ? automaticFootball
+        ? `Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`
+        : `Verified result${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
+      : 'VAD configured result checking';
 
   if (created) {
     return (
@@ -788,7 +839,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
       {step === 1 ? (
         <VadCard variant="raised" style={{ gap: theme.spacing.lg }}>
-          <SectionTitle eyebrow="STEP 1 · MARKET" title="What is this market about?" text="Choose a category and event type, then enter normal real-world details." />
+          <SectionTitle eyebrow="STEP 1 · MARKET" title="What is this market about?" text="Choose any category, then choose whether traders answer Yes/No or pick from multiple named outcomes." />
 
           <FieldGroup label="Creation style">
             <VadChip label="Guided setup" selected={creationStyle === 'GUIDED'} tone={creationStyle === 'GUIDED' ? 'brand' : 'neutral'} onPress={() => { setCreationStyle('GUIDED'); setTitleEdited(false); setError(null); }} />
@@ -801,7 +852,40 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
           {category?.description ? <VadCard variant="muted"><VadText variant="caption" tone="secondary">{category.description}</VadText></VadCard> : null}
 
-          {guided && category ? (
+          <FieldGroup label="Market format">
+            <VadChip
+              label="Yes / No"
+              selected={marketFormat === 'BINARY'}
+              tone={marketFormat === 'BINARY' ? 'brand' : 'neutral'}
+              onPress={() => {
+                setMarketFormat('BINARY');
+                setTitleEdited(Boolean(title.trim()));
+                setError(null);
+              }}
+            />
+            <VadChip
+              label="Multiple outcomes"
+              selected={marketFormat === 'MULTI_OUTCOME'}
+              tone={marketFormat === 'MULTI_OUTCOME' ? 'brand' : 'neutral'}
+              onPress={() => {
+                if (marketFormat !== 'MULTI_OUTCOME') {
+                  setTitle(effectiveTitle);
+                  setTitleEdited(true);
+                }
+                setMarketFormat('MULTI_OUTCOME');
+                setLiquidityModel('POOL');
+                setError(null);
+              }}
+            />
+          </FieldGroup>
+          {marketFormat === 'MULTI_OUTCOME' ? (
+            <VadCard variant="muted" style={{ gap: 4 }}>
+              <VadText variant="bodyStrong">One market, many possible winners</VadText>
+              <VadText variant="caption" tone="secondary">This format works with any category. Traders choose one named option; VAD records the winning option using the resolution instructions and source you configure below.</VadText>
+            </VadCard>
+          ) : null}
+
+          {marketFormat === 'BINARY' && guided && category ? (
             <View style={{ gap: theme.spacing.lg }}>
               <FieldGroup label="Market type">
                 {category.marketTypes.map((item) => <VadChip key={item.code} label={item.name} selected={marketType?.code === item.code} tone={marketType?.code === item.code ? 'brand' : 'neutral'} onPress={() => chooseMarketType(item)} />)}
@@ -942,10 +1026,68 @@ export function AdminMarketCreateWorkspaceCatalog() {
             </View>
           ) : null}
 
-          {category?.code === 'SPORTS' ? renderSportsDraftControls() : null}
+          {marketFormat === 'MULTI_OUTCOME' ? (
+            <View style={{ gap: theme.spacing.md }}>
+              <VadInput
+                label="Market question"
+                value={title}
+                onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }}
+                multiline
+                placeholder="Who will win the Ballon d’Or 2026?"
+                hint="Ask one clear question that has exactly one winning option."
+              />
+              <VadInput
+                label="Outcome choices · one per line"
+                value={multiOutcomeOptionsText}
+                onChangeText={(value) => { setMultiOutcomeOptionsText(value); setError(null); }}
+                multiline
+                placeholder={'Lamine Yamal\nHarry Kane\nOusmane Dembélé\nKylian Mbappé'}
+                hint="Add 2–20 unique choices. These names are shown to traders and used when the result is finalized."
+              />
+              {multiOutcomeOptions.length > 0 ? (
+                <VadCard variant="muted" style={{ gap: 6 }}>
+                  <VadText variant="bodyStrong">{multiOutcomeOptions.length} choice{multiOutcomeOptions.length === 1 ? '' : 's'} added</VadText>
+                  <View style={{ gap: 5 }}>
+                    {multiOutcomeOptions.slice(0, 20).map((option, index) => (
+                      <View key={`${index}:${option}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
+                          <VadText variant="caption" tone="secondary">{index + 1}</VadText>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <VadText variant="bodyStrong">{option}</VadText>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                  {!multiOutcomeOptionsValid ? <VadText variant="caption" tone="warning">Use 2–20 unique choices, each no longer than 80 characters.</VadText> : null}
+                </VadCard>
+              ) : null}
+              <VadInput
+                label="How should the winning option be decided?"
+                value={resultCondition}
+                onChangeText={(value) => { setResultCondition(value); setError(null); }}
+                multiline
+                placeholder="State the exact award, result, date or official record that determines which option wins."
+                hint="Be specific about ties, cancellations, unavailable evidence and the cutoff time."
+              />
+              <SourceFields label="Authoritative result source" sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
+              <VadCard variant="muted" style={{ gap: 4 }}>
+                <VadText variant="bodyStrong">Result review</VadText>
+                <VadText variant="caption" tone="secondary">Multiple-outcome markets use VAD’s existing result-review and settlement process. The final result must match one of these configured choices; live pool shares do not determine the winner.</VadText>
+              </VadCard>
+            </View>
+          ) : null}
 
-          <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write one clear YES/NO question.'} />
-          <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
+          {marketFormat === 'BINARY' && category?.code === 'SPORTS' ? renderSportsDraftControls() : null}
+
+          {marketFormat === 'BINARY' ? (
+            <>
+              <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write one clear YES/NO question.'} />
+              <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
+            </>
+          ) : (
+            <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add context that helps traders understand the question." />
+          )}
           {error ? <VadErrorState title="Check this step" message={error} /> : null}
           <VadButton label="Continue to setup" onPress={continueFromMarket} />
         </VadCard>
@@ -982,30 +1124,42 @@ export function AdminMarketCreateWorkspaceCatalog() {
               <VadText variant="caption" tone="secondary">{automaticFootballAvailable ? 'The provider is called only when the result is due.' : 'Choose Verified result or a supported test currency.'}</VadText>
             </VadCard>
           ) : null}
-          <View style={{ gap: 8 }}>
-            <FieldGroup label="Trading method">
-              {(options?.tradingMethods ?? [
-                { code: 'POOL' as const, name: 'Peer Pool', description: '' },
-                { code: 'ORDER_BOOK' as const, name: 'Order Book', description: '' },
-              ]).map((method) => (
-                <VadChip
-                  key={method.code}
-                  label={method.name}
-                  selected={liquidityModel === method.code}
-                  tone={liquidityModel === method.code ? 'brand' : 'neutral'}
-                  onPress={() => { setLiquidityModel(method.code); setError(null); }}
-                />
-              ))}
-            </FieldGroup>
-            <VadCard variant="muted" style={{ gap: 4 }}>
-              <VadText variant="bodyStrong">{liquidityModel === 'POOL' ? 'Peer Pool' : 'Order Book'}</VadText>
-              <VadText variant="caption" tone="secondary">
-                {liquidityModel === 'POOL'
-                  ? 'Users choose YES or NO and commit stakes into a participant-funded pool. Their stake is committed immediately and the estimated payout moves as the pool changes.'
-                  : 'Users trade YES or NO outcome shares by price and quantity. Orders may remain unmatched, fill partly, or fill completely depending on other traders.'}
-              </VadText>
-            </VadCard>
-          </View>
+          {marketFormat === 'MULTI_OUTCOME' ? (
+            <View style={{ gap: 8 }}>
+              <FieldGroup label="Trading method">
+                <VadChip label="Peer Pool" selected tone="brand" />
+              </FieldGroup>
+              <VadCard variant="muted" style={{ gap: 4 }}>
+                <VadText variant="bodyStrong">Peer Pool · Multiple outcomes</VadText>
+                <VadText variant="caption" tone="secondary">Each named option has its own participant-funded pool balance. Traders stake on one option; the published result must match exactly one configured choice. VAD does not fund the pool.</VadText>
+              </VadCard>
+            </View>
+          ) : (
+            <View style={{ gap: 8 }}>
+              <FieldGroup label="Trading method">
+                {(options?.tradingMethods ?? [
+                  { code: 'POOL' as const, name: 'Peer Pool', description: '' },
+                  { code: 'ORDER_BOOK' as const, name: 'Order Book', description: '' },
+                ]).map((method) => (
+                  <VadChip
+                    key={method.code}
+                    label={method.name}
+                    selected={liquidityModel === method.code}
+                    tone={liquidityModel === method.code ? 'brand' : 'neutral'}
+                    onPress={() => { setLiquidityModel(method.code); setError(null); }}
+                  />
+                ))}
+              </FieldGroup>
+              <VadCard variant="muted" style={{ gap: 4 }}>
+                <VadText variant="bodyStrong">{liquidityModel === 'POOL' ? 'Peer Pool' : 'Order Book'}</VadText>
+                <VadText variant="caption" tone="secondary">
+                  {liquidityModel === 'POOL'
+                    ? 'Users choose YES or NO and commit stakes into a participant-funded pool. Their stake is committed immediately and the estimated payout moves as the pool changes.'
+                    : 'Users trade YES or NO outcome shares by price and quantity. Orders may remain unmatched, fill partly, or fill completely depending on other traders.'}
+                </VadText>
+              </VadCard>
+            </View>
+          )}
           <VadDateTimeField label="Opens" value={opensAt} onChange={setOpensAt} hint="When users can begin trading." />
           <VadDateTimeField label="Closes" value={closesAt} onChange={setClosesAt} minDate={opensAt || undefined} hint={automaticFootball ? 'For match-result markets, close no later than kickoff.' : 'Trading stops at this time.'} />
           <VadDateTimeField label="Check result after" value={resolvesAfter} onChange={setResolvesAfter} minDate={closesAt || opensAt || undefined} hint={automaticFootball ? 'At least two hours after kickoff so VAD waits for a final result.' : 'VAD begins result verification from this time.'} />
@@ -1026,7 +1180,17 @@ export function AdminMarketCreateWorkspaceCatalog() {
           {football ? <ReviewRow label="Match" value={`${homeTeam} vs ${awayTeam} · ${competition}`} /> : null}
           {football && matchStartsAt ? <ReviewRow label="Kickoff" value={new Date(matchStartsAt).toLocaleString()} /> : null}
           <ReviewRow label="Currency" value={resolvedAssetCode} />
-          <ReviewRow label="Market format" value="Yes / No" />
+          <ReviewRow label="Market format" value={marketFormat === 'MULTI_OUTCOME' ? `Multiple outcomes · ${multiOutcomeOptions.length} choices` : 'Yes / No'} />
+          {marketFormat === 'MULTI_OUTCOME' ? (
+            <>
+              <ReviewRow label="Resolution instructions" value={resultCondition.trim()} />
+              <ReviewRow label="Official source" value={sourceName.trim()} />
+              <View style={{ gap: 5 }}>
+                <VadText variant="caption" tone="secondary">Configured choices</VadText>
+                {multiOutcomeOptions.map((option, index) => <ReviewRow key={`${index}:${option}`} label={`Choice ${index + 1}`} value={option} />)}
+              </View>
+            </>
+          ) : null}
           <ReviewRow label="Trading method" value={liquidityModel === 'POOL' ? 'Peer Pool' : 'Order Book'} />
           <ReviewRow label="Result checking" value={resultLabel} />
           <ReviewRow label="Opens" value={new Date(opensAt).toLocaleString()} />

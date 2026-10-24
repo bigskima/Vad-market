@@ -56,7 +56,7 @@ export type PoolQuote = {
   instrumentPublicId: string;
   instrumentId: number;
   outcomeId: number;
-  outcomeCode: 'YES' | 'NO';
+  outcomeCode: string;
   assetId: number;
   amount: number | string;
   tradingFee: number | string;
@@ -75,7 +75,7 @@ export type PoolQuote = {
 export type PoolStakeStatus = {
   stakeId: string;
   marketId: string;
-  outcomeCode: 'YES' | 'NO';
+  outcomeCode: string;
   amount: number | string;
   tradingFee: number | string;
   status: 'COMMITTED' | string;
@@ -92,13 +92,16 @@ export type PoolStakeRow = {
   market_status: string;
   final_outcome: string | null;
   created_at: string;
+  outcome_label?: string | null;
 };
 
 export type MarketHistoryRow = {
   market_id: string;
   market_title: string;
   selected_outcome: string;
+  selected_outcome_label?: string | null;
   final_outcome: string | null;
+  final_outcome_label?: string | null;
   asset_code: string;
   matched_quantity: number | string;
   stake_amount: number | string;
@@ -319,6 +322,16 @@ export async function listMarkets() {
   return (data ?? []) as MarketCatalogItem[];
 }
 
+export type MarketOutcomeSummaryRow = {
+  outcome_id: number;
+  outcome_code: string;
+  outcome_label: string;
+  display_order: number;
+  total_stake: number | string;
+  pool_share: number | string | null;
+  participant_count: number;
+};
+
 export type PublishedMarketDetail = {
   instrumentId: string;
   eventId: string;
@@ -353,6 +366,14 @@ export type PublishedMarketDetail = {
     disputeWindowSeconds: number | null;
   } | null;
 };
+
+export async function getMarketOutcomeSummary(instrumentPublicId: string): Promise<MarketOutcomeSummaryRow[]> {
+  const { data, error } = await supabase.rpc('market_outcome_summary_v1', {
+    p_instrument_public_id: instrumentPublicId,
+  });
+  assertNoError(error, 'markets', 'We could not load this market’s outcome choices right now.');
+  return (Array.isArray(data) ? data : []) as MarketOutcomeSummaryRow[];
+}
 
 export async function getPublishedMarketDetail(instrumentPublicId: string): Promise<PublishedMarketDetail> {
   const { data: sessionResult, error: sessionError } = await supabase.auth.getSession();
@@ -416,13 +437,13 @@ export async function getPortfolioOrderHistory(limit = 100) {
 }
 
 export async function getPoolStakes() {
-  const { data, error } = await supabase.rpc('my_pool_stakes');
+  const { data, error } = await supabase.rpc('my_pool_stakes_v2');
   assertNoError(error, 'portfolio', 'We could not load your committed predictions right now. Please try again.');
   return (data ?? []) as PoolStakeRow[];
 }
 
 export async function getMarketHistory() {
-  const { data, error } = await supabase.rpc('my_market_history');
+  const { data, error } = await supabase.rpc('my_market_history_v2');
   assertNoError(error, 'portfolio', 'We could not load your settled market history right now. Please try again.');
   return (data ?? []) as MarketHistoryRow[];
 }
@@ -506,7 +527,7 @@ function tradingErrorMessage(error: { message: string; code?: string } | null, f
   return fallback;
 }
 
-export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; amount: number }) {
+export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: string; amount: number }) {
   const assetCode = await getMarketAssetCode(input.instrumentPublicId);
   if (assetCode !== 'NGN' && assetCode !== 'USDC') {
     throw new Error('TNGN markets are permanently retired. Select a real NGN or supported USDC market.');
@@ -544,7 +565,7 @@ export async function placePoolStake(quote: PoolQuote) {
   return data as PoolStakeStatus;
 }
 
-export async function quoteTrade(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; side: 'BUY' | 'SELL'; price: number; quantity: number }) {
+export async function quoteTrade(input: { instrumentPublicId: string; outcomeCode: string; side: 'BUY' | 'SELL'; price: number; quantity: number }) {
   const { data, error } = await supabase.rpc('trade_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,

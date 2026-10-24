@@ -110,7 +110,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
       </View>
 
       <VadText variant="caption" tone="secondary" numberOfLines={2} style={{ fontSize: 13, lineHeight: 18 }}>
-        {marketCategoryLabel(market.category)} · {market.market_type === 'BINARY' ? 'Yes / No market' : friendlyEnum(market.market_type)}
+        {marketCategoryLabel(market.category)} · {market.market_type === 'MULTI_OUTCOME' ? 'Multiple outcomes' : market.market_type === 'BINARY' ? 'Yes / No market' : friendlyEnum(market.market_type)}
       </VadText>
 
       <View

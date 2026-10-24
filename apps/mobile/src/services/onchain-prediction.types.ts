@@ -9,7 +9,7 @@ import type { EvmLockExecution } from '@/services/settlement-wallet';
 export type PreparedUsdcPrediction = {
   intentId: string;
   marketId: string;
-  outcomeCode: 'YES' | 'NO';
+  outcomeCode: string;
   chainCode: string;
   walletId: string;
   walletAddress: string;
@@ -23,7 +23,7 @@ export type PreparedUsdcPrediction = {
 
 export type PrepareUsdcPredictionInput = {
   marketId: string;
-  outcomeCode: 'YES' | 'NO';
+  outcomeCode: string;
   amount: number;
   venue: OnchainMarketVenue;
 };

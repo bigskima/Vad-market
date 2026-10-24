@@ -1,4 +1,5 @@
 const CATEGORY_LABELS: Record<string, string> = {
+  MULTI_OUTCOME: 'Multiple outcomes',
   ARTIFICIAL_INTELLIGENCE: 'AI',
   CRYPTO_WEB3: 'Crypto',
   MUSIC: 'Music & Entertainment',
@@ -44,4 +45,19 @@ export function marketStatusLabel(value?: string | null) {
     DRAFT: 'Draft',
   };
   return labels[raw] ?? marketCategoryLabel(raw);
+}
+
+export function marketOutcomeLabel(code?: string | null, suppliedLabel?: string | null) {
+  const label = String(suppliedLabel ?? '').trim();
+  if (label) return label;
+  const raw = String(code ?? '').trim().toUpperCase();
+  if (!raw) return 'Outcome';
+  if (raw === 'YES') return 'Yes';
+  if (raw === 'NO') return 'No';
+  return raw
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }

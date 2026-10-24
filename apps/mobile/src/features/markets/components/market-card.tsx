@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
+import { VadChip } from '@/components/ui/vad-chip';
 import { VadText } from '@/components/ui/vad-text';
 import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -34,6 +35,7 @@ export function MarketCard({
   const timing = getMarketTiming(market, now);
   const tight = compact || density.compact;
   const isOpen = timing.tradingOpen;
+  const isMultiOutcome = market.market_type === 'MULTI_OUTCOME';
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
   const volume = Number(market.total_volume ?? 0);
@@ -81,10 +83,22 @@ export function MarketCard({
           </View>
         </View>
       </Pressable>
-      <View style={{ width: tight ? 122 : 146, flexDirection: 'row', gap: 5 }}>
-        <OutcomeTile label="Yes" value={yes} rawValue={market.yes_price} positive compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('YES') : undefined} />
-        <OutcomeTile label="No" value={no} rawValue={market.no_price} positive={false} compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('NO') : undefined} />
-      </View>
+      {isMultiOutcome ? (
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel="Open market to choose from multiple outcomes"
+          style={{ width: tight ? 122 : 146, minHeight: tight ? 47 : 54, alignItems: 'center', justifyContent: 'center', padding: 5, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceRaised }}
+        >
+          <VadChip label="Multiple outcomes" tone="brand" />
+          <VadText variant="caption" tone="secondary" style={{ marginTop: 3 }}>View choices</VadText>
+        </Pressable>
+      ) : (
+        <View style={{ width: tight ? 122 : 146, flexDirection: 'row', gap: 5 }}>
+          <OutcomeTile label="Yes" value={yes} rawValue={market.yes_price} positive compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('YES') : undefined} />
+          <OutcomeTile label="No" value={no} rawValue={market.no_price} positive={false} compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('NO') : undefined} />
+        </View>
+      )}
       {onToggleWatchlist ? (
         <Pressable
           onPress={onToggleWatchlist}
