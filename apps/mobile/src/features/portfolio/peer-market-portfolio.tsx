@@ -133,7 +133,7 @@ function StakeCard({ stake }: { stake: PoolStakeRow }) {
           <VadText variant="bodyStrong" numberOfLines={3}>{stake.market_title}</VadText>
           <VadText variant="caption" tone="tertiary">{stake.asset_code} · {friendly(stake.market_status)}</VadText>
         </View>
-        <VadChip label={stake.outcome_code} tone={stake.outcome_code === 'YES' ? 'yes' : 'no'} />
+        <VadChip label={stake.outcome_label?.trim() || (['YES', 'NO'].includes(stake.outcome_code) ? stake.outcome_code : stake.outcome_code.replace(/[_-]+/g, ' ').toLowerCase().replace(/\b\w/g, (character) => character.toUpperCase()))} tone={stake.outcome_code === 'YES' ? 'yes' : stake.outcome_code === 'NO' ? 'no' : 'neutral'} />
       </View>
       <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
         <Metric label="Committed" value={assetMoney(stake.amount, stake.asset_code)} />
