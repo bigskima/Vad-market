@@ -709,14 +709,22 @@ Deno.serve(async (req) => {
       const expiresAt = Date.parse(String(cached.expiresAt ?? ''));
       const staleUntil = Date.parse(String(cached.staleUntil ?? ''));
       if (Number.isFinite(expiresAt) && expiresAt > Date.now()) {
-        return json({ ...payload, cached: true }, 200, Math.max(15, Math.min(3600, source.cacheSeconds)));
+        return json({
+          ...payload,
+          items: items.map(addVisualMetadata),
+          cached: true,
+        }, 200, Math.max(15, Math.min(3600, source.cacheSeconds)));
       }
-      if (Number.isFinite(staleUntil) && staleUntil > Date.now()) staleItems = items;
+      if (Number.isFinite(staleUntil) && staleUntil > Date.now()) staleItems = items.map(addVisualMetadata);
     }
 
-    const requestCost = source.adapterCode === 'FRED_SERIES'
-      ? (query.length === 0 ? Math.max(1, Math.min(8, Array.isArray(source.providerMetadata.featured_series) ? source.providerMetadata.featured_series.length : 4)) : 4)
-      : (query.length === 0 ? Math.max(1, Math.min(8, browseSymbols(source).length)) : 5);
+    const requestCost = useFreeFallback && assetClass === 'STOCKS'
+      ? (query.length === 0 ? 8 : 9)
+      : useFreeFallback && assetClass === 'ECONOMICS'
+        ? 8
+        : source.adapterCode === 'FRED_SERIES'
+          ? (query.length === 0 ? Math.max(1, Math.min(8, Array.isArray(source.providerMetadata.featured_series) ? source.providerMetadata.featured_series.length : 4)) : 4)
+          : (query.length === 0 ? Math.max(1, Math.min(8, browseSymbols(source).length)) : 5);
     if (useFreeFallback && !['STOCKS', 'COMMODITIES', 'FOREX', 'ECONOMICS'].includes(assetClass)) {
       return json({
         error: 'The configured provider credential is missing.',
