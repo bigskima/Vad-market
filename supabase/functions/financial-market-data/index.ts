@@ -716,7 +716,7 @@ function addVisualMetadata(item: AssetQuote): AssetQuote {
       NZD:'nz', CNY:'cn', ZAR:'za', INR:'in', BRL:'br', MXN:'mx', SEK:'se', NOK:'no',
       SGD:'sg', HKD:'hk', AED:'ae', SAR:'sa', TRY:'tr', KRW:'kr', RUB:'ru', PLN:'pl',
       DKK:'dk', THB:'th', IDR:'id', MYR:'my', PHP:'ph', PKR:'pk', BDT:'bd', EGP:'eg',
-      KES:'ke', GHS:'gh', XAU:'eu', XAG:'eu',
+      KES:'ke', GHS:'gh',
     };
     if (parts.length === 2 && parts.every((currency) => /^[A-Z]{3}$/.test(currency))) {
       const base = currencyCountries[parts[0]];
