@@ -75,17 +75,16 @@ export function MarketsScreen({
 
   useEffect(() => {
     let active = true;
-    void Promise.all([getMarketCategoryExperiences(), getMarketCategorySubcategories()])
-      .then(([categories, subcategories]) => {
-        if (!active) return;
-        setCategoryExperiences(categories);
-        setConfiguredSubcategories(subcategories);
-      })
-      .catch(() => {
-        if (!active) return;
-        setCategoryExperiences([]);
-        setConfiguredSubcategories([]);
-      });
+    // Keep main categories available even if an older backend deployment does
+    // not yet expose the additive subcategory RPC.
+    void Promise.all([
+      getMarketCategoryExperiences().catch(() => []),
+      getMarketCategorySubcategories().catch(() => []),
+    ]).then(([categories, subcategories]) => {
+      if (!active) return;
+      setCategoryExperiences(categories);
+      setConfiguredSubcategories(subcategories);
+    });
     return () => { active = false; };
   }, []);
 
