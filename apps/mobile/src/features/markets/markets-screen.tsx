@@ -25,8 +25,10 @@ import { supabase } from '@/lib/supabase';
 import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchlist } from '@/services/market-watchlist-api';
 import {
   MarketDiscoveryControls,
+  type MarketCategoryOption,
   type MarketSortMode,
   type MarketStageFilter,
+  type MarketSubcategoryOption,
 } from './components/market-discovery-controls';
 
 export function MarketsScreen({
@@ -127,44 +129,132 @@ export function MarketsScreen({
       if (!market.media_path) void requestMarketImageGeneration(market.instrument_public_id);
     }
   }, [markets]);
-  const [category, setCategory] = useState(() =>
-    initialCategory && markets.some((market) => market.category === initialCategory)
-      ? initialCategory
-      : 'All',
-  );
+  const [category, setCategory] = useState(initialCategory ?? 'All');
+  const [activeSubcategory, setActiveSubcategory] = useState('all');
   const [sortMode, setSortMode] = useState<MarketSortMode>('activity');
   const [stage, setStage] = useState<MarketStageFilter>('all');
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [showAllMarkets, setShowAllMarkets] = useState(false);
 
-  const categories = useMemo(
-    () => [...new Set([
-      ...categoryExperiences.map((item) => item.name),
-      ...markets.map((market) => market.category).filter((value): value is string => Boolean(value)),
-    ])].sort((a, b) => {
-      const aOrder = categoryExperiences.find((item) => item.name === a)?.display_order;
-      const bOrder = categoryExperiences.find((item) => item.name === b)?.display_order;
-      if (aOrder != null || bOrder != null) return (aOrder ?? 10_000) - (bOrder ?? 10_000) || a.localeCompare(b);
-      return a.localeCompare(b);
-    }),
-    [markets, categoryExperiences],
-  );
-
   const activeCategoryExperience = useMemo(
-    () => categoryExperiences.find((item) => item.name === category)
-      ?? categoryExperiences.find((item) => item.code === category)
+    () => categoryExperiences.find((item) => item.code === category)
+      ?? categoryExperiences.find((item) => item.name === category)
       ?? null,
     [categoryExperiences, category],
   );
+
+  // Incoming links may contain either a category code or its display name.
+  // Normalize once the database-driven category catalogue has loaded.
+  useEffect(() => {
+    if (!initialCategory || initialCategory.toLowerCase() === 'all' || initialCategory.toLowerCase() === 'trending') {
+      setCategory('All');
+      return;
+    }
+    const match = categoryExperiences.find((item) =>
+      item.code.toLowerCase() === initialCategory.toLowerCase()
+      || item.name.toLowerCase() === initialCategory.toLowerCase(),
+    );
+    if (match) setCategory(match.code);
+  }, [initialCategory, categoryExperiences]);
+
+  const categoryMarkets = useMemo(
+    () => markets
+      .filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency))
+      .filter((market) => category === 'All' || resolveMarketCategoryCode(market, categoryExperiences) === category),
+    [markets, enabledCurrencies, category, categoryExperiences],
+  );
+
+  const categories = useMemo<MarketCategoryOption[]>(() => {
+    const counts = new Map<string, number>();
+    for (const market of markets) {
+      if (!enabledCurrencies.includes(market.asset_code as VADCurrency)) continue;
+      const code = resolveMarketCategoryCode(market, categoryExperiences);
+      if (code) counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+
+    const options: MarketCategoryOption[] = categoryExperiences.map((item) => ({
+      value: item.code,
+      label: item.name,
+      count: counts.get(item.code) ?? 0,
+    }));
+    const knownCodes = new Set(options.map((item) => item.value));
+    for (const [code, count] of counts) {
+      if (knownCodes.has(code)) continue;
+      options.push({ value: code, label: humanizeCategoryCode(code), count });
+    }
+
+    options.sort((a, b) => {
+      const aOrder = categoryExperiences.find((item) => item.code === a.value)?.display_order;
+      const bOrder = categoryExperiences.find((item) => item.code === b.value)?.display_order;
+      if (aOrder != null || bOrder != null) {
+        return (aOrder ?? 10_000) - (bOrder ?? 10_000) || a.label.localeCompare(b.label);
+      }
+      return a.label.localeCompare(b.label);
+    });
+
+    return [
+      { value: 'All', label: 'Trending', count: [...counts.values()].reduce((sum, value) => sum + value, 0) },
+      ...options,
+    ];
+  }, [markets, categoryExperiences, enabledCurrencies]);
+
+  const subcategories = useMemo<MarketSubcategoryOption[]>(() => {
+    if (category === 'All') return [];
+
+    const options = new Map<string, MarketSubcategoryOption>();
+    const add = (kind: MarketSubcategoryOption['kind'], rawValue: string, label: string) => {
+      const value = rawValue.trim();
+      if (!value) return;
+      const key = `${kind}:${value.toLowerCase()}`;
+      const existing = options.get(key);
+      options.set(key, {
+        value: key,
+        label,
+        kind,
+        count: (existing?.count ?? 0) + 1,
+      });
+    };
+
+    for (const market of categoryMarkets) {
+      const marketType = marketContextString(market, 'catalog_market_type')
+        ?? marketContextString(market, 'event_type');
+      if (marketType) {
+        add('type', marketType, humanizeTaxonomyValue(marketType, activeCategoryExperience?.code));
+      }
+
+      const sport = marketContextString(market, 'sport');
+      if (sport) add('sport', sport, humanizeTaxonomyValue(sport));
+
+      const group = market.group_key?.trim();
+      if (group) add('group', group, group);
+    }
+
+    return [...options.values()].sort((a, b) => {
+      const kindOrder = { type: 0, sport: 1, group: 2 };
+      return kindOrder[a.kind] - kindOrder[b.kind] || b.count - a.count || a.label.localeCompare(b.label);
+    });
+  }, [category, categoryMarkets, activeCategoryExperience]);
+
   const baseFilteredMarkets = useMemo(() => {
     const needle = debouncedQuery.toLowerCase();
-    return markets
-      .filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency))
-      .filter((market) => category === 'All'
-        || market.category === category
-        || Boolean(activeCategoryExperience?.code && market.category_code === activeCategoryExperience.code))
+    return categoryMarkets
+      .filter((market) => {
+        if (activeSubcategory === 'all') return true;
+        const separator = activeSubcategory.indexOf(':');
+        const kind = activeSubcategory.slice(0, separator);
+        const value = activeSubcategory.slice(separator + 1).toLowerCase();
+        if (kind === 'group') return market.group_key?.trim().toLowerCase() === value;
+        if (kind === 'sport') return marketContextString(market, 'sport')?.toLowerCase() === value;
+        if (kind === 'type') {
+          return [
+            marketContextString(market, 'catalog_market_type'),
+            marketContextString(market, 'event_type'),
+          ].some((item) => item?.toLowerCase() === value);
+        }
+        return true;
+      })
       .filter((market) => !needle || marketSearchText(market).includes(needle));
-  }, [markets, category, debouncedQuery, enabledCurrencies, activeCategoryExperience]);
+  }, [categoryMarkets, activeSubcategory, debouncedQuery]);
 
   const stageCounts = useMemo(() => {
     const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
@@ -212,13 +302,13 @@ export function MarketsScreen({
   }, [baseFilteredMarkets, stage, sortMode, now, trendingMarkets]);
 
   const listingMarkets = useMemo(() => {
-    const discoveryHasFilters = Boolean(debouncedQuery) || category !== 'All' || stage !== 'all' || sortMode !== 'activity';
+    const discoveryHasFilters = Boolean(debouncedQuery) || category !== 'All' || activeSubcategory !== 'all' || stage !== 'all' || sortMode !== 'activity';
     if (showAllMarkets || discoveryHasFilters) return orderedMarkets;
     const ranked = trendingMarkets
       .map((entry) => orderedMarkets.find((market) => market.instrument_public_id === entry.instrument_public_id))
       .filter((market): market is MarketCatalogItem => Boolean(market));
     return ranked.length ? ranked : orderedMarkets;
-  }, [orderedMarkets, trendingMarkets, showAllMarkets, debouncedQuery, category, stage, sortMode]);
+  }, [orderedMarkets, trendingMarkets, showAllMarkets, debouncedQuery, category, activeSubcategory, stage, sortMode]);
 
   const cardWidth = columns === 2 ? '48.7%' : '100%';
   const pageSize = columns === 2 ? 8 : 5;
@@ -226,7 +316,7 @@ export function MarketsScreen({
     items: listingMarkets,
     initialCount: pageSize,
     step: pageSize,
-    resetKey: `${debouncedQuery.toLowerCase()}|${category}|${sortMode}|${stage}|${columns}|${showAllMarkets}`,
+    resetKey: `${debouncedQuery.toLowerCase()}|${category}|${activeSubcategory}|${sortMode}|${stage}|${columns}|${showAllMarkets}`,
   });
 
   const visibleMarkets = progressive.visibleItems;
@@ -274,7 +364,15 @@ export function MarketsScreen({
           onQueryChange={setQuery}
           categories={categories}
           activeCategory={category}
-          onCategoryChange={setCategory}
+          onCategoryChange={(value) => {
+            setCategory(value);
+            setActiveSubcategory('all');
+            setShowAllMarkets(false);
+          }}
+          subcategories={subcategories}
+          activeSubcategory={activeSubcategory}
+          onSubcategoryChange={setActiveSubcategory}
+          activeCategoryLabel={activeCategoryExperience?.name ?? null}
           stage={filtersExpanded ? stage : undefined}
           onStageChange={filtersExpanded ? setStage : undefined}
           stageCounts={filtersExpanded ? stageCounts : undefined}
@@ -293,9 +391,9 @@ export function MarketsScreen({
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <VadIcon name="activity" size={20} tone="brand" />
-              <VadText variant="bodyStrong" style={{ fontSize: 19 }}>Trending Markets</VadText>
+              <VadText variant="bodyStrong" style={{ fontSize: 19 }}>{activeCategoryExperience ? `${activeCategoryExperience.name} Markets` : 'Trending Markets'}</VadText>
             </View>
-            <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setStage('all'); setSortMode('activity'); setQuery(''); setDebouncedQuery(''); setShowAllMarkets(true); }} />
+            <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setActiveSubcategory('all'); setStage('all'); setSortMode('activity'); setQuery(''); setDebouncedQuery(''); setShowAllMarkets(true); }} />
           </View>
           <VadText variant="caption" tone="secondary">{trendingMarkets.length && !showAllMarkets && !debouncedQuery && category === 'All' && stage === 'all' ? 'Ranked from verified trading activity.' : trendingMarkets.length ? 'Live market catalogue.' : 'No published trending ranking is available; showing the live catalogue by recent activity.'}</VadText>
         </View>
@@ -374,6 +472,7 @@ export function MarketsScreen({
               setQuery('');
               setDebouncedQuery('');
               setCategory('All');
+              setActiveSubcategory('all');
               setSortMode('activity');
               setStage('all');
             }}
@@ -382,6 +481,45 @@ export function MarketsScreen({
       </TourTarget>
     </View>
   );
+}
+
+
+function resolveMarketCategoryCode(
+  market: MarketCatalogItem,
+  experiences: MarketCategoryExperience[],
+) {
+  const values = [market.category_code, market.category]
+    .map((value) => String(value ?? '').trim().toLowerCase())
+    .filter(Boolean);
+  const match = experiences.find((experience) =>
+    values.includes(experience.code.toLowerCase()) || values.includes(experience.name.toLowerCase()),
+  );
+  return match?.code ?? String(market.category_code ?? market.category ?? '').trim().toUpperCase();
+}
+
+function humanizeCategoryCode(value: string) {
+  return value
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function marketContextString(market: MarketCatalogItem, key: string) {
+  const value = market.market_context?.[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function humanizeTaxonomyValue(value: string, categoryCode?: string | null) {
+  let label = value.trim();
+  const prefix = categoryCode ? `${categoryCode}_` : '';
+  if (prefix && label.toUpperCase().startsWith(prefix.toUpperCase())) {
+    label = label.slice(prefix.length);
+  }
+  return label
+    .replaceAll('_', ' ')
+    .replaceAll('-', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function marketSearchText(market: MarketCatalogItem) {
