@@ -6,7 +6,7 @@ import { Alert } from 'react-native';
 import { supabase, supabaseConfiguration } from '@/lib/supabase';
 import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
-export type VADCurrency = 'NGN' | 'USDC';
+export type VADCurrency = 'NGN' | 'USDC' | 'TNGN';
 type CurrencyPolicy = {
   country_code: string;
   eligible_asset_codes: VADCurrency[];
@@ -23,11 +23,12 @@ type CurrencyPreferenceValue = {
   isCurrencyEnabled: (currency: VADCurrency) => boolean;
   toggleCurrency: (currency: VADCurrency) => void;
   setEnabledCurrencies: (currencies: VADCurrency[]) => void;
+  refresh: () => Promise<void>;
 };
 
 const STORAGE_KEY = 'vad:enabled-currencies';
 const CurrencyPreferenceContext = createContext<CurrencyPreferenceValue | null>(null);
-const SUPPORTED: VADCurrency[] = ['NGN', 'USDC'];
+const SUPPORTED: VADCurrency[] = ['NGN', 'USDC', 'TNGN'];
 
 function asCurrencies(value: unknown): VADCurrency[] {
   if (!Array.isArray(value)) return [];
@@ -49,8 +50,8 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
     // Jurisdiction determines which currencies may be selected. Current-location checks
     // remain enforced by the server when trading or moving NGN funds; they must not
     // silently remove a Nigerian user's currency preference from the UI.
-    const safeEligible = country === 'NG' ? eligible : eligible.filter((code) => code !== 'NGN');
-    const safeEnabled = country === 'NG' ? enabled : enabled.filter((code) => code !== 'NGN');
+    const safeEligible = country === 'NG' ? eligible : eligible.filter((code) => code !== 'NGN' && code !== 'TNGN');
+    const safeEnabled = country === 'NG' ? enabled : enabled.filter((code) => code !== 'NGN' && code !== 'TNGN');
     const defaultPreferred = safeEnabled.includes(country === 'NG' ? 'NGN' : 'USDC')
       ? (country === 'NG' ? 'NGN' : 'USDC')
       : safeEnabled[0] ?? null;
@@ -236,8 +237,8 @@ export function CurrencyPreferenceProvider({ children }: PropsWithChildren) {
   const value = useMemo(() => ({
     enabledCurrencies: enabledCurrencies.filter((code) => eligibleCurrencies.includes(code)),
     eligibleCurrencies, countryCode, loading, preferredCurrency, setPreferredCurrency,
-    isCurrencyEligible, isCurrencyEnabled, toggleCurrency, setEnabledCurrencies,
-  }), [enabledCurrencies, eligibleCurrencies, countryCode, loading, preferredCurrency, setPreferredCurrency, isCurrencyEligible, isCurrencyEnabled, toggleCurrency, setEnabledCurrencies]);
+    isCurrencyEligible, isCurrencyEnabled, toggleCurrency, setEnabledCurrencies, refresh,
+  }), [enabledCurrencies, eligibleCurrencies, countryCode, loading, preferredCurrency, setPreferredCurrency, isCurrencyEligible, isCurrencyEnabled, toggleCurrency, setEnabledCurrencies, refresh]);
 
   return <CurrencyPreferenceContext.Provider value={value}>{children}</CurrencyPreferenceContext.Provider>;
 }
