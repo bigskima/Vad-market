@@ -95,12 +95,8 @@ export function MarketDetailScreen({
   }, [market.instrument_public_id]);
 
   useEffect(() => {
-    if (!multiOutcomeMarket) {
-      setOutcomeSummaryState({ instrumentId: market.instrument_public_id, rows: [], loading: false, error: null });
-      return;
-    }
+    if (!multiOutcomeMarket) return;
     let active = true;
-    setOutcomeSummaryState({ instrumentId: market.instrument_public_id, rows: [], loading: true, error: null });
     void getMarketOutcomeSummary(market.instrument_public_id)
       .then((rows) => {
         if (active) setOutcomeSummaryState({ instrumentId: market.instrument_public_id, rows, loading: false, error: null });
