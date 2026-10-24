@@ -192,10 +192,9 @@ export function HomeScreen({
   const walletRows = wallets.filter((wallet) => enabledCurrencies.includes(wallet.asset_code as VADCurrency));
   const totalNgn = walletRows.filter((wallet) => wallet.asset_code === 'NGN').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
   const totalUsdc = walletRows.filter((wallet) => wallet.asset_code === 'USDC').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
-  const totalTngn = walletRows.filter((wallet) => wallet.asset_code === 'TNGN').reduce((sum, wallet) => sum + Number(wallet.available || 0) + Number(wallet.reserved || 0) + Number(wallet.withdrawal_pending || 0), 0);
   const promotionSignature = promotions.map((promotion) => promotion.public_id).join('|');
   const promotionsToShow = dismissedPromotionSignature === promotionSignature ? [] : promotions;
-  const displayCurrencies = enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC', 'TNGN'].includes(code));
+  const displayCurrencies = enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC'].includes(code));
   const primaryAsset: VADCurrency | null = preferredCurrency && displayCurrencies.includes(preferredCurrency)
     ? preferredCurrency
     : displayCurrencies.includes('NGN') ? 'NGN' : displayCurrencies[0] ?? null;
@@ -203,15 +202,13 @@ export function HomeScreen({
     ? formatMoney(totalNgn, 'NGN')
     : primaryAsset === 'USDC'
       ? formatMoney(totalUsdc, 'USDC')
-      : primaryAsset === 'TNGN'
-        ? formatMoney(totalTngn, 'TNGN')
-        : '—';
+      : '—';
   const primaryHistory = balanceHistory.filter((point) => point.asset_code === primaryAsset).sort((a, b) => a.observed_on.localeCompare(b.observed_on));
   const secondaryBalances = displayCurrencies
     .filter((code) => code !== primaryAsset)
     .map((code) => ({
       code,
-      total: code === 'NGN' ? totalNgn : code === 'USDC' ? totalUsdc : totalTngn,
+      total: code === 'NGN' ? totalNgn : totalUsdc,
     }))
     .filter((item) => item.total > 0);
   const historyValues = primaryHistory.map((point) => Number(point.balance)).filter(Number.isFinite);
