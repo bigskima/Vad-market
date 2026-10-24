@@ -199,11 +199,17 @@ Deno.serve(async (req) => {
     const accountId = String(provider?.public_metadata?.account_id || '').trim();
     const secretName = String(provider?.secret_reference || 'VAD_AI_CLOUDFLARE_API_TOKEN').trim();
     const apiToken = Deno.env.get(secretName) || Deno.env.get('CLOUDFLARE_API_TOKEN') || Deno.env.get('CLOUDFLARE_WORKERS_AI_API_TOKEN');
-    if (providerError || !accountId || !apiToken) {
-      return await failJob('Cloudflare image generation is not configured', 503);
+    if (providerError) {
+      return await failJob('Cloudflare image provider configuration could not be loaded. Check the active provider runtime settings.', 503);
+    }
+    if (!accountId) {
+      return await failJob('Cloudflare Workers AI account ID is missing from provider configuration.', 503);
+    }
+    if (!apiToken) {
+      return await failJob(`Cloudflare image generation is missing the configured Supabase Edge Function secret ${secretName}. Add a valid Cloudflare API token; Gemini is not used for market artwork.`, 503);
     }
 
-    const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-2-klein-4b';
+    const model = '@cf/black-forest-labs/flux-2-klein-4b';
     const prompt = [
       'Generate a premium editorial market-cover image at the same 1024x576 (16:9) aspect ratio used by the app. The configured Cloudflare FLUX.2 Klein 4B model is requested with width 1024 and height 576; compose edge-to-edge for this wide display frame, using one clear focal subject and natural background rather than borders or blank bars.',
       `Market question is semantic guidance only; do not write or reproduce any part of it: ${title}. Category: ${category}.`,
