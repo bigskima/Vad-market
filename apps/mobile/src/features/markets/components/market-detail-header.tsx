@@ -91,9 +91,8 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
   const imageFailed = Boolean(imageUrl && failedImageUrl === imageUrl);
   const titleExpanded = titleState.instrumentId === market.instrument_public_id && titleState.expanded;
   const titleIsLong = market.title.trim().length > 80;
-  // FLUX.1 Schnell returns square sources; the foreground cover image
-  // is cropped to this stable panorama instead of letterboxed.
-  const imageAspectRatio = compactViewport ? 16 / 9 : 16 / 7;
+  // Cloudflare generates 1024x576 (16:9) covers; display that exact ratio on every viewport.
+  const imageAspectRatio = 16 / 9;
 
   return (
     <View style={{ gap: density.compact || compactViewport ? 7 : 12 }}>
