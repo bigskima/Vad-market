@@ -21,6 +21,16 @@ export type MarketCategoryExperience = {
   group_field: string;
 };
 
+export type MarketCategorySubcategory = {
+  category_code: string;
+  code: string;
+  name: string;
+  description: string;
+  display_order: number;
+  handler_code: 'VERIFIED_EVENT' | 'FOOTBALL_MATCH' | 'CRYPTO_THRESHOLD' | string;
+  metadata: Record<string, unknown>;
+};
+
 export type CryptoMarketQuote = {
   id: string;
   symbol: string;
@@ -65,6 +75,12 @@ export async function getMarketCategoryExperiences(): Promise<MarketCategoryExpe
   const { data, error } = await supabase.rpc('get_market_category_experiences');
   if (error) throw userFacingError(error, 'markets', 'Market categories could not be loaded.');
   return (data ?? []) as MarketCategoryExperience[];
+}
+
+export async function getMarketCategorySubcategories(): Promise<MarketCategorySubcategory[]> {
+  const { data, error } = await supabase.rpc('get_market_category_subcategories');
+  if (error) throw userFacingError(error, 'markets', 'Market subcategories could not be loaded.');
+  return (data ?? []) as MarketCategorySubcategory[];
 }
 
 export async function getCryptoMarketPrices(input: {
