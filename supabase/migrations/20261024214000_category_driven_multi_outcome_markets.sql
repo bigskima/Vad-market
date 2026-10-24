@@ -480,3 +480,120 @@ end;
 $function$;
 
 grant execute on function public.admin_validate_oracle_resolution_scope(jsonb,timestamptz,timestamptz) to authenticated;
+
+-- Preserve configured outcome labels in historical result cards as well as open positions.
+-- Keep the original my_market_history contract unchanged for older clients.
+create or replace function public.my_market_history_v2()
+returns table (
+  market_id uuid,
+  market_title text,
+  selected_outcome text,
+  selected_outcome_label text,
+  final_outcome text,
+  final_outcome_label text,
+  asset_code text,
+  matched_quantity numeric,
+  stake_amount numeric,
+  trading_fee numeric,
+  gross_payout numeric,
+  settlement_fee numeric,
+  net_payout numeric,
+  realized_pnl numeric,
+  result text,
+  settled_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  with pool_base as (
+    select
+      stake.user_id,
+      stake.instrument_id,
+      stake.outcome_id,
+      sum(stake.amount)::numeric as stake_amount,
+      sum(stake.amount)::numeric as matched_quantity,
+      sum(stake.trading_fee_amount)::numeric as trading_fee
+    from trading.pool_stakes stake
+    where stake.user_id=auth.uid()
+    group by stake.user_id,stake.instrument_id,stake.outcome_id
+  ),
+  order_base as (
+    select
+      order_row.user_id,
+      order_row.instrument_id,
+      order_row.outcome_id,
+      sum(fill.quantity)::numeric as matched_quantity,
+      sum(fill.notional)::numeric as stake_amount,
+      coalesce(sum(execution_fee.fee_amount),0)::numeric as trading_fee
+    from trading.fills fill
+    join trading.orders order_row on order_row.id=fill.order_id
+    left join trading.execution_fees execution_fee
+      on execution_fee.order_id=order_row.id
+     and execution_fee.execution_reference=fill.match_id::text
+    where order_row.user_id=auth.uid()
+    group by order_row.user_id,order_row.instrument_id,order_row.outcome_id
+  ),
+  base as (
+    select * from pool_base
+    union all
+    select * from order_base
+  )
+  select
+    instrument.public_id,
+    event.title,
+    selected_outcome.code,
+    selected_outcome.label,
+    resolution.outcome_code,
+    final_outcome.label,
+    asset.code,
+    position.matched_quantity,
+    position.stake_amount,
+    position.trading_fee,
+    coalesce(entitlement.gross_amount,0),
+    coalesce(entitlement.fee_amount,0),
+    coalesce(entitlement.net_amount,0),
+    (coalesce(entitlement.net_amount,0)-position.stake_amount-position.trading_fee)::numeric,
+    case
+      when resolution.status='VOID' then 'VOID'
+      when run.status='SETTLED' and entitlement.net_amount>0 and resolution.outcome_code=selected_outcome.code then 'WON'
+      when run.status='SETTLED' and resolution.outcome_code<>selected_outcome.code and entitlement.net_amount>=position.stake_amount then 'REFUNDED'
+      when run.status='SETTLED' and resolution.outcome_code<>selected_outcome.code then 'LOST'
+      when resolution.status='FINAL' then 'SETTLING'
+      else 'PENDING'
+    end,
+    run.settled_at
+  from base position
+  join market.instruments instrument on instrument.id=position.instrument_id
+  join market.canonical_events event on event.id=instrument.canonical_event_id
+  join market.outcomes selected_outcome on selected_outcome.id=position.outcome_id
+  join public.assets asset on asset.id=instrument.asset_id
+  left join lateral (
+    select candidate.*
+    from oracle.resolutions candidate
+    where candidate.event_id=event.id
+      and candidate.status in ('FINAL','VOID')
+    order by candidate.finalized_at desc nulls last,candidate.id desc
+    limit 1
+  ) resolution on true
+  left join market.outcomes final_outcome
+    on final_outcome.instrument_id=instrument.id
+   and final_outcome.code=resolution.outcome_code
+  left join lateral (
+    select candidate.*
+    from settlement.runs candidate
+    where candidate.instrument_id=instrument.id
+      and candidate.status='SETTLED'
+    order by candidate.settled_at desc nulls last,candidate.id desc
+    limit 1
+  ) run on true
+  left join settlement.entitlements entitlement
+    on entitlement.run_id=run.id
+   and entitlement.user_id=position.user_id
+   and entitlement.outcome_id=position.outcome_id
+  order by coalesce(run.settled_at,event.closes_at) desc;
+$function$;
+
+grant execute on function public.my_market_history_v2() to authenticated;
+
