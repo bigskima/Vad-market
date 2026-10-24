@@ -104,16 +104,35 @@ Deno.serve(async (req) => {
     }
 
     const payload = await ai.json();
-    const base64 = String(payload?.result?.image || payload?.image || '');
+    const encodedImage = String(payload?.result?.image || payload?.image || '');
+    const base64 = encodedImage.replace(/^data:image\/[^;]+;base64,/i, '').replace(/\s/g, '');
     if (!base64) {
       if (cached) return json({ ...cached, cached: true, stale: true });
       return json({ error: 'Cloudflare returned no generated image' }, 502);
     }
 
-    const binary = atob(base64);
+    let binary: string;
+    try {
+      binary = atob(base64);
+    } catch {
+      if (cached) return json({ ...cached, cached: true, stale: true });
+      return json({ error: 'Cloudflare returned an invalid base64 image payload' }, 502);
+    }
     const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const isPng = bytes.length >= 8
+      && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+      && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
+    const isJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    const isWebp = bytes.length >= 12
+      && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF'
+      && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
+    if (!isPng && !isJpeg && !isWebp) {
+      if (cached) return json({ ...cached, cached: true, stale: true });
+      return json({ error: 'Cloudflare returned an unsupported image format' }, 502);
+    }
+    const contentType = isPng ? 'image/png' : isWebp ? 'image/webp' : 'image/jpeg';
     const upload = await admin.storage.from('home-promotions').upload(HERO_PATH, bytes, {
-      contentType: 'image/jpeg',
+      contentType,
       upsert: true,
       cacheControl: '86400',
     });
