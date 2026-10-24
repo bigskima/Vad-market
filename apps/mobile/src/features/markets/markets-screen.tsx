@@ -18,7 +18,12 @@ import type { MarketCatalogItem } from '@/services/market-api';
 import type { FeaturedMarketRow, TrendingMarketRow, VadMarketRow } from '@/services/home-content-api';
 import { FeaturedMarketsCarousel } from './featured-markets-carousel';
 import { requestMarketImageGeneration } from '@/services/market-image-generation';
-import { getMarketCategoryExperiences, type MarketCategoryExperience } from '@/services/crypto-market-data-api';
+import {
+  getMarketCategoryExperiences,
+  getMarketCategorySubcategories,
+  type MarketCategoryExperience,
+  type MarketCategorySubcategory,
+} from '@/services/crypto-market-data-api';
 import { MarketCard } from './components/market-card';
 import { PageHeader } from '@/features/navigation/page-header';
 import { supabase } from '@/lib/supabase';
@@ -57,6 +62,7 @@ export function MarketsScreen({
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [categoryExperiences, setCategoryExperiences] = useState<MarketCategoryExperience[]>([]);
+  const [configuredSubcategories, setConfiguredSubcategories] = useState<MarketCategorySubcategory[]>([]);
   const [watchlistUserId, setWatchlistUserId] = useState<string | null>(null);
   const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
   const [watchlistBusyId, setWatchlistBusyId] = useState<string | null>(null);
@@ -69,9 +75,17 @@ export function MarketsScreen({
 
   useEffect(() => {
     let active = true;
-    void getMarketCategoryExperiences()
-      .then((items) => { if (active) setCategoryExperiences(items); })
-      .catch(() => { if (active) setCategoryExperiences([]); });
+    void Promise.all([getMarketCategoryExperiences(), getMarketCategorySubcategories()])
+      .then(([categories, subcategories]) => {
+        if (!active) return;
+        setCategoryExperiences(categories);
+        setConfiguredSubcategories(subcategories);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCategoryExperiences([]);
+        setConfiguredSubcategories([]);
+      });
     return () => { active = false; };
   }, []);
 
@@ -202,7 +216,18 @@ export function MarketsScreen({
     if (category === 'All') return [];
 
     const options = new Map<string, MarketSubcategoryOption>();
-    const add = (kind: MarketSubcategoryOption['kind'], rawValue: string, label: string) => {
+    const categoryTypes = configuredSubcategories.filter((item) => item.category_code === category);
+    for (const item of categoryTypes) {
+      const key = `type:${item.code.toLowerCase()}`;
+      options.set(key, {
+        value: key,
+        label: item.name,
+        kind: 'type',
+        count: categoryMarkets.filter((market) => marketMatchesConfiguredSubcategory(market, item, category)).length,
+      });
+    }
+
+    const add = (kind: 'sport' | 'group' | 'type', rawValue: string, label: string) => {
       const value = rawValue.trim();
       if (!value) return;
       const key = `${kind}:${value.toLowerCase()}`;
@@ -218,7 +243,7 @@ export function MarketsScreen({
     for (const market of categoryMarkets) {
       const marketType = marketContextString(market, 'catalog_market_type')
         ?? marketContextString(market, 'event_type');
-      if (marketType) {
+      if (marketType && !categoryTypes.some((item) => marketMatchesConfiguredSubcategory(market, item, category))) {
         add('type', marketType, humanizeTaxonomyValue(marketType, activeCategoryExperience?.code));
       }
 
@@ -231,9 +256,11 @@ export function MarketsScreen({
 
     return [...options.values()].sort((a, b) => {
       const kindOrder = { type: 0, sport: 1, group: 2 };
-      return kindOrder[a.kind] - kindOrder[b.kind] || b.count - a.count || a.label.localeCompare(b.label);
+      return kindOrder[a.kind] - kindOrder[b.kind]
+        || (a.kind === 'type' ? 0 : b.count - a.count)
+        || a.label.localeCompare(b.label);
     });
-  }, [category, categoryMarkets, activeCategoryExperience]);
+  }, [category, categoryMarkets, activeCategoryExperience, configuredSubcategories]);
 
   const baseFilteredMarkets = useMemo(() => {
     const needle = debouncedQuery.toLowerCase();
@@ -246,6 +273,8 @@ export function MarketsScreen({
         if (kind === 'group') return market.group_key?.trim().toLowerCase() === value;
         if (kind === 'sport') return marketContextString(market, 'sport')?.toLowerCase() === value;
         if (kind === 'type') {
+          const configured = configuredSubcategories.find((item) => item.code.toLowerCase() === value);
+          if (configured) return marketMatchesConfiguredSubcategory(market, configured, category);
           return [
             marketContextString(market, 'catalog_market_type'),
             marketContextString(market, 'event_type'),
@@ -254,7 +283,7 @@ export function MarketsScreen({
         return true;
       })
       .filter((market) => !needle || marketSearchText(market).includes(needle));
-  }, [categoryMarkets, activeSubcategory, debouncedQuery]);
+  }, [categoryMarkets, activeSubcategory, debouncedQuery, configuredSubcategories, category]);
 
   const stageCounts = useMemo(() => {
     const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
@@ -483,6 +512,26 @@ export function MarketsScreen({
   );
 }
 
+
+function marketMatchesConfiguredSubcategory(
+  market: MarketCatalogItem,
+  subcategory: MarketCategorySubcategory,
+  categoryCode: string,
+) {
+  const rawValues = [
+    marketContextString(market, 'catalog_market_type'),
+    marketContextString(market, 'event_type'),
+    marketContextString(market, 'market_type_code'),
+  ].map((value) => String(value ?? '').trim().toLowerCase()).filter(Boolean);
+  const code = subcategory.code.trim().toLowerCase();
+  const categoryPrefix = `${categoryCode.toLowerCase()}_`;
+  const aliases = [
+    code,
+    subcategory.name.trim().toLowerCase(),
+    ...(code.startsWith(categoryPrefix) ? [code.slice(categoryPrefix.length)] : []),
+  ];
+  return aliases.some((alias) => rawValues.includes(alias));
+}
 
 function resolveMarketCategoryCode(
   market: MarketCatalogItem,
