@@ -103,7 +103,14 @@ export function HomePromotionCarousel({
   const bannerHeight = Math.round(cardWidth * 9 / 16);
 
   return (
-    <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ gap: 7 }}>
+    <View
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+      style={{
+        width: cardWidth,
+        alignSelf: density.desktop ? 'center' : 'stretch',
+        gap: 7,
+      }}
+    >
       <ScrollView
         ref={scrollRef}
         horizontal
