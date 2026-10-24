@@ -21,6 +21,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import type { PaymentIntentRow } from '@/services/payment-api';
 import { getWalletBalanceHistory, type WalletActivityRow, type WalletBalanceHistoryRow, type WalletRow } from '@/services/market-api';
+import { supabase } from '@/lib/supabase';
 
 export function WalletScreen({
   wallets,
@@ -58,6 +59,17 @@ export function WalletScreen({
   const [balanceHistory, setBalanceHistory] = useState<WalletBalanceHistoryRow[]>([]);
   const [balanceHistoryLoading, setBalanceHistoryLoading] = useState(true);
   const [balanceHistoryError, setBalanceHistoryError] = useState<string | null>(null);
+  const [temporaryNgnCredit, setTemporaryNgnCredit] = useState<{
+    active?: boolean;
+    amount?: number | string;
+    availableBalance?: number | string;
+    withdrawalsBlocked?: boolean;
+    transfersBlocked?: boolean;
+    depositsBlocked?: boolean;
+    marketOrdersUseStandardSettlement?: boolean;
+    publicId?: string;
+    message?: string;
+  } | null>(null);
   const hasNgn = activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
   const hasUsdc = activeAssetCodes.includes('USDC') && currencyPreference.isCurrencyEnabled('USDC');
 
@@ -82,6 +94,24 @@ export function WalletScreen({
       active = false;
       clearTimeout(timer);
     };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void supabase.rpc('my_temporary_ngn_test_credit_status')
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          setTemporaryNgnCredit(null);
+          return;
+        }
+        setTemporaryNgnCredit(data && typeof data === 'object'
+          ? data as NonNullable<typeof temporaryNgnCredit>
+          : null);
+      }, () => {
+        if (active) setTemporaryNgnCredit(null);
+      });
+    return () => { active = false; };
   }, []);
 
   const orderedWallets = useMemo(
@@ -240,6 +270,27 @@ export function WalletScreen({
         </View>
       </TourTarget>
 
+      {temporaryNgnCredit?.active ? (
+        <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md, borderColor: theme.colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <VadText variant="bodyStrong">Temporary NGN market-test allocation</VadText>
+            <VadChip label="Non-withdrawable" tone="warning" />
+          </View>
+          <View style={{ gap: 3 }}>
+            <VadText variant="title">{assetMoney(Number(temporaryNgnCredit.amount ?? 0), 'NGN')}</VadText>
+            <VadText variant="caption" tone="secondary">
+              Current NGN available balance: {assetMoney(Number(temporaryNgnCredit.availableBalance ?? 0), 'NGN')}
+            </VadText>
+          </View>
+          <VadText variant="caption" tone="secondary">
+            This temporary test allocation sits in the ordinary NGN wallet and uses the standard live market order and settlement engine. While it is active, NGN deposits, withdrawals and email transfers are blocked. Complete or settle all open NGN positions before an administrator revokes the allocation.
+          </VadText>
+          {temporaryNgnCredit.publicId ? (
+            <VadText variant="caption" tone="tertiary">Test-credit reference: {temporaryNgnCredit.publicId}</VadText>
+          ) : null}
+        </VadCard>
+      ) : null}
+
       {manageCurrenciesOpen ? (
         <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
           <View style={{ gap: 3 }}>
@@ -263,8 +314,8 @@ export function WalletScreen({
 
       <TourTarget id="wallet-actions">
         <View style={{ flexDirection: 'row', gap: density.phone ? 6 : theme.spacing.sm }}>
-          <WalletAction label="Deposit" detail="Add funds" icon="plus" tone="yes" onPress={onDeposit} disabled={!hasNgn} />
-          <WalletAction label="Withdraw" detail="Send to bank" icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn} />
+          <WalletAction label="Deposit" detail={temporaryNgnCredit?.active ? "Locked during test credit" : "Add funds"} icon="plus" tone="yes" onPress={onDeposit} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
+          <WalletAction label="Withdraw" detail={temporaryNgnCredit?.active ? "Locked during test credit" : "Send to bank"} icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
           <WalletAction label="Transfer" detail="To another user" icon="transfer" tone="purple" onPress={onTransfer} />
           <WalletAction label="History" detail="View transactions" icon="fileText" tone="primary" onPress={onActivity} />
         </View>
