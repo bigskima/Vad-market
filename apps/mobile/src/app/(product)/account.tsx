@@ -41,7 +41,7 @@ export default function AccountScreen() {
   const [adminAccessFor, setAdminAccessFor] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [testModeStatus, setTestModeStatus] = useState<TemporaryNgnMarketTestingStatus | null>(null);
-  const [testModeLoading, setTestModeLoading] = useState(false);
+  const [, setTestModeLoading] = useState(false);
   const [testModeSaving, setTestModeSaving] = useState(false);
   const [testModeLocationSaving, setTestModeLocationSaving] = useState(false);
   const [testModeError, setTestModeError] = useState<string | null>(null);
