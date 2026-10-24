@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Linking, Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
@@ -181,7 +181,21 @@ function FinancialAssetCard({ item }: { item: FinancialMarketQuote }) {
         {item.open !== null ? <Stat label="Open" value={formatFinancialNumber(item.open, item.quoteCurrency)} /> : null}
         {item.volume !== null ? <Stat label="Volume" value={Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 2 }).format(item.volume)} /> : null}
       </View>
-      <VadText variant="caption" tone="tertiary">{item.source}{item.sourceUpdatedAt ? ' · Source timestamp ' + new Date(item.sourceUpdatedAt).toLocaleString() : ''}</VadText>
+      <View style={{ gap: 3 }}>
+        {item.sourceUrl ? (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={'Open data source ' + item.source}
+            onPress={() => { void Linking.openURL(item.sourceUrl!).catch(() => undefined); }}
+            style={({ pressed }) => ({ alignSelf: 'flex-start', opacity: pressed ? 0.7 : 1 })}
+          >
+            <VadText variant="caption" tone="secondary" underline>{item.source} ↗</VadText>
+          </Pressable>
+        ) : (
+          <VadText variant="caption" tone="tertiary">{item.source}</VadText>
+        )}
+        {item.sourceUpdatedAt ? <VadText variant="caption" tone="tertiary">Source timestamp {new Date(item.sourceUpdatedAt).toLocaleString()}</VadText> : null}
+      </View>
     </VadCard>
   );
 }
