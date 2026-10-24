@@ -88,27 +88,32 @@ export default function AccountScreen() {
 
   useEffect(() => {
     let ignore = false;
-    if (!userId) {
-      setMarketTestingStatus(null);
-      setMarketTestingError(null);
-      setMarketTestingLoading(false);
-      return () => { ignore = true; };
-    }
-    setMarketTestingLoading(true);
-    void getTemporaryNgnTestCreditStatus().then((status) => {
-      if (!ignore) {
-        setMarketTestingStatus(status);
-        setMarketTestingError(null);
-      }
-    }).catch((reason: unknown) => {
-      if (!ignore) {
+    const timer = setTimeout(() => {
+      if (!userId) {
         setMarketTestingStatus(null);
-        setMarketTestingError(reason instanceof Error ? reason.message : 'Market testing settings could not be loaded.');
+        setMarketTestingError(null);
+        setMarketTestingLoading(false);
+        return;
       }
-    }).finally(() => {
-      if (!ignore) setMarketTestingLoading(false);
-    });
-    return () => { ignore = true; };
+      setMarketTestingLoading(true);
+      void getTemporaryNgnTestCreditStatus().then((status) => {
+        if (!ignore) {
+          setMarketTestingStatus(status);
+          setMarketTestingError(null);
+        }
+      }).catch((reason: unknown) => {
+        if (!ignore) {
+          setMarketTestingStatus(null);
+          setMarketTestingError(reason instanceof Error ? reason.message : 'Market testing settings could not be loaded.');
+        }
+      }).finally(() => {
+        if (!ignore) setMarketTestingLoading(false);
+      });
+    }, 0);
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
   }, [userId]);
 
   useEffect(() => {
