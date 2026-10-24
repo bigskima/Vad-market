@@ -526,7 +526,10 @@ export function PortfolioScreen({
 function PoolStakePositionCard({ stake, onPress }: { stake: PoolStakeRow; onPress: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const yes = String(stake.outcome_code).toUpperCase() === 'YES';
+  const outcome = String(stake.outcome_code).toUpperCase();
+  const isYes = outcome === 'YES';
+  const isNo = outcome === 'NO';
+  const outcomeLabel = stake.outcome_label?.trim() || (isYes || isNo ? outcome === 'YES' ? 'Yes' : 'No' : outcome.replace(/[_-]+/g, ' ').toLowerCase().replace(/\b\w/g, (character) => character.toUpperCase()));
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open ${stake.market_title} prediction`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
       <VadCard style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: density.phone ? 10 : 12, borderRadius: 15, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
@@ -536,7 +539,7 @@ function PoolStakePositionCard({ stake, onPress }: { stake: PoolStakeRow; onPres
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
           <VadText variant="bodyStrong" numberOfLines={2}>{stake.market_title}</VadText>
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-            <VadChip label={yes ? 'Yes' : 'No'} tone={yes ? 'yes' : 'no'} />
+            <VadChip label={outcomeLabel} tone={isYes ? 'yes' : isNo ? 'no' : 'neutral'} />
             <VadText variant="caption" tone="secondary">{marketStatusLabel(stake.market_status)}</VadText>
           </View>
         </View>
