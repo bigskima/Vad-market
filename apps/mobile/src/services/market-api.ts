@@ -445,54 +445,135 @@ export async function getMyProposals() {
 }
 
 
-async function ensureNgnLocationForInstrument(instrumentPublicId: string) {
+type MarketTradingContext = {
+  instrument_public_id: string;
+  asset_code: string;
+  status: string;
+  opens_at: string | null;
+  closes_at: string | null;
+  resolves_after: string | null;
+  resolution_status: string | null;
+  liquidity_mode: string | null;
+};
+
+async function requireMarketTradingContext(
+  instrumentPublicId: string,
+  expectedMode: 'POOL' | 'ORDER_BOOK',
+): Promise<MarketTradingContext> {
   const { data, error } = await supabase
     .from('market_catalog')
-    .select('asset_code')
+    .select('instrument_public_id,asset_code,status,opens_at,closes_at,resolves_after,resolution_status,liquidity_mode')
     .eq('instrument_public_id', instrumentPublicId)
     .maybeSingle();
-  assertNoError(error, 'trading', 'We could not verify the market currency. Please try again.');
-  if (data?.asset_code !== 'NGN') return;
+  assertNoError(error, 'trading', 'We could not verify this market and its trading window. Refresh and try again.');
+  if (!data) throw new Error('This market is no longer available. Refresh the market page and try again.');
 
+  const context = data as MarketTradingContext;
+  const assetCode = String(context.asset_code ?? '').toUpperCase();
+  if (assetCode === 'TNGN') {
+    throw new Error('TNGN has been permanently retired. Historical TNGN markets cannot accept new trades.');
+  }
+  if (assetCode !== 'NGN' && assetCode !== 'USDC') {
+    throw new Error('This market asset is not enabled for trading.');
+  }
+
+  const mode = String(context.liquidity_mode ?? '').toUpperCase();
+  const usesPool = mode.includes('POOL');
+  if (expectedMode === 'POOL' && !usesPool) {
+    throw new Error('This is an order-book market, not a pooled-stake market. Refresh the page to load the correct trading ticket.');
+  }
+  if (expectedMode === 'ORDER_BOOK' && usesPool) {
+    throw new Error('This market uses pooled staking, not limit orders. Refresh the page to load the correct trading ticket.');
+  }
+
+  const status = String(context.status ?? '').toUpperCase();
+  if (status !== 'OPEN' && status !== 'ACTIVE') {
+    const label = status === 'SCHEDULED' ? 'has not opened yet'
+      : status === 'SETTLED' || status === 'CLOSED' ? 'is closed'
+        : status === 'SUSPENDED' ? 'is paused'
+          : 'is not accepting trades';
+    throw new Error(`This market ${label}. Check its published trading schedule and try again when trading is open.`);
+  }
+
+  const now = Date.now();
+  const opensAt = context.opens_at ? Date.parse(context.opens_at) : null;
+  const closesAt = context.closes_at ? Date.parse(context.closes_at) : null;
+  const resolvesAt = context.resolves_after ? Date.parse(context.resolves_after) : null;
+
+  if (context.opens_at && opensAt != null && Number.isFinite(opensAt) && now < opensAt) {
+    throw new Error(`This market opens at ${new Date(opensAt).toLocaleString()}. You can review a prediction after it opens.`);
+  }
+  if (expectedMode === 'POOL' && (opensAt == null || !Number.isFinite(opensAt))) {
+    throw new Error('This pooled market has no valid opening time configured. New stakes are paused until its schedule is corrected.');
+  }
+  if (context.closes_at && closesAt != null && Number.isFinite(closesAt) && now >= closesAt) {
+    throw new Error('This market has reached its published closing time. New trades are no longer accepted.');
+  }
+  if (context.resolves_after && resolvesAt != null && Number.isFinite(resolvesAt) && now >= resolvesAt) {
+    throw new Error('This market has reached its result-check time. New trades are paused while the result is processed.');
+  }
+
+  return context;
+}
+
+async function ensureNgnLocationForAsset(assetCode: string) {
+  if (assetCode !== 'NGN') return;
   const result = await verifyCurrentServiceLocation().catch(() => ({
     allowed: false,
     reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE',
   }));
-  if (!result.allowed) {
-    throw new Error('NGN trading is available only when your current location and network are verified in Nigeria.');
-  }
+  if (result.allowed) return;
+
+  const messages: Record<string, string> = {
+    LOCATION_PERMISSION_REQUIRED: 'Allow VAD to access your device location, then try the NGN quote again.',
+    LOCATION_INACCURATE: 'Your device location is too imprecise to verify NGN trading. Improve location accuracy and retry.',
+    LOCATION_CHECK_EXPIRED: 'Your Nigerian location verification has expired. Verify your current location again before trading.',
+    LOCATION_MISMATCH: 'Your device and network location do not both verify as Nigeria. NGN trading is blocked until they match.',
+    NETWORK_RISK: 'NGN trading is blocked because the current network could not be verified as a permitted Nigerian connection.',
+    ACCOUNT_NOT_ELIGIBLE: 'This account is not eligible for NGN trading.',
+    LOCATION_VERIFICATION_UNAVAILABLE: 'VAD could not verify your current Nigerian location. Check location permission and your network, then retry.',
+  };
+  throw new Error(messages[result.reasonCode] ?? 'NGN trading requires a current verified location in Nigeria.');
 }
 
-async function getMarketAssetCode(instrumentPublicId: string) {
-  const { data, error } = await supabase
-    .from('market_catalog')
-    .select('asset_code')
-    .eq('instrument_public_id', instrumentPublicId)
-    .maybeSingle();
-  assertNoError(error, 'trading', 'We could not verify this market currency. Please try again.');
-  return data?.asset_code ?? null;
+function marketTradeError(error: unknown, fallback: string) {
+  const raw = error && typeof error === 'object' && 'message' in error
+    ? String((error as { message?: unknown }).message ?? '')
+    : '';
+  const message = raw.toLowerCase();
+  if (message.includes('market is not open')) {
+    return new Error('This market is outside its published trading window. Check its opening and closing times before trying again.');
+  }
+  if (message.includes('stake is below the market minimum') || message.includes('below market minimum notional')) {
+    return new Error('Your amount is below this market’s minimum stake/order value.');
+  }
+  if (message.includes('trading is not available for this account and market')) {
+    return new Error('NGN trading requires an active eligible account and a current verified Nigerian location/network.');
+  }
+  if (message.includes('does not use pooled staking')) {
+    return new Error('This market is configured for order-book trading. Refresh the market page to load its correct ticket.');
+  }
+  if (message.includes('uses peer-funded pooled staking')) {
+    return new Error('This market is configured for pooled staking. Refresh the market page to load its correct ticket.');
+  }
+  return userFacingError(error, 'trading', fallback);
 }
 
 export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; amount: number }) {
-  const assetCode = await getMarketAssetCode(input.instrumentPublicId);
-  if (assetCode !== 'NGN' && assetCode !== 'USDC') {
-    throw new Error('Test NGN markets are permanently closed.');
-  }
+  const context = await requireMarketTradingContext(input.instrumentPublicId, 'POOL');
+  await ensureNgnLocationForAsset(context.asset_code);
   const { data, error } = await supabase.rpc('pool_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
     p_amount: input.amount,
   });
-  assertNoError(error, 'trading', 'We could not prepare this prediction right now. Please try again.');
+  if (error) throw marketTradeError(error, 'We could not prepare this prediction right now. Please retry.');
   return data as PoolQuote;
 }
 
 export async function placePoolStake(quote: PoolQuote) {
-  const assetCode = await getMarketAssetCode(quote.instrumentPublicId);
-  if (assetCode !== 'NGN' && assetCode !== 'USDC') {
-    throw new Error('Test NGN markets are permanently closed.');
-  }
-  await ensureNgnLocationForInstrument(quote.instrumentPublicId);
+  const context = await requireMarketTradingContext(quote.instrumentPublicId, 'POOL');
+  await ensureNgnLocationForAsset(context.asset_code);
   const idempotencyKey = `pool:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_pool_stake', {
     p_instrument_public_id: quote.instrumentPublicId,
@@ -505,6 +586,8 @@ export async function placePoolStake(quote: PoolQuote) {
 }
 
 export async function quoteTrade(input: { instrumentPublicId: string; outcomeCode: 'YES' | 'NO'; side: 'BUY' | 'SELL'; price: number; quantity: number }) {
+  const context = await requireMarketTradingContext(input.instrumentPublicId, 'ORDER_BOOK');
+  await ensureNgnLocationForAsset(context.asset_code);
   const { data, error } = await supabase.rpc('trade_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
@@ -512,7 +595,7 @@ export async function quoteTrade(input: { instrumentPublicId: string; outcomeCod
     p_price: input.price,
     p_quantity: input.quantity,
   });
-  assertNoError(error, 'trading', 'We could not prepare this trade right now. Please try again.');
+  if (error) throw marketTradeError(error, 'We could not prepare this trade right now. Please retry.');
   return data as TradeQuote;
 }
 
@@ -525,7 +608,8 @@ export async function getOrderStatus(orderPublicId: string) {
 }
 
 export async function placeOrder(quote: TradeQuote) {
-  await ensureNgnLocationForInstrument(quote.instrumentPublicId);
+  const context = await requireMarketTradingContext(quote.instrumentPublicId, 'ORDER_BOOK');
+  await ensureNgnLocationForAsset(context.asset_code);
   const idempotencyKey = `mobile:${quote.instrumentPublicId}:${quote.outcomeCode}:${quote.side}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_order', {
     p_market_id: quote.instrumentId,
