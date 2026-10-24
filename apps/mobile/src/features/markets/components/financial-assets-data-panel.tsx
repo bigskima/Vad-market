@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, View, useState } from 'react-native';
+import { Image, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
