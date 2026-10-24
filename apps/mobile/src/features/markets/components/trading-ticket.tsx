@@ -90,9 +90,12 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
   const isMultiOutcome = market.market_type === 'MULTI_OUTCOME';
   const [step, setStep] = useState<TradeStep>('prediction');
   const [outcome, setOutcome] = useState<string>(initialOutcome ?? (isMultiOutcome ? outcomes[0]?.outcome_code ?? '' : 'YES'));
-  const selectedOutcome = outcomes.find((item) => item.outcome_code === outcome);
-  const outcomeLabel = isMultiOutcome ? (selectedOutcome?.outcome_label ?? displayOutcomeCode(outcome)) : outcome;
-  const outcomeTone = outcome === 'YES' ? 'yes' : outcome === 'NO' ? 'no' : 'neutral';
+  const effectiveOutcome = isMultiOutcome
+    ? (outcomes.some((item) => item.outcome_code === outcome) ? outcome : outcomes[0]?.outcome_code ?? '')
+    : outcome;
+  const selectedOutcome = outcomes.find((item) => item.outcome_code === effectiveOutcome);
+  const outcomeLabel = isMultiOutcome ? (selectedOutcome?.outcome_label ?? displayOutcomeCode(effectiveOutcome)) : effectiveOutcome;
+  const outcomeTone = effectiveOutcome === 'YES' ? 'yes' : effectiveOutcome === 'NO' ? 'no' : 'neutral';
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<PoolQuote | null>(null);
   const [stakeStatus, setStakeStatus] = useState<PoolStakeStatus | null>(null);
@@ -194,20 +197,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
     resetDownstream();
   }
 
-  useEffect(() => {
-    if (!isMultiOutcome || outcomes.length === 0) return;
-    if (initialOutcome && outcomes.some((item) => item.outcome_code === initialOutcome)) {
-      if (outcome !== initialOutcome) {
-        setOutcome(initialOutcome);
-        resetDownstream();
-      }
-      return;
-    }
-    if (!outcomes.some((item) => item.outcome_code === outcome)) {
-      setOutcome(outcomes[0].outcome_code);
-      resetDownstream();
-    }
-  }, [initialOutcome, isMultiOutcome, outcome, outcomes, resetDownstream]);
+
 
   async function prepareReview() {
     if (!tradeReady || working || !inputValid) return;
@@ -225,7 +215,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
         const prepared = await prepareUsdcPrediction({
           marketId: market.instrument_public_id,
-          outcomeCode: outcome,
+          outcomeCode: effectiveOutcome,
           amount: amountValue,
           venue: selectedVenue,
         });
@@ -234,7 +224,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       } else {
         const next = await quotePoolStake({
           instrumentPublicId: market.instrument_public_id,
-          outcomeCode: outcome,
+          outcomeCode: effectiveOutcome,
           amount: amountValue,
         });
         setQuote(next);
@@ -360,7 +350,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
                 {outcomes.map((option) => (
                   <View key={option.outcome_code} style={{ width: density.narrow ? '100%' : '48%', minWidth: 0 }}>
                     <OutcomeChoice
-                      active={outcome === option.outcome_code}
+                      active={effectiveOutcome === option.outcome_code}
                       label={option.outcome_label}
                       title="Share of the pool"
                       value={option.pool_share == null ? '—' : probability(option.pool_share)}
@@ -395,7 +385,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             </View>
           )}
 
-          <VadButton label={`Continue with ${outcomeLabel || "outcome"}`} disabled={!tradeReady || working || !outcome} onPress={() => setStep('order')} />
+          <VadButton label={`Continue with ${outcomeLabel || "outcome"}`} disabled={!tradeReady || working || !effectiveOutcome} onPress={() => setStep('order')} />
         </VadCard>
       ) : null}
 
