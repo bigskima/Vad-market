@@ -148,7 +148,7 @@ export default function SendRoute() {
           {availableBalance !== null ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 12, borderRadius: 12, backgroundColor: theme.colors.surfaceRaised }}>
               <VadText variant="caption" tone="secondary">Available ledger balance</VadText>
-              <VadText variant="bodyStrong">{formatBalance(availableBalance, assetCode)}</VadText>
+              <VadText variant="bodyStrong">{formatBalance(availableBalance, activeAssetCode)}</VadText>
             </View>
           ) : (
             <VadText variant="caption" tone="secondary">The server will verify that your available ledger wallet can fund the transfer.</VadText>
