@@ -144,6 +144,29 @@ create trigger prevent_retired_tngn_instrument_write
 before insert or update of asset_id,status on market.instruments
 for each row execute function private.guard_retired_tngn_instrument_write();
 
+create or replace function private.guard_retired_tngn_ledger_account()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $function$
+begin
+  if exists (
+    select 1 from public.assets a
+    where a.id=new.asset_id and a.code='TNGN'
+  ) and (tg_op='INSERT' or new.status<>'CLOSED') then
+    raise exception 'TNGN is permanently decommissioned. No new or reactivated TNGN ledger accounts are permitted.' using errcode='55000';
+  end if;
+  return new;
+end;
+$function$;
+
+revoke all on function private.guard_retired_tngn_ledger_account() from public,anon,authenticated,service_role;
+drop trigger if exists prevent_retired_tngn_ledger_account on finance.ledger_accounts;
+create trigger prevent_retired_tngn_ledger_account
+before insert or update of asset_id,status on finance.ledger_accounts
+for each row execute function private.guard_retired_tngn_ledger_account();
+
 create or replace function private.guard_retired_tngn_ledger_journal()
 returns trigger
 language plpgsql
