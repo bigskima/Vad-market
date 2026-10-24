@@ -278,6 +278,7 @@ declare
   v_fee_journal bigint;
   v_asset_code text;
   v_test_credit_active boolean:=false;
+  v_test_grant_id bigint;
 begin
   acct := private.require_active_account();
   if p_idempotency_key is null or char_length(p_idempotency_key) < 8 or char_length(p_idempotency_key) > 200 then
@@ -312,10 +313,17 @@ begin
     raise exception 'Market is not open' using errcode = 'P0001';
   end if;
   select a.code into v_asset_code from public.assets a where a.id=instrument.asset_id and a.status='ACTIVE';
-  select exists(
-    select 1 from public.temporary_ngn_test_credit_grants g
+  -- Lock the active credit before acquiring wallet/pool locks. This shares the
+  -- grant-first lock order with the admin revocation routine and prevents a
+  -- revoke racing with a quote-confirmed stake commit.
+  if v_asset_code='NGN' then
+    select g.id into v_test_grant_id
+    from public.temporary_ngn_test_credit_grants g
     where g.user_id=auth.uid() and g.asset_id=instrument.asset_id and g.status='ACTIVE'
-  ) into v_test_credit_active;
+    order by g.created_at desc limit 1
+    for update;
+    v_test_credit_active:=v_test_grant_id is not null;
+  end if;
   if v_asset_code='NGN' and not coalesce((select gate.allowed from public.can_access_ngn_services() gate limit 1),false) then
     raise exception 'NGN service requires current location verification. Verify your current location and try again.' using errcode='42501';
   end if;
@@ -416,6 +424,7 @@ declare
   v_journal_public_id uuid;
   v_idempotency text;
   v_email text:=lower(trim(coalesce(p_recipient_email,'')));
+  v_sender_email text;
   v_sender_test_grant public.temporary_ngn_test_credit_grants%rowtype;
   v_recipient_test_grant public.temporary_ngn_test_credit_grants%rowtype;
   v_recipient_test_grant_created boolean:=false;
@@ -449,6 +458,9 @@ begin
   if v_recipient_id=v_sender_id then
     raise exception 'Choose another VAD account. You cannot transfer assets to yourself.' using errcode='22023';
   end if;
+
+  select lower(u.email) into v_sender_email
+  from auth.users u where u.id=v_sender_id;
 
   select ua.status,case when upper(trim(coalesce(ua.country_code,''))) in ('NG','NGA','NIGERIA') then 'NG' else upper(trim(coalesce(ua.country_code,''))) end
     into v_sender_status,v_sender_country
@@ -485,6 +497,21 @@ begin
   if v_asset_code='NGN' then
     if not coalesce((select gate.allowed from public.can_access_ngn_services() gate limit 1),false) then
       raise exception 'NGN transfers require current location verification in Nigeria.' using errcode='42501';
+    end if;
+    if not exists (
+      select 1 from public.user_location_verifications lv
+      where lv.user_id=v_recipient_id
+        and lv.decision='VERIFIED'
+        and lv.reason_code='ALLOWED'
+        and lv.device_country_code='NG'
+        and lv.ip_country_code='NG'
+        and lv.vpn_detected=false
+        and lv.proxy_detected=false
+        and lv.tor_detected=false
+        and lv.hosting_detected=false
+        and lv.expires_at>statement_timestamp()
+    ) then
+      raise exception 'The recipient must complete current Nigeria location verification before receiving NGN.' using errcode='42501';
     end if;
     if v_sender_country<>'NG' or v_recipient_country<>'NG' then
       raise exception 'NGN transfers are only available between eligible Nigerian VAD accounts.' using errcode='42501';
@@ -547,6 +574,13 @@ begin
     where g.user_id=v_sender_id and g.asset_id=v_asset_id and g.status='ACTIVE'
     order by g.created_at desc limit 1 for update;
 
+    -- Serialize every NGN transfer involving the recipient before checking
+    -- their grant state. This also prevents a cash transfer racing with a
+    -- first-time test-credit grant and mixing cash with test funds.
+    perform pg_advisory_xact_lock(hashtextextended(
+      'temporary-ngn-test-recipient:'||v_recipient_id::text||':'||v_asset_id::text,0
+    ));
+
     select * into v_recipient_test_grant
     from public.temporary_ngn_test_credit_grants g
     where g.user_id=v_recipient_id and g.asset_id=v_asset_id and g.status='ACTIVE'
@@ -565,8 +599,17 @@ begin
       end if;
 
       if exists (
+        select 1 from payments.intents pi
+        where pi.user_id=v_recipient_id and pi.asset_id=v_asset_id
+          and pi.operation='DEPOSIT'
+          and pi.status in ('SETTLED','SUCCEEDED')
+      ) then
+        raise exception 'The recipient has a historical NGN cash deposit. Test-credit funds cannot be mixed into that wallet; no funds were moved.' using errcode='55000';
+      end if;
+
+      if exists (
         select 1 from public.user_currency_preferences cp
-        where cp.user_id=v_recipient_id and not ('NGN'=any(cp.enabled_asset_codes))
+        where cp.user_id=v_recipient_id and not coalesce('NGN'=any(cp.enabled_asset_codes),false)
       ) then
         raise exception 'The recipient must enable NGN in Currency settings before receiving temporary test funds.' using errcode='42501';
       end if;

@@ -73,9 +73,9 @@ function RetiredTngnTicket() {
   const theme = useVadTheme();
   return (
     <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
-      <VadText variant="bodyStrong">Test NGN markets are permanently closed</VadText>
+      <VadText variant="bodyStrong">TNGN sandbox retired</VadText>
       <VadText variant="caption" tone="secondary">
-        This is a historical sandbox market. It cannot accept new predictions or affect your real NGN wallet. Use a currently open real-NGN market instead.
+        This is a historical TNGN record. It cannot accept new predictions or affect your NGN wallet. TNGN and its trading RPCs are disabled. Use a currently OPEN real NGN or supported USDC market instead.
       </VadText>
     </VadCard>
   );
@@ -113,7 +113,11 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
     return () => { active = false; };
   }, [market.asset_code]);
 
-  const tradeReady = canTrade && !capabilityLoading;
+  const hasTemporaryNgnTestCredit = market.asset_code === 'NGN' && temporaryNgnCredit?.active === true;
+  // The test credit grants this account a narrow trade-capability exception.
+  // Current Nigerian location verification and server market-scope checks still
+  // run before quoting/committing; this does not enable NGN trading globally.
+  const tradeReady = (canTrade || hasTemporaryNgnTestCredit) && !capabilityLoading;
   const amountValue = Number(amount);
   const inputValid = amount.trim().length > 0 && Number.isFinite(amountValue) && amountValue > 0;
   const selectedVenue = useMemo(
@@ -306,12 +310,12 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
   return (
     <View style={{ gap: density.compact ? 10 : 12 }}>
       <TradeStepRail step={step} secondLabel="Stake" />
-      <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
-      {market.asset_code === 'NGN' && temporaryNgnCredit?.active ? (
+      <CapabilityNotice canTrade={canTrade || hasTemporaryNgnTestCredit} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
+      {hasTemporaryNgnTestCredit ? (
         <InlineMessage
           tone="warning"
           title="Temporary NGN test credit active"
-          body="This is internal, non-cash test credit in the normal NGN wallet. This prediction uses the standard NGN market order and settlement pipeline. Deposits, withdrawals and email transfers are blocked until a super administrator revokes the credit after all NGN orders, stakes and positions settle."
+          body="This is non-cash credit in the normal NGN ledger and uses this same market instrument, pool stake, resolution and settlement pipeline. Current Nigeria location verification is still required. Deposits and withdrawals are blocked; email transfers are limited to other eligible test-credit accounts and cannot mix with cash-funded NGN."
         />
       ) : null}
 

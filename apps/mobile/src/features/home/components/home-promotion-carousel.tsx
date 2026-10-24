@@ -93,17 +93,31 @@ export function HomePromotionCarousel({
     if (next === 0) directionRef.current = 1;
   };
 
-  const bannerHeight = density.compact ? 116 : density.phone ? 128 : density.desktop ? 176 : 148;
+  // Artwork is generated at 1024×576 (16:9), matching market covers.
+  // Keep the rendered campaign at the same ratio rather than cropping a wide
+  // 16:9 image into a short banner. Cap desktop width to avoid oversized hero art.
+  const cardWidth = Math.min(
+    width || Math.max(260, density.width - density.horizontalPadding * 2),
+    density.desktop ? 760 : Number.MAX_SAFE_INTEGER,
+  );
+  const bannerHeight = Math.round(cardWidth * 9 / 16);
 
   return (
-    <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ gap: 7 }}>
+    <View
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+      style={{
+        width: cardWidth,
+        alignSelf: density.desktop ? 'center' : 'stretch',
+        gap: 7,
+      }}
+    >
       <ScrollView
         ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
         snapToAlignment="start"
-        snapToInterval={width ? width + CARD_GAP : undefined}
+        snapToInterval={cardWidth + CARD_GAP}
         disableIntervalMomentum
         onScrollBeginDrag={() => { draggingRef.current = true; }}
         onScrollEndDrag={() => { draggingRef.current = false; }}
@@ -117,7 +131,7 @@ export function HomePromotionCarousel({
             accessibilityLabel={promotion.title || 'Open VAD campaign'}
             onPress={() => onOpen(promotion.target_path)}
             style={({ pressed }) => ({
-              width: width || Math.max(260, density.width - density.horizontalPadding * 2),
+              width: cardWidth,
               height: bannerHeight,
               overflow: 'hidden',
               borderRadius: density.phone ? 14 : 18,

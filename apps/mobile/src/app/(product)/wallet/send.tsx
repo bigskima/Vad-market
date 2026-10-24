@@ -53,11 +53,12 @@ export default function SendRoute() {
     return () => { active = false; };
   }, []);
 
-  // Fail closed: until the server confirms there is no active test credit, do not
-  // offer NGN peer transfers. The ledger RPC independently enforces this guard.
+  // Fail closed while the server credit status is unknown. Once confirmed,
+  // the server permits NGN peer transfers only between eligible temporary-credit
+  // accounts or normal cash accounts; it never allows cash/test-credit mixing.
   const assets: TransferAssetCode[] = (['NGN', 'USDC'] as const)
     .filter((code) => currency.isCurrencyEligible(code))
-    .filter((code) => code !== 'NGN' || temporaryCreditActive === false);
+    .filter((code) => code !== 'NGN' || temporaryCreditActive !== null);
 
   const activeAssetCode: TransferAssetCode = assets.includes(assetCode) ? assetCode : assets[0] ?? 'NGN';
   const selectedWallet = data.wallet.find((wallet) => wallet.asset_code === activeAssetCode);
@@ -116,8 +117,8 @@ export default function SendRoute() {
           Send real NGN or VAD ledger USDC to another existing VAD account by email. The server verifies the recipient, account eligibility and available balance, then posts a balanced ledger transfer. This does not send funds to a bank or blockchain wallet.
         </VadText>
         {temporaryCreditActive === true ? (
-          <VadText variant="caption" tone="secondary">
-            NGN peer transfers are disabled while your temporary market-testing credit is active. Eligible ledger USDC transfers remain available.
+          <VadText variant="caption" tone="warning">
+            Temporary test funds stay in VAD’s NGN ledger and remain non-withdrawable. Email transfers are allowed only to an active, location-verified Nigerian VAD account that is eligible to receive test credit and has no real NGN balance or open NGN positions. The recipient receives test-credit restrictions too; NGN cash and test credits cannot be mixed.
           </VadText>
         ) : temporaryCreditActive === null ? (
           <VadText variant="caption" tone="warning">
@@ -147,7 +148,7 @@ export default function SendRoute() {
           {availableBalance !== null ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 12, borderRadius: 12, backgroundColor: theme.colors.surfaceRaised }}>
               <VadText variant="caption" tone="secondary">Available ledger balance</VadText>
-              <VadText variant="bodyStrong">{formatBalance(availableBalance, assetCode)}</VadText>
+              <VadText variant="bodyStrong">{formatBalance(availableBalance, activeAssetCode)}</VadText>
             </View>
           ) : (
             <VadText variant="caption" tone="secondary">The server will verify that your available ledger wallet can fund the transfer.</VadText>
@@ -190,6 +191,11 @@ export default function SendRoute() {
               <VadText variant="caption" tone="secondary">Recipient: {recipientEmail.trim().toLowerCase()}</VadText>
               <VadText variant="caption" tone="secondary">Transfer reference: {receipt.transferId}</VadText>
               <VadText variant="caption" tone="secondary">Ledger journal: {receipt.journalId}</VadText>
+              {receipt.temporaryTestCredit ? (
+                <VadText variant="caption" tone="warning">
+                  Test-credit transfer: the recipient has the same non-withdrawable NGN testing restrictions. The balance can be used only on eligible NGN markets and cannot be deposited or withdrawn.
+                </VadText>
+              ) : null}
               {receipt.idempotentReplay ? <VadText variant="caption" tone="secondary">This is the confirmation of an earlier request; the transfer was not debited twice.</VadText> : null}
             </View>
           ) : null}

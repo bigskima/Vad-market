@@ -9,6 +9,7 @@ export type TemporaryNgnTestCreditStatus = {
   createdAt?: string;
   withdrawalsBlocked?: boolean;
   transfersBlocked?: boolean;
+  transfersRestricted?: boolean;
   depositsBlocked?: boolean;
   marketOrdersUseStandardSettlement?: boolean;
   message?: string;
