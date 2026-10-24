@@ -86,14 +86,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // The prior IPLogs endpoint repeatedly timed out from Supabase Edge (the
-    // function logs showed networkProviderFailed=true after the 7-second abort).
-    // Use whatismyip.ai's documented keyless lookup: it returns country and all
-    // four required network-risk flags in one request, without a slow active probe.
+    // Public Nominatim is returning HTTP 403 from the Supabase Edge runtime.
+    // Use Photon for the GPS-coordinate country lookup. Photon exposes a GeoJSON
+    // reverse endpoint and countrycode in each feature; keep this low-volume
+    // (only an explicit user-triggered location check), with no address storage.
     const [geoResult, networkResult] = await Promise.allSettled([
       fetchWithTimeout(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=3&addressdetails=1`,
-        { headers: { 'User-Agent': 'VADMarket/1.0 location-jurisdiction-check' } },
+        `https://photon.komoot.io/reverse?lat=${latitude}&lon=${longitude}&lang=en`,
+        { headers: { 'Accept': 'application/geo+json', 'User-Agent': 'VADMarket/1.0 location-jurisdiction-check' } },
         7000,
       ),
       fetchWithTimeout(
@@ -117,6 +117,8 @@ Deno.serve(async (req) => {
       console.warn('[verify-service-location] country or network provider returned non-2xx', {
         countryProviderStatus: geoResponse.status,
         networkProviderStatus: networkResponse.status,
+        countryProvider: 'photon.komoot.io',
+        networkProvider: 'whatismyip.ai',
       });
       return json({ error: 'Location verification provider unavailable', code: 'LOCATION_PROVIDER_ERROR' }, 503);
     }
@@ -142,7 +144,11 @@ Deno.serve(async (req) => {
       return json({ error: 'Network risk signals are unavailable', code: 'NETWORK_RISK_UNRESOLVED' }, 503);
     }
 
-    const deviceCountry = String(geo?.address?.country_code || '').trim().toUpperCase();
+    const geoFeatures = Array.isArray(geo?.features) ? geo.features : [];
+    const geoCountryCode = geoFeatures
+      .map((feature: { properties?: { countrycode?: unknown } }) => feature?.properties?.countrycode)
+      .find((value: unknown) => isCountryCode(value));
+    const deviceCountry = String(geoCountryCode || '').trim().toUpperCase();
     const ipCountry = String(networkData?.location?.countryCode || '').trim().toUpperCase();
     if (!isCountryCode(deviceCountry) || !isCountryCode(ipCountry)) {
       return json({ error: 'Unable to establish current country', code: 'COUNTRY_UNRESOLVED' }, 503);
