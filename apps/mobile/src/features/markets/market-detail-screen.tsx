@@ -13,7 +13,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
-import { getPublishedMarketDetail, type MarketCatalogItem, type PoolStakeRow, type PublishedMarketDetail } from '@/services/market-api';
+import { getPublishedMarketDetail, type MarketCatalogItem, type PoolStakeRow, type PositionRow, type PublishedMarketDetail } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { FinancialMarketLivePanel, hasLiveFinancialContext } from './components/financial-market-live-panel';
 import { MarketDepthPanel } from './components/market-depth-panel';
@@ -36,6 +36,7 @@ const tabs: { value: DetailTab; label: string }[] = [
 export function MarketDetailScreen({
   market,
   markets,
+  positions,
   poolStakes,
   initialOutcome,
   canTrade,
@@ -48,6 +49,7 @@ export function MarketDetailScreen({
 }: {
   market: MarketCatalogItem;
   markets: MarketCatalogItem[];
+  positions: PositionRow[];
   poolStakes: PoolStakeRow[];
   initialOutcome?: 'YES' | 'NO';
   canTrade: boolean;
@@ -115,7 +117,7 @@ export function MarketDetailScreen({
   return (
     <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: 200 }}>
       <MarketDetailHeader market={market} />
-      <MarketStakeSummary market={market} poolStakes={poolStakes} />
+      <MarketStakeSummary market={market} positions={positions} poolStakes={poolStakes} />
       {hasLiveFinancialContext(market) ? <FinancialMarketLivePanel key={market.instrument_public_id} market={market} now={now} /> : null}
 
       <ScrollView
@@ -190,34 +192,67 @@ function Activity({ market }: { market: MarketCatalogItem }) {
   );
 }
 
-function MarketStakeSummary({ market, poolStakes }: { market: MarketCatalogItem; poolStakes: PoolStakeRow[] }) {
+function MarketStakeSummary({ market, positions, poolStakes }: { market: MarketCatalogItem; positions: PositionRow[]; poolStakes: PoolStakeRow[] }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const matching = poolStakes
+  const matchingStakes = poolStakes
     .filter((stake) => stake.market_id === market.instrument_public_id && stake.asset_code === market.asset_code)
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
-  if (!matching.length) return null;
+  const matchingPositions = positions
+    .filter((position) => position.instrument_id === market.instrument_public_id
+      && position.asset_code === market.asset_code
+      && Number(position.quantity) > 0);
+  if (!matchingStakes.length && !matchingPositions.length) return null;
 
   const terminalStatuses = ['SETTLED', 'VOIDED', 'CANCELLED', 'RESOLVED', 'FINAL'];
-  const active = matching.filter((stake) =>
+  const activeStakes = matchingStakes.filter((stake) =>
     !terminalStatuses.includes(String(stake.market_status).toUpperCase()) && !stake.final_outcome,
   );
-  const displayRows = active.length ? active : matching;
-  const byOutcome = new Map<string, { amount: number; fee: number; count: number; outcome: string }>();
-  for (const stake of displayRows) {
-    const outcome = String(stake.outcome_code).toUpperCase();
-    const current = byOutcome.get(outcome) ?? { outcome, amount: 0, fee: 0, count: 0 };
-    current.amount += Number(stake.amount) || 0;
-    current.fee += Number(stake.trading_fee) || 0;
-    current.count += 1;
+  const visibleStakes = activeStakes.length ? activeStakes : matchingStakes;
+  const byOutcome = new Map<string, {
+    outcome: string;
+    poolStake: number;
+    positionCost: number;
+    quantity: number;
+    fee: number;
+    poolCount: number;
+  }>();
+  const getOutcome = (outcomeValue: string) => {
+    const outcome = String(outcomeValue).toUpperCase();
+    const current = byOutcome.get(outcome) ?? {
+      outcome,
+      poolStake: 0,
+      positionCost: 0,
+      quantity: 0,
+      fee: 0,
+      poolCount: 0,
+    };
     byOutcome.set(outcome, current);
+    return current;
+  };
+  for (const stake of visibleStakes) {
+    const current = getOutcome(stake.outcome_code);
+    current.poolStake += Number(stake.amount) || 0;
+    current.fee += Number(stake.trading_fee) || 0;
+    current.poolCount += 1;
   }
-  const totalCommitted = [...byOutcome.values()].reduce((sum, row) => sum + row.amount, 0);
-  const totalFees = [...byOutcome.values()].reduce((sum, row) => sum + row.fee, 0);
-  const status = active.length
-    ? marketStatusLabel(active[0]?.market_status)
-    : marketStatusLabel(matching[0]?.market_status);
-  const title = active.length ? 'Your position in this market' : 'Your market record';
+  for (const position of matchingPositions) {
+    const current = getOutcome(position.outcome_code);
+    current.positionCost += Number(position.total_cost_basis) || 0;
+    current.quantity += Number(position.quantity) || 0;
+  }
+
+  const rows = [...byOutcome.values()];
+  const totalCommitted = rows.reduce((sum, row) => sum + row.poolStake + row.positionCost, 0);
+  const totalFees = rows.reduce((sum, row) => sum + row.fee, 0);
+  const hasActivePosition = matchingPositions.some((position) => ['OPEN', 'ACTIVE'].includes(String(position.status).toUpperCase()));
+  const hasActiveExposure = activeStakes.length > 0 || hasActivePosition;
+  const status = activeStakes.length
+    ? marketStatusLabel(activeStakes[0]?.market_status)
+    : matchingPositions[0]
+      ? marketStatusLabel(matchingPositions[0].status)
+      : marketStatusLabel(matchingStakes[0]?.market_status);
+  const title = hasActiveExposure ? 'Your position in this market' : 'Your market record';
 
   return (
     <VadCard variant="raised" style={{ gap: 10, padding: density.phone ? 12 : 15, borderRadius: 18, borderColor: theme.colors.brandSoft }}>
@@ -226,23 +261,25 @@ function MarketStakeSummary({ market, poolStakes }: { market: MarketCatalogItem;
           <VadText variant="caption" tone="brand">YOUR POSITION</VadText>
           <VadText variant="bodyStrong">{title}</VadText>
         </View>
-        <VadChip label={status} tone={active.length ? 'yes' : 'neutral'} />
+        <VadChip label={status} tone={hasActiveExposure ? 'yes' : 'neutral'} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 8 }}>
-        {[...byOutcome.values()].map((row) => (
-          <View key={row.outcome} style={{ flex: 1, minWidth: 0, gap: 5, padding: 10, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: row.outcome === 'YES' ? theme.colors.yes : theme.colors.no }}>
+        {rows.map((row) => (
+          <View key={row.outcome} style={{ flex: 1, minWidth: 0, gap: 5, padding: 10, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: row.outcome === 'YES' ? theme.colors.yes : row.outcome === 'NO' ? theme.colors.no : theme.colors.border }}>
             <VadChip label={row.outcome === 'YES' ? 'Yes' : row.outcome === 'NO' ? 'No' : row.outcome} tone={row.outcome === 'YES' ? 'yes' : row.outcome === 'NO' ? 'no' : 'neutral'} />
-            <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(row.amount, market.asset_code)}</VadText>
-            <VadText variant="caption" tone="secondary">Committed stake</VadText>
-            {row.fee > 0 ? <VadText variant="caption" tone="tertiary">{assetMoney(row.fee, market.asset_code)} fees</VadText> : null}
+            <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(row.poolStake + row.positionCost, market.asset_code)}</VadText>
+            <VadText variant="caption" tone="secondary">Stake / cost basis</VadText>
+            {row.poolCount ? <VadText variant="caption" tone="tertiary">{row.poolCount} pooled stake{row.poolCount === 1 ? '' : 's'}</VadText> : null}
+            {row.quantity > 0 ? <VadText variant="caption" tone="tertiary">{row.quantity.toLocaleString()} contracts</VadText> : null}
+            {row.fee > 0 ? <VadText variant="caption" tone="tertiary">{assetMoney(row.fee, market.asset_code)} pool fees</VadText> : null}
           </View>
         ))}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8 }}>
-        <VadText variant="caption" tone="secondary">{active.length ? 'Total committed in this market' : 'Recorded stake in this market'}</VadText>
+        <VadText variant="caption" tone="secondary">{hasActiveExposure ? 'Total exposure in this market' : 'Recorded stake in this market'}</VadText>
         <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(totalCommitted, market.asset_code)}</VadText>
       </View>
-      {totalFees > 0 ? <VadText variant="caption" tone="tertiary">Trading fees recorded: {assetMoney(totalFees, market.asset_code)}</VadText> : null}
+      {totalFees > 0 ? <VadText variant="caption" tone="tertiary">Pooled trading fees recorded: {assetMoney(totalFees, market.asset_code)}</VadText> : null}
     </VadCard>
   );
 }
