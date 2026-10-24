@@ -55,10 +55,12 @@ function safeHttpsUrl(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > 2000) return null;
   try {
     const u = new URL(value);
-    if (u.protocol !== 'https:' || u.username || u.password || !u.hostname.includes('.')) return null;
+    if (u.protocol !== 'https:' || u.username || u.password || !u.hostname.includes('.')
+      || (u.port && u.port !== '443')) return null;
     const host = u.hostname.toLowerCase();
     if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')
-      || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host.startsWith('[')) return null;
+      || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host.startsWith('[')
+      || host.endsWith('.internal') || host.endsWith('.test')) return null;
     return u.toString().slice(0, 1800);
   } catch { return null; }
 }
