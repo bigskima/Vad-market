@@ -20,6 +20,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import type { PaymentIntentRow } from '@/services/payment-api';
+import type { TemporaryNgnTestCreditStatus } from '@/services/temporary-ngn-test-credit-api';
 import { getWalletBalanceHistory, type WalletActivityRow, type WalletBalanceHistoryRow, type WalletRow } from '@/services/market-api';
 
 export function WalletScreen({
@@ -34,6 +35,7 @@ export function WalletScreen({
   onRetryActivity,
   onNotifications,
   activeAssetCodes,
+  temporaryTestCredit = null,
 }: {
   wallets: WalletRow[];
   walletActivity: WalletActivityRow[];
@@ -46,6 +48,7 @@ export function WalletScreen({
   onRetryActivity: () => void;
   onNotifications: () => void;
   activeAssetCodes: string[];
+  temporaryTestCredit?: TemporaryNgnTestCreditStatus | null;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -137,6 +140,27 @@ export function WalletScreen({
           onPress: () => setManageCurrenciesOpen((value) => !value),
         },
       ]} />
+
+      {temporaryTestCredit?.active ? (
+        <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: density.phone ? 12 : 16, borderWidth: 1, borderColor: theme.colors.warning }}>
+          <View style={{ gap: 3 }}>
+            <VadText variant="caption" tone="brand">TEMPORARY TEST CREDIT · NGN</VadText>
+            <VadText variant="heading">{assetMoney(Number(temporaryTestCredit.amount ?? 0), 'NGN')} testing balance</VadText>
+            <VadText variant="caption" tone="secondary">
+              This is temporary, synthetic test funding—not a deposit or cash-backed balance. It can be used on real NGN market instruments through the standard order, matching and market-resolution pipeline.
+            </VadText>
+          </View>
+          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 4 }}>
+            <VadText variant="bodyStrong">Temporarily restricted</VadText>
+            <VadText variant="caption" tone="secondary">
+              NGN deposits, withdrawals and peer transfers are blocked while this credit is active. After test orders and positions are settled, a super administrator can revoke the credit through the audited reversal flow.
+            </VadText>
+            <VadText variant="caption" tone="secondary">
+              Current NGN available ledger balance: {assetMoney(Number(temporaryTestCredit.availableBalance ?? 0), 'NGN')}
+            </VadText>
+          </View>
+        </VadCard>
+      ) : null}
 
       <TourTarget id="wallet-balance">
         <View style={{
@@ -263,8 +287,8 @@ export function WalletScreen({
 
       <TourTarget id="wallet-actions">
         <View style={{ flexDirection: 'row', gap: density.phone ? 6 : theme.spacing.sm }}>
-          <WalletAction label="Deposit" detail="Add funds" icon="plus" tone="yes" onPress={onDeposit} disabled={!hasNgn} />
-          <WalletAction label="Withdraw" detail="Send to bank" icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn} />
+          <WalletAction label="Deposit" detail="Add funds" icon="plus" tone="yes" onPress={onDeposit} disabled={!hasNgn || Boolean(temporaryTestCredit?.active)} />
+          <WalletAction label="Withdraw" detail="Send to bank" icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn || Boolean(temporaryTestCredit?.active)} />
           <WalletAction label="Transfer" detail="To another user" icon="transfer" tone="purple" onPress={onTransfer} />
           <WalletAction label="History" detail="View transactions" icon="fileText" tone="primary" onPress={onActivity} />
         </View>
