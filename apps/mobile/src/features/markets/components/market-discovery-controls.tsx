@@ -117,7 +117,7 @@ export function MarketDiscoveryControls({
                 <VadText
                   variant={selected ? 'bodyStrong' : 'body'}
                   tone={selected ? 'brand' : 'secondary'}
-                  style={{ fontSize: 14, whiteSpace: 'nowrap' as never }}
+                  style={{ fontSize: 14 }}
                 >
                   {option.label}
                 </VadText>
