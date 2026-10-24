@@ -120,15 +120,31 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload = await aiResponse.json();
-    const base64 = String(payload?.result?.image || payload?.image || '');
-    if (!base64) return json({ error: 'The AI provider returned no image data.' }, 502);
+    const encodedImage = String(payload?.result?.image || payload?.image || '');
+    const base64 = encodedImage.replace(/^data:image\/[^;]+;base64,/i, '').replace(/\s/g, '');
+    if (!base64) return json({ error: 'Cloudflare returned no image data.' }, 502);
     if (base64.length > 14_000_000) return json({ error: 'The generated image was larger than the allowed storage limit.' }, 502);
 
-    const binary = atob(base64);
+    let binary: string;
+    try {
+      binary = atob(base64);
+    } catch {
+      return json({ error: 'Cloudflare returned an invalid base64 image payload.' }, 502);
+    }
     const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-    const objectPath = `banners/ai/${crypto.randomUUID()}.jpg`;
+    const isPng = bytes.length >= 8
+      && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+      && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
+    const isJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    const isWebp = bytes.length >= 12
+      && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF'
+      && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
+    if (!isPng && !isJpeg && !isWebp) return json({ error: 'Cloudflare returned an unsupported image format.' }, 502);
+    const extension = isPng ? 'png' : isWebp ? 'webp' : 'jpg';
+    const contentType = isPng ? 'image/png' : isWebp ? 'image/webp' : 'image/jpeg';
+    const objectPath = `banners/ai/${crypto.randomUUID()}.${extension}`;
     const upload = await admin.storage.from('home-promotions').upload(objectPath, bytes, {
-      contentType: 'image/jpeg',
+      contentType,
       upsert: false,
       cacheControl: '31536000',
     });
