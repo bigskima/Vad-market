@@ -318,26 +318,36 @@ async function freeYahooQuotes(source: Source, query: string): Promise<AssetQuot
     definitions = [{ symbol: query.trim().toUpperCase(), name: query.trim().toUpperCase() }];
   }
   const results: AssetQuote[] = [];
-  for (const definition of definitions) {
-    const ticker = source.assetClass === 'COMMODITIES' ? yahooCommodityTicker(definition.symbol) : definition.symbol.toUpperCase();
-    if (!ticker) continue;
-    try {
-      const quote = await yahooChartQuote(ticker, definition.name, source);
-      if (quote) results.push({
-        ...quote,
-        id: definition.symbol,
-        symbol: definition.symbol,
-        name: definition.name || quote.name,
-        quoteCurrency: source.assetClass === 'STOCKS'
-          ? quote.quoteCurrency || source.quoteCurrency || 'USD'
-          : source.quoteCurrency || 'USD',
-        exchange: source.assetClass === 'COMMODITIES'
-          ? 'Futures contract · delayed, display-only reference'
-          : quote.exchange,
-      });
-    } catch (error) {
-      console.warn('Free Yahoo display quote unavailable for ' + ticker + ': ' + (error instanceof Error ? error.message : 'request failed'));
-    }
+  // Fetch in small batches so a 16-symbol stock browse remains within the
+  // Edge Function time budget even when one public chart endpoint is slow.
+  for (let offset = 0; offset < definitions.length; offset += 4) {
+    const batch = definitions.slice(offset, offset + 4);
+    const batchResults = await Promise.all(batch.map(async (definition): Promise<AssetQuote | null> => {
+      const ticker = source.assetClass === 'COMMODITIES'
+        ? yahooCommodityTicker(definition.symbol)
+        : definition.symbol.toUpperCase();
+      if (!ticker) return null;
+      try {
+        const quote = await yahooChartQuote(ticker, definition.name, source);
+        if (!quote) return null;
+        return {
+          ...quote,
+          id: definition.symbol,
+          symbol: definition.symbol,
+          name: definition.name || quote.name,
+          quoteCurrency: source.assetClass === 'STOCKS'
+            ? quote.quoteCurrency || source.quoteCurrency || 'USD'
+            : source.quoteCurrency || 'USD',
+          exchange: source.assetClass === 'COMMODITIES'
+            ? 'Futures contract · delayed, display-only reference'
+            : quote.exchange,
+        };
+      } catch (error) {
+        console.warn('Free Yahoo display quote unavailable for ' + ticker + ': ' + (error instanceof Error ? error.message : 'request failed'));
+        return null;
+      }
+    }));
+    results.push(...batchResults.filter((item): item is AssetQuote => item !== null));
   }
   return results;
 }
