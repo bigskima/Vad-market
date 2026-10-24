@@ -1,4 +1,5 @@
 const CATEGORY_LABELS: Record<string, string> = {
+  MULTI_OUTCOME: 'Multiple outcomes',
   ARTIFICIAL_INTELLIGENCE: 'AI',
   CRYPTO_WEB3: 'Crypto',
   MUSIC: 'Music & Entertainment',
