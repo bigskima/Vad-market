@@ -138,11 +138,11 @@ function categoryTags(category: Category): string[] {
   return category === 'ALL' ? ['Latest news'] : [category.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())];
 }
 function htmlMeta(html: string, key: string, attribute: 'property' | 'name' = 'property'): string | null {
-  const tags = html.match(/<meta\\b[^>]*>/gi) ?? [];
+  const tags = html.match(/<meta\b[^>]*>/gi) ?? [];
   for (const tag of tags) {
-    const attr = new RegExp("\\\\b" + attribute + "\\\\s*=\\\\s*(['\\\"])(.*?)\\\\1", 'i').exec(tag)?.[2];
+    const attr = new RegExp("\\b" + attribute + "\\s*=\\s*(['\"])(.*?)\\1", 'i').exec(tag)?.[2];
     if (attr?.toLowerCase() !== key.toLowerCase()) continue;
-    const content = /\\bcontent\\s*=\\s*(['"])([\\s\\S]*?)\\\\1/i.exec(tag)?.[2];
+    const content = /\bcontent\s*=\s*(['"])([\s\S]*?)\1/i.exec(tag)?.[2];
     if (content) return decodeEntities(content).slice(0, 2000);
   }
   return null;
