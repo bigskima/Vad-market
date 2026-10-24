@@ -9,6 +9,7 @@ import { VadSectionHeader } from '@/components/ui/vad-section-header';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
+import { marketOutcomeLabel } from '@/features/markets/market-display-labels';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
@@ -133,7 +134,7 @@ function StakeCard({ stake }: { stake: PoolStakeRow }) {
           <VadText variant="bodyStrong" numberOfLines={3}>{stake.market_title}</VadText>
           <VadText variant="caption" tone="tertiary">{stake.asset_code} · {friendly(stake.market_status)}</VadText>
         </View>
-        <VadChip label={stake.outcome_label?.trim() || (['YES', 'NO'].includes(stake.outcome_code) ? stake.outcome_code : stake.outcome_code.replace(/[_-]+/g, ' ').toLowerCase().replace(/\b\w/g, (character) => character.toUpperCase()))} tone={stake.outcome_code === 'YES' ? 'yes' : stake.outcome_code === 'NO' ? 'no' : 'neutral'} />
+        <VadChip label={marketOutcomeLabel(stake.outcome_code, stake.outcome_label)} tone={stake.outcome_code === 'YES' ? 'yes' : stake.outcome_code === 'NO' ? 'no' : 'neutral'} />
       </View>
       <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
         <Metric label="Committed" value={assetMoney(stake.amount, stake.asset_code)} />
@@ -234,7 +235,7 @@ function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCa
             <View style={{ flexDirection: 'row', gap: 6 }}>
               <View style={{ flex: 1, minWidth: 0, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
                 <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 8 }}>YOUR PICK</VadText>
-                <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: density.phone ? 10 : 12 }}>{row.selected_outcome}</VadText>
+                <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: density.phone ? 10 : 12 }}>{marketOutcomeLabel(row.selected_outcome, row.selected_outcome_label)}</VadText>
               </View>
               <View style={{ flex: 1, minWidth: 0, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
                 <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 8 }}>FINAL</VadText>
