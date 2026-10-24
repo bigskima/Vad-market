@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Alert, Image, Pressable, View } from 'react-native';
 
+import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
@@ -16,6 +17,7 @@ import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
 import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
 import { getTemporaryNgnMarketTestingStatus, setTemporaryNgnMarketTesting, type TemporaryNgnMarketTestingStatus } from '@/services/temporary-ngn-market-testing-api';
 import { supabase } from '@/lib/supabase';
+import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 type UserKycState = { userId: string; status: KycStatus | null };
 type UserMfaState = { userId: string; enabled: boolean | null };
@@ -41,6 +43,7 @@ export default function AccountScreen() {
   const [testModeStatus, setTestModeStatus] = useState<TemporaryNgnMarketTestingStatus | null>(null);
   const [testModeLoading, setTestModeLoading] = useState(false);
   const [testModeSaving, setTestModeSaving] = useState(false);
+  const [testModeLocationSaving, setTestModeLocationSaving] = useState(false);
   const [testModeError, setTestModeError] = useState<string | null>(null);
 
   const metadataName = typeof metadata.display_name === 'string' ? metadata.display_name.trim()
@@ -137,6 +140,43 @@ export default function AccountScreen() {
         }).finally(() => setSigningOut(false));
       } },
     ]);
+  };
+
+  const verifyMarketTestingLocation = async () => {
+    if (testModeLocationSaving) return;
+    setTestModeLocationSaving(true);
+    setTestModeError(null);
+    try {
+      const result = await verifyCurrentServiceLocation();
+      if (!result.allowed) {
+        const messages: Record<string, string> = {
+          LOCATION_PERMISSION_REQUIRED: 'Allow location access in your browser/device settings, then retry.',
+          LOCATION_INACCURATE: 'The device location is not accurate enough. Move to an open area and retry.',
+          LOCATION_MISMATCH: 'The device location and network country did not both verify Nigeria.',
+          NETWORK_RISK: 'Disable VPN/proxy/Tor/hosting-network routing and retry the location check.',
+          LOCATION_VERIFICATION_UNAVAILABLE: 'The location-verification service is temporarily unavailable. Please retry later.',
+        };
+        throw new Error(messages[result.reasonCode] || 'Current Nigeria location could not be verified. Check location permission and network settings.');
+      }
+      const refreshed = await getTemporaryNgnMarketTestingStatus();
+      setTestModeStatus(refreshed);
+      if (!refreshed?.eligible) {
+        throw new Error(testModeBlockReason(refreshed ?? {
+          active: false, eligible: false, testModeEnabled: false,
+          reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE',
+        }));
+      }
+    } catch (reason) {
+      setTestModeError(reason instanceof Error ? reason.message : 'Current Nigeria location could not be verified.');
+      try {
+        const refreshed = await getTemporaryNgnMarketTestingStatus();
+        setTestModeStatus(refreshed);
+      } catch {
+        // Keep the last confirmed status.
+      }
+    } finally {
+      setTestModeLocationSaving(false);
+    }
   };
 
   const toggleTemporaryNgnMarketTesting = async () => {
@@ -262,6 +302,19 @@ export default function AccountScreen() {
               <View style={{ borderRadius: 12, borderWidth: 1, borderColor: theme.colors.warning, padding: 11, gap: 4 }}>
                 <VadText variant="bodyStrong">Location or account check required</VadText>
                 <VadText variant="caption" tone="secondary">{testModeBlockReason(testModeStatus)}</VadText>
+                {['LOCATION_CHECK_REQUIRED', 'LOCATION_CHECK_EXPIRED', 'LOCATION_MISMATCH', 'NETWORK_RISK'].includes(testModeStatus.reasonCode ?? '') ? (
+                  <View style={{ alignSelf: 'flex-start', paddingTop: 5 }}>
+                    <VadButton
+                      label={testModeLocationSaving ? 'Verifying location…' : 'Verify current location'}
+                      variant="secondary"
+                      size="small"
+                      fullWidth={false}
+                      loading={testModeLocationSaving}
+                      disabled={testModeLocationSaving}
+                      onPress={() => void verifyMarketTestingLocation()}
+                    />
+                  </View>
+                ) : null}
               </View>
             ) : null}
 
