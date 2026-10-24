@@ -119,6 +119,9 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
           borderRadius: compactViewport ? 16 : 24,
           overflow: 'hidden',
           backgroundColor: theme.colors.surfaceMuted,
+          // Establish a definite containing block so RN Web cannot size the
+          // image to its square intrinsic dimensions inside a 16:9 frame.
+          position: 'relative',
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -129,7 +132,17 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
             accessibilityLabel={`${market.title} market image`}
             resizeMode="cover"
             onError={() => setFailedImageUrl(imageUrl)}
-            style={{ width: '100%', height: '100%' }}
+            // Fill the whole 16:9 viewport, then crop the source if its stored
+            // dimensions are square or otherwise differ from the target ratio.
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: '100%',
+              height: '100%',
+            }}
           />
         ) : (
           <View style={{ alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16 }}>
