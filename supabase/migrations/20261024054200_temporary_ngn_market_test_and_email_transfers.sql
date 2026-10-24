@@ -610,7 +610,7 @@ begin
 
       if exists (
         select 1 from public.user_currency_preferences cp
-        where cp.user_id=v_recipient_id and not ('NGN'=any(cp.enabled_asset_codes))
+        where cp.user_id=v_recipient_id and not coalesce('NGN'=any(cp.enabled_asset_codes),false)
       ) then
         raise exception 'The recipient must enable NGN in Currency settings before receiving temporary test funds.' using errcode='42501';
       end if;
