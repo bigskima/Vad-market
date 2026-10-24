@@ -574,13 +574,12 @@ begin
     where g.user_id=v_sender_id and g.asset_id=v_asset_id and g.status='ACTIVE'
     order by g.created_at desc limit 1 for update;
 
-    -- Different senders use different pair locks; serialize recipient grant
-    -- creation so two concurrent test transfers cannot race to create two grants.
-    if v_sender_test_grant.id is not null then
-      perform pg_advisory_xact_lock(hashtextextended(
-        'temporary-ngn-test-recipient:'||v_recipient_id::text||':'||v_asset_id::text,0
-      ));
-    end if;
+    -- Serialize every NGN transfer involving the recipient before checking
+    -- their grant state. This also prevents a cash transfer racing with a
+    -- first-time test-credit grant and mixing cash with test funds.
+    perform pg_advisory_xact_lock(hashtextextended(
+      'temporary-ngn-test-recipient:'||v_recipient_id::text||':'||v_asset_id::text,0
+    ));
 
     select * into v_recipient_test_grant
     from public.temporary_ngn_test_credit_grants g
