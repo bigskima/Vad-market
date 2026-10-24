@@ -10,21 +10,21 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: corsHeaders });
 
-type IpLogsSignal = {
-  type?: unknown;
-  matched?: unknown;
-};
-
-type IpLogsResult = {
-  verdict?: unknown;
-  is_vpn?: unknown;
-  ip_info?: {
-    country_code?: unknown;
-    is_vpn?: unknown;
-    is_proxy?: unknown;
-    type?: unknown;
+type NetworkLookupResult = {
+  success?: unknown;
+  data?: {
+    ip?: unknown;
+    location?: {
+      countryCode?: unknown;
+    };
+    security?: {
+      isVpn?: unknown;
+      isProxy?: unknown;
+      isTor?: unknown;
+      isHosting?: unknown;
+      isBlacklisted?: unknown;
+    };
   };
-  signals?: IpLogsSignal[];
 };
 
 function isCountryCode(value: unknown): value is string {
@@ -33,8 +33,8 @@ function isCountryCode(value: unknown): value is string {
 
 async function fetchWithTimeout(
   input: RequestInfo | URL,
-  init: RequestInit,
-  timeoutMs = 7000,
+  init: RequestInit = {},
+  timeoutMs = 5000,
 ) {
   return fetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs) });
 }
@@ -86,20 +86,21 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // IPLocate now requires an API key. The previous request omitted one, so the
-    // provider returned non-2xx and every location check became HTTP 503 before
-    // a verification record could be written. Use IPLogs' unauthenticated API
-    // for the same network-country and anonymity checks; no secret is needed.
+    // The prior IPLogs endpoint repeatedly timed out from Supabase Edge (the
+    // function logs showed networkProviderFailed=true after the 7-second abort).
+    // Use whatismyip.ai's documented keyless lookup: it returns country and all
+    // four required network-risk flags in one request, without a slow active probe.
     const [geoResult, networkResult] = await Promise.allSettled([
       fetchWithTimeout(
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=3&addressdetails=1`,
         { headers: { 'User-Agent': 'VADMarket/1.0 location-jurisdiction-check' } },
+        7000,
       ),
-      fetchWithTimeout('https://iplogs.com/v1/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ ip }),
-      }),
+      fetchWithTimeout(
+        `https://whatismyip.ai/api/lookup/${encodeURIComponent(ip)}`,
+        { headers: { 'Accept': 'application/json' } },
+        5000,
+      ),
     ]);
 
     if (geoResult.status === 'rejected' || networkResult.status === 'rejected') {
@@ -121,46 +122,38 @@ Deno.serve(async (req) => {
     }
 
     const geo = await geoResponse.json();
-    const network = await networkResponse.json() as IpLogsResult;
-    const ipInfo = network.ip_info;
-    const signals = Array.isArray(network.signals) ? network.signals : [];
+    const network = await networkResponse.json() as NetworkLookupResult;
+    const networkData = network.data;
+    const security = networkData?.security;
 
-    // Require the country, key proxy flags, and the documented tor/datacenter
-    // checks. Missing security signals must fail closed rather than silently
-    // allow NGN trading.
-    const torSignalPresent = signals.some((signal) => signal?.type === 'tor_exit');
-    const hostingSignalPresent = signals.some((signal) => signal?.type === 'dc_ip');
+    // Fail closed if any of the provider's security flags are absent. Never
+    // substitute the device GPS country for the client's network country.
     const networkSignalsComplete =
-      isCountryCode(ipInfo?.country_code) &&
-      typeof network.is_vpn === 'boolean' &&
-      typeof ipInfo?.is_vpn === 'boolean' &&
-      typeof ipInfo?.is_proxy === 'boolean' &&
-      typeof ipInfo?.type === 'string' &&
-      torSignalPresent &&
-      hostingSignalPresent;
+      network.success === true &&
+      isCountryCode(networkData?.location?.countryCode) &&
+      typeof security?.isVpn === 'boolean' &&
+      typeof security?.isProxy === 'boolean' &&
+      typeof security?.isTor === 'boolean' &&
+      typeof security?.isHosting === 'boolean' &&
+      typeof security?.isBlacklisted === 'boolean';
 
     if (!networkSignalsComplete) {
-      console.warn('[verify-service-location] network provider response lacked required risk signals');
+      console.warn('[verify-service-location] network provider response lacked required country or risk signals');
       return json({ error: 'Network risk signals are unavailable', code: 'NETWORK_RISK_UNRESOLVED' }, 503);
     }
 
     const deviceCountry = String(geo?.address?.country_code || '').trim().toUpperCase();
-    const ipCountry = String(ipInfo?.country_code || '').trim().toUpperCase();
+    const ipCountry = String(networkData?.location?.countryCode || '').trim().toUpperCase();
     if (!isCountryCode(deviceCountry) || !isCountryCode(ipCountry)) {
       return json({ error: 'Unable to establish current country', code: 'COUNTRY_UNRESOLVED' }, 503);
     }
 
-    const verdict = typeof network.verdict === 'string' ? network.verdict : '';
-    const vpn = network.is_vpn === true || ipInfo?.is_vpn === true ||
-      verdict === 'vpn_likely' || verdict === 'vpn_detected';
-    const proxy = ipInfo?.is_proxy === true;
-    const tor = signals.some((signal) => signal?.type === 'tor_exit' && signal?.matched === true);
-    const ipType = String(ipInfo?.type || '').toLowerCase();
-    const hosting = ipType === 'datacenter' || ipType === 'hosting' ||
-      signals.some((signal) => signal?.type === 'dc_ip' && signal?.matched === true);
-    // A non-clean verdict means a signal was found and is treated conservatively,
-    // matching the previous provider's policy of requiring clean network signals.
-    const riskDetected = verdict !== 'clean' || vpn || proxy || tor || hosting;
+    const vpn = security?.isVpn === true;
+    const proxy = security?.isProxy === true;
+    const tor = security?.isTor === true;
+    const hosting = security?.isHosting === true;
+    const blacklisted = security?.isBlacklisted === true;
+    const riskDetected = vpn || proxy || tor || hosting || blacklisted;
 
     const { data: account, error: accountError } = await admin
       .from('user_accounts')
