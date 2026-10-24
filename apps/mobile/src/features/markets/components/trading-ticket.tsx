@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -180,13 +180,13 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
     };
   }, [isUsdc, market.instrument_public_id]);
 
-  function resetDownstream() {
+  const resetDownstream = useCallback(() => {
     setQuote(null);
     setStakeStatus(null);
     setOnchainResult(null);
     setQuoteError(null);
     setPlaceError(null);
-  }
+  }, []);
 
   function chooseOutcome(next: string) {
     if (!tradeReady || working) return;
@@ -207,7 +207,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       setOutcome(outcomes[0].outcome_code);
       resetDownstream();
     }
-  }, [initialOutcome, isMultiOutcome, outcome, outcomes]);
+  }, [initialOutcome, isMultiOutcome, outcome, outcomes, resetDownstream]);
 
   async function prepareReview() {
     if (!tradeReady || working || !inputValid) return;
