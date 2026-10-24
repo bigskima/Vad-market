@@ -17,7 +17,7 @@ import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
 import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
 import { getTemporaryNgnMarketTestingStatus, setTemporaryNgnMarketTesting, type TemporaryNgnMarketTestingStatus } from '@/services/temporary-ngn-market-testing-api';
 import { supabase } from '@/lib/supabase';
-import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
+import { locationVerificationMessage, verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 type UserKycState = { userId: string; status: KycStatus | null };
 type UserMfaState = { userId: string; enabled: boolean | null };
@@ -142,14 +142,7 @@ export default function AccountScreen() {
     try {
       const result = await verifyCurrentServiceLocation();
       if (!result.allowed) {
-        const messages: Record<string, string> = {
-          LOCATION_PERMISSION_REQUIRED: 'Allow location access in your browser/device settings, then retry.',
-          LOCATION_INACCURATE: 'The device location is not accurate enough. Move to an open area and retry.',
-          LOCATION_MISMATCH: 'The device location and network country did not both verify Nigeria.',
-          NETWORK_RISK: 'Disable VPN/proxy/Tor/hosting-network routing and retry the location check.',
-          LOCATION_VERIFICATION_UNAVAILABLE: 'The location-verification service is temporarily unavailable. Please retry later.',
-        };
-        throw new Error(messages[result.reasonCode] || 'Current Nigeria location could not be verified. Check location permission and network settings.');
+        throw new Error(locationVerificationMessage(result.reasonCode));
       }
       const refreshed = await getTemporaryNgnMarketTestingStatus();
       setTestModeStatus(refreshed);
@@ -398,6 +391,14 @@ function testModeBlockReason(status: TemporaryNgnMarketTestingStatus) {
       return 'Your verified country, device location and network country must all confirm Nigeria.';
     case 'NETWORK_RISK':
       return 'Disable VPN/proxy/Tor/hosting-network routing and repeat the Nigeria location check.';
+    case 'LOCATION_PROVIDER_ERROR':
+    case 'LOCATION_CHECK_FAILED':
+    case 'NETWORK_RISK_UNRESOLVED':
+    case 'LOCATION_VERIFICATION_UNAVAILABLE':
+    case 'CLIENT_IP_UNAVAILABLE':
+    case 'COUNTRY_UNRESOLVED':
+    case 'LOCATION_SAVE_FAILED':
+      return locationVerificationMessage(status.reasonCode);
     case 'ACCOUNT_NOT_ACTIVE':
       return 'Your VAD account must be active before market testing can be enabled.';
     case 'ACCOUNT_NOT_ELIGIBLE':
