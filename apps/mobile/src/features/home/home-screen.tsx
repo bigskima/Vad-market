@@ -16,6 +16,7 @@ import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchli
 import { supabase } from '@/lib/supabase';
 import { getWalletBalanceHistory, type WalletBalanceHistoryPoint } from '@/services/wallet-history-api';
 import { MarketThumbnail } from '@/features/markets/components/market-thumbnail';
+import { marketCategoryLabel } from '@/features/markets/market-display-labels';
 
 type Category = string;
 
@@ -185,6 +186,26 @@ export function HomeScreen({
     .filter((row): row is { entry: TrendingMarketRow; market: MarketCatalogItem } => Boolean(row.market))
     .filter(({ market }) => category === 'All' || categoryMatches(market.category, category))
     .slice(0, 5), [trendingMarkets, activeMarkets, category]);
+  // Ranking tables may legitimately be empty before enough trades accumulate.
+  // Keep Home useful by showing published, currency-eligible markets as a fallback.
+  const fallbackMarkets = useMemo(() => visibleMarkets
+    .filter((market) => category === 'All' || categoryMatches(market.category, category))
+    .filter((market) => !['SETTLED', 'VOIDED'].includes(getMarketTiming(market, now).stage))
+    .sort((a, b) => {
+      const aStage = getMarketTiming(a, now).stage;
+      const bStage = getMarketTiming(b, now).stage;
+      const stageRank = (stage: string) => stage === 'OPEN' ? 0 : stage === 'SCHEDULED' ? 1 : stage === 'CLOSED' ? 2 : 3;
+      const stageDifference = stageRank(aStage) - stageRank(bStage);
+      if (stageDifference) return stageDifference;
+      const aClose = Date.parse(a.closes_at ?? '') || Number.MAX_SAFE_INTEGER;
+      const bClose = Date.parse(b.closes_at ?? '') || Number.MAX_SAFE_INTEGER;
+      return aClose - bClose || a.title.localeCompare(b.title);
+    })
+    .slice(0, 5), [visibleMarkets, category, now]);
+  const homeMarketRows = useMemo(() => trendingRows.length
+    ? trendingRows.map(({ entry, market }) => ({ entry, market, isRanked: true }))
+    : fallbackMarkets.map((market) => ({ entry: null, market, isRanked: false })),
+    [trendingRows, fallbackMarkets]);
   const watchlistMarkets = useMemo(() => watchlistIds
     .map((id) => visibleMarkets.find((market) => market.instrument_public_id === id))
     .filter((market): market is MarketCatalogItem => Boolean(market))
@@ -374,8 +395,8 @@ export function HomeScreen({
 
       <TourTarget id="home-categories">
         <View style={{ gap: 9 }}>
-          <SectionHeading title="🔥 Trending Markets" action="See all" onAction={() => onExploreMarkets()} />
-          {marketError && trendingRows.length ? (
+          <SectionHeading title={trendingRows.length ? '🔥 Trending Markets' : 'Explore Markets'} action="See all" onAction={() => onExploreMarkets()} />
+          {marketError && homeMarketRows.length ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
               <View style={{ flex: 1 }}>
                 <VadText variant="caption" tone="secondary">Showing previously loaded market data. Refresh failed.</VadText>
@@ -388,11 +409,11 @@ export function HomeScreen({
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7 }}>
             {availableCategories.map((item) => (
               <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: category === item }} onPress={() => setCategory(item)} style={{ minHeight: 35, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 20, backgroundColor: category === item ? theme.colors.brandPrimary : theme.colors.surface, borderWidth: 1, borderColor: category === item ? theme.colors.brandPrimary : theme.colors.border }}>
-                <VadText variant="caption" tone={category === item ? 'inverse' : 'secondary'}>{item}</VadText>
+                <VadText variant="caption" tone={category === item ? 'inverse' : 'secondary'}>{item === 'All' ? 'All' : marketCategoryLabel(item)}</VadText>
               </Pressable>
             ))}
           </ScrollView>
-          {trendingSettings.enabled && trendingRows.length ? trendingRows.map(({ entry, market }) => (
+          {homeMarketRows.length ? homeMarketRows.map(({ entry, market, isRanked }) => (
             <View key={market.instrument_public_id} style={{ minHeight: 69, flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 8, paddingHorizontal: 2, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
               <Pressable accessibilityRole="button" onPress={() => onOpenMarket(market)} style={({ pressed }) => ({ flexDirection: 'row', flex: 1, minWidth: 0, alignItems: 'center', gap: 10, opacity: pressed ? 0.75 : 1 })}>
                 <MarketThumb market={market} />
@@ -402,7 +423,11 @@ export function HomeScreen({
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 3, minWidth: 54 }}>
                   <VadText variant="bodyStrong" style={{ fontSize: 14 }}>{formatProbability(market.yes_price)}</VadText>
-                  <VadText variant="caption" tone={Number(entry.price_movement) >= 0 ? 'yes' : 'no'}>{Number(entry.price_movement) > 0 ? '▲ ' : Number(entry.price_movement) < 0 ? '▼ ' : ''}{Math.abs(Number(entry.price_movement) || 0).toFixed(1)}%</VadText>
+                  {entry && isRanked ? (
+                    <VadText variant="caption" tone={Number(entry.price_movement) >= 0 ? 'yes' : 'no'}>{Number(entry.price_movement) > 0 ? '▲ ' : Number(entry.price_movement) < 0 ? '▼ ' : ''}{Math.abs(Number(entry.price_movement) || 0).toFixed(1)}%</VadText>
+                  ) : (
+                    <VadText variant="caption" tone="brand">Open</VadText>
+                  )}
                 </View>
                 <VadIcon name="chevronRight" size={17} tone="tertiary" />
               </Pressable>
@@ -427,7 +452,12 @@ export function HomeScreen({
             </View>
           ) : (
             <View style={{ padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
-              <VadText variant="caption" tone="secondary">{trendingSettings.enabled ? 'No trending markets are available for the selected category right now.' : 'Trending markets are currently disabled.'}</VadText>
+              <VadText variant="caption" tone="secondary">{trendingSettings.enabled
+                ? 'No available markets match this category yet. Try another category or browse all markets.'
+                : 'Market rankings are paused. Browse the available markets below in Markets.'}</VadText>
+              <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
+                <VadText variant="caption" tone="brand">Browse all markets</VadText>
+              </Pressable>
             </View>
           )}
         </View>
