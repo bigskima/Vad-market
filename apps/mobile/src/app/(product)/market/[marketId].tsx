@@ -53,6 +53,7 @@ export default function MarketDetailRoute() {
             key={`${market.instrument_public_id}:${initialOutcome ?? 'default'}`}
             market={market}
             markets={data.markets}
+            poolStakes={data.poolStakes}
             initialOutcome={initialOutcome}
             canTrade={runtime.snapshot.capabilities.trade}
             tradeReason={tradeReason}
