@@ -77,41 +77,6 @@ export function AdminGovernanceScreen() {
     return () => clearTimeout(timer);
   }, [loadPolicies]);
 
-  useEffect(() => {
-    const eventPublicId = String(selectedOracle?.event_public_id ?? '');
-    const resolutionId = Number(selectedOracle?.resolution_id ?? 0);
-    if (!selectedOracle || resolutionId > 0 || action !== 'CREATE' || !eventPublicId) {
-      setOutcomeChoices([]);
-      setOutcomeChoicesLoading(false);
-      setOutcomeChoicesError(null);
-      return;
-    }
-
-    let active = true;
-    setOutcomeChoices([]);
-    setOutcomeChoicesLoading(true);
-    setOutcomeChoicesError(null);
-    void getAdminOracleOutcomeChoices(eventPublicId)
-      .then((choices) => {
-        if (!active) return;
-        setOutcomeChoices(choices);
-        setOutcomeCode((current) =>
-          choices.some((choice) => choice.outcome_code === current)
-            ? current
-            : choices[0]?.outcome_code ?? '',
-        );
-        if (!choices.length) setOutcomeChoicesError('No configured outcome choices were found for this event.');
-      })
-      .catch((reason: unknown) => {
-        if (!active) return;
-        setOutcomeChoicesError(reason instanceof Error ? reason.message : 'Configured outcomes could not be loaded.');
-      })
-      .finally(() => {
-        if (active) setOutcomeChoicesLoading(false);
-      });
-    return () => { active = false; };
-  }, [action, selectedOracle]);
-
   const tabs = useMemo(() => {
     const next: { key: string; label: string; count: number }[] = [];
     if (canManageMarkets) {
@@ -159,14 +124,34 @@ export function AdminGovernanceScreen() {
 
   const total = data.marketQueue.length + data.oracleQueue.length;
 
-  function openOracle(row: OracleRow) {
+  async function openOracle(row: OracleRow) {
     if (!canReviewOracle) return;
     const resolutionId = Number(row.resolution_id ?? 0);
+    const eventPublicId = String(row.event_public_id ?? '');
     setSelectedOracle(row);
     setAction(resolutionId > 0 ? null : 'CREATE');
     setOutcomeCode(String(row.outcome_code ?? ''));
     setEvidenceNote('');
     setActionError(null);
+    setOutcomeChoices([]);
+    setOutcomeChoicesError(null);
+    setOutcomeChoicesLoading(resolutionId === 0 && Boolean(eventPublicId));
+
+    if (resolutionId > 0 || !eventPublicId) return;
+    try {
+      const choices = await getAdminOracleOutcomeChoices(eventPublicId);
+      setOutcomeChoices(choices);
+      setOutcomeCode((current) =>
+        choices.some((choice) => choice.outcome_code === current)
+          ? current
+          : choices[0]?.outcome_code ?? '',
+      );
+      if (!choices.length) setOutcomeChoicesError('No configured outcome choices were found for this event.');
+    } catch (reason: unknown) {
+      setOutcomeChoicesError(reason instanceof Error ? reason.message : 'Configured outcomes could not be loaded.');
+    } finally {
+      setOutcomeChoicesLoading(false);
+    }
   }
 
   async function submitResolutionAction() {
@@ -182,7 +167,10 @@ export function AdminGovernanceScreen() {
     try {
       if (action === 'CREATE') {
         if (!eventPublicId || !outcomeCode.trim()) {
-          throw new Error('A valid outcome code is required.');
+          throw new Error('Choose one of the configured outcome choices.');
+        }
+        if (!outcomeChoices.some((choice) => choice.outcome_code === outcomeCode)) {
+          throw new Error('The selected outcome is not one of this market’s configured choices. Refresh the Oracle queue and try again.');
         }
         const createdId = await createAdminProvisionalResolution({
           eventPublicId,
@@ -494,21 +482,10 @@ export function AdminGovernanceScreen() {
                     ))}
                   </View>
                 ) : (
-                  <>
-                    {outcomeChoicesError ? <VadText variant="caption" tone="warning">{outcomeChoicesError}</VadText> : null}
-                    <VadInput
-                      label="Outcome code"
-                      value={outcomeCode}
-                      onChangeText={(value) => {
-                        setOutcomeCode(value.toUpperCase());
-                        setActionError(null);
-                      }}
-                      placeholder="e.g. YES or NO"
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      hint="The outcome must match one of the outcomes configured for this event."
-                    />
-                  </>
+                  <VadErrorState
+                    title="Configured outcomes unavailable"
+                    message={outcomeChoicesError ?? 'This market has no configured outcome choices. Refresh the Oracle queue or correct its market setup before resolving it.'}
+                  />
                 )}
               </View>
             )}
@@ -580,7 +557,12 @@ export function AdminGovernanceScreen() {
               disabled={
                 !action ||
                 evidenceNote.trim().length < 3 ||
-                (action === 'CREATE' && !outcomeCode.trim()) ||
+                (action === 'CREATE' && (
+                  !outcomeCode.trim()
+                  || outcomeChoicesLoading
+                  || Boolean(outcomeChoicesError)
+                  || !outcomeChoices.some((choice) => choice.outcome_code === outcomeCode)
+                )) ||
                 (selectedResolutionId > 0 && activeDisputes > 0)
               }
               onPress={() => void submitResolutionAction()}
