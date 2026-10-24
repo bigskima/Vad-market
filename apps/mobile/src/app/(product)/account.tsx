@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Alert, Image, Pressable, View } from 'react-native';
+import { Alert, Image, Pressable, Switch, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
@@ -15,6 +15,7 @@ import { getAdminAccess } from '@/services/admin-control-api';
 import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
 import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
 import { supabase } from '@/lib/supabase';
+import { getTemporaryNgnTestCreditStatus, setTemporaryNgnTestMode, type TemporaryNgnTestCreditStatus } from '@/services/temporary-ngn-test-credit-api';
 
 type UserKycState = { userId: string; status: KycStatus | null };
 type UserMfaState = { userId: string; enabled: boolean | null };
@@ -37,6 +38,10 @@ export default function AccountScreen() {
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [adminAccessFor, setAdminAccessFor] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [marketTestingStatus, setMarketTestingStatus] = useState<TemporaryNgnTestCreditStatus | null>(null);
+  const [marketTestingLoading, setMarketTestingLoading] = useState(true);
+  const [marketTestingSaving, setMarketTestingSaving] = useState(false);
+  const [marketTestingError, setMarketTestingError] = useState<string | null>(null);
 
   const metadataName = typeof metadata.display_name === 'string' ? metadata.display_name.trim()
     : typeof metadata.full_name === 'string' ? metadata.full_name.trim() : '';
@@ -82,6 +87,31 @@ export default function AccountScreen() {
   }, [userId]);
 
   useEffect(() => {
+    let ignore = false;
+    if (!userId) {
+      setMarketTestingStatus(null);
+      setMarketTestingError(null);
+      setMarketTestingLoading(false);
+      return () => { ignore = true; };
+    }
+    setMarketTestingLoading(true);
+    void getTemporaryNgnTestCreditStatus().then((status) => {
+      if (!ignore) {
+        setMarketTestingStatus(status);
+        setMarketTestingError(null);
+      }
+    }).catch((reason: unknown) => {
+      if (!ignore) {
+        setMarketTestingStatus(null);
+        setMarketTestingError(reason instanceof Error ? reason.message : 'Market testing settings could not be loaded.');
+      }
+    }).finally(() => {
+      if (!ignore) setMarketTestingLoading(false);
+    });
+    return () => { ignore = true; };
+  }, [userId]);
+
+  useEffect(() => {
     if (!userId) return;
     let ignore = false;
     void getAdminAccess().then((access) => {
@@ -100,6 +130,22 @@ export default function AccountScreen() {
 
   const isVerified = kycStatus?.status === 'VERIFIED';
   const kycCopy = getKycCopy(kycStatus);
+  const handleMarketTestingChange = async (enabled: boolean) => {
+    if (!marketTestingStatus?.active || marketTestingSaving) return;
+    setMarketTestingSaving(true);
+    setMarketTestingError(null);
+    try {
+      const updated = await setTemporaryNgnTestMode(enabled);
+      setMarketTestingStatus(updated);
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : 'Market testing mode could not be updated.';
+      setMarketTestingError(message);
+      Alert.alert('Market testing settings unchanged', message);
+    } finally {
+      setMarketTestingSaving(false);
+    }
+  };
+
   const requestSignOut = () => {
     Alert.alert('Log out of VAD Market?', 'You will need to sign in again to access your account.', [
       { text: 'Cancel', style: 'cancel' },
@@ -179,6 +225,39 @@ export default function AccountScreen() {
           <AccountRow icon="bell" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Notifications" subtitle="Trade alerts, results, account activity" onPress={() => router.push('/notifications')} />
           <AccountRow icon="palette" iconBackground={theme.colors.warningSoft} iconColor={theme.colors.warning} title="App Appearance" subtitle="Dark mode, light mode, or system" badge={theme.preference === 'system' ? 'System' : theme.preference === 'dark' ? 'Dark' : 'Light'} badgeTone="neutral" onPress={() => router.push('/account/appearance')} />
           <AccountRow icon="globe" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Language & Region" subtitle="English and regional settings" onPress={() => router.push('/account/region')} last />
+        </SettingsGroup>
+
+        <SettingsGroup title="Market testing">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+            <IconTile icon="activity" backgroundColor={theme.colors.warningSoft} iconColor={theme.colors.warning} size={density.phone ? 36 : 40} />
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <VadText variant="bodyStrong" style={{ fontSize: density.phone ? 14 : 15 }}>Test-credit market trading</VadText>
+              <VadText variant="caption" tone="secondary" style={{ fontSize: density.phone ? 12 : 13, lineHeight: density.phone ? 16 : 18 }}>
+                {marketTestingLoading
+                  ? 'Checking your test allocation…'
+                  : !marketTestingStatus?.active
+                    ? 'No test allocation is assigned to this account.'
+                    : marketTestingStatus.testModeEnabled
+                      ? 'Enabled. Uses normal NGN markets, orders and settlement.'
+                      : 'Allocation available. Trading mode is currently off.'}
+              </VadText>
+            </View>
+            <Switch
+              accessibilityLabel="Enable test-credit market trading"
+              value={Boolean(marketTestingStatus?.active && marketTestingStatus.testModeEnabled)}
+              onValueChange={(enabled) => void handleMarketTestingChange(enabled)}
+              disabled={marketTestingLoading || marketTestingSaving || !marketTestingStatus?.active}
+              trackColor={{ false: theme.colors.borderStrong, true: theme.colors.brandPrimary }}
+              thumbColor={theme.colors.surface}
+            />
+          </View>
+          <View style={{ paddingVertical: 10, gap: 4 }}>
+            <VadText variant="caption" tone="secondary">
+              This setting is available only when an administrator has assigned a temporary non-cash NGN test allocation. Test trades use the normal NGN market and settlement pipeline, not a separate demo market. Deposits and withdrawals remain blocked while the allocation is active.
+            </VadText>
+            {marketTestingSaving ? <VadText variant="caption" tone="secondary">Saving preference…</VadText> : null}
+            {marketTestingError ? <VadText variant="caption" tone="danger">{marketTestingError}</VadText> : null}
+          </View>
         </SettingsGroup>
 
         <SettingsGroup title="Support">
