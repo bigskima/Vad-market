@@ -1,6 +1,6 @@
 import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
-import { verifyCurrentServiceLocation } from '@/services/location-eligibility';
+import { locationVerificationMessage, verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 export type MarketCatalogItem = {
   instrument_public_id: string;
@@ -469,7 +469,7 @@ async function ensureNgnLocationForInstrument(instrumentPublicId: string) {
     reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE',
   }));
   if (!result.allowed) {
-    throw new Error('NGN trading is available only when your current location and network are verified in Nigeria.');
+    throw new Error(locationVerificationMessage(result.reasonCode));
   }
 }
 
