@@ -14,6 +14,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { getAdminAccess } from '@/services/admin-control-api';
 import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
 import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
+import { getTemporaryNgnMarketTestingStatus, setTemporaryNgnMarketTesting, type TemporaryNgnMarketTestingStatus } from '@/services/temporary-ngn-market-testing-api';
 import { supabase } from '@/lib/supabase';
 
 type UserKycState = { userId: string; status: KycStatus | null };
@@ -37,6 +38,10 @@ export default function AccountScreen() {
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [adminAccessFor, setAdminAccessFor] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [testModeStatus, setTestModeStatus] = useState<TemporaryNgnMarketTestingStatus | null>(null);
+  const [testModeLoading, setTestModeLoading] = useState(false);
+  const [testModeSaving, setTestModeSaving] = useState(false);
+  const [testModeError, setTestModeError] = useState<string | null>(null);
 
   const metadataName = typeof metadata.display_name === 'string' ? metadata.display_name.trim()
     : typeof metadata.full_name === 'string' ? metadata.full_name.trim() : '';
@@ -98,6 +103,28 @@ export default function AccountScreen() {
     return () => { ignore = true; };
   }, [userId]);
 
+  useEffect(() => {
+    if (!userId) {
+      setTestModeStatus(null);
+      setTestModeLoading(false);
+      return;
+    }
+    let ignore = false;
+    setTestModeLoading(true);
+    void getTemporaryNgnMarketTestingStatus()
+      .then((status) => { if (!ignore) setTestModeStatus(status); })
+      .catch((reason) => {
+        if (!ignore) {
+          setTestModeStatus(null);
+          setTestModeError(reason instanceof Error ? reason.message : 'Temporary NGN market-testing status could not be loaded.');
+        }
+      })
+      .finally(() => { if (!ignore) setTestModeLoading(false); });
+    return () => { ignore = true; };
+  }, [userId]);
+
+
+
   const isVerified = kycStatus?.status === 'VERIFIED';
   const kycCopy = getKycCopy(kycStatus);
   const requestSignOut = () => {
@@ -110,6 +137,32 @@ export default function AccountScreen() {
         }).finally(() => setSigningOut(false));
       } },
     ]);
+  };
+
+  const toggleTemporaryNgnMarketTesting = async () => {
+    if (!testModeStatus?.active || testModeSaving) return;
+    const next = !testModeStatus.testModeEnabled;
+    if (next && !testModeStatus.eligible) {
+      setTestModeError(testModeBlockReason(testModeStatus));
+      return;
+    }
+    setTestModeSaving(true);
+    setTestModeError(null);
+    try {
+      const status = await setTemporaryNgnMarketTesting(next);
+      setTestModeStatus(status);
+      await refreshPortfolio();
+    } catch (reason) {
+      setTestModeError(reason instanceof Error ? reason.message : 'The NGN market-testing preference could not be saved.');
+      try {
+        const latest = await getTemporaryNgnMarketTestingStatus();
+        setTestModeStatus(latest);
+      } catch {
+        // Keep the last confirmed state visible if refresh fails.
+      }
+    } finally {
+      setTestModeSaving(false);
+    }
   };
 
   return (
@@ -162,6 +215,68 @@ export default function AccountScreen() {
             <VadText variant="caption" tone={isVerified ? 'yes' : 'secondary'}>{isVerified ? 'View Details' : 'View Details'}</VadText>
           </View>
         </Pressable>
+
+        {testModeStatus?.active ? (
+          <VadCard style={{ gap: density.phone ? 10 : 14, padding: density.phone ? 12 : 16, borderRadius: 17, borderColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.border, backgroundColor: theme.colors.surface }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                <VadText variant="bodyStrong">Temporary NGN market testing</VadText>
+                <VadText variant="caption" tone="secondary">Uses your existing NGN test allocation with the regular market and settlement engine.</VadText>
+              </View>
+              <StatusBadge
+                label={testModeStatus.testModeEnabled ? 'Enabled' : 'Off'}
+                tone={testModeStatus.testModeEnabled ? 'yes' : 'neutral'}
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, padding: 12, borderRadius: 12, backgroundColor: theme.colors.surfaceRaised }}>
+              <View style={{ flex: 1, gap: 3 }}>
+                <VadText variant="caption" tone="secondary">Allocated test credit</VadText>
+                <VadText variant="title">{formatTestNgn(testModeStatus.grantAmount)}</VadText>
+              </View>
+              <View style={{ flex: 1, alignItems: 'flex-end', gap: 3 }}>
+                <VadText variant="caption" tone="secondary">Current NGN balance</VadText>
+                <VadText variant="title">{formatTestNgn(testModeStatus.availableBalance)}</VadText>
+              </View>
+            </View>
+
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityLabel="Use temporary NGN test credit for market trading"
+              accessibilityHint="Enables or disables the non-cash testing allocation on existing NGN markets. This does not create another market or settlement system."
+              accessibilityState={{ checked: testModeStatus.testModeEnabled, disabled: testModeSaving || (!testModeStatus.eligible && !testModeStatus.testModeEnabled) }}
+              disabled={testModeSaving || (!testModeStatus.eligible && !testModeStatus.testModeEnabled)}
+              onPress={() => void toggleTemporaryNgnMarketTesting()}
+              style={({ pressed }) => ({ minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, opacity: testModeSaving ? 0.55 : pressed ? 0.75 : 1 })}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <VadText variant="bodyStrong">{testModeSaving ? 'Saving market-testing setting…' : 'Use allocation for NGN trading'}</VadText>
+                <VadText variant="caption" tone="secondary">{testModeStatus.testModeEnabled ? 'New stakes can use the restricted test balance when all server checks pass.' : 'Off means the test credit cannot be used for new market orders.'}</VadText>
+              </View>
+              <View style={{ width: 48, height: 28, borderRadius: 18, padding: 3, justifyContent: 'center', backgroundColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.surfaceMuted, borderWidth: 1, borderColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.border }}>
+                <View style={{ width: 20, height: 20, borderRadius: 12, alignSelf: testModeStatus.testModeEnabled ? 'flex-end' : 'flex-start', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }} />
+              </View>
+            </Pressable>
+
+            {!testModeStatus.eligible ? (
+              <View style={{ borderRadius: 12, borderWidth: 1, borderColor: theme.colors.warning, padding: 11, gap: 4 }}>
+                <VadText variant="bodyStrong">Location or account check required</VadText>
+                <VadText variant="caption" tone="secondary">{testModeBlockReason(testModeStatus)}</VadText>
+              </View>
+            ) : null}
+
+            {testModeStatus.openMarketCount === 0 ? (
+              <VadText variant="caption" tone="warning">There is currently no open NGN market. The setting does not create a market; you can trade after a genuinely open market is approved and published.</VadText>
+            ) : null}
+
+            <VadText variant="caption" tone="secondary">
+              This is non-cash test credit in the standard NGN ledger. It uses existing NGN instruments, fees, orders and the normal outcome-resolution/settlement process—not a separate demo market. Deposits and withdrawals remain blocked while the test allocation is active. TNGN has been fully retired.
+            </VadText>
+            {testModeError ? <VadText variant="caption" tone="danger">{testModeError}</VadText> : null}
+            {testModeStatus.grantId ? <VadText variant="caption" tone="tertiary">Allocation reference: {testModeStatus.grantId}</VadText> : null}
+          </VadCard>
+        ) : null}
+        {testModeError && !testModeStatus?.active ? <VadText variant="caption" tone="danger">{testModeError}</VadText> : null}
 
         <SettingsGroup title="Account">
           <AccountRow icon="account" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Personal Information" subtitle="Name, email, phone number, country" onPress={() => router.push('/account/profile')} />
@@ -219,6 +334,37 @@ function normalizeCountryCode(code: string | null | undefined, countryName: stri
 function countryNameFromCode(code: string) {
   const names: Record<string, string> = { NG: 'Nigeria', US: 'United States', GB: 'United Kingdom', GH: 'Ghana', KE: 'Kenya', ZA: 'South Africa' };
   return names[code] ?? '';
+}
+
+function formatTestNgn(value: number | string | undefined) {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount)) return '—';
+  return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function testModeBlockReason(status: TemporaryNgnMarketTestingStatus) {
+  switch (status.reasonCode) {
+    case 'LOCATION_CHECK_REQUIRED':
+      return 'Complete current Nigeria location verification before enabling NGN market testing.';
+    case 'LOCATION_CHECK_EXPIRED':
+      return 'Your Nigeria location verification has expired. Refresh it before enabling NGN market testing.';
+    case 'LOCATION_MISMATCH':
+      return 'Your verified country, device location and network country must all confirm Nigeria.';
+    case 'NETWORK_RISK':
+      return 'Disable VPN/proxy/Tor/hosting-network routing and repeat the Nigeria location check.';
+    case 'ACCOUNT_NOT_ACTIVE':
+      return 'Your VAD account must be active before market testing can be enabled.';
+    case 'ACCOUNT_NOT_ELIGIBLE':
+      return 'Temporary NGN market testing is available only to eligible Nigerian accounts.';
+    case 'NGN_ASSET_UNAVAILABLE':
+      return 'The real NGN asset is currently unavailable.';
+    case 'TRADING_SERVICE_UNAVAILABLE':
+      return 'The trading service is currently unavailable for this account.';
+    case 'NGN_NOT_AVAILABLE_IN_JURISDICTION':
+      return 'NGN is not enabled for this account under the current jurisdiction rules.';
+    default:
+      return status.message || 'This account does not currently satisfy the requirements for NGN market testing.';
+  }
 }
 
 function countryFlag(code: string) {
