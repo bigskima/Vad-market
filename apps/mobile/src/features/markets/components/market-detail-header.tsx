@@ -8,6 +8,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { marketMediaUrl } from '@/services/market-api';
+import { marketCategoryLabel } from '@/features/markets/market-display-labels';
 import { supabase } from '@/lib/supabase';
 import { listUserMarketWatchlist, removeMarketFromWatchlist, saveMarketToWatchlist } from '@/services/market-watchlist-api';
 
@@ -109,7 +110,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
       </View>
 
       <VadText variant="caption" tone="secondary" numberOfLines={2} style={{ fontSize: 13, lineHeight: 18 }}>
-        {market.category ?? 'General'} · {market.market_type === 'BINARY' ? 'Yes / No market' : friendlyEnum(market.market_type)}
+        {marketCategoryLabel(market.category)} · {market.market_type === 'BINARY' ? 'Yes / No market' : friendlyEnum(market.market_type)}
       </VadText>
 
       <View
