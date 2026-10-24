@@ -155,7 +155,7 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
               source={{ uri: imageUrl }}
               accessibilityLabel={`${market.title} market image`}
               resizeMode="cover"
-              onError={() => setFailedImageUrl(imageUrl)
+              onError={() => setFailedImageUrl(imageUrl)}
               style={{ width: '100%', height: '100%' }}
             />
           </>
