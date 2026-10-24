@@ -90,74 +90,86 @@ async function createWebResultCardFile(row: MarketHistoryRow, profile: ResultCar
   const FileCtor = (globalThis as any).File;
   if (!documentRef || !FileCtor) return null;
 
-  // Slightly taller than square so the card feels premium and social-first
-  // without becoming a long poster.
+  // Landscape bank-card proportions (1080 × 680) make the result graphic
+  // feel like a premium trading card rather than a square social poster.
   const canvas = documentRef.createElement('canvas');
   canvas.width = 1080;
-  canvas.height = 1180;
+  canvas.height = 680;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
   const dark = '#070910';
   const panel = '#101421';
-  const panelSoft = '#151a2b';
+  const panelSoft = '#171d2d';
   const brand = '#7c5cff';
-  const brandLight = '#a995ff';
+  const brandLight = '#b5a4ff';
   const success = '#2dd4a8';
   const danger = '#ff667d';
   const white = '#f8f9ff';
   const muted = '#aeb4c6';
-  const resultColor = row.result === 'WON' ? success : row.result === 'LOST' ? danger : brand;
+  const result = String(row.result).toUpperCase();
+  const resultColor = result === 'WON' ? success : result === 'LOST' ? danger : brandLight;
+  const resultLabel = result === 'WON' ? 'WON' : result === 'LOST' ? 'LOST' : result.replaceAll('_', ' ');
 
   ctx.fillStyle = dark;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const topGlow = ctx.createRadialGradient(860, 30, 25, 860, 30, 520);
-  topGlow.addColorStop(0, 'rgba(124,92,255,0.42)');
-  topGlow.addColorStop(1, 'rgba(124,92,255,0)');
-  ctx.fillStyle = topGlow;
-  ctx.fillRect(0, 0, canvas.width, 620);
+  const glow = ctx.createRadialGradient(900, 100, 12, 900, 100, 520);
+  glow.addColorStop(0, result === 'WON' ? 'rgba(45,212,168,0.19)' : 'rgba(124,92,255,0.30)');
+  glow.addColorStop(1, 'rgba(7,9,16,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const lowerGlow = ctx.createRadialGradient(110, 1110, 10, 110, 1110, 360);
-  lowerGlow.addColorStop(0, row.result === 'WON' ? 'rgba(45,212,168,0.16)' : 'rgba(255,102,125,0.12)');
-  lowerGlow.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = lowerGlow;
-  ctx.fillRect(0, 760, canvas.width, 420);
-
-  roundRect(ctx, 58, 54, 964, 1072, 38);
-  ctx.fillStyle = panel;
+  const panelGradient = ctx.createLinearGradient(18, 20, 1060, 660);
+  panelGradient.addColorStop(0, '#151a2b');
+  panelGradient.addColorStop(0.56, panel);
+  panelGradient.addColorStop(1, '#101522');
+  roundRect(ctx, 20, 20, 1040, 640, 36);
+  ctx.fillStyle = panelGradient;
   ctx.fill();
   ctx.strokeStyle = 'rgba(169,149,255,0.42)';
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  roundRect(ctx, 76, 72, 928, 1036, 30);
+  roundRect(ctx, 35, 35, 1010, 610, 28);
   ctx.strokeStyle = 'rgba(255,255,255,0.055)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.fillStyle = brandLight;
-  ctx.font = '800 30px system-ui, sans-serif';
-  ctx.fillText('VAD', 116, 132);
-  ctx.fillStyle = muted;
-  ctx.font = '650 19px system-ui, sans-serif';
-  ctx.fillText('VERIFIED MARKET RESULT', 186, 130);
+  // Restrained circuit arcs give the background a refined fintech feel.
+  ctx.save();
+  ctx.strokeStyle = 'rgba(169,149,255,0.10)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(948, 255, 146, -1.2, 1.65);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(948, 255, 168, -1.2, 1.65);
+  ctx.stroke();
+  ctx.restore();
 
-  roundRect(ctx, 765, 95, 188, 48, 24);
-  ctx.fillStyle = `${resultColor}22`;
+  ctx.fillStyle = brandLight;
+  ctx.font = '800 31px system-ui, sans-serif';
+  ctx.fillText('VAD', 64, 78);
+  ctx.fillStyle = muted;
+  ctx.font = '700 16px system-ui, sans-serif';
+  ctx.fillText('TRADING RESULT', 137, 77);
+
+  roundRect(ctx, 824, 51, 190, 42, 21);
+  ctx.fillStyle = `${resultColor}20`;
   ctx.fill();
   ctx.strokeStyle = resultColor;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.4;
   ctx.stroke();
   ctx.fillStyle = resultColor;
-  ctx.font = '800 20px system-ui, sans-serif';
+  ctx.font = '800 16px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(row.result.toUpperCase(), 859, 126);
+  ctx.fillText(resultLabel, 919, 78, 166);
   ctx.textAlign = 'left';
 
-  const avatarX = 116;
-  const avatarY = 176;
-  const avatarSize = 104;
+  const avatarX = 64;
+  const avatarY = 106;
+  const avatarSize = 64;
   let avatarDrawn = false;
   if (profile.avatarUrl) {
     try {
@@ -174,46 +186,86 @@ async function createWebResultCardFile(row: MarketHistoryRow, profile: ResultCar
     }
   }
   if (!avatarDrawn) {
-    ctx.fillStyle = 'rgba(124,92,255,0.22)';
+    ctx.fillStyle = 'rgba(124,92,255,0.24)';
     ctx.beginPath();
     ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = white;
-    ctx.font = '800 36px system-ui, sans-serif';
+    ctx.font = '800 24px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(initials(profile.displayName), avatarX + avatarSize / 2, avatarY + 66);
+    ctx.fillText(initials(profile.displayName), avatarX + avatarSize / 2, avatarY + 42);
     ctx.textAlign = 'left';
   }
   ctx.strokeStyle = resultColor;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 5, 0, Math.PI * 2);
+  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 4, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.fillStyle = white;
-  ctx.font = '800 36px system-ui, sans-serif';
-  ctx.fillText(profile.displayName, 252, 214);
+  ctx.font = '800 26px system-ui, sans-serif';
+  ctx.fillText(profile.displayName, 151, 137, 430);
   ctx.fillStyle = muted;
-  ctx.font = '500 24px system-ui, sans-serif';
-  ctx.fillText(profile.handle ? `@${profile.handle}` : 'VAD participant', 252, 252);
+  ctx.font = '500 18px system-ui, sans-serif';
+  ctx.fillText(profile.handle ? `@${profile.handle}` : 'VAD participant', 151, 166, 430);
 
+  ctx.fillStyle = muted;
+  ctx.font = '700 15px system-ui, sans-serif';
+  ctx.fillText('MARKET', 64, 220);
   ctx.fillStyle = white;
-  ctx.font = '800 44px system-ui, sans-serif';
-  const nextY = wrapText(ctx, row.market_title, 116, 355, 848, 53, 4);
+  ctx.font = '800 39px system-ui, sans-serif';
+  wrapText(ctx, row.market_title, 64, 267, 535, 43, 2);
 
-  const outcomeY = Math.max(nextY + 30, 555);
-  drawMetric(ctx, 'MY PICK', row.selected_outcome, 116, outcomeY, 394, resultColor, white, muted, panelSoft);
-  drawMetric(ctx, 'FINAL RESULT', row.final_outcome ?? '—', 554, outcomeY, 394, resultColor, white, muted, panelSoft);
+  const drawOutcomePill = (label: string, value: string, x: number, y: number, width: number) => {
+    roundRect(ctx, x, y, width, 49, 14);
+    ctx.fillStyle = panelSoft;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.09)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = muted;
+    ctx.font = '700 12px system-ui, sans-serif';
+    ctx.fillText(label, x + 14, y + 18);
+    ctx.fillStyle = white;
+    ctx.font = '800 18px system-ui, sans-serif';
+    ctx.fillText(value, x + 14, y + 39, width - 28);
+  };
+  drawOutcomePill('MY PICK', row.selected_outcome, 64, 336, 210);
+  drawOutcomePill('FINAL RESULT', row.final_outcome ?? '—', 287, 336, 245);
 
-  const financialY = outcomeY + 154;
-  drawMetric(ctx, 'STAKE', money(row.stake_amount, row.asset_code), 116, financialY, 260, brand, white, muted, panelSoft);
+  roundRect(ctx, 644, 190, 370, 196, 24);
+  ctx.fillStyle = 'rgba(7,9,16,0.45)';
+  ctx.fill();
+  ctx.strokeStyle = `${resultColor}85`;
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+
+  ctx.fillStyle = muted;
+  ctx.font = '700 15px system-ui, sans-serif';
+  ctx.fillText('SETTLEMENT STATUS', 672, 225);
+  ctx.fillStyle = resultColor;
+  ctx.font = '900 49px system-ui, sans-serif';
+  ctx.fillText(resultLabel, 672, 286, 315);
+  ctx.fillStyle = white;
+  ctx.font = '600 17px system-ui, sans-serif';
+  const resultCaption = result === 'WON'
+    ? 'Your pick matched the final outcome.'
+    : result === 'LOST'
+      ? 'The final outcome did not match your pick.'
+      : 'This result is recorded in your VAD history.';
+  ctx.fillText(resultCaption, 672, 322, 310);
+  ctx.fillStyle = muted;
+  ctx.font = '500 14px system-ui, sans-serif';
+  ctx.fillText('Result from your recorded settlement', 672, 353, 310);
+
+  drawMetric(ctx, 'STAKE', money(row.stake_amount, row.asset_code), 64, 416, 280, brand, white, muted, panelSoft);
   drawMetric(
     ctx,
     'NET PAYOUT',
-    privacy.showPayout ? money(row.net_payout, row.asset_code) : 'PRIVATE',
-    410,
-    financialY,
-    260,
+    privacy.showPayout && result === 'WON' ? money(row.net_payout, row.asset_code) : privacy.showPayout ? money(row.net_payout, row.asset_code) : 'PRIVATE',
+    365,
+    416,
+    300,
     privacy.showPayout ? resultColor : brand,
     white,
     muted,
@@ -223,42 +275,38 @@ async function createWebResultCardFile(row: MarketHistoryRow, profile: ResultCar
     ctx,
     'REALIZED P&L',
     privacy.showPnl ? signedMoney(row.realized_pnl, row.asset_code) : 'PRIVATE',
-    704,
-    financialY,
-    244,
+    686,
+    416,
+    328,
     privacy.showPnl ? resultColor : brand,
     white,
     muted,
     panelSoft,
   );
 
-  const footerY = Math.min(financialY + 190, 958);
-  ctx.fillStyle = muted;
-  ctx.font = '500 20px system-ui, sans-serif';
-  ctx.fillText(`VAD trading fee ${money(row.trading_fee, row.asset_code)} · VAD settlement fee ${money(row.settlement_fee, row.asset_code)}`, 116, footerY);
-  ctx.fillText(row.settled_at ? `Settled ${new Date(row.settled_at).toLocaleString()}` : 'Final market result', 116, footerY + 34);
-
-  roundRect(ctx, 116, footerY + 62, 832, 76, 20);
-  ctx.fillStyle = 'rgba(124,92,255,0.10)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(169,149,255,0.30)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(64, 551);
+  ctx.lineTo(1014, 551);
   ctx.stroke();
+
   ctx.fillStyle = muted;
-  ctx.font = '650 18px system-ui, sans-serif';
-  ctx.fillText('INVITE TO VAD', 142, footerY + 91);
-  ctx.fillStyle = white;
-  ctx.font = '800 25px system-ui, sans-serif';
-  ctx.fillText(profile.inviteCode ?? 'VAD MARKET', 142, footerY + 119);
+  ctx.font = '500 14px system-ui, sans-serif';
+  const settledLabel = row.settled_at ? `Settled ${new Date(row.settled_at).toLocaleDateString()}` : 'VAD Market result';
+  ctx.fillText(settledLabel, 64, 590, 255);
   ctx.fillStyle = brandLight;
-  ctx.font = '700 19px system-ui, sans-serif';
+  ctx.font = '700 15px system-ui, sans-serif';
+  ctx.fillText(`INVITE · ${profile.inviteCode ?? 'VAD MARKET'}`, 368, 590, 275);
+  ctx.fillStyle = muted;
+  ctx.font = '600 14px system-ui, sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('Make your view. Own your result.', 922, footerY + 107);
+  ctx.fillText('Make your view. Own your result.', 1014, 590, 325);
   ctx.textAlign = 'left';
 
   const blob = await new Promise<any>((resolve) => canvas.toBlob(resolve, 'image/png', 0.95));
   if (!blob) return null;
-  return new FileCtor([blob], `vad-${row.result.toLowerCase()}-${row.market_id.slice(0, 8)}.png`, { type: 'image/png' });
+  return new FileCtor([blob], `vad-${result.toLowerCase()}-${row.market_id.slice(0, 8)}.png`, { type: 'image/png' });
 }
 
 function roundRect(ctx: any, x: number, y: number, width: number, height: number, radius: number) {
@@ -293,22 +341,32 @@ function drawMetric(
 }
 
 function wrapText(ctx: any, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines: number) {
-  const words = text.split(/\s+/);
+  const words = text.split(/\\s+/).filter(Boolean);
+  const lines: string[] = [];
   let line = '';
-  let lineIndex = 0;
+
   for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, y + lineIndex * lineHeight);
-      lineIndex += 1;
+    const candidate = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(candidate).width > maxWidth) {
+      lines.push(line);
       line = word;
-      if (lineIndex >= maxLines - 1) break;
     } else {
-      line = test;
+      line = candidate;
     }
   }
-  if (line && lineIndex < maxLines) ctx.fillText(line, x, y + lineIndex * lineHeight);
-  return y + lineIndex * lineHeight;
+  if (line) lines.push(line);
+
+  if (lines.length > maxLines) {
+    lines.length = maxLines;
+    let last = lines[maxLines - 1].trimEnd();
+    while (last.length && ctx.measureText(`${last}…`).width > maxWidth) {
+      last = last.slice(0, -1).trimEnd();
+    }
+    lines[maxLines - 1] = `${last}…`;
+  }
+
+  lines.forEach((entry, index) => ctx.fillText(entry, x, y + index * lineHeight, maxWidth));
+  return y + Math.max(0, lines.length - 1) * lineHeight;
 }
 
 function loadImage(url: string) {
