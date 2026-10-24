@@ -518,7 +518,7 @@ export async function quotePoolStake(input: { instrumentPublicId: string; outcom
 export async function placePoolStake(quote: PoolQuote) {
   const assetCode = await getMarketAssetCode(quote.instrumentPublicId);
   if (assetCode !== 'NGN' && assetCode !== 'USDC') {
-    throw new Error('Test NGN markets are permanently closed.');
+    throw new Error('TNGN markets are permanently retired. Select a real NGN or supported USDC market.');
   }
   await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `pool:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
