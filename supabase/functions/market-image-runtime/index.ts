@@ -199,8 +199,14 @@ Deno.serve(async (req) => {
     const accountId = String(provider?.public_metadata?.account_id || '').trim();
     const secretName = String(provider?.secret_reference || 'VAD_AI_CLOUDFLARE_API_TOKEN').trim();
     const apiToken = Deno.env.get(secretName) || Deno.env.get('CLOUDFLARE_API_TOKEN') || Deno.env.get('CLOUDFLARE_WORKERS_AI_API_TOKEN');
-    if (providerError || !accountId || !apiToken) {
-      return await failJob('Cloudflare image generation is not configured', 503);
+    if (providerError) {
+      return await failJob('Cloudflare image provider configuration could not be loaded. Check the active provider runtime settings.', 503);
+    }
+    if (!accountId) {
+      return await failJob('Cloudflare image generation is not configured: the Cloudflare account ID is missing.', 503);
+    }
+    if (!apiToken) {
+      return await failJob(`Cloudflare image generation is missing the configured Supabase Edge Function secret ${secretName}. Add a valid Cloudflare API token; Gemini is not used for market artwork.`, 503);
     }
 
     const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-2-klein-4b';
