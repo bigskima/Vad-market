@@ -1,44 +1,35 @@
-# Arc Testnet Ephemeral Keys — VAD Settlement V1
-Generated: 2026-10-24. TESTNET ONLY. No real value.
+# Arc Testnet Keys and Existing Deployment
 
-## Network
-- RPC: https://rpc.testnet.arc.io
-- Chain ID: 5042002
-- USDC: 0x3600000000000000000000000000000000000000
+**Purpose:** configuration reference only. Never store private keys in this file or in Git.
 
-## Roles
-| Role | Address |
-|---|---|
-| Deployer / Admin | 0x52dAe9a2ae632Df8b4f5db1C7D2FE1A9e45992D2 |
-| Quote Signer | 0x1394c9c507f5640953EB03bBf5DFA8d11F7f634b |
-| Settlement Signer | 0xe732881D5b561EA8B70A5B5e65c4ace10c757F3a |
-| Resolver | 0xE98598caE77D7D6e73470f77D509E155B0C780Cd |
-| Treasury | 0x9a85eCc03742F34b184528AC7150A66D2B8cD161 |
+## Existing deployment registry record
 
-## Required .env.testnet variables (create this file locally, never commit)
-```
-ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.io
-ARC_USDC_TOKEN_ADDRESS=0x3600000000000000000000000000000000000000
-VAD_DEPLOYER_PRIVATE_KEY=<deployer private key>
-VAD_ADMIN=0x52dAe9a2ae632Df8b4f5db1C7D2FE1A9e45992D2
-VAD_QUOTE_SIGNER=0x1394c9c507f5640953EB03bBf5DFA8d11F7f634b
-VAD_SETTLEMENT_SIGNER=0xe732881D5b561EA8B70A5B5e65c4ace10c757F3a
-VAD_RESOLVER=0xE98598caE77D7D6e73470f77D509E155B0C780Cd
-VAD_TREASURY=0x9a85eCc03742F34b184528AC7150A66D2B8cD161
-ALLOW_NON_MAINNET_DEPLOY=true
-VAD_SETTLEMENT_V1_ADDRESS=  # fill after deploy
-```
+The connected Supabase project currently records:
 
-## Deploy command (after arc-forge install and .env.testnet populated)
-```sh
-source .env.testnet
-arc-forge script script/DeployVadSettlementV1.s.sol:DeployVadSettlementV1 \
-  --root contracts/evm \
-  --rpc-url "$ARC_TESTNET_RPC_URL" \
-  --broadcast
-```
+- Network: Arc Testnet, chain ID `5042002`
+- Registered VAD Settlement V1 contract: `0x73EE420e1089861c1e0b767d7AA367736322B2B6`
+- USDC ERC-20: `0x3600000000000000000000000000000000000000` (6 decimals)
+- RPC: `https://rpc.testnet.arc.io`
+- Explorer: `https://explorer.testnet.arc.io`
 
-## Post-deploy
-1. Record VAD_SETTLEMENT_V1_ADDRESS from output
-2. Fund the deployer/treasury addresses via https://faucet.circle.com (select Arc Testnet + USDC)
-3. Apply supabase/migrations/20261024110000_arc_testnet_activation.sql with the contract address
+The deployment row is marked ACTIVE in Supabase, but this is not enough to prove bytecode exists or that the deployed source matches the current repository. Verify chain ID, `eth_getCode`, contract getters, and explorer transaction before deciding to reuse or redeploy.
+
+## Recorded role addresses
+
+The current Supabase deployment metadata records quote signer, settlement signer, and resolver as the same public address:
+
+`0x521436a148bcbca08b83c8c4a601abdc55eb3ac2`
+
+The recorded treasury address is:
+
+`0x5fbe1b76947b78c7dcc96991f0a99aff9fda6b36`
+
+These are public addresses, not private keys. Use the authenticated `admin_signer_status` action in the existing `onchain-gateway` to confirm which signer secrets are configured and which addresses they derive. Compare these with the verified on-chain getters before trading. Do not overwrite existing Supabase signer secrets with candidate addresses from a draft plan.
+
+## Key handling
+
+- Existing quote/settlement/resolver private keys, if configured, must remain in Supabase Edge Function secrets.
+- A deployment private key is separate from backend signing secrets unless intentionally assigned to both roles.
+- If verification confirms the existing contract and signer configuration are correct, reuse them; no redeployment is required.
+- If deployment is genuinely necessary, use a dedicated testnet-only deployer key in a local ignored environment file or secret manager. The deployer must have testnet USDC for gas. A normal deployment creates a new contract address; the existing address cannot simply be selected by supplying a private key.
+- Never commit private keys, paste them into a migration, expose them in client-side environment variables, or use testnet keys on mainnet.
