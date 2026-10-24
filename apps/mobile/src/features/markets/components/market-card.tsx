@@ -98,7 +98,7 @@ export function MarketCard({
           <OutcomeTile label="Yes" value={yes} rawValue={market.yes_price} positive compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('YES') : undefined} />
           <OutcomeTile label="No" value={no} rawValue={market.no_price} positive={false} compact={tight} onPress={onSelectOutcome ? () => onSelectOutcome('NO') : undefined} />
         </View>
-      )
+      )}
       {onToggleWatchlist ? (
         <Pressable
           onPress={onToggleWatchlist}
