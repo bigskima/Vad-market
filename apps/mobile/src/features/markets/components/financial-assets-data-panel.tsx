@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Image, View, useState } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
@@ -153,9 +153,7 @@ function FinancialAssetCard({ item }: { item: FinancialMarketQuote }) {
   return (
     <VadCard variant="raised" style={{ gap: theme.spacing.sm, padding: density.compact ? theme.spacing.md : theme.spacing.lg }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-        <View style={{ width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted, borderWidth: 1, borderColor: theme.colors.border }}>
-          <VadText variant="label" tone="brand">{item.symbol.slice(0, 5).toUpperCase()}</VadText>
-        </View>
+        <FinancialAssetVisual item={item} />
         <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
           <VadText variant="bodyStrong">{item.name}</VadText>
           <VadText variant="caption" tone="secondary">{item.symbol}{item.exchange ? ' · ' + item.exchange : ''}</VadText>
@@ -184,6 +182,52 @@ function FinancialAssetCard({ item }: { item: FinancialMarketQuote }) {
       </View>
       <VadText variant="caption" tone="tertiary">{item.source}{item.sourceUpdatedAt ? ' · Source timestamp ' + new Date(item.sourceUpdatedAt).toLocaleString() : ''}</VadText>
     </VadCard>
+  );
+}
+
+function FinancialAssetVisual({ item }: { item: FinancialMarketQuote }) {
+  const theme = useVadTheme();
+  const [imageFailed, setImageFailed] = useState(false);
+  const [secondaryFailed, setSecondaryFailed] = useState(false);
+  const visualStyle = {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    overflow: 'hidden' as const,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  };
+  if (item.visualKind === 'flag-pair' && item.imageUrl && item.secondaryImageUrl) {
+    return (
+      <View style={[visualStyle, { flexDirection: 'row', overflow: 'hidden', gap: 1 }]}>
+        {!imageFailed ? (
+          <Image source={{ uri: item.imageUrl }} accessibilityLabel="Base currency flag" onError={() => setImageFailed(true)} resizeMode="cover" style={{ width: 22, height: 46 }} />
+        ) : <View style={{ width: 22, height: 46, backgroundColor: theme.colors.surfaceRaised }} />}
+        {!secondaryFailed ? (
+          <Image source={{ uri: item.secondaryImageUrl }} accessibilityLabel="Quote currency flag" onError={() => setSecondaryFailed(true)} resizeMode="cover" style={{ width: 22, height: 46 }} />
+        ) : <View style={{ width: 22, height: 46, backgroundColor: theme.colors.surfaceRaised }} />}
+      </View>
+    );
+  }
+  if (item.imageUrl && !imageFailed) {
+    return (
+      <View style={visualStyle}>
+        <Image source={{ uri: item.imageUrl }} accessibilityLabel={item.name + ' logo or data visual'} onError={() => setImageFailed(true)} resizeMode={item.visualKind === 'series-chart' ? 'cover' : 'contain'} style={{ width: '100%', height: '100%' }} />
+      </View>
+    );
+  }
+  const icon = item.assetClass === 'ECONOMICS' ? 'activity'
+    : item.assetClass === 'FOREX' ? 'globe'
+      : item.assetClass === 'COMMODITIES' ? 'activity'
+        : 'globe';
+  return (
+    <View style={visualStyle}>
+      <VadIcon name={icon} size={20} tone="brand" />
+      <VadText variant="caption" tone="brand" numberOfLines={1}>{item.symbol.slice(0, 4).toUpperCase()}</VadText>
+    </View>
   );
 }
 
