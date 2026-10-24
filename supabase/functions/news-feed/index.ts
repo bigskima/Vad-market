@@ -80,8 +80,9 @@ function decodeEntities(value: string) {
 function seenDate(value: unknown): string | null {
   const raw = safeText(value, 40);
   if (!raw) return null;
-  const normalized = /^\d{8}T\d{6}Z$/.test(raw)
-    ? raw.replace(/^(\d{4})(\d{2})(\d{2})T/, '$1-$2-$3T').replace(/Z$/, 'Z')
+  const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(raw);
+  const normalized = match
+    ? `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}Z`
     : raw;
   const date = new Date(normalized);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
@@ -137,11 +138,11 @@ function categoryTags(category: Category): string[] {
   return category === 'ALL' ? ['Latest news'] : [category.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())];
 }
 function htmlMeta(html: string, key: string, attribute: 'property' | 'name' = 'property'): string | null {
-  const tags = html.match(/<meta\b[^>]*>/gi) ?? [];
+  const tags = html.match(/<meta\\b[^>]*>/gi) ?? [];
   for (const tag of tags) {
-    const attr = new RegExp('\\b' + attribute + '\\s*=\\s*["\\']([^"\\']+)["\\']', 'i').exec(tag)?.[1];
+    const attr = new RegExp("\\\\b" + attribute + "\\\\s*=\\\\s*(['\\\"])(.*?)\\\\1", 'i').exec(tag)?.[2];
     if (attr?.toLowerCase() !== key.toLowerCase()) continue;
-    const content = /\bcontent\s*=\s*["']([\s\S]*?)["']/i.exec(tag)?.[1];
+    const content = /\\bcontent\\s*=\\s*(['"])([\\s\\S]*?)\\\\1/i.exec(tag)?.[2];
     if (content) return decodeEntities(content).slice(0, 2000);
   }
   return null;
