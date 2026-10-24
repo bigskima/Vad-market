@@ -1,28 +1,35 @@
 import { supabase } from '@/lib/supabase';
 
-type QueuedRequest = {
-  instrumentPublicId: string;
-  resolve: (path: string | null) => void;
+export type MarketImageResult = {
+  mediaUrl: string;
+  source: 'publisher' | 'ai';
+  sourceName?: string;
+  sourceUrl?: string;
+  articleTitle?: string;
 };
 
-const requests = new Map<string, Promise<string | null>>();
+type QueuedRequest = {
+  instrumentPublicId: string;
+  resolve: (result: MarketImageResult | null) => void;
+};
+const requests = new Map<string, Promise<MarketImageResult | null>>();
 const queue: QueuedRequest[] = [];
 let activeRequests = 0;
-const MAX_CONCURRENT_GENERATIONS = 2;
+const MAX_CONCURRENT_REQUESTS = 2;
 
 /**
- * Request server-side AI artwork only for markets that have no image.
- * A shared queue limits burst traffic when the full catalogue is opened; the
- * Edge Function performs the final idempotency and authorization checks.
+ * Prefer a relevant publisher image for a published real-world event.
+ * AI artwork is requested only if the public news index cannot supply a
+ * relevant HTTPS image. Existing/manual cover media always wins.
  */
-export function requestMarketImageGeneration(instrumentPublicId: string): Promise<string | null> {
+export function requestMarketImageGeneration(instrumentPublicId: string): Promise<MarketImageResult | null> {
   const id = instrumentPublicId.trim();
   if (!id) return Promise.resolve(null);
 
   const existing = requests.get(id);
   if (existing) return existing;
 
-  const promise = new Promise<string | null>((resolve) => {
+  const promise = new Promise<MarketImageResult | null>((resolve) => {
     queue.push({ instrumentPublicId: id, resolve });
     drainQueue();
   });
@@ -31,25 +38,56 @@ export function requestMarketImageGeneration(instrumentPublicId: string): Promis
 }
 
 function drainQueue() {
-  while (activeRequests < MAX_CONCURRENT_GENERATIONS && queue.length > 0) {
+  while (activeRequests < MAX_CONCURRENT_REQUESTS && queue.length > 0) {
     const next = queue.shift();
     if (!next) return;
     activeRequests += 1;
+    void findPublisherImage(next.instrumentPublicId)
+      .then((sourceImage) => sourceImage ?? generateAiImage(next.instrumentPublicId))
+      .then((result) => {
+        if (!result) requests.delete(next.instrumentPublicId);
+        next.resolve(result);
+      })
+      .catch(() => {
+        requests.delete(next.instrumentPublicId);
+        next.resolve(null);
+      })
+      .finally(() => {
+        activeRequests = Math.max(0, activeRequests - 1);
+        drainQueue();
+      });
+  }
+}
 
-    void supabase.functions.invoke('market-image-runtime', {
-      body: { instrumentId: next.instrumentPublicId },
-    }).then(({ data, error }) => {
-      const path = !error && data?.ok === true && typeof data.mediaPath === 'string'
-        ? data.mediaPath
-        : null;
-      if (!path) requests.delete(next.instrumentPublicId);
-      next.resolve(path);
-    }).catch(() => {
-      requests.delete(next.instrumentPublicId);
-      next.resolve(null);
-    }).finally(() => {
-      activeRequests = Math.max(0, activeRequests - 1);
-      drainQueue();
+async function findPublisherImage(instrumentPublicId: string): Promise<MarketImageResult | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('market-source-image', {
+      body: { instrumentId: instrumentPublicId },
     });
+    const imageUrl = typeof data?.imageUrl === 'string' ? data.imageUrl.trim() : '';
+    if (error || data?.ok !== true || !/^https:\/\//i.test(imageUrl)) return null;
+    return {
+      mediaUrl: imageUrl,
+      source: 'publisher',
+      sourceName: typeof data.sourceName === 'string' ? data.sourceName : undefined,
+      sourceUrl: typeof data.sourceUrl === 'string' ? data.sourceUrl : undefined,
+      articleTitle: typeof data.articleTitle === 'string' ? data.articleTitle : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function generateAiImage(instrumentPublicId: string): Promise<MarketImageResult | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('market-image-runtime', {
+      body: { instrumentId: instrumentPublicId },
+    });
+    const mediaPath = !error && data?.ok === true && typeof data.mediaPath === 'string'
+      ? data.mediaPath.trim()
+      : '';
+    return mediaPath ? { mediaUrl: mediaPath, source: 'ai' } : null;
+  } catch {
+    return null;
   }
 }
