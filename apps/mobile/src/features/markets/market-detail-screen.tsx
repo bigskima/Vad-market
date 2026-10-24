@@ -13,7 +13,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
-import { getPublishedMarketDetail, type MarketCatalogItem, type PoolStakeRow, type PositionRow, type PublishedMarketDetail } from '@/services/market-api';
+import { getMarketOutcomeSummary, getPublishedMarketDetail, type MarketCatalogItem, type MarketOutcomeSummaryRow, type PoolStakeRow, type PositionRow, type PublishedMarketDetail } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { FinancialMarketLivePanel, hasLiveFinancialContext } from './components/financial-market-live-panel';
 import { MarketDepthPanel } from './components/market-depth-panel';
@@ -51,7 +51,7 @@ export function MarketDetailScreen({
   markets: MarketCatalogItem[];
   positions: PositionRow[];
   poolStakes: PoolStakeRow[];
-  initialOutcome?: 'YES' | 'NO';
+  initialOutcome?: string;
   canTrade: boolean;
   tradeReason?: string;
   tradeCapabilityLoading?: boolean;
@@ -65,9 +65,27 @@ export function MarketDetailScreen({
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
   const screenKey = `${market.instrument_public_id}:${initialOutcome ?? 'none'}`;
+  const multiOutcomeMarket = market.market_type === 'MULTI_OUTCOME';
+  const [outcomeSummaryState, setOutcomeSummaryState] = useState<{
+    instrumentId: string;
+    rows: MarketOutcomeSummaryRow[];
+    loading: boolean;
+    error: string | null;
+  }>(() => ({ instrumentId: market.instrument_public_id, rows: [], loading: multiOutcomeMarket, error: null }));
+  const outcomeRows = outcomeSummaryState.instrumentId === market.instrument_public_id ? outcomeSummaryState.rows : [];
+  const outcomeRowsLoading = outcomeSummaryState.instrumentId === market.instrument_public_id && outcomeSummaryState.loading;
+  const outcomeRowsError = outcomeSummaryState.instrumentId === market.instrument_public_id ? outcomeSummaryState.error : null;
+  const [chosenOutcome, setChosenOutcome] = useState<{ instrumentId: string; code: string } | null>(null);
+  const selectedOutcomeCode = chosenOutcome?.instrumentId === market.instrument_public_id
+    ? chosenOutcome.code
+    : initialOutcome ?? (multiOutcomeMarket ? outcomeRows[0]?.outcome_code : undefined);
   const [tabState, setTabState] = useState<{ key: string; tab: DetailTab }>(() => ({ key: screenKey, tab: initialOutcome ? 'Trade' : 'Overview' }));
   const tab = tabState.key === screenKey ? tabState.tab : initialOutcome ? 'Trade' : 'Overview';
   const setTab = (nextTab: DetailTab) => setTabState({ key: screenKey, tab: nextTab });
+  const openTrade = (outcomeCode?: string) => {
+    if (outcomeCode) setChosenOutcome({ instrumentId: market.instrument_public_id, code: outcomeCode });
+    setTab('Trade');
+  };
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
 
@@ -75,6 +93,28 @@ export function MarketDetailScreen({
     closeRefreshDone.current = false;
     resolveRefreshDone.current = false;
   }, [market.instrument_public_id]);
+
+  useEffect(() => {
+    if (!multiOutcomeMarket) {
+      setOutcomeSummaryState({ instrumentId: market.instrument_public_id, rows: [], loading: false, error: null });
+      return;
+    }
+    let active = true;
+    setOutcomeSummaryState({ instrumentId: market.instrument_public_id, rows: [], loading: true, error: null });
+    void getMarketOutcomeSummary(market.instrument_public_id)
+      .then((rows) => {
+        if (active) setOutcomeSummaryState({ instrumentId: market.instrument_public_id, rows, loading: false, error: null });
+      })
+      .catch((reason: unknown) => {
+        if (active) setOutcomeSummaryState({
+          instrumentId: market.instrument_public_id,
+          rows: [],
+          loading: false,
+          error: reason instanceof Error ? reason.message : 'Outcome choices could not be loaded.',
+        });
+      });
+    return () => { active = false; };
+  }, [market.instrument_public_id, multiOutcomeMarket]);
 
   useEffect(() => {
     if (!onRefreshMarket) return;
@@ -117,7 +157,7 @@ export function MarketDetailScreen({
   return (
     <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: 200 }}>
       <MarketDetailHeader market={market} />
-      <MarketStakeSummary market={market} positions={positions} poolStakes={poolStakes} />
+      <MarketStakeSummary market={market} positions={positions} poolStakes={poolStakes} outcomes={outcomeRows} />
       {hasLiveFinancialContext(market) ? <FinancialMarketLivePanel key={market.instrument_public_id} market={market} now={now} /> : null}
 
       <ScrollView
@@ -139,14 +179,22 @@ export function MarketDetailScreen({
       </ScrollView>
 
       {tab === 'Overview' ? (
-        <Overview market={market} timing={timing} onTrade={() => setTab('Trade')} />
+        <Overview
+          market={market}
+          timing={timing}
+          outcomes={outcomeRows}
+          outcomesLoading={outcomeRowsLoading}
+          outcomesError={outcomeRowsError}
+          onTrade={openTrade}
+        />
       ) : null}
       {tab === 'Chart' ? <Activity market={market} /> : null}
       {tab === 'Trade' ? (
         <TradingTicket
-          key={`${market.instrument_public_id}:${initialOutcome ?? 'default'}`}
+          key={`${market.instrument_public_id}:${selectedOutcomeCode ?? 'default'}`}
           market={market}
-          initialOutcome={initialOutcome}
+          initialOutcome={selectedOutcomeCode}
+          outcomes={outcomeRows}
           canTrade={effectiveCanTrade}
           tradeReason={effectiveTradeReason}
           capabilityLoading={tradeCapabilityLoading}
