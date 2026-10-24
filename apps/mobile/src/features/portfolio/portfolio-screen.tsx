@@ -136,7 +136,7 @@ export function PortfolioScreen({
   }, []);
 
   const assetOptions = useMemo(
-    () => enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC'].includes(code)),
+    () => enabledCurrencies.filter((code): code is VADCurrency => ['NGN', 'USDC', 'TNGN'].includes(code)),
     [enabledCurrencies],
   );
   const asset = assetOptions.includes(selectedAsset) ? selectedAsset : assetOptions[0] ?? 'NGN';
