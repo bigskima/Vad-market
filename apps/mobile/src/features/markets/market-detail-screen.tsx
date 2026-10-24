@@ -210,13 +210,29 @@ export function MarketDetailScreen({
   );
 }
 
-function Overview({ market, timing, onTrade }: { market: MarketCatalogItem; timing: MarketTiming; onTrade: () => void }) {
+function Overview({ market, timing, outcomes, outcomesLoading, outcomesError, onTrade }: {
+  market: MarketCatalogItem;
+  timing: MarketTiming;
+  outcomes: MarketOutcomeSummaryRow[];
+  outcomesLoading: boolean;
+  outcomesError: string | null;
+  onTrade: (outcomeCode?: string) => void;
+}) {
   const density = useProductDensity();
   return (
     <View style={{ gap: density.compact ? 8 : 12 }}>
-      <MarketSnapshot key={market.instrument_public_id} market={market} timing={timing} />
+      <MarketSnapshot key={market.instrument_public_id} market={market} timing={timing} outcomes={outcomes} />
+      {market.market_type === 'MULTI_OUTCOME' ? (
+        <MultiOutcomeChoices market={market} timing={timing} outcomes={outcomes} loading={outcomesLoading} error={outcomesError} onTrade={onTrade} />
+      ) : null}
       <MarketContextPanel key={market.instrument_public_id} market={market} />
-      <VadButton label="Trade this market" onPress={onTrade} size="small" leading={<VadIcon name="markets" size={15} tone="inverse" />} />
+      <VadButton
+        label={market.market_type === 'MULTI_OUTCOME' ? 'Trade this market' : 'Trade this market'}
+        onPress={() => onTrade(market.market_type === 'MULTI_OUTCOME' ? outcomes[0]?.outcome_code : undefined)}
+        disabled={market.market_type === 'MULTI_OUTCOME' && outcomes.length === 0}
+        size="small"
+        leading={<VadIcon name="markets" size={15} tone="inverse" />}
+      />
       <AssistantEntry
         label="Ask VAD AI about this market"
         detail="Understand the market and its published rules."
@@ -240,9 +256,10 @@ function Activity({ market }: { market: MarketCatalogItem }) {
   );
 }
 
-function MarketStakeSummary({ market, positions, poolStakes }: { market: MarketCatalogItem; positions: PositionRow[]; poolStakes: PoolStakeRow[] }) {
+function MarketStakeSummary({ market, positions, poolStakes, outcomes }: { market: MarketCatalogItem; positions: PositionRow[]; poolStakes: PoolStakeRow[]; outcomes: MarketOutcomeSummaryRow[] }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const outcomeLabels = new Map(outcomes.map((option) => [option.outcome_code, option.outcome_label]));
   const matchingStakes = poolStakes
     .filter((stake) => stake.market_id === market.instrument_public_id && stake.asset_code === market.asset_code)
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
@@ -314,7 +331,7 @@ function MarketStakeSummary({ market, positions, poolStakes }: { market: MarketC
       <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 8 }}>
         {rows.map((row) => (
           <View key={row.outcome} style={{ flex: 1, minWidth: 0, gap: 5, padding: 10, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: row.outcome === 'YES' ? theme.colors.yes : row.outcome === 'NO' ? theme.colors.no : theme.colors.border }}>
-            <VadChip label={row.outcome === 'YES' ? 'Yes' : row.outcome === 'NO' ? 'No' : row.outcome} tone={row.outcome === 'YES' ? 'yes' : row.outcome === 'NO' ? 'no' : 'neutral'} />
+            <VadChip label={outcomeLabels.get(row.outcome) ?? displayOutcomeCode(row.outcome)} tone={row.outcome === 'YES' ? 'yes' : row.outcome === 'NO' ? 'no' : 'neutral'} />
             <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(row.poolStake + row.positionCost, market.asset_code)}</VadText>
             <VadText variant="caption" tone="secondary">Stake / cost basis</VadText>
             {row.poolCount ? <VadText variant="caption" tone="tertiary">{row.poolCount} pooled stake{row.poolCount === 1 ? '' : 's'}</VadText> : null}
@@ -330,6 +347,82 @@ function MarketStakeSummary({ market, positions, poolStakes }: { market: MarketC
       {totalFees > 0 ? <VadText variant="caption" tone="tertiary">Pooled trading fees recorded: {assetMoney(totalFees, market.asset_code)}</VadText> : null}
     </VadCard>
   );
+}
+
+function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade }: {
+  market: MarketCatalogItem;
+  timing: MarketTiming;
+  outcomes: MarketOutcomeSummaryRow[];
+  loading: boolean;
+  error: string | null;
+  onTrade: (outcomeCode?: string) => void;
+}) {
+  const theme = useVadTheme();
+  const density = useProductDensity();
+  return (
+    <View style={{ gap: theme.spacing.sm }}>
+      <View style={{ gap: 3 }}>
+        <VadText variant="bodyStrong">Possible outcomes</VadText>
+        <VadText variant="caption" tone="secondary">Choose the option you expect to win. Current pool share is based on committed stakes, not a promise of payout.</VadText>
+      </View>
+      {loading ? (
+        <VadCard variant="muted" style={{ gap: 4 }}>
+          <VadText variant="bodyStrong">Loading outcome choices…</VadText>
+          <VadText variant="caption" tone="secondary">Getting the latest options and pool shares.</VadText>
+        </VadCard>
+      ) : error ? (
+        <VadCard variant="muted" style={{ gap: 4, borderWidth: 1, borderColor: theme.colors.no }}>
+          <VadText variant="bodyStrong">Outcome choices unavailable</VadText>
+          <VadText variant="caption" tone="secondary">{error}</VadText>
+        </VadCard>
+      ) : outcomes.length ? (
+        <View style={{ gap: theme.spacing.xs }}>
+          {outcomes.map((outcome, index) => (
+            <Pressable
+              key={outcome.outcome_code}
+              accessibilityRole="button"
+              accessibilityLabel={`Choose ${outcome.outcome_label} for this market`}
+              accessibilityState={{ disabled: !timing.tradingOpen }}
+              disabled={!timing.tradingOpen}
+              onPress={() => onTrade(outcome.outcome_code)}
+              style={({ pressed }) => ({ opacity: !timing.tradingOpen ? 0.65 : pressed ? 0.76 : 1 })}
+            >
+              <VadCard style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: density.phone ? 10 : 12 }}>
+                <View style={{ width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>
+                  <VadText variant="bodyStrong" tone="brand">{index + 1}</VadText>
+                </View>
+                <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                  <VadText variant="bodyStrong" numberOfLines={2}>{outcome.outcome_label}</VadText>
+                  <VadText variant="caption" tone="secondary">
+                    {outcome.total_stake == null || Number(outcome.total_stake) <= 0
+                      ? 'No stakes yet'
+                      : `${assetMoney(outcome.total_stake, market.asset_code)} committed · ${outcome.participant_count} participant${outcome.participant_count === 1 ? '' : 's'}`}
+                  </VadText>
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: 88 }}>
+                  <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>
+                    {outcome.pool_share == null ? '—' : probability(outcome.pool_share)}
+                  </VadText>
+                  <VadText variant="caption" tone="tertiary">Pool share</VadText>
+                </View>
+                <VadIcon name="chevronRight" size={17} tone="secondary" />
+              </VadCard>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <VadCard variant="muted" style={{ gap: 4 }}>
+          <VadText variant="bodyStrong">No options are available</VadText>
+          <VadText variant="caption" tone="secondary">The market’s configured outcome choices could not be found.</VadText>
+        </VadCard>
+      )}
+    </View>
+  );
+}
+
+function displayOutcomeCode(code: string) {
+  if (code === 'YES' || code === 'NO') return code;
+  return code.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function CountdownPill({ label, value }: { label: string; value: string }) {
@@ -353,10 +446,11 @@ function isPoolMarket(market: MarketCatalogItem) {
   return String(market.liquidity_mode ?? '').toUpperCase().includes('POOL');
 }
 
-function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing: MarketTiming }) {
+function MarketSnapshot({ market, timing, outcomes }: { market: MarketCatalogItem; timing: MarketTiming; outcomes: MarketOutcomeSummaryRow[] }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const pool = isPoolMarket(market);
+  const isMultiOutcome = market.market_type === 'MULTI_OUTCOME';
   const [scheduleExpanded, setScheduleExpanded] = useState(false);
   const yes = probability(market.yes_price);
   const no = probability(market.no_price);
@@ -366,7 +460,8 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
     ? timing.resolutionOutcome
     : null;
   const outcomeTone = rawOutcome === 'YES' ? 'yes' : rawOutcome === 'NO' ? 'no' : 'neutral';
-  const hasCurrentQuote = timing.stage === 'OPEN' && (market.yes_price != null || market.no_price != null);
+  const finalOutcomeLabel = outcomes.find((outcome) => outcome.outcome_code === rawOutcome)?.outcome_label ?? displayOutcomeCode(rawOutcome);
+  const hasCurrentQuote = !isMultiOutcome && timing.stage === 'OPEN' && (market.yes_price != null || market.no_price != null);
   const scheduleRows: Array<{ label: string; value: string }> = [
     { label: 'Market opens', value: exactTime(market.opens_at) ?? '' },
     { label: 'Trading closes', value: exactTime(market.closes_at) ?? '' },
@@ -382,7 +477,7 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
               <VadText variant="caption" tone="tertiary">FINAL OUTCOME</VadText>
               <VadText variant="heading" tone={outcomeTone === 'neutral' ? 'secondary' : outcomeTone} style={{ fontSize: 20, lineHeight: 25 }}>
-                {finalOutcome}
+                {finalOutcomeLabel}
               </VadText>
             </View>
             <VadChip
@@ -418,12 +513,16 @@ function MarketSnapshot({ market, timing }: { market: MarketCatalogItem; timing:
         {!finalOutcome && timing.stage !== 'VOIDED' && !hasCurrentQuote ? (
           <View style={{ paddingVertical: 2, gap: 3 }}>
             <VadText variant="bodyStrong">
-              {timing.stage === 'OPEN' ? 'Waiting for a current quote' : timing.stage === 'SETTLED' ? 'Settlement status' : 'Current prices unavailable'}
+              {isMultiOutcome
+                ? 'Choose from the possible outcomes'
+                : timing.stage === 'OPEN' ? 'Waiting for a current quote' : timing.stage === 'SETTLED' ? 'Settlement status' : 'Current prices unavailable'}
             </VadText>
             <VadText variant="caption" tone="secondary">
-              {timing.stage === 'OPEN'
-                ? 'A price will appear when a valid market quote is available.'
-                : 'Inactive or settled markets do not show old quotes as current conviction. Recorded history remains available in Activity.'}
+              {isMultiOutcome
+                ? 'Each option has a separate stake pool. The pool share is an indication of current participation, not a guarantee of the final result.'
+                : timing.stage === 'OPEN'
+                  ? 'A price will appear when a valid market quote is available.'
+                  : 'Inactive or settled markets do not show old quotes as current conviction. Recorded history remains available in Activity.'}
             </VadText>
           </View>
         ) : null}
