@@ -222,7 +222,7 @@ $function$;
 revoke all on function private.issue_temporary_ngn_test_credit(uuid,numeric,text,uuid,text) from public,anon,authenticated,service_role;
 
 create or replace function public.admin_grant_temporary_ngn_test_credit(
-  p_user_email text,
+  p_email text,
   p_amount numeric,
   p_reason text default 'Temporary NGN market testing'
 )
@@ -237,7 +237,7 @@ begin
   if auth.uid() is null or not coalesce(private.is_super_admin(),false) then
     raise exception 'Super administrator permission is required to issue temporary NGN test credit.' using errcode='42501';
   end if;
-  select u.id into v_user_id from auth.users u where lower(u.email)=lower(trim(coalesce(p_user_email,''))) limit 1;
+  select u.id into v_user_id from auth.users u where lower(u.email)=lower(trim(coalesce(p_email,''))) limit 1;
   if v_user_id is null then
     raise exception 'No VAD account exists for the supplied email address.' using errcode='P0002';
   end if;
@@ -250,30 +250,9 @@ $function$;
 revoke all on function public.admin_grant_temporary_ngn_test_credit(text,numeric,text) from public,anon;
 grant execute on function public.admin_grant_temporary_ngn_test_credit(text,numeric,text) to authenticated,service_role;
 
--- Issue the specifically requested one-time temporary credit using the same
--- grant + finance ledger journal path that the future admin grant API uses.
-do $issue$
-declare
-  v_user_id uuid;
-  v_email text;
-  v_result jsonb;
-begin
-  select u.id,u.email into v_user_id,v_email
-  from auth.users u
-  where lower(u.email)='skima714@gmail.com'
-  limit 1;
-  if v_user_id is null then
-    raise exception 'Target VAD account skima714@gmail.com was not found. No test credit was issued.';
-  end if;
-  v_result:=private.issue_temporary_ngn_test_credit(
-    v_user_id,500000,
-    'User-authorized temporary NGN market-testing credit. Non-withdrawable and non-transferable; usable only on real NGN market instruments through the standard order/matching/resolution/settlement engine. Not a deposit or cash-backed balance.',
-    null,
-    'authorized-skima714-ngn-market-test-20261024'
-  );
-  raise notice 'Temporary NGN market-test credit outcome: %',v_result;
-end;
-$issue$;
+-- Operational NGN test credit was granted through the audited ledger path.
+-- This schema migration installs guards and reusable grant/revoke procedures;
+-- it deliberately does not mint another balance or duplicate the live grant.
 
 select pg_notify('pgrst','reload schema');
 commit;
