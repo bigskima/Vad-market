@@ -150,32 +150,26 @@ export function MarketsScreen({
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [showAllMarkets, setShowAllMarkets] = useState(false);
 
-  const activeCategoryExperience = useMemo(
-    () => categoryExperiences.find((item) => item.code === category)
-      ?? categoryExperiences.find((item) => item.name === category)
-      ?? null,
-    [categoryExperiences, category],
-  );
+  // Keep route parameters compatible with both category codes and display
+  // names, while using the database's canonical code for all filtering.
+  const activeCategoryCode = useMemo(() => {
+    const normalized = category.trim().toLowerCase();
+    if (!normalized || normalized === 'all' || normalized === 'trending') return 'All';
+    return categoryExperiences.find((item) =>
+      item.code.toLowerCase() === normalized || item.name.toLowerCase() === normalized,
+    )?.code ?? category.toUpperCase();
+  }, [category, categoryExperiences]);
 
-  // Incoming links may contain either a category code or its display name.
-  // Normalize once the database-driven category catalogue has loaded.
-  useEffect(() => {
-    if (!initialCategory || initialCategory.toLowerCase() === 'all' || initialCategory.toLowerCase() === 'trending') {
-      setCategory('All');
-      return;
-    }
-    const match = categoryExperiences.find((item) =>
-      item.code.toLowerCase() === initialCategory.toLowerCase()
-      || item.name.toLowerCase() === initialCategory.toLowerCase(),
-    );
-    if (match) setCategory(match.code);
-  }, [initialCategory, categoryExperiences]);
+  const activeCategoryExperience = useMemo(
+    () => categoryExperiences.find((item) => item.code === activeCategoryCode) ?? null,
+    [categoryExperiences, activeCategoryCode],
+  );
 
   const categoryMarkets = useMemo(
     () => markets
       .filter((market) => enabledCurrencies.includes(market.asset_code as VADCurrency))
-      .filter((market) => category === 'All' || resolveMarketCategoryCode(market, categoryExperiences) === category),
-    [markets, enabledCurrencies, category, categoryExperiences],
+      .filter((market) => activeCategoryCode === 'All' || resolveMarketCategoryCode(market, categoryExperiences) === activeCategoryCode),
+    [markets, enabledCurrencies, activeCategoryCode, categoryExperiences],
   );
 
   const categories = useMemo<MarketCategoryOption[]>(() => {
@@ -213,17 +207,17 @@ export function MarketsScreen({
   }, [markets, categoryExperiences, enabledCurrencies]);
 
   const subcategories = useMemo<MarketSubcategoryOption[]>(() => {
-    if (category === 'All') return [];
+    if (activeCategoryCode === 'All') return [];
 
     const options = new Map<string, MarketSubcategoryOption>();
-    const categoryTypes = configuredSubcategories.filter((item) => item.category_code === category);
+    const categoryTypes = configuredSubcategories.filter((item) => item.category_code === activeCategoryCode);
     for (const item of categoryTypes) {
       const key = `type:${item.code.toLowerCase()}`;
       options.set(key, {
         value: key,
         label: item.name,
         kind: 'type',
-        count: categoryMarkets.filter((market) => marketMatchesConfiguredSubcategory(market, item, category)).length,
+        count: categoryMarkets.filter((market) => marketMatchesConfiguredSubcategory(market, item, activeCategoryCode)).length,
       });
     }
 
@@ -243,7 +237,7 @@ export function MarketsScreen({
     for (const market of categoryMarkets) {
       const marketType = marketContextString(market, 'catalog_market_type')
         ?? marketContextString(market, 'event_type');
-      if (marketType && !categoryTypes.some((item) => marketMatchesConfiguredSubcategory(market, item, category))) {
+      if (marketType && !categoryTypes.some((item) => marketMatchesConfiguredSubcategory(market, item, activeCategoryCode))) {
         add('type', marketType, humanizeTaxonomyValue(marketType, activeCategoryExperience?.code));
       }
 
@@ -260,7 +254,7 @@ export function MarketsScreen({
         || (a.kind === 'type' ? 0 : b.count - a.count)
         || a.label.localeCompare(b.label);
     });
-  }, [category, categoryMarkets, activeCategoryExperience, configuredSubcategories]);
+  }, [activeCategoryCode, categoryMarkets, activeCategoryExperience, configuredSubcategories]);
 
   const baseFilteredMarkets = useMemo(() => {
     const needle = debouncedQuery.toLowerCase();
@@ -274,7 +268,7 @@ export function MarketsScreen({
         if (kind === 'sport') return marketContextString(market, 'sport')?.toLowerCase() === value;
         if (kind === 'type') {
           const configured = configuredSubcategories.find((item) => item.code.toLowerCase() === value);
-          if (configured) return marketMatchesConfiguredSubcategory(market, configured, category);
+          if (configured) return marketMatchesConfiguredSubcategory(market, configured, activeCategoryCode);
           return [
             marketContextString(market, 'catalog_market_type'),
             marketContextString(market, 'event_type'),
@@ -283,7 +277,7 @@ export function MarketsScreen({
         return true;
       })
       .filter((market) => !needle || marketSearchText(market).includes(needle));
-  }, [categoryMarkets, activeSubcategory, debouncedQuery, configuredSubcategories, category]);
+  }, [categoryMarkets, activeSubcategory, debouncedQuery, configuredSubcategories, activeCategoryCode]);
 
   const stageCounts = useMemo(() => {
     const counts = { live: 0, result: 0, complete: 0, all: baseFilteredMarkets.length };
@@ -331,13 +325,13 @@ export function MarketsScreen({
   }, [baseFilteredMarkets, stage, sortMode, now, trendingMarkets]);
 
   const listingMarkets = useMemo(() => {
-    const discoveryHasFilters = Boolean(debouncedQuery) || category !== 'All' || activeSubcategory !== 'all' || stage !== 'all' || sortMode !== 'activity';
+    const discoveryHasFilters = Boolean(debouncedQuery) || activeCategoryCode !== 'All' || activeSubcategory !== 'all' || stage !== 'all' || sortMode !== 'activity';
     if (showAllMarkets || discoveryHasFilters) return orderedMarkets;
     const ranked = trendingMarkets
       .map((entry) => orderedMarkets.find((market) => market.instrument_public_id === entry.instrument_public_id))
       .filter((market): market is MarketCatalogItem => Boolean(market));
     return ranked.length ? ranked : orderedMarkets;
-  }, [orderedMarkets, trendingMarkets, showAllMarkets, debouncedQuery, category, activeSubcategory, stage, sortMode]);
+  }, [orderedMarkets, trendingMarkets, showAllMarkets, debouncedQuery, activeCategoryCode, activeSubcategory, stage, sortMode]);
 
   const cardWidth = columns === 2 ? '48.7%' : '100%';
   const pageSize = columns === 2 ? 8 : 5;
@@ -345,7 +339,7 @@ export function MarketsScreen({
     items: listingMarkets,
     initialCount: pageSize,
     step: pageSize,
-    resetKey: `${debouncedQuery.toLowerCase()}|${category}|${activeSubcategory}|${sortMode}|${stage}|${columns}|${showAllMarkets}`,
+    resetKey: `${debouncedQuery.toLowerCase()}|${activeCategoryCode}|${activeSubcategory}|${sortMode}|${stage}|${columns}|${showAllMarkets}`,
   });
 
   const visibleMarkets = progressive.visibleItems;
@@ -392,7 +386,7 @@ export function MarketsScreen({
           query={query}
           onQueryChange={setQuery}
           categories={categories}
-          activeCategory={category}
+          activeCategory={activeCategoryCode}
           onCategoryChange={(value) => {
             setCategory(value);
             setActiveSubcategory('all');
@@ -413,7 +407,7 @@ export function MarketsScreen({
       </TourTarget>
 
 
-      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} category={category} onOpenMarket={onOpenMarket} />
+      <FeaturedMarketsCarousel markets={markets} featured={featuredMarkets} curated={curatedMarkets} category={activeCategoryCode} onOpenMarket={onOpenMarket} />
 
       {orderedMarkets.length ? (
         <View style={{ gap: theme.spacing.sm, paddingTop: 2 }}>
@@ -424,7 +418,7 @@ export function MarketsScreen({
             </View>
             <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setActiveSubcategory('all'); setStage('all'); setSortMode('activity'); setQuery(''); setDebouncedQuery(''); setShowAllMarkets(true); }} />
           </View>
-          <VadText variant="caption" tone="secondary">{trendingMarkets.length && !showAllMarkets && !debouncedQuery && category === 'All' && stage === 'all' ? 'Ranked from verified trading activity.' : trendingMarkets.length ? 'Live market catalogue.' : 'No published trending ranking is available; showing the live catalogue by recent activity.'}</VadText>
+          <VadText variant="caption" tone="secondary">{trendingMarkets.length && !showAllMarkets && !debouncedQuery && activeCategoryCode === 'All' && stage === 'all' ? 'Ranked from verified trading activity.' : trendingMarkets.length ? 'Live market catalogue.' : 'No published trending ranking is available; showing the live catalogue by recent activity.'}</VadText>
         </View>
       ) : null}
 
