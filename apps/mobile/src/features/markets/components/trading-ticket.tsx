@@ -73,7 +73,7 @@ function RetiredTngnTicket() {
   const theme = useVadTheme();
   return (
     <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
-      <VadText variant="bodyStrong">Test NGN markets are permanently closed</VadText>
+      <VadText variant="bodyStrong">TNGN sandbox retired</VadText>
       <VadText variant="caption" tone="secondary">
         This is a historical sandbox market. It cannot accept new predictions or affect your real NGN wallet. Use a currently open real-NGN market instead.
       </VadText>
