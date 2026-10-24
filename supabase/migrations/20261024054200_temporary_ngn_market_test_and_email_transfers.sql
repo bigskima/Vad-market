@@ -584,6 +584,15 @@ begin
       end if;
 
       if exists (
+        select 1 from payments.intents pi
+        where pi.user_id=v_recipient_id and pi.asset_id=v_asset_id
+          and pi.operation='DEPOSIT'
+          and pi.status in ('SETTLED','SUCCEEDED')
+      ) then
+        raise exception 'The recipient has a historical NGN cash deposit. Test-credit funds cannot be mixed into that wallet; no funds were moved.' using errcode='55000';
+      end if;
+
+      if exists (
         select 1 from public.user_currency_preferences cp
         where cp.user_id=v_recipient_id and not ('NGN'=any(cp.enabled_asset_codes))
       ) then
