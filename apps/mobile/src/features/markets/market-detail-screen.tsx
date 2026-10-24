@@ -13,7 +13,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
-import { getPublishedMarketDetail, type MarketCatalogItem, type PublishedMarketDetail } from '@/services/market-api';
+import { getPublishedMarketDetail, type MarketCatalogItem, type PoolStakeRow, type PublishedMarketDetail } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { FinancialMarketLivePanel, hasLiveFinancialContext } from './components/financial-market-live-panel';
 import { MarketDepthPanel } from './components/market-depth-panel';
@@ -21,7 +21,6 @@ import { TradingTicket } from './components/trading-ticket';
 import { MarketPriceHistoryPanel } from './components/market-price-history-panel';
 import { assetMoney, probability } from './format';
 import { marketStatusLabel } from './market-display-labels';
-import type { PoolStakeRow } from '@/services/market-api';
 
 type DetailTab = 'Overview' | 'Trade' | 'Chart' | 'Discussion' | 'Rules';
 type MarketTiming = ReturnType<typeof getMarketTiming>;
@@ -216,7 +215,7 @@ function MarketStakeSummary({ market, poolStakes }: { market: MarketCatalogItem;
   const totalCommitted = [...byOutcome.values()].reduce((sum, row) => sum + row.amount, 0);
   const totalFees = [...byOutcome.values()].reduce((sum, row) => sum + row.fee, 0);
   const status = active.length
-    ? 'Open'
+    ? marketStatusLabel(active[0]?.market_status)
     : marketStatusLabel(matching[0]?.market_status);
   const title = active.length ? 'Your position in this market' : 'Your market record';
 
