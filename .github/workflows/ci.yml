@@ -26,6 +26,8 @@ jobs:
           deno-version: v2.x
       - name: Type-check automatic Oracle and settlement resolution adapters
         run: deno check --no-lock supabase/functions/oracle-runtime/index.ts
+      - name: Type-check location verification endpoint
+        run: deno check --no-lock supabase/functions/verify-service-location/index.ts
       - name: Type-check authenticated crypto AI draft endpoint
         run: deno check --no-lock supabase/functions/crypto-market-draft/index.ts
       - name: Type-check public financial data and event-discovery adapters
