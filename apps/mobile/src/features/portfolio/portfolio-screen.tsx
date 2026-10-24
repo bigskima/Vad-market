@@ -62,7 +62,7 @@ export function PortfolioScreen({
   settlements: SettlementReceiptRow[];
   marketHistory: MarketHistoryRow[];
   markets: MarketCatalogItem[];
-  sectionErrors?: { positions?: string | null; orders?: string | null; marketHistory?: string | null; settlements?: string | null };
+  sectionErrors?: { positions?: string | null; poolStakes?: string | null; orders?: string | null; marketHistory?: string | null; settlements?: string | null };
   loading?: boolean;
   onRetry: () => void;
   onOpenPosition: (position: PositionRow) => void;
@@ -459,7 +459,12 @@ export function PortfolioScreen({
               {visiblePositions.remainingCount > 0 ? <VadButton label={`Show next ${visiblePositions.nextCount}`} variant="secondary" onPress={visiblePositions.showMore} /> : null}
             </View>
           ) : (
-            <VadEmptyState title="No positions match these filters" body="Adjust the filters or trade a market to see your positions here." />
+            <VadEmptyState
+              title={activePoolStakes.length ? 'No additional exchange positions' : 'No positions match these filters'}
+              body={activePoolStakes.length
+                ? 'Your committed predictions are shown above. Exchange-traded positions will appear here when you hold matched contracts.'
+                : 'Adjust the filters or trade a market to see your positions here.'}
+            />
           )}
         </View>
       ) : null}
