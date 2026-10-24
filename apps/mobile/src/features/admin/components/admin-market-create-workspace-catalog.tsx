@@ -14,6 +14,7 @@ import { AdminSportsFixturePicker } from './admin-sports-fixture-picker';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   createAdminCatalogMarket,
+  createAdminMultiOutcomeMarket,
   getAdminGuidedMarketCatalog,
   type AdminGuidedCatalogCategory,
   type AdminGuidedCatalogMarketType,
@@ -41,6 +42,7 @@ import {
 
 type Step = 1 | 2 | 3;
 type CreationStyle = 'GUIDED' | 'CUSTOM';
+type MarketFormat = 'BINARY' | 'MULTI_OUTCOME';
 type ResultChecking = 'AUTOMATIC' | 'VERIFIED';
 type Prediction = 'HOME_WIN' | 'DRAW' | 'AWAY_WIN';
 type PublicationChoice = 'DRAFT' | 'NOW';
@@ -103,6 +105,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   const [step, setStep] = useState<Step>(1);
   const [creationStyle, setCreationStyle] = useState<CreationStyle>('GUIDED');
+  const [marketFormat, setMarketFormat] = useState<MarketFormat>('BINARY');
+  const [multiOutcomeOptionsText, setMultiOutcomeOptionsText] = useState('');
   const [publicationChoice, setPublicationChoice] = useState<PublicationChoice>('DRAFT');
   const [categoryCode, setCategoryCode] = useState('');
   const [marketTypeCode, setMarketTypeCode] = useState('');
@@ -250,6 +254,14 @@ export function AdminMarketCreateWorkspaceCatalog() {
     () => category?.marketTypes.find((item) => item.code === marketTypeCode) ?? category?.marketTypes[0] ?? null,
     [category, marketTypeCode],
   );
+  const multiOutcomeOptions = useMemo(
+    () => multiOutcomeOptionsText.split(/\\r?\\n/).map((option) => option.trim()).filter(Boolean),
+    [multiOutcomeOptionsText],
+  );
+  const multiOutcomeOptionsValid = multiOutcomeOptions.length >= 2
+    && multiOutcomeOptions.length <= 20
+    && new Set(multiOutcomeOptions.map((option) => option.toLocaleLowerCase())).size === multiOutcomeOptions.length
+    && multiOutcomeOptions.every((option) => option.length <= 80);
 
   const resolvedCountryCode = countryCode || (options?.jurisdictions.length === 1 ? options.jurisdictions[0].countryCode : '');
   const jurisdiction = useMemo(
@@ -265,8 +277,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
       ? 'NGN'
       : availableAssets[0] ?? '';
   const guided = creationStyle === 'GUIDED';
-  const football = guided && marketType?.handler === 'FOOTBALL_MATCH';
-  const cryptoThreshold = guided && marketType?.handler === 'CRYPTO_THRESHOLD';
+  const football = marketFormat === 'BINARY' && guided && marketType?.handler === 'FOOTBALL_MATCH';
+  const cryptoThreshold = marketFormat === 'BINARY' && guided && marketType?.handler === 'CRYPTO_THRESHOLD';
   const automaticFootball = football && resultChecking === 'AUTOMATIC';
   const automaticFootballAvailable = options?.guided.football.automaticProductionAvailable === true;
   const footballCompetitions = options?.guided.football.competitions ?? [];
@@ -322,7 +334,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
     return suggestedFromTemplate(marketType.questionTemplate, details);
   }, [awayTeam, competition, cryptoThreshold, details, football, guided, homeTeam, marketType, prediction, selectedCryptoAsset]);
 
-  const effectiveTitle = !titleEdited && suggestedTitle ? suggestedTitle : title;
+  const effectiveTitle = marketFormat === 'MULTI_OUTCOME'
+    ? title
+    : !titleEdited && suggestedTitle ? suggestedTitle : title;
 
   function clearMarketDetails() {
     sportsDraftRequest.current += 1;
@@ -336,6 +350,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setSourceName('');
     setSourceUrl('');
     setResultCondition('');
+    setMultiOutcomeOptionsText('');
     setCryptoSearch('');
     setCryptoOptions([]);
     setSelectedCryptoAsset(null);
