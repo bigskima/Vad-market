@@ -75,7 +75,7 @@ function RetiredTngnTicket() {
     <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
       <VadText variant="bodyStrong">TNGN sandbox retired</VadText>
       <VadText variant="caption" tone="secondary">
-        This is a historical sandbox market. It cannot accept new predictions or affect your real NGN wallet. Use a currently open real-NGN market instead.
+        This is a historical TNGN record. It cannot accept new predictions or affect your NGN wallet. TNGN and its trading RPCs are disabled. Use a currently OPEN real NGN or supported USDC market instead.
       </VadText>
     </VadCard>
   );
