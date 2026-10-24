@@ -121,7 +121,7 @@ function gatewayError(
 export async function prepareOnchainPrediction(input: {
   walletId: string;
   marketId: string;
-  outcomeCode: 'YES' | 'NO';
+  outcomeCode: string;
   chainCode: string;
   amount: number;
   idempotencyKey: string;
