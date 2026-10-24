@@ -49,7 +49,7 @@ export function FeaturedMarketsCarousel({
       .filter((row): row is { entry: FeaturedMarketRow; market: MarketCatalogItem; source: 'ranked' } => Boolean(row.market)),
   ]
     .filter(({ market }) => market.status === 'OPEN' && market.resolution_status !== 'RESOLVED' && getMarketTiming(market, now).tradingOpen)
-    .filter(({ market }) => category === 'All' || market.category === category)
+    .filter(({ market }) => category === 'All' || market.category === category || market.category_code === category)
     .slice(0, 8);
 
   const marketSignature = liveMarkets.map(({ market }) => market.instrument_public_id).join('|');
