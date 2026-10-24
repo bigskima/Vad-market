@@ -328,7 +328,9 @@ async function freeYahooQuotes(source: Source, query: string): Promise<AssetQuot
         id: definition.symbol,
         symbol: definition.symbol,
         name: definition.name || quote.name,
-        quoteCurrency: source.quoteCurrency || 'USD',
+        quoteCurrency: source.assetClass === 'STOCKS'
+          ? quote.quoteCurrency || source.quoteCurrency || 'USD'
+          : source.quoteCurrency || 'USD',
         exchange: source.assetClass === 'COMMODITIES'
           ? 'Futures contract · delayed, display-only reference'
           : quote.exchange,
