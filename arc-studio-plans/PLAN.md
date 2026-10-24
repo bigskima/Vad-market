@@ -28,13 +28,13 @@ Supabase (PostgreSQL + Auth + RLS + Edge Functions)
 
 VadSettlementV1.sol (contracts/evm/)
   601 lines, Foundry test suite present
-  NOT YET DEPLOYED to any testnet — Phase 2 blocker
+  Supabase currently has an ACTIVE deployment registry row at `0x73EE420e1089861c1e0b767d7AA367736322B2B6` (recorded 2026-09-23); on-chain bytecode and source version still require verification before reuse or redeployment
   Deploy target: Arc Testnet (chain ID 5042002)
 
 Oracle providers
   Table exists, no live adapters yet
-  All 18 categories covered by verified free/public data sources — see Oracle Provider Map below
-  No manual-only resolution: every category has an authoritative automated source
+  Candidate free/public provider sources are documented below; live endpoints, licensing, schema, source authority, and category-specific resolution rules are not yet proven by this plan
+  Do not automatically finalize a market unless approved, market-specific resolution criteria are satisfied by validated evidence; unsupported or ambiguous outcomes must enter review/dispute and use the published void/refund policy
   Admin reviews fetched evidence before on-chain finalization (review ≠ sole source)
 
 Dynamic WaaS wallet
@@ -48,8 +48,8 @@ Dynamic WaaS wallet
 
 | Decision | Choice |
 |---|---|
-| Testnet signer keys | Ephemeral fresh keys generated at deploy time; no real value |
-| Oracle strategy | Fully automated data-driven resolution for all 18 categories — no manual fallback. Each category maps to a verified free/public authoritative source. Admin can review evidence before finalising resolution; admin cannot be the only source of truth. |
+| Testnet signer keys | Reuse existing testnet signer secrets only when their derived addresses match the existing contract's on-chain getters; keep deployer credentials separate and never commit private-key values |
+| Oracle strategy | Automate resolution where a validated primary source and explicit market-specific criteria exist. Cross-market APIs are corroboration, not general truth. Unresolved or disputed events must remain pending or follow the published void/refund policy; all review actions are audited. |
 | Wallet | Dynamic WaaS — social login (Google, Apple), email auth |
 | Build order | Full phased plan in order; Phase 2 first |
 
@@ -58,13 +58,13 @@ Dynamic WaaS wallet
 ## Audit Findings (Phase 1 — complete)
 
 ### Contract
-- `VadSettlementV1.sol` — sound, no architectural changes needed. EIP-712 lock/settle, reentrancy guard, malleable-sig guard, two-step admin transfer, immutable settlement token, non-settlement token recovery only. Ready for testnet deploy.
+- `VadSettlementV1.sol` has useful EIP-712 authorization and settlement protections, but do not label the current source ready for deployment until the 23-test suite has run and the existing Arc Testnet deployment's bytecode, version, token, and signer getters are verified.
 - Foundry test suite (`VadSettlementV1.t.sol`) present and covers happy path. Needs fork test and edge-case extensions.
 - Deploy script (`DeployVadSettlementV1.s.sol`) ready; use `ALLOW_NON_MAINNET_DEPLOY=true` for testnet.
 
 ### Database
 - All `blockchain.*` tables exist (chains, asset_representations, contract_deployments, wallet_connections, transaction_intents, transaction_authorizations, transactions, positions, settlement_entitlements).
-- ARC_TESTNET registered: chain ID 5042002, USDC `0x3600000000000000000000000000000000000000`, RPC `https://rpc.testnet.arc.network`, explorer `https://testnet.arcscan.app`. All DISABLED pending admin activation.
+- Live Supabase currently reports `ARC_TESTNET`, its USDC representation, and a `VAD_SETTLEMENT_V1` registry row as ACTIVE at `0x73EE420e1089861c1e0b767d7AA367736322B2B6`. The record is not proof of deployed bytecode. The stored RPC/explorer URLs are legacy; current Circle Arc docs list `https://rpc.testnet.arc.io` and `https://explorer.testnet.arc.io`. Verify on-chain before any redeployment or activation.
 - Arc Mainnet registered: chain ID 5042, same USDC address. DISABLED pending security review.
 - TNGN correctly retired across migrations 20261023–20261024. Hard-stopped in trading ticket. Do not touch.
 - `onchain-gateway` Edge Function called for prepare_prediction, record_submission, check_intent, fail_intent, prepare_settlement. Wiring exists; Edge Function implementation must exist server-side.
@@ -126,8 +126,8 @@ Every category resolves from an authoritative automated source. The adapter fetc
 
 ### Phase 2 — Foundation and Arc Testnet Verification
 1. `contracts/evm/README.md` — add testnet deployment record section (address, tx hash, block)
-2. `supabase/migrations/YYYYMMDD_arc_testnet_verify_config.sql` — verify/correct chain ID, RPC, explorer, confirmation_target from current Circle/Arc docs
-3. `supabase/migrations/YYYYMMDD_arc_testnet_activation.sql` — activate ARC_TESTNET chain, USDC token rep, NG jurisdiction route, contract_deployments row, instrument venue after deploy
+2. Review and apply the existing Arc Testnet config-correction migration only after verifying the current official RPC/explorer and migration history.
+3. Do not add an activation migration while the live database already has an ACTIVE deployment row. If on-chain verification requires a new deployment, draft a separate schema-correct migration using the verified contract address and transaction evidence.
 4. `apps/mobile/src/services/usdc-wallet-api.ts` — extend to expose USDC balance from Arc Testnet RPC
 5. `apps/mobile/.env.example` — document all required env vars including `EXPO_PUBLIC_DYNAMIC_ENVIRONMENT_ID`
 
