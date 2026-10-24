@@ -64,6 +64,22 @@ type CreateCatalogMarketInput = {
   publishNow?: boolean;
 };
 
+export type CreateMultiOutcomeMarketInput = {
+  title: string;
+  description: string;
+  category: string;
+  outcomes: string[];
+  resolutionInstructions: string;
+  sourceName: string;
+  sourceUrl?: string;
+  opensAt: string;
+  closesAt: string;
+  resolvesAfter: string;
+  countryCode: string;
+  assetCode: string;
+  publishNow?: boolean;
+};
+
 function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback: string) {
   if (error) throw userFacingError(error, 'admin', fallback);
 }
@@ -187,6 +203,26 @@ export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) 
     p_publish_now: input.publishNow === true,
   });
   fail(error, 'We could not create this guided VAD market right now.');
+  return (data ?? {}) as Record<string, unknown>;
+}
+
+export async function createAdminMultiOutcomeMarket(input: CreateMultiOutcomeMarketInput) {
+  const { data, error } = await supabase.rpc('admin_create_multi_outcome_market_v1', {
+    p_title: input.title.trim(),
+    p_description: input.description.trim(),
+    p_category: input.category.trim(),
+    p_outcomes: input.outcomes.map((label) => label.trim()),
+    p_resolution_instructions: input.resolutionInstructions.trim(),
+    p_source_name: input.sourceName.trim(),
+    p_source_url: input.sourceUrl?.trim() || null,
+    p_opens_at: input.opensAt,
+    p_closes_at: input.closesAt,
+    p_resolves_after: input.resolvesAfter,
+    p_country_code: input.countryCode,
+    p_asset_code: input.assetCode,
+    p_publish_now: input.publishNow === true,
+  });
+  fail(error, 'We could not create this multiple-outcome market right now.');
   return (data ?? {}) as Record<string, unknown>;
 }
 
