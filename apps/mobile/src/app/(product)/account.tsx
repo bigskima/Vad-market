@@ -106,10 +106,7 @@ export default function AccountScreen() {
   }, [userId]);
 
   useEffect(() => {
-    if (!userId) {
-      setTestModeStatus(null);
-      return;
-    }
+    if (!userId) return;
     let ignore = false;
     void getTemporaryNgnMarketTestingStatus()
       .then((status) => { if (!ignore) setTestModeStatus(status); })
@@ -118,7 +115,7 @@ export default function AccountScreen() {
           setTestModeStatus(null);
           setTestModeError(reason instanceof Error ? reason.message : 'Temporary NGN market-testing status could not be loaded.');
         }
-      })
+      });
     return () => { ignore = true; };
   }, [userId]);
 
