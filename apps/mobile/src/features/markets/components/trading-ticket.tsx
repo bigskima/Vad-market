@@ -902,7 +902,7 @@ function OutcomeChoice({ active, label, title, value, tone, disabled = false, on
     <Pressable accessibilityRole="radio" accessibilityState={{ selected: active, disabled }} accessibilityLabel={`${label}: ${title}, current share ${value}`} disabled={disabled} onPress={onPress} style={({ pressed }) => ({ flex: 1, minHeight: density.compact ? 66 : 76, borderWidth: active ? 1.5 : 1, borderColor: active ? color : theme.colors.border, backgroundColor: active ? background : theme.colors.surface, borderRadius: theme.radius.md, padding: density.compact ? 8 : 9, justifyContent: 'center', gap: 4, opacity: disabled ? 0.5 : pressed ? 0.74 : 1 })}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <VadChip label={label} tone={tone} />
-        <VadText variant="bodyStrong" tone={tone} style={{ fontSize: 14, lineHeight: 17 }}>{value}</VadText>
+        <VadText variant="bodyStrong" tone={tone === 'neutral' ? 'brand' : tone} style={{ fontSize: 14, lineHeight: 17 }}>{value}</VadText>
       </View>
       <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: 12, lineHeight: 15 }}>{title}</VadText>
     </Pressable>
