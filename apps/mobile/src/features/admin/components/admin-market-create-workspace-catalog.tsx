@@ -576,7 +576,21 @@ export function AdminMarketCreateWorkspaceCatalog() {
   async function continueFromMarket() {
     setError(null);
     if (!category) return setError('Choose a market category.');
-    if (!effectiveTitle.trim()) return setError('Enter a clear YES/NO market question before continuing.');
+    if (!effectiveTitle.trim()) return setError('Enter a clear market question before continuing.');
+    if (marketFormat === 'MULTI_OUTCOME') {
+      if (multiOutcomeOptions.length < 2) return setError('Add at least two outcome choices, one per line.');
+      if (multiOutcomeOptions.length > 20) return setError('A market can have at most 20 outcome choices.');
+      if (multiOutcomeOptions.some((option) => option.length > 80)) return setError('Each outcome choice must be 80 characters or fewer.');
+      if (new Set(multiOutcomeOptions.map((option) => option.toLocaleLowerCase())).size !== multiOutcomeOptions.length) {
+        return setError('Outcome choices must be unique. Remove duplicate names and try again.');
+      }
+      if (resultCondition.trim().length < 10) return setError('Describe how VAD should determine the winning option.');
+      if (!sourceName.trim()) return setError('Add the authoritative result source for this market.');
+      if (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim())) return setError('The source link must start with https://.');
+      setLiquidityModel('POOL');
+      setStep(2);
+      return;
+    }
     if (!guided) return setStep(2);
     if (!marketType) return setError('Choose the kind of event you are creating.');
 
@@ -670,6 +684,16 @@ export function AdminMarketCreateWorkspaceCatalog() {
       setStep(1);
       return;
     }
+    if (marketFormat === 'MULTI_OUTCOME' && (
+      !multiOutcomeOptionsValid
+      || resultCondition.trim().length < 10
+      || !sourceName.trim()
+      || (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim()))
+    )) {
+      setStep(1);
+      setError('Review the market question, 2–20 unique choices, resolution instructions and official source.');
+      return;
+    }
     if (cryptoThreshold && (!selectedCryptoAsset || !cryptoAssetCheck?.supported || cryptoAssetCheck.coinGeckoId !== selectedCryptoAsset.id || cryptoAssetCheckLoading)) {
       setStep(1);
       setError(cryptoAssetCheck?.reason ?? 'Select a crypto asset supported by both keyless historical-price sources before creating the market.');
@@ -706,7 +730,16 @@ export function AdminMarketCreateWorkspaceCatalog() {
         publishNow: publicationChoice === 'NOW',
       };
       let result: Record<string, unknown>;
-      if (!guided) {
+      if (marketFormat === 'MULTI_OUTCOME') {
+        result = await createAdminMultiOutcomeMarket({
+          ...common,
+          category: category.name,
+          outcomes: multiOutcomeOptions,
+          resolutionInstructions: resultCondition,
+          sourceName,
+          sourceUrl,
+        });
+      } else if (!guided) {
         result = await createAdminCustomMarket({ ...common, category: category.name });
       } else if (football) {
         result = await createAdminGuidedMarket({
