@@ -104,7 +104,6 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
   useEffect(() => {
     let active = true;
     if (market.asset_code !== 'NGN') {
-      setTemporaryNgnCredit(null);
       return () => { active = false; };
     }
     void getTemporaryNgnTestCreditStatus()
@@ -113,6 +112,9 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
     return () => { active = false; };
   }, [market.asset_code]);
 
+  const activeTemporaryNgnCredit = market.asset_code === 'NGN' && temporaryNgnCredit?.active
+    ? temporaryNgnCredit
+    : null;
   const tradeReady = canTrade && !capabilityLoading;
   const amountValue = Number(amount);
   const inputValid = amount.trim().length > 0 && Number.isFinite(amountValue) && amountValue > 0;
@@ -307,7 +309,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
     <View style={{ gap: density.compact ? 10 : 12 }}>
       <TradeStepRail step={step} secondLabel="Stake" />
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
-      {temporaryNgnCredit?.active ? (
+      {activeTemporaryNgnCredit ? (
         <InlineMessage
           tone="warning"
           title="Temporary NGN test credit active"
