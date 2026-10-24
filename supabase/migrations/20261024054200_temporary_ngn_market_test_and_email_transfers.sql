@@ -416,6 +416,7 @@ declare
   v_journal_public_id uuid;
   v_idempotency text;
   v_email text:=lower(trim(coalesce(p_recipient_email,'')));
+  v_sender_email text;
   v_sender_test_grant public.temporary_ngn_test_credit_grants%rowtype;
   v_recipient_test_grant public.temporary_ngn_test_credit_grants%rowtype;
   v_recipient_test_grant_created boolean:=false;
@@ -449,6 +450,9 @@ begin
   if v_recipient_id=v_sender_id then
     raise exception 'Choose another VAD account. You cannot transfer assets to yourself.' using errcode='22023';
   end if;
+
+  select lower(u.email) into v_sender_email
+  from auth.users u where u.id=v_sender_id;
 
   select ua.status,case when upper(trim(coalesce(ua.country_code,''))) in ('NG','NGA','NIGERIA') then 'NG' else upper(trim(coalesce(ua.country_code,''))) end
     into v_sender_status,v_sender_country
@@ -485,6 +489,21 @@ begin
   if v_asset_code='NGN' then
     if not coalesce((select gate.allowed from public.can_access_ngn_services() gate limit 1),false) then
       raise exception 'NGN transfers require current location verification in Nigeria.' using errcode='42501';
+    end if;
+    if not exists (
+      select 1 from public.user_location_verifications lv
+      where lv.user_id=v_recipient_id
+        and lv.decision='VERIFIED'
+        and lv.reason_code='ALLOWED'
+        and lv.device_country_code='NG'
+        and lv.ip_country_code='NG'
+        and lv.vpn_detected=false
+        and lv.proxy_detected=false
+        and lv.tor_detected=false
+        and lv.hosting_detected=false
+        and lv.expires_at>statement_timestamp()
+    ) then
+      raise exception 'The recipient must complete current Nigeria location verification before receiving NGN.' using errcode='42501';
     end if;
     if v_sender_country<>'NG' or v_recipient_country<>'NG' then
       raise exception 'NGN transfers are only available between eligible Nigerian VAD accounts.' using errcode='42501';
