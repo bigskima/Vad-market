@@ -221,6 +221,8 @@ declare
   v_legacy_balance numeric(38,18):=0;
   v_refund_total numeric(38,18):=0;
   v_legacy_account public.demo_accounts%rowtype;
+  v_enabled_codes text[];
+  v_preferred_code text;
 begin
   if v_user_id is null then raise exception 'Authentication required' using errcode='28000'; end if;
   if p_enabled is null then raise exception 'Choose whether TNGN market testing should be enabled.' using errcode='22023'; end if;
@@ -289,14 +291,32 @@ begin
       where user_id=v_user_id;
     end if;
 
+    select policy.enabled_asset_codes,policy.country_code
+      into v_enabled_codes,v_country
+    from public.get_my_currency_policy() policy limit 1;
+    v_enabled_codes:=coalesce(v_enabled_codes,array[]::text[]);
+    if not ('TNGN'=any(v_enabled_codes)) then
+      v_enabled_codes:=array_append(v_enabled_codes,'TNGN');
+    end if;
+    select preference.preferred_asset_code into v_preferred_code
+      from public.user_currency_preferences preference where preference.user_id=v_user_id;
+    if v_preferred_code is null or not(v_preferred_code=any(v_enabled_codes)) then
+      v_preferred_code:=case when 'NGN'=any(v_enabled_codes) then 'NGN' else v_enabled_codes[1] end;
+    end if;
     insert into public.user_currency_preferences(user_id,enabled_asset_codes,preferred_asset_code,updated_at)
-    values(v_user_id,array['TNGN']::text[], 'TNGN',statement_timestamp())
+    values(v_user_id,v_enabled_codes,v_preferred_code,statement_timestamp())
     on conflict(user_id) do update set
       enabled_asset_codes=case when 'TNGN'=any(public.user_currency_preferences.enabled_asset_codes)
         then public.user_currency_preferences.enabled_asset_codes
         else array_append(public.user_currency_preferences.enabled_asset_codes,'TNGN') end,
-      preferred_asset_code=case when public.user_currency_preferences.preferred_asset_code is null
-        then 'TNGN' else public.user_currency_preferences.preferred_asset_code end,
+      preferred_asset_code=case
+        when public.user_currency_preferences.preferred_asset_code=any(
+          case when 'TNGN'=any(public.user_currency_preferences.enabled_asset_codes)
+          then public.user_currency_preferences.enabled_asset_codes
+          else array_append(public.user_currency_preferences.enabled_asset_codes,'TNGN') end
+        ) then public.user_currency_preferences.preferred_asset_code
+        else excluded.preferred_asset_code
+      end,
       updated_at=statement_timestamp();
   end if;
 
@@ -324,8 +344,6 @@ revoke all on function public.get_demo_mode_status() from public,anon,authentica
 revoke all on function public.admin_demo_markets() from public,anon,authenticated,service_role;
 revoke all on function public.admin_create_demo_market(text,text,jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.admin_resolve_demo_market(text,text) from public,anon,authenticated,service_role;
-revoke all on function public.admin_revoke_temporary_ngn_test_credit(uuid,text) from public,anon,authenticated,service_role;
-revoke all on function public.admin_grant_temporary_ngn_test_credit(text,numeric,text) from public,anon,authenticated,service_role;
 
 grant execute on function public.get_my_currency_policy() to authenticated;
 grant execute on function public.set_my_currency_preferences(text[],text) to authenticated;
