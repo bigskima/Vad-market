@@ -54,6 +54,7 @@ type AssetQuote = {
   marketOpen: boolean | null; sourceUpdatedAt: string | null; exchange: string | null;
   source: string; sourceCode: string;
   imageUrl?: string | null;
+  sourceUrl?: string | null;
   secondaryImageUrl?: string | null;
   visualKind?: 'logo' | 'flag-pair' | 'series-chart' | 'symbol';
 };
@@ -343,8 +344,9 @@ async function freeForexQuotes(source: Source, query: string): Promise<AssetQuot
       marketOpen: false,
       sourceUpdatedAt: updatedAt,
       exchange: 'Daily reference rate · not an executable trading quote',
-      source: 'ExchangeRate-API open reference rates',
+      source: 'ExchangeRate-API Open Access reference rates',
       sourceCode: 'EXCHANGE_RATE_API_OPEN',
+      sourceUrl: 'https://www.exchangerate-api.com/',
     };
   };
 
