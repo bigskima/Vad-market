@@ -1,18 +1,16 @@
 # VAD Market Oracle Provider Map
 
-**Policy:** Zero manual resolution. Every prediction market category is resolved
-exclusively by automated data sources. Admin confirms the fetched evidence hash;
-admin cannot supply or alter the outcome value.
+**Status:** Candidate provider inventory, not proof of production-ready adapters. Each API endpoint, current access policy, commercial-use terms, response schema, rate limits, timestamp semantics, and category-specific resolution logic must be tested before the source is approved.
 
-Last verified: October 24, 2026.
+**Resolution policy:** Prefer an authoritative primary source and retain evidence URL, fetch time, normalized value, and evidence hash. Kalshi/Polymarket data may corroborate a result but is not automatically authoritative truth for an unrelated real-world event. Do not finalize when the evidence is missing, contradictory, stale, or fails the published market criteria. Keep the market pending for review/dispute, then follow the pre-published void/refund rules. Record every privileged review action in the audit trail.
+
+Provider inventory reviewed: October 24, 2026; live endpoint validation remains pending.
 
 ---
 
 ## Cross-reference layer (all categories)
 
-These two sources are queried as secondary evidence for every market,
-regardless of category. A market is resolvable only when the primary source
-and at least one cross-reference agree.
+These sources can be queried as secondary evidence when a genuinely comparable contract/event exists. They will not have a matching market for every event, and their status must not override the named authoritative source or the market's published resolution rules.
 
 | Source | Access | What it provides |
 |--------|--------|-----------------|
