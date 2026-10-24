@@ -34,6 +34,7 @@ import {
   type TradeQuote,
 } from '@/services/market-api';
 import { assetMoney, probability } from '../format';
+import { getTemporaryNgnTestCreditStatus, type TemporaryNgnTestCreditStatus } from '@/services/temporary-ngn-test-credit-api';
 
 const SHARE_PRESETS = ['25', '50', '100', '250'] as const;
 const SIDES = [
@@ -98,6 +99,19 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
   const [selectedChainCode, setSelectedChainCode] = useState('');
   const [preparedUsdc, setPreparedUsdc] = useState<PreparedUsdcPrediction | null>(null);
   const [onchainResult, setOnchainResult] = useState<SubmittedUsdcPrediction | null>(null);
+  const [temporaryNgnCredit, setTemporaryNgnCredit] = useState<TemporaryNgnTestCreditStatus | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (market.asset_code !== 'NGN') {
+      setTemporaryNgnCredit(null);
+      return () => { active = false; };
+    }
+    void getTemporaryNgnTestCreditStatus()
+      .then((status) => { if (active) setTemporaryNgnCredit(status?.active ? status : null); })
+      .catch(() => { if (active) setTemporaryNgnCredit(null); });
+    return () => { active = false; };
+  }, [market.asset_code]);
 
   const tradeReady = canTrade && !capabilityLoading;
   const amountValue = Number(amount);
@@ -293,6 +307,13 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
     <View style={{ gap: density.compact ? 10 : 12 }}>
       <TradeStepRail step={step} secondLabel="Stake" />
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
+      {temporaryNgnCredit?.active ? (
+        <InlineMessage
+          tone="warning"
+          title="Temporary NGN test credit active"
+          body="This NGN balance is synthetic testing credit, not a cash deposit. This prediction uses the normal NGN market order and settlement pipeline. Deposits, withdrawals and transfers are blocked until this credit is revoked after all NGN orders and positions settle."
+        />
+      ) : null}
 
       {step === 'prediction' ? (
         <VadCard variant="raised" style={{ gap: 9, padding: 12 }}>
