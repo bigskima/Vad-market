@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 
 export type MarketImageResult = {
   mediaUrl: string;
-  source: 'publisher' | 'ai';
+  source: 'publisher' | 'ai' | 'existing';
   sourceName?: string;
   sourceUrl?: string;
   articleTitle?: string;
@@ -64,8 +64,16 @@ async function findPublisherImage(instrumentPublicId: string): Promise<MarketIma
     const { data, error } = await supabase.functions.invoke('market-source-image', {
       body: { instrumentId: instrumentPublicId },
     });
-    const imageUrl = typeof data?.imageUrl === 'string' ? data.imageUrl.trim() : '';
-    if (error || data?.ok !== true || !/^https:\/\//i.test(imageUrl)) return null;
+    if (error || data?.ok !== true) return null;
+    const existingPath = typeof data.mediaPath === 'string' ? data.mediaPath.trim() : '';
+    if (data.hasExistingMedia === true && existingPath) {
+      return {
+        mediaUrl: existingPath,
+        source: data.source === 'existing' ? 'existing' : 'ai',
+      };
+    }
+    const imageUrl = typeof data.imageUrl === 'string' ? data.imageUrl.trim() : '';
+    if (!/^https:\/\//i.test(imageUrl)) return null;
     return {
       mediaUrl: imageUrl,
       source: 'publisher',
