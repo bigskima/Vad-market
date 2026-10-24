@@ -17,6 +17,20 @@ const STOCKS_BROWSE_FALLBACK = [
   { symbol: 'TSLA', name: 'Tesla' },
   { symbol: 'AVGO', name: 'Broadcom' },
 ];
+const COMMODITIES_BROWSE_FALLBACK = [
+  { symbol: 'GC=F', name: 'Gold Futures' },
+  { symbol: 'SI=F', name: 'Silver Futures' },
+  { symbol: 'CL=F', name: 'WTI Crude Oil' },
+  { symbol: 'BZ=F', name: 'Brent Crude Oil' },
+  { symbol: 'NG=F', name: 'Natural Gas Futures' },
+  { symbol: 'HG=F', name: 'Copper Futures' },
+  { symbol: 'ZC=F', name: 'Corn Futures' },
+  { symbol: 'ZS=F', name: 'Soybean Futures' },
+  { symbol: 'ZW=F', name: 'Wheat Futures' },
+  { symbol: 'KC=F', name: 'Coffee Futures' },
+  { symbol: 'SB=F', name: 'Sugar Futures' },
+  { symbol: 'PL=F', name: 'Platinum Futures' },
+];
 const FX_BROWSE_PAIRS = [
   ['EUR/USD', 'Euro / US Dollar'], ['GBP/USD', 'British Pound / US Dollar'],
   ['USD/JPY', 'US Dollar / Japanese Yen'], ['USD/CHF', 'US Dollar / Swiss Franc'],
@@ -230,6 +244,8 @@ function yahooCommodityTicker(symbol: string) {
     'COPPER': 'HG=F', 'HG=F': 'HG=F', 'CORN': 'ZC=F', 'ZC=F': 'ZC=F',
     'SOYBEANS': 'ZS=F', 'ZS=F': 'ZS=F', 'WHEAT': 'ZW=F', 'ZW=F': 'ZW=F',
     'COFFEE': 'KC=F', 'KC=F': 'KC=F',
+    'SUGAR': 'SB=F', 'SB=F': 'SB=F', 'PLATINUM': 'PL=F', 'PL=F': 'PL=F',
+    'PALLADIUM': 'PA=F', 'PA=F': 'PA=F',
   };
   return aliases[normalized] ?? (/^[A-Z0-9^=._-]{1,20}$/.test(normalized) ? normalized : null);
 }
@@ -313,7 +329,7 @@ async function freeYahooQuotes(source: Source, query: string): Promise<AssetQuot
       const ticker = yahooCommodityTicker(query);
       if (ticker) definitions = [{ symbol: ticker, name: query.trim() }];
     }
-    if (!query.trim()) definitions = browseSymbols(source).slice(0, 6);
+    if (!query.trim()) definitions = COMMODITIES_BROWSE_FALLBACK;
   } else if (source.assetClass === 'STOCKS' && query.trim() && definitions.length === 0 && /^[A-Z0-9^=._-]{1,10}$/i.test(query.trim())) {
     definitions = [{ symbol: query.trim().toUpperCase(), name: query.trim().toUpperCase() }];
   }
@@ -499,7 +515,7 @@ async function freeFredQuotes(source: Source, query: string): Promise<AssetQuote
   const featured = featuredFredSeries(source);
   let definitions: JsonRecord[];
   if (!query.trim()) {
-    definitions = featured.slice(0, 8);
+    definitions = featured.slice(0, 20);
   } else {
     definitions = featured.filter((item) => textValue(item.id).toLowerCase().includes(query.toLowerCase())
       || textValue(item.title).toLowerCase().includes(query.toLowerCase()));
@@ -509,13 +525,17 @@ async function freeFredQuotes(source: Source, query: string): Promise<AssetQuote
     definitions = definitions.slice(0, 8);
   }
   const results: AssetQuote[] = [];
-  for (const series of definitions) {
-    try {
-      const quote = await freeFredCsvQuote(source, series);
-      if (quote) results.push(quote);
-    } catch (error) {
-      console.warn('Free FRED public CSV unavailable for ' + textValue(series.id) + ': ' + (error instanceof Error ? error.message : 'request failed'));
-    }
+  for (let offset = 0; offset < definitions.length; offset += 4) {
+    const batch = definitions.slice(offset, offset + 4);
+    const batchResults = await Promise.all(batch.map(async (series): Promise<AssetQuote | null> => {
+      try {
+        return await freeFredCsvQuote(source, series);
+      } catch (error) {
+        console.warn('Free FRED public CSV unavailable for ' + textValue(series.id) + ': ' + (error instanceof Error ? error.message : 'request failed'));
+        return null;
+      }
+    }));
+    results.push(...batchResults.filter((item): item is AssetQuote => item !== null));
   }
   return results;
 }
@@ -634,8 +654,7 @@ async function fredQuotes(source: Source, query: string, apiKey: string): Promis
   const origin = safeEndpoint(source);
   let rows: JsonRecord[] = [];
   if (!query.trim()) {
-    const featured = source.providerMetadata.featured_series;
-    rows = Array.isArray(featured) ? featured.filter(isRecord).slice(0, 6) : [];
+    rows = featuredFredSeries(source).slice(0, 20);
   } else {
     const searchUrl = new URL('/fred/series/search', origin);
     searchUrl.searchParams.set('search_text', query);
@@ -650,28 +669,34 @@ async function fredQuotes(source: Source, query: string, apiKey: string): Promis
     rows = Array.isArray(payload.seriess) ? payload.seriess.filter(isRecord) : [];
   }
   const items: AssetQuote[] = [];
-  for (const row of rows.slice(0, 3)) {
-    const id = textValue(row.id, 80);
-    if (!id) continue;
-    const observationUrl = new URL('/fred/series/observations', origin);
-    observationUrl.searchParams.set('series_id', id);
-    observationUrl.searchParams.set('api_key', apiKey);
-    observationUrl.searchParams.set('file_type', 'json');
-    observationUrl.searchParams.set('sort_order', 'desc');
-    observationUrl.searchParams.set('limit', '1');
-    const observationPayload = await requestJson(observationUrl).catch(() => null);
-    const observations = isRecord(observationPayload) && Array.isArray(observationPayload.observations)
-      ? observationPayload.observations.filter(isRecord) : [];
-    const latest = observations[0] ?? {};
-    items.push({
-      id, symbol: id, name: textValue(row.title, 180) || id,
-      assetClass: 'ECONOMICS', quoteCurrency: 'index',
-      currentPrice: numberValue(latest.value), change24hPercent: null,
-      open: null, high: null, low: null, volume: null, marketOpen: null,
-      sourceUpdatedAt: dateValue(latest.date),
-      exchange: [textValue(row.units, 80), textValue(row.frequency, 100)].filter(Boolean).join(' · ') || null,
-      source: source.name, sourceCode: source.code,
-    });
+  // Keep a broad default economy catalogue without serially waiting on every
+  // individual observation request.
+  for (let offset = 0; offset < rows.length; offset += 4) {
+    const batch = rows.slice(offset, offset + 4);
+    const batchItems = await Promise.all(batch.map(async (row): Promise<AssetQuote | null> => {
+      const id = textValue(row.id, 80);
+      if (!id) return null;
+      const observationUrl = new URL('/fred/series/observations', origin);
+      observationUrl.searchParams.set('series_id', id);
+      observationUrl.searchParams.set('api_key', apiKey);
+      observationUrl.searchParams.set('file_type', 'json');
+      observationUrl.searchParams.set('sort_order', 'desc');
+      observationUrl.searchParams.set('limit', '1');
+      const observationPayload = await requestJson(observationUrl).catch(() => null);
+      const observations = isRecord(observationPayload) && Array.isArray(observationPayload.observations)
+        ? observationPayload.observations.filter(isRecord) : [];
+      const latest = observations[0] ?? {};
+      return {
+        id, symbol: id, name: textValue(row.title, 180) || id,
+        assetClass: 'ECONOMICS', quoteCurrency: 'index',
+        currentPrice: numberValue(latest.value), change24hPercent: null,
+        open: null, high: null, low: null, volume: null, marketOpen: null,
+        sourceUpdatedAt: dateValue(latest.date),
+        exchange: [textValue(row.units, 80), textValue(row.frequency, 100)].filter(Boolean).join(' · ') || null,
+        source: source.name, sourceCode: source.code,
+      };
+    }));
+    items.push(...batchItems.filter((item): item is AssetQuote => item !== null));
   }
   return items;
 }
@@ -770,11 +795,13 @@ Deno.serve(async (req) => {
 
     const requestCost = useFreeFallback && assetClass === 'STOCKS'
       ? (query.length === 0 ? 17 : 9)
-      : useFreeFallback && assetClass === 'ECONOMICS'
-        ? 8
-        : source.adapterCode === 'FRED_SERIES'
-          ? (query.length === 0 ? Math.max(1, Math.min(8, Array.isArray(source.providerMetadata.featured_series) ? source.providerMetadata.featured_series.length : 4)) : 4)
-          : (query.length === 0 ? Math.max(1, Math.min(8, browseSymbols(source).length)) : 5);
+      : useFreeFallback && assetClass === 'COMMODITIES'
+        ? (query.length === 0 ? 13 : 5)
+        : useFreeFallback && assetClass === 'ECONOMICS'
+          ? (query.length === 0 ? 20 : 8)
+          : source.adapterCode === 'FRED_SERIES'
+            ? (query.length === 0 ? 20 : 4)
+            : (query.length === 0 ? Math.max(1, Math.min(8, browseSymbols(source).length)) : 5);
     if (useFreeFallback && !['STOCKS', 'COMMODITIES', 'FOREX', 'ECONOMICS'].includes(assetClass)) {
       return json({
         error: 'The configured provider credential is missing.',
