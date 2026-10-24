@@ -31,3 +31,67 @@ Implement user-approved UI/UX designs in the existing VAD Market application. Th
 
 ## Completion report
 Report: base branch and feature branch; changed files; user-visible changes; tests/builds actually run and their results; preview/PR links; known limitations; and anything awaiting user approval.
+
+---
+
+# Arc Studio Implementation — VAD Market Phase 2
+
+## Implementation plan
+Saved at: arc-studio-plans/PLAN.md
+
+## Arc Testnet configuration (verified 2026-10-24 from https://docs.arc.io/arc/references/connect-to-arc.md)
+| Field | Value |
+|---|---|
+| Chain ID | 5042002 |
+| RPC | https://rpc.testnet.arc.io |
+| Explorer | https://explorer.testnet.arc.io |
+| USDC address | 0x3600000000000000000000000000000000000000 |
+| USDC ERC-20 decimals | 6 |
+| USDC native (gas) decimals | 18 |
+| Finality | Sub-second (confirmation_target = 1) |
+| maxFeePerGas floor | 20 Gwei |
+| Toolchain | arc-forge (Arc Foundry fork — NOT standard forge) |
+
+## Arc Mainnet configuration (verified 2026-10-24)
+| Field | Value |
+|---|---|
+| Chain ID | 5042 |
+| RPC | https://rpc.mainnet.arc.io |
+| Explorer | https://explorer.arc.io |
+| USDC address | 0x3600000000000000000000000000000000000000 |
+
+## Ephemeral testnet keypairs (TESTNET ONLY — no real value)
+| Role | Address |
+|---|---|
+| Deployer / Admin | 0x52dAe9a2ae632Df8b4f5db1C7D2FE1A9e45992D2 |
+| Quote Signer | 0x1394c9c507f5640953EB03bBf5DFA8d11F7f634b |
+| Settlement Signer | 0xe732881D5b561EA8B70A5B5e65c4ace10c757F3a |
+| Resolver | 0xE98598caE77D7D6e73470f77D509E155B0C780Cd |
+| Treasury | 0x9a85eCc03742F34b184528AC7150A66D2B8cD161 |
+
+Private keys are in contracts/evm/deploy/testnet-keys.md (NEVER commit actual private key values; that file documents the process and addresses only).
+Create a local .env.testnet (gitignored) with the private keys before deploying.
+
+## VadSettlementV1 deployment
+- Status: NOT YET DEPLOYED (Phase 2 Step 3 — awaiting arc-forge install + faucet funding)
+- Deploy script: contracts/evm/script/DeployVadSettlementV1.s.sol
+- Install arc-forge: contracts/evm/deploy/install-arc-foundry.sh
+- Deploy instructions: contracts/evm/deploy/testnet-keys.md
+- Contract address: TBD — update this record after deploy
+
+## Migrations applied / pending
+| Migration | Status | Notes |
+|---|---|---|
+| 20261024100000_arc_testnet_config_correction.sql | PENDING | Corrects RPC and explorer URLs |
+| 20261024110000_arc_testnet_activation.sql | PENDING | Apply after deploy; replace contract address placeholder |
+
+## CRITICAL: arc-forge required
+Standard `forge` cannot reproduce Arc-specific behavior (USDC native gas, EIP-7708 Transfer events, blocklist enforcement).
+Use `arc-forge` for all deployment and fork testing. Install via contracts/evm/deploy/install-arc-foundry.sh.
+
+## Key Arc EVM differences to remember
+- USDC is the native gas token (same balance, two views: native=18 decimals, ERC-20=6 decimals)
+- VadSettlementV1 uses ERC-20 transferFrom/transfer → always 6 decimal amounts ✓
+- Sub-second finality → confirmation_target = 1 in DB ✓
+- 20 Gwei maxFeePerGas floor → gas estimation must use at least this value
+- No WETH wrapper needed — USDC ERC-20 interface is built in at 0x3600...0000

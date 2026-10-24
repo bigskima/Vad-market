@@ -469,4 +469,320 @@ contract VadSettlementV1Test {
     function _assertEq(bytes32 actual, bytes32 expected, string memory reason) private pure {
         require(actual == expected, reason);
     }
+
+    // -------------------------------------------------------------------------
+    // Security: wrong signer
+    // -------------------------------------------------------------------------
+
+    function testWrongLockSignerRejected() public {
+        VadSettlementV1.LockAuthorization memory auth = _lockAuthorization(
+            POSITION, 100_000_000, 0, 0
+        );
+        bytes32 digest = settlement.lockAuthorizationDigest(auth);
+        // Sign with settlement signer key instead of quote signer key
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(SETTLEMENT_SIGNER_KEY, digest);
+        bytes memory badSig = abi.encodePacked(r, s, v);
+
+        vm.expectRevert(VadSettlementV1.InvalidAuthorizationSignature.selector);
+        vm.prank(user);
+        settlement.lockPosition(auth, badSig);
+    }
+
+    function testWrongSettlementSignerRejected() public {
+        VadSettlementV1.LockAuthorization memory lockAuth = _lockAuthorization(
+            POSITION, 100_000_000, 0, 0
+        );
+        bytes memory lockSig = _signLock(lockAuth);
+        vm.prank(user);
+        settlement.lockPosition(lockAuth, lockSig);
+
+        vm.prank(resolver);
+        bytes32 resolvedHash = settlement.resolveMarket(MARKET, YES, false, keccak256("ev"));
+
+        VadSettlementV1.SettlementAuthorization memory settleAuth =
+            VadSettlementV1.SettlementAuthorization({
+                authorizationId: keccak256("wrong-signer-settle"),
+                positionId: POSITION,
+                marketId: MARKET,
+                user: user,
+                grossPayout: 100_000_000,
+                settlementFeeAmount: 0,
+                settlementFeePolicyVersion: 0,
+                resolutionHash: resolvedHash,
+                deadline: block.timestamp + 1 hours
+            });
+
+        // Sign with quote signer key instead of settlement signer key
+        bytes32 digest = settlement.settlementAuthorizationDigest(settleAuth);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(QUOTE_SIGNER_KEY, digest);
+        bytes memory badSig = abi.encodePacked(r, s, v);
+
+        vm.expectRevert(VadSettlementV1.InvalidAuthorizationSignature.selector);
+        vm.prank(user);
+        settlement.settlePosition(settleAuth, badSig);
+    }
+
+    // -------------------------------------------------------------------------
+    // Security: wrong resolution hash
+    // -------------------------------------------------------------------------
+
+    function testWrongResolutionHashRejected() public {
+        VadSettlementV1.LockAuthorization memory lockAuth = _lockAuthorization(
+            POSITION, 100_000_000, 0, 0
+        );
+        bytes memory lockSig = _signLock(lockAuth);
+        vm.prank(user);
+        settlement.lockPosition(lockAuth, lockSig);
+
+        vm.prank(resolver);
+        settlement.resolveMarket(MARKET, YES, false, keccak256("real-evidence"));
+
+        bytes32 fakeHash = keccak256("this-is-not-the-real-resolution-hash");
+
+        VadSettlementV1.SettlementAuthorization memory settleAuth =
+            VadSettlementV1.SettlementAuthorization({
+                authorizationId: keccak256("wrong-hash-settle"),
+                positionId: POSITION,
+                marketId: MARKET,
+                user: user,
+                grossPayout: 100_000_000,
+                settlementFeeAmount: 0,
+                settlementFeePolicyVersion: 0,
+                resolutionHash: fakeHash,
+                deadline: block.timestamp + 1 hours
+            });
+
+        bytes memory settleSig = _signSettlement(settleAuth);
+        vm.expectRevert(VadSettlementV1.InvalidResolution.selector);
+        vm.prank(user);
+        settlement.settlePosition(settleAuth, settleSig);
+    }
+
+    // -------------------------------------------------------------------------
+    // Security: settlement authorization replay
+    // -------------------------------------------------------------------------
+
+    function testSettlementAuthorizationCannotBeReplayed() public {
+        // Lock two separate positions so there is enough escrow for both attempts
+        VadSettlementV1.LockAuthorization memory lockAuth1 = _lockAuthorization(
+            POSITION, 100_000_000, 0, 0
+        );
+        bytes memory lockSig1 = _signLock(lockAuth1);
+        vm.prank(user);
+        settlement.lockPosition(lockAuth1, lockSig1);
+
+        address user2 = vm.addr(0xFEED);
+        usdc.mint(user2, 100_000_000);
+        vm.prank(user2);
+        usdc.approve(address(settlement), type(uint256).max);
+        VadSettlementV1.LockAuthorization memory lockAuth2 =
+            VadSettlementV1.LockAuthorization({
+                authorizationId: keccak256("lock-auth-2"),
+                positionId: keccak256("position-replay-2"),
+                marketId: MARKET,
+                outcomeId: YES,
+                user: user2,
+                collateralAmount: 100_000_000,
+                tradingFeeAmount: 0,
+                tradingFeePolicyVersion: 0,
+                deadline: block.timestamp + 1 hours
+            });
+        bytes32 d2 = settlement.lockAuthorizationDigest(lockAuth2);
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(QUOTE_SIGNER_KEY, d2);
+        vm.prank(user2);
+        settlement.lockPosition(lockAuth2, abi.encodePacked(r2, s2, v2));
+
+        vm.prank(resolver);
+        bytes32 resolvedHash = settlement.resolveMarket(MARKET, YES, false, keccak256("ev-replay"));
+
+        VadSettlementV1.SettlementAuthorization memory settleAuth =
+            VadSettlementV1.SettlementAuthorization({
+                authorizationId: keccak256("replay-settle-id"),
+                positionId: POSITION,
+                marketId: MARKET,
+                user: user,
+                grossPayout: 100_000_000,
+                settlementFeeAmount: 0,
+                settlementFeePolicyVersion: 0,
+                resolutionHash: resolvedHash,
+                deadline: block.timestamp + 1 hours
+            });
+
+        bytes memory settleSig = _signSettlement(settleAuth);
+
+        vm.prank(user);
+        settlement.settlePosition(settleAuth, settleSig);
+
+        // Replay: same authorizationId must fail
+        vm.expectRevert(VadSettlementV1.AuthorizationAlreadyUsed.selector);
+        vm.prank(user);
+        settlement.settlePosition(settleAuth, settleSig);
+    }
+
+    // -------------------------------------------------------------------------
+    // Security: unauthorized settlement (wrong caller)
+    // -------------------------------------------------------------------------
+
+    function testUnauthorizedCallerCannotSettleAnotherUsersPosition() public {
+        VadSettlementV1.LockAuthorization memory lockAuth = _lockAuthorization(
+            POSITION, 100_000_000, 0, 0
+        );
+        bytes memory lockSig = _signLock(lockAuth);
+        vm.prank(user);
+        settlement.lockPosition(lockAuth, lockSig);
+
+        vm.prank(resolver);
+        bytes32 resolvedHash = settlement.resolveMarket(MARKET, YES, false, keccak256("ev-unauth"));
+
+        address attacker = vm.addr(0xDEAD);
+
+        VadSettlementV1.SettlementAuthorization memory settleAuth =
+            VadSettlementV1.SettlementAuthorization({
+                authorizationId: keccak256("unauth-settle"),
+                positionId: POSITION,
+                marketId: MARKET,
+                user: user,       // real user, not attacker
+                grossPayout: 100_000_000,
+                settlementFeeAmount: 0,
+                settlementFeePolicyVersion: 0,
+                resolutionHash: resolvedHash,
+                deadline: block.timestamp + 1 hours
+            });
+
+        bytes memory settleSig = _signSettlement(settleAuth);
+
+        // attacker calls with user in auth.user — contract checks msg.sender == auth.user
+        vm.expectRevert(VadSettlementV1.Unauthorized.selector);
+        vm.prank(attacker);
+        settlement.settlePosition(settleAuth, settleSig);
+    }
+
+    // -------------------------------------------------------------------------
+    // Security: escrow underflow guard
+    // -------------------------------------------------------------------------
+
+    function testEscrowUnderflowRejected() public {
+        // Lock a single position worth 50 USDC
+        VadSettlementV1.LockAuthorization memory lockAuth = _lockAuthorization(
+            POSITION, 50_000_000, 0, 0
+        );
+        bytes memory lockSig = _signLock(lockAuth);
+        vm.prank(user);
+        settlement.lockPosition(lockAuth, lockSig);
+
+        vm.prank(resolver);
+        bytes32 resolvedHash = settlement.resolveMarket(MARKET, YES, false, keccak256("ev-underflow"));
+
+        // Try to claim 100 USDC (double the escrow)
+        VadSettlementV1.SettlementAuthorization memory settleAuth =
+            VadSettlementV1.SettlementAuthorization({
+                authorizationId: keccak256("overflow-settle"),
+                positionId: POSITION,
+                marketId: MARKET,
+                user: user,
+                grossPayout: 100_000_000,
+                settlementFeeAmount: 0,
+                settlementFeePolicyVersion: 0,
+                resolutionHash: resolvedHash,
+                deadline: block.timestamp + 1 hours
+            });
+
+        bytes memory settleSig = _signSettlement(settleAuth);
+        vm.expectRevert(VadSettlementV1.InsufficientMarketEscrow.selector);
+        vm.prank(user);
+        settlement.settlePosition(settleAuth, settleSig);
+    }
+
+    // -------------------------------------------------------------------------
+    // Loser: zero-payout path (no funds disbursed, position marked SETTLED)
+    // -------------------------------------------------------------------------
+
+    function testLoserPositionCanBeMarkedSettledWithZeroPayout() public {
+        VadSettlementV1.LockAuthorization memory lockAuth = _lockAuthorization(
+            POSITION, 100_000_000, 0, 0
+        );
+        lockAuth.outcomeId = NO;
+        bytes memory lockSig = _signLock(lockAuth);
+        vm.prank(user);
+        settlement.lockPosition(lockAuth, lockSig);
+
+        vm.prank(resolver);
+        bytes32 resolvedHash = settlement.resolveMarket(MARKET, YES, false, keccak256("ev-loser"));
+
+        VadSettlementV1.SettlementAuthorization memory settleAuth =
+            VadSettlementV1.SettlementAuthorization({
+                authorizationId: keccak256("loser-settle"),
+                positionId: POSITION,
+                marketId: MARKET,
+                user: user,
+                grossPayout: 0,
+                settlementFeeAmount: 0,
+                settlementFeePolicyVersion: 0,
+                resolutionHash: resolvedHash,
+                deadline: block.timestamp + 1 hours
+            });
+
+        uint256 userBefore = usdc.balanceOf(user);
+        bytes memory settleSig = _signSettlement(settleAuth);
+        vm.prank(user);
+        settlement.settlePosition(settleAuth, settleSig);
+
+        _assertEq(usdc.balanceOf(user), userBefore, "loser receives nothing");
+        (, , , , , , VadSettlementV1.PositionStatus status) = settlement.positions(POSITION);
+        _assertEq(uint256(status), uint256(VadSettlementV1.PositionStatus.SETTLED), "loser position marked SETTLED");
+    }
+
+    // -------------------------------------------------------------------------
+    // Admin: two-step transfer
+    // -------------------------------------------------------------------------
+
+    function testAdminTransferTwoStep() public {
+        address newAdmin = address(0xA1A1);
+        settlement.startAdminTransfer(newAdmin);
+        _assertEq(settlement.pendingAdmin(), newAdmin, "pending admin set");
+
+        // Non-pending cannot accept
+        vm.expectRevert(VadSettlementV1.Unauthorized.selector);
+        vm.prank(address(0xBAD));
+        settlement.acceptAdmin();
+
+        vm.prank(newAdmin);
+        settlement.acceptAdmin();
+        _assertEq(settlement.admin(), newAdmin, "admin transferred");
+        _assertEq(settlement.pendingAdmin(), address(0), "pending cleared");
+    }
+
+    // -------------------------------------------------------------------------
+    // Voided: fee must be zero (on-chain enforcement)
+    // -------------------------------------------------------------------------
+
+    function testVoidedMarketRejectsNonZeroSettlementFee() public {
+        VadSettlementV1.LockAuthorization memory lockAuth = _lockAuthorization(
+            POSITION, 75_000_000, 0, 0
+        );
+        bytes memory lockSig = _signLock(lockAuth);
+        vm.prank(user);
+        settlement.lockPosition(lockAuth, lockSig);
+
+        vm.prank(resolver);
+        bytes32 resolvedHash = settlement.resolveMarket(MARKET, bytes32(0), true, keccak256("void-ev2"));
+
+        VadSettlementV1.SettlementAuthorization memory settleAuth =
+            VadSettlementV1.SettlementAuthorization({
+                authorizationId: keccak256("void-fee-nonzero"),
+                positionId: POSITION,
+                marketId: MARKET,
+                user: user,
+                grossPayout: 75_000_000,
+                settlementFeeAmount: 1,   // must be 0 on void
+                settlementFeePolicyVersion: 1,
+                resolutionHash: resolvedHash,
+                deadline: block.timestamp + 1 hours
+            });
+
+        bytes memory settleSig = _signSettlement(settleAuth);
+        vm.expectRevert(VadSettlementV1.InvalidAmount.selector);
+        vm.prank(user);
+        settlement.settlePosition(settleAuth, settleSig);
+    }
 }
