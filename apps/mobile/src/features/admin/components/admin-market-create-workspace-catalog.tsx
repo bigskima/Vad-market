@@ -836,7 +836,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
       {step === 1 ? (
         <VadCard variant="raised" style={{ gap: theme.spacing.lg }}>
-          <SectionTitle eyebrow="STEP 1 · MARKET" title="What is this market about?" text="Choose a category and event type, then enter normal real-world details." />
+          <SectionTitle eyebrow="STEP 1 · MARKET" title="What is this market about?" text="Choose any category, then choose whether traders answer Yes/No or pick from multiple named outcomes." />
 
           <FieldGroup label="Creation style">
             <VadChip label="Guided setup" selected={creationStyle === 'GUIDED'} tone={creationStyle === 'GUIDED' ? 'brand' : 'neutral'} onPress={() => { setCreationStyle('GUIDED'); setTitleEdited(false); setError(null); }} />
@@ -849,7 +849,40 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
           {category?.description ? <VadCard variant="muted"><VadText variant="caption" tone="secondary">{category.description}</VadText></VadCard> : null}
 
-          {guided && category ? (
+          <FieldGroup label="Market format">
+            <VadChip
+              label="Yes / No"
+              selected={marketFormat === 'BINARY'}
+              tone={marketFormat === 'BINARY' ? 'brand' : 'neutral'}
+              onPress={() => {
+                setMarketFormat('BINARY');
+                setTitleEdited(Boolean(title.trim()));
+                setError(null);
+              }}
+            />
+            <VadChip
+              label="Multiple outcomes"
+              selected={marketFormat === 'MULTI_OUTCOME'}
+              tone={marketFormat === 'MULTI_OUTCOME' ? 'brand' : 'neutral'}
+              onPress={() => {
+                if (marketFormat !== 'MULTI_OUTCOME') {
+                  setTitle(effectiveTitle);
+                  setTitleEdited(true);
+                }
+                setMarketFormat('MULTI_OUTCOME');
+                setLiquidityModel('POOL');
+                setError(null);
+              }}
+            />
+          </FieldGroup>
+          {marketFormat === 'MULTI_OUTCOME' ? (
+            <VadCard variant="muted" style={{ gap: 4 }}>
+              <VadText variant="bodyStrong">One market, many possible winners</VadText>
+              <VadText variant="caption" tone="secondary">This format works with any category. Traders choose one named option; VAD records the winning option using the resolution instructions and source you configure below.</VadText>
+            </VadCard>
+          ) : null}
+
+          {marketFormat === 'BINARY' && guided && category ? (
             <View style={{ gap: theme.spacing.lg }}>
               <FieldGroup label="Market type">
                 {category.marketTypes.map((item) => <VadChip key={item.code} label={item.name} selected={marketType?.code === item.code} tone={marketType?.code === item.code ? 'brand' : 'neutral'} onPress={() => chooseMarketType(item)} />)}
@@ -990,10 +1023,68 @@ export function AdminMarketCreateWorkspaceCatalog() {
             </View>
           ) : null}
 
-          {category?.code === 'SPORTS' ? renderSportsDraftControls() : null}
+          {marketFormat === 'MULTI_OUTCOME' ? (
+            <View style={{ gap: theme.spacing.md }}>
+              <VadInput
+                label="Market question"
+                value={title}
+                onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }}
+                multiline
+                placeholder="Who will win the Ballon d’Or 2026?"
+                hint="Ask one clear question that has exactly one winning option."
+              />
+              <VadInput
+                label="Outcome choices · one per line"
+                value={multiOutcomeOptionsText}
+                onChangeText={(value) => { setMultiOutcomeOptionsText(value); setError(null); }}
+                multiline
+                placeholder={'Lamine Yamal\nHarry Kane\nOusmane Dembélé\nKylian Mbappé'}
+                hint="Add 2–20 unique choices. These names are shown to traders and used when the result is finalized."
+              />
+              {multiOutcomeOptions.length > 0 ? (
+                <VadCard variant="muted" style={{ gap: 6 }}>
+                  <VadText variant="bodyStrong">{multiOutcomeOptions.length} choice{multiOutcomeOptions.length === 1 ? '' : 's'} added</VadText>
+                  <View style={{ gap: 5 }}>
+                    {multiOutcomeOptions.slice(0, 20).map((option, index) => (
+                      <View key={`${index}:${option}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
+                          <VadText variant="caption" tone="secondary">{index + 1}</VadText>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <VadText variant="bodyStrong">{option}</VadText>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                  {!multiOutcomeOptionsValid ? <VadText variant="caption" tone="warning">Use 2–20 unique choices, each no longer than 80 characters.</VadText> : null}
+                </VadCard>
+              ) : null}
+              <VadInput
+                label="How should the winning option be decided?"
+                value={resultCondition}
+                onChangeText={(value) => { setResultCondition(value); setError(null); }}
+                multiline
+                placeholder="State the exact award, result, date or official record that determines which option wins."
+                hint="Be specific about ties, cancellations, unavailable evidence and the cutoff time."
+              />
+              <SourceFields label="Authoritative result source" sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
+              <VadCard variant="muted" style={{ gap: 4 }}>
+                <VadText variant="bodyStrong">Result review</VadText>
+                <VadText variant="caption" tone="secondary">Multiple-outcome markets use VAD’s existing result-review and settlement process. The final result must match one of these configured choices; live pool shares do not determine the winner.</VadText>
+              </VadCard>
+            </View>
+          ) : null}
 
-          <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write one clear YES/NO question.'} />
-          <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
+          {marketFormat === 'BINARY' && category?.code === 'SPORTS' ? renderSportsDraftControls() : null}
+
+          {marketFormat === 'BINARY' ? (
+            <>
+              <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write one clear YES/NO question.'} />
+              <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
+            </>
+          ) : (
+            <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add context that helps traders understand the question." />
+          )}
           {error ? <VadErrorState title="Check this step" message={error} /> : null}
           <VadButton label="Continue to setup" onPress={continueFromMarket} />
         </VadCard>
