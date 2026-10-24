@@ -286,19 +286,18 @@ async function freeYahooQuotes(source: Source, query: string): Promise<AssetQuot
   const browseLimit = source.assetClass === 'STOCKS' ? 8 : 5;
   let definitions = definitionsForQuery(source, query, browseLimit);
   if (source.assetClass === 'STOCKS' && !query.trim()) {
+    let liveSymbols: Array<{ symbol: string; name: string }> = [];
     try {
-      const liveSymbols = await yahooMostActiveSymbols(16);
-      if (liveSymbols.length) definitions = liveSymbols;
+      liveSymbols = await yahooMostActiveSymbols(16);
     } catch (error) {
       console.warn('Yahoo most-active stock catalogue unavailable: ' + (error instanceof Error ? error.message : 'request failed'));
     }
-    if (!definitions.length) {
-      const seen = new Set<string>();
-      definitions = STOCKS_BROWSE_FALLBACK.filter((item) => {
-        if (seen.has(item.symbol)) return false;
-        seen.add(item.symbol);
-        return true;
-      }).slice(0, 8);
+    if (liveSymbols.length) {
+      definitions = liveSymbols;
+    } else {
+      const seen = new Set(definitions.map((item) => item.symbol.toUpperCase()));
+      definitions = [...definitions, ...STOCKS_BROWSE_FALLBACK.filter((item) => !seen.has(item.symbol))]
+        .slice(0, 8);
     }
   }
   if (source.assetClass === 'STOCKS' && query.trim()) {
