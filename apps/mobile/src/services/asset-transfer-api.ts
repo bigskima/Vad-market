@@ -54,8 +54,7 @@ export async function transferAssetToEmail(input: {
     }
     if (raw.includes('real ngn cannot be transferred into a temporary test-credit account')
       || raw.includes('test-credit transfers are allowed only')
-      || raw.includes('test funds cannot be mixed')
-      || raw.includes('historical ngn cash deposit')) {
+      || raw.includes('test funds cannot be mixed')) {
       throw new Error('These test NGN funds can only move between eligible test-credit accounts. They cannot mix with cash-funded NGN, and no funds were moved.');
     }
     if (raw.includes('recipient must enable ngn')) {
