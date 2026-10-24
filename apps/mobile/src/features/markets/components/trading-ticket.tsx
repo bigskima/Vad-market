@@ -104,7 +104,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
   useEffect(() => {
     let active = true;
     if (market.asset_code !== 'NGN') {
-      setTemporaryNgnCredit(null);
+      // Rendering is gated by the current asset, so no synchronous reset is needed.
       return () => { active = false; };
     }
     void getTemporaryNgnTestCreditStatus()
@@ -307,7 +307,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
     <View style={{ gap: density.compact ? 10 : 12 }}>
       <TradeStepRail step={step} secondLabel="Stake" />
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
-      {temporaryNgnCredit?.active ? (
+      {market.asset_code === 'NGN' && temporaryNgnCredit?.active ? (
         <InlineMessage
           tone="warning"
           title="Temporary NGN test credit active"
