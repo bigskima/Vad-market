@@ -347,3 +347,98 @@ as $function$
 $function$;
 
 grant execute on function public.my_pool_stakes_v2() to authenticated;
+
+-- Expose the category-independent manual-review format through the same
+-- validation RPC used by Admin. It is intentionally never marked auto-ready:
+-- an authorized Oracle reviewer must choose one configured outcome.
+create or replace function public.admin_validate_oracle_resolution_scope(
+  p_scope jsonb,
+  p_closes_at timestamptz default null,
+  p_resolves_after timestamptz default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path to ''
+as $function$
+declare
+  v_choices jsonb;
+  v_choice_count integer;
+  v_instruction text;
+  v_source_name text;
+  v_source_url text;
+begin
+  if not private.has_permission('oracle.review') and not private.has_permission('markets.manage') then
+    raise exception 'Permission required' using errcode='42501';
+  end if;
+
+  if p_scope is not null
+     and upper(btrim(coalesce(p_scope->>'resolver_type','')))='VAD_REVIEW_V1'
+     and upper(btrim(coalesce(p_scope->>'market_format','')))='MULTI_OUTCOME' then
+    if jsonb_typeof(p_scope)<>'object' or private.resolution_scope_has_forbidden_keys(p_scope) then
+      return jsonb_build_object('valid',false,'autoPublishReady',false,'resolverType','VAD_REVIEW_V1',
+        'reason','This review configuration contains invalid or restricted fields.','riskFlag','RESOLUTION_SCOPE_INVALID');
+    end if;
+
+    v_choices := p_scope->'outcome_options';
+    v_instruction := btrim(coalesce(p_scope->>'resolution_instructions',''));
+    v_source_name := btrim(coalesce(p_scope->>'source_name',''));
+    v_source_url := btrim(coalesce(p_scope->>'source_url',''));
+
+    if jsonb_typeof(v_choices) is distinct from 'array' then
+      return jsonb_build_object('valid',false,'autoPublishReady',false,'resolverType','VAD_REVIEW_V1',
+        'reason','Configure at least two named outcome choices.','riskFlag','OUTCOME_OPTIONS_REQUIRED');
+    end if;
+
+    select count(*) into v_choice_count from jsonb_array_elements(v_choices);
+    if v_choice_count < 2 or v_choice_count > 20
+       or exists (
+         select 1
+         from jsonb_array_elements(v_choices) as item(value)
+         where jsonb_typeof(item.value)<>'object'
+            or nullif(btrim(coalesce(item.value->>'code','')),'') is null
+            or nullif(btrim(coalesce(item.value->>'label','')),'') is null
+            or char_length(btrim(coalesce(item.value->>'label',''))) > 80
+       )
+       or (
+         select count(distinct lower(btrim(item.value->>'label')))
+         from jsonb_array_elements(v_choices) as item(value)
+       ) <> v_choice_count then
+      return jsonb_build_object('valid',false,'autoPublishReady',false,'resolverType','VAD_REVIEW_V1',
+        'reason','Use 2–20 unique, named choices, each no longer than 80 characters.','riskFlag','OUTCOME_OPTIONS_INVALID');
+    end if;
+
+    if char_length(v_instruction)<10 or char_length(v_instruction)>3000 then
+      return jsonb_build_object('valid',false,'autoPublishReady',false,'resolverType','VAD_REVIEW_V1',
+        'reason','Add clear resolution instructions between 10 and 3000 characters.','riskFlag','RESOLUTION_INSTRUCTIONS_REQUIRED');
+    end if;
+
+    if v_source_name='' or char_length(v_source_name)>180
+       or (v_source_url<>'' and v_source_url !~* '^https://') then
+      return jsonb_build_object('valid',false,'autoPublishReady',false,'resolverType','VAD_REVIEW_V1',
+        'reason','Provide a result source name and, if supplied, a secure https:// source link.','riskFlag','RESOLUTION_SOURCE_INVALID');
+    end if;
+
+    if p_closes_at is null or p_resolves_after is null or p_resolves_after<p_closes_at then
+      return jsonb_build_object('valid',false,'autoPublishReady',false,'resolverType','VAD_REVIEW_V1',
+        'reason','The result-checking time must be at or after market close.','riskFlag','RESOLUTION_TIMING_INVALID');
+    end if;
+
+    return jsonb_build_object(
+      'valid',true,
+      'autoPublishReady',false,
+      'resolverType','VAD_REVIEW_V1',
+      'marketFormat','MULTI_OUTCOME',
+      'outcomeCount',v_choice_count,
+      'requiredIndependentProviders',0,
+      'reason','Market configuration is valid. An authorized Oracle reviewer must verify the official source and select one configured outcome; automatic finalization is disabled.',
+      'riskFlag','MANUAL_REVIEW_REQUIRED'
+    );
+  end if;
+
+  return private.validate_oracle_resolution_scope(p_scope,p_closes_at,p_resolves_after);
+end;
+$function$;
+
+grant execute on function public.admin_validate_oracle_resolution_scope(jsonb,timestamptz,timestamptz) to authenticated;
