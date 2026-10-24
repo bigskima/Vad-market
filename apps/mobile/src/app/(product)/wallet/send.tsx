@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -12,6 +12,7 @@ import { useProductDataContext } from '@/providers/product-data-provider';
 import { useCurrencyPreference } from '@/providers/currency-preference-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { transferAssetToEmail, type AssetTransferReceipt, type TransferAssetCode } from '@/services/asset-transfer-api';
+import { getTemporaryNgnTestCreditStatus } from '@/services/temporary-ngn-test-credit-api';
 
 function makeRequestKey() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
@@ -42,9 +43,19 @@ export default function SendRoute() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<(AssetTransferReceipt & { requestKey: string }) | null>(null);
+  const [temporaryCreditActive, setTemporaryCreditActive] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void getTemporaryNgnTestCreditStatus()
+      .then((status) => { if (active) setTemporaryCreditActive(Boolean(status?.active)); })
+      .catch(() => { if (active) setTemporaryCreditActive(false); });
+    return () => { active = false; };
+  }, []);
 
   const assets: TransferAssetCode[] = (['NGN', 'USDC'] as const)
-    .filter((code) => currency.isCurrencyEligible(code));
+    .filter((code) => currency.isCurrencyEligible(code))
+    .filter((code) => !(code === 'NGN' && temporaryCreditActive));
 
   const activeAssetCode: TransferAssetCode = assets.includes(assetCode) ? assetCode : assets[0] ?? 'NGN';
   const selectedWallet = data.wallet.find((wallet) => wallet.asset_code === activeAssetCode);
@@ -102,6 +113,11 @@ export default function SendRoute() {
         <VadText variant="caption" tone="secondary">
           Send real NGN or VAD ledger USDC to another existing VAD account by email. The server verifies the recipient, account eligibility and available balance, then posts a balanced ledger transfer. This does not send funds to a bank or blockchain wallet.
         </VadText>
+        {temporaryCreditActive ? (
+          <VadText variant="caption" tone="secondary">
+            NGN peer transfers are disabled while your temporary market-testing credit is active. You may still transfer eligible VAD ledger USDC.
+          </VadText>
+        ) : null}
 
         <VadCard variant="surface" style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
           <View style={{ gap: theme.spacing.xs }}>
