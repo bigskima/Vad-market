@@ -9,6 +9,11 @@ export type FinancialMarketQuote = {
   name: string;
   assetClass: FinancialAssetClass;
   quoteCurrency: string;
+  /** Provider or symbol-directory image; display only. */
+  imageUrl?: string | null;
+  /** Second currency flag for a paired FX visual. */
+  secondaryImageUrl?: string | null;
+  visualKind?: 'logo' | 'flag-pair' | 'series-chart' | 'symbol';
   currentPrice: number | null;
   change24hPercent: number | null;
   open: number | null;
