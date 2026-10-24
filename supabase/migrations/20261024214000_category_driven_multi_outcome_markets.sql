@@ -597,3 +597,85 @@ $function$;
 
 grant execute on function public.my_market_history_v2() to authenticated;
 
+
+-- These markets must go through the existing two-reviewer Oracle governance flow,
+-- not through provider adapters that currently resolve only deterministic binary events.
+create or replace function public.internal_oracle_due_events(
+  p_event_public_id uuid default null,
+  p_limit integer default 20
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path to ''
+as $function$
+declare
+  result jsonb;
+begin
+  if auth.role()<>'service_role' then
+    raise exception 'Service role required' using errcode='42501';
+  end if;
+
+  with due as (
+    select
+      event.id,
+      event.public_id,
+      event.title,
+      event.category,
+      event.status,
+      event.normalized_parameters,
+      event.resolution_scope,
+      event.closes_at,
+      event.resolves_after,
+      policy.id as oracle_policy_id,
+      policy.public_id as oracle_policy_public_id,
+      policy.source_hierarchy,
+      policy.consensus_rule,
+      capability.code as capability_code
+    from market.canonical_events event
+    join oracle.event_policy_bindings binding on binding.event_id=event.id
+    join oracle.policies policy on policy.id=binding.oracle_policy_id and policy.status='ACTIVE'
+    join oracle.capabilities capability on capability.id=policy.capability_id
+    where event.status in ('AWAITING_ORACLE','PROVISIONALLY_RESOLVED')
+      and upper(btrim(coalesce(event.resolution_scope->>'resolver_type',''))) <> 'VAD_REVIEW_V1'
+      and coalesce(event.resolves_after,event.closes_at)<=statement_timestamp()
+      and (p_event_public_id is null or event.public_id=p_event_public_id)
+      and not exists (
+        select 1
+        from oracle.disputes dispute
+        where dispute.event_id=event.id
+          and dispute.status in ('OPEN','UNDER_REVIEW','ESCALATED')
+      )
+    order by coalesce(event.resolves_after,event.closes_at),event.id
+    limit greatest(1,least(coalesce(p_limit,20),100))
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'eventId',due.id,
+    'eventPublicId',due.public_id,
+    'title',due.title,
+    'category',due.category,
+    'status',due.status,
+    'normalizedParameters',due.normalized_parameters,
+    'resolutionScope',due.resolution_scope,
+    'closesAt',due.closes_at,
+    'resolvesAfter',due.resolves_after,
+    'oraclePolicyId',due.oracle_policy_id,
+    'oraclePolicyPublicId',due.oracle_policy_public_id,
+    'capabilityCode',due.capability_code,
+    'sourceHierarchy',due.source_hierarchy,
+    'consensusRule',due.consensus_rule,
+    'outcomes',coalesce((
+      select jsonb_agg(jsonb_build_object('code',outcome.code,'label',outcome.label) order by instrument.id,outcome.display_order)
+      from market.instruments instrument
+      join market.outcomes outcome on outcome.instrument_id=instrument.id
+      where instrument.canonical_event_id=due.id
+    ),'[]'::jsonb)
+  ) order by coalesce(due.resolves_after,due.closes_at),due.id),'[]'::jsonb)
+  into result
+  from due;
+
+  return result;
+end;
+$function$;
+
