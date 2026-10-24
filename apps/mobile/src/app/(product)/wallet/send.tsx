@@ -191,6 +191,11 @@ export default function SendRoute() {
               <VadText variant="caption" tone="secondary">Recipient: {recipientEmail.trim().toLowerCase()}</VadText>
               <VadText variant="caption" tone="secondary">Transfer reference: {receipt.transferId}</VadText>
               <VadText variant="caption" tone="secondary">Ledger journal: {receipt.journalId}</VadText>
+              {receipt.temporaryTestCredit ? (
+                <VadText variant="caption" tone="warning">
+                  Test-credit transfer: the recipient has the same non-withdrawable NGN testing restrictions. The balance can be used only on eligible NGN markets and cannot be deposited or withdrawn.
+                </VadText>
+              ) : null}
               {receipt.idempotentReplay ? <VadText variant="caption" tone="secondary">This is the confirmation of an earlier request; the transfer was not debited twice.</VadText> : null}
             </View>
           ) : null}
