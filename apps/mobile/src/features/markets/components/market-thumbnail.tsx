@@ -6,27 +6,29 @@ import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 import { marketMediaPublicUrl } from '@/services/market-media-api';
-import { requestMarketImageGeneration } from '@/services/market-image-generation';
+import { requestMarketImageGeneration, type MarketImageResult } from '@/services/market-image-generation';
 
 export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogItem; size?: number }) {
-  const [generatedPath, setGeneratedPath] = useState<string | null>(null);
+  const [imageResult, setImageResult] = useState<MarketImageResult | null>(null);
   const existingMediaPath = market.media_path?.trim() || null;
 
   useEffect(() => {
     if (existingMediaPath) return;
     let active = true;
-    void requestMarketImageGeneration(market.instrument_public_id).then((path) => {
-      if (active && path) setGeneratedPath(path);
+    void requestMarketImageGeneration(market.instrument_public_id).then((result) => {
+      if (active) setImageResult(result);
     });
     return () => { active = false; };
   }, [market.instrument_public_id, existingMediaPath]);
 
   return (
     <MarketMediaThumbnail
-      mediaPath={existingMediaPath ?? generatedPath}
+      mediaPath={existingMediaPath ?? imageResult?.mediaUrl ?? null}
       legacyUrl={null}
       title={market.title}
       category={market.category}
+      sourceCredit={existingMediaPath ? null : imageResult?.source === 'publisher' ? imageResult.sourceName ?? null : null}
+      sourceTitle={existingMediaPath ? null : imageResult?.source === 'publisher' ? imageResult.articleTitle ?? null : null}
       size={size}
     />
   );
@@ -37,12 +39,16 @@ export function MarketMediaThumbnail({
   legacyUrl,
   title,
   category,
+  sourceCredit,
+  sourceTitle,
   size = 66,
 }: {
   mediaPath?: string | null;
   legacyUrl?: string | null;
   title: string;
   category?: string | null;
+  sourceCredit?: string | null;
+  sourceTitle?: string | null;
   size?: number;
 }) {
   const theme = useVadTheme();
@@ -65,9 +71,14 @@ export function MarketMediaThumbnail({
         <Image
           source={{ uri: mediaUrl }}
           resizeMode="cover"
-          accessibilityLabel={`${title} market image`}
+          accessibilityLabel={`${title} market image${sourceCredit ? ', image source ' + sourceCredit : ''}${sourceTitle ? ', related report ' + sourceTitle : ''}`}
           style={{ width: '100%', height: '100%' }}
         />
+        {sourceCredit && size >= 64 ? (
+          <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.66)', paddingHorizontal: 4, paddingVertical: 2 }}>
+            <VadText variant="caption" numberOfLines={1} style={{ color: '#FFFFFF', fontSize: 8, lineHeight: 10 }}>{sourceCredit}</VadText>
+          </View>
+        ) : null}
       </View>
     );
   }
