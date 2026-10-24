@@ -256,13 +256,50 @@ async function yahooSymbolSearch(query: string): Promise<Array<{ symbol: string;
   }).slice(0, 8);
 }
 
+async function yahooMostActiveSymbols(limit = 16): Promise<Array<{ symbol: string; name: string }>> {
+  const url = new URL('/v1/finance/screener/predefined/saved', 'https://query1.finance.yahoo.com');
+  url.searchParams.set('formatted', 'false');
+  url.searchParams.set('lang', 'en-US');
+  url.searchParams.set('region', 'US');
+  url.searchParams.set('scrIds', 'most_actives');
+  url.searchParams.set('count', String(Math.max(1, Math.min(20, limit))));
+  url.searchParams.set('start', '0');
+  url.searchParams.set('corsDomain', 'finance.yahoo.com');
+  const payload = await requestJson(url);
+  if (!isRecord(payload) || !isRecord(payload.finance)) return [];
+  const results = Array.isArray(payload.finance.result) ? payload.finance.result.filter(isRecord) : [];
+  const first = results[0];
+  const rows = first && Array.isArray(first.quotes) ? first.quotes.filter(isRecord) : [];
+  const seen = new Set<string>();
+  return rows.flatMap((row) => {
+    const symbol = textValue(row.symbol, 30).toUpperCase();
+    const quoteType = textValue(row.quoteType, 30).toUpperCase();
+    const name = textValue(row.longName ?? row.shortName ?? row.displayName, 180) || symbol;
+    if (!symbol || !/^[A-Z0-9^=._-]{1,20}$/.test(symbol)
+      || !['EQUITY', 'ETF', 'INDEX'].includes(quoteType) || seen.has(symbol)) return [];
+    seen.add(symbol);
+    return [{ symbol, name }];
+  }).slice(0, limit);
+}
+
 async function freeYahooQuotes(source: Source, query: string): Promise<AssetQuote[]> {
   const browseLimit = source.assetClass === 'STOCKS' ? 8 : 5;
   let definitions = definitionsForQuery(source, query, browseLimit);
   if (source.assetClass === 'STOCKS' && !query.trim()) {
-    const seen = new Set(definitions.map((item) => item.symbol.toUpperCase()));
-    definitions = [...definitions, ...STOCKS_BROWSE_FALLBACK.filter((item) => !seen.has(item.symbol))]
-      .slice(0, 8);
+    try {
+      const liveSymbols = await yahooMostActiveSymbols(16);
+      if (liveSymbols.length) definitions = liveSymbols;
+    } catch (error) {
+      console.warn('Yahoo most-active stock catalogue unavailable: ' + (error instanceof Error ? error.message : 'request failed'));
+    }
+    if (!definitions.length) {
+      const seen = new Set<string>();
+      definitions = STOCKS_BROWSE_FALLBACK.filter((item) => {
+        if (seen.has(item.symbol)) return false;
+        seen.add(item.symbol);
+        return true;
+      }).slice(0, 8);
+    }
   }
   if (source.assetClass === 'STOCKS' && query.trim()) {
     try {
@@ -721,7 +758,7 @@ Deno.serve(async (req) => {
     }
 
     const requestCost = useFreeFallback && assetClass === 'STOCKS'
-      ? (query.length === 0 ? 8 : 9)
+      ? (query.length === 0 ? 17 : 9)
       : useFreeFallback && assetClass === 'ECONOMICS'
         ? 8
         : source.adapterCode === 'FRED_SERIES'
