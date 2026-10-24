@@ -56,7 +56,7 @@ function suggestedFromTemplate(template: string, details: Record<string, string>
     .trim();
 }
 
-function cryptoThresholdReadinessError(readiness: CryptoOraclePolicyReadiness | undefined, sandbox: boolean) {
+function cryptoThresholdReadinessError(readiness: CryptoOraclePolicyReadiness | undefined) {
   if (!readiness?.available) {
     return readiness?.error
       ?? 'Oracle settlement readiness could not be verified. Refresh the source check before creating this automatic market.';
@@ -72,11 +72,9 @@ function cryptoThresholdReadinessError(readiness: CryptoOraclePolicyReadiness | 
     ].filter(Boolean).join(' and ');
     return `${unavailable || 'A required Oracle source'} is marked unavailable. Open Admin → Providers, run “Check oracle providers”, then refresh this asset readiness check.`;
   }
-  const policyReady = sandbox ? readiness.sandboxPolicyReady : readiness.productionPolicyReady;
-  if (!policyReady) {
-    const version = sandbox ? readiness.sandboxPolicyVersion : readiness.productionPolicyVersion;
-    const environment = sandbox ? 'TNGN sandbox' : 'production';
-    return `Automatic crypto markets in ${environment} are blocked until an authorized, independent Oracle reviewer approves the Coinbase + Kraken two-source policy${version ? ` (draft version ${version})` : ''}. Approve it in the Oracle policy controls; this app will not bypass settlement-policy approval.`;
+  if (!readiness.productionPolicyReady) {
+    const version = readiness.productionPolicyVersion;
+    return `Automatic crypto markets are blocked until an authorized, independent Oracle reviewer approves the Coinbase + Kraken two-source policy${version ? ` (draft version ${version})` : ''}. Approve it in the Oracle policy controls; this app will not bypass settlement-policy approval.`;
   }
   return null;
 }
@@ -258,15 +256,19 @@ export function AdminMarketCreateWorkspaceCatalog() {
     () => options?.jurisdictions.find((item) => item.countryCode === resolvedCountryCode) ?? null,
     [options, resolvedCountryCode],
   );
-  const resolvedAssetCode = assetCode || (jurisdiction?.assets.includes('TNGN') ? 'TNGN' : jurisdiction?.assets[0] ?? '');
-  const sandbox = resolvedAssetCode === 'TNGN';
+  // TNGN is decommissioned at the asset, runtime and policy layers. Filter it
+  // out even if a cached jurisdiction response still includes the old code.
+  const availableAssets = (jurisdiction?.assets ?? []).filter((asset) => asset !== 'TNGN');
+  const resolvedAssetCode = assetCode && availableAssets.includes(assetCode)
+    ? assetCode
+    : availableAssets.includes('NGN')
+      ? 'NGN'
+      : availableAssets[0] ?? '';
   const guided = creationStyle === 'GUIDED';
   const football = guided && marketType?.handler === 'FOOTBALL_MATCH';
   const cryptoThreshold = guided && marketType?.handler === 'CRYPTO_THRESHOLD';
   const automaticFootball = football && resultChecking === 'AUTOMATIC';
-  const automaticFootballAvailable = sandbox
-    ? options?.guided.football.automaticSandboxAvailable === true
-    : options?.guided.football.automaticProductionAvailable === true;
+  const automaticFootballAvailable = options?.guided.football.automaticProductionAvailable === true;
   const footballCompetitions = options?.guided.football.competitions ?? [];
 
   const selectedFootballCompetition = useMemo(() => {
@@ -628,7 +630,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
         setStep(1);
         return setError(cryptoAssetCheck?.reason ?? 'Recheck the selected crypto asset before continuing.');
       }
-      const readinessError = cryptoThresholdReadinessError(cryptoAssetCheck.readiness, sandbox);
+      const readinessError = cryptoThresholdReadinessError(cryptoAssetCheck.readiness);
       if (readinessError) return setError(readinessError);
     }
     setStep(3);
@@ -671,7 +673,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           setStep(1);
           throw new Error(latestCheck.reason ?? 'The selected crypto asset no longer has verified settlement mappings.');
         }
-        const readinessError = cryptoThresholdReadinessError(latestCheck.readiness, sandbox);
+        const readinessError = cryptoThresholdReadinessError(latestCheck.readiness);
         if (readinessError) {
           setStep(2);
           throw new Error(readinessError);
@@ -908,12 +910,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                                 <VadText variant="caption" tone={cryptoAssetCheck.readiness.productionPolicyReady ? 'yes' : 'warning'}>
                                   Production policy: {cryptoAssetCheck.readiness.productionPolicyReady ? `approved (v${cryptoAssetCheck.readiness.productionPolicyVersion ?? 'current'})` : `pending independent Oracle review${cryptoAssetCheck.readiness.productionPolicyVersion ? ` (draft v${cryptoAssetCheck.readiness.productionPolicyVersion})` : ''}`}
                                 </VadText>
-                                <VadText variant="caption" tone={cryptoAssetCheck.readiness.sandboxPolicyReady ? 'yes' : 'warning'}>
-                                  TNGN sandbox policy: {cryptoAssetCheck.readiness.sandboxPolicyReady ? `approved (v${cryptoAssetCheck.readiness.sandboxPolicyVersion ?? 'current'})` : `pending independent Oracle review${cryptoAssetCheck.readiness.sandboxPolicyVersion ? ` (draft v${cryptoAssetCheck.readiness.sandboxPolicyVersion})` : ''}`}
-                                </VadText>
-                                {cryptoAssetCheck.readiness.productionReason && cryptoAssetCheck.readiness.sandboxReason ? (
-                                  <VadText variant="caption" tone="secondary">An active policy must use Coinbase as primary and Kraken as corroborating source, with distinct-source agreement required from both.</VadText>
-                                ) : null}
+                                <VadText variant="caption" tone="secondary">The active production policy must use Coinbase as primary and Kraken as corroborating source, with distinct-source agreement required from both.</VadText>
                               </>
                             ) : (
                               <VadText variant="caption" tone="warning">
@@ -965,12 +962,18 @@ export function AdminMarketCreateWorkspaceCatalog() {
           {jurisdiction ? (
             <View style={{ gap: 8 }}>
               <FieldGroup label="Market currency">
-                {jurisdiction.assets.map((asset) => <VadChip key={asset} label={asset === 'TNGN' ? 'Test NGN · Sandbox' : asset} selected={resolvedAssetCode === asset} tone={resolvedAssetCode === asset && asset === 'TNGN' ? 'brand' : 'neutral'} onPress={() => setAssetCode(asset)} />)}
+                {availableAssets.map((asset) => (
+                  <VadChip key={asset} label={asset} selected={resolvedAssetCode === asset} tone={resolvedAssetCode === asset ? 'brand' : 'neutral'} onPress={() => setAssetCode(asset)} />
+                ))}
               </FieldGroup>
-              <VadCard variant={sandbox ? 'brand' : 'muted'} style={{ gap: 3 }}>
-                <VadText variant="bodyStrong" tone={sandbox ? 'brand' : 'warning'}>{sandbox ? 'Recommended for testnet' : 'Real-money currency selected'}</VadText>
-                <VadText variant="caption" tone="secondary">{sandbox ? 'TNGN uses synthetic balances and cannot be deposited or withdrawn.' : 'Use TNGN until market creation, resolution and settlement pass your sandbox tests.'}</VadText>
-              </VadCard>
+              {availableAssets.length ? (
+                <VadCard variant="muted" style={{ gap: 3 }}>
+                  <VadText variant="bodyStrong">Production market currency</VadText>
+                  <VadText variant="caption" tone="secondary">Markets use the selected NGN or USDC wallet and the normal order and settlement engine. TNGN test trading has been permanently retired.</VadText>
+                </VadCard>
+              ) : (
+                <VadErrorState title="No eligible market currency" message="This jurisdiction has no enabled production currency. Update asset eligibility before creating a market." />
+              )
             </View>
           ) : null}
           {automaticFootball ? (
@@ -1022,7 +1025,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           {guided ? <ReviewRow label="Market type" value={marketType?.name ?? 'Guided event'} /> : null}
           {football ? <ReviewRow label="Match" value={`${homeTeam} vs ${awayTeam} · ${competition}`} /> : null}
           {football && matchStartsAt ? <ReviewRow label="Kickoff" value={new Date(matchStartsAt).toLocaleString()} /> : null}
-          <ReviewRow label="Currency" value={sandbox ? 'TNGN · Sandbox' : resolvedAssetCode} />
+          <ReviewRow label="Currency" value={resolvedAssetCode} />
           <ReviewRow label="Market format" value="Yes / No" />
           <ReviewRow label="Trading method" value={liquidityModel === 'POOL' ? 'Peer Pool' : 'Order Book'} />
           <ReviewRow label="Result checking" value={resultLabel} />
