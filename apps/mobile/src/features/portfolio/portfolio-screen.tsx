@@ -176,18 +176,9 @@ export function PortfolioScreen({
     : null;
 
   const openMarkedPositions = positionsForAsset.filter((position) => position.mark_status !== 'SETTLED');
-  const markedPositions = positionsForAsset.filter((position) => position.mark_status === 'MARKED');
-  const winningPositions = markedPositions.filter((position) => amount(position.unrealized_pnl) > 0);
-  const losingPositions = markedPositions.filter((position) => amount(position.unrealized_pnl) < 0);
-  const winningPnl = winningPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0);
-  const losingPnl = losingPositions.reduce((sum, position) => sum + amount(position.unrealized_pnl), 0);
   const openPositionValue = openMarkedPositions.every((position) => position.mark_status === 'MARKED')
     ? openMarkedPositions.reduce((sum, position) => sum + amount(position.current_value), 0)
     : null;
-  const winnersCount = winningPositions.length;
-  const losersCount = losingPositions.length;
-  const winnersValue = winningPnl;
-  const losersValue = losingPnl;
   const openCount = openMarkedPositions.length;
   const openValueText = openPositionValue == null ? '—' : assetMoney(openPositionValue, asset);
 
@@ -348,11 +339,17 @@ export function PortfolioScreen({
 
       <EmbeddedWalletModal showUsdcBalance={enabledCurrencies.includes('USDC')} compact />
 
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <SummaryMetric title="Winning Positions" count={winnersCount} amount={winnersValue} asset={asset} tone="yes" />
-        <SummaryMetric title="Losing Positions" count={losersCount} amount={losersValue} asset={asset} tone="no" />
-        <SummaryMetric title="Open Positions" count={openCount} value={openValueText} />
-      </View>
+      <TradingPerformanceCard
+        asset={asset}
+        period={period}
+        settledRows={periodSettledRows}
+        winLossRows={periodWinLossRows}
+        realizedPnl={periodSettledPnl}
+        winRate={periodWinRate}
+        pnlSeries={historicalPnlSeries}
+        openCount={openCount}
+        openValueText={openValueText}
+      />
 
       <TourTarget id="portfolio-switcher">
         <PortfolioTabControl
@@ -474,28 +471,12 @@ export function PortfolioScreen({
 
       {tab === 'performance' ? (
         <View style={{ gap: theme.spacing.md }}>
-          <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
-            <View style={{ gap: 3 }}>
-              <VadText variant="caption" tone="secondary">REALIZED PERFORMANCE · {asset} · {period}</VadText>
-              <VadText variant="heading" tone={periodSettledRows.length && periodSettledPnl >= 0 ? 'yes' : periodSettledRows.length ? 'no' : 'secondary'}>{periodSettledRows.length ? `${periodSettledPnl >= 0 ? '+' : '−'}${assetMoney(Math.abs(periodSettledPnl), asset)}` : '—'}</VadText>
-              <VadText variant="caption" tone="secondary">Persisted settlement results within the selected period; pending and voided positions are not counted as wins or losses.</VadText>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <MetricTile label="Settled records" value={String(periodSettledRows.length)} />
-              <MetricTile label="Win rate" value={periodWinRate == null ? '—' : pct(periodWinRate)} />
-              <MetricTile label="Avg. result" value={periodSettledRows.length ? assetMoney(periodSettledPnl / periodSettledRows.length, asset) : '—'} />
-            </View>
-            {historicalPnlSeries.length >= 2 ? (
-              <View style={{ height: 94 }}>
-                <PortfolioLineChart values={historicalPnlSeries.map((point) => point.value)} width={Math.max(220, Math.min(720, density.width - 72))} height={90} positive={periodSettledPnl >= 0} />
-              </View>
-            ) : (
-              <VadEmptyState title="More settled results needed" body="The cumulative realized-performance chart appears after at least two dated settlement results. No history is synthesized." />
-            )}
-          </VadCard>
+          <View style={{ gap: 4 }}>
+            <VadText variant="bodyStrong">Settled results · {period}</VadText>
+            <VadText variant="caption" tone="secondary">Every item below is a persisted market settlement in {asset}. Refunds and voids remain visible here, but do not count as wins or losses.</VadText>
+          </View>
           {periodSettledRows.length ? (
             <View style={{ gap: theme.spacing.sm }}>
-              <VadText variant="bodyStrong">Settled results · {period}</VadText>
               {periodSettledRows.slice(-8).reverse().map((row, index) => <HistoryCard key={`perf-${row.market_id}-${row.selected_outcome}-${row.settled_at ?? index}`} row={row} />)}
             </View>
           ) : <VadEmptyState title="No realized performance yet" body="Realized P&L is available after VAD records a settlement for one of your predictions." />}
@@ -726,27 +707,150 @@ function CompactRangeSwitch({ value, onChange }: { value: Period; onChange: (val
   );
 }
 
-function SummaryMetric({ title, count, amount: value, asset, tone, value: customValue }: {
-  title: string; count: number; amount?: number; asset?: string; tone?: 'yes' | 'no'; value?: string;
+function TradingPerformanceCard({
+  asset,
+  period,
+  settledRows,
+  winLossRows,
+  realizedPnl,
+  winRate,
+  pnlSeries,
+  openCount,
+  openValueText,
+}: {
+  asset: string;
+  period: Period;
+  settledRows: MarketHistoryRow[];
+  winLossRows: MarketHistoryRow[];
+  realizedPnl: number;
+  winRate: number | null;
+  pnlSeries: { at: string; value: number }[];
+  openCount: number;
+  openValueText: string;
 }) {
   const theme = useVadTheme();
-  const label = customValue ?? (count === 0 || value == null ? '—' : `${value >= 0 ? '+' : '−'}${assetMoney(Math.abs(value), asset)}`);
-  const positive = tone === 'yes';
-  const negative = tone === 'no';
+  const density = useProductDensity();
+  const wins = winLossRows.filter((row) => String(row.result).toUpperCase() === 'WON').length;
+  const losses = winLossRows.filter((row) => String(row.result).toUpperCase() === 'LOST').length;
+  const decidedCount = wins + losses;
+  const pnlTone = settledRows.length === 0 ? 'secondary' : realizedPnl >= 0 ? 'yes' : 'no';
+  const winWidth = `${decidedCount ? (wins / decidedCount) * 100 : 0}%` as DimensionValue;
+  const lossWidth = `${decidedCount ? (losses / decidedCount) * 100 : 0}%` as DimensionValue;
+
   return (
-    <VadCard style={{ flex: 1, minWidth: 0, padding: 8, gap: 4, borderRadius: 14, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minWidth: 0 }}>
-        <View style={{ width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: positive ? theme.colors.yesSoft : negative ? theme.colors.noSoft : theme.colors.surfaceMuted, flexShrink: 0 }}>
-          <VadIcon name={positive ? 'arrowUp' : negative ? 'arrowDown' : 'clock'} size={13} tone={tone ?? 'secondary'} />
+    <VadCard style={{
+      padding: density.phone ? 12 : 16,
+      gap: 11,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.colors.borderStrong,
+      backgroundColor: theme.colors.surface,
+      overflow: 'hidden',
+    }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, minWidth: 0 }}>
+          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.brandPrimary }} />
+          <VadText variant="caption" tone="secondary">TRADING PERFORMANCE</VadText>
         </View>
-        <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ fontSize: 10, lineHeight: 12 }}>{title}</VadText>
+        <VadChip label={`${asset} · ${period}`} tone="brand" />
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-        <VadText variant="heading" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 17, lineHeight: 21 }}>{count.toLocaleString()}</VadText>
-        <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-end' }}>
-          <View style={{ maxWidth: '100%', borderRadius: 99, paddingHorizontal: 5, paddingVertical: 4, backgroundColor: positive ? theme.colors.yesSoft : negative ? theme.colors.noSoft : theme.colors.surfaceRaised }}>
-            <VadText variant="caption" tone={tone ?? 'secondary'} numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 9, lineHeight: 11 }}>{label}</VadText>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <VadText variant="caption" tone="tertiary">NET REALIZED P&L</VadText>
+          <VadText
+            variant={density.phone ? 'title' : 'heading'}
+            tone={pnlTone}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {settledRows.length ? `${realizedPnl >= 0 ? '+' : '−'}${assetMoney(Math.abs(realizedPnl), asset)}` : '—'}
+          </VadText>
+          <VadText variant="caption" tone="secondary" numberOfLines={1}>
+            {settledRows.length} settled record{settledRows.length === 1 ? '' : 's'}
+          </VadText>
+        </View>
+        <View style={{ minWidth: density.phone ? 84 : 112, alignItems: 'flex-end', gap: 3 }}>
+          <VadText variant="caption" tone="tertiary">WIN RATE</VadText>
+          <VadText variant="heading" tone={winRate == null ? 'secondary' : 'yes'} numberOfLines={1}>
+            {winRate == null ? '—' : pct(winRate)}
+          </VadText>
+          <VadText variant="caption" tone="secondary">{wins}W · {losses}L</VadText>
+        </View>
+      </View>
+
+      <View style={{ gap: 5 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <VadText variant="caption" tone="tertiary">CUMULATIVE REALIZED P&L</VadText>
+          <VadText variant="caption" tone="tertiary">Zero baseline</VadText>
+        </View>
+        {pnlSeries.length >= 2 ? (
+          <View style={{ height: 84 }}>
+            <PortfolioLineChart
+              values={pnlSeries.map((point) => point.value)}
+              width={Math.max(220, density.width - 72)}
+              height={82}
+              positive={realizedPnl >= 0}
+              zeroBaseline
+            />
           </View>
+        ) : (
+          <View style={{
+            minHeight: 56,
+            justifyContent: 'center',
+            paddingHorizontal: 10,
+            borderRadius: 12,
+            backgroundColor: theme.colors.surfaceRaised,
+          }}>
+            <VadText variant="caption" tone="secondary">
+              {pnlSeries.length === 1
+                ? 'One dated result recorded. Another settled result is needed to plot a trend.'
+                : 'Your realized P&L trend will appear after two dated settlement results. No results are estimated.'}
+            </VadText>
+          </View>
+        )}
+      </View>
+
+      <View style={{ gap: 7 }}>
+        <View style={{ height: 6, flexDirection: 'row', borderRadius: 99, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }}>
+          {decidedCount > 0 ? (
+            <>
+              {wins > 0 ? <View style={{ width: winWidth, height: '100%', backgroundColor: theme.colors.yes }} /> : null}
+              {losses > 0 ? <View style={{ width: lossWidth, height: '100%', backgroundColor: theme.colors.no }} /> : null}
+            </>
+          ) : <View style={{ width: '100%', height: '100%', backgroundColor: theme.colors.surfaceMuted }} />}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.yes }} />
+            <VadText variant="caption" tone="secondary">{wins} wins</VadText>
+          </View>
+          <VadText variant="caption" tone="tertiary">{decidedCount} decided</VadText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <VadText variant="caption" tone="secondary">{losses} losses</VadText>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.no }} />
+          </View>
+        </View>
+      </View>
+
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+        paddingTop: 9,
+      }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <VadText variant="caption" tone="tertiary">OPEN POSITIONS</VadText>
+          <VadText variant="bodyStrong">{openCount}</VadText>
+        </View>
+        <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-end', gap: 2 }}>
+          <VadText variant="caption" tone="tertiary">CURRENT VALUE</VadText>
+          <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>
+            {openValueText}
+          </VadText>
         </View>
       </View>
     </VadCard>
@@ -797,16 +901,17 @@ function LoadingState({ label }: { label: string }) {
   );
 }
 
-function PortfolioLineChart({ values, width, height, positive }: { values: number[]; width: number; height: number; positive: boolean }) {
+function PortfolioLineChart({ values, width, height, positive, zeroBaseline = false }: { values: number[]; width: number; height: number; positive: boolean; zeroBaseline?: boolean }) {
   const theme = useVadTheme();
   if (values.length < 2 || values.some((value) => !Number.isFinite(value))) {
     return <View style={{ height, justifyContent: "center", alignItems: "center", paddingHorizontal: 12 }}><VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>Record more genuine valuations to show this trend. No historical values are estimated.</VadText></View>;
   }
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const min = zeroBaseline ? Math.min(0, ...values) : Math.min(...values);
+  const max = zeroBaseline ? Math.max(0, ...values) : Math.max(...values);
   const range = max - min || Math.max(Math.abs(max), 1);
   const inset = 8;
   const innerHeight = height - inset * 2;
+  const baselineY = inset + (1 - (0 - min) / range) * innerHeight;
   const coords = values.map((value, index) => ({
     x: inset + (index / (values.length - 1)) * Math.max(1, width - inset * 2),
     y: inset + (1 - (value - min) / range) * innerHeight,
@@ -814,6 +919,9 @@ function PortfolioLineChart({ values, width, height, positive }: { values: numbe
   const color = positive ? '#16D7A0' : '#FF5B70';
   return (
     <View style={{ width: '100%', height, position: 'relative', overflow: 'hidden' }}>
+      {zeroBaseline ? (
+        <View style={{ position: 'absolute', left: 0, right: 0, top: baselineY, borderTopWidth: 1, borderTopColor: theme.colors.borderStrong, borderStyle: 'dashed', opacity: 0.85 }} />
+      ) : null}
       {coords.slice(1).map((point, index) => {
         const previous = coords[index];
         const dx = point.x - previous.x;
