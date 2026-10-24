@@ -11,6 +11,9 @@ import { requestMarketImageGeneration, type MarketImageResult } from '@/services
 export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogItem; size?: number }) {
   const [imageResult, setImageResult] = useState<MarketImageResult | null>(null);
   const existingMediaPath = market.media_path?.trim() || null;
+  const sourceImageApplies = imageResult?.source === 'publisher'
+    && (imageResult.basedOnMediaPath === existingMediaPath
+      || (!imageResult.basedOnMediaPath && !existingMediaPath));
 
   useEffect(() => {
     let active = true;
@@ -22,12 +25,12 @@ export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogIt
 
   return (
     <MarketMediaThumbnail
-      mediaPath={imageResult?.source === 'publisher' ? imageResult.mediaUrl : existingMediaPath ?? imageResult?.mediaUrl ?? null}
+      mediaPath={sourceImageApplies ? imageResult.mediaUrl : existingMediaPath ?? imageResult?.mediaUrl ?? null}
       legacyUrl={null}
       title={market.title}
       category={market.category}
-      sourceCredit={imageResult?.source === 'publisher' ? imageResult.sourceName ?? null : null}
-      sourceTitle={imageResult?.source === 'publisher' ? imageResult.articleTitle ?? null : null}
+      sourceCredit={sourceImageApplies ? imageResult.sourceName ?? null : null}
+      sourceTitle={sourceImageApplies ? imageResult.articleTitle ?? null : null}
       size={size}
     />
   );
