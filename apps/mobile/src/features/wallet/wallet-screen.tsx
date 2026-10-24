@@ -117,7 +117,7 @@ export function WalletScreen({
   const orderedWallets = useMemo(
     () => wallets
       .filter((wallet) => (
-        (wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC')
+        (wallet.asset_code === 'NGN' || wallet.asset_code === 'USDC' || wallet.asset_code === 'TNGN')
         && currencyPreference.isCurrencyEnabled(wallet.asset_code as VADCurrency)
       ))
       .sort((a, b) => assetRank(a.asset_code) - assetRank(b.asset_code)),
@@ -293,9 +293,9 @@ export function WalletScreen({
 
       <TourTarget id="wallet-actions">
         <View style={{ flexDirection: 'row', gap: density.phone ? 6 : theme.spacing.sm }}>
-          <WalletAction label="Deposit" detail={temporaryNgnCredit?.active ? "Manage in Account" : "Add funds"} icon="plus" tone="yes" onPress={onDeposit} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
-          <WalletAction label="Withdraw" detail={temporaryNgnCredit?.active ? "Manage in Account" : "Send to bank"} icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
-          <WalletAction label="Transfer" detail="To another user" icon="transfer" tone="purple" onPress={onTransfer} />
+          <WalletAction label="Deposit" detail={primaryCode === "TNGN" ? "Test-only balance" : temporaryNgnCredit?.active ? "Manage in Account" : "Add funds"} icon="plus" tone="yes" onPress={onDeposit} disabled={primaryCode === 'TNGN' || !hasNgn || Boolean(temporaryNgnCredit?.active)} />
+          <WalletAction label="Withdraw" detail={primaryCode === "TNGN" ? "Cash-out disabled" : temporaryNgnCredit?.active ? "Manage in Account" : "Send to bank"} icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
+          <WalletAction label="Transfer" detail={primaryCode === "TNGN" ? "Transfers disabled" : "To another user"} icon="transfer" tone="purple" onPress={onTransfer} disabled={primaryCode === "TNGN"} />
           <WalletAction label="History" detail="View transactions" icon="fileText" tone="primary" onPress={onActivity} />
         </View>
       </TourTarget>
@@ -706,5 +706,6 @@ function WalletAction({
 function assetRank(code: string) {
   if (code === 'NGN') return 0;
   if (code === 'USDC') return 1;
+  if (code === 'TNGN') return 2;
   return 10;
 }
