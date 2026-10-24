@@ -262,7 +262,7 @@ async function createWebResultCardFile(row: MarketHistoryRow, profile: ResultCar
   drawMetric(
     ctx,
     'NET PAYOUT',
-    privacy.showPayout && result === 'WON' ? money(row.net_payout, row.asset_code) : privacy.showPayout ? money(row.net_payout, row.asset_code) : 'PRIVATE',
+    privacy.showPayout ? money(row.net_payout, row.asset_code) : 'PRIVATE',
     365,
     416,
     300,
@@ -341,7 +341,7 @@ function drawMetric(
 }
 
 function wrapText(ctx: any, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines: number) {
-  const words = text.split(/\\s+/).filter(Boolean);
+  const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = '';
 
