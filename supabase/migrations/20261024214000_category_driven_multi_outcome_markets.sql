@@ -41,6 +41,7 @@ declare
   v_suffix text;
   v_option_count integer;
   v_option_payload jsonb := '[]'::jsonb;
+  v_validation jsonb;
 begin
   if auth.uid() is null or not private.has_permission('markets.manage') then
     raise exception 'Market management permission required' using errcode = '42501';
@@ -187,6 +188,18 @@ begin
       updated_at = statement_timestamp()
   where id = v_event_id;
 
+  select public.admin_validate_oracle_resolution_scope(
+    resolution_scope, p_closes_at, p_resolves_after
+  )
+  into v_validation
+  from market.canonical_events
+  where id = v_event_id;
+
+  if coalesce((v_validation->>'valid')::boolean, false) is not true then
+    raise exception '%', coalesce(v_validation->>'reason', 'The multiple-outcome resolution rules are invalid.')
+      using errcode = '22023';
+  end if;
+
   perform command.refresh_market_catalog(v_instrument_id);
 
   insert into eventing.domain_events(event_type, aggregate_type, aggregate_id, payload, idempotency_key)
@@ -248,10 +261,7 @@ stable
 security definer
 set search_path to ''
 as $function$
-declare
-  account public.user_accounts;
 begin
-  account := private.require_active_account();
   return query
   with instrument_scope as (
     select instrument.id, instrument.asset_id
@@ -259,6 +269,7 @@ begin
     where instrument.public_id = p_instrument_public_id
       and instrument.market_type = 'MULTI_OUTCOME'
       and instrument.liquidity_model = 'POOL'
+      and instrument.status <> 'DRAFT'
   ),
   pool_totals as (
     select coalesce(sum(stake.amount), 0)::numeric as total_amount
@@ -297,7 +308,7 @@ begin
 end;
 $function$;
 
-grant execute on function public.market_outcome_summary_v1(uuid) to authenticated;
+grant execute on function public.market_outcome_summary_v1(uuid) to anon, authenticated;
 
 create or replace function public.my_pool_stakes_v2()
 returns table (
