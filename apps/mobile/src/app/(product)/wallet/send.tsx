@@ -53,11 +53,12 @@ export default function SendRoute() {
     return () => { active = false; };
   }, []);
 
-  // Fail closed: until the server confirms there is no active test credit, do not
-  // offer NGN peer transfers. The ledger RPC independently enforces this guard.
+  // Fail closed while the server credit status is unknown. Once confirmed,
+  // the server permits NGN peer transfers only between eligible temporary-credit
+  // accounts or normal cash accounts; it never allows cash/test-credit mixing.
   const assets: TransferAssetCode[] = (['NGN', 'USDC'] as const)
     .filter((code) => currency.isCurrencyEligible(code))
-    .filter((code) => code !== 'NGN' || temporaryCreditActive === false);
+    .filter((code) => code !== 'NGN' || temporaryCreditActive !== null);
 
   const activeAssetCode: TransferAssetCode = assets.includes(assetCode) ? assetCode : assets[0] ?? 'NGN';
   const selectedWallet = data.wallet.find((wallet) => wallet.asset_code === activeAssetCode);
@@ -116,8 +117,8 @@ export default function SendRoute() {
           Send real NGN or VAD ledger USDC to another existing VAD account by email. The server verifies the recipient, account eligibility and available balance, then posts a balanced ledger transfer. This does not send funds to a bank or blockchain wallet.
         </VadText>
         {temporaryCreditActive === true ? (
-          <VadText variant="caption" tone="secondary">
-            NGN peer transfers are disabled while your temporary market-testing credit is active. Eligible ledger USDC transfers remain available.
+          <VadText variant="caption" tone="warning">
+            Temporary test funds stay in VAD’s NGN ledger and remain non-withdrawable. Email transfers are allowed only to an active, location-verified Nigerian VAD account that is eligible to receive test credit and has no real NGN balance or open NGN positions. The recipient receives test-credit restrictions too; NGN cash and test credits cannot be mixed.
           </VadText>
         ) : temporaryCreditActive === null ? (
           <VadText variant="caption" tone="warning">
