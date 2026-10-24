@@ -49,15 +49,18 @@ Deno.serve(async (req) => {
       return json({ ...cached, cached: true });
     }
 
-    // Reuse VAD's existing Cloudflare Workers AI provider configuration.
-    const { data: provider } = await admin
-      .schema('integration')
-      .from('providers')
-      .select('secret_reference, public_metadata')
-      .eq('code', 'CLOUDFLARE_WORKERS_AI')
-      .eq('environment', 'PRODUCTION')
-      .in('status', ['ACTIVE', 'DEGRADED'])
-      .maybeSingle();
+    // Use the public, privileged provider-runtime RPC. The integration schema is
+    // intentionally not exposed through PostgREST, so querying it directly caused
+    // intermittent 503s on Home artwork despite a healthy Cloudflare setup.
+    const { data: provider, error: providerError } = await admin
+      .rpc('get_cloudflare_market_image_provider_runtime');
+    if (providerError || !provider || !['ACTIVE', 'DEGRADED'].includes(String(provider.status))) {
+      if (cached) return json({ ...cached, cached: true, stale: true });
+      return json({
+        error: 'Cloudflare Workers AI provider configuration could not be loaded. Check the active provider settings.',
+        code: 'CLOUDFLARE_PROVIDER_CONFIG_UNAVAILABLE',
+      }, 503);
+    }
 
     const accountId = String(provider?.public_metadata?.account_id || '').trim();
     const secretName = String(provider?.secret_reference || 'VAD_AI_CLOUDFLARE_API_TOKEN').trim();
