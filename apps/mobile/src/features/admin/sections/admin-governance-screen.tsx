@@ -19,6 +19,8 @@ import { useVadTheme } from '@/providers/theme-provider';
 import {
   createAdminProvisionalResolution,
   finalizeAdminResolution,
+  getAdminOracleOutcomeChoices,
+  type AdminOracleOutcomeChoice,
   finalizeAdminVoid,
   hasAdminPermission,
 } from '@/services/admin-control-api';
@@ -46,6 +48,9 @@ export function AdminGovernanceScreen() {
   const [selectedOracle, setSelectedOracle] = useState<OracleRow | null>(null);
   const [action, setAction] = useState<ResolutionAction | null>(null);
   const [outcomeCode, setOutcomeCode] = useState('');
+  const [outcomeChoices, setOutcomeChoices] = useState<AdminOracleOutcomeChoice[]>([]);
+  const [outcomeChoicesLoading, setOutcomeChoicesLoading] = useState(false);
+  const [outcomeChoicesError, setOutcomeChoicesError] = useState<string | null>(null);
   const [evidenceNote, setEvidenceNote] = useState('');
   const [working, setWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -71,6 +76,41 @@ export function AdminGovernanceScreen() {
     const timer = setTimeout(() => void loadPolicies(), 0);
     return () => clearTimeout(timer);
   }, [loadPolicies]);
+
+  useEffect(() => {
+    const eventPublicId = String(selectedOracle?.event_public_id ?? '');
+    const resolutionId = Number(selectedOracle?.resolution_id ?? 0);
+    if (!selectedOracle || resolutionId > 0 || action !== 'CREATE' || !eventPublicId) {
+      setOutcomeChoices([]);
+      setOutcomeChoicesLoading(false);
+      setOutcomeChoicesError(null);
+      return;
+    }
+
+    let active = true;
+    setOutcomeChoices([]);
+    setOutcomeChoicesLoading(true);
+    setOutcomeChoicesError(null);
+    void getAdminOracleOutcomeChoices(eventPublicId)
+      .then((choices) => {
+        if (!active) return;
+        setOutcomeChoices(choices);
+        setOutcomeCode((current) =>
+          choices.some((choice) => choice.outcome_code === current)
+            ? current
+            : choices[0]?.outcome_code ?? '',
+        );
+        if (!choices.length) setOutcomeChoicesError('No configured outcome choices were found for this event.');
+      })
+      .catch((reason: unknown) => {
+        if (!active) return;
+        setOutcomeChoicesError(reason instanceof Error ? reason.message : 'Configured outcomes could not be loaded.');
+      })
+      .finally(() => {
+        if (active) setOutcomeChoicesLoading(false);
+      });
+    return () => { active = false; };
+  }, [action, selectedOracle]);
 
   const tabs = useMemo(() => {
     const next: { key: string; label: string; count: number }[] = [];
@@ -430,18 +470,47 @@ export function AdminGovernanceScreen() {
                 />
               </View>
             ) : (
-              <VadInput
-                label="Outcome code"
-                value={outcomeCode}
-                onChangeText={(value) => {
-                  setOutcomeCode(value.toUpperCase());
-                  setActionError(null);
-                }}
-                placeholder="e.g. YES or NO"
-                autoCapitalize="characters"
-                autoCorrect={false}
-                hint="The outcome must match one of the outcomes configured for this event."
-              />
+              <View style={{ gap: theme.spacing.sm }}>
+                <VadText variant="bodyStrong">Which configured outcome matches the official result?</VadText>
+                {outcomeChoicesLoading ? (
+                  <View style={{ gap: theme.spacing.xs }}>
+                    <VadSkeleton height={48} />
+                    <VadSkeleton height={48} />
+                  </View>
+                ) : outcomeChoices.length ? (
+                  <View style={{ gap: theme.spacing.xs }}>
+                    {outcomeChoices.map((choice) => (
+                      <ActionChoice
+                        key={choice.outcome_code}
+                        label={choice.outcome_label}
+                        detail={`Outcome code · ${choice.outcome_code}`}
+                        selected={outcomeCode === choice.outcome_code}
+                        disabled={working}
+                        onPress={() => {
+                          setOutcomeCode(choice.outcome_code);
+                          setActionError(null);
+                        }}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <>
+                    {outcomeChoicesError ? <VadText variant="caption" tone="warning">{outcomeChoicesError}</VadText> : null}
+                    <VadInput
+                      label="Outcome code"
+                      value={outcomeCode}
+                      onChangeText={(value) => {
+                        setOutcomeCode(value.toUpperCase());
+                        setActionError(null);
+                      }}
+                      placeholder="e.g. YES or NO"
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      hint="The outcome must match one of the outcomes configured for this event."
+                    />
+                  </>
+                )}
+              </View>
             )}
 
             {activeDisputes > 0 ? (
