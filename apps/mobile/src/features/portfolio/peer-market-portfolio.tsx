@@ -316,7 +316,7 @@ function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCa
         </View>
       ) : null}
 
-      <VadText variant="caption" tone="secondary">Landscape bank-card proportions keep the share image clean and readable in social feeds and messaging apps.</VadText>
+      <VadText variant="caption" tone="secondary">The preview uses landscape bank-card proportions; payout and P&L privacy switches apply to shared financial details.</VadText>
       {actionError ? <VadText variant="caption" tone="danger">{actionError}</VadText> : null}
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
