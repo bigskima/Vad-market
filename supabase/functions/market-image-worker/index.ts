@@ -76,6 +76,8 @@ Deno.serve(async (req) => {
         imageUrl?: string;
         hasExistingMedia?: boolean;
         mediaPath?: string;
+        replacedGeneratedMedia?: boolean;
+        existingGeneratedMediaPath?: string;
         error?: string;
       };
       if (sourceResponse.ok && sourcePayload.ok === true
@@ -86,7 +88,10 @@ Deno.serve(async (req) => {
           .from('market_image_generation_jobs')
           .update({
             status: 'DONE',
-            generated_media_path: null,
+            generated_media_path: sourcePayload.replacedGeneratedMedia === true
+              && typeof sourcePayload.existingGeneratedMediaPath === 'string'
+              ? sourcePayload.existingGeneratedMediaPath
+              : null,
             provider_code: 'GDELT_PUBLISHER_IMAGE',
             model_code: 'SOURCE_ARTICLE_IMAGE',
             prompt_text: 'Source-first image lookup found relevant publisher-provided cover art. AI remains the fallback when this source is unavailable.',
