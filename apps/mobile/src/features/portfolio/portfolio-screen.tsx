@@ -11,7 +11,7 @@ import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney, pct } from '@/features/markets/format';
-import { marketCategoryLabel, marketStatusLabel } from '@/features/markets/market-display-labels';
+import { marketCategoryLabel, marketOutcomeLabel, marketStatusLabel } from '@/features/markets/market-display-labels';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
@@ -685,7 +685,7 @@ function HistoryCard({ row }: { row: MarketHistoryRow }) {
         <View style={{ flex: 1, gap: 4 }}>
           <VadText variant="bodyStrong" numberOfLines={2}>{row.market_title}</VadText>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-            <VadChip label={row.selected_outcome} tone={row.selected_outcome === 'YES' ? 'yes' : 'no'} />
+            <VadChip label={marketOutcomeLabel(row.selected_outcome, row.selected_outcome_label)} tone={row.selected_outcome === 'YES' ? 'yes' : row.selected_outcome === 'NO' ? 'no' : 'neutral'} />
             <VadText variant="caption" tone="secondary">{row.asset_code} · {result}</VadText>
           </View>
         </View>
@@ -696,7 +696,7 @@ function HistoryCard({ row }: { row: MarketHistoryRow }) {
         <MetricTile label="Net payout" value={settled ? assetMoney(row.net_payout, row.asset_code) : '—'} />
         <MetricTile label="Realized P&L" value={settled ? `${pnl >= 0 ? '+' : '−'}${assetMoney(Math.abs(pnl), row.asset_code)}` : '—'} tone={settled ? (pnl >= 0 ? 'yes' : 'no') : 'secondary'} />
       </View>
-      {row.final_outcome ? <VadText variant="caption" tone="tertiary">Final outcome: {row.final_outcome}</VadText> : null}
+      {row.final_outcome ? <VadText variant="caption" tone="tertiary">Final outcome: {marketOutcomeLabel(row.final_outcome, row.final_outcome_label)}</VadText> : null}
     </VadCard>
   );
 }
