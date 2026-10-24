@@ -92,14 +92,18 @@ export function AdminMarketCreateWorkspace() {
     () => options?.jurisdictions.find((item) => item.countryCode === resolvedCountryCode) ?? null,
     [options, resolvedCountryCode],
   );
-  const resolvedAssetCode = assetCode || (jurisdiction?.assets.includes('TNGN') ? 'TNGN' : jurisdiction?.assets[0] ?? '');
-  const sandbox = resolvedAssetCode === 'TNGN';
+  // TNGN was permanently decommissioned. Ignore stale jurisdiction
+  // metadata and default Nigerian market creation to the real NGN asset.
+  const availableAssets = (jurisdiction?.assets ?? []).filter((asset) => asset !== 'TNGN');
+  const resolvedAssetCode = assetCode && availableAssets.includes(assetCode)
+    ? assetCode
+    : availableAssets.includes('NGN')
+      ? 'NGN'
+      : availableAssets[0] ?? '';
   const guided = creationStyle === 'GUIDED' && category !== 'Crypto';
   const automaticFootball = guided && category === 'Sports' && sportsType === 'MATCH' && resultChecking === 'AUTOMATIC';
   const automaticEvidence = guided && !automaticFootball && resultChecking === 'AUTOMATIC';
-  const automaticFootballAvailable = sandbox
-    ? options?.guided.football.automaticSandboxAvailable === true
-    : options?.guided.football.automaticProductionAvailable === true;
+  const automaticFootballAvailable = options?.guided.football.automaticProductionAvailable === true;
   const footballCompetitions = options?.guided.football.competitions ?? [];
 
   const scheduleValid = [opensAt, closesAt, resolvesAfter].every((value) => value && Number.isFinite(Date.parse(value)))
@@ -415,7 +419,7 @@ export function AdminMarketCreateWorkspace() {
 
       {step === 2 ? (
         <VadCard variant="raised" style={{ gap: theme.spacing.lg }}>
-          <SectionTitle eyebrow="STEP 2 · TRADING SETUP" title="Choose currency and timing." text="Use TNGN while validating the full market lifecycle." />
+          <SectionTitle eyebrow="STEP 2 · TRADING SETUP" title="Choose currency and timing." text="Use the real NGN or USDC asset; all orders and outcomes follow the ordinary market settlement engine." />
 
           {options && options.jurisdictions.length > 1 ? (
             <FieldGroup label="Jurisdiction">
@@ -426,12 +430,18 @@ export function AdminMarketCreateWorkspace() {
           {jurisdiction ? (
             <View style={{ gap: 8 }}>
               <FieldGroup label="Market currency">
-                {jurisdiction.assets.map((asset) => <VadChip key={asset} label={asset === 'TNGN' ? 'Test NGN · Sandbox' : asset} selected={resolvedAssetCode === asset} tone={resolvedAssetCode === asset && asset === 'TNGN' ? 'brand' : 'neutral'} onPress={() => setAssetCode(asset)} />)}
+                {availableAssets.map((asset) => (
+                  <VadChip key={asset} label={asset} selected={resolvedAssetCode === asset} tone={resolvedAssetCode === asset ? 'brand' : 'neutral'} onPress={() => setAssetCode(asset)} />
+                ))}
               </FieldGroup>
-              <VadCard variant={sandbox ? 'brand' : 'muted'} style={{ gap: 3 }}>
-                <VadText variant="bodyStrong" tone={sandbox ? 'brand' : 'warning'}>{sandbox ? 'Recommended for testnet' : 'Real-money currency selected'}</VadText>
-                <VadText variant="caption" tone="secondary">{sandbox ? 'TNGN uses synthetic balances and cannot be deposited or withdrawn.' : 'Use TNGN until matching, result checking and settlement pass your sandbox tests.'}</VadText>
-              </VadCard>
+              {availableAssets.length ? (
+                <VadCard variant="muted" style={{ gap: 3 }}>
+                  <VadText variant="bodyStrong">Production market currency</VadText>
+                  <VadText variant="caption" tone="secondary">Markets use the selected NGN or USDC wallet and the normal order and settlement engine. TNGN test trading has been permanently retired.</VadText>
+                </VadCard>
+              ) : (
+                <VadErrorState title="No eligible market currency" message="This jurisdiction has no enabled production currency. Update asset eligibility before creating a market." />
+              )}
             </View>
           ) : null}
 
@@ -463,7 +473,7 @@ export function AdminMarketCreateWorkspace() {
           <ReviewRow label="Category" value={category} />
           {automaticFootball ? <ReviewRow label="Match" value={`${homeTeam} vs ${awayTeam} · ${competition}`} /> : null}
           {automaticFootball ? <ReviewRow label="Kickoff" value={new Date(matchStartsAt).toLocaleString()} /> : null}
-          <ReviewRow label="Currency" value={sandbox ? 'TNGN · Sandbox' : resolvedAssetCode} />
+          <ReviewRow label="Currency" value={resolvedAssetCode} />
           <ReviewRow label="Result checking" value={resultLabel} />
           <ReviewRow label="Opens" value={new Date(opensAt).toLocaleString()} />
           <ReviewRow label="Closes" value={new Date(closesAt).toLocaleString()} />
