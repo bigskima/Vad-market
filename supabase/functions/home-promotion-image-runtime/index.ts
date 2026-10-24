@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
       }, 503);
     }
 
-    const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-2-klein-4b';
+    const model = '@cf/black-forest-labs/flux-2-klein-4b';
     const prompt = [
       'Generate a premium, cinematic 16:9 editorial photograph/illustration for a dark, premium prediction-market app. One clear visual subject, realistic materials, controlled lighting, crisp detail, clean negative space, composition that crops well on a phone.',
       `Use this campaign only as semantic subject guidance; do not reproduce its wording: ${title}.`,
