@@ -63,16 +63,18 @@ Deno.serve(async (req: Request) => {
     const visualDirection = clean(requestBody.visualDirection, 1200);
     if (title.length < 3) return json({ error: 'Add a campaign title of at least 3 characters.' }, 400);
 
+    // Use the public, privileged provider-runtime RPC. The integration schema is
+    // intentionally not exposed through PostgREST; direct schema reads can return
+    // 503 even though the market-cover runtime is healthy.
     const { data: provider, error: providerError } = await admin
-      .schema('integration')
-      .from('providers')
-      .select('secret_reference, public_metadata')
-      .eq('code', 'CLOUDFLARE_WORKERS_AI')
-      .eq('environment', 'PRODUCTION')
-      .in('status', ['ACTIVE', 'DEGRADED'])
-      .maybeSingle();
+      .rpc('get_cloudflare_market_image_provider_runtime');
 
-    if (providerError) return json({ error: 'The configured image provider could not be checked.' }, 503);
+    if (providerError || !provider || !['ACTIVE', 'DEGRADED'].includes(String(provider.status))) {
+      return json({
+        error: 'Cloudflare Workers AI provider configuration could not be loaded. Check the active provider settings.',
+        code: 'CLOUDFLARE_PROVIDER_CONFIG_UNAVAILABLE',
+      }, 503);
+    }
     const accountId = String(provider?.public_metadata?.account_id || '').trim();
     const secretName = String(provider?.secret_reference || 'VAD_AI_CLOUDFLARE_API_TOKEN').trim();
     const apiToken = Deno.env.get(secretName) || Deno.env.get('CLOUDFLARE_API_TOKEN') || Deno.env.get('CLOUDFLARE_WORKERS_AI_API_TOKEN');
