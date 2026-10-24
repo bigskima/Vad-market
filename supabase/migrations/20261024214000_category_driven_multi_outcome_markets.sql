@@ -348,6 +348,44 @@ $function$;
 
 grant execute on function public.my_pool_stakes_v2() to authenticated;
 
+
+create or replace function public.admin_oracle_outcomes_for_event_v1(p_event_public_id uuid)
+returns table (
+  outcome_code text,
+  outcome_label text,
+  display_order smallint
+)
+language plpgsql
+stable
+security definer
+set search_path to ''
+as $function$
+declare
+  v_event_id bigint;
+begin
+  if auth.uid() is null or not private.has_permission('oracle.review') then
+    raise exception 'Oracle review permission required' using errcode='42501';
+  end if;
+
+  select event.id into v_event_id
+  from market.canonical_events event
+  where event.public_id=p_event_public_id;
+
+  if v_event_id is null then
+    raise exception 'Market event not found' using errcode='P0002';
+  end if;
+
+  return query
+  select distinct outcome.code, outcome.label, outcome.display_order
+  from market.instruments instrument
+  join market.outcomes outcome on outcome.instrument_id=instrument.id
+  where instrument.canonical_event_id=v_event_id
+  order by outcome.display_order, outcome.code;
+end;
+$function$;
+
+grant execute on function public.admin_oracle_outcomes_for_event_v1(uuid) to authenticated;
+
 -- Expose the category-independent manual-review format through the same
 -- validation RPC used by Admin. It is intentionally never marked auto-ready:
 -- an authorized Oracle reviewer must choose one configured outcome.
