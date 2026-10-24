@@ -16,10 +16,15 @@ export default function PortfolioRoute() {
     router.push({ pathname: '/portfolio/order/[orderId]', params: { orderId: String(order.order_id) } });
   };
 
+  const openMarket = (marketId: string) => {
+    router.push({ pathname: '/market/[marketId]', params: { marketId } });
+  };
+
   return (
     <ProductRoute active="Portfolio" hideTopBar>
       <PortfolioScreen
         positions={data.positions}
+        poolStakes={data.poolStakes}
         orders={data.orders}
         settlements={data.settlements}
         marketHistory={data.marketHistory}
@@ -29,6 +34,7 @@ export default function PortfolioRoute() {
         onRetry={() => void data.refreshPortfolio()}
         onOpenPosition={openPosition}
         onOpenOrder={openOrder}
+        onOpenMarket={openMarket}
       />
     </ProductRoute>
   );
