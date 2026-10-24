@@ -112,7 +112,8 @@ function publisherFromUrl(url: string, domain?: unknown) {
 function queryFor(category: Category, search: string) {
   const terms = search.trim().replace(/[\u0000-\u001f]/g, ' ').replace(/["<>]/g, ' ').replace(/\s+/g, ' ').slice(0, 100);
   const expression = terms ? '"' + terms.replace(/"/g, '') + '"' : CATEGORY_QUERY[category];
-  return expression + ' sourcelang:english';
+  const categoryConstraint = terms && category !== 'ALL' ? CATEGORY_QUERY[category] : '';
+  return [expression, categoryConstraint, 'sourcelang:english'].filter(Boolean).join(' ');
 }
 async function fetchText(url: URL, maxBytes = 1_200_000) {
   const controller = new AbortController();
