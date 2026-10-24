@@ -63,9 +63,13 @@ Deno.serve(async (req) => {
     const secretName = String(provider?.secret_reference || 'VAD_AI_CLOUDFLARE_API_TOKEN').trim();
     const apiToken = Deno.env.get(secretName) || Deno.env.get('CLOUDFLARE_API_TOKEN') || Deno.env.get('CLOUDFLARE_WORKERS_AI_API_TOKEN');
 
-    if (!accountId || !apiToken) {
+    if (!accountId) {
       if (cached) return json({ ...cached, cached: true, stale: true });
-      return json({ error: 'Cloudflare image generation is not configured', code: 'CLOUDFLARE_NOT_CONFIGURED' }, 503);
+      return json({ error: 'Cloudflare image generation is not configured: the Cloudflare account ID is missing.', code: 'CLOUDFLARE_ACCOUNT_ID_MISSING' }, 503);
+    }
+    if (!apiToken) {
+      if (cached) return json({ ...cached, cached: true, stale: true });
+      return json({ error: `Cloudflare image generation is missing the configured Supabase Edge Function secret ${secretName}. Add a valid Cloudflare API token; Gemini is not used for the Home hero.`, code: 'CLOUDFLARE_SECRET_MISSING', requiredSecret: secretName }, 503);
     }
 
     const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-2-klein-4b';
