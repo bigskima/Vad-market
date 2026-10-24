@@ -786,6 +786,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setCreated(null);
     setStep(1);
     setCreationStyle('GUIDED');
+    setMarketFormat('BINARY');
     setPublicationChoice('DRAFT');
     const firstCategory = categories[0];
     setCategoryCode(firstCategory?.code ?? '');
@@ -804,11 +805,13 @@ export function AdminMarketCreateWorkspaceCatalog() {
   if (loading) return <View style={{ gap: theme.spacing.md }}><VadSkeleton width="50%" height={32} /><VadSkeleton height={120} /><VadSkeleton height={280} /></View>;
 
   const publicationStatus = String(created?.publication_status ?? 'DRAFT').toUpperCase();
-  const resultLabel = guided
-    ? automaticFootball
-      ? `Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`
-      : `Verified result${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
-    : 'VAD configured result checking';
+  const resultLabel = marketFormat === 'MULTI_OUTCOME'
+    ? `Manual review${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
+    : guided
+      ? automaticFootball
+        ? `Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`
+        : `Verified result${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
+      : 'VAD configured result checking';
 
   if (created) {
     return (
@@ -1121,30 +1124,42 @@ export function AdminMarketCreateWorkspaceCatalog() {
               <VadText variant="caption" tone="secondary">{automaticFootballAvailable ? 'The provider is called only when the result is due.' : 'Choose Verified result or a supported test currency.'}</VadText>
             </VadCard>
           ) : null}
-          <View style={{ gap: 8 }}>
-            <FieldGroup label="Trading method">
-              {(options?.tradingMethods ?? [
-                { code: 'POOL' as const, name: 'Peer Pool', description: '' },
-                { code: 'ORDER_BOOK' as const, name: 'Order Book', description: '' },
-              ]).map((method) => (
-                <VadChip
-                  key={method.code}
-                  label={method.name}
-                  selected={liquidityModel === method.code}
-                  tone={liquidityModel === method.code ? 'brand' : 'neutral'}
-                  onPress={() => { setLiquidityModel(method.code); setError(null); }}
-                />
-              ))}
-            </FieldGroup>
-            <VadCard variant="muted" style={{ gap: 4 }}>
-              <VadText variant="bodyStrong">{liquidityModel === 'POOL' ? 'Peer Pool' : 'Order Book'}</VadText>
-              <VadText variant="caption" tone="secondary">
-                {liquidityModel === 'POOL'
-                  ? 'Users choose YES or NO and commit stakes into a participant-funded pool. Their stake is committed immediately and the estimated payout moves as the pool changes.'
-                  : 'Users trade YES or NO outcome shares by price and quantity. Orders may remain unmatched, fill partly, or fill completely depending on other traders.'}
-              </VadText>
-            </VadCard>
-          </View>
+          {marketFormat === 'MULTI_OUTCOME' ? (
+            <View style={{ gap: 8 }}>
+              <FieldGroup label="Trading method">
+                <VadChip label="Peer Pool" selected tone="brand" />
+              </FieldGroup>
+              <VadCard variant="muted" style={{ gap: 4 }}>
+                <VadText variant="bodyStrong">Peer Pool · Multiple outcomes</VadText>
+                <VadText variant="caption" tone="secondary">Each named option has its own participant-funded pool balance. Traders stake on one option; the published result must match exactly one configured choice. VAD does not fund the pool.</VadText>
+              </VadCard>
+            </View>
+          ) : (
+            <View style={{ gap: 8 }}>
+              <FieldGroup label="Trading method">
+                {(options?.tradingMethods ?? [
+                  { code: 'POOL' as const, name: 'Peer Pool', description: '' },
+                  { code: 'ORDER_BOOK' as const, name: 'Order Book', description: '' },
+                ]).map((method) => (
+                  <VadChip
+                    key={method.code}
+                    label={method.name}
+                    selected={liquidityModel === method.code}
+                    tone={liquidityModel === method.code ? 'brand' : 'neutral'}
+                    onPress={() => { setLiquidityModel(method.code); setError(null); }}
+                  />
+                ))}
+              </FieldGroup>
+              <VadCard variant="muted" style={{ gap: 4 }}>
+                <VadText variant="bodyStrong">{liquidityModel === 'POOL' ? 'Peer Pool' : 'Order Book'}</VadText>
+                <VadText variant="caption" tone="secondary">
+                  {liquidityModel === 'POOL'
+                    ? 'Users choose YES or NO and commit stakes into a participant-funded pool. Their stake is committed immediately and the estimated payout moves as the pool changes.'
+                    : 'Users trade YES or NO outcome shares by price and quantity. Orders may remain unmatched, fill partly, or fill completely depending on other traders.'}
+                </VadText>
+              </VadCard>
+            </View>
+          )}
           <VadDateTimeField label="Opens" value={opensAt} onChange={setOpensAt} hint="When users can begin trading." />
           <VadDateTimeField label="Closes" value={closesAt} onChange={setClosesAt} minDate={opensAt || undefined} hint={automaticFootball ? 'For match-result markets, close no later than kickoff.' : 'Trading stops at this time.'} />
           <VadDateTimeField label="Check result after" value={resolvesAfter} onChange={setResolvesAfter} minDate={closesAt || opensAt || undefined} hint={automaticFootball ? 'At least two hours after kickoff so VAD waits for a final result.' : 'VAD begins result verification from this time.'} />
@@ -1165,7 +1180,17 @@ export function AdminMarketCreateWorkspaceCatalog() {
           {football ? <ReviewRow label="Match" value={`${homeTeam} vs ${awayTeam} · ${competition}`} /> : null}
           {football && matchStartsAt ? <ReviewRow label="Kickoff" value={new Date(matchStartsAt).toLocaleString()} /> : null}
           <ReviewRow label="Currency" value={resolvedAssetCode} />
-          <ReviewRow label="Market format" value="Yes / No" />
+          <ReviewRow label="Market format" value={marketFormat === 'MULTI_OUTCOME' ? `Multiple outcomes · ${multiOutcomeOptions.length} choices` : 'Yes / No'} />
+          {marketFormat === 'MULTI_OUTCOME' ? (
+            <>
+              <ReviewRow label="Resolution instructions" value={resultCondition.trim()} />
+              <ReviewRow label="Official source" value={sourceName.trim()} />
+              <View style={{ gap: 5 }}>
+                <VadText variant="caption" tone="secondary">Configured choices</VadText>
+                {multiOutcomeOptions.map((option, index) => <ReviewRow key={`${index}:${option}`} label={`Choice ${index + 1}`} value={option} />)}
+              </View>
+            </>
+          ) : null}
           <ReviewRow label="Trading method" value={liquidityModel === 'POOL' ? 'Peer Pool' : 'Order Book'} />
           <ReviewRow label="Result checking" value={resultLabel} />
           <ReviewRow label="Opens" value={new Date(opensAt).toLocaleString()} />
