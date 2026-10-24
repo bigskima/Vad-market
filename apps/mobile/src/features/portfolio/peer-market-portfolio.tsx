@@ -146,6 +146,7 @@ function StakeCard({ stake }: { stake: PoolStakeRow }) {
 
 function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCardProfile }) {
   const theme = useVadTheme();
+  const density = useProductDensity();
   const [working, setWorking] = useState<'share' | 'save' | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showPayout, setShowPayout] = useState(true);
@@ -177,33 +178,123 @@ function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCa
         borderColor: row.result === 'WON' ? theme.colors.yes : row.result === 'LOST' ? theme.colors.no : theme.colors.brandPrimary,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-        <Avatar profile={profile} />
-        <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
-          <VadText variant="bodyStrong" numberOfLines={1}>{profile.displayName}</VadText>
-          <VadText variant="caption" tone="tertiary" numberOfLines={1}>{profile.handle ? `@${profile.handle}` : 'VAD participant'}</VadText>
+      <View
+        accessibilityLabel={`Share preview: ${row.result} for ${row.market_title}`}
+        style={{
+          width: '100%',
+          aspectRatio: 1.586,
+          minHeight: 196,
+          maxHeight: 320,
+          padding: density.phone ? 10 : 14,
+          borderRadius: 20,
+          borderWidth: 1.5,
+          borderColor: row.result === 'WON' ? theme.colors.yes : row.result === 'LOST' ? theme.colors.no : theme.colors.brandPrimary,
+          backgroundColor: theme.colors.surfaceRaised,
+          overflow: 'hidden',
+          justifyContent: 'space-between',
+          gap: 7,
+        }}
+      >
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            width: 150,
+            height: 150,
+            borderRadius: 75,
+            right: -50,
+            top: -62,
+            backgroundColor: row.result === 'WON' ? theme.colors.yesSoft : row.result === 'LOST' ? theme.colors.noSoft : theme.colors.brandSoft,
+            opacity: 0.55,
+          }}
+        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+          <Avatar profile={profile} />
+          <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+            <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: density.phone ? 10 : 12 }}>
+              {profile.displayName}
+            </VadText>
+            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: density.phone ? 9 : 10 }}>
+              {profile.handle ? `@${profile.handle}` : 'VAD participant'}
+            </VadText>
+          </View>
+          <VadChip label={friendly(row.result).toUpperCase()} tone={resultTone} />
         </View>
-        <VadChip label={friendly(row.result).toUpperCase()} tone={resultTone} />
-      </View>
 
-      <VadText variant="bodyStrong" numberOfLines={4}>{row.market_title}</VadText>
+        <View style={{ flex: 1, minHeight: 0, flexDirection: 'row', alignItems: 'stretch', gap: 8 }}>
+          <View style={{ flex: 1.25, minWidth: 0, justifyContent: 'center', gap: 5 }}>
+            <VadText variant="caption" tone="brand" style={{ fontSize: density.phone ? 8 : 10 }}>VAD MARKET · {row.asset_code}</VadText>
+            <VadText
+              variant="bodyStrong"
+              numberOfLines={2}
+              style={{ fontSize: density.phone ? 11 : 14, lineHeight: density.phone ? 14 : 18 }}
+            >
+              {row.market_title}
+            </VadText>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <View style={{ flex: 1, minWidth: 0, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
+                <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 8 }}>YOUR PICK</VadText>
+                <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: density.phone ? 10 : 12 }}>{row.selected_outcome}</VadText>
+              </View>
+              <View style={{ flex: 1, minWidth: 0, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
+                <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 8 }}>FINAL</VadText>
+                <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: density.phone ? 10 : 12 }}>{final}</VadText>
+              </View>
+            </View>
+          </View>
 
-      <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
-        <Outcome label="YOUR PICK" value={row.selected_outcome} />
-        <Outcome label="FINAL RESULT" value={final} strong />
-      </View>
+          <View style={{
+            flex: 0.86,
+            minWidth: 88,
+            maxWidth: '43%',
+            justifyContent: 'center',
+            padding: density.phone ? 7 : 10,
+            gap: 4,
+            borderRadius: 12,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+          }}>
+            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 8 }}>REALIZED P&L</VadText>
+            <VadText
+              variant="heading"
+              tone={showPnl ? (Number(row.realized_pnl) >= 0 ? 'yes' : 'no') : 'secondary'}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={{ fontSize: density.phone ? 13 : 17 }}
+            >
+              {showPnl ? signedMoney(row.realized_pnl, row.asset_code) : 'PRIVATE'}
+            </VadText>
+            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 1 }} />
+            <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: 8 }}>NET PAYOUT</VadText>
+            <VadText
+              variant="bodyStrong"
+              tone={showPayout ? 'primary' : 'secondary'}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={{ fontSize: density.phone ? 10 : 12 }}
+            >
+              {showPayout ? assetMoney(row.net_payout, row.asset_code) : 'PRIVATE'}
+            </VadText>
+          </View>
+        </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
-        <Metric label="Stake" value={assetMoney(row.stake_amount, row.asset_code)} />
-        <Metric label="Gross payout" value={assetMoney(row.gross_payout, row.asset_code)} />
-        <Metric label="VAD trading fee" value={assetMoney(row.trading_fee, row.asset_code)} />
-        <Metric label="VAD settlement fee" value={assetMoney(row.settlement_fee, row.asset_code)} />
-        <Metric label="Net payout" value={assetMoney(row.net_payout, row.asset_code)} />
-      </View>
-
-      <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.sm }}>
-        <VadText variant="bodyStrong">Realized P&amp;L</VadText>
-        <VadText variant="heading" tone={Number(row.realized_pnl) >= 0 ? 'yes' : 'no'}>{signedMoney(row.realized_pnl, row.asset_code)}</VadText>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+          paddingTop: 6,
+        }}>
+          <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ flex: 1, fontSize: density.phone ? 8 : 10 }}>
+            STAKE · {assetMoney(row.stake_amount, row.asset_code)}
+          </VadText>
+          <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontSize: density.phone ? 8 : 10 }}>
+            {row.settled_at ? new Date(row.settled_at).toLocaleDateString() : 'VAD result'}
+          </VadText>
+        </View>
       </View>
 
       <View style={{ borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.sm, gap: theme.spacing.sm }}>
@@ -225,8 +316,7 @@ function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCa
         </View>
       ) : null}
 
-      {row.settled_at ? <VadText variant="caption" tone="tertiary">Settled {new Date(row.settled_at).toLocaleString()}</VadText> : null}
-      <VadText variant="caption" tone="secondary">The premium semi-square social card can be shared to X, Instagram, Facebook, TikTok and other apps through your device share sheet.</VadText>
+      <VadText variant="caption" tone="secondary">The preview uses landscape bank-card proportions; payout and P&L privacy switches apply to shared financial details.</VadText>
       {actionError ? <VadText variant="caption" tone="danger">{actionError}</VadText> : null}
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
@@ -257,7 +347,7 @@ function Avatar({ profile }: { profile: ResultCardProfile }) {
       {profile.avatarUrl ? (
         <Image source={{ uri: profile.avatarUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
       ) : (
-        <VadText variant="bodyStrong" tone="brand">{initials(profile.displayName)}</VadText>
+        <VadText variant="bodyStrong" tone="brand" style={{ fontSize: 11 }}>{initials(profile.displayName)}</VadText>
       )}
     </View>
   );
