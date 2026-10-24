@@ -151,12 +151,10 @@ begin
     if v_code = '' or v_code !~ '^[A-Z]' then
       v_code := 'OPTION_' || v_item.ordinal::text;
     end if;
-    -- Pool/on-chain outcome identifiers are limited to 32 characters.
-    -- Reserve room for any stable duplicate suffix within that same limit.
-    v_code := left(v_code, 32);
+    v_code := left(v_code, 48);
     if exists (select 1 from market.outcomes where instrument_id = v_instrument_id and code = v_code) then
       v_suffix := '_' || v_item.ordinal::text;
-      v_code := left(v_code, 32 - char_length(v_suffix)) || v_suffix;
+      v_code := left(v_code, 50 - char_length(v_suffix)) || v_suffix;
     end if;
     if exists (select 1 from market.outcomes where instrument_id = v_instrument_id and code = v_code) then
       raise exception 'Two choices produce the same internal identifier. Make the choice names more distinct.' using errcode = '22023';
