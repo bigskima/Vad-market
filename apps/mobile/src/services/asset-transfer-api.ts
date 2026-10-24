@@ -11,6 +11,7 @@ export type AssetTransferReceipt = {
   amount: number | string;
   status: 'POSTED';
   idempotentReplay?: boolean;
+  temporaryTestCredit?: boolean;
 };
 
 export async function transferAssetToEmail(input: {
