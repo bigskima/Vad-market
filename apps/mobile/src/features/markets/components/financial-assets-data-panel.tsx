@@ -189,7 +189,7 @@ function FinancialAssetCard({ item }: { item: FinancialMarketQuote }) {
             onPress={() => { void Linking.openURL(item.sourceUrl!).catch(() => undefined); }}
             style={({ pressed }) => ({ alignSelf: 'flex-start', opacity: pressed ? 0.7 : 1 })}
           >
-            <VadText variant="caption" tone="secondary" underline>{item.source} ↗</VadText>
+            <VadText variant="caption" tone="secondary" style={{ textDecorationLine: 'underline' }}>{item.source} ↗</VadText>
           </Pressable>
         ) : (
           <VadText variant="caption" tone="tertiary">{item.source}</VadText>
