@@ -1,12 +1,12 @@
 import { Pressable, View } from 'react-native';
 
-import { VadIcon } from '@/components/ui/vad-icon';
+import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 
 type HeaderAction = {
-  icon: 'bell' | 'operations' | 'search' | 'close' | 'settings' | 'globe';
+  icon: VadIconName;
   label: string;
   onPress: () => void;
   badge?: boolean;

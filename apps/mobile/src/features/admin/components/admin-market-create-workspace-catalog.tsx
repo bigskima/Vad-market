@@ -255,7 +255,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     [category, marketTypeCode],
   );
   const multiOutcomeOptions = useMemo(
-    () => multiOutcomeOptionsText.split(/\\r?\\n/).map((option) => option.trim()).filter(Boolean),
+    () => multiOutcomeOptionsText.split(/\r?\n/).map((option) => option.trim()).filter(Boolean),
     [multiOutcomeOptionsText],
   );
   const multiOutcomeOptionsValid = multiOutcomeOptions.length >= 2
