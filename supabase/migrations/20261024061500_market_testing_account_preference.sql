@@ -422,6 +422,14 @@ begin
     if not v_tngn_demo_enabled then
       raise exception 'Enable TNGN market testing from Account before placing test trades.' using errcode='42501';
     end if;
+    if not exists(
+      select 1 from public.assets a
+      where a.id=instrument.asset_id and a.status='ACTIVE'
+        and coalesce((a.metadata->>'sandbox_only')::boolean,false)
+        and coalesce((a.metadata->>'non_withdrawable')::boolean,false)
+    ) then
+      raise exception 'The TNGN asset is not configured as a non-withdrawable sandbox currency.' using errcode='42501';
+    end if;
   end if;
   if not private.trade_access_satisfies(auth.uid(),acct.country_code,instrument.asset_id) then
     if not (
@@ -435,7 +443,12 @@ begin
         v_asset_code='TNGN'
         and v_tngn_demo_enabled
         and upper(trim(coalesce(acct.country_code,''))) in ('NG','NGA','NIGERIA')
-        and private.asset_available_in_country(acct.country_code,instrument.asset_id)
+        and exists(
+          select 1 from public.assets a
+          where a.id=instrument.asset_id and a.status='ACTIVE'
+            and coalesce((a.metadata->>'sandbox_only')::boolean,false)
+            and coalesce((a.metadata->>'non_withdrawable')::boolean,false)
+        )
       )
     ) then
       raise exception 'Trading is not available for this account and market. Check account eligibility and market capability.' using errcode='P0001';
@@ -557,6 +570,14 @@ begin
     if not v_tngn_demo_enabled then
       raise exception 'Enable TNGN market testing from Account before placing test trades.' using errcode='42501';
     end if;
+    if not exists(
+      select 1 from public.assets a
+      where a.id=instrument.asset_id and a.status='ACTIVE'
+        and coalesce((a.metadata->>'sandbox_only')::boolean,false)
+        and coalesce((a.metadata->>'non_withdrawable')::boolean,false)
+    ) then
+      raise exception 'The TNGN asset is not configured as a non-withdrawable sandbox currency.' using errcode='42501';
+    end if;
   end if;
   if not private.trade_access_satisfies(auth.uid(), acct.country_code, instrument.asset_id) then
     if not (
@@ -570,7 +591,12 @@ begin
         v_asset_code='TNGN'
         and v_tngn_demo_enabled
         and upper(trim(coalesce(acct.country_code,''))) in ('NG','NGA','NIGERIA')
-        and private.asset_available_in_country(acct.country_code,instrument.asset_id)
+        and exists(
+          select 1 from public.assets a
+          where a.id=instrument.asset_id and a.status='ACTIVE'
+            and coalesce((a.metadata->>'sandbox_only')::boolean,false)
+            and coalesce((a.metadata->>'non_withdrawable')::boolean,false)
+        )
       )
     ) then
       raise exception 'Trading is not available for this account and market. Check account eligibility and market capability.' using errcode='P0001';
