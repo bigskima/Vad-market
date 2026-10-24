@@ -13,7 +13,6 @@ export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogIt
   const existingMediaPath = market.media_path?.trim() || null;
 
   useEffect(() => {
-    if (existingMediaPath) return;
     let active = true;
     void requestMarketImageGeneration(market.instrument_public_id).then((result) => {
       if (active) setImageResult(result);
@@ -23,12 +22,12 @@ export function MarketThumbnail({ market, size = 66 }: { market: MarketCatalogIt
 
   return (
     <MarketMediaThumbnail
-      mediaPath={existingMediaPath ?? imageResult?.mediaUrl ?? null}
+      mediaPath={imageResult?.source === 'publisher' ? imageResult.mediaUrl : existingMediaPath ?? imageResult?.mediaUrl ?? null}
       legacyUrl={null}
       title={market.title}
       category={market.category}
-      sourceCredit={existingMediaPath ? null : imageResult?.source === 'publisher' ? imageResult.sourceName ?? null : null}
-      sourceTitle={existingMediaPath ? null : imageResult?.source === 'publisher' ? imageResult.articleTitle ?? null : null}
+      sourceCredit={imageResult?.source === 'publisher' ? imageResult.sourceName ?? null : null}
+      sourceTitle={imageResult?.source === 'publisher' ? imageResult.articleTitle ?? null : null}
       size={size}
     />
   );
