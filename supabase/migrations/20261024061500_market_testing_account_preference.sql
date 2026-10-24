@@ -1,120 +1,362 @@
 begin;
 
--- Per-user opt-in for non-cash NGN test-credit trading. The credit itself is
--- still issued/revoked only by the audited admin flow and trades continue to
--- use ordinary NGN market instruments, pool records, fees and settlement.
-create table if not exists public.user_temporary_ngn_test_preferences (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  enabled boolean not null default false,
-  updated_at timestamptz not null default statement_timestamp()
-);
-alter table public.user_temporary_ngn_test_preferences enable row level security;
-revoke all on public.user_temporary_ngn_test_preferences from public, anon, authenticated, service_role;
+-- Restore TNGN as an opt-in non-cash currency, not as a separate demo market.
+-- All NEW trades use market.instruments, trading.pool_stakes, finance ledger
+-- accounts, and the normal pool settlement engine. Legacy demo rows stay audit-only.
 
-create or replace function private.reset_temporary_ngn_test_mode_on_grant_change()
-returns trigger
-language plpgsql
+-- Remove the irreversible retirement guards, but keep TNGN sandbox/non-withdrawable
+-- metadata so normal payment quote paths continue to reject deposits and withdrawals.
+drop trigger if exists prevent_retired_tngn_instrument_write on market.instruments;
+drop trigger if exists prevent_retired_tngn_ledger_account on finance.ledger_accounts;
+drop trigger if exists prevent_retired_tngn_ledger_journal on finance.ledger_journals;
+
+update public.assets
+set status='ACTIVE',
+    metadata=(coalesce(metadata,'{}'::jsonb)
+      || jsonb_build_object('sandbox_only',true,'non_withdrawable',true,'decommissioned',false,
+        'decommission_reason','Opt-in non-cash TNGN; uses standard market and settlement engine')),
+    updated_at=statement_timestamp()
+where code='TNGN';
+
+update public.platform_feature_flags
+set enabled=true,
+    description='Globally controls eligibility for opt-in TNGN non-cash market trading; all trades use the standard market and settlement engine.',
+    updated_at=statement_timestamp()
+where flag_key='TNGN_DEMO_MODE';
+
+insert into public.platform_feature_flags(flag_key,enabled,description)
+select 'TNGN_DEMO_MODE',true,
+  'Globally controls eligibility for opt-in TNGN non-cash market trading; all trades use the standard market and settlement engine.'
+where not exists(select 1 from public.platform_feature_flags where flag_key='TNGN_DEMO_MODE');
+
+-- Account closure was operational, not a conversion into real NGN. Reactivate the
+-- same TNGN ledger accounts; leave historical entries under TNGN and never mix assets.
+update finance.ledger_accounts la
+set status='ACTIVE',
+    closed_at=null
+from public.assets a
+where a.id=la.asset_id and a.code='TNGN' and la.status<>'ACTIVE';
+
+-- Recreate the normal currency policy. TNGN is eligible only for Nigerian accounts
+-- when its asset is active and explicitly sandbox/non-withdrawable. It is not enabled
+-- by default; the Account preference adds it to a user's currency list.
+create or replace function public.get_my_currency_policy()
+returns table(country_code text, eligible_asset_codes text[], enabled_asset_codes text[])
+language sql
+stable
 security definer
 set search_path=''
 as $function$
-begin
-  insert into public.user_temporary_ngn_test_preferences(user_id,enabled,updated_at)
-  values(new.user_id,false,statement_timestamp())
-  on conflict(user_id) do update
-    set enabled=false,updated_at=statement_timestamp();
-  return new;
-end;
+  with account_country as (
+    select case
+      when upper(trim(coalesce(ua.country_code,''))) in ('NG','NGA','NIGERIA') then 'NG'
+      else upper(trim(coalesce(ua.country_code,'')))
+    end as country_code
+    from public.user_accounts ua
+    where ua.user_id=auth.uid()
+  ), eligible as (
+    select ac.country_code,
+      coalesce(array(
+        select a.code
+        from public.assets a
+        where (
+          (a.code='USDC' and a.status='ACTIVE')
+          or (
+            ac.country_code='NG' and a.code='NGN' and a.status='ACTIVE'
+            and exists(
+              select 1
+              from public.jurisdictions j
+              join public.jurisdiction_assets ja on ja.jurisdiction_id=j.id
+              where upper(trim(j.country_code)) in ('NG','NGA','NIGERIA')
+                and j.status='ACTIVE' and ja.asset_id=a.id and ja.status='ACTIVE'
+            )
+          )
+          or (
+            ac.country_code='NG' and a.code='TNGN' and a.status='ACTIVE'
+            and coalesce((a.metadata->>'sandbox_only')::boolean,false)
+            and coalesce((a.metadata->>'non_withdrawable')::boolean,false)
+          )
+        )
+        order by a.code
+      ),array[]::text[]) as eligible_asset_codes
+    from account_country ac
+  ), prefs as (
+    select p.enabled_asset_codes from public.user_currency_preferences p where p.user_id=auth.uid()
+  )
+  select e.country_code,e.eligible_asset_codes,
+    case
+      when p.enabled_asset_codes is null then coalesce(
+        array(select code from unnest(e.eligible_asset_codes) code where code<>'TNGN'),
+        e.eligible_asset_codes
+      )
+      else coalesce(
+        array(select code from unnest(p.enabled_asset_codes) code where code=any(e.eligible_asset_codes)),
+        array(select code from unnest(e.eligible_asset_codes) code where code<>'TNGN')
+      )
+    end
+  from eligible e left join prefs p on true;
 $function$;
-revoke all on function private.reset_temporary_ngn_test_mode_on_grant_change() from public,anon,authenticated,service_role;
-drop trigger if exists reset_temporary_ngn_test_mode_on_grant_change on public.temporary_ngn_test_credit_grants;
-create trigger reset_temporary_ngn_test_mode_on_grant_change
-after insert or update of status on public.temporary_ngn_test_credit_grants
-for each row execute function private.reset_temporary_ngn_test_mode_on_grant_change();
 
-create or replace function private.assert_temporary_ngn_market_scope(
-  p_instrument_id bigint,
-  p_user_id uuid,
-  p_asset_id bigint,
-  p_create_lock boolean
+create or replace function public.set_my_currency_preferences(
+  p_enabled_asset_codes text[],
+  p_preferred_asset_code text default null
 )
-returns void
+returns jsonb
 language plpgsql
 security definer
 set search_path=''
 as $function$
 declare
-  v_asset_code text;
-  v_test_grant_id bigint;
-  v_has_active_lock boolean:=false;
+  v_country text;
+  v_eligible text[];
+  v_requested text[];
+  v_enabled text[];
+  v_preferred text;
+  v_tngn_global boolean:=false;
 begin
-  if p_instrument_id is null or p_user_id is null or p_asset_id is null then
-    raise exception 'A valid market, user and asset are required.' using errcode='22023';
+  if auth.uid() is null then raise exception 'Authentication required' using errcode='28000'; end if;
+  select policy.country_code,policy.eligible_asset_codes into v_country,v_eligible
+  from public.get_my_currency_policy() policy limit 1;
+  if v_eligible is null or cardinality(v_eligible)=0 then
+    raise exception 'No currencies are eligible for this account.' using errcode='42501';
   end if;
-  select a.code into v_asset_code from public.assets a where a.id=p_asset_id and a.status='ACTIVE';
-  if v_asset_code is distinct from 'NGN' then return; end if;
-
-  select g.id into v_test_grant_id
-  from public.temporary_ngn_test_credit_grants g
-  join public.user_temporary_ngn_test_preferences pref
-    on pref.user_id=g.user_id and pref.enabled
-  where g.user_id=p_user_id and g.asset_id=p_asset_id and g.status='ACTIVE'
-  order by g.created_at desc limit 1;
-
-  select exists(
-    select 1 from public.temporary_ngn_test_market_locks l
-    where l.instrument_id=p_instrument_id and l.status='ACTIVE'
-  ) into v_has_active_lock;
-
-  if v_has_active_lock and v_test_grant_id is null then
-    raise exception 'This NGN market is temporarily restricted to non-cash test-credit trading until the current market settles.' using errcode='42501';
+  v_requested:=coalesce(p_enabled_asset_codes,
+    array(select code from unnest(v_eligible) code where code<>'TNGN'));
+  if cardinality(v_requested)=0 then raise exception 'Enable at least one eligible currency.' using errcode='22023'; end if;
+  if exists(
+    select 1 from unnest(v_requested) as requested(code)
+    where requested.code is null or not(requested.code=any(v_eligible))
+  ) then
+    raise exception 'One or more selected currencies are not eligible for this account.' using errcode='42501';
   end if;
-
-  if v_test_grant_id is null then return; end if;
-
-  if not v_has_active_lock then
-    if exists(
-      select 1 from trading.pool_stakes s
-      where s.instrument_id=p_instrument_id
-        and not exists(
-          select 1 from public.temporary_ngn_test_credit_grants g
-          where g.user_id=s.user_id and g.asset_id=p_asset_id and g.status='ACTIVE'
-        )
-    ) or exists(
-      select 1 from trading.orders o
-      where o.instrument_id=p_instrument_id and o.status in ('OPEN','PARTIALLY_FILLED')
-        and not exists(
-          select 1 from public.temporary_ngn_test_credit_grants g
-          where g.user_id=o.user_id and g.asset_id=p_asset_id and g.status='ACTIVE'
-        )
-    ) or exists(
-      select 1 from trading.positions pos
-      where pos.instrument_id=p_instrument_id and pos.quantity<>0
-        and not exists(
-          select 1 from public.temporary_ngn_test_credit_grants g
-          where g.user_id=pos.user_id and g.asset_id=p_asset_id and g.status='ACTIVE'
-        )
-    ) then
-      raise exception 'This NGN market already has real-money exposure. Temporary test credit cannot join it; choose an eligible open market with no real-money stakes.' using errcode='42501';
-    end if;
-    if p_create_lock then
-      insert into public.temporary_ngn_test_market_locks(instrument_id,asset_id,owner_user_id,owner_grant_id,status)
-      values(p_instrument_id,p_asset_id,p_user_id,v_test_grant_id,'ACTIVE')
-      on conflict(instrument_id) do update
-        set asset_id=excluded.asset_id,
-            owner_user_id=excluded.owner_user_id,
-            owner_grant_id=excluded.owner_grant_id,
-            status='ACTIVE',
-            released_at=null,
-            release_reason=null,
-            updated_at=statement_timestamp()
-      where public.temporary_ngn_test_market_locks.status='RELEASED';
+  if 'TNGN'=any(v_requested) then
+    select coalesce(flag.enabled,false) into v_tngn_global
+    from public.platform_feature_flags flag where flag.flag_key='TNGN_DEMO_MODE';
+    if not coalesce(v_tngn_global,false) or v_country<>'NG' then
+      raise exception 'TNGN can only be selected for eligible Nigerian accounts while market testing is enabled by the platform.' using errcode='42501';
     end if;
   end if;
+  select array_agg(normalized.code order by normalized.first_position) into v_enabled
+  from (
+    select requested.code,min(requested.ordinality) as first_position
+    from unnest(v_requested) with ordinality as requested(code,ordinality)
+    group by requested.code
+  ) normalized;
+  if v_enabled is null or cardinality(v_enabled)=0 then
+    raise exception 'Enable at least one eligible currency.' using errcode='22023';
+  end if;
+  v_preferred:=case when p_preferred_asset_code=any(v_enabled) then p_preferred_asset_code else v_enabled[1] end;
+  insert into public.user_currency_preferences(user_id,enabled_asset_codes,preferred_asset_code,updated_at)
+  values(auth.uid(),v_enabled,v_preferred,statement_timestamp())
+  on conflict(user_id) do update
+  set enabled_asset_codes=excluded.enabled_asset_codes,
+      preferred_asset_code=excluded.preferred_asset_code,
+      updated_at=excluded.updated_at;
+  return jsonb_build_object('country_code',v_country,'eligible_asset_codes',v_eligible,
+    'enabled_asset_codes',v_enabled,'preferred_asset_code',v_preferred,
+    'tngn_demo_enabled',coalesce((select pref.tngn_demo_enabled from public.user_demo_preferences pref where pref.user_id=auth.uid()),false));
 end;
 $function$;
 
-revoke all on function private.assert_temporary_ngn_market_scope(bigint,uuid,bigint,boolean) from public,anon,authenticated,service_role;
+create or replace function public.get_my_tngn_market_mode()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path=''
+as $function$
+declare
+  v_user_id uuid:=auth.uid();
+  v_country text;
+  v_account_status text;
+  v_global boolean:=false;
+  v_user_enabled boolean:=false;
+  v_asset_id bigint;
+  v_account_id bigint;
+  v_balance numeric(38,18):=0;
+  v_eligible boolean:=false;
+begin
+  if v_user_id is null then raise exception 'Authentication required' using errcode='28000'; end if;
+  select case when upper(trim(coalesce(ua.country_code,''))) in ('NG','NGA','NIGERIA') then 'NG'
+    else upper(trim(coalesce(ua.country_code,''))) end,ua.status
+    into v_country,v_account_status
+  from public.user_accounts ua where ua.user_id=v_user_id;
+  select coalesce(flag.enabled,false) into v_global
+    from public.platform_feature_flags flag where flag.flag_key='TNGN_DEMO_MODE';
+  select coalesce(pref.tngn_demo_enabled,false) into v_user_enabled
+    from public.user_demo_preferences pref where pref.user_id=v_user_id;
+  select a.id into v_asset_id from public.assets a
+    where a.code='TNGN' and a.status='ACTIVE'
+      and coalesce((a.metadata->>'sandbox_only')::boolean,false)
+      and coalesce((a.metadata->>'non_withdrawable')::boolean,false);
+  v_eligible:=v_global and v_country='NG' and v_account_status='ACTIVE' and v_asset_id is not null;
+  if v_asset_id is not null then
+    select la.id into v_account_id from finance.ledger_accounts la
+    where la.asset_id=v_asset_id and la.owner_type='USER' and la.owner_reference=v_user_id::text
+      and la.account_type='USER_AVAILABLE' and la.status='ACTIVE';
+    if v_account_id is not null then v_balance:=finance.account_balance(v_account_id); end if;
+  end if;
+  return jsonb_build_object('assetCode','TNGN','globallyEnabled',v_global,'userEnabled',v_user_enabled,
+    'eligible',v_eligible,'availableBalance',greatest(v_balance,0),
+    'nonWithdrawable',true,'depositsEnabled',false,'withdrawalsEnabled',false,'transfersEnabled',false,
+    'standardMarketSettlement',true,
+    'message','TNGN is non-cash test value. It uses the regular market catalogue, standard orders and resolution/settlement engine with a separate TNGN ledger.');
+end;
+$function$;
 
+create or replace function public.set_my_tngn_market_mode(p_enabled boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $function$
+declare
+  v_user_id uuid:=auth.uid();
+  v_country text;
+  v_account_status text;
+  v_global boolean:=false;
+  v_asset_id bigint;
+  v_user_account_id bigint;
+  v_treasury_id bigint;
+  v_legacy_balance numeric(38,18):=0;
+  v_refund_total numeric(38,18):=0;
+  v_legacy_account public.demo_accounts%rowtype;
+begin
+  if v_user_id is null then raise exception 'Authentication required' using errcode='28000'; end if;
+  if p_enabled is null then raise exception 'Choose whether TNGN market testing should be enabled.' using errcode='22023'; end if;
+  select case when upper(trim(coalesce(ua.country_code,''))) in ('NG','NGA','NIGERIA') then 'NG'
+    else upper(trim(coalesce(ua.country_code,''))) end,ua.status
+    into v_country,v_account_status
+  from public.user_accounts ua where ua.user_id=v_user_id for update;
+  if v_account_status is distinct from 'ACTIVE' then
+    raise exception 'An active VAD account is required for TNGN market testing.' using errcode='42501';
+  end if;
+  if p_enabled then
+    if v_country<>'NG' then raise exception 'TNGN market testing is available only to Nigerian accounts.' using errcode='42501'; end if;
+    select coalesce(flag.enabled,false) into v_global
+      from public.platform_feature_flags flag where flag.flag_key='TNGN_DEMO_MODE';
+    if not coalesce(v_global,false) then
+      raise exception 'TNGN market testing is currently disabled by the platform.' using errcode='42501';
+    end if;
+  end if;
+  select a.id into v_asset_id from public.assets a
+    where a.code='TNGN' and a.status='ACTIVE'
+      and coalesce((a.metadata->>'sandbox_only')::boolean,false)
+      and coalesce((a.metadata->>'non_withdrawable')::boolean,false);
+  if p_enabled and v_asset_id is null then
+    raise exception 'The TNGN test asset is not available.' using errcode='42501';
+  end if;
+
+  if p_enabled then
+    -- Legacy sandbox orders are not custom-settled. Cancel/refund them in the
+    -- historical ledger, then migrate remaining synthetic value once into TNGN.
+    insert into public.demo_accounts(user_id) values(v_user_id) on conflict(user_id) do nothing;
+    select * into v_legacy_account from public.demo_accounts where user_id=v_user_id for update;
+
+    select coalesce(sum(o.stake),0) into v_refund_total
+      from public.demo_orders o where o.user_id=v_user_id and o.status='OPEN';
+    if v_refund_total>0 then
+      update public.demo_accounts
+      set available_balance=available_balance+v_refund_total,updated_at=statement_timestamp()
+      where user_id=v_user_id;
+      with refunded as (
+        update public.demo_orders
+        set status='CANCELLED'
+        where user_id=v_user_id and status='OPEN'
+        returning user_id,stake,public_id
+      )
+      insert into public.demo_ledger_entries(user_id,entry_type,amount,reference_id)
+      select refunded.user_id,'DEMO_REFUND',refunded.stake,refunded.public_id::text from refunded;
+    end if;
+    select * into v_legacy_account from public.demo_accounts where user_id=v_user_id for update;
+    v_legacy_balance:=greatest(coalesce(v_legacy_account.available_balance,0),0);
+    v_user_account_id:=finance.ensure_user_account(v_user_id,v_asset_id,'USER_AVAILABLE');
+    if v_legacy_balance>0 then
+      insert into finance.ledger_accounts(asset_id,account_type,owner_type,owner_reference,status)
+      values(v_asset_id,'TREASURY','PLATFORM','VAD_TNGN_TEST_CREDIT','ACTIVE')
+      on conflict(asset_id,account_type,owner_type,owner_reference)
+      do update set status='ACTIVE',closed_at=null;
+      select la.id into v_treasury_id from finance.ledger_accounts la
+      where la.asset_id=v_asset_id and la.account_type='TREASURY'
+        and la.owner_type='PLATFORM' and la.owner_reference='VAD_TNGN_TEST_CREDIT' and la.status='ACTIVE'
+      for update;
+      if v_treasury_id is null then raise exception 'TNGN test treasury could not be prepared.' using errcode='23514'; end if;
+      perform finance.transfer(v_asset_id,v_treasury_id,v_user_account_id,v_legacy_balance,
+        'TNGN_TEST_CREDIT','tngn-test-credit:'||v_user_id::text,
+        'TNGN_TEST_CREDIT',v_user_id::text,
+        'Migrate non-cash synthetic test value into the standard TNGN ledger',v_user_id);
+      update public.demo_accounts set available_balance=0,updated_at=statement_timestamp()
+      where user_id=v_user_id;
+    end if;
+
+    insert into public.user_currency_preferences(user_id,enabled_asset_codes,preferred_asset_code,updated_at)
+    values(v_user_id,array['TNGN']::text[], 'TNGN',statement_timestamp())
+    on conflict(user_id) do update set
+      enabled_asset_codes=case when 'TNGN'=any(public.user_currency_preferences.enabled_asset_codes)
+        then public.user_currency_preferences.enabled_asset_codes
+        else array_append(public.user_currency_preferences.enabled_asset_codes,'TNGN') end,
+      preferred_asset_code=case when public.user_currency_preferences.preferred_asset_code is null
+        then 'TNGN' else public.user_currency_preferences.preferred_asset_code end,
+      updated_at=statement_timestamp();
+  end if;
+
+  insert into public.user_demo_preferences(user_id,tngn_demo_enabled,updated_at)
+  values(v_user_id,p_enabled,statement_timestamp())
+  on conflict(user_id) do update set tngn_demo_enabled=excluded.tngn_demo_enabled,updated_at=statement_timestamp();
+  return public.get_my_tngn_market_mode();
+end;
+$function$;
+
+-- Legacy custom market settlement remains unavailable. New orders never touch
+-- demo_orders/demo_ledger_entries; they use the ordinary pool order and ledger path.
+drop trigger if exists market_catalog_settle_tngn_orders on public.market_catalog;
+revoke all on function public.place_tngn_market_stake(uuid,text,numeric,text) from public,anon,authenticated,service_role;
+revoke all on function public.tngn_pool_quote(uuid,text,numeric) from public,anon,authenticated,service_role;
+revoke all on function public.my_tngn_market_orders() from public,anon,authenticated,service_role;
+revoke all on function public.my_tngn_demo_ledger_activity(integer) from public,anon,authenticated,service_role;
+revoke all on function public.set_my_demo_mode(boolean) from public,anon,authenticated,service_role;
+revoke all on function public.admin_set_tngn_demo_mode(boolean) from public,anon,authenticated,service_role;
+revoke all on function public.place_demo_order(text,text,numeric,text) from public,anon,authenticated,service_role;
+revoke all on function public.my_demo_account() from public,anon,authenticated,service_role;
+revoke all on function public.my_demo_markets() from public,anon,authenticated,service_role;
+revoke all on function public.my_demo_orders() from public,anon,authenticated,service_role;
+revoke all on function public.get_demo_mode_status() from public,anon,authenticated,service_role;
+revoke all on function public.admin_demo_markets() from public,anon,authenticated,service_role;
+revoke all on function public.admin_create_demo_market(text,text,jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.admin_resolve_demo_market(text,text) from public,anon,authenticated,service_role;
+revoke all on function public.admin_revoke_temporary_ngn_test_credit(uuid,text) from public,anon,authenticated,service_role;
+revoke all on function public.admin_grant_temporary_ngn_test_credit(text,numeric,text) from public,anon,authenticated,service_role;
+
+grant execute on function public.get_my_currency_policy() to authenticated;
+grant execute on function public.set_my_currency_preferences(text[],text) to authenticated;
+revoke all on function public.get_my_tngn_market_mode() from public,anon;
+grant execute on function public.get_my_tngn_market_mode() to authenticated;
+revoke all on function public.set_my_tngn_market_mode(boolean) from public,anon;
+grant execute on function public.set_my_tngn_market_mode(boolean) to authenticated;
+
+-- Re-enable the catalog-to-TNGN variant synchronizer. It shares the canonical
+-- event/resolution, but never copies the source market's volume or participants.
+create trigger market_catalog_sync_tngn_variant
+after insert or update on public.market_catalog
+for each row execute function private.on_market_catalog_tngn_variant_sync();
+
+-- Backfill variants for source events that already exist.
+do $backfill$
+declare v_market record;
+begin
+  for v_market in
+    select instrument_public_id from public.market_catalog
+    where asset_code in ('NGN','USDC')
+      and upper(coalesce(market_type,''))='BINARY'
+      and upper(coalesce(status,'')) in ('DRAFT','OPEN','SCHEDULED','PUBLISHED')
+  loop
+    perform private.ensure_tngn_market_variant(v_market.instrument_public_id);
+  end loop;
+end;
+$backfill$;
+
+-- TNGN orders are ordinary pool stakes. Preserve fee, balance, quote, status,
+-- timing, idempotency and the normal settlement pipeline from the live RPCs.
 CREATE OR REPLACE FUNCTION public.pool_quote(p_instrument_public_id uuid, p_outcome_code text, p_amount numeric)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -134,7 +376,7 @@ declare
   est_pv bigint;
   v_asset_code text;
   v_test_credit_active boolean:=false;
-  v_test_credit_assigned boolean:=false;
+  v_tngn_demo_enabled boolean:=false;
 begin
   acct:=private.require_active_account();
   select * into instrument from market.instruments where public_id=p_instrument_public_id;
@@ -145,27 +387,38 @@ begin
   select exists(
     select 1 from public.temporary_ngn_test_credit_grants g
     where g.user_id=auth.uid() and g.asset_id=instrument.asset_id and g.status='ACTIVE'
-  ) into v_test_credit_assigned;
-  select exists(
-    select 1
-    from public.temporary_ngn_test_credit_grants g
-    join public.user_temporary_ngn_test_preferences pref
-      on pref.user_id=g.user_id and pref.enabled
-    where g.user_id=auth.uid() and g.asset_id=instrument.asset_id and g.status='ACTIVE'
   ) into v_test_credit_active;
-  if v_test_credit_assigned and not v_test_credit_active then
-    raise exception 'Market testing mode is disabled. Enable it from Account to trade using the temporary test allocation.'
-      using errcode='42501';
-  end if;
   if v_asset_code='NGN' and not coalesce((select gate.allowed from public.can_access_ngn_services() gate limit 1),false) then
     raise exception 'NGN service requires current location verification. Verify your current location and try again.' using errcode='42501';
   end if;
+  if v_asset_code='TNGN' then
+    select exists(
+      select 1
+      from public.user_demo_preferences pref
+      join public.platform_feature_flags flag on flag.flag_key='TNGN_DEMO_MODE' and flag.enabled
+      where pref.user_id=auth.uid() and pref.tngn_demo_enabled
+    ) into v_tngn_demo_enabled;
+    if upper(trim(coalesce(acct.country_code,''))) not in ('NG','NGA','NIGERIA') then
+      raise exception 'TNGN test trading is available only to Nigerian accounts.' using errcode='42501';
+    end if;
+    if not v_tngn_demo_enabled then
+      raise exception 'Enable TNGN market testing from Account before placing test trades.' using errcode='42501';
+    end if;
+  end if;
   if not private.trade_access_satisfies(auth.uid(),acct.country_code,instrument.asset_id) then
     if not (
-      v_asset_code='NGN'
-      and v_test_credit_active
-      and private.service_available('trading',auth.uid())
-      and private.asset_available_in_country(acct.country_code,instrument.asset_id)
+      (
+        v_asset_code='NGN'
+        and v_test_credit_active
+        and private.service_available('trading',auth.uid())
+        and private.asset_available_in_country(acct.country_code,instrument.asset_id)
+      )
+      or (
+        v_asset_code='TNGN'
+        and v_tngn_demo_enabled
+        and upper(trim(coalesce(acct.country_code,''))) in ('NG','NGA','NIGERIA')
+        and private.asset_available_in_country(acct.country_code,instrument.asset_id)
+      )
     ) then
       raise exception 'Trading is not available for this account and market. Check account eligibility and market capability.' using errcode='P0001';
     end if;
@@ -231,7 +484,7 @@ declare
   v_fee_journal bigint;
   v_asset_code text;
   v_test_credit_active boolean:=false;
-  v_test_credit_assigned boolean:=false;
+  v_tngn_demo_enabled boolean:=false;
 begin
   acct := private.require_active_account();
   if p_idempotency_key is null or char_length(p_idempotency_key) < 8 or char_length(p_idempotency_key) > 200 then
@@ -269,27 +522,38 @@ begin
   select exists(
     select 1 from public.temporary_ngn_test_credit_grants g
     where g.user_id=auth.uid() and g.asset_id=instrument.asset_id and g.status='ACTIVE'
-  ) into v_test_credit_assigned;
-  select exists(
-    select 1
-    from public.temporary_ngn_test_credit_grants g
-    join public.user_temporary_ngn_test_preferences pref
-      on pref.user_id=g.user_id and pref.enabled
-    where g.user_id=auth.uid() and g.asset_id=instrument.asset_id and g.status='ACTIVE'
   ) into v_test_credit_active;
-  if v_test_credit_assigned and not v_test_credit_active then
-    raise exception 'Market testing mode is disabled. Enable it from Account to trade using the temporary test allocation.'
-      using errcode='42501';
-  end if;
   if v_asset_code='NGN' and not coalesce((select gate.allowed from public.can_access_ngn_services() gate limit 1),false) then
     raise exception 'NGN service requires current location verification. Verify your current location and try again.' using errcode='42501';
   end if;
+  if v_asset_code='TNGN' then
+    select exists(
+      select 1
+      from public.user_demo_preferences pref
+      join public.platform_feature_flags flag on flag.flag_key='TNGN_DEMO_MODE' and flag.enabled
+      where pref.user_id=auth.uid() and pref.tngn_demo_enabled
+    ) into v_tngn_demo_enabled;
+    if upper(trim(coalesce(acct.country_code,''))) not in ('NG','NGA','NIGERIA') then
+      raise exception 'TNGN test trading is available only to Nigerian accounts.' using errcode='42501';
+    end if;
+    if not v_tngn_demo_enabled then
+      raise exception 'Enable TNGN market testing from Account before placing test trades.' using errcode='42501';
+    end if;
+  end if;
   if not private.trade_access_satisfies(auth.uid(), acct.country_code, instrument.asset_id) then
     if not (
-      v_asset_code='NGN'
-      and v_test_credit_active
-      and private.service_available('trading',auth.uid())
-      and private.asset_available_in_country(acct.country_code,instrument.asset_id)
+      (
+        v_asset_code='NGN'
+        and v_test_credit_active
+        and private.service_available('trading',auth.uid())
+        and private.asset_available_in_country(acct.country_code,instrument.asset_id)
+      )
+      or (
+        v_asset_code='TNGN'
+        and v_tngn_demo_enabled
+        and upper(trim(coalesce(acct.country_code,''))) in ('NG','NGA','NIGERIA')
+        and private.asset_available_in_country(acct.country_code,instrument.asset_id)
+      )
     ) then
       raise exception 'Trading is not available for this account and market. Check account eligibility and market capability.' using errcode='P0001';
     end if;
@@ -350,99 +614,6 @@ begin
 end;
 $function$
 ;
-
-create or replace function public.my_temporary_ngn_test_credit_status()
-returns jsonb
-language plpgsql
-stable
-security definer
-set search_path=''
-as $function$
-declare
-  v_grant public.temporary_ngn_test_credit_grants%rowtype;
-  v_asset_id bigint;
-  v_available_id bigint;
-  v_balance numeric(38,18):=0;
-  v_mode_enabled boolean:=false;
-begin
-  if auth.uid() is null then raise exception 'Authentication required' using errcode='28000'; end if;
-  select id into v_asset_id from public.assets where code='NGN';
-  if v_asset_id is null then
-    return jsonb_build_object('active',false,'assetCode','NGN','testModeEnabled',false);
-  end if;
-
-  select coalesce(pref.enabled,false) into v_mode_enabled
-  from public.user_temporary_ngn_test_preferences pref
-  where pref.user_id=auth.uid();
-
-  select * into v_grant
-  from public.temporary_ngn_test_credit_grants
-  where user_id=auth.uid() and asset_id=v_asset_id and status='ACTIVE'
-  order by created_at desc limit 1;
-
-  if v_grant.id is null then
-    return jsonb_build_object('active',false,'assetCode','NGN','testModeEnabled',false);
-  end if;
-
-  select id into v_available_id
-  from finance.ledger_accounts
-  where asset_id=v_asset_id and owner_type='USER'
-    and owner_reference=auth.uid()::text and account_type='USER_AVAILABLE' and status='ACTIVE';
-  if v_available_id is not null then v_balance:=finance.account_balance(v_available_id); end if;
-
-  return jsonb_build_object(
-    'active',true,'publicId',v_grant.public_id,'assetCode','NGN',
-    'amount',v_grant.amount,'availableBalance',greatest(v_balance,0),
-    'createdAt',v_grant.created_at,'testModeEnabled',coalesce(v_mode_enabled,false),
-    'withdrawalsBlocked',true,'transfersBlocked',false,'transfersRestricted',true,
-    'depositsBlocked',true,'marketOrdersUseStandardSettlement',true,
-    'message','Temporary non-cash NGN test credit uses real NGN market instruments and standard settlement. Market testing mode is controlled from Account; deposits and withdrawals remain blocked while the allocation is active.'
-  );
-end;
-$function$;
-
-create or replace function public.set_my_temporary_ngn_test_mode(p_enabled boolean)
-returns jsonb
-language plpgsql
-security definer
-set search_path=''
-as $function$
-declare
-  v_user_id uuid:=auth.uid();
-  v_ngn_asset_id bigint;
-begin
-  if v_user_id is null then raise exception 'Authentication required' using errcode='28000'; end if;
-  if p_enabled is null then raise exception 'Choose whether market testing mode should be enabled.' using errcode='22023'; end if;
-
-  select id into v_ngn_asset_id from public.assets where code='NGN' and status='ACTIVE';
-  if p_enabled then
-    if v_ngn_asset_id is null or not exists (
-      select 1 from public.temporary_ngn_test_credit_grants g
-      where g.user_id=v_user_id and g.asset_id=v_ngn_asset_id and g.status='ACTIVE'
-    ) then
-      raise exception 'There is no active temporary test allocation assigned to this account.' using errcode='42501';
-    end if;
-    if not exists (
-      select 1 from public.user_currency_preferences cp
-      where cp.user_id=v_user_id and 'NGN'=any(cp.enabled_asset_codes)
-    ) then
-      raise exception 'Enable NGN in your currency settings before enabling market testing.' using errcode='42501';
-    end if;
-  end if;
-
-  insert into public.user_temporary_ngn_test_preferences(user_id,enabled,updated_at)
-  values(v_user_id,p_enabled,statement_timestamp())
-  on conflict(user_id) do update
-    set enabled=excluded.enabled,updated_at=statement_timestamp();
-
-  return public.my_temporary_ngn_test_credit_status();
-end;
-$function$;
-
-revoke all on function public.my_temporary_ngn_test_credit_status() from public,anon;
-grant execute on function public.my_temporary_ngn_test_credit_status() to authenticated,service_role;
-revoke all on function public.set_my_temporary_ngn_test_mode(boolean) from public,anon;
-grant execute on function public.set_my_temporary_ngn_test_mode(boolean) to authenticated;
 
 select pg_notify('pgrst','reload schema');
 commit;
