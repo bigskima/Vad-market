@@ -11,6 +11,7 @@ import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney, pct } from '@/features/markets/format';
+import { marketCategoryLabel, marketStatusLabel } from '@/features/markets/market-display-labels';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
@@ -27,6 +28,7 @@ import {
   type PortfolioOrderHistoryRow,
   type PortfolioPositionMarkRow,
   type PortfolioValuationSnapshotRow,
+  type PoolStakeRow,
   type PositionRow,
   type SettlementReceiptRow,
 } from '@/services/market-api';
@@ -42,6 +44,7 @@ const PERIOD_DAYS: Record<Period, number> = { '1D': 1, '1W': 7, '1M': 30, '1Y': 
 
 export function PortfolioScreen({
   positions,
+  poolStakes,
   orders,
   settlements,
   marketHistory,
@@ -51,8 +54,10 @@ export function PortfolioScreen({
   onRetry,
   onOpenPosition,
   onOpenOrder,
+  onOpenMarket,
 }: {
   positions: PositionRow[];
+  poolStakes: PoolStakeRow[];
   orders: OrderRow[];
   settlements: SettlementReceiptRow[];
   marketHistory: MarketHistoryRow[];
@@ -62,6 +67,7 @@ export function PortfolioScreen({
   onRetry: () => void;
   onOpenPosition: (position: PositionRow) => void;
   onOpenOrder: (order: OrderRow | PortfolioOrderHistoryRow) => void;
+  onOpenMarket: (marketId: string) => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -176,11 +182,19 @@ export function PortfolioScreen({
     : null;
 
   const openMarkedPositions = positionsForAsset.filter((position) => position.mark_status !== 'SETTLED');
-  const openPositionValue = openMarkedPositions.every((position) => position.mark_status === 'MARKED')
-    ? openMarkedPositions.reduce((sum, position) => sum + amount(position.current_value), 0)
-    : null;
-  const openCount = openMarkedPositions.length;
+  const activePoolStakes = poolStakes
+    .filter((stake) => stake.asset_code === asset)
+    .filter((stake) => !['SETTLED', 'VOIDED', 'CANCELLED', 'RESOLVED', 'FINAL'].includes(String(stake.market_status).toUpperCase()))
+    .filter((stake) => !stake.final_outcome);
+  const committedStakeAmount = activePoolStakes.reduce((sum, stake) => sum + amount(stake.amount), 0);
+  const openPositionValue = activePoolStakes.length
+    ? null
+    : openMarkedPositions.every((position) => position.mark_status === 'MARKED')
+      ? openMarkedPositions.reduce((sum, position) => sum + amount(position.current_value), 0)
+      : null;
+  const openCount = openMarkedPositions.length + activePoolStakes.length;
   const openValueText = openPositionValue == null ? '—' : assetMoney(openPositionValue, asset);
+  const committedStakeText = activePoolStakes.length ? assetMoney(committedStakeAmount, asset) : '—';
 
   const categories = useMemo(() => [...new Set(markets
     .filter((market) => market.asset_code === asset && market.category)
@@ -349,6 +363,7 @@ export function PortfolioScreen({
         pnlSeries={historicalPnlSeries}
         openCount={openCount}
         openValueText={openValueText}
+        committedStakeText={committedStakeText}
       />
 
       <TourTarget id="portfolio-switcher">
@@ -396,7 +411,7 @@ export function PortfolioScreen({
                   <VadText variant="caption" tone="secondary">Category</VadText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6 }}>
                     <FilterPill label="All" selected={categoryFilter === 'all'} onPress={() => setCategoryFilter('all')} />
-                    {categories.map((category) => <FilterPill key={category} label={category} selected={categoryFilter === category} onPress={() => setCategoryFilter(category)} />)}
+                    {categories.map((category) => <FilterPill key={category} label={marketCategoryLabel(category)} selected={categoryFilter === category} onPress={() => setCategoryFilter(category)} />)}
                     <FilterPill label="Other" selected={categoryFilter === 'Other'} onPress={() => setCategoryFilter('Other')} />
                   </ScrollView>
                 </View>
@@ -409,11 +424,27 @@ export function PortfolioScreen({
             </VadCard>
           ) : null}
 
+          {sectionErrors?.poolStakes ? <InlineError message={sectionErrors.poolStakes} onRetry={retry} /> : null}
+          {activePoolStakes.length ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                <VadText variant="bodyStrong">Committed predictions</VadText>
+                <VadText variant="caption" tone="secondary">{activePoolStakes.length} active</VadText>
+              </View>
+              {activePoolStakes.map((stake) => (
+                <PoolStakePositionCard
+                  key={stake.stake_id}
+                  stake={stake}
+                  onPress={() => onOpenMarket(stake.market_id)}
+                />
+              ))}
+            </View>
+          ) : null}
           {sectionErrors?.positions ? (
             <InlineError message={sectionErrors.positions} onRetry={retry} />
-          ) : loading && positionsForAsset.length === 0 ? (
+          ) : loading && positionsForAsset.length === 0 && activePoolStakes.length === 0 ? (
             <LoadingState label="Loading your positions…" />
-          ) : marksLoading ? (
+          ) : marksLoading && positionsForAsset.length > 0 ? (
             <LoadingState label="Loading your position valuations…" />
           ) : filteredPositions.length ? (
             <View style={{ gap: theme.spacing.sm }}>
@@ -484,6 +515,34 @@ export function PortfolioScreen({
       ) : null}
 
     </View>
+  );
+}
+
+function PoolStakePositionCard({ stake, onPress }: { stake: PoolStakeRow; onPress: () => void }) {
+  const theme = useVadTheme();
+  const density = useProductDensity();
+  const yes = String(stake.outcome_code).toUpperCase() === 'YES';
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Open ${stake.market_title} prediction`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
+      <VadCard style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: density.phone ? 10 : 12, borderRadius: 15, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+        <View style={{ width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised }}>
+          <VadIcon name="activity" size={20} tone="brand" />
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <VadText variant="bodyStrong" numberOfLines={2}>{stake.market_title}</VadText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+            <VadChip label={yes ? 'Yes' : 'No'} tone={yes ? 'yes' : 'no'} />
+            <VadText variant="caption" tone="secondary">{marketStatusLabel(stake.market_status)}</VadText>
+          </View>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: 116 }}>
+          <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{assetMoney(stake.amount, stake.asset_code)}</VadText>
+          <VadText variant="caption" tone="secondary">Stake</VadText>
+          {amount(stake.trading_fee) > 0 ? <VadText variant="caption" tone="tertiary">{assetMoney(stake.trading_fee, stake.asset_code)} fee</VadText> : null}
+        </View>
+        <VadIcon name="chevronRight" size={16} tone="tertiary" />
+      </VadCard>
+    </Pressable>
   );
 }
 
@@ -717,6 +776,7 @@ function TradingPerformanceCard({
   pnlSeries,
   openCount,
   openValueText,
+  committedStakeText,
 }: {
   asset: string;
   period: Period;
@@ -727,6 +787,7 @@ function TradingPerformanceCard({
   pnlSeries: { at: string; value: number }[];
   openCount: number;
   openValueText: string;
+  committedStakeText: string;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -835,18 +896,22 @@ function TradingPerformanceCard({
 
       <View style={{
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'space-between',
-        gap: 8,
+        gap: 10,
         borderTopWidth: 1,
         borderTopColor: theme.colors.border,
         paddingTop: 9,
       }}>
-        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <View style={{ flex: 0.7, minWidth: 0, gap: 2 }}>
           <VadText variant="caption" tone="tertiary">OPEN POSITIONS</VadText>
           <VadText variant="bodyStrong">{openCount}</VadText>
         </View>
-        <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-end', gap: 2 }}>
+        <View style={{ flex: 1.15, minWidth: 0, alignItems: 'center', gap: 2 }}>
+          <VadText variant="caption" tone="tertiary" numberOfLines={1}>COMMITTED STAKES</VadText>
+          <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{committedStakeText}</VadText>
+        </View>
+        <View style={{ flex: 1.1, minWidth: 0, alignItems: 'flex-end', gap: 2 }}>
           <VadText variant="caption" tone="tertiary">CURRENT VALUE</VadText>
           <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>
             {openValueText}
