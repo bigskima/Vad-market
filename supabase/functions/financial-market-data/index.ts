@@ -19,6 +19,9 @@ type AssetQuote = {
   high: number | null; low: number | null; volume: number | null;
   marketOpen: boolean | null; sourceUpdatedAt: string | null; exchange: string | null;
   source: string; sourceCode: string;
+  imageUrl?: string | null;
+  secondaryImageUrl?: string | null;
+  visualKind?: 'logo' | 'flag-pair' | 'series-chart' | 'symbol';
 };
 
 const json = (body: unknown, status = 200, cacheSeconds = 0) => new Response(JSON.stringify(body), {
