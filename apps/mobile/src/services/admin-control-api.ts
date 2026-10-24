@@ -177,6 +177,20 @@ export async function closeAdminMarket(instrumentPublicId: string, reason: strin
   return Boolean(data);
 }
 
+export type AdminOracleOutcomeChoice = {
+  outcome_code: string;
+  outcome_label: string;
+  display_order: number;
+};
+
+export async function getAdminOracleOutcomeChoices(eventPublicId: string): Promise<AdminOracleOutcomeChoice[]> {
+  const { data, error } = await supabase.rpc('admin_oracle_outcomes_for_event_v1', {
+    p_event_public_id: eventPublicId,
+  });
+  fail(error, 'We could not load the configured outcomes for this Oracle case.');
+  return (Array.isArray(data) ? data : []) as AdminOracleOutcomeChoice[];
+}
+
 export async function createAdminProvisionalResolution(input: {
   eventPublicId: string;
   outcomeCode: string;
