@@ -52,6 +52,21 @@ export async function transferAssetToEmail(input: {
     if (raw.includes('location verification')) {
       throw new Error('NGN transfers require current Nigeria location and network verification for your account. Complete the location check and try again.');
     }
+    if (raw.includes('real ngn cannot be transferred into a temporary test-credit account')
+      || raw.includes('test-credit transfers are allowed only')
+      || raw.includes('test funds cannot be mixed')
+      || raw.includes('historical ngn cash deposit')) {
+      throw new Error('These test NGN funds can only move between eligible test-credit accounts. They cannot mix with cash-funded NGN, and no funds were moved.');
+    }
+    if (raw.includes('recipient must enable ngn')) {
+      throw new Error('The recipient must enable NGN in Currency settings before receiving test funds. No funds were moved.');
+    }
+    if (raw.includes('previous temporary test credit was revoked')) {
+      throw new Error('The recipient’s previous test credit was revoked. A super administrator must authorize a new test grant before they can receive test funds.');
+    }
+    if (raw.includes('historical ngn cash deposit')) {
+      throw new Error('The recipient has previous NGN cash-funding history, so test funds cannot be mixed into that account. No funds were moved.');
+    }
     if (raw.includes('recipient account is registered') || raw.includes('recipient account is not active')) {
       throw new Error('The recipient VAD account is not active for transfers. No funds were moved.');
     }
