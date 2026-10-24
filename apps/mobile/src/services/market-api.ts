@@ -99,7 +99,9 @@ export type MarketHistoryRow = {
   market_id: string;
   market_title: string;
   selected_outcome: string;
+  selected_outcome_label?: string | null;
   final_outcome: string | null;
+  final_outcome_label?: string | null;
   asset_code: string;
   matched_quantity: number | string;
   stake_amount: number | string;
@@ -441,7 +443,7 @@ export async function getPoolStakes() {
 }
 
 export async function getMarketHistory() {
-  const { data, error } = await supabase.rpc('my_market_history');
+  const { data, error } = await supabase.rpc('my_market_history_v2');
   assertNoError(error, 'portfolio', 'We could not load your settled market history right now. Please try again.');
   return (data ?? []) as MarketHistoryRow[];
 }
