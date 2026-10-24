@@ -4,6 +4,7 @@ import { Image, View } from 'react-native';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
