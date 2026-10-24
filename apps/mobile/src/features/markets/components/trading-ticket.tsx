@@ -28,6 +28,7 @@ import {
   quotePoolStake,
   quoteTrade,
   type MarketCatalogItem,
+  type MarketOutcomeSummaryRow,
   type OrderStatus,
   type PoolQuote,
   type PoolStakeStatus,
@@ -54,7 +55,8 @@ type TicketProps = {
   tradeReason?: string;
   capabilityLoading?: boolean;
   onPlaced: () => Promise<void>;
-  initialOutcome?: 'YES' | 'NO';
+  initialOutcome?: string;
+  outcomes?: MarketOutcomeSummaryRow[];
 };
 
 export function TradingTicket(props: TicketProps) {
@@ -81,12 +83,16 @@ function RetiredTngnTicket() {
   );
 }
 
-function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = false, onPlaced, initialOutcome }: TicketProps) {
+function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = false, onPlaced, initialOutcome, outcomes = [] }: TicketProps) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const isUsdc = market.asset_code === 'USDC';
+  const isMultiOutcome = market.market_type === 'MULTI_OUTCOME';
   const [step, setStep] = useState<TradeStep>('prediction');
-  const [outcome, setOutcome] = useState<'YES' | 'NO'>(initialOutcome ?? 'YES');
+  const [outcome, setOutcome] = useState<string>(initialOutcome ?? (isMultiOutcome ? outcomes[0]?.outcome_code ?? '' : 'YES'));
+  const selectedOutcome = outcomes.find((item) => item.outcome_code === outcome);
+  const outcomeLabel = isMultiOutcome ? (selectedOutcome?.outcome_label ?? displayOutcomeCode(outcome)) : outcome;
+  const outcomeTone = outcome === 'YES' ? 'yes' : outcome === 'NO' ? 'no' : 'neutral';
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<PoolQuote | null>(null);
   const [stakeStatus, setStakeStatus] = useState<PoolStakeStatus | null>(null);
@@ -182,11 +188,26 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
     setPlaceError(null);
   }
 
-  function chooseOutcome(next: 'YES' | 'NO') {
+  function chooseOutcome(next: string) {
     if (!tradeReady || working) return;
     setOutcome(next);
     resetDownstream();
   }
+
+  useEffect(() => {
+    if (!isMultiOutcome || outcomes.length === 0) return;
+    if (initialOutcome && outcomes.some((item) => item.outcome_code === initialOutcome)) {
+      if (outcome !== initialOutcome) {
+        setOutcome(initialOutcome);
+        resetDownstream();
+      }
+      return;
+    }
+    if (!outcomes.some((item) => item.outcome_code === outcome)) {
+      setOutcome(outcomes[0].outcome_code);
+      resetDownstream();
+    }
+  }, [initialOutcome, isMultiOutcome, outcome, outcomes]);
 
   async function prepareReview() {
     if (!tradeReady || working || !inputValid) return;
@@ -325,16 +346,40 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
             <VadText variant="heading">Choose an outcome</VadText>
             <VadText variant="caption" tone="secondary">
-              {isUsdc
-                ? 'Select YES or NO. Funds stay self-custodied until you approve.'
-                : 'Select YES or NO. The participant pool funds both sides; VAD does not.'}
+              {isMultiOutcome
+                ? 'Choose the one named option you expect to win. The result is checked against the published rules.'
+                : isUsdc
+                  ? 'Select YES or NO. Funds stay self-custodied until you approve.'
+                  : 'Select YES or NO. The participant pool funds both sides; VAD does not.'}
             </VadText>
           </View>
 
-          <View accessibilityRole="radiogroup" style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
-            <OutcomeChoice active={outcome === 'YES'} label="YES" title="I think it will happen" value={probability(market.yes_price)} tone="yes" disabled={!tradeReady || working} onPress={() => chooseOutcome('YES')} />
-            <OutcomeChoice active={outcome === 'NO'} label="NO" title="I think it will not happen" value={probability(market.no_price)} tone="no" disabled={!tradeReady || working} onPress={() => chooseOutcome('NO')} />
-          </View>
+          {isMultiOutcome ? (
+            outcomes.length ? (
+              <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+                {outcomes.map((option) => (
+                  <View key={option.outcome_code} style={{ width: density.narrow ? '100%' : '48%', minWidth: 0 }}>
+                    <OutcomeChoice
+                      active={outcome === option.outcome_code}
+                      label={option.outcome_label}
+                      title="Share of the pool"
+                      value={option.pool_share == null ? '—' : probability(option.pool_share)}
+                      tone="neutral"
+                      disabled={!tradeReady || working}
+                      onPress={() => chooseOutcome(option.outcome_code)}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <InlineMessage tone="warning" title="Outcome choices unavailable" body="This market’s choices could not be loaded. Leave this screen and reopen the market to try again." />
+            )
+          ) : (
+            <View accessibilityRole="radiogroup" style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
+              <OutcomeChoice active={outcome === 'YES'} label="YES" title="I think it will happen" value={probability(market.yes_price)} tone="yes" disabled={!tradeReady || working} onPress={() => chooseOutcome('YES')} />
+              <OutcomeChoice active={outcome === 'NO'} label="NO" title="I think it will not happen" value={probability(market.no_price)} tone="no" disabled={!tradeReady || working} onPress={() => chooseOutcome('NO')} />
+            </View>
+          )}
 
           {isUsdc ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
@@ -350,7 +395,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             </View>
           )}
 
-          <VadButton label={`Continue with ${outcome}`} disabled={!tradeReady || working} onPress={() => setStep('order')} />
+          <VadButton label={`Continue with ${outcomeLabel || "outcome"}`} disabled={!tradeReady || working || !outcome} onPress={() => setStep('order')} />
         </VadCard>
       ) : null}
 
@@ -366,7 +411,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
                   : 'Nothing is committed yet. Review the stake, fee, debit and estimated payout.'}
               </VadText>
             </View>
-            <VadChip label={outcome} tone={outcome === 'YES' ? 'yes' : 'no'} />
+            <VadChip label={outcomeLabel} tone={outcomeTone} />
           </View>
 
           <VadInput
@@ -422,7 +467,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           ) : null}
 
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <MiniMetric label="Outcome" value={outcome} />
+            <MiniMetric label="Outcome" value={outcomeLabel} />
             <MiniMetric label="Stake" value={inputValid ? assetMoney(amountValue, market.asset_code) : '—'} />
             <MiniMetric label={isUsdc ? 'Network' : 'Currency'} value={isUsdc ? selectedVenue?.chain_name ?? '—' : market.asset_code} />
           </View>
@@ -453,7 +498,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            <VadChip label={preparedUsdc.outcomeCode} tone={preparedUsdc.outcomeCode === 'YES' ? 'yes' : 'no'} />
+            <VadChip label={outcomeLabel} tone={preparedUsdc.outcomeCode === 'YES' ? 'yes' : 'no'} />
             <VadChip label="PEER POOL" tone="brand" />
             <VadChip label="USDC" />
             <VadChip label={preparedUsdc.chainCode} />
@@ -503,7 +548,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            <VadChip label={quote.outcomeCode} tone={quote.outcomeCode === 'YES' ? 'yes' : 'no'} />
+            <VadChip label={outcomeLabel} tone={outcomeTone} />
             <VadChip label="PEER POOL" tone="brand" />
             <VadChip label={market.asset_code} />
           </View>
@@ -513,7 +558,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <QuoteLine label="VAD trading fee" value={assetMoney(quote.tradingFee, market.asset_code)} />
             <QuoteLine label="Total wallet debit now" value={assetMoney(quote.maximumCashDebit, market.asset_code)} />
             <QuoteLine label="Pool after your stake" value={assetMoney(quote.poolTotalAfter, market.asset_code)} />
-            <QuoteLine label={`${quote.outcomeCode} pool after`} value={assetMoney(quote.outcomePoolAfter, market.asset_code)} />
+            <QuoteLine label={`${outcomeLabel} pool after`} value={assetMoney(quote.outcomePoolAfter, market.asset_code)} />
             <QuoteLine label="Current implied share" value={probability(quote.impliedProbability)} />
             <QuoteLine label="Estimated gross payout if correct" value={assetMoney(quote.estimatedGrossPayout, market.asset_code)} />
             <QuoteLine label="Estimated VAD settlement fee if you win" value={assetMoney(quote.estimatedSettlementFee, market.asset_code)} />
@@ -541,7 +586,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
                 Your wallet submitted the VAD Settlement V1 position-lock transaction. VAD will treat the prediction as committed only after the blockchain confirms it and the indexer verifies the event.
               </VadText>
             </View>
-            <VadChip label={outcome} tone={outcome === 'YES' ? 'yes' : 'no'} />
+            <VadChip label={outcomeLabel} tone={outcomeTone} />
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
@@ -584,7 +629,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
                 Your funds moved from your available wallet balance into this market’s protected peer pool. Result and settlement will update automatically.
               </VadText>
             </View>
-            <VadChip label={stakeStatus.outcomeCode} tone={stakeStatus.outcomeCode === 'YES' ? 'yes' : 'no'} />
+            <VadChip label={outcomeLabel} tone={outcomeTone} />
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
@@ -626,7 +671,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   const theme = useVadTheme();
   const density = useProductDensity();
   const [step, setStep] = useState<TradeStep>('prediction');
-  const [outcome, setOutcome] = useState<'YES' | 'NO'>(initialOutcome ?? 'YES');
+  const [outcome, setOutcome] = useState<'YES' | 'NO'>(initialOutcome === 'NO' ? 'NO' : 'YES');
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
   const [price, setPrice] = useState(() => priceInput(market.yes_price));
   const [quantity, setQuantity] = useState('100');
@@ -848,11 +893,11 @@ function TradeStepRail({ step, secondLabel }: { step: TradeStep; secondLabel: st
   );
 }
 
-function OutcomeChoice({ active, label, title, value, tone, disabled = false, onPress }: { active: boolean; label: string; title: string; value: string; tone: 'yes' | 'no'; disabled?: boolean; onPress: () => void }) {
+function OutcomeChoice({ active, label, title, value, tone, disabled = false, onPress }: { active: boolean; label: string; title: string; value: string; tone: 'yes' | 'no' | 'neutral'; disabled?: boolean; onPress: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const color = tone === 'yes' ? theme.colors.yes : theme.colors.no;
-  const background = tone === 'yes' ? theme.colors.yesSoft : theme.colors.noSoft;
+  const color = tone === 'yes' ? theme.colors.yes : tone === 'no' ? theme.colors.no : theme.colors.brandPrimary;
+  const background = tone === 'yes' ? theme.colors.yesSoft : tone === 'no' ? theme.colors.noSoft : theme.colors.brandSoft;
   return (
     <Pressable accessibilityRole="radio" accessibilityState={{ selected: active, disabled }} accessibilityLabel={`${label}: ${title}, current share ${value}`} disabled={disabled} onPress={onPress} style={({ pressed }) => ({ flex: 1, minHeight: density.compact ? 66 : 76, borderWidth: active ? 1.5 : 1, borderColor: active ? color : theme.colors.border, backgroundColor: active ? background : theme.colors.surface, borderRadius: theme.radius.md, padding: density.compact ? 8 : 9, justifyContent: 'center', gap: 4, opacity: disabled ? 0.5 : pressed ? 0.74 : 1 })}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -862,6 +907,11 @@ function OutcomeChoice({ active, label, title, value, tone, disabled = false, on
       <VadText variant="bodyStrong" numberOfLines={1} style={{ fontSize: 12, lineHeight: 15 }}>{title}</VadText>
     </Pressable>
   );
+}
+
+function displayOutcomeCode(code: string) {
+  if (code === 'YES' || code === 'NO') return code;
+  return code.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
