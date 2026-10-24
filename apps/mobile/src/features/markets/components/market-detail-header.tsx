@@ -124,41 +124,13 @@ export function MarketDetailHeader({ market }: { market: MarketCatalogItem }) {
         }}
       >
         {imageUrl && !imageFailed ? (
-          <>
-            <Image
-              source={{ uri: imageUrl }}
-              accessibilityLabel=""
-              blurRadius={18}
-              resizeMode="cover"
-              onError={() => setFailedImageUrl(imageUrl)}
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                width: '100%',
-                height: '100%',
-                opacity: 0.66,
-              }}
-            />
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(5, 10, 22, 0.34)',
-              }}
-            />
-            <Image
-              source={{ uri: imageUrl }}
-              accessibilityLabel={`${market.title} market image`}
-              resizeMode="cover"
-              onError={() => setFailedImageUrl(imageUrl)}
-              style={{ width: '100%', height: '100%' }}
-            />
-          </>
+          <Image
+            source={{ uri: imageUrl }}
+            accessibilityLabel={`${market.title} market image`}
+            resizeMode="cover"
+            onError={() => setFailedImageUrl(imageUrl)}
+            style={{ width: '100%', height: '100%' }}
+          />
         ) : (
           <View style={{ alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16 }}>
             <VadIcon name="markets" size={30} tone="brand" />
