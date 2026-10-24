@@ -15,7 +15,7 @@ import { getAdminAccess } from '@/services/admin-control-api';
 import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
 import { getMyProfile, profileMediaUrl, type UserProfile } from '@/services/profile-api';
 import { supabase } from '@/lib/supabase';
-import { getTemporaryNgnTestCreditStatus, setTemporaryNgnTestMode, type TemporaryNgnTestCreditStatus } from '@/services/temporary-ngn-test-credit-api';
+import { getTngnMarketMode, setTngnMarketMode, type TngnMarketModeStatus } from '@/services/tngn-market-mode-api';
 
 type UserKycState = { userId: string; status: KycStatus | null };
 type UserMfaState = { userId: string; enabled: boolean | null };
@@ -38,7 +38,7 @@ export default function AccountScreen() {
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [adminAccessFor, setAdminAccessFor] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
-  const [marketTestingStatus, setMarketTestingStatus] = useState<TemporaryNgnTestCreditStatus | null>(null);
+  const [marketTestingStatus, setMarketTestingStatus] = useState<TngnMarketModeStatus | null>(null);
   const [marketTestingLoading, setMarketTestingLoading] = useState(true);
   const [marketTestingSaving, setMarketTestingSaving] = useState(false);
   const [marketTestingError, setMarketTestingError] = useState<string | null>(null);
@@ -96,7 +96,7 @@ export default function AccountScreen() {
         return;
       }
       setMarketTestingLoading(true);
-      void getTemporaryNgnTestCreditStatus().then((status) => {
+      void getTngnMarketMode().then((status) => {
         if (!ignore) {
           setMarketTestingStatus(status);
           setMarketTestingError(null);
@@ -136,12 +136,14 @@ export default function AccountScreen() {
   const isVerified = kycStatus?.status === 'VERIFIED';
   const kycCopy = getKycCopy(kycStatus);
   const handleMarketTestingChange = async (enabled: boolean) => {
-    if (!marketTestingStatus?.active || marketTestingSaving) return;
+    if (!marketTestingStatus?.eligible || marketTestingSaving) return;
     setMarketTestingSaving(true);
     setMarketTestingError(null);
     try {
-      const updated = await setTemporaryNgnTestMode(enabled);
+      const updated = await setTngnMarketMode(enabled);
       setMarketTestingStatus(updated);
+      await currencyPreference.refresh();
+      await refreshPortfolio();
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : 'Market testing mode could not be updated.';
       setMarketTestingError(message);
@@ -239,26 +241,28 @@ export default function AccountScreen() {
               <VadText variant="bodyStrong" style={{ fontSize: density.phone ? 14 : 15 }}>Test-credit market trading</VadText>
               <VadText variant="caption" tone="secondary" style={{ fontSize: density.phone ? 12 : 13, lineHeight: density.phone ? 16 : 18 }}>
                 {marketTestingLoading
-                  ? 'Checking your test allocation…'
-                  : !marketTestingStatus?.active
-                    ? 'No test allocation is assigned to this account.'
-                    : marketTestingStatus.testModeEnabled
-                      ? 'Enabled. Uses normal NGN markets, orders and settlement.'
-                      : 'Allocation available. Trading mode is currently off.'}
+                  ? 'Checking TNGN market-testing availability…'
+                  : !marketTestingStatus?.eligible
+                    ? marketTestingStatus?.globallyEnabled
+                      ? 'Available only to eligible Nigerian accounts.'
+                      : 'TNGN market testing is currently disabled by the platform.'
+                    : marketTestingStatus.userEnabled
+                      ? 'Enabled. Uses standard markets, resolution and settlement.'
+                      : 'TNGN is available; test trading is currently off.'}
               </VadText>
             </View>
             <Switch
               accessibilityLabel="Enable test-credit market trading"
-              value={Boolean(marketTestingStatus?.active && marketTestingStatus.testModeEnabled)}
+              value={Boolean(marketTestingStatus?.eligible && marketTestingStatus.userEnabled)}
               onValueChange={(enabled) => void handleMarketTestingChange(enabled)}
-              disabled={marketTestingLoading || marketTestingSaving || !marketTestingStatus?.active}
+              disabled={marketTestingLoading || marketTestingSaving || !marketTestingStatus?.eligible}
               trackColor={{ false: theme.colors.borderStrong, true: theme.colors.brandPrimary }}
               thumbColor={theme.colors.surface}
             />
           </View>
           <View style={{ paddingVertical: 10, gap: 4 }}>
             <VadText variant="caption" tone="secondary">
-              This setting is available only when an administrator has assigned a temporary non-cash NGN test allocation. Test trades use the normal NGN market and settlement pipeline, not a separate demo market. Deposits and withdrawals remain blocked while the allocation is active.
+              TNGN is synthetic, non-cash test value held in its own TNGN ledger. It uses the same market catalogue, order flow, official resolution and standard settlement engine as NGN and USDC, not a separate demo market. Deposits, withdrawals and transfers are disabled, and TNGN is never mixed with real NGN or USDC.
             </VadText>
             {marketTestingSaving ? <VadText variant="caption" tone="secondary">Saving preference…</VadText> : null}
             {marketTestingError ? <VadText variant="caption" tone="danger">{marketTestingError}</VadText> : null}
