@@ -168,7 +168,13 @@ Deno.serve(async (req) => {
         return json({ ok: true, hasExistingMedia: true, mediaPath: currentMediaPath, source: 'ai-existing' });
       }
       const result = await findSourceImage(clean(market.title, 400), clean(market.category, 80) || 'general');
-      if (result) return json({ ok: true, ...result, source: 'publisher', replacedGeneratedMedia: true }, 200, 180);
+      if (result) return json({
+        ok: true,
+        ...result,
+        source: 'publisher',
+        replacedGeneratedMedia: true,
+        existingGeneratedMediaPath: currentMediaPath,
+      }, 200, 180);
       return json({ ok: true, hasExistingMedia: true, mediaPath: currentMediaPath, source: 'ai-existing', reason: 'NO_RELEVANT_SOURCE_IMAGE' });
     }
     if (String(market.status).toUpperCase() === 'DRAFT') return json({ ok: true, imageUrl: null, reason: 'DRAFT' });
