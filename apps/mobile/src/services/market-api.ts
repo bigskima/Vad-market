@@ -308,7 +308,13 @@ function assertNoError(
 }
 
 export async function listMarkets() {
-  const { data, error } = await supabase.from('market_catalog').select('*').order('updated_at', { ascending: false });
+  // Historical TNGN records remain in the database for audit, but TNGN is
+  // fully retired and must never re-enter the live market catalogue.
+  const { data, error } = await supabase
+    .from('market_catalog')
+    .select('*')
+    .neq('asset_code', 'TNGN')
+    .order('updated_at', { ascending: false });
   assertNoError(error, 'markets');
   return (data ?? []) as MarketCatalogItem[];
 }
@@ -362,7 +368,11 @@ export async function getPublishedMarketDetail(instrumentPublicId: string): Prom
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     throw new Error('Published market details are not available for this market.');
   }
-  return data as PublishedMarketDetail;
+  const detail = data as PublishedMarketDetail;
+  if (String(detail.assetCode ?? '').toUpperCase() === 'TNGN') {
+    throw new Error('This market is no longer available.');
+  }
+  return detail;
 }
 
 export async function getWalletBalanceHistory(days = 30) {
