@@ -278,6 +278,7 @@ declare
   v_fee_journal bigint;
   v_asset_code text;
   v_test_credit_active boolean:=false;
+  v_test_grant_id bigint;
 begin
   acct := private.require_active_account();
   if p_idempotency_key is null or char_length(p_idempotency_key) < 8 or char_length(p_idempotency_key) > 200 then
@@ -312,10 +313,17 @@ begin
     raise exception 'Market is not open' using errcode = 'P0001';
   end if;
   select a.code into v_asset_code from public.assets a where a.id=instrument.asset_id and a.status='ACTIVE';
-  select exists(
-    select 1 from public.temporary_ngn_test_credit_grants g
+  -- Lock the active credit before acquiring wallet/pool locks. This shares the
+  -- grant-first lock order with the admin revocation routine and prevents a
+  -- revoke racing with a quote-confirmed stake commit.
+  if v_asset_code='NGN' then
+    select g.id into v_test_grant_id
+    from public.temporary_ngn_test_credit_grants g
     where g.user_id=auth.uid() and g.asset_id=instrument.asset_id and g.status='ACTIVE'
-  ) into v_test_credit_active;
+    order by g.created_at desc limit 1
+    for update;
+    v_test_credit_active:=v_test_grant_id is not null;
+  end if;
   if v_asset_code='NGN' and not coalesce((select gate.allowed from public.can_access_ngn_services() gate limit 1),false) then
     raise exception 'NGN service requires current location verification. Verify your current location and try again.' using errcode='42501';
   end if;
