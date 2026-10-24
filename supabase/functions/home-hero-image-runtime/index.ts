@@ -61,14 +61,18 @@ Deno.serve(async (req) => {
 
     const accountId = String(provider?.public_metadata?.account_id || '').trim();
     const secretName = String(provider?.secret_reference || 'VAD_AI_CLOUDFLARE_API_TOKEN').trim();
-    const apiToken = Deno.env.get(secretName);
+    const apiToken = Deno.env.get(secretName) || Deno.env.get('CLOUDFLARE_API_TOKEN') || Deno.env.get('CLOUDFLARE_WORKERS_AI_API_TOKEN');
 
-    if (!accountId || !apiToken) {
+    if (!accountId) {
       if (cached) return json({ ...cached, cached: true, stale: true });
-      return json({ error: 'Cloudflare image generation is not configured', code: 'CLOUDFLARE_NOT_CONFIGURED' }, 503);
+      return json({ error: 'Cloudflare Workers AI account ID is missing from the provider configuration.', code: 'CLOUDFLARE_ACCOUNT_ID_MISSING' }, 503);
+    }
+    if (!apiToken) {
+      if (cached) return json({ ...cached, cached: true, stale: true });
+      return json({ error: `Cloudflare Workers AI is missing the configured Supabase Edge Function secret ${secretName}. Add a valid Cloudflare API token; Gemini is not used for Home artwork.`, code: 'CLOUDFLARE_SECRET_MISSING', requiredSecret: secretName }, 503);
     }
 
-    const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-1-schnell';
+    const model = Deno.env.get('CLOUDFLARE_IMAGE_MODEL') || '@cf/black-forest-labs/flux-2-klein-4b';
     const prompt = [
       'Create a premium, cinematic, full-bleed 16:9 background artwork for a sophisticated global prediction-markets app.',
       'An elegant luminous globe with subtle latitude and longitude lines, surrounded by a few refined floating visual symbols suggesting finance, world events, sport and technology.',
@@ -78,14 +82,21 @@ Deno.serve(async (req) => {
       'ABSOLUTE TEXT-FREE OUTPUT: image pixels must contain no text of any kind. No letters, words, numbers, symbols, currency signs, ticker symbols, typography, labels, captions, signs, signage, logos, watermarks, UI, badges, buttons, or pseudo-readable marks. Any signs or labels in the scene must be blank. The app renders every title and message separately outside the image.',
     ].join(' ');
 
-    const ai = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
-      {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, steps: 4 }),
-      },
-    );
+    const imageEndpoint = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${model}`;
+    const imageRequest: RequestInit = model.includes('flux-2-klein')
+      ? (() => {
+          const form = new FormData();
+          form.set('prompt', prompt);
+          form.set('width', '1024');
+          form.set('height', '576');
+          return { method: 'POST', headers: { Authorization: `Bearer ${apiToken}` }, body: form };
+        })()
+      : {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, steps: 4 }),
+        };
+    const ai = await fetch(imageEndpoint, imageRequest);
 
     if (!ai.ok) {
       if (cached) return json({ ...cached, cached: true, stale: true });
