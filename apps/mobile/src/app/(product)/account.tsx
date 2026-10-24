@@ -41,7 +41,6 @@ export default function AccountScreen() {
   const [adminAccessFor, setAdminAccessFor] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [testModeStatus, setTestModeStatus] = useState<TemporaryNgnMarketTestingStatus | null>(null);
-  const [, setTestModeLoading] = useState(false);
   const [testModeSaving, setTestModeSaving] = useState(false);
   const [testModeLocationSaving, setTestModeLocationSaving] = useState(false);
   const [testModeError, setTestModeError] = useState<string | null>(null);
@@ -109,11 +108,9 @@ export default function AccountScreen() {
   useEffect(() => {
     if (!userId) {
       setTestModeStatus(null);
-      setTestModeLoading(false);
       return;
     }
     let ignore = false;
-    setTestModeLoading(true);
     void getTemporaryNgnMarketTestingStatus()
       .then((status) => { if (!ignore) setTestModeStatus(status); })
       .catch((reason) => {
@@ -122,7 +119,6 @@ export default function AccountScreen() {
           setTestModeError(reason instanceof Error ? reason.message : 'Temporary NGN market-testing status could not be loaded.');
         }
       })
-      .finally(() => { if (!ignore) setTestModeLoading(false); });
     return () => { ignore = true; };
   }, [userId]);
 
