@@ -6,6 +6,8 @@ export type MarketImageResult = {
   sourceName?: string;
   sourceUrl?: string;
   articleTitle?: string;
+  /** Catalog path the source lookup inspected; prevents replacing a newer manual image. */
+  basedOnMediaPath?: string | null;
 };
 
 type QueuedRequest = {
@@ -77,6 +79,7 @@ async function findPublisherImage(instrumentPublicId: string): Promise<MarketIma
     return {
       mediaUrl: imageUrl,
       source: 'publisher',
+      basedOnMediaPath: typeof data.existingGeneratedMediaPath === 'string' ? data.existingGeneratedMediaPath : null,
       sourceName: typeof data.sourceName === 'string' ? data.sourceName : undefined,
       sourceUrl: typeof data.sourceUrl === 'string' ? data.sourceUrl : undefined,
       articleTitle: typeof data.articleTitle === 'string' ? data.articleTitle : undefined,
