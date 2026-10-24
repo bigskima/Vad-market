@@ -283,7 +283,7 @@ export function WalletScreen({
             </VadText>
           </View>
           <VadText variant="caption" tone="secondary">
-            This temporary test allocation sits in the ordinary NGN wallet and uses the standard live market order and settlement engine. While it is active, NGN deposits, withdrawals and email transfers are blocked. Complete or settle all open NGN positions before an administrator revokes the allocation.
+            This non-cash test allocation sits in the ordinary NGN ledger and uses the same market instrument, quote, pool stake, resolution and settlement engine as regular NGN markets. Deposits and withdrawals remain blocked. Email transfers are restricted to eligible, location-verified Nigerian VAD accounts whose NGN wallet can be safely marked as test credit; test funds cannot mix with cash-funded NGN.
           </VadText>
           {temporaryNgnCredit.publicId ? (
             <VadText variant="caption" tone="tertiary">Test-credit reference: {temporaryNgnCredit.publicId}</VadText>
@@ -316,7 +316,7 @@ export function WalletScreen({
         <View style={{ flexDirection: 'row', gap: density.phone ? 6 : theme.spacing.sm }}>
           <WalletAction label="Deposit" detail={temporaryNgnCredit?.active ? "Locked during test credit" : "Add funds"} icon="plus" tone="yes" onPress={onDeposit} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
           <WalletAction label="Withdraw" detail={temporaryNgnCredit?.active ? "Locked during test credit" : "Send to bank"} icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
-          <WalletAction label="Transfer" detail="To another user" icon="transfer" tone="purple" onPress={onTransfer} />
+          <WalletAction label="Transfer" detail={temporaryNgnCredit?.active ? "Restricted test-credit transfer" : "To another user"} icon="transfer" tone="purple" onPress={onTransfer} />
           <WalletAction label="History" detail="View transactions" icon="fileText" tone="primary" onPress={onActivity} />
         </View>
       </TourTarget>
