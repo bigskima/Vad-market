@@ -193,8 +193,39 @@ function yahooCommodityTicker(symbol: string) {
   return aliases[normalized] ?? (/^[A-Z0-9^=._-]{1,20}$/.test(normalized) ? normalized : null);
 }
 
+async function yahooSymbolSearch(query: string): Promise<Array<{ symbol: string; name: string }>> {
+  const search = query.trim();
+  if (!search) return [];
+  const url = new URL('/v1/finance/search', 'https://query1.finance.yahoo.com');
+  url.searchParams.set('q', search.slice(0, 100));
+  url.searchParams.set('quotesCount', '10');
+  url.searchParams.set('newsCount', '0');
+  url.searchParams.set('enableFuzzyQuery', 'true');
+  const payload = await requestJson(url);
+  if (!isRecord(payload)) return [];
+  const rows = Array.isArray(payload.quotes) ? payload.quotes.filter(isRecord) : [];
+  const seen = new Set<string>();
+  return rows.flatMap((row) => {
+    const symbol = textValue(row.symbol, 30).toUpperCase();
+    const quoteType = textValue(row.quoteType, 30).toUpperCase();
+    const name = textValue(row.longname ?? row.shortname ?? row.name, 180) || symbol;
+    if (!symbol || !/^[A-Z0-9^=._-]{1,20}$/.test(symbol) || !['EQUITY', 'ETF', 'INDEX'].includes(quoteType) || seen.has(symbol)) return [];
+    seen.add(symbol);
+    return [{ symbol, name }];
+  }).slice(0, 8);
+}
+
 async function freeYahooQuotes(source: Source, query: string): Promise<AssetQuote[]> {
-  let definitions = definitionsForQuery(source, query, 5);
+  const browseLimit = source.assetClass === 'STOCKS' ? 8 : 5;
+  let definitions = definitionsForQuery(source, query, browseLimit);
+  if (source.assetClass === 'STOCKS' && query.trim()) {
+    try {
+      const searched = await yahooSymbolSearch(query);
+      if (searched.length) definitions = searched;
+    } catch (error) {
+      console.warn('Yahoo symbol search unavailable for ' + query + ': ' + (error instanceof Error ? error.message : 'request failed'));
+    }
+  }
   if (source.assetClass === 'COMMODITIES') {
     if (query.trim() && definitions.length === 0) {
       const ticker = yahooCommodityTicker(query);
@@ -475,6 +506,39 @@ async function fredQuotes(source: Source, query: string, apiKey: string): Promis
   return items;
 }
 
+function addVisualMetadata(item: AssetQuote): AssetQuote {
+  const result: AssetQuote = { ...item, imageUrl: null, secondaryImageUrl: null, visualKind: 'symbol' };
+  if (item.assetClass === 'STOCKS') {
+    const ticker = item.symbol.toUpperCase();
+    if (/^[A-Z0-9^=._-]{1,20}$/.test(ticker)) {
+      result.imageUrl = 'https://img.anylogo.dev/ticker/' + encodeURIComponent(ticker) + '?size=64&variant=icon';
+      result.visualKind = 'logo';
+    }
+  } else if (item.assetClass === 'FOREX') {
+    const parts = item.symbol.toUpperCase().replace(/[^A-Z/]/g, '').split('/');
+    const currencyCountries: Record<string, string> = {
+      USD:'us', EUR:'eu', GBP:'gb', NGN:'ng', JPY:'jp', AUD:'au', CAD:'ca', CHF:'ch',
+      NZD:'nz', CNY:'cn', ZAR:'za', INR:'in', BRL:'br', MXN:'mx', SEK:'se', NOK:'no',
+      SGD:'sg', HKD:'hk', AED:'ae', SAR:'sa', TRY:'tr', KRW:'kr', RUB:'ru', PLN:'pl',
+      DKK:'dk', THB:'th', IDR:'id', MYR:'my', PHP:'ph', PKR:'pk', BDT:'bd', EGP:'eg',
+      KES:'ke', GHS:'gh', XAU:'eu', XAG:'eu',
+    };
+    if (parts.length === 2 && parts.every((currency) => /^[A-Z]{3}$/.test(currency))) {
+      const base = currencyCountries[parts[0]];
+      const quote = currencyCountries[parts[1]];
+      if (base) result.imageUrl = 'https://flagcdn.com/w80/' + base + '.png';
+      if (quote) result.secondaryImageUrl = 'https://flagcdn.com/w80/' + quote + '.png';
+      result.visualKind = 'flag-pair';
+    }
+  } else if (item.assetClass === 'ECONOMICS' && /^[A-Z0-9_-]{1,40}$/.test(item.symbol)) {
+    const chartUrl = new URL('https://fred.stlouisfed.org/graph/fredgraph.png');
+    chartUrl.searchParams.set('id', item.symbol.toUpperCase());
+    result.imageUrl = chartUrl.toString();
+    result.visualKind = 'series-chart';
+  }
+  return result;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -576,12 +640,13 @@ Deno.serve(async (req) => {
       const now = new Date();
       const displaySource = useFreeFallback ? (items[0]?.source ?? 'Free public display source') : source.name;
       const displaySourceCode = useFreeFallback ? (items[0]?.sourceCode ?? 'FREE_DISPLAY_SOURCE') : source.code;
+      const displayItems = items.map(addVisualMetadata);
       const payload = {
         ok: true, source: displaySource, sourceCode: displaySourceCode,
         configuredSourceCode: source.code,
         dataPurpose: 'DISPLAY_ONLY', assetClass, quoteCurrency: source.quoteCurrency,
         query, fetchedAt: now.toISOString(), cacheSeconds: source.cacheSeconds,
-        stale: false, cached: false, items,
+        stale: false, cached: false, items: displayItems,
       };
       const { error: writeError } = await admin.rpc('internal_upsert_financial_market_data_cache', {
         p_request_key: cacheKey, p_source_code: source.code, p_payload: payload,
