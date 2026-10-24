@@ -46,8 +46,11 @@ export async function transferAssetToEmail(input: {
     if (raw.includes('insufficient available') || raw.includes('insufficient balance')) {
       throw new Error(`Your available ${input.assetCode} balance is not enough. No funds were moved.`);
     }
+    if (raw.includes('recipient must complete current nigeria location verification')) {
+      throw new Error('The recipient must complete current Nigeria location verification before receiving NGN. No funds were moved.');
+    }
     if (raw.includes('location verification')) {
-      throw new Error('NGN transfers require current location verification in Nigeria. Enable location permission and try again.');
+      throw new Error('NGN transfers require current Nigeria location and network verification for your account. Complete the location check and try again.');
     }
     if (raw.includes('recipient account is registered') || raw.includes('recipient account is not active')) {
       throw new Error('The recipient VAD account is not active for transfers. No funds were moved.');
