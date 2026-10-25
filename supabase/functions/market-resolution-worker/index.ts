@@ -497,7 +497,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
   const agreedStatus = winningGroup[0].validated.status;
   const agreementEvidence = winningGroup.flatMap((candidate) => candidate.validated.evidence);
   const evidenceByKey = new Map<string, (typeof agreementEvidence)[number]>();
-  for (const evidence of agreementEvidence) evidenceByKey.set(evidence.url + '|' + evidence.quote, evidence);
+  for (const evidence of agreementEvidence) evidenceByKey.set(evidence.source.source + '|' + evidence.url + '|' + evidence.quote, evidence);
   const agreedEvidence = [...evidenceByKey.values()].sort((a, b) => {
     const aPrimary = primaryUrls.some((url) => url.toString() === a.url) ? 0 : 1;
     const bPrimary = primaryUrls.some((url) => url.toString() === b.url) ? 0 : 1;
@@ -508,8 +508,36 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
   const evidenceSummary = agreedEvidence.map((item) => ({
     url: item.url, quote: item.quote, publishedAt: item.publishedAt, sourceType: item.source.source,
   }));
+  const directEvidence = agreedEvidence.find((item) => item.source.source === 'DIRECT');
+  const searchResultEvidence = agreedEvidence.find((item) => item.source.source === 'SEARCH');
+  const sourceCodes = new Set<string>();
+  const hierarchy = Array.isArray(event.sourceHierarchy) ? event.sourceHierarchy : [];
+  for (const entry of hierarchy) {
+    const value = typeof entry === 'string'
+      ? entry
+      : isRecord(entry) ? safeText(entry.provider_code ?? entry.providerCode ?? entry.code, 80) : '';
+    if (value) sourceCodes.add(value.toUpperCase());
+  }
+  const sourceEvidence = [
+    { code: 'PUBLIC_RECORD', evidence: directEvidence },
+    { code: 'TAVILY', evidence: searchResultEvidence },
+  ] as const;
+  const missingSource = sourceEvidence.find(({ code, evidence }) => !evidence || !sourceCodes.has(code));
 
   if (agreedStatus === 'VOID') {
+    if (winningGroup.length < 2 || missingSource) {
+      const reason = winningGroup.length < 2
+        ? 'AUTOMATIC_VOID_REQUIRES_TWO_AI_MODELS'
+        : 'TWO_SOURCE_ORACLE_QUORUM_REQUIRED';
+      for (const candidate of winningGroup) {
+        await recordAttempt(admin, event, candidate.runtime, 'INCONCLUSIVE', {
+          proposedStatus: 'VOID',
+          confidence: candidate.validated.confidence,
+          rationale: candidate.validated.rationale,
+        }, { citations: candidate.evidenceSummary }, reason);
+      }
+      return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason };
+    }
     const condition = safeText(scope.condition, 4000);
     const explicitVoid = /\bvoid\b/i.test(condition) || Boolean(scope.void_rule) || Boolean(scope.voidRule);
     const deadlineRaw = safeText(scope.resolution_deadline ?? scope.resolutionDeadline, 100);
@@ -566,27 +594,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     throw new Error('The agreed AI result lacks a configured outcome or verified evidence.');
   }
 
-  // The existing oracle finalizer requires two distinct oracle-provider
-  // observations. Tie each observation to a separately fetched evidence path:
-  // PUBLIC_RECORD is the direct primary source, while TAVILY is a distinct
-  // search/corroboration path. Do not synthesize a second provider vote when
-  // only one evidence path was actually returned and cited by the models.
-  const directEvidence = agreedEvidence.find((item) => item.source.source === 'DIRECT');
-  const searchResultEvidence = agreedEvidence.find((item) => item.source.source === 'SEARCH');
-  const sourceCodes = new Set<string>();
-  const hierarchy = Array.isArray(event.sourceHierarchy) ? event.sourceHierarchy : [];
-  for (const entry of hierarchy) {
-    const value = typeof entry === 'string'
-      ? entry
-      : isRecord(entry) ? safeText(entry.provider_code ?? entry.providerCode ?? entry.code, 80) : '';
-    if (value) sourceCodes.add(value.toUpperCase());
-  }
-
-  const sourceEvidence = [
-    { code: 'PUBLIC_RECORD', evidence: directEvidence },
-    { code: 'TAVILY', evidence: searchResultEvidence },
-  ] as const;
-  const missingSource = sourceEvidence.find(({ code, evidence }) => !evidence || !sourceCodes.has(code));
+  // Source quorum was computed once above so both YES/NO outcomes and VOID require the same evidence paths.
   if (missingSource) {
     for (const candidate of winningGroup) {
       await recordAttempt(admin, event, candidate.runtime, 'INCONCLUSIVE', {
