@@ -572,10 +572,16 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             {quote.appliedPayoutMultiple != null ? <QuoteLine label="Estimated payout multiple" value={`${Number(quote.appliedPayoutMultiple).toFixed(2)}×${quote.payoutCapApplies ? " (capped)" : ""}`} /> : null}
             {quote.maximumGrossPayoutMultiple != null ? <QuoteLine label="Market maximum payout multiple" value={`${Number(quote.maximumGrossPayoutMultiple).toFixed(2)}×`} /> : null}
             {quote.maxEntryStake != null ? <QuoteLine label="Maximum single stake" value={assetMoney(quote.maxEntryStake, market.asset_code)} /> : null}
+            {quote.existingUserTradingFees != null ? <QuoteLine label="Trading fees already paid on existing entries" value={assetMoney(quote.existingUserTradingFees, market.asset_code)} /> : null}
             <QuoteLine label="Estimated settlement fee on full winning position" value={assetMoney(quote.estimatedSettlementFee, market.asset_code)} />
-            <QuoteLine label="Estimated net payout for your full winning position" value={assetMoney(quote.estimatedNetPayout, market.asset_code)} />
+            <QuoteLine label="Estimated net payout from the winning side" value={assetMoney(quote.estimatedNetPayout, market.asset_code)} />
+            <QuoteLine label="Estimated refund from your losing-side stakes if capped" value={assetMoney(quote.estimatedLosingSideRefund ?? 0, market.asset_code)} />
+            <QuoteLine label="Estimated total settlement proceeds if correct" value={assetMoney(quote.estimatedTotalNetSettlementPayout ?? quote.estimatedNetPayout, market.asset_code)} />
+            <QuoteLine label="Total cost across your position if committed" value={assetMoney(quote.estimatedTotalCostAfterCommit ?? quote.maximumCashDebit, market.asset_code)} />
+            <QuoteLine label="Projected profit / loss if this outcome wins" value={assetMoney(quote.estimatedNetProfitLossIfCorrect ?? 0, market.asset_code)} />
           </View>
 
+          <InlineMessage tone="brand" title="Profit estimate" body="Projected profit or loss includes your existing stakes on both outcomes and their recorded trading fees. It assumes your selected outcome wins, uses the current pool and applicable policy, and can change before market close." />
           <InlineMessage tone="brand" title="Fee transparency" body="The entry trading fee is charged now. The settlement fee is estimated on your combined winning-side position and deducted at settlement. Quotes are estimates and can change as other participants stake." />
           <InlineMessage tone="brand" title="Peer Pool settlement" body="Winning payouts are stake-weighted. Bounded markets apply the published maximum payout multiple; any resulting surplus is returned to eligible losing-side participants under the market rules. VAD does not add company funds." />
           {placeError ? <InlineMessage tone="danger" title="Prediction not committed" body={placeError} /> : null}
