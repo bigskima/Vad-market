@@ -460,3 +460,10 @@ entrypoint = "./functions/sports-market-draft/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/crypto-market-draft/index.ts"
+
+[functions.market-resolution-worker]
+enabled = true
+# The worker performs its own constant-time scheduler-secret validation.
+# Supabase gateway JWT verification must be disabled for the Vault cron caller.
+verify_jwt = false
+entrypoint = "./functions/market-resolution-worker/index.ts"
