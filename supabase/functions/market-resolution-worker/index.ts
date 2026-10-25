@@ -551,7 +551,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
       return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason: 'VOID_POLICY_GUARD_REJECTED' };
     }
 
-    const { data: voided, error: voidError } = await admin.rpc('internal_auto_void_vad_review_event', {
+    const { data: voided, error: voidError } = await admin.rpc('internal_queue_vad_review_void_event', {
       p_event_id: event.eventId,
       p_evidence: {
         ai_reviews: winningGroup.map((candidate) => ({
@@ -576,14 +576,14 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
       throw new Error(reason);
     }
     for (const candidate of winningGroup) {
-      await recordAttempt(admin, event, candidate.runtime, 'VOIDED', {
-        status: 'VOID', rationale: candidate.validated.rationale, confidence: candidate.validated.confidence,
+      await recordAttempt(admin, event, candidate.runtime, 'VOID_PROPOSED', {
+        status: 'VOID_PROPOSED', rationale: candidate.validated.rationale, confidence: candidate.validated.confidence,
         agreementCount: winningGroup.length,
       }, { citations: candidate.evidenceSummary }, null);
     }
     return {
       eventPublicId: event.eventPublicId,
-      status: 'VOIDED',
+      status: 'VOID_PROPOSED',
       providers: winningGroup.map((candidate) => candidate.runtime.providerCode),
       agreementCount: winningGroup.length,
     };
