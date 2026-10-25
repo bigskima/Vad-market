@@ -7,6 +7,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
+import { TourTarget } from '@/features/tour/tour-provider';
 import {
   getPolicyWorkspace,
   type LegalDocument,
@@ -53,6 +54,7 @@ export default function PoliciesRoute() {
   return (
     <ProductSubpage title="Policies & privacy" maxWidth={900}>
       <View style={{ gap: density.sectionGap }}>
+        <TourTarget id="policy-library">
         <View style={{ gap: 5 }}>
           <VadText variant="caption" tone="brand">VAD POLICIES</VadText>
           <VadText variant="title">Important information in one place</VadText>
@@ -60,6 +62,7 @@ export default function PoliciesRoute() {
             Read the current terms that apply to using VAD and how account information is handled. When a future published update needs your agreement, VAD will ask you to review it before you continue.
           </VadText>
         </View>
+        </TourTarget>
 
         {error ? (
           <VadErrorState
