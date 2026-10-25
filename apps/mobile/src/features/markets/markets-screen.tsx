@@ -256,6 +256,28 @@ export function MarketsScreen({
           { icon: 'operations', label: 'Market filters', onPress: () => setFiltersExpanded((value) => !value) },
         ]}
       />
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: -2 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open News and headlines"
+          onPress={() => router.push('/news')}
+          style={({ pressed }) => ({
+            minHeight: 34,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
+            paddingHorizontal: 10,
+            opacity: pressed ? 0.72 : 1,
+          })}
+        >
+          <VadIcon name="fileText" size={15} tone="brand" />
+          <VadText variant="caption" tone="brand">News & headlines</VadText>
+        </Pressable>
+      </View>
       <View style={{ alignItems: 'flex-end', marginTop: -8 }}>
         <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
       </View>
