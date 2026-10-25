@@ -7,6 +7,7 @@ import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -76,6 +77,7 @@ export function NotificationsScreen({
 
   return (
     <View style={{ gap: density.compact ? 14 : 20 }}>
+      <TourTarget id="notification-center">
       <View style={{ gap: theme.spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
           <VadText variant="caption" tone={unread ? 'brand' : 'tertiary'}>{unread ? `${unread} unread` : 'All caught up'}</VadText>
@@ -84,6 +86,7 @@ export function NotificationsScreen({
         <VadSegmentedControl value={filter} options={filters} onChange={setFilter} />
         <VadText variant="caption" tone="tertiary">{progressive.visibleCount} shown</VadText>
       </View>
+      </TourTarget>
 
       {error ? (
         <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
