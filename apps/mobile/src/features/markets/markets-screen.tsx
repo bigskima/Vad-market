@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { VadButton } from '@/components/ui/vad-button';
