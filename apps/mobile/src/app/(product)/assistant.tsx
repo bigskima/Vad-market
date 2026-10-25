@@ -2,6 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { AssistantScreen } from '@/features/assistant/assistant-screen';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
 
 export default function AssistantRoute() {
@@ -17,6 +18,7 @@ export default function AssistantRoute() {
 
   return (
     <ProductSubpage title="VAD Assistant" maxWidth={1120}>
+      <TourTarget id="assistant-help">
       <AssistantScreen
         initialMarketId={marketId ?? null}
         initialPrompt={prompt ?? ''}
@@ -24,6 +26,7 @@ export default function AssistantRoute() {
         activeAssetCodes={data.activeAssetCodes}
         countryCode={data.countryCode}
       />
+      </TourTarget>
     </ProductSubpage>
   );
 }
