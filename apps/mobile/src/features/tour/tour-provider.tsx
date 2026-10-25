@@ -118,13 +118,13 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   }, [userId]);
 
   const navigateToStep = useCallback((step: TourStep) => {
-    if (['/wallet/deposit', '/wallet/withdraw', '/wallet/send'].includes(step.route) && !canUseNgnWalletRoutes) {
+    if (['/wallet/deposit', '/wallet/withdraw', '/wallet/send'].some((route) => route === step.route) && !canUseNgnWalletRoutes) {
       router.replace('/wallet');
       return;
     }
     if (step.route === '/market/[marketId]') {
       const market = productData.markets.find((item) => {
-        if (item.asset_code === 'TNGN' || !['NGN', 'USDC'].includes(item.asset_code)) return false;
+        if (item.asset_code === 'TNGN' || !['NGN', 'USDC'].some((code) => code === item.asset_code)) return false;
         const assetCode = item.asset_code as VADCurrency;
         return currencyPreference.isCurrencyEligible(assetCode) && currencyPreference.isCurrencyEnabled(assetCode);
       });
@@ -282,8 +282,8 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
 
     const isMarketDetailStep = currentStep.route === '/market/[marketId]';
     const hasValidMarketRoute = isMarketDetailStep && pathname.startsWith('/market/');
-    const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && !productData.markets.some((item) => item.asset_code !== 'TNGN' && ['NGN', 'USDC'].includes(item.asset_code) && currencyPreference.isCurrencyEnabled(item.asset_code as VADCurrency));
-    const walletRouteCanFallBack = ['/wallet/deposit', '/wallet/withdraw', '/wallet/send'].includes(currentStep.route) && !canUseNgnWalletRoutes && pathname === '/wallet';
+    const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && !productData.markets.some((item) => item.asset_code !== 'TNGN' && ['NGN', 'USDC'].some((code) => code === item.asset_code) && currencyPreference.isCurrencyEnabled(item.asset_code as VADCurrency));
+    const walletRouteCanFallBack = ['/wallet/deposit', '/wallet/withdraw', '/wallet/send'].some((route) => route === currentStep.route) && !canUseNgnWalletRoutes && pathname === '/wallet';
     const expectedMarketSection = currentStep.targetId === 'market-trading-ticket' ? 'Trade' : 'Overview';
     if (hasValidMarketRoute && tourSection !== expectedMarketSection) {
       setSpotlight(null);
