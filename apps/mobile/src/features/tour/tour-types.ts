@@ -1,5 +1,5 @@
 export type TourRoute =
-  | '/home' | '/markets' | '/wallet' | '/portfolio' | '/account' | '/watchlist'
+  | '/home' | '/markets' | '/wallet' | '/portfolio' | '/account' | '/watchlist' | '/market/[marketId]'
   | '/wallet/activity' | '/wallet/deposit' | '/wallet/withdraw' | '/wallet/send'
   | '/account/profile' | '/account/verification' | '/account/funding' | '/account/region'
   | '/account/appearance' | '/account/security' | '/account/policies' | '/account/growth' | '/account/about'
