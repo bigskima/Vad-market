@@ -21,6 +21,17 @@ create table if not exists oracle.ai_resolution_attempts (
 create index if not exists ai_resolution_attempts_event_created_idx
   on oracle.ai_resolution_attempts(event_id, created_at desc);
 
+-- Durable 90-second leases prevent overlapping cron invocations from resolving
+-- the same event concurrently. Expired leases are recoverable by the next run.
+create table if not exists oracle.ai_resolution_claims (
+  event_id bigint primary key references market.canonical_events(id) on delete cascade,
+  claim_token uuid not null default gen_random_uuid(),
+  status text not null check (status in ('CLAIMED','COMPLETED')),
+  claimed_at timestamptz not null default statement_timestamp(),
+  lease_expires_at timestamptz not null,
+  last_error text
+);
+revoke all on oracle.ai_resolution_claims from public, anon, authenticated;
 revoke all on oracle.ai_resolution_attempts from public, anon, authenticated;
 
 -- Give eligible, already-configured free-first models an explicit resolution capability.
@@ -212,7 +223,6 @@ $function$;
 create or replace function public.internal_market_resolution_due_events(p_limit integer default 20)
 returns jsonb
 language plpgsql
-stable
 security definer
 set search_path=''
 as $function$
@@ -225,7 +235,7 @@ begin
     raise exception 'Resolution worker limit must be between 1 and 100' using errcode='22023';
   end if;
 
-  with due as (
+  with candidates as materialized (
     select e.id,e.public_id,e.title,e.category,e.status,e.resolution_scope,
            e.normalized_parameters,e.closes_at,e.resolves_after,e.created_at as opened_at,
            p.id as policy_id,p.public_id as policy_public_id,
@@ -264,6 +274,26 @@ begin
       )
     order by coalesce(e.resolves_after,e.closes_at),e.id
     limit p_limit
+  ),
+  claimed as (
+    insert into oracle.ai_resolution_claims(event_id,claim_token,status,claimed_at,lease_expires_at,last_error)
+    select c.id,gen_random_uuid(),'CLAIMED',statement_timestamp(),
+           statement_timestamp()+interval '90 seconds',null
+    from candidates c
+    on conflict(event_id) do update
+      set claim_token=gen_random_uuid(),
+          status='CLAIMED',
+          claimed_at=statement_timestamp(),
+          lease_expires_at=statement_timestamp()+interval '90 seconds',
+          last_error=null
+      where oracle.ai_resolution_claims.status<>'CLAIMED'
+         or oracle.ai_resolution_claims.lease_expires_at<=statement_timestamp()
+    returning event_id,claim_token
+  ),
+  due as (
+    select c.*,claim.claim_token
+    from candidates c
+    join claimed claim on claim.event_id=c.id
   )
   select coalesce(jsonb_agg(jsonb_build_object(
     'eventId',d.id,
@@ -283,6 +313,7 @@ begin
     'disputeWindowSeconds',d.dispute_window_seconds,
     'voidRule',d.void_rule,
     'capabilityCode',d.capability_code,
+    'claimToken',d.claim_token,
     'outcomes',coalesce((
       select jsonb_agg(jsonb_build_object('code',o.code,'label',o.label) order by o.display_order,o.code)
       from (
@@ -297,7 +328,33 @@ begin
   ) order by coalesce(d.resolves_after,d.closes_at),d.id),'[]'::jsonb)
   into v_result
   from due d;
+
   return v_result;
+end;
+$function$;
+
+create or replace function public.internal_finish_market_resolution_claim(
+  p_event_id bigint,
+  p_claim_token uuid,
+  p_error text default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path=''
+as $function$
+begin
+  if coalesce(auth.role(),'') <> 'service_role' then
+    raise exception 'Service role required' using errcode='42501';
+  end if;
+  update oracle.ai_resolution_claims
+     set status='COMPLETED',
+         lease_expires_at=statement_timestamp(),
+         last_error=nullif(left(btrim(coalesce(p_error,'')),500),'')
+   where event_id=p_event_id
+     and claim_token=p_claim_token
+     and status='CLAIMED';
+  return found;
 end;
 $function$;
 
@@ -458,10 +515,12 @@ $function$;
 
 revoke all on function public.get_market_resolution_ai_runtimes() from public,anon,authenticated;
 revoke all on function public.internal_market_resolution_due_events(integer) from public,anon,authenticated;
+revoke all on function public.internal_finish_market_resolution_claim(bigint,uuid,text) from public,anon,authenticated;
 revoke all on function public.internal_record_market_resolution_attempt(bigint,bigint,text,text,jsonb,jsonb,text,text) from public,anon,authenticated;
 revoke all on function public.internal_auto_void_vad_review_event(bigint,jsonb) from public,anon,authenticated;
 grant execute on function public.get_market_resolution_ai_runtimes() to service_role;
 grant execute on function public.internal_market_resolution_due_events(integer) to service_role;
+grant execute on function public.internal_finish_market_resolution_claim(bigint,uuid,text) to service_role;
 grant execute on function public.internal_record_market_resolution_attempt(bigint,bigint,text,text,jsonb,jsonb,text,text) to service_role;
 grant execute on function public.internal_auto_void_vad_review_event(bigint,jsonb) to service_role;
 
