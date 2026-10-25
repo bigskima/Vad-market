@@ -365,10 +365,18 @@ declare
   v_test_mode_enabled boolean := false;
   existing_user_outcome_stake numeric(38,18) := 0;
   existing_user_total_stake numeric(38,18) := 0;
+  existing_user_trading_fees numeric(38,18) := 0;
+  existing_user_losing_stake numeric(38,18) := 0;
   combined_user_outcome_stake numeric(38,18) := 0;
   combined_user_total_stake numeric(38,18) := 0;
   raw_multiple numeric(38,18) := 1;
   applied_multiple numeric(38,18) := 1;
+  projected_losing_pool numeric(38,18) := 0;
+  projected_refund_budget numeric(38,18) := 0;
+  est_losing_side_refund numeric(38,18) := 0;
+  est_total_net_settlement numeric(38,18) := 0;
+  est_total_cost numeric(38,18) := 0;
+  est_profit_loss numeric(38,18) := 0;
 begin
   acct := private.require_active_account();
   select * into instrument from market.instruments where public_id = p_instrument_public_id;
@@ -421,8 +429,9 @@ begin
   from trading.pool_stakes s where s.instrument_id = instrument.id;
 
   select coalesce(sum(s.amount), 0),
-         coalesce(sum(s.amount) filter (where s.outcome_id = outcome.id), 0)
-  into existing_user_total_stake, existing_user_outcome_stake
+         coalesce(sum(s.amount) filter (where s.outcome_id = outcome.id), 0),
+         coalesce(sum(s.trading_fee_amount), 0)
+  into existing_user_total_stake, existing_user_outcome_stake, existing_user_trading_fees
   from trading.pool_stakes s
   where s.instrument_id = instrument.id and s.user_id = auth.uid();
 
@@ -453,6 +462,28 @@ begin
   select q.fee_amount, q.policy_version_id into est_settlement_fee, est_pv
   from command.quote_settlement_fee(est_gross) q;
 
+  projected_losing_pool := greatest((total_pool + p_amount) - (outcome_pool + p_amount), 0);
+  existing_user_losing_stake := greatest(existing_user_total_stake - existing_user_outcome_stake, 0);
+  if risk_policy.policy_mode = 'BOUNDED'
+     and risk_policy.pool_max_payout_multiple is not null
+     and applied_multiple < raw_multiple
+     and projected_losing_pool > 0
+     and existing_user_losing_stake > 0 then
+    projected_refund_budget := greatest(
+      (total_pool + p_amount) - round((outcome_pool + p_amount) * applied_multiple, 18),
+      0
+    );
+    est_losing_side_refund := round(
+      projected_refund_budget * existing_user_losing_stake / projected_losing_pool,
+      18
+    );
+  end if;
+
+  est_total_net_settlement :=
+    greatest(est_gross - coalesce(est_settlement_fee, 0), 0) + est_losing_side_refund;
+  est_total_cost := combined_user_total_stake + existing_user_trading_fees + coalesce(fee, 0);
+  est_profit_loss := est_total_net_settlement - est_total_cost;
+
   return jsonb_build_object(
     'instrumentPublicId', instrument.public_id,
     'instrumentId', instrument.id,
@@ -472,10 +503,15 @@ begin
     'combinedUserOutcomeStake', combined_user_outcome_stake,
     'existingUserTotalStake', existing_user_total_stake,
     'combinedUserTotalStake', combined_user_total_stake,
+    'existingUserTradingFees', existing_user_trading_fees,
     'estimatedEntryGrossPayout', est_entry_gross,
     'estimatedGrossPayout', est_gross,
     'estimatedSettlementFee', coalesce(est_settlement_fee, 0),
     'estimatedNetPayout', greatest(est_gross - coalesce(est_settlement_fee, 0), 0),
+    'estimatedLosingSideRefund', est_losing_side_refund,
+    'estimatedTotalNetSettlementPayout', est_total_net_settlement,
+    'estimatedTotalCostAfterCommit', est_total_cost,
+    'estimatedNetProfitLossIfCorrect', est_profit_loss,
     'appliedPayoutMultiple', applied_multiple,
     'maximumGrossPayoutMultiple', case when risk_policy.policy_mode = 'BOUNDED' then risk_policy.pool_max_payout_multiple else null end,
     'payoutCapApplies', risk_policy.policy_mode = 'BOUNDED' and risk_policy.pool_max_payout_multiple is not null and raw_multiple > risk_policy.pool_max_payout_multiple,
