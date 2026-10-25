@@ -9,7 +9,7 @@ create table if not exists oracle.ai_resolution_attempts (
   event_id bigint not null references market.canonical_events(id) on delete cascade,
   ai_provider_id bigint references ai.providers(id) on delete set null,
   model_code text,
-  status text not null check (status in ('RESOLVED','INCONCLUSIVE','VOIDED','FAILED')),
+  status text not null check (status in ('RESOLVED','INCONCLUSIVE','VOID_PROPOSED','FAILED')),
   output_payload jsonb not null default '{}'::jsonb check (jsonb_typeof(output_payload) = 'object'),
   evidence_payload jsonb not null default '{}'::jsonb check (jsonb_typeof(evidence_payload) = 'object'),
   failure_reason text,
@@ -381,7 +381,7 @@ begin
   if coalesce(auth.role(),'') <> 'service_role' then
     raise exception 'Service role required' using errcode='42501';
   end if;
-  if p_status not in ('RESOLVED','INCONCLUSIVE','VOIDED','FAILED') then
+  if p_status not in ('RESOLVED','INCONCLUSIVE','VOID_PROPOSED','FAILED') then
     raise exception 'Invalid AI resolution attempt status' using errcode='22023';
   end if;
   if nullif(btrim(p_attempt_key),'') is null or char_length(p_attempt_key)>240 then
@@ -409,7 +409,7 @@ begin
 end;
 $function$;
 
-create or replace function public.internal_auto_void_vad_review_event(
+create or replace function public.internal_queue_vad_review_void_event(
   p_event_id bigint,
   p_evidence jsonb
 )
@@ -487,7 +487,7 @@ begin
   end if;
   if exists (
     select 1 from oracle.resolutions r
-    where r.event_id=v_event.id and r.status in ('PROVISIONAL','FINAL','VOID')
+    where r.event_id=v_event.id and r.status in ('PROVISIONAL','CONFLICT','FINAL','VOID')
   ) then raise exception 'The event already has a resolution' using errcode='P0001'; end if;
   if not exists (
     select 1 from market.instruments i
@@ -503,33 +503,34 @@ begin
   insert into oracle.resolutions(
     event_id,oracle_policy_id,outcome_code,status,consensus_evidence,created_by,finalized_at,finalized_by
   ) values (
-    v_event.id,v_policy.id,null,'VOID',
+    v_event.id,v_policy.id,null,'PROVISIONAL',
     coalesce(p_evidence,'{}'::jsonb) || jsonb_build_object(
       'algorithm','AI_EVIDENCE_POLICY_V1',
       'policy_id',v_policy.public_id,
-      'automatic_void_at',statement_timestamp(),
+      'automatic_void',true,
+      'void_proposed_at',statement_timestamp(),
       'void_rule','EQUAL_SPLIT',
-      'source_condition',v_event.resolution_scope->>'condition'
-    ),null,statement_timestamp(),null
+      'source_condition',v_event.resolution_scope->>'condition',
+      'resolution_deadline',v_deadline
+    ),null,null,null
   );
 
-  update market.canonical_events set status='FINALIZED',updated_at=statement_timestamp() where id=v_event.id;
-  update market.instruments i set status='SETTLEMENT_PENDING',updated_at=statement_timestamp()
-  where i.canonical_event_id=v_event.id and i.status='CLOSED'
-    and not exists(select 1 from public.assets a where a.id=i.asset_id and a.code='TNGN');
+  update market.canonical_events
+     set status='PROVISIONALLY_RESOLVED',updated_at=statement_timestamp()
+   where id=v_event.id and status='AWAITING_ORACLE';
 
   insert into eventing.domain_events(event_type,aggregate_type,aggregate_id,payload,idempotency_key)
   values(
-    'MARKET_FINALIZED','CANONICAL_EVENT',v_event.public_id::text,
-    jsonb_build_object('resolution_status','VOID','outcome_code',null,'automatic_void',true),
-    'market-finalized-void:'||v_event.public_id::text
+    'ORACLE_VOID_PROPOSED','CANONICAL_EVENT',v_event.public_id::text,
+    jsonb_build_object('resolution_status','PROVISIONAL','outcome_code',null,'automatic_void',true),
+    'oracle-void-proposed:'||v_event.public_id::text
   ) on conflict(idempotency_key) do nothing;
 
   insert into audit.records(actor_type,action,resource_type,resource_id,reason,after_state,metadata)
   values(
-    'SYSTEM','AI_MARKET_RESOLUTION_AUTO_VOIDED','ORACLE_RESOLUTION',v_event.public_id::text,
-    'The market''s published void condition was met after its resolution deadline.',
-    jsonb_build_object('status','VOID','outcome_code',null),
+    'SYSTEM','AI_MARKET_RESOLUTION_VOID_PROPOSED','ORACLE_RESOLUTION',v_event.public_id::text,
+    'AI evidence matched the published void rule; finalization remains subject to the configured dispute window.',
+    jsonb_build_object('status','PROVISIONAL','outcome_code',null),
     jsonb_build_object('event_id',v_event.id,'resolution_deadline',v_deadline,'policy_id',v_policy.public_id)
   );
   return true;
@@ -769,6 +770,7 @@ begin
       p.id as policy_id,
       p.public_id as policy_public_id,
       p.consensus_rule,
+      p.void_rule as policy_void_rule,
       p.dispute_window_seconds,
       e.public_id as event_public_id
     from oracle.resolutions r
@@ -776,20 +778,41 @@ begin
     join market.canonical_events e on e.id = r.event_id
     where r.status = 'PROVISIONAL'
       and r.created_by is null
-      and r.outcome_code is not null
+      and (
+        r.outcome_code is not null
+        or (
+          r.outcome_code is null
+          and coalesce(r.consensus_evidence->>'automatic_void','false')='true'
+        )
+      )
       and p.status = 'ACTIVE'
       and p.approved_by is not null
       and upper(coalesce(p.consensus_rule->>'finalization_mode','')) = 'AUTO_AFTER_DISPUTE_WINDOW'
       and statement_timestamp() >= r.created_at + make_interval(secs => p.dispute_window_seconds)
       and e.status = 'PROVISIONALLY_RESOLVED'
       and coalesce(r.consensus_evidence->>'policy_id','') = p.public_id::text
-      and exists(
-        select 1
-        from market.instruments i
-        join market.outcomes o on o.instrument_id = i.id
-        where i.canonical_event_id = r.event_id
-          and i.status = 'CLOSED'
-          and upper(o.code) = upper(r.outcome_code)
+      and (
+        (
+          r.outcome_code is not null
+          and exists(
+            select 1
+            from market.instruments i
+            join market.outcomes o on o.instrument_id = i.id
+            where i.canonical_event_id = r.event_id
+              and i.status = 'CLOSED'
+              and upper(o.code) = upper(r.outcome_code)
+          )
+        )
+        or (
+          r.outcome_code is null
+          and coalesce(r.consensus_evidence->>'automatic_void','false')='true'
+          and coalesce(p.void_rule->>'mode','')='EQUAL_SPLIT'
+          and exists(
+            select 1 from market.instruments i
+            where i.canonical_event_id=r.event_id and i.status='CLOSED'
+              and not exists(select 1 from public.assets a where a.id=i.asset_id and a.code='TNGN')
+          )
+        )
       )
       and not exists(
         select 1
@@ -813,6 +836,80 @@ begin
     if not pg_try_advisory_xact_lock(
       hashtextextended('vad-oracle-event:' || v_row.event_id::text, 0)
     ) then
+      continue;
+    end if;
+
+    -- AI-proposed voids remain provisional through the same policy dispute
+    -- window as ordinary outcomes. They are finalized here, never by the AI worker.
+    if v_row.outcome_code is null
+       and coalesce(v_row.consensus_evidence->>'automatic_void','false')='true' then
+      if coalesce(v_row.consensus_evidence->>'algorithm','') <> 'AI_EVIDENCE_POLICY_V1'
+         or coalesce(v_row.policy_void_rule->>'mode','') <> 'EQUAL_SPLIT' then
+        continue;
+      end if;
+
+      update oracle.resolutions
+         set status='VOID',
+             finalized_at=statement_timestamp(),
+             finalized_by=null,
+             consensus_evidence=consensus_evidence || jsonb_build_object(
+               'auto_finalization',jsonb_build_object(
+                 'mode','AUTO_AFTER_DISPUTE_WINDOW',
+                 'finalized_at',statement_timestamp(),
+                 'policy_id',v_row.policy_public_id,
+                 'void_rule','EQUAL_SPLIT'
+               )
+             )
+       where id=v_row.resolution_id
+         and status='PROVISIONAL'
+         and outcome_code is null;
+      if not found then
+        continue;
+      end if;
+
+      update market.canonical_events
+         set status='FINALIZED',updated_at=statement_timestamp()
+       where id=v_row.event_id and status='PROVISIONALLY_RESOLVED';
+
+      update market.instruments as i
+         set status='SETTLEMENT_PENDING',updated_at=statement_timestamp()
+       where i.canonical_event_id=v_row.event_id
+         and i.status='CLOSED'
+         and not exists(select 1 from public.assets a where a.id=i.asset_id and a.code='TNGN');
+
+      insert into eventing.domain_events(
+        event_type,aggregate_type,aggregate_id,payload,idempotency_key
+      ) values (
+        'MARKET_FINALIZED',
+        'CANONICAL_EVENT',
+        v_row.event_public_id::text,
+        jsonb_build_object(
+          'resolution_status','VOID',
+          'outcome_code',null,
+          'resolution_id',v_row.resolution_id,
+          'finalization_mode','AUTO_AFTER_DISPUTE_WINDOW',
+          'automatic_void',true
+        ),
+        'market-finalized-void:'||v_row.event_public_id::text
+      ) on conflict(idempotency_key) do nothing;
+
+      insert into audit.records(
+        actor_type,action,resource_type,resource_id,reason,after_state,metadata
+      ) values (
+        'SYSTEM',
+        'ORACLE_RESOLUTION_AUTO_VOID_FINALIZED',
+        'ORACLE_RESOLUTION',
+        v_row.resolution_id::text,
+        'The published void rule remained supported and undisputed through the configured dispute window.',
+        jsonb_build_object('status','VOID','outcome_code',null),
+        jsonb_build_object(
+          'event_public_id',v_row.event_public_id,
+          'policy_public_id',v_row.policy_public_id,
+          'dispute_window_seconds',v_row.dispute_window_seconds,
+          'void_rule','EQUAL_SPLIT'
+        )
+      );
+      v_finalized := v_finalized + 1;
       continue;
     end if;
 
@@ -934,12 +1031,12 @@ revoke all on function public.get_market_resolution_ai_runtimes() from public,an
 revoke all on function public.internal_market_resolution_due_events(integer) from public,anon,authenticated;
 revoke all on function public.internal_finish_market_resolution_claim(bigint,uuid,text) from public,anon,authenticated;
 revoke all on function public.internal_record_market_resolution_attempt(bigint,bigint,text,text,jsonb,jsonb,text,text) from public,anon,authenticated;
-revoke all on function public.internal_auto_void_vad_review_event(bigint,jsonb) from public,anon,authenticated;
+revoke all on function public.internal_queue_vad_review_void_event(bigint,jsonb) from public,anon,authenticated;
 grant execute on function public.get_market_resolution_ai_runtimes() to service_role;
 grant execute on function public.internal_market_resolution_due_events(integer) to service_role;
 grant execute on function public.internal_finish_market_resolution_claim(bigint,uuid,text) to service_role;
 grant execute on function public.internal_record_market_resolution_attempt(bigint,bigint,text,text,jsonb,jsonb,text,text) to service_role;
-grant execute on function public.internal_auto_void_vad_review_event(bigint,jsonb) to service_role;
+grant execute on function public.internal_queue_vad_review_void_event(bigint,jsonb) to service_role;
 
 
 
