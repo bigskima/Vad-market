@@ -334,6 +334,9 @@ function validateOutput(raw: RecordValue, event: RecordValue, packet: EvidenceSo
   }
   const outcomes = Array.isArray(event.outcomes) ? event.outcomes.filter(isRecord) : [];
   if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1 || !rationale) throw new Error('AI output confidence or rationale was invalid.');
+  if ((status === 'RESOLVED' || status === 'VOID') && (confidence < 0.9 || evidence.length === 0)) {
+    throw new Error('Financial resolution requires high confidence and at least one source quote verified against fetched evidence.');
+  }
   if (status === 'RESOLVED') {
     if (!outcomeCode || !outcomes.some((outcome) => safeText(outcome.code, 80) === outcomeCode)) {
       throw new Error('AI selected an outcome that is not configured for this market.');
