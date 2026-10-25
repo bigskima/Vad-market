@@ -431,7 +431,7 @@ export function PortfolioScreen({
           {activePoolStakes.length ? (
             <View style={{ gap: theme.spacing.sm }}>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                <VadText variant="bodyStrong">Committed predictions</VadText>
+                <VadText variant="bodyStrong">Predictions</VadText>
                 <VadText variant="caption" tone="secondary">{activePoolStakes.length} active</VadText>
               </View>
               {activePoolStakes.map((stake) => (
@@ -464,10 +464,10 @@ export function PortfolioScreen({
             </View>
           ) : (
             <VadEmptyState
-              title={activePoolStakes.length ? 'No additional exchange positions' : 'No positions match these filters'}
+              title={activePoolStakes.length ? 'No other positions yet' : 'No matching positions'}
               body={activePoolStakes.length
-                ? 'Your committed predictions are shown above. Exchange-traded positions will appear here when you hold matched contracts.'
-                : 'Adjust the filters or trade a market to see your positions here.'}
+                ? 'Your predictions are shown above.'
+                : 'Clear filters or trade a market to see positions here.'}
             />
           )}
         </View>
