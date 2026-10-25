@@ -5,6 +5,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useLiveNow } from '@/hooks/use-live-now';
 import { getMarketTiming } from '@/lib/market-timing';
+import { marketCategoryLabel, marketStatusLabel } from './market-display-labels';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { FeaturedMarketRow, VadMarketRow } from '@/services/home-content-api';
 import type { MarketCatalogItem } from '@/services/market-api';
@@ -120,7 +121,7 @@ export function FeaturedMarketsCarousel({
   return (
     <View style={{ gap: 8 }} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <VadText variant="bodyStrong" style={{ fontSize: 16 }}>Featured markets</VadText>
+        <VadText variant="bodyStrong" style={{ fontSize: 15 }}>Featured markets</VadText>
         
       </View>
       <ScrollView
@@ -144,12 +145,12 @@ export function FeaturedMarketsCarousel({
             onPress={() => onOpenMarket(market)}
             style={({ pressed }) => ({
               width: width || Math.max(280, density.width - density.horizontalPadding * 2),
-              minHeight: density.compact ? 138 : 158,
+              minHeight: density.compact ? 118 : 136,
               borderRadius: density.phone ? 16 : 19,
               borderWidth: 1,
               borderColor: theme.colors.brandPrimary,
               backgroundColor: theme.colors.surface,
-              padding: density.compact ? 12 : 15,
+              padding: density.compact ? 10 : 12,
               flexDirection: 'row',
               alignItems: 'center',
               gap: 12,
@@ -157,18 +158,18 @@ export function FeaturedMarketsCarousel({
               overflow: 'hidden',
             })}
           >
-            <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
               <View style={{ alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4, backgroundColor: theme.colors.brandSoft }}>
                 <VadText variant="caption" tone="brand">{source === 'curated' ? 'Featured' : 'Popular'}</VadText>
               </View>
-              <VadText variant="bodyStrong" numberOfLines={3} style={{ fontSize: density.compact ? 16 : 18, lineHeight: density.compact ? 21 : 24 }}>{market.title}</VadText>
-              <VadText variant="caption" tone="secondary" numberOfLines={2}>{market.category || 'Market'} · {market.asset_code} · {market.status === 'OPEN' ? 'Trading open' : market.status}</VadText>
-              <View style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, backgroundColor: theme.colors.brandPrimary }}>
-                <VadText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700' }}>Explore market ›</VadText>
+              <VadText variant="bodyStrong" numberOfLines={2} style={{ fontSize: density.compact ? 14 : 16, lineHeight: density.compact ? 18 : 21 }}>{market.title}</VadText>
+              <VadText variant="caption" tone="secondary" numberOfLines={1}>{marketCategoryLabel(market.category)} · {market.asset_code} · {marketStatusLabel(market.status)}</VadText>
+              <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: theme.colors.brandPrimary }}>
+                <VadText variant="caption" style={{ color: '#FFFFFF', fontWeight: '700' }}>Open market ›</VadText>
               </View>
             </View>
             <View style={{ alignItems: 'center', gap: 7 }}>
-              <MarketThumbnail market={market} size={density.compact ? 70 : 84} />
+              <MarketThumbnail market={market} size={density.compact ? 58 : 68} />
               <View style={{ flexDirection: 'row', gap: 5 }}>
                 <View style={{ borderRadius: 9, paddingHorizontal: 7, paddingVertical: 5, backgroundColor: theme.colors.yesSoft }}>
                   <VadText variant="caption" tone="yes">Yes {probability(market.yes_price)}</VadText>
