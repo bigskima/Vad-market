@@ -79,6 +79,11 @@ export type PoolQuote = {
   estimatedGrossPayout: number | string;
   estimatedSettlementFee: number | string;
   estimatedNetPayout: number | string;
+  existingUserTradingFees?: number | string;
+  estimatedLosingSideRefund?: number | string;
+  estimatedTotalNetSettlementPayout?: number | string;
+  estimatedTotalCostAfterCommit?: number | string;
+  estimatedNetProfitLossIfCorrect?: number | string;
   appliedPayoutMultiple?: number | string;
   maximumGrossPayoutMultiple?: number | string | null;
   payoutCapApplies?: boolean;
