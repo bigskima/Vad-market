@@ -327,13 +327,13 @@ language sql
 immutable
 parallel safe
 set search_path = ''
-as $
+as $pool_payout_cap$
   select case
     when p_total_pool is null or p_winning_pool is null or p_total_pool <= 0 or p_winning_pool <= 0 then 0::numeric
     when p_maximum_multiple is null then p_total_pool / p_winning_pool
     else least(p_total_pool / p_winning_pool, p_maximum_multiple)
   end;
-$;
+$pool_payout_cap$;
 
 revoke all on function private.peer_pool_effective_multiple(numeric, numeric, numeric) from public, anon, authenticated;
 
@@ -1250,7 +1250,7 @@ begin
     'signature',null
   );
 end;
-$function$
+$function$;
 
 
 -- Admin configuration is versioned at the asset-default level. New instruments
