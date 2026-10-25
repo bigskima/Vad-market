@@ -193,7 +193,6 @@ export function MarketDetailScreen({
       ) : null}
       {tab === 'Chart' ? <Activity market={market} /> : null}
       {tab === 'Trade' ? (
-        <TourTarget id="market-trading-ticket">
         <TradingTicket
           key={`${market.instrument_public_id}:${selectedOutcomeCode ?? 'default'}`}
           market={market}
@@ -204,7 +203,6 @@ export function MarketDetailScreen({
           capabilityLoading={tradeCapabilityLoading}
           onPlaced={onPlaced}
         />
-        </TourTarget>
       ) : null}
       {tab === 'Discussion' ? (
         <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} marketFilter={market} />
