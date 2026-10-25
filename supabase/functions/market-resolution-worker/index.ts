@@ -605,60 +605,68 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
   }
 
   const observationRecords: Array<{ providerCode: string; observationId: number; evidenceUrl: string }> = [];
-  for (const source of sourceEvidence) {
-    const chosenEvidence = source.evidence!;
-    const oracleProvider = oracleProviders.find((provider) =>
-      provider.code === source.code
-      && provider.environment === 'PRODUCTION'
-      && provider.status === 'ACTIVE'
-      && provider.capabilities?.some((value) => value.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE')
-      && (source.code !== 'TAVILY' || Boolean(provider.secretReference && Deno.env.get(provider.secretReference)?.trim()))
-    );
-    if (!oracleProvider) throw new Error('The approved oracle source ' + source.code + ' is not active and configured.');
-
-    const idempotencyKey = 'ai-resolution-observation-v1:' + (await sha256([
-      event.eventPublicId, oracleProvider.code, chosenEvidence.url, agreedOutcome, safeText(scope.condition, 1000),
-    ].join('|')));
-    const { data: observationId, error: observationError } = await admin.rpc('internal_record_verified_oracle_observation', {
-      p_event_id: event.eventId,
-      p_provider_id: oracleProvider.id,
-      p_source_code: oracleProvider.code,
-      p_observed_outcome: agreedOutcome,
-      p_payload: {
-        resolver_type: 'AI_EVIDENCE_RULE_V1',
-        oracle_source_path: chosenEvidence.source.source,
-        ai_agreement_count: winningGroup.length,
-        ai_required_agreement: requiredAgreement,
-        ai_reviews: winningGroup.map((candidate) => ({
-          provider: candidate.runtime.providerCode,
-          model_code: candidate.runtime.modelCode,
-          prompt_version_id: candidate.runtime.promptVersionId,
-          confidence: candidate.validated.confidence,
-          rationale: candidate.validated.rationale,
-          citations: candidate.evidenceSummary,
-        })),
-        resolution_condition: scope.condition ?? null,
-        source_evidence: {
-          url: chosenEvidence.url,
-          quote: chosenEvidence.quote,
-          published_at: chosenEvidence.publishedAt,
-          source_type: chosenEvidence.source.source,
+  try {
+    for (const source of sourceEvidence) {
+      const chosenEvidence = source.evidence!;
+      const oracleProvider = oracleProviders.find((provider) =>
+        provider.code === source.code
+        && provider.environment === 'PRODUCTION'
+        && provider.status === 'ACTIVE'
+        && provider.capabilities?.some((value) => value.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE')
+        && (source.code !== 'TAVILY' || Boolean(provider.secretReference && Deno.env.get(provider.secretReference)?.trim()))
+      );
+      if (!oracleProvider) throw new Error('The approved oracle source ' + source.code + ' is not active and configured.');
+  
+      const idempotencyKey = 'ai-resolution-observation-v1:' + (await sha256([
+        event.eventPublicId, oracleProvider.code, chosenEvidence.url, agreedOutcome, safeText(scope.condition, 1000),
+      ].join('|')));
+      const { data: observationId, error: observationError } = await admin.rpc('internal_record_verified_oracle_observation', {
+        p_event_id: event.eventId,
+        p_provider_id: oracleProvider.id,
+        p_source_code: oracleProvider.code,
+        p_observed_outcome: agreedOutcome,
+        p_payload: {
+          resolver_type: 'AI_EVIDENCE_RULE_V1',
+          oracle_source_path: chosenEvidence.source.source,
+          ai_agreement_count: winningGroup.length,
+          ai_required_agreement: requiredAgreement,
+          ai_reviews: winningGroup.map((candidate) => ({
+            provider: candidate.runtime.providerCode,
+            model_code: candidate.runtime.modelCode,
+            prompt_version_id: candidate.runtime.promptVersionId,
+            confidence: candidate.validated.confidence,
+            rationale: candidate.validated.rationale,
+            citations: candidate.evidenceSummary,
+          })),
+          resolution_condition: scope.condition ?? null,
+          source_evidence: {
+            url: chosenEvidence.url,
+            quote: chosenEvidence.quote,
+            published_at: chosenEvidence.publishedAt,
+            source_type: chosenEvidence.source.source,
+          },
+          evidence: evidenceSummary,
+          evidence_packet_hash: await sha256(JSON.stringify(packet)),
         },
-        evidence: evidenceSummary,
-        evidence_packet_hash: await sha256(JSON.stringify(packet)),
-      },
-      p_evidence_reference: chosenEvidence.url,
-      p_observed_at: new Date().toISOString(),
-      p_idempotency_key: idempotencyKey,
-    });
-    if (observationError || observationId == null) {
-      throw new Error('Oracle consensus rejected the ' + oracleProvider.code + ' evidence observation.');
+        p_evidence_reference: chosenEvidence.url,
+        p_observed_at: new Date().toISOString(),
+        p_idempotency_key: idempotencyKey,
+      });
+      if (observationError || observationId == null) {
+        throw new Error('Oracle consensus rejected the ' + oracleProvider.code + ' evidence observation.');
+      }
+      observationRecords.push({
+        providerCode: oracleProvider.code,
+        observationId: Number(observationId),
+        evidenceUrl: chosenEvidence.url,
+      });
     }
-    observationRecords.push({
-      providerCode: oracleProvider.code,
-      observationId: Number(observationId),
-      evidenceUrl: chosenEvidence.url,
-    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message.slice(0, 350) : 'Oracle evidence write failed.';
+    for (const candidate of winningGroup) {
+      await recordAttempt(admin, event, candidate.runtime, 'FAILED', {}, { evidenceCount: packet.length }, reason);
+    }
+    throw error;
   }
 
   // The database consensus routine runs after each provider observation. Its
