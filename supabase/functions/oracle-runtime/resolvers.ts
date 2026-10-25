@@ -39,14 +39,67 @@ function ensureBinaryYesNo(event: DueOracleEvent) {
   }
 }
 
+function normalizeOutcomeIdentifier(value: unknown) {
+  return typeof value === 'string'
+    ? value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim()
+    : '';
+}
+
+function threeWayFootballOutcomeCodes(event: DueOracleEvent) {
+  const scope = event.resolutionScope ?? {};
+  const subject = isRecord(scope.subject) ? scope.subject : {};
+  const homeTeam = stringValue(subject.home_team, subject.homeTeam, scope.home_team, scope.homeTeam);
+  const awayTeam = stringValue(subject.away_team, subject.awayTeam, scope.away_team, scope.awayTeam);
+  if (!homeTeam || !awayTeam) {
+    throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'A three-way football market needs configured home and away team names', 422);
+  }
+  const homeKey = normalizeOutcomeIdentifier(homeTeam);
+  const awayKey = normalizeOutcomeIdentifier(awayTeam);
+
+  const findOutcome = (kind: 'HOME_WIN' | 'AWAY_WIN' | 'DRAW') => {
+    const matches = event.outcomes.filter((outcome) => {
+      const code = normalizeOutcomeIdentifier(outcome.code);
+      const label = normalizeOutcomeIdentifier(outcome.label);
+      if (kind === 'DRAW') {
+        return ['DRAW', 'TIE', 'X', 'DRAW TIE'].includes(code)
+          || ['DRAW', 'TIE', 'X', 'DRAW TIE'].includes(label)
+          || /\bDRAW\b|\bTIE\b/.test(label);
+      }
+      if (kind === 'HOME_WIN') {
+        return ['HOME', 'HOME WIN', 'HOME TEAM', 'HOME TEAM WIN', '1', '1X2 HOME'].includes(code)
+          || ['HOME', 'HOME WIN', 'HOME TEAM', 'HOME TEAM WIN', '1', '1X2 HOME'].includes(label)
+          || (homeKey.length >= 3 && label.includes(homeKey));
+      }
+      return ['AWAY', 'AWAY WIN', 'AWAY TEAM', 'AWAY TEAM WIN', '2', '1X2 AWAY'].includes(code)
+        || ['AWAY', 'AWAY WIN', 'AWAY TEAM', 'AWAY TEAM WIN', '2', '1X2 AWAY'].includes(label)
+        || (awayKey.length >= 3 && label.includes(awayKey));
+    });
+    const distinct = [...new Map(matches.map((outcome) => [outcome.code, outcome])).values()];
+    if (distinct.length !== 1) {
+      throw new OracleRuntimeError('UNSUPPORTED_OUTCOME_SCHEMA', 'A three-way football market must clearly map one configured outcome to home win, draw and away win', 422);
+    }
+    return distinct[0].code;
+  };
+
+  const result = {
+    HOME_WIN: findOutcome('HOME_WIN'),
+    DRAW: findOutcome('DRAW'),
+    AWAY_WIN: findOutcome('AWAY_WIN'),
+  };
+  if (new Set(Object.values(result)).size !== 3) {
+    throw new OracleRuntimeError('UNSUPPORTED_OUTCOME_SCHEMA', 'Home win, draw and away win must map to three different configured outcomes', 422);
+  }
+  return result;
+}
+
 export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
-  ensureBinaryYesNo(event);
   const scope = event.resolutionScope ?? {};
   const subject = isRecord(scope.subject) ? scope.subject : {};
   const condition = isRecord(scope.condition) ? scope.condition : {};
   const resolverType = stringValue(scope.resolver_type, scope.resolverType)?.toUpperCase();
 
   if (resolverType === 'CRYPTO_PRICE_THRESHOLD_V1') {
+    ensureBinaryYesNo(event);
     const asset = stringValue(scope.asset, subject.asset)?.toUpperCase();
     const quote = stringValue(scope.quote, subject.quote, 'USD')?.toUpperCase();
     const operator = stringValue(scope.operator, condition.operator)?.toUpperCase();
@@ -85,6 +138,7 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
   }
 
   if (resolverType === 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1') {
+    ensureBinaryYesNo(event);
     const asset = stringValue(scope.asset, subject.asset, scope.crypto_asset_symbol)?.toUpperCase();
     const quote = stringValue(scope.quote, subject.quote, 'USD')?.toUpperCase();
     const operator = stringValue(scope.operator, condition.operator)?.toUpperCase();
@@ -125,6 +179,7 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
   }
 
   if (resolverType === 'FINANCIAL_PRICE_THRESHOLD_V1') {
+    ensureBinaryYesNo(event);
     const symbolRaw = stringValue(scope.symbol, subject.symbol, scope.asset, subject.asset)?.toUpperCase();
     const symbolParts = symbolRaw?.split('/');
     const symbol = symbolParts?.length === 2 ? symbolParts[0] : symbolRaw;
@@ -161,6 +216,7 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
   }
 
   if (resolverType === 'FRED_SERIES_THRESHOLD_V1') {
+    ensureBinaryYesNo(event);
     const seriesId = stringValue(scope.series_id, scope.seriesId, subject.series_id, subject.seriesId)?.toUpperCase();
     const operator = stringValue(scope.operator, condition.operator)?.toUpperCase();
     const threshold = numericValue(scope.threshold, condition.threshold);
@@ -200,16 +256,26 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
       condition.result,
       scope.result,
     )?.toUpperCase();
-    if (!['HOME_WIN','AWAY_WIN','DRAW'].includes(String(conditionValue))) {
-      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Football resolver condition must be HOME_WIN, AWAY_WIN or DRAW', 422);
+    const codes = new Set(event.outcomes.map((outcome) => outcome.code.toUpperCase()));
+    if (codes.has('YES') && codes.has('NO')) {
+      ensureBinaryYesNo(event);
+      if (!['HOME_WIN','AWAY_WIN','DRAW'].includes(String(conditionValue))) {
+        throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Binary football resolver condition must be HOME_WIN, AWAY_WIN or DRAW', 422);
+      }
+      return {
+        resolverType: 'FOOTBALL_MATCH_RESULT_V1',
+        condition: conditionValue as 'HOME_WIN' | 'AWAY_WIN' | 'DRAW',
+      };
     }
     return {
       resolverType: 'FOOTBALL_MATCH_RESULT_V1',
-      condition: conditionValue as 'HOME_WIN' | 'AWAY_WIN' | 'DRAW',
+      condition: 'THREE_WAY',
+      outcomeCodes: threeWayFootballOutcomeCodes(event),
     };
   }
 
   if (resolverType === 'PUBLIC_RECORD_RULE_V1') {
+    ensureBinaryYesNo(event);
     const rule = isRecord(scope.rule) ? scope.rule : {};
     const legacyCondition = typeof scope.condition === 'string' ? scope.condition : '';
     const operator = stringValue(rule.operator, scope.operator)?.toUpperCase();
