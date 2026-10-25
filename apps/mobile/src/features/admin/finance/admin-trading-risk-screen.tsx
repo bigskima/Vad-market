@@ -78,7 +78,7 @@ export function AdminTradingRiskScreen() {
   function patch(assetCode: string, key: keyof Draft, value: string | boolean) {
     setDrafts((current) => ({
       ...current,
-      [assetCode]: { ...current[assetCode], [key]: value },
+      [assetCode]: { ...current[assetCode], [key]: value } as Draft,
     }));
     setMessage(null);
     setError(null);
@@ -87,13 +87,17 @@ export function AdminTradingRiskScreen() {
   async function save(assetCode: string) {
     const draft = drafts[assetCode];
     if (!draft) return;
-    const numbers = FIELDS.map((field) => Number(draft[field.key]));
+    const poolMaxEntryStake = Number(draft.pool_max_entry_stake);
+    const poolMaxUserMarketStake = Number(draft.pool_max_user_market_stake);
+    const poolMaxMarketTotal = Number(draft.pool_max_market_total);
+    const poolMaxPayoutMultiple = Number(draft.pool_max_payout_multiple);
+    const orderMaxOrderNotional = Number(draft.order_max_order_notional);
+    const orderMaxUserMarketExposure = Number(draft.order_max_user_market_exposure);
+    const numbers = [poolMaxEntryStake, poolMaxUserMarketStake, poolMaxMarketTotal, poolMaxPayoutMultiple, orderMaxOrderNotional, orderMaxUserMarketExposure];
     if (numbers.some((value) => !Number.isFinite(value) || value <= 0)) {
       setError('Enter a positive number for every limit before saving.');
       return;
     }
-
-    const [poolMaxEntryStake, poolMaxUserMarketStake, poolMaxMarketTotal, poolMaxPayoutMultiple, orderMaxOrderNotional, orderMaxUserMarketExposure] = numbers;
     if (poolMaxUserMarketStake < poolMaxEntryStake || poolMaxMarketTotal < poolMaxUserMarketStake
       || poolMaxPayoutMultiple <= 1 || orderMaxUserMarketExposure < orderMaxOrderNotional) {
       setError('Check the limits: combined limits must cover a single entry, the payout multiple must exceed 1×, and user exposure must cover a single order.');
