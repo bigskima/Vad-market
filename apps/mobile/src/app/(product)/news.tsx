@@ -80,7 +80,7 @@ export default function NewsRoute() {
 
   return (
     <ProductRoute active="Markets" hideTopBar>
-      <View style={{ gap: density.phone ? theme.spacing.md : theme.spacing.lg }}>
+      <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
         <PageHeader
           title="News & headlines"
           actions={[
@@ -88,8 +88,8 @@ export default function NewsRoute() {
           ]}
         />
 
-        <VadText variant="bodyStrong" style={{ fontSize: 17 }}>Top stories</VadText>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingRight: 8 }}>
+        <VadText variant="bodyStrong" style={{ fontSize: 16 }}>Top stories</VadText>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingRight: 6 }}>
           {categories.map((item) => {
             const selected = item.value === category;
             return (
@@ -100,8 +100,8 @@ export default function NewsRoute() {
                 onPress={() => setCategory(item.value)}
                 style={({ pressed }) => ({
                   borderRadius: 22,
-                  paddingHorizontal: 14,
-                  paddingVertical: 9,
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
                   borderWidth: 1,
                   borderColor: selected ? theme.colors.brandPrimary : theme.colors.border,
                   backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
@@ -186,14 +186,14 @@ function NewsStoryCard({ story, onPress }: { story: NewsStory; onPress: () => vo
           </View>
         )}
       </View>
-      <View style={{ padding: 14, gap: 8 }}>
+      <View style={{ padding: 12, gap: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
           <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, backgroundColor: theme.colors.brandSoft }}>
             <VadText variant="caption" tone="brand">{story.category.replace(/_/g, ' ')}</VadText>
           </View>
           <VadText variant="caption" tone="tertiary" numberOfLines={1}>{dateLabel}</VadText>
         </View>
-        <VadText variant="bodyStrong" style={{ fontSize: 16, lineHeight: 22 }} numberOfLines={4}>{story.title}</VadText>
+        <VadText variant="bodyStrong" style={{ fontSize: 15, lineHeight: 20 }} numberOfLines={3}>{story.title}</VadText>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <VadIcon name="globe" size={14} tone="tertiary" />
           <VadText variant="caption" tone="secondary" numberOfLines={1} style={{ flex: 1 }}>{story.source}{story.sourceCountry ? ' · ' + story.sourceCountry : ''}</VadText>
