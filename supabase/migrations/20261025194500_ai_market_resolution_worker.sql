@@ -712,7 +712,7 @@ begin
 
   return resolution_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION oracle.finalize_due_automatic_resolutions(p_limit integer DEFAULT 100)
@@ -907,7 +907,7 @@ begin
 
   return v_finalized;
 end;
-$function$
+$function$;
 
 
 revoke all on function public.get_market_resolution_ai_runtimes() from public,anon,authenticated;
