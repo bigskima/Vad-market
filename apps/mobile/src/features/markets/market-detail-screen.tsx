@@ -82,19 +82,16 @@ export function MarketDetailScreen({
   const selectedOutcomeCode = chosenOutcome?.instrumentId === market.instrument_public_id
     ? chosenOutcome.code
     : initialOutcome ?? (multiOutcomeMarket ? outcomeRows[0]?.outcome_code : undefined);
-  const [tabState, setTabState] = useState<{ key: string; tab: DetailTab }>(() => ({ key: screenKey, tab: initialTab === 'Trade' || initialOutcome ? 'Trade' : 'Overview' }));
-  const tab = tabState.key === screenKey ? tabState.tab : initialOutcome ? 'Trade' : 'Overview';
-  const setTab = (nextTab: DetailTab) => setTabState({ key: screenKey, tab: nextTab });
+  const tabKey = `${screenKey}:${initialTab}`;
+  const [tabState, setTabState] = useState<{ key: string; tab: DetailTab }>(() => ({ key: tabKey, tab: initialTab === 'Trade' || initialOutcome ? 'Trade' : 'Overview' }));
+  const tab = tabState.key === tabKey ? tabState.tab : initialTab === 'Trade' || initialOutcome ? 'Trade' : 'Overview';
+  const setTab = (nextTab: DetailTab) => setTabState({ key: tabKey, tab: nextTab });
   const openTrade = (outcomeCode?: string) => {
     if (outcomeCode) setChosenOutcome({ instrumentId: market.instrument_public_id, code: outcomeCode });
     setTab('Trade');
   };
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
-
-  useEffect(() => {
-    setTabState({ key: screenKey, tab: initialTab === 'Trade' || initialOutcome ? 'Trade' : 'Overview' });
-  }, [initialTab, initialOutcome, screenKey]);
 
   useEffect(() => {
     closeRefreshDone.current = false;
