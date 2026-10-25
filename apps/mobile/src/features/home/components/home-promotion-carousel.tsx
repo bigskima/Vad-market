@@ -93,14 +93,13 @@ export function HomePromotionCarousel({
     if (next === 0) directionRef.current = 1;
   };
 
-  // Artwork is generated at 1024×576 (16:9), matching market covers.
-  // Keep the rendered campaign at the same ratio rather than cropping a wide
-  // 16:9 image into a short banner. Cap desktop width to avoid oversized hero art.
+  // Keep a fixed banner height so uploaded artwork never makes Home feel crowded.
+  // Retain the 16:9 viewport when possible and cap its height on smaller screens.
   const cardWidth = Math.min(
     width || Math.max(260, density.width - density.horizontalPadding * 2),
     density.desktop ? 760 : Number.MAX_SAFE_INTEGER,
   );
-  const bannerHeight = Math.round(cardWidth * 9 / 16);
+  const bannerHeight = Math.min(Math.round(cardWidth * 9 / 16), density.phone ? 180 : 300);
 
   return (
     <View
