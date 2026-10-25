@@ -1031,8 +1031,8 @@ begin
     and (
       lower(sc.competition_name)=lower(v_competition)
       or exists (
-        select 1 from jsonb_array_elements_text(coalesce(sc.aliases,'[]'::jsonb)) alias_name
-        where lower(alias_name)=lower(v_competition)
+        select 1 from jsonb_array_elements_text(coalesce(sc.aliases,'[]'::jsonb)) as alias_row(alias_name)
+        where lower(alias_row.alias_name)=lower(v_competition)
       )
     )
     and jsonb_typeof(sc.metadata->'official_result_sources')='array'
