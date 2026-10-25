@@ -93,13 +93,12 @@ export function HomePromotionCarousel({
     if (next === 0) directionRef.current = 1;
   };
 
-  // Keep a fixed banner height so uploaded artwork never makes Home feel crowded.
-  // Retain the 16:9 viewport when possible and cap its height on smaller screens.
+  // Keep a fixed, compact viewport; image dimensions never set Home's height.
   const cardWidth = Math.min(
     width || Math.max(260, density.width - density.horizontalPadding * 2),
     density.desktop ? 760 : Number.MAX_SAFE_INTEGER,
   );
-  const bannerHeight = Math.min(Math.round(cardWidth * 9 / 16), density.phone ? 180 : 300);
+  const bannerHeight = density.desktop ? 198 : density.compact ? 126 : 140;
 
   return (
     <View
