@@ -468,7 +468,7 @@ export function HomeScreen({
   );
 }
 
-function HomeHeaderAction({ label, icon, badge = false, onPress }: { label: string; icon: 'search' | 'bell' | 'activity'; badge?: boolean; onPress: () => void }) {
+function HomeHeaderAction({ label, icon, badge = false, onPress }: { label: string; icon: 'search' | 'bell' | 'activity' | 'fileText'; badge?: boolean; onPress: () => void }) {
   const theme = useVadTheme();
   return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'transparent', opacity: pressed ? 0.7 : 1 })}><VadIcon name={icon} size={21} tone="secondary" />{badge ? <View style={{ position: 'absolute', right: 3, top: 3, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.background }} /> : null}</Pressable>;
 }
