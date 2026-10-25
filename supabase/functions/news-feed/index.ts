@@ -348,9 +348,12 @@ async function listStories(category: Category, search: string, limit: number) {
   const unique = new Map<string, Story>();
   for (const story of flattened) {
     if (!matchesSearch(story, search)) continue;
+    const displayStory = category === 'ALL'
+      ? story
+      : { ...story, category, tags: categoryTags(category) };
     const keyByUrl = story.url.toLowerCase().replace(/\/$/, '');
     const current = unique.get(keyByUrl);
-    if (!current || (!current.imageUrl && story.imageUrl)) unique.set(keyByUrl, story);
+    if (!current || (!current.imageUrl && displayStory.imageUrl)) unique.set(keyByUrl, displayStory);
   }
   let stories = await Promise.all([...unique.values()].map(async (story) => ({ ...story, id: await digest(story.url) })));
   stories.sort((a, b) => Date.parse(b.publishedAt ?? '') - Date.parse(a.publishedAt ?? ''));
