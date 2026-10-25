@@ -148,7 +148,9 @@ export function PortfolioScreen({
   );
   const asset = assetOptions.includes(selectedAsset) ? selectedAsset : assetOptions[0] ?? 'NGN';
 
-  const marketsById = useMemo(() => new Map(markets.map((market) => [market.instrument_public_id, market])), [markets]);
+  const marketsById = useMemo(() => new Map(markets.map((market) => [market.instrument_public_id.toLowerCase(), market])), [markets]);
+  const getMarketForStake = (marketId: string, marketTitle?: string | null) =>
+    marketsById.get(String(marketId).toLowerCase()) ?? markets.find((market) => market.title === marketTitle);
   const marksByKey = useMemo(() => new Map(marks.map((mark) => [positionKey(mark.instrument_id, mark.outcome_code), mark])), [marks]);
   const positionsForAsset = useMemo<PositionModel[]>(() => positions
     .filter((position) => position.asset_code === asset)
@@ -436,7 +438,7 @@ export function PortfolioScreen({
                 <PoolStakePositionCard
                   key={stake.stake_id}
                   stake={stake}
-                  market={marketsById.get(stake.market_id)}
+                  market={getMarketForStake(stake.market_id, stake.market_title)}
                   onPress={() => onOpenMarket(stake.market_id)}
                 />
               ))}
