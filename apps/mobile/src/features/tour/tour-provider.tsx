@@ -15,6 +15,7 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadText } from '@/components/ui/vad-text';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useProductDataContext } from '@/providers/product-data-provider';
 import {
   getMyProductTour,
   setMyProductTourProgress,
@@ -59,6 +60,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const { height: windowHeight } = useWindowDimensions();
   const { session } = useAuth();
+  const productData = useProductDataContext();
   const userId = session?.user.id ?? null;
   const [definition, setDefinition] = useState<ProductTourDefinition | null>(null);
   const [progress, setProgress] = useState<TourProgress>(DEFAULT_TOUR_PROGRESS);
@@ -109,6 +111,26 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       setLoading(false);
     }
   }, [userId]);
+
+  const navigateToStep = useCallback((step: TourStep) => {
+    if (step.route === '/market/[marketId]') {
+      const market = productData.markets.find((item) => item.asset_code !== 'TNGN')
+        ?? productData.markets[0];
+      if (!market) {
+        router.replace('/markets');
+        return;
+      }
+      router.replace({
+        pathname: '/market/[marketId]',
+        params: {
+          marketId: market.instrument_public_id,
+          tourSection: step.targetId === 'market-trading-ticket' ? 'Trade' : 'Overview',
+        },
+      });
+      return;
+    }
+    if (pathname !== step.route) router.replace(step.route);
+  }, [pathname, productData.markets]);
 
   const saveProgress = useCallback((
     status: Exclude<TourProgressStatus, 'NEW'>,
@@ -194,8 +216,8 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
         : 'We could not save your guided tour progress. Please try again.');
     });
 
-    if (pathname !== step.route) router.replace(step.route);
-  }, [pathname]);
+    navigateToStep(step);
+  }, [navigateToStep]);
 
   const startTour = useCallback((manual = false) => {
     if (!userId) return;
@@ -246,11 +268,19 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const revealStep = useCallback(() => {
     if (!currentStep) return;
 
-    if (pathname !== currentStep.route) {
+    const isMarketDetailStep = currentStep.route === '/market/[marketId]';
+    const hasValidMarketRoute = isMarketDetailStep && pathname.startsWith('/market/');
+    const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && productData.markets.length === 0;
+    if (pathname !== currentStep.route && !hasValidMarketRoute && !marketRouteCanFallBack) {
       setSpotlight(null);
       setTargetUnavailable(false);
       scrollControllerRef.current = null;
-      router.replace(currentStep.route);
+      if (isMarketDetailStep && !productData.markets.length) {
+        setTargetUnavailable(true);
+        router.replace('/markets');
+      } else {
+        navigateToStep(currentStep);
+      }
       return;
     }
 
@@ -300,7 +330,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [currentStep, pathname, windowHeight]);
+  }, [currentStep, navigateToStep, pathname, productData.markets.length, windowHeight]);
 
   useEffect(() => {
     if (!active || !currentStep) return;
