@@ -7,6 +7,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { MarketThumbnail } from '@/features/markets/components/market-thumbnail';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
@@ -85,6 +86,7 @@ export default function WatchlistRoute() {
 
   return (
     <ProductRoute active="Markets">
+      <TourTarget id="watchlist-list">
       <View style={{ gap: theme.spacing.md, paddingBottom: theme.spacing.md }}>
         <View style={{ gap: 3 }}>
           <VadText variant="title">Watchlist</VadText>
@@ -186,6 +188,7 @@ export default function WatchlistRoute() {
           </VadCard>
         )}
       </View>
+      </TourTarget>
     </ProductRoute>
   );
 }
