@@ -74,7 +74,6 @@ export function PortfolioScreen({
   const density = useProductDensity();
   const { enabledCurrencies } = useCurrencyPreference();
   const enabledCurrencySignature = enabledCurrencies.join('|');
-  const marketsById = useMemo(() => new Map(markets.map((market) => [market.instrument_public_id, market])), [markets]);
   const [selectedAsset, setSelectedAsset] = useState<VADCurrency>('NGN');
   const [tab, setTab] = useState<PortfolioTab>('positions');
   const [period, setPeriod] = useState<Period>('ALL');
