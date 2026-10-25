@@ -464,4 +464,42 @@ grant execute on function public.internal_market_resolution_due_events(integer) 
 grant execute on function public.internal_record_market_resolution_attempt(bigint,bigint,text,text,jsonb,jsonb,text,text) to service_role;
 grant execute on function public.internal_auto_void_vad_review_event(bigint,jsonb) to service_role;
 
+
+-- Run the bounded AI evidence resolver independently from provider ingestion.
+-- The existing finalizer and settlement jobs continue to own those stages.
+do $migration$
+declare
+  prior_job bigint;
+begin
+  select jobid into prior_job
+  from cron.job
+  where jobname = 'vad-ai-market-resolution'
+  order by jobid desc
+  limit 1;
+  if prior_job is not null then
+    perform cron.unschedule(prior_job);
+  end if;
+
+  perform cron.schedule(
+    'vad-ai-market-resolution',
+    '* * * * *',
+    $job$
+      select net.http_post(
+        url := project_url.decrypted_secret || '/functions/v1/market-resolution-worker',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'x-vad-scheduler-secret', scheduler_secret.decrypted_secret
+        ),
+        body := jsonb_build_object('limit', 1),
+        timeout_milliseconds := 60000
+      ) as request_id
+      from vault.decrypted_secrets project_url
+      cross join vault.decrypted_secrets scheduler_secret
+      where project_url.name = 'vad_project_url'
+        and scheduler_secret.name = 'vad_oracle_scheduler_secret';
+    $job$
+  );
+end;
+$migration$;
+
 commit;
