@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Image, Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -108,11 +108,17 @@ export default function AccountScreen() {
     return () => { ignore = true; };
   }, [userId]);
 
-  useEffect(() => {
-    if (!userId) return;
+  useFocusEffect(useCallback(() => {
+    if (!userId) return undefined;
     let ignore = false;
     void getTemporaryNgnMarketTestingStatus()
-      .then((status) => { if (!ignore) setTestModeStatus(status); })
+      .then((status) => {
+        if (!ignore) {
+          setTestModeStatus(status);
+          setTestModeError(null);
+          setTestModeNotice(null);
+        }
+      })
       .catch((reason) => {
         if (!ignore) {
           setTestModeStatus(null);
@@ -120,7 +126,7 @@ export default function AccountScreen() {
         }
       });
     return () => { ignore = true; };
-  }, [userId]);
+  }, [userId]));
 
 
 
@@ -312,9 +318,21 @@ export default function AccountScreen() {
 
             {!testModeStatus.eligible ? (
               <View style={{ borderRadius: 12, borderWidth: 1, borderColor: theme.colors.warning, padding: 11, gap: 4 }}>
-                <VadText variant="bodyStrong">Location or account check required</VadText>
+                <VadText variant="bodyStrong">More checks required</VadText>
                 <VadText variant="caption" tone="secondary">{testModeBlockReason(testModeStatus)}</VadText>
-                {['LOCATION_CHECK_REQUIRED', 'LOCATION_CHECK_EXPIRED', 'LOCATION_MISMATCH', 'NETWORK_RISK'].includes(testModeStatus.reasonCode ?? '') ? (
+                {[
+                  'LOCATION_CHECK_REQUIRED',
+                  'LOCATION_CHECK_EXPIRED',
+                  'LOCATION_MISMATCH',
+                  'NETWORK_RISK',
+                  'LOCATION_PROVIDER_ERROR',
+                  'LOCATION_CHECK_FAILED',
+                  'NETWORK_RISK_UNRESOLVED',
+                  'LOCATION_VERIFICATION_UNAVAILABLE',
+                  'CLIENT_IP_UNAVAILABLE',
+                  'COUNTRY_UNRESOLVED',
+                  'LOCATION_SAVE_FAILED',
+                ].includes(testModeStatus.reasonCode ?? '') ? (
                   <View style={{ alignSelf: 'flex-start', paddingTop: 5 }}>
                     <VadButton
                       label={testModeLocationSaving ? 'Verifying location…' : 'Verify current location'}
