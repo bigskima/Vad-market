@@ -365,6 +365,7 @@ export default function AccountScreen() {
         <SettingsGroup title="Account">
           <AccountRow icon="account" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Personal Information" subtitle="Name, email, phone number, country" onPress={() => router.push('/account/profile')} />
           <AccountRow icon="creditCard" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Verification (KYC)" subtitle="Identity verification and documents" badge={isVerified ? 'Verified' : undefined} badgeTone="yes" onPress={() => router.push('/account/verification')} />
+          <AccountRow icon="bookmark" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Watchlist" subtitle="Saved markets and price moves" onPress={() => router.push('/watchlist')} />
           <AccountRow icon="wallet" iconBackground={theme.colors.warningSoft} iconColor={theme.colors.warning} title="Payment Methods" subtitle="Linked bank accounts and payment options" onPress={() => router.push('/account/funding')} last />
         </SettingsGroup>
 
