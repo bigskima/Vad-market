@@ -97,6 +97,28 @@ begin
     raise exception 'Order Book exposure trigger must be installed';
   end if;
 
+  if not exists (
+    select 1 from pg_trigger t
+    join pg_class c on c.oid = t.tgrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where not t.tgisinternal and n.nspname = 'market'
+      and c.relname = 'instrument_trading_risk_policies'
+      and t.tgname = 'protect_instrument_trading_risk_snapshot'
+  ) then
+    raise exception 'Per-market risk policy snapshots must be immutable';
+  end if;
+
+  if not exists (
+    select 1 from pg_trigger t
+    join pg_class c on c.oid = t.tgrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where not t.tgisinternal and n.nspname = 'market'
+      and c.relname = 'trading_risk_policy_default_history'
+      and t.tgname = 'protect_trading_risk_policy_history'
+  ) then
+    raise exception 'Risk policy history must be append-only';
+  end if;
+
   if position('losing_refund_budget' in pg_get_functiondef('settlement.execute_pool_instrument(bigint)'::regprocedure)) = 0 then
     raise exception 'Peer Pool settlement must account for capped-payout surplus refunds';
   end if;
