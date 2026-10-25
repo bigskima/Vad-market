@@ -8,6 +8,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { CryptoMarketPricesPanel } from '@/features/markets/components/crypto-market-prices-panel';
 import { FinancialAssetsDataPanel } from '@/features/markets/components/financial-assets-data-panel';
 import { ProductRoute } from '@/features/navigation/product-route';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { FinancialAssetClass } from '@/services/financial-market-data-api';
@@ -30,6 +31,7 @@ export default function FinancialMarketsRoute() {
   return (
     <ProductRoute active="Markets" hideTopBar>
       <View style={{ width: '100%', gap: density.compact ? theme.spacing.md : theme.spacing.lg }}>
+        <TourTarget id="financial-assets">
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
           <Pressable
             accessibilityRole="button"
@@ -53,7 +55,9 @@ export default function FinancialMarketsRoute() {
             </VadText>
           </View>
         </View>
+        </TourTarget>
 
+        <TourTarget id="crypto-assets-tab">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
           {tabs.map((item) => (
             <Pressable
@@ -72,6 +76,7 @@ export default function FinancialMarketsRoute() {
             </Pressable>
           ))}
         </View>
+        </TourTarget>
 
         <VadInput
           value={search}
