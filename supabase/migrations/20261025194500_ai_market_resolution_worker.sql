@@ -227,7 +227,7 @@ begin
 
   with due as (
     select e.id,e.public_id,e.title,e.category,e.status,e.resolution_scope,
-           e.normalized_parameters,e.closes_at,e.resolves_after,
+           e.normalized_parameters,e.closes_at,e.resolves_after,e.created_at as opened_at,
            p.id as policy_id,p.public_id as policy_public_id,
            p.source_hierarchy,p.consensus_rule,p.dispute_window_seconds,p.void_rule,
            c.code as capability_code
@@ -275,6 +275,7 @@ begin
     'normalizedParameters',d.normalized_parameters,
     'closesAt',d.closes_at,
     'resolvesAfter',d.resolves_after,
+    'openedAt',d.opened_at,
     'policyId',d.policy_id,
     'policyPublicId',d.policy_public_id,
     'sourceHierarchy',d.source_hierarchy,
