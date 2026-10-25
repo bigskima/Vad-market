@@ -9,6 +9,7 @@ import { VadInput } from '@/components/ui/vad-input';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -320,7 +321,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
   return (
     <View style={{ gap: density.compact ? 10 : 12 }}>
-      <TradeStepRail step={step} secondLabel="Stake" />
+      <TourTarget id="market-trading-ticket"><TradeStepRail step={step} secondLabel="Stake" /></TourTarget>
       <CapabilityNotice canTrade={canTrade || hasTemporaryNgnTestCredit} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
       {hasTemporaryNgnTestCredit ? (
         <InlineMessage
@@ -496,6 +497,12 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
           <View style={{ gap: 2 }}>
             <QuoteLine label="Your stake" value={assetMoney(preparedUsdc.collateralAmount, 'USDC')} />
+            {preparedUsdc.authorization.maxEntryStake != null ? <QuoteLine label="Maximum single stake" value={assetMoney(preparedUsdc.authorization.maxEntryStake, 'USDC')} /> : null}
+            {preparedUsdc.authorization.existingUserExposure != null ? <QuoteLine label="Existing stake across this market" value={assetMoney(preparedUsdc.authorization.existingUserExposure, 'USDC')} /> : null}
+            {preparedUsdc.authorization.projectedUserExposure != null ? <QuoteLine label="Combined user stake after this entry" value={assetMoney(preparedUsdc.authorization.projectedUserExposure, 'USDC')} /> : null}
+            {preparedUsdc.authorization.maxUserMarketStake != null ? <QuoteLine label="Maximum combined user stake" value={assetMoney(preparedUsdc.authorization.maxUserMarketStake, 'USDC')} /> : null}
+            {preparedUsdc.authorization.projectedMarketPool != null ? <QuoteLine label="Projected market pool across venues" value={assetMoney(preparedUsdc.authorization.projectedMarketPool, 'USDC')} /> : null}
+            {preparedUsdc.authorization.maxMarketPool != null ? <QuoteLine label="Maximum market pool" value={assetMoney(preparedUsdc.authorization.maxMarketPool, 'USDC')} /> : null}
             <QuoteLine label="VAD trading fee" value={assetMoney(preparedUsdc.tradingFee, 'USDC')} />
             <QuoteLine label="Maximum USDC debit" value={assetMoney(preparedUsdc.maximumWalletDebit, 'USDC')} />
             <QuoteLine label="Network" value={selectedVenue?.chain_name ?? preparedUsdc.chainCode} />
@@ -512,6 +519,11 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             tone="warning"
             title="On-chain pool estimates are not shown yet"
             body="USDC pool size and payout estimates will appear after on-chain positions are indexed. Internal-ledger totals are not reused."
+          />
+          <InlineMessage
+            tone="warning"
+            title="USDC payout-cap compatibility"
+            body="VAD Settlement V1 cannot return a partial refund to losing positions after a normal result. The Peer Pool payout cap remains inactive for this protocol until a compatible contract version is deployed. The stake and cumulative exposure limits shown above are enforced before authorization."
           />
           <InlineMessage
             tone="brand"
@@ -544,19 +556,35 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           </View>
 
           <View style={{ gap: 2 }}>
-            <QuoteLine label="Your stake" value={assetMoney(quote.amount, market.asset_code)} />
-            <QuoteLine label="VAD trading fee" value={assetMoney(quote.tradingFee, market.asset_code)} />
+            <QuoteLine label="Your new stake" value={assetMoney(quote.amount, market.asset_code)} />
+            <QuoteLine label={`Existing stake on ${outcomeLabel}`} value={assetMoney(quote.existingUserOutcomeStake ?? 0, market.asset_code)} />
+            <QuoteLine label={`Combined ${outcomeLabel} stake if committed`} value={assetMoney(quote.combinedUserOutcomeStake ?? quote.amount, market.asset_code)} />
+            <QuoteLine label="Existing stakes across all outcomes" value={assetMoney(quote.existingUserTotalStake ?? 0, market.asset_code)} />
+            <QuoteLine label="Total stakes across outcomes if committed" value={assetMoney(quote.combinedUserTotalStake ?? quote.amount, market.asset_code)} />
+            {quote.maxUserMarketStake != null ? <QuoteLine label="Maximum combined stake per user" value={assetMoney(quote.maxUserMarketStake, market.asset_code)} /> : null}
+            {quote.maxMarketPool != null ? <QuoteLine label="Maximum market pool" value={assetMoney(quote.maxMarketPool, market.asset_code)} /> : null}
+            <QuoteLine label="VAD trading fee on this entry" value={assetMoney(quote.tradingFee, market.asset_code)} />
             <QuoteLine label="Total wallet debit now" value={assetMoney(quote.maximumCashDebit, market.asset_code)} />
             <QuoteLine label="Pool after your stake" value={assetMoney(quote.poolTotalAfter, market.asset_code)} />
             <QuoteLine label={`${outcomeLabel} pool after`} value={assetMoney(quote.outcomePoolAfter, market.asset_code)} />
             <QuoteLine label="Current implied share" value={probability(quote.impliedProbability)} />
-            <QuoteLine label="Estimated gross payout if correct" value={assetMoney(quote.estimatedGrossPayout, market.asset_code)} />
-            <QuoteLine label="Estimated VAD settlement fee if you win" value={assetMoney(quote.estimatedSettlementFee, market.asset_code)} />
-            <QuoteLine label="Estimated net payout if you win" value={assetMoney(quote.estimatedNetPayout, market.asset_code)} />
+            {quote.estimatedEntryGrossPayout != null ? <QuoteLine label="Estimated gross payout from this entry" value={assetMoney(quote.estimatedEntryGrossPayout, market.asset_code)} /> : null}
+            <QuoteLine label="Estimated gross payout for your full winning position" value={assetMoney(quote.estimatedGrossPayout, market.asset_code)} />
+            {quote.appliedPayoutMultiple != null ? <QuoteLine label="Estimated payout multiple" value={`${Number(quote.appliedPayoutMultiple).toFixed(2)}×${quote.payoutCapApplies ? " (capped)" : ""}`} /> : null}
+            {quote.maximumGrossPayoutMultiple != null ? <QuoteLine label="Market maximum payout multiple" value={`${Number(quote.maximumGrossPayoutMultiple).toFixed(2)}×`} /> : null}
+            {quote.maxEntryStake != null ? <QuoteLine label="Maximum single stake" value={assetMoney(quote.maxEntryStake, market.asset_code)} /> : null}
+            {quote.existingUserTradingFees != null ? <QuoteLine label="Trading fees already paid on existing entries" value={assetMoney(quote.existingUserTradingFees, market.asset_code)} /> : null}
+            <QuoteLine label="Estimated settlement fee on full winning position" value={assetMoney(quote.estimatedSettlementFee, market.asset_code)} />
+            <QuoteLine label="Estimated net payout from the winning side" value={assetMoney(quote.estimatedNetPayout, market.asset_code)} />
+            <QuoteLine label="Estimated refund from your losing-side stakes if capped" value={assetMoney(quote.estimatedLosingSideRefund ?? 0, market.asset_code)} />
+            <QuoteLine label="Estimated total settlement proceeds if correct" value={assetMoney(quote.estimatedTotalNetSettlementPayout ?? quote.estimatedNetPayout, market.asset_code)} />
+            <QuoteLine label="Total cost across your position if committed" value={assetMoney(quote.estimatedTotalCostAfterCommit ?? quote.maximumCashDebit, market.asset_code)} />
+            <QuoteLine label="Projected profit / loss if this outcome wins" value={assetMoney(quote.estimatedNetProfitLossIfCorrect ?? 0, market.asset_code)} />
           </View>
 
-          <InlineMessage tone="brand" title="Fee transparency" body="The trading fee is charged now. The estimated settlement fee is deducted from eligible winning payouts. Both are shown before commitment." />
-          <InlineMessage tone="brand" title="Peer-funded payout" body="Winners share this participant pool after fees; VAD does not add company funds." />
+          <InlineMessage tone="brand" title="Profit estimate" body="Projected profit or loss includes your existing stakes on both outcomes and their recorded trading fees. It assumes your selected outcome wins, uses the current pool and applicable policy, and can change before market close." />
+          <InlineMessage tone="brand" title="Fee transparency" body="The entry trading fee is charged now. The settlement fee is estimated on your combined winning-side position and deducted at settlement. Quotes are estimates and can change as other participants stake." />
+          <InlineMessage tone="brand" title="Peer Pool settlement" body="Winning payouts are stake-weighted. Bounded markets apply the published maximum payout multiple; any resulting surplus is returned to eligible losing-side participants under the market rules. VAD does not add company funds." />
           {placeError ? <InlineMessage tone="danger" title="Prediction not committed" body={placeError} /> : null}
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
@@ -726,7 +754,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
 
   return (
     <View style={{ gap: density.compact ? 10 : 12 }}>
-      <TradeStepRail step={step} secondLabel="Order" />
+      <TourTarget id="market-trading-ticket"><TradeStepRail step={step} secondLabel="Order" /></TourTarget>
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
 
       {step === 'prediction' ? (
@@ -797,6 +825,10 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
           </View>
           <View style={{ gap: 2 }}>
             <QuoteLine label="Order value" value={assetMoney(quote.notional, market.asset_code)} />
+            {quote.maxOrderNotional != null ? <QuoteLine label="Maximum order value" value={assetMoney(quote.maxOrderNotional, market.asset_code)} /> : null}
+            {quote.currentUserMarketExposure != null ? <QuoteLine label="Current market exposure" value={assetMoney(quote.currentUserMarketExposure, market.asset_code)} /> : null}
+            {quote.projectedUserMarketExposure != null ? <QuoteLine label="Projected exposure after this order" value={assetMoney(quote.projectedUserMarketExposure, market.asset_code)} /> : null}
+            {quote.maxUserMarketExposure != null ? <QuoteLine label="Maximum user market exposure" value={assetMoney(quote.maxUserMarketExposure, market.asset_code)} /> : null}
             <QuoteLine label="Price per share" value={assetMoney(quote.price, market.asset_code)} />
             <QuoteLine label="Shares" value={Number(quote.quantity).toLocaleString()} />
             <QuoteLine label="VAD maker fee if maker" value={assetMoney(quote.makerFee, market.asset_code)} />

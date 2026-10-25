@@ -11,6 +11,7 @@ export type AdminHref =
   | '/admin/market-publishing'
   | '/admin/market-discovery'
   | '/admin/launch-policy'
+  | '/admin/trading-risk'
   | '/admin/revenue'
   | '/admin/fees'
   | '/admin/payments'
@@ -111,6 +112,13 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         href: '/admin/launch-policy',
         description: 'Production readiness across market, settlement and oracle policy',
         permissions: ['policies.manage', 'markets.manage', 'oracle.review', 'finance.read'],
+      },
+      {
+        label: 'Trading Risk',
+        shortLabel: 'Risk',
+        href: '/admin/trading-risk',
+        description: 'Configure Peer Pool payout caps and separate Order Book exposure limits',
+        permissions: ['policies.manage'],
       },
     ],
   },

@@ -1,5 +1,6 @@
 import { ProposalScreen } from '@/features/proposals/proposal-screen';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -12,6 +13,7 @@ export default function CreateMarketRoute() {
 
   return (
     <ProductSubpage title="Propose a market" maxWidth={1040}>
+      <TourTarget id="market-creation">
       <ProposalScreen
         proposals={data.proposals}
         activeAssetCodes={runtime.snapshot.context.activeAssetCodes}
@@ -24,6 +26,7 @@ export default function CreateMarketRoute() {
         historyError={data.sectionErrors.proposals}
         onReload={data.load}
       />
+      </TourTarget>
     </ProductSubpage>
   );
 }

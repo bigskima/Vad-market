@@ -13,12 +13,14 @@ type Props = PropsWithChildren<{
   scroll?: boolean;
   contentStyle?: ViewStyle;
   scrollProps?: ScrollViewProps;
+  scrollRef?: (node: ScrollView | null) => void;
 }>;
 
 export function VadScreen({
   scroll = true,
   contentStyle,
   scrollProps,
+  scrollRef,
   children,
 }: Props) {
   const theme = useVadTheme();
@@ -34,6 +36,7 @@ export function VadScreen({
   if (scroll) {
     return (
       <ScrollView
+        ref={scrollRef}
         {...scrollProps}
         style={{
           flex: 1,

@@ -5,6 +5,7 @@ import { VadChip } from '@/components/ui/vad-chip';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { VadThemePreference } from '@/theme/tokens';
 
@@ -34,6 +35,7 @@ export default function AppearanceScreen() {
         </VadCard>
 
         <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: theme.spacing.md }}>
+          <TourTarget id="appearance-settings">
           <VadCard style={{ flex: 1, width: '100%', gap: theme.spacing.sm }}>
             <VadText variant="bodyStrong">Theme</VadText>
             <View accessibilityRole="radiogroup" style={{ gap: theme.spacing.xs }}>
@@ -75,6 +77,7 @@ export default function AppearanceScreen() {
               })}
             </View>
           </VadCard>
+          </TourTarget>
 
           <VadCard variant="raised" style={{ width: wide ? 340 : '100%', gap: theme.spacing.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>

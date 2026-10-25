@@ -1,4 +1,4 @@
-import { router, usePathname } from 'expo-router';
+import { router, useLocalSearchParams, usePathname } from 'expo-router';
 import {
   createContext,
   type PropsWithChildren,
@@ -15,6 +15,8 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadText } from '@/components/ui/vad-text';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { useProductDataContext } from '@/providers/product-data-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import {
   getMyProductTour,
   setMyProductTourProgress,
@@ -57,8 +59,14 @@ const TourContext = createContext<TourContextValue | null>(null);
 
 export function ProductTourProvider({ children }: PropsWithChildren) {
   const pathname = usePathname();
+  const routeParams = useLocalSearchParams<{ tourSection?: string }>();
+  const tourSection = Array.isArray(routeParams.tourSection) ? routeParams.tourSection[0] : routeParams.tourSection;
   const { height: windowHeight } = useWindowDimensions();
   const { session } = useAuth();
+  const productData = useProductDataContext();
+  const currencyPreference = useCurrencyPreference();
+  const canUseNgnWalletRoutes = productData.activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
+  const canViewWalletActivity = productData.activeAssetCodes.includes('NGN');
   const userId = session?.user.id ?? null;
   const [definition, setDefinition] = useState<ProductTourDefinition | null>(null);
   const [progress, setProgress] = useState<TourProgress>(DEFAULT_TOUR_PROGRESS);
@@ -68,6 +76,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<TourTargetRect | null>(null);
+  const [targetUnavailable, setTargetUnavailable] = useState(false);
   const [showReminderChoices, setShowReminderChoices] = useState(false);
   const targetsRef = useRef(new Map<string, TargetNode>());
   const scrollControllerRef = useRef<ScrollController | null>(null);
@@ -108,6 +117,38 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       setLoading(false);
     }
   }, [userId]);
+
+  const navigateToStep = useCallback((step: TourStep) => {
+    if (['/wallet/deposit', '/wallet/withdraw'].some((route) => route === step.route) && !canUseNgnWalletRoutes) {
+      router.replace('/wallet');
+      return;
+    }
+    if (step.route === '/wallet/activity' && !canViewWalletActivity) {
+      router.replace('/wallet');
+      return;
+    }
+    if (step.route === '/market/[marketId]') {
+      const market = productData.markets.find((item) => {
+        if (item.asset_code === 'TNGN' || !['NGN', 'USDC'].some((code) => code === item.asset_code)) return false;
+        if (item.asset_code === 'USDC' && item.liquidity_mode !== 'POOL') return false;
+        const assetCode = item.asset_code as VADCurrency;
+        return currencyPreference.isCurrencyEligible(assetCode) && currencyPreference.isCurrencyEnabled(assetCode);
+      });
+      if (!market) {
+        router.replace('/markets');
+        return;
+      }
+      router.replace({
+        pathname: '/market/[marketId]',
+        params: {
+          marketId: market.instrument_public_id,
+          tourSection: step.targetId === 'market-trading-ticket' ? 'Trade' : 'Overview',
+        },
+      });
+      return;
+    }
+    if (pathname !== step.route) router.replace(step.route);
+  }, [canUseNgnWalletRoutes, canViewWalletActivity, currencyPreference, pathname, productData.markets]);
 
   const saveProgress = useCallback((
     status: Exclude<TourProgressStatus, 'NEW'>,
@@ -177,6 +218,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
     setProgress(nextProgress);
     setStepIndex(nextIndex);
     setSpotlight(null);
+    setTargetUnavailable(false);
     setShowReminderChoices(false);
     setActive(true);
     setError(null);
@@ -192,9 +234,8 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
         : 'We could not save your guided tour progress. Please try again.');
     });
 
-    const destination = manual ? '/home' : step.route;
-    if (pathname !== destination) router.replace(destination);
-  }, [pathname]);
+    navigateToStep(step);
+  }, [navigateToStep]);
 
   const startTour = useCallback((manual = false) => {
     if (!userId) return;
@@ -245,10 +286,34 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const revealStep = useCallback(() => {
     if (!currentStep) return;
 
-    if (pathname !== currentStep.route) {
+    const isMarketDetailStep = currentStep.route === '/market/[marketId]';
+    const hasValidMarketRoute = isMarketDetailStep && pathname.startsWith('/market/');
+    const hasTourMarket = productData.markets.some((item) => {
+      if (item.asset_code === 'TNGN' || !['NGN', 'USDC'].some((code) => code === item.asset_code)) return false;
+      if (item.asset_code === 'USDC' && item.liquidity_mode !== 'POOL') return false;
+      const assetCode = item.asset_code as VADCurrency;
+      return currencyPreference.isCurrencyEligible(assetCode) && currencyPreference.isCurrencyEnabled(assetCode);
+    });
+    const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && !hasTourMarket;
+    const isNgnDepositOrWithdrawal = ['/wallet/deposit', '/wallet/withdraw'].some((route) => route === currentStep.route);
+    const walletRouteCanFallBack = ((isNgnDepositOrWithdrawal && !canUseNgnWalletRoutes) || (currentStep.route === '/wallet/activity' && !canViewWalletActivity)) && pathname === '/wallet';
+    const expectedMarketSection = currentStep.targetId === 'market-trading-ticket' ? 'Trade' : 'Overview';
+    if (hasValidMarketRoute && tourSection !== expectedMarketSection) {
       setSpotlight(null);
+      setTargetUnavailable(false);
+      navigateToStep(currentStep);
+      return;
+    }
+    if (pathname !== currentStep.route && !hasValidMarketRoute && !marketRouteCanFallBack && !walletRouteCanFallBack) {
+      setSpotlight(null);
+      setTargetUnavailable(false);
       scrollControllerRef.current = null;
-      router.replace(currentStep.route);
+      if (isMarketDetailStep && !hasTourMarket) {
+        setTargetUnavailable(true);
+        router.replace('/markets');
+      } else {
+        navigateToStep(currentStep);
+      }
       return;
     }
 
@@ -261,11 +326,16 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       if (!node) {
         attempt += 1;
         if (attempt <= 24) setTimeout(measure, 90);
+        else setTargetUnavailable(true);
         return;
       }
 
       node.measureInWindow((x, y, width, height) => {
-        if (cancelled || width <= 0 || height <= 0) return;
+        if (cancelled) return;
+        if (width <= 0 || height <= 0) {
+          setTargetUnavailable(true);
+          return;
+        }
         const rect = { x, y, width, height };
         const controller = scrollControllerRef.current;
         const needsMovement = y < 118 || y + height > windowHeight - 270;
@@ -278,6 +348,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
         }
 
         const padding = 6;
+        setTargetUnavailable(false);
         setSpotlight({
           x: Math.max(4, x - padding),
           y: Math.max(4, y - padding),
@@ -292,7 +363,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [currentStep, pathname, windowHeight]);
+  }, [canUseNgnWalletRoutes, canViewWalletActivity, currentStep, currencyPreference, navigateToStep, pathname, productData.markets, tourSection, windowHeight]);
 
   useEffect(() => {
     if (!active || !currentStep) return;
@@ -316,6 +387,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
     }
     const nextIndex = stepIndex + 1;
     setSpotlight(null);
+    setTargetUnavailable(false);
     setShowReminderChoices(false);
     setStepIndex(nextIndex);
     saveProgress('IN_PROGRESS', steps[nextIndex]?.id ?? null);
@@ -380,6 +452,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
         active={active}
         step={currentStep}
         rect={spotlight}
+        targetUnavailable={targetUnavailable}
         stepNumber={stepIndex + 1}
         totalSteps={steps.length}
         showReminderChoices={showReminderChoices}
@@ -415,6 +488,7 @@ function TourOverlay({
   active,
   step,
   rect,
+  targetUnavailable,
   stepNumber,
   totalSteps,
   showReminderChoices,
@@ -427,6 +501,7 @@ function TourOverlay({
   active: boolean;
   step: TourStep | null;
   rect: TourTargetRect | null;
+  targetUnavailable: boolean;
   stepNumber: number;
   totalSteps: number;
   showReminderChoices: boolean;
@@ -520,7 +595,11 @@ function TourOverlay({
                 <VadText variant="heading">{step.title}</VadText>
                 <VadText tone="secondary">{step.body}</VadText>
                 {!rect ? (
-                  <VadText variant="caption" tone="tertiary">Moving to this part of VAD…</VadText>
+                  <VadText variant="caption" tone={targetUnavailable ? 'danger' : 'tertiary'}>
+                    {targetUnavailable
+                      ? 'This screen anchor is not available in this view. Continue to the next mapped control or go back.'
+                      : 'Moving to the selected control…'}
+                  </VadText>
                 ) : null}
               </View>
 

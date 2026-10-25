@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
+import { TourTarget } from '@/features/tour/tour-provider';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -112,7 +113,7 @@ export default function SendRoute() {
 
   return (
     <ProductSubpage title="Send assets" maxWidth={760}>
-      <View style={{ gap: theme.spacing.md, paddingBottom: 36 }}>
+      <TourTarget id="wallet-send-form"><View style={{ gap: theme.spacing.md, paddingBottom: 36 }}>
         <VadText variant="caption" tone="secondary">
           Send real NGN or VAD ledger USDC to another existing VAD account by email. The server verifies the recipient, account eligibility and available balance, then posts a balanced ledger transfer. This does not send funds to a bank or blockchain wallet.
         </VadText>
@@ -212,7 +213,7 @@ export default function SendRoute() {
         </VadCard>
 
         <VadButton label="Return to wallet" variant="ghost" onPress={() => router.replace('/wallet')} />
-      </View>
+      </View></TourTarget>
     </ProductSubpage>
   );
 }

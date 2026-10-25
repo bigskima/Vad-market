@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
-import type { PropsWithChildren } from 'react';
-import { View } from 'react-native';
+import { useCallback, useRef, type PropsWithChildren } from 'react';
+import { ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VadIconButton } from '@/components/ui/vad-icon-button';
@@ -10,6 +10,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
+import { useProductTour } from '@/features/tour/tour-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { ProductAnnouncementBar } from './product-announcement-bar';
 
@@ -28,11 +29,36 @@ export function ProductSubpage({
   const density = useProductDensity();
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
+  const { registerScrollController } = useProductTour();
+  const scrollOffsetRef = useRef(0);
   const desktop = density.desktop;
   const headerWidth = Math.max(maxWidth, desktop ? 980 : 760);
   const horizontalPadding = density.horizontalPadding;
   const headerHeight = density.phone ? 52 : 60;
   const backSize = 44;
+
+  const connectTourScroller = useCallback((node: ScrollView | null) => {
+    if (!node) {
+      registerScrollController(null);
+      return;
+    }
+    registerScrollController({
+      ensureVisible: (rect) => {
+        const safeTop = density.phone ? 118 : 132;
+        const safeBottom = density.height - (density.phone ? 290 : 260);
+        const visible = rect.y >= safeTop && rect.y + rect.height <= safeBottom;
+        if (visible) return false;
+        const targetCenter = rect.y + rect.height / 2;
+        const idealCenter = Math.max(safeTop + 48, Math.min(density.height * 0.38, 360));
+        node.scrollTo({ y: Math.max(0, scrollOffsetRef.current + targetCenter - idealCenter), animated: true });
+        return true;
+      },
+    });
+  }, [density.height, density.phone, registerScrollController]);
+
+  function rememberScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+  }
 
   function goBack() {
     if (router.canGoBack()) router.back();
@@ -87,10 +113,13 @@ export function ProductSubpage({
       <ProductAnnouncementBar notice={data.publicNotices[0] ?? null} />
 
       <VadScreen
+        scrollRef={connectTourScroller}
         scrollProps={{
           keyboardShouldPersistTaps: 'handled',
           keyboardDismissMode: 'on-drag',
           contentInsetAdjustmentBehavior: 'automatic',
+          onScroll: rememberScroll,
+          scrollEventThrottle: 16,
         }}
         contentStyle={{
           alignSelf: 'center',

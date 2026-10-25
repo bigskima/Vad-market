@@ -300,12 +300,14 @@ export function HomeScreen({
         </View>
       </TourTarget>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6, paddingTop: 1, paddingBottom: 1 }}>
+      <TourTarget id="home-actions">
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6, paddingTop: 1, paddingBottom: 1 }}>
         <QuickAction label="Deposit" icon="plus" color="#20D99A" onPress={onDeposit} />
         <QuickAction label="Withdraw" icon="wallet" color="#625BFF" onPress={onWithdraw} />
         <QuickAction label="Predict" icon="arrowUp" color="#3298F5" onPress={() => onExploreMarkets()} />
         <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
-      </View>
+        </View>
+      </TourTarget>
 
       {promotions.length ? (
         promotionsToShow.length ? (
@@ -339,61 +341,63 @@ export function HomeScreen({
         </View>
       ) : null}
 
-      <TourTarget id="home-watchlist">
-        <View style={{ gap: 9 }}>
-          <SectionHeading title="Watchlist" action="See all" onAction={() => onExploreMarkets('watchlist')} />
-          {watchlistError && watchlistMarkets.length ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
-          {watchlistLoading ? (
-            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14 }}>
-              <VadText variant="caption" tone="secondary">Loading your saved markets…</VadText>
-            </View>
-          ) : watchlistMarkets.length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9, paddingRight: 3 }}>
-              {watchlistMarkets.map((market) => (
-                <View key={market.instrument_public_id} style={{ width: density.phone ? 156 : 220, minHeight: 98, borderRadius: 17, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 11, gap: 6 }}>
-                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
-                    <Pressable accessibilityRole="button" onPress={() => onOpenMarket(market)} style={{ flexDirection: 'row', gap: 8, flex: 1 }}>
-                      <MarketThumb market={market} size={38} />
-                      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                        <VadText variant="caption" numberOfLines={3} style={{ fontSize: 12, lineHeight: 15 }}>{market.title}</VadText>
-                        <VadText variant="caption" tone={market.market_type === 'MULTI_OUTCOME' ? 'brand' : 'yes'} style={{ fontWeight: '700' }}>{market.market_type === 'MULTI_OUTCOME' ? 'Multiple outcomes' : `Yes · ${formatProbability(market.yes_price)}`}</VadText>
-                      </View>
-                    </Pressable>
-                    <Pressable accessibilityRole="button" accessibilityLabel="Remove from watchlist" disabled={watchlistBusyId === market.instrument_public_id} onPress={() => void toggleWatchlist(market.instrument_public_id)} hitSlop={8}>
-                      <VadIcon name="close" size={15} tone="secondary" />
-                    </Pressable>
+      {watchlistIds.length > 0 ? (
+        <TourTarget id="home-watchlist">
+          <View style={{ gap: 9 }}>
+            <SectionHeading title="Watchlist" action="See all" onAction={() => router.push('/watchlist')} />
+            {watchlistError && watchlistMarkets.length ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
+            {watchlistLoading ? (
+              <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14 }}>
+                <VadText variant="caption" tone="secondary">Loading your saved markets…</VadText>
+              </View>
+            ) : watchlistMarkets.length ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9, paddingRight: 3 }}>
+                {watchlistMarkets.map((market) => (
+                  <View key={market.instrument_public_id} style={{ width: density.phone ? 146 : 202, minHeight: 84, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 9, gap: 5 }}>
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
+                      <Pressable accessibilityRole="button" onPress={() => onOpenMarket(market)} style={{ flexDirection: 'row', gap: 8, flex: 1 }}>
+                        <MarketThumb market={market} size={34} />
+                        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                          <VadText variant="caption" numberOfLines={2} style={{ fontSize: 11.5, lineHeight: 14 }}>{market.title}</VadText>
+                          <VadText variant="caption" tone={market.market_type === 'MULTI_OUTCOME' ? 'brand' : 'yes'} style={{ fontWeight: '700', fontSize: 10.5, lineHeight: 13 }}>{market.market_type === 'MULTI_OUTCOME' ? 'Multiple outcomes' : `Yes · ${formatProbability(market.yes_price)}`}</VadText>
+                        </View>
+                      </Pressable>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${market.title} from watchlist`} disabled={watchlistBusyId === market.instrument_public_id} onPress={() => void toggleWatchlist(market.instrument_public_id)} hitSlop={6} style={({ pressed }) => ({ width: 24, height: 24, borderRadius: 12, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', opacity: pressed || watchlistBusyId === market.instrument_public_id ? 0.6 : 1 })}>
+                        <VadIcon name="close" size={12} tone="secondary" />
+                      </Pressable>
+                    </View>
+                    {marketHistoryById[market.instrument_public_id]?.length > 1 ? <MarketSparkline values={marketHistoryById[market.instrument_public_id]} /> : null}
                   </View>
-                  {marketHistoryById[market.instrument_public_id]?.length > 1 ? <MarketSparkline values={marketHistoryById[market.instrument_public_id]} /> : null}
-                </View>
-              ))}
-            </ScrollView>
-          ) : marketError && watchlistIds.length ? (
-            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
-              <VadText variant="bodyStrong">Saved markets temporarily unavailable</VadText>
-              <VadText variant="caption" tone="secondary">Your saved markets are safe. The market catalogue could not be refreshed.</VadText>
-              <Pressable accessibilityRole="button" onPress={onRetryMarkets} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
-                <VadText variant="caption" tone="brand">Retry market data</VadText>
-              </Pressable>
-            </View>
-          ) : watchlistError ? (
-            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
-              <VadText variant="bodyStrong">Watchlist unavailable</VadText>
-              <VadText variant="caption" tone="secondary">We could not load your saved markets.</VadText>
-              <Pressable accessibilityRole="button" onPress={() => void retryWatchlist()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
-                <VadText variant="caption" tone="brand">Try again</VadText>
-              </Pressable>
-            </View>
-          ) : (
-            <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 7 }}>
-              <VadText variant="bodyStrong">Your watchlist is empty</VadText>
-              <VadText variant="caption" tone="secondary">Tap the bookmark on any market card or its detail page to save it here, along with its latest prices and trends.</VadText>
-              <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
-                <VadText variant="caption" tone="brand">Browse markets</VadText>
-              </Pressable>
-            </View>
-          )}
-        </View>
-      </TourTarget>
+                ))}
+              </ScrollView>
+            ) : marketError && watchlistIds.length ? (
+              <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
+                <VadText variant="bodyStrong">Saved markets temporarily unavailable</VadText>
+                <VadText variant="caption" tone="secondary">Your saved markets are safe. The market catalogue could not be refreshed.</VadText>
+                <Pressable accessibilityRole="button" onPress={onRetryMarkets} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
+                  <VadText variant="caption" tone="brand">Retry market data</VadText>
+                </Pressable>
+              </View>
+            ) : watchlistError ? (
+              <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
+                <VadText variant="bodyStrong">Watchlist unavailable</VadText>
+                <VadText variant="caption" tone="secondary">We could not load your saved markets.</VadText>
+                <Pressable accessibilityRole="button" onPress={() => void retryWatchlist()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
+                  <VadText variant="caption" tone="brand">Try again</VadText>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 7 }}>
+                <VadText variant="bodyStrong">Your saved markets are not visible right now</VadText>
+                <VadText variant="caption" tone="secondary">Your bookmarks are still saved. These markets may be unavailable in the current catalogue or hidden by your enabled currencies.</VadText>
+                <Pressable accessibilityRole="button" onPress={() => router.push('/watchlist')} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
+                  <VadText variant="caption" tone="brand">Open watchlist</VadText>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </TourTarget>
+      ) : null}
 
       <TourTarget id="home-categories">
         <View style={{ gap: 9 }}>

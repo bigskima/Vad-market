@@ -87,6 +87,15 @@ export type SignedOnchainPredictionAuthorization = {
   expectedQuoteSigner: string;
   protocolKey: string;
   protocolVersion: number;
+  maxEntryStake?: number | string;
+  maxUserMarketStake?: number | string;
+  maxMarketPool?: number | string;
+  existingUserExposure?: number | string;
+  projectedUserExposure?: number | string;
+  existingMarketPool?: number | string;
+  projectedMarketPool?: number | string;
+  riskPolicyVersion?: number;
+  payoutCapActive?: boolean;
   signature: string;
   signerAddress?: string;
 };

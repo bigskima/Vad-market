@@ -1,4 +1,5 @@
 import { FundingOverview } from '@/features/account/funding-overview';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
@@ -15,6 +16,7 @@ export default function AccountFundingScreen() {
 
   return (
     <ProductSubpage title="Funding & withdrawals" maxWidth={900}>
+      <TourTarget id="funding-overview">
       <FundingOverview
         depositAllowed={runtime.snapshot.capabilities.deposit}
         withdrawalAllowed={runtime.snapshot.capabilities.withdraw}
@@ -23,6 +25,7 @@ export default function AccountFundingScreen() {
         policyLoading={policyLoading}
         activeAssetCodes={runtime.snapshot.context.activeAssetCodes}
       />
+      </TourTarget>
     </ProductSubpage>
   );
 }

@@ -49,6 +49,11 @@ export type TradeQuote = {
   maximumFeeReserve: number;
   maximumCashReservation: number;
   availableSharesToSell: number;
+  maxOrderNotional?: number | string;
+  maxUserMarketExposure?: number | string;
+  currentUserMarketExposure?: number | string;
+  projectedUserMarketExposure?: number | string;
+  riskPolicyVersion?: number;
   quotedAt: string;
 };
 
@@ -66,9 +71,26 @@ export type PoolQuote = {
   poolTotalAfter: number | string;
   outcomePoolAfter: number | string;
   impliedProbability: number | string;
+  existingUserOutcomeStake?: number | string;
+  combinedUserOutcomeStake?: number | string;
+  existingUserTotalStake?: number | string;
+  combinedUserTotalStake?: number | string;
+  estimatedEntryGrossPayout?: number | string;
   estimatedGrossPayout: number | string;
   estimatedSettlementFee: number | string;
   estimatedNetPayout: number | string;
+  existingUserTradingFees?: number | string;
+  estimatedLosingSideRefund?: number | string;
+  estimatedTotalNetSettlementPayout?: number | string;
+  estimatedTotalCostAfterCommit?: number | string;
+  estimatedNetProfitLossIfCorrect?: number | string;
+  appliedPayoutMultiple?: number | string;
+  maximumGrossPayoutMultiple?: number | string | null;
+  payoutCapApplies?: boolean;
+  maxEntryStake?: number | string;
+  maxUserMarketStake?: number | string;
+  maxMarketPool?: number | string;
+  riskPolicyVersion?: number;
   quotedAt: string;
 };
 

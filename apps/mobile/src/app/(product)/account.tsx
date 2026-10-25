@@ -7,6 +7,7 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductRoute } from '@/features/navigation/product-route';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
 import { useCurrencyPreference } from '@/providers/currency-preference-provider';
@@ -237,6 +238,7 @@ export default function AccountScreen() {
           </Pressable>
         </View>
 
+        <TourTarget id="account-overview">
         <VadCard style={{ paddingHorizontal: density.phone ? 10 : 14, paddingVertical: density.phone ? 5 : 10, borderRadius: 15, gap: 0, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <View style={{ width: density.phone ? 56 : 64, height: density.phone ? 56 : 64, borderRadius: 40, overflow: 'visible', position: 'relative', flexShrink: 0 }}>
@@ -260,7 +262,9 @@ export default function AccountScreen() {
             </Pressable>
           </View>
         </VadCard>
+        </TourTarget>
 
+        <TourTarget id="account-verification">
         <Pressable accessibilityRole="button" accessibilityLabel="View verification details" onPress={() => router.push('/account/verification')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: density.phone ? 8 : 11, borderRadius: 15, borderWidth: 1, borderColor: isVerified ? theme.colors.yes : kycStatus?.status === 'REJECTED' ? theme.colors.no : theme.colors.border, backgroundColor: isVerified ? theme.colors.yesSoft : theme.colors.surface, opacity: pressed ? 0.78 : 1 })}>
           <View style={{ width: 38, height: 38, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: isVerified ? theme.colors.yesSoft : kycStatus?.status === 'REJECTED' ? theme.colors.noSoft : theme.colors.surfaceMuted, flexShrink: 0 }}>
             <VadIcon name={isVerified ? 'shieldCheck' : 'shield'} size={22} color={isVerified ? theme.colors.yes : kycStatus?.status === 'REJECTED' ? theme.colors.no : theme.colors.textSecondary} />
@@ -273,6 +277,7 @@ export default function AccountScreen() {
             <VadText variant="caption" tone={isVerified ? 'yes' : 'secondary'}>{isVerified ? 'View Details' : 'View Details'}</VadText>
           </View>
         </Pressable>
+        </TourTarget>
 
         {testModeStatus?.active ? (
           <VadCard style={{ gap: density.phone ? 10 : 14, padding: density.phone ? 12 : 16, borderRadius: 17, borderColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.border, backgroundColor: theme.colors.surface }}>
@@ -362,11 +367,14 @@ export default function AccountScreen() {
         {testModeNotice && !testModeStatus?.active ? <VadText variant="caption" tone="secondary">{testModeNotice}</VadText> : null}
         {testModeError && !testModeStatus?.active ? <VadText variant="caption" tone="danger">{testModeError}</VadText> : null}
 
+        <TourTarget id="account-navigation">
         <SettingsGroup title="Account">
           <AccountRow icon="account" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Personal Information" subtitle="Name, email, phone number, country" onPress={() => router.push('/account/profile')} />
           <AccountRow icon="creditCard" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Verification (KYC)" subtitle="Identity verification and documents" badge={isVerified ? 'Verified' : undefined} badgeTone="yes" onPress={() => router.push('/account/verification')} />
+          <AccountRow icon="bookmark" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Watchlist" subtitle="Saved markets and price moves" onPress={() => router.push('/watchlist')} />
           <AccountRow icon="wallet" iconBackground={theme.colors.warningSoft} iconColor={theme.colors.warning} title="Payment Methods" subtitle="Linked bank accounts and payment options" onPress={() => router.push('/account/funding')} last />
         </SettingsGroup>
+        </TourTarget>
 
         <SettingsGroup title="Security">
           <AccountRow icon="lock" iconBackground={theme.colors.yesSoft} iconColor={theme.colors.yes} title="Security Settings" subtitle="Password, PIN, biometric login" onPress={() => router.push('/account/security')} />

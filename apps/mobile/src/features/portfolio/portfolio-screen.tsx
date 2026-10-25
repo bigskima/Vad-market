@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, View, type DimensionValue } from 'react-native';
 
@@ -269,14 +270,23 @@ export function PortfolioScreen({
           <VadText variant="title">Portfolio</VadText>
           <VadText variant="caption" tone="secondary">Track your predictions, positions and performance.</VadText>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Show all-time portfolio performance" onPress={() => setPeriod('ALL')} style={({ pressed }) => ({
-          minHeight: 31, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-          borderRadius: 18, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface,
-          paddingHorizontal: 12, opacity: pressed ? 0.75 : 1,
-        })}>
-          <VadText variant="caption" tone="secondary">All Time</VadText>
-          <VadIcon name="chevronRight" size={13} tone="tertiary" />
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open watchlist" accessibilityHint="View your saved markets" onPress={() => router.push('/watchlist')} style={({ pressed }) => ({
+            width: 34, height: 34, alignItems: 'center', justifyContent: 'center',
+            borderRadius: 17, borderWidth: 1, borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surface, opacity: pressed ? 0.72 : 1,
+          })}>
+            <VadIcon name="bookmark" size={17} tone="brand" />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Show all-time portfolio performance" onPress={() => setPeriod('ALL')} style={({ pressed }) => ({
+            minHeight: 31, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+            borderRadius: 18, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface,
+            paddingHorizontal: 12, opacity: pressed ? 0.75 : 1,
+          })}>
+            <VadText variant="caption" tone="secondary">All Time</VadText>
+            <VadIcon name="chevronRight" size={13} tone="tertiary" />
+          </Pressable>
+        </View>
       </View>
 
       <TourTarget id="portfolio-summary">
