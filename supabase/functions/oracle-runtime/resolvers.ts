@@ -34,8 +34,8 @@ function numericValue(...values: unknown[]) {
 
 function ensureBinaryYesNo(event: DueOracleEvent) {
   const codes = new Set(event.outcomes.map((outcome) => outcome.code.toUpperCase()));
-  if (!codes.has('YES') || !codes.has('NO')) {
-    throw new OracleRuntimeError('UNSUPPORTED_OUTCOME_SCHEMA', 'Automated V1 resolvers require YES and NO outcomes', 422);
+  if (!codes.has('YES') || !codes.has('NO') || codes.size !== 2) {
+    throw new OracleRuntimeError('UNSUPPORTED_OUTCOME_SCHEMA', 'This deterministic resolver requires exactly the configured YES and NO outcomes', 422);
   }
 }
 
