@@ -149,8 +149,21 @@ export function PortfolioScreen({
   const asset = assetOptions.includes(selectedAsset) ? selectedAsset : assetOptions[0] ?? 'NGN';
 
   const marketsById = useMemo(() => new Map(markets.map((market) => [market.instrument_public_id.toLowerCase(), market])), [markets]);
-  const getMarketForStake = (marketId: string, marketTitle?: string | null) =>
-    marketsById.get(String(marketId).toLowerCase()) ?? markets.find((market) => market.title === marketTitle);
+  const marketsByTitle = useMemo(() => {
+    const indexed = new Map<string, MarketCatalogItem>();
+    for (const market of markets) {
+      const title = normalizeMarketMatchTitle(market.title);
+      if (title) indexed.set(title, market);
+    }
+    return indexed;
+  }, [markets]);
+  const getMarketForStake = (marketId: string, marketTitle?: string | null) => {
+    const normalizedId = String(marketId ?? '').trim().toLowerCase();
+    const normalizedTitle = normalizeMarketMatchTitle(marketTitle);
+    return marketsById.get(normalizedId)
+      ?? (normalizedTitle ? marketsByTitle.get(normalizedTitle) : undefined)
+      ?? markets.find((market) => normalizeMarketMatchTitle(market.title) === normalizedTitle);
+  };
   const marksByKey = useMemo(() => new Map(marks.map((mark) => [positionKey(mark.instrument_id, mark.outcome_code), mark])), [marks]);
   const positionsForAsset = useMemo<PositionModel[]>(() => positions
     .filter((position) => position.asset_code === asset)
@@ -525,6 +538,16 @@ export function PortfolioScreen({
 
     </View>
   );
+}
+
+function normalizeMarketMatchTitle(value?: string | null) {
+  return String(value ?? '')
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[’'"]/g, '')
+    .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\\s+/g, ' ');
 }
 
 function PoolStakePositionCard({ stake, market, onPress }: { stake: PoolStakeRow; market?: MarketCatalogItem; onPress: () => void }) {
