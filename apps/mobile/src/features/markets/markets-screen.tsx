@@ -245,18 +245,18 @@ export function MarketsScreen({
   }, [visibleMarkets, activeCategoryExperience]);
 
   return (
-    <View style={{ gap: density.phone ? 10 : Math.min(18, density.sectionGap) }}>
+    <View style={{ gap: density.phone ? 8 : Math.min(14, density.sectionGap) }}>
       <PageHeader
         title="Markets"
         actions={[
           { icon: 'bell', label: 'Notifications', onPress: () => router.push('/notifications'), badge: unreadNotifications },
-          { icon: 'fileText', label: 'News & headlines', onPress: () => router.push('/news') },
           { icon: 'globe', label: 'Financial markets', onPress: () => router.push('/financial-markets') },
+          { icon: 'fileText', label: 'News & headlines', onPress: () => router.push('/news') },
           { icon: 'operations', label: 'Market filters', onPress: () => setFiltersExpanded((value) => !value) },
         ]}
       />
-      <View style={{ alignItems: 'flex-end', marginTop: -8 }}>
-        <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
+      <View style={{ alignItems: 'flex-end', marginTop: -10 }}>
+        <VadText variant="caption" tone="tertiary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
       </View>
       {watchlistError ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
 
