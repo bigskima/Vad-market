@@ -108,6 +108,10 @@ begin
     raise exception 'The Peer Pool stake limit is below this market minimum. Configure the risk policy first.'
       using errcode = '23514';
   end if;
+  if new.liquidity_model <> 'POOL' and d.order_max_order_notional < new.min_order_notional then
+    raise exception 'The Order Book maximum order value is below this market minimum. Configure the risk policy first.'
+      using errcode = '23514';
+  end if;
 
   insert into market.instrument_trading_risk_policies (
     instrument_id, asset_id, policy_mode, policy_version,
