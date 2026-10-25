@@ -80,6 +80,22 @@ function validatePublicHttpsUrl(raw: unknown): URL | null {
   }
 }
 
+function extractPublishedAt(raw: string): string | null {
+  const patterns = [
+    /<meta\\b[^>]*(?:property|name)=["'](?:article:published_time|datepublished|pubdate|publication_date|date)["'][^>]*content=["']([^"']+)["']/i,
+    /<meta\\b[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:article:published_time|datepublished|pubdate|publication_date|date)["']/i,
+    /"datePublished"\\s*:\\s*"([^"]+)"/i,
+    /<time\\b[^>]*datetime=["']([^"']+)["']/i,
+  ];
+  for (const pattern of patterns) {
+    const candidate = raw.match(pattern)?.[1]?.trim();
+    if (!candidate) continue;
+    const parsed = new Date(candidate);
+    if (Number.isFinite(parsed.getTime())) return parsed.toISOString();
+  }
+  return null;
+}
+
 function stripHtml(value: string) {
   return value
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
@@ -111,7 +127,7 @@ async function fetchText(url: URL, maxChars = 7000): Promise<EvidenceSource | nu
     if (raw.length > 2_000_000) return null;
     const text = declaredType.includes('html') || declaredType.includes('xhtml') ? stripHtml(raw) : raw.replace(/\s+/g, ' ').trim();
     if (text.length < 80) return null;
-    return { url: url.toString(), domain: url.hostname, text: text.slice(0, maxChars), source: 'DIRECT', publishedAt: null };
+    return { url: url.toString(), domain: url.hostname, text: text.slice(0, maxChars), source: 'DIRECT', publishedAt: extractPublishedAt(raw) };
   } catch {
     return null;
   }
@@ -219,6 +235,7 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
       normalizedParameters: event.normalizedParameters,
       closesAt: event.closesAt,
       resolvesAfter: event.resolvesAfter,
+      openedAt: event.openedAt,
       allowedOutcomes: event.outcomes,
     },
     sourceHierarchy: event.sourceHierarchy,
@@ -308,7 +325,7 @@ function validateOutput(raw: RecordValue, event: RecordValue, packet: EvidenceSo
     if (!url || !quote) continue;
     const source = packet.find((p) => p.url === url.toString());
     if (!source || !normalize(source.text).includes(normalize(quote))) continue;
-    evidence.push({ url: source.url, quote, publishedAt: safeText(item.publishedAt, 80) || source.publishedAt, source });
+    evidence.push({ url: source.url, quote, publishedAt: source.publishedAt, source });
   }
   const outcomes = Array.isArray(event.outcomes) ? event.outcomes.filter(isRecord) : [];
   if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1 || !rationale) throw new Error('AI output confidence or rationale was invalid.');
@@ -317,6 +334,22 @@ function validateOutput(raw: RecordValue, event: RecordValue, packet: EvidenceSo
       throw new Error('AI selected an outcome that is not configured for this market.');
     }
     if (confidence < 0.9 || evidence.length === 0) throw new Error('Outcome lacks sufficient confidence or verifiable cited evidence.');
+    const scope = isRecord(event.resolutionScope) ? event.resolutionScope : {};
+    const rule = safeText(scope.condition ?? scope.rule, 4000);
+    if (outcomeCode.toUpperCase() === 'YES' && /after market opening|between market opening|since the market opened/i.test(rule)) {
+      const openedAt = new Date(safeText(event.openedAt, 80));
+      const deadlineRaw = safeText(scope.resolution_deadline ?? scope.resolutionDeadline, 100);
+      const deadline = deadlineRaw ? new Date(deadlineRaw) : null;
+      const validTimeEvidence = evidence.some((item) => {
+        if (!item.publishedAt) return false;
+        const published = new Date(item.publishedAt);
+        return Number.isFinite(published.getTime())
+          && Number.isFinite(openedAt.getTime())
+          && published.getTime() >= openedAt.getTime()
+          && (!deadline || !Number.isFinite(deadline.getTime()) || published.getTime() <= deadline.getTime());
+      });
+      if (!validTimeEvidence) throw new Error('A YES outcome requires independently extracted publication time inside the market window.');
+    }
   } else if (outcomeCode !== null) {
     throw new Error('Only a resolved result may contain an outcome code.');
   }
