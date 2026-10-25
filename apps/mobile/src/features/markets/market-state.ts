@@ -48,6 +48,7 @@ export function describeMarketTiming(
   status: string,
   now: number,
   resolvesAfter?: string | null,
+  resolutionStatus?: string | null,
 ): MarketTiming {
   const statusMeta = marketStatusMeta(status);
   const parsed = closesAt ? Date.parse(closesAt) : Number.NaN;
@@ -56,6 +57,7 @@ export function describeMarketTiming(
   const resolutionRemainingMs = hasResolution ? resolutionParsed - now : null;
   const resolutionAbsolute = hasResolution ? formatAbsolute(resolutionParsed) : null;
   const resolutionEligible = hasResolution ? resolutionParsed <= now : null;
+  const normalizedResolutionStatus = resolutionStatus?.toUpperCase() ?? null;
 
   if (!Number.isFinite(parsed)) {
     return {
@@ -86,17 +88,46 @@ export function describeMarketTiming(
     if (awaitingResult && hasResolution) {
       const resolutionDuration = formatDuration(resolutionRemainingMs ?? 0);
       const eligibilityReached = Boolean(resolutionEligible);
+      const hasProvisional = normalizedResolutionStatus === 'PROVISIONAL';
+      const hasFinalResult = normalizedResolutionStatus === 'FINAL';
+      const isVoided = normalizedResolutionStatus === 'VOID';
+      const headline = !eligibilityReached
+        ? `Resolution eligible in ${resolutionDuration}`
+        : isVoided
+          ? 'Market voided'
+          : hasFinalResult
+            ? 'Result final · payout not queued'
+            : hasProvisional
+              ? 'Provisional result under review'
+              : 'Result review required';
+      const compact = !eligibilityReached
+        ? `Resolve eligible ${resolutionDuration}`
+        : isVoided
+          ? 'Voided'
+          : hasFinalResult
+            ? 'Payout needs attention'
+            : hasProvisional
+              ? 'Result under review'
+              : 'Needs result review';
+      const detail = !eligibilityReached
+        ? `Trading is closed. The result cannot be finalized before ${resolutionAbsolute}; evidence checks can continue while that time approaches.`
+        : isVoided
+          ? 'A void outcome has been recorded. Check the settlement receipt for the configured refund handling.'
+          : hasFinalResult
+            ? 'The outcome is final, but this instrument is not marked as queued for settlement. Do not treat the payout as complete until the backend confirms settlement.'
+            : hasProvisional
+              ? 'A provisional outcome exists. Independent review and finalization are still required before settlement can start.'
+              : 'The scheduled resolution time has passed, but no provisional outcome is recorded. A reviewer must verify the published criteria against reliable evidence before settlement can start.';
+
       return {
         available: true,
         isPastClose,
         remainingMs,
-        headline: eligibilityReached ? 'Resolution window is open' : `Resolution eligible in ${resolutionDuration}`,
-        compact: eligibilityReached ? 'Resolution eligible' : `Resolve eligible ${resolutionDuration}`,
+        headline,
+        compact,
         absolute,
-        detail: eligibilityReached
-          ? 'The earliest configured resolution time has been reached. VAD can finalize the result once the required evidence and resolution checks are satisfied.'
-          : `Trading is closed. The result cannot be finalized before ${resolutionAbsolute}; evidence checks can continue while that time approaches.`,
-        tone: eligibilityReached ? 'brand' : 'warning',
+        detail,
+        tone: !eligibilityReached ? 'warning' : hasProvisional || hasFinalResult ? 'warning' : isVoided ? 'secondary' : 'danger',
         resolutionAbsolute,
         resolutionRemainingMs,
         resolutionEligible,
