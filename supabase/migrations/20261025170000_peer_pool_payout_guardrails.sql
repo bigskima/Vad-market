@@ -93,6 +93,30 @@ create table if not exists market.instrument_trading_risk_policies (
   )
 );
 
+create or replace function private.reject_trading_risk_snapshot_mutation()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $risk_snapshot$
+begin
+  raise exception 'Trading risk policy snapshots are immutable; create a new policy version or market instead.'
+    using errcode = '55000';
+end;
+$risk_snapshot$;
+
+drop trigger if exists protect_instrument_trading_risk_snapshot on market.instrument_trading_risk_policies;
+create trigger protect_instrument_trading_risk_snapshot
+before update or delete on market.instrument_trading_risk_policies
+for each row execute function private.reject_trading_risk_snapshot_mutation();
+
+drop trigger if exists protect_trading_risk_policy_history on market.trading_risk_policy_default_history;
+create trigger protect_trading_risk_policy_history
+before update or delete on market.trading_risk_policy_default_history
+for each row execute function private.reject_trading_risk_snapshot_mutation();
+
+revoke all on function private.reject_trading_risk_snapshot_mutation() from public, anon, authenticated;
+
 comment on table market.instrument_trading_risk_policies is
   'Immutable-by-default policy snapshot for each market instrument. Legacy pool markets retain their original winner-takes-pool settlement rule; new bounded pool markets use the snapshotted cap.';
 comment on column market.instrument_trading_risk_policies.policy_mode is
