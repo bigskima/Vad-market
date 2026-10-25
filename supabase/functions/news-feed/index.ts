@@ -250,8 +250,10 @@ function xmlTag(xml: string, tagName: string): string | null {
 }
 function xmlAttr(tag: string, name: string): string | null {
   const escaped = name.replace(/[.*+?^$|{}()[\]\\]/g, '\\$&');
-  const match = new RegExp("\\b" + escaped + "\\s*=\\s*(['\\"]) (.*?)\\1".replace("] (", "]("), 'i').exec(tag);
-  return match?.[2] ? decodeEntities(match[2]) : null;
+  const doubleQuoted = new RegExp('\\b' + escaped + '\\s*=\\s*"([^"]*)"', 'i').exec(tag)?.[1];
+  const singleQuoted = new RegExp("\\b" + escaped + "\\s*=\\s*'([^']*)'", 'i').exec(tag)?.[1];
+  const value = doubleQuoted ?? singleQuoted;
+  return value ? decodeEntities(value) : null;
 }
 function firstXmlImage(item: string): string | null {
   const candidates = [...item.matchAll(/<(?:media:content|media:thumbnail|itunes:image)\b[^>]*>/gi)];
