@@ -35,7 +35,7 @@ export default function AppTourSettingsRoute() {
             <VadText variant="caption" tone="brand">GUIDED WALKTHROUGH</VadText>
             <VadText variant="title">Follow the app as it moves</VadText>
             <VadText tone="secondary">
-              You will visit Home, Markets, Wallet, Portfolio and Account. Each step points to the real button, card or control being explained instead of showing a separate instruction page.
+              The walkthrough moves across Home, market discovery and detail, the actual Trade ticket, Watchlist, Wallet, Portfolio, Account settings, Notifications, News, Financial Markets, Community, Assistant and market proposals. Each step highlights a real screen element; some wallet or market routes may be unavailable when your currency or account eligibility does not allow them.
             </VadText>
           </View>
           <VadButton
@@ -61,10 +61,11 @@ export default function AppTourSettingsRoute() {
 
         <View style={{ gap: theme.spacing.sm }}>
           <VadText variant="heading">What the walkthrough covers</VadText>
-          <TourPoint title="Finding markets" body="Search, featured markets, categories and live market discovery." />
-          <TourPoint title="Managing money" body="Wallet balances, deposits, withdrawals and payment activity." />
-          <TourPoint title="Following positions" body="Your portfolio, positions and orders that are still waiting to fill." />
-          <TourPoint title="Account essentials" body="Verification, funding settings, policies and where to take the tour again." />
+          <TourPoint title="Discover and trade" body="Browse markets, inspect market details, switch to the real Trade ticket and review its stake or order controls." />
+          <TourPoint title="Save and follow markets" body="Use Watchlist to find saved markets and remove items you no longer want to follow." />
+          <TourPoint title="Manage your wallet" body="Review balances, eligible funding actions, wallet history and transfers without submitting a transaction during the tour." />
+          <TourPoint title="Portfolio and account" body="Explore positions, open orders, identity, funding, currency preferences, appearance, security and policies." />
+          <TourPoint title="Explore the rest of VAD" body="Open Notifications, News, financial and crypto data, Community, the assistant and market proposals." />
         </View>
       </View>
     </ProductSubpage>
