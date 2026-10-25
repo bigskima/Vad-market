@@ -15,6 +15,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import { getMarketOutcomeSummary, getPublishedMarketDetail, type MarketCatalogItem, type MarketOutcomeSummaryRow, type PoolStakeRow, type PositionRow, type PublishedMarketDetail } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { FinancialMarketLivePanel, hasLiveFinancialContext } from './components/financial-market-live-panel';
 import { MarketDepthPanel } from './components/market-depth-panel';
 import { TradingTicket } from './components/trading-ticket';
@@ -39,6 +40,7 @@ export function MarketDetailScreen({
   positions,
   poolStakes,
   initialOutcome,
+  initialTab = 'Overview',
   canTrade,
   tradeReason,
   tradeCapabilityLoading = false,
@@ -52,6 +54,7 @@ export function MarketDetailScreen({
   positions: PositionRow[];
   poolStakes: PoolStakeRow[];
   initialOutcome?: string;
+  initialTab?: DetailTab;
   canTrade: boolean;
   tradeReason?: string;
   tradeCapabilityLoading?: boolean;
@@ -79,7 +82,7 @@ export function MarketDetailScreen({
   const selectedOutcomeCode = chosenOutcome?.instrumentId === market.instrument_public_id
     ? chosenOutcome.code
     : initialOutcome ?? (multiOutcomeMarket ? outcomeRows[0]?.outcome_code : undefined);
-  const [tabState, setTabState] = useState<{ key: string; tab: DetailTab }>(() => ({ key: screenKey, tab: initialOutcome ? 'Trade' : 'Overview' }));
+  const [tabState, setTabState] = useState<{ key: string; tab: DetailTab }>(() => ({ key: screenKey, tab: initialTab === 'Trade' || initialOutcome ? 'Trade' : 'Overview' }));
   const tab = tabState.key === screenKey ? tabState.tab : initialOutcome ? 'Trade' : 'Overview';
   const setTab = (nextTab: DetailTab) => setTabState({ key: screenKey, tab: nextTab });
   const openTrade = (outcomeCode?: string) => {
@@ -88,6 +91,10 @@ export function MarketDetailScreen({
   };
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
+
+  useEffect(() => {
+    setTabState({ key: screenKey, tab: initialTab === 'Trade' || initialOutcome ? 'Trade' : 'Overview' });
+  }, [initialTab, initialOutcome, screenKey]);
 
   useEffect(() => {
     closeRefreshDone.current = false;
@@ -152,7 +159,7 @@ export function MarketDetailScreen({
 
   return (
     <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: 200 }}>
-      <MarketDetailHeader market={market} />
+      <TourTarget id="market-detail-overview"><MarketDetailHeader market={market} /></TourTarget>
       <MarketStakeSummary market={market} positions={positions} poolStakes={poolStakes} outcomes={outcomeRows} />
       {hasLiveFinancialContext(market) ? <FinancialMarketLivePanel key={market.instrument_public_id} market={market} now={now} /> : null}
 
@@ -186,6 +193,7 @@ export function MarketDetailScreen({
       ) : null}
       {tab === 'Chart' ? <Activity market={market} /> : null}
       {tab === 'Trade' ? (
+        <TourTarget id="market-trading-ticket">
         <TradingTicket
           key={`${market.instrument_public_id}:${selectedOutcomeCode ?? 'default'}`}
           market={market}
@@ -196,6 +204,7 @@ export function MarketDetailScreen({
           capabilityLoading={tradeCapabilityLoading}
           onPlaced={onPlaced}
         />
+        </TourTarget>
       ) : null}
       {tab === 'Discussion' ? (
         <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} marketFilter={market} />
