@@ -66,6 +66,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const productData = useProductDataContext();
   const currencyPreference = useCurrencyPreference();
   const canUseNgnWalletRoutes = productData.activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
+  const canViewWalletActivity = productData.activeAssetCodes.includes('NGN');
   const userId = session?.user.id ?? null;
   const [definition, setDefinition] = useState<ProductTourDefinition | null>(null);
   const [progress, setProgress] = useState<TourProgress>(DEFAULT_TOUR_PROGRESS);
@@ -118,7 +119,11 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   }, [userId]);
 
   const navigateToStep = useCallback((step: TourStep) => {
-    if (['/wallet/deposit', '/wallet/withdraw', '/wallet/send'].some((route) => route === step.route) && !canUseNgnWalletRoutes) {
+    if (['/wallet/deposit', '/wallet/withdraw'].some((route) => route === step.route) && !canUseNgnWalletRoutes) {
+      router.replace('/wallet');
+      return;
+    }
+    if (step.route === '/wallet/activity' && !canViewWalletActivity) {
       router.replace('/wallet');
       return;
     }
@@ -142,7 +147,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       return;
     }
     if (pathname !== step.route) router.replace(step.route);
-  }, [canUseNgnWalletRoutes, currencyPreference, pathname, productData.markets]);
+  }, [canUseNgnWalletRoutes, canViewWalletActivity, currencyPreference, pathname, productData.markets]);
 
   const saveProgress = useCallback((
     status: Exclude<TourProgressStatus, 'NEW'>,
@@ -283,7 +288,8 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
     const isMarketDetailStep = currentStep.route === '/market/[marketId]';
     const hasValidMarketRoute = isMarketDetailStep && pathname.startsWith('/market/');
     const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && !productData.markets.some((item) => item.asset_code !== 'TNGN' && ['NGN', 'USDC'].some((code) => code === item.asset_code) && currencyPreference.isCurrencyEnabled(item.asset_code as VADCurrency));
-    const walletRouteCanFallBack = ['/wallet/deposit', '/wallet/withdraw', '/wallet/send'].some((route) => route === currentStep.route) && !canUseNgnWalletRoutes && pathname === '/wallet';
+    const isNgnDepositOrWithdrawal = ['/wallet/deposit', '/wallet/withdraw'].some((route) => route === currentStep.route);
+    const walletRouteCanFallBack = ((isNgnDepositOrWithdrawal && !canUseNgnWalletRoutes) || (currentStep.route === '/wallet/activity' && !canViewWalletActivity)) && pathname === '/wallet';
     const expectedMarketSection = currentStep.targetId === 'market-trading-ticket' ? 'Trade' : 'Overview';
     if (hasValidMarketRoute && tourSection !== expectedMarketSection) {
       setSpotlight(null);
@@ -350,7 +356,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [canUseNgnWalletRoutes, currentStep, currencyPreference, navigateToStep, pathname, productData.markets, tourSection, windowHeight]);
+  }, [canUseNgnWalletRoutes, canViewWalletActivity, currentStep, currencyPreference, navigateToStep, pathname, productData.markets, tourSection, windowHeight]);
 
   useEffect(() => {
     if (!active || !currentStep) return;
