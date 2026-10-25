@@ -247,7 +247,7 @@ export default function AccountScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
               <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
                 <VadText variant="bodyStrong">Temporary NGN market testing</VadText>
-                <VadText variant="caption" tone="secondary">Uses your existing NGN test allocation with the regular market and settlement engine.</VadText>
+                <VadText variant="caption" tone="secondary">Use test credit to trade open NGN markets.</VadText>
               </View>
               <StatusBadge
                 label={testModeStatus.testModeEnabled ? 'Enabled' : 'Off'}
@@ -269,7 +269,7 @@ export default function AccountScreen() {
             <Pressable
               accessibilityRole="switch"
               accessibilityLabel="Use temporary NGN test credit for market trading"
-              accessibilityHint="Enables or disables the non-cash testing allocation on existing NGN markets. This does not create another market or settlement system."
+              accessibilityHint="Use or pause your NGN test credit."
               accessibilityState={{ checked: testModeStatus.testModeEnabled, disabled: testModeSaving || (!testModeStatus.eligible && !testModeStatus.testModeEnabled) }}
               disabled={testModeSaving || (!testModeStatus.eligible && !testModeStatus.testModeEnabled)}
               onPress={() => void toggleTemporaryNgnMarketTesting()}
@@ -277,7 +277,7 @@ export default function AccountScreen() {
             >
               <View style={{ flex: 1, gap: 2 }}>
                 <VadText variant="bodyStrong">{testModeSaving ? 'Saving market-testing setting…' : 'Use allocation for NGN trading'}</VadText>
-                <VadText variant="caption" tone="secondary">{testModeStatus.testModeEnabled ? 'New stakes can use the restricted test balance when all server checks pass.' : 'Off means the test credit cannot be used for new market orders.'}</VadText>
+                <VadText variant="caption" tone="secondary">{testModeStatus.testModeEnabled ? 'Use test credit for new predictions.' : 'Turn on to use test credit.'}</VadText>
               </View>
               <View style={{ width: 48, height: 28, borderRadius: 18, padding: 3, justifyContent: 'center', backgroundColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.surfaceMuted, borderWidth: 1, borderColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.border }}>
                 <View style={{ width: 20, height: 20, borderRadius: 12, alignSelf: testModeStatus.testModeEnabled ? 'flex-end' : 'flex-start', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }} />
@@ -305,14 +305,13 @@ export default function AccountScreen() {
             ) : null}
 
             {testModeStatus.openMarketCount === 0 ? (
-              <VadText variant="caption" tone="warning">There is currently no open NGN market. The setting does not create a market; you can trade after a genuinely open market is approved and published.</VadText>
+              <VadText variant="caption" tone="warning">No open NGN markets right now.</VadText>
             ) : null}
 
             <VadText variant="caption" tone="secondary">
-              This is non-cash test credit in the standard NGN ledger. It uses existing NGN instruments, fees, orders and the normal outcome-resolution/settlement process—not a separate demo market. Deposits and withdrawals remain blocked while the test allocation is active. TNGN has been fully retired.
+              This is non-cash credit for NGN market trading. Deposits and withdrawals stay disabled while it is active. Test credit cannot mix with cash-funded NGN.
             </VadText>
             {testModeError ? <VadText variant="caption" tone="danger">{testModeError}</VadText> : null}
-            {testModeStatus.grantId ? <VadText variant="caption" tone="tertiary">Allocation reference: {testModeStatus.grantId}</VadText> : null}
           </VadCard>
         ) : null}
         {testModeError && !testModeStatus?.active ? <VadText variant="caption" tone="danger">{testModeError}</VadText> : null}
@@ -384,13 +383,13 @@ function formatTestNgn(value: number | string | undefined) {
 function testModeBlockReason(status: TemporaryNgnMarketTestingStatus) {
   switch (status.reasonCode) {
     case 'LOCATION_CHECK_REQUIRED':
-      return 'Complete current Nigeria location verification before enabling NGN market testing.';
+      return 'Verify your location in Nigeria to enable test credit.';
     case 'LOCATION_CHECK_EXPIRED':
-      return 'Your Nigeria location verification has expired. Refresh it before enabling NGN market testing.';
+      return 'Your Nigeria location check expired. Verify again to enable test credit.';
     case 'LOCATION_MISMATCH':
-      return 'Your verified country, device location and network country must all confirm Nigeria.';
+      return 'Your country and current location must match Nigeria.';
     case 'NETWORK_RISK':
-      return 'Disable VPN/proxy/Tor/hosting-network routing and repeat the Nigeria location check.';
+      return 'Turn off VPN or proxy, then verify your location again.';
     case 'LOCATION_PROVIDER_ERROR':
     case 'LOCATION_CHECK_FAILED':
     case 'NETWORK_RISK_UNRESOLVED':
@@ -402,9 +401,9 @@ function testModeBlockReason(status: TemporaryNgnMarketTestingStatus) {
     case 'ACCOUNT_NOT_ACTIVE':
       return 'Your VAD account must be active before market testing can be enabled.';
     case 'ACCOUNT_NOT_ELIGIBLE':
-      return 'Temporary NGN market testing is available only to eligible Nigerian accounts.';
+      return 'Available to eligible Nigerian accounts only.';
     case 'NGN_ASSET_UNAVAILABLE':
-      return 'The real NGN asset is currently unavailable.';
+      return 'The NGN wallet is unavailable.';
     case 'TRADING_SERVICE_UNAVAILABLE':
       return 'The trading service is currently unavailable for this account.';
     case 'NGN_NOT_AVAILABLE_IN_JURISDICTION':
