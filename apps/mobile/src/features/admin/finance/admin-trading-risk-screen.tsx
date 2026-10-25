@@ -72,8 +72,25 @@ export function AdminTradingRiskScreen() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    getAdminTradingRiskPolicies()
+      .then((rows) => {
+        if (!active) return;
+        setPolicies(rows);
+        setDrafts(Object.fromEntries(rows.map((row) => [row.asset_code, toDraft(row)])));
+      })
+      .catch((reason) => {
+        if (!active) return;
+        setError(reason instanceof Error ? reason.message : 'Could not load trading risk policies.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function patch(assetCode: string, key: keyof Draft, value: string | boolean) {
     setDrafts((current) => ({
