@@ -64,7 +64,6 @@ export function HomeScreen({
   const { enabledCurrencies, preferredCurrency, setPreferredCurrency } = useCurrencyPreference();
   const [category, setCategory] = useState<Category>('All');
   const [dismissedPromotionSignature, setDismissedPromotionSignature] = useState<string | null>(null);
-  const [promotionPlaceholderDismissed, setPromotionPlaceholderDismissed] = useState(false);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
@@ -241,21 +240,21 @@ export function HomeScreen({
   return (
     <View style={{ width: '100%', gap: density.compact ? 8 : 11 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 }}>
-        <View style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 34, height: 34, borderRadius: 17, overflow: 'hidden', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
           {profileAvatarUrl ? <Image source={{ uri: profileAvatarUrl }} accessibilityLabel="Profile photo" onError={() => setProfileAvatarUrl(null)} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name="account" size={21} tone="secondary" />}
         </View>
         <View style={{ flex: 1, gap: 1 }}>
           <VadText variant="caption" tone="secondary">Good {getGreeting()},</VadText>
-          <VadText variant="bodyStrong" style={{ fontSize: 17, lineHeight: 21 }}>{(profileName || userName || 'VAD member').trim().split(/\s+/)[0]}</VadText>
+          <VadText variant="bodyStrong" style={{ fontSize: 16, lineHeight: 20 }}>{(profileName || userName || 'VAD member').trim().split(/\s+/)[0]}</VadText>
         </View>
         <HomeHeaderAction label="Search markets" icon="search" onPress={() => onExploreMarkets()} />
-        <HomeHeaderAction label="News & headlines" icon="fileText" onPress={() => router.push('/news')} />
         <HomeHeaderAction label="Financial markets" icon="activity" onPress={onOpenCryptoAssets} />
+        <HomeHeaderAction label="News & headlines" icon="fileText" onPress={() => router.push('/news')} />
         <HomeHeaderAction label="Notifications" icon="bell" badge={hasUnreadNotifications} onPress={onNotifications} />
       </View>
 
       <TourTarget id="home-overview">
-        <View style={{ padding: density.compact ? 11 : 13, minHeight: density.compact ? 96 : 106, overflow: 'hidden', borderRadius: 17, borderWidth: 1, borderColor: theme.mode === 'dark' ? '#123B3B' : theme.colors.border, backgroundColor: theme.mode === 'dark' ? '#071B1D' : theme.colors.surface, gap: 3 }}>
+        <View style={{ padding: density.compact ? 10 : 11, minHeight: density.compact ? 88 : 96, overflow: 'hidden', borderRadius: 15, borderWidth: 1, borderColor: theme.mode === 'dark' ? '#123B3B' : theme.colors.border, backgroundColor: theme.mode === 'dark' ? '#071B1D' : theme.colors.surface, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Pressable
               accessibilityRole={displayCurrencies.length > 1 ? 'button' : undefined}
@@ -277,7 +276,7 @@ export function HomeScreen({
               <VadIcon name={balanceVisible ? 'eye' : 'eyeOff'} size={19} tone="secondary" />
             </Pressable>
           </View>
-          <VadText variant="title" style={{ fontSize: density.phone ? 25 : 29, lineHeight: density.phone ? 30 : 34, letterSpacing: -0.6 }}>
+          <VadText variant="title" style={{ fontSize: density.phone ? 23 : 27, lineHeight: density.phone ? 28 : 31, letterSpacing: -0.6 }}>
             {balanceVisible ? primaryBalance : '••••••••'}
           </VadText>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', paddingRight: 94 }}>
@@ -307,33 +306,15 @@ export function HomeScreen({
         <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
       </View>
 
-      {promotions.length ? (
-        promotionsToShow.length ? (
-          <View style={{ position: 'relative' }}>
-            <HomePromotionCarousel promotions={promotionsToShow} onOpen={onOpenPromotion} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss promotions"
-              onPress={() => setDismissedPromotionSignature(promotionSignature)}
-              style={{ position: 'absolute', top: 7, right: 7, zIndex: 2, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(9, 13, 31, 0.78)' }}
-            >
-              <VadIcon name="close" size={17} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        ) : null
-      ) : !promotionPlaceholderDismissed ? (
-        <View style={{ minHeight: density.compact ? 104 : 118, overflow: 'hidden', borderRadius: 16, borderWidth: 1, borderColor: '#3436B9', backgroundColor: '#202A82', paddingHorizontal: 14, paddingVertical: 10, paddingRight: 106, justifyContent: 'center', gap: 4 }}>
-          <View pointerEvents="none" style={{ position: 'absolute', right: -30, top: -48, width: 190, height: 190, borderRadius: 95, borderWidth: 28, borderColor: '#4B52E8', opacity: 0.45 }} />
-          <View pointerEvents="none" style={{ position: 'absolute', right: 22, bottom: -70, width: 175, height: 150, borderRadius: 88, backgroundColor: '#3639C7', opacity: 0.55, transform: [{ rotate: '-22deg' }] }} />
-          <VadText variant="heading" style={{ color: '#FFFFFF', fontSize: density.compact ? 17 : 19, lineHeight: density.compact ? 21 : 24 }}>Discover VAD markets</VadText>
-          <VadText variant="caption" style={{ color: '#DDE1FF', fontSize: density.compact ? 11 : 12, lineHeight: density.compact ? 15 : 17 }}>Explore published markets across sports, politics, technology and more.</VadText>
-          <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={({ pressed }) => ({ alignSelf: 'flex-start', marginTop: 3, backgroundColor: '#FFFFFF', borderRadius: 18, paddingHorizontal: 13, paddingVertical: 7, opacity: pressed ? 0.82 : 1 })}>
-            <VadText variant="caption" style={{ color: '#282D9B', fontWeight: '700' }}>Explore markets ›</VadText>
-          </Pressable>
-          <View pointerEvents="none" style={{ position: 'absolute', right: 20, top: 22, width: 62, height: 62, borderRadius: 31, backgroundColor: '#4D52E9', borderWidth: 1, borderColor: '#777BFF', alignItems: 'center', justifyContent: 'center' }}>
-            <VadText style={{ fontSize: 32, lineHeight: 38 }}>↗</VadText>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Dismiss market discovery banner" onPress={() => setPromotionPlaceholderDismissed(true)} style={{ position: 'absolute', top: 7, right: 7, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: 'rgba(9, 13, 31, 0.35)' }}>
+      {promotionsToShow.length ? (
+        <View style={{ position: 'relative' }}>
+          <HomePromotionCarousel promotions={promotionsToShow} onOpen={onOpenPromotion} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss promotions"
+            onPress={() => setDismissedPromotionSignature(promotionSignature)}
+            style={{ position: 'absolute', top: 7, right: 7, zIndex: 2, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(9, 13, 31, 0.78)' }}
+          >
             <VadIcon name="close" size={17} color="#FFFFFF" />
           </Pressable>
         </View>
@@ -475,7 +456,7 @@ function HomeHeaderAction({ label, icon, badge = false, onPress }: { label: stri
 
 function QuickAction({ label, icon, color, onPress }: { label: string; icon: 'plus' | 'wallet' | 'arrowUp' | 'share'; color: string; onPress: () => void }) {
   const theme = useVadTheme();
-  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ flex: 1, minWidth: 0, alignItems: 'center', gap: 6, opacity: pressed ? 0.72 : 1 })}><View style={{ width: 52, height: 52, borderRadius: 28, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}><VadIcon name={icon} size={24} tone="inverse" /></View><VadText variant="caption" style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>{label}</VadText></Pressable>;
+  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ flex: 1, minWidth: 0, alignItems: 'center', gap: 6, opacity: pressed ? 0.72 : 1 })}><View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}><VadIcon name={icon} size={21} tone="inverse" /></View><VadText variant="caption" style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>{label}</VadText></Pressable>;
 }
 
 function SectionHeading({ title, action, onAction }: { title: string; action: string; onAction: () => void }) {
