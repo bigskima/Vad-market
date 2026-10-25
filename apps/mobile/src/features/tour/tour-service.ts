@@ -42,7 +42,28 @@ function isTourRoute(value: unknown): value is TourRoute {
     || value === '/markets'
     || value === '/wallet'
     || value === '/portfolio'
-    || value === '/account';
+    || value === '/account'
+    || value === '/watchlist'
+    || value === '/wallet/activity'
+    || value === '/wallet/deposit'
+    || value === '/wallet/withdraw'
+    || value === '/wallet/send'
+    || value === '/account/profile'
+    || value === '/account/verification'
+    || value === '/account/funding'
+    || value === '/account/region'
+    || value === '/account/appearance'
+    || value === '/account/security'
+    || value === '/account/policies'
+    || value === '/account/growth'
+    || value === '/account/about'
+    || value === '/notifications'
+    || value === '/news'
+    || value === '/financial-markets'
+    || value === '/crypto-assets'
+    || value === '/community'
+    || value === '/assistant'
+    || value === '/create-market';
 }
 
 function normalizeSteps(value: unknown): TourStep[] {
