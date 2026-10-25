@@ -288,7 +288,13 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
 
     const isMarketDetailStep = currentStep.route === '/market/[marketId]';
     const hasValidMarketRoute = isMarketDetailStep && pathname.startsWith('/market/');
-    const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && !productData.markets.some((item) => item.asset_code !== 'TNGN' && ['NGN', 'USDC'].some((code) => code === item.asset_code) && !(item.asset_code === 'USDC' && item.liquidity_mode !== 'POOL') && currencyPreference.isCurrencyEligible(item.asset_code as VADCurrency) && currencyPreference.isCurrencyEnabled(item.asset_code as VADCurrency));
+    const hasTourMarket = productData.markets.some((item) => {
+      if (item.asset_code === 'TNGN' || !['NGN', 'USDC'].some((code) => code === item.asset_code)) return false;
+      if (item.asset_code === 'USDC' && item.liquidity_mode !== 'POOL') return false;
+      const assetCode = item.asset_code as VADCurrency;
+      return currencyPreference.isCurrencyEligible(assetCode) && currencyPreference.isCurrencyEnabled(assetCode);
+    });
+    const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && !hasTourMarket;
     const isNgnDepositOrWithdrawal = ['/wallet/deposit', '/wallet/withdraw'].some((route) => route === currentStep.route);
     const walletRouteCanFallBack = ((isNgnDepositOrWithdrawal && !canUseNgnWalletRoutes) || (currentStep.route === '/wallet/activity' && !canViewWalletActivity)) && pathname === '/wallet';
     const expectedMarketSection = currentStep.targetId === 'market-trading-ticket' ? 'Trade' : 'Overview';
@@ -302,7 +308,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       setSpotlight(null);
       setTargetUnavailable(false);
       scrollControllerRef.current = null;
-      if (isMarketDetailStep && !marketRouteCanFallBack) {
+      if (isMarketDetailStep && !hasTourMarket) {
         setTargetUnavailable(true);
         router.replace('/markets');
       } else {
