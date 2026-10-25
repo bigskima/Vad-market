@@ -240,6 +240,26 @@ create trigger enforce_orderbook_risk_limits
 before insert on trading.orders
 for each row execute function private.enforce_orderbook_risk_limits();
 
+create or replace function private.peer_pool_effective_multiple(
+  p_total_pool numeric,
+  p_winning_pool numeric,
+  p_maximum_multiple numeric
+)
+returns numeric
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $
+  select case
+    when p_total_pool is null or p_winning_pool is null or p_total_pool <= 0 or p_winning_pool <= 0 then 0::numeric
+    when p_maximum_multiple is null then p_total_pool / p_winning_pool
+    else least(p_total_pool / p_winning_pool, p_maximum_multiple)
+  end;
+$;
+
+revoke all on function private.peer_pool_effective_multiple(numeric, numeric, numeric) from public, anon, authenticated;
+
 create or replace function public.pool_quote(
   p_instrument_public_id uuid,
   p_outcome_code text,
@@ -344,11 +364,11 @@ begin
 
   if outcome_pool + p_amount > 0 then
     raw_multiple := (total_pool + p_amount) / (outcome_pool + p_amount);
-    applied_multiple := case
-      when risk_policy.policy_mode = 'BOUNDED' and risk_policy.pool_max_payout_multiple is not null
-        then least(raw_multiple, risk_policy.pool_max_payout_multiple)
-      else raw_multiple
-    end;
+    applied_multiple := private.peer_pool_effective_multiple(
+      total_pool + p_amount,
+      outcome_pool + p_amount,
+      case when risk_policy.policy_mode = 'BOUNDED' then risk_policy.pool_max_payout_multiple else null end
+    );
     est_entry_gross := round(p_amount * applied_multiple, 18);
     est_gross := round(combined_user_outcome_stake * applied_multiple, 18);
   end if;
@@ -606,7 +626,12 @@ begin
         where s.instrument_id = instrument.id and s.outcome_id <> winning_outcome;
 
         if risk_policy.policy_mode = 'BOUNDED' and risk_policy.pool_max_payout_multiple is not null and losing_pool > 0 then
-          winning_budget := least(total_pool, round(winning_pool * risk_policy.pool_max_payout_multiple, 18));
+          winning_budget := least(
+            total_pool,
+            round(winning_pool * private.peer_pool_effective_multiple(
+              total_pool, winning_pool, risk_policy.pool_max_payout_multiple
+            ), 18)
+          );
         else
           -- Legacy pools keep their original winner-takes-the-pool economics.
           winning_budget := total_pool;
@@ -745,6 +770,114 @@ $$;
 revoke all on function private.attach_instrument_trading_risk_policy() from public, anon, authenticated;
 revoke all on function private.enforce_pool_stake_risk_limits() from public, anon, authenticated;
 revoke all on function private.enforce_orderbook_risk_limits() from public, anon, authenticated;
+
+
+
+-- Admin configuration is versioned at the asset-default level. New instruments
+-- receive a snapshot; already-created instruments are not silently re-priced.
+create or replace function public.admin_get_trading_risk_policy_defaults()
+returns table (
+  asset_code text,
+  policy_version integer,
+  enabled boolean,
+  pool_max_entry_stake numeric,
+  pool_max_user_market_stake numeric,
+  pool_max_market_total numeric,
+  pool_max_payout_multiple numeric,
+  order_max_order_notional numeric,
+  order_max_user_market_exposure numeric,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if not private.has_permission('policies.manage') then
+    raise exception 'Permission required' using errcode = '42501';
+  end if;
+
+  return query
+  select a.code, d.policy_version, d.enabled,
+         d.pool_max_entry_stake, d.pool_max_user_market_stake, d.pool_max_market_total,
+         d.pool_max_payout_multiple, d.order_max_order_notional, d.order_max_user_market_exposure,
+         d.updated_at
+  from market.trading_risk_policy_defaults d
+  join public.assets a on a.id = d.asset_id
+  order by a.code;
+end;
+$;
+
+create or replace function public.admin_update_trading_risk_policy_defaults(
+  p_asset_code text,
+  p_enabled boolean,
+  p_pool_max_entry_stake numeric,
+  p_pool_max_user_market_stake numeric,
+  p_pool_max_market_total numeric,
+  p_pool_max_payout_multiple numeric,
+  p_order_max_order_notional numeric,
+  p_order_max_user_market_exposure numeric
+)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_asset_id bigint;
+  v_policy_version integer;
+begin
+  if not private.has_permission('policies.manage') then
+    raise exception 'Permission required' using errcode = '42501';
+  end if;
+
+  if p_asset_code is null or upper(trim(p_asset_code)) not in ('NGN','USDC') then
+    raise exception 'Trading risk defaults may only be configured for supported assets.' using errcode = '22023';
+  end if;
+  if p_enabled is null
+    or p_pool_max_entry_stake is null or p_pool_max_entry_stake <= 0
+    or p_pool_max_user_market_stake is null or p_pool_max_user_market_stake < p_pool_max_entry_stake
+    or p_pool_max_market_total is null or p_pool_max_market_total < p_pool_max_user_market_stake
+    or p_pool_max_payout_multiple is null or p_pool_max_payout_multiple <= 1
+    or p_order_max_order_notional is null or p_order_max_order_notional <= 0
+    or p_order_max_user_market_exposure is null or p_order_max_user_market_exposure < p_order_max_order_notional then
+    raise exception 'Risk limits are inconsistent. Maximums must be positive and cumulative exposure must be at least the single-entry maximum.' using errcode = '22023';
+  end if;
+
+  select a.id into v_asset_id
+  from public.assets a
+  where a.code = upper(trim(p_asset_code)) and a.status = 'ACTIVE';
+
+  if v_asset_id is null then
+    raise exception 'The asset is not active.' using errcode = '22023';
+  end if;
+
+  update market.trading_risk_policy_defaults d
+  set enabled = p_enabled,
+      policy_version = d.policy_version + 1,
+      pool_max_entry_stake = p_pool_max_entry_stake,
+      pool_max_user_market_stake = p_pool_max_user_market_stake,
+      pool_max_market_total = p_pool_max_market_total,
+      pool_max_payout_multiple = p_pool_max_payout_multiple,
+      order_max_order_notional = p_order_max_order_notional,
+      order_max_user_market_exposure = p_order_max_user_market_exposure,
+      updated_at = statement_timestamp(),
+      updated_by = auth.uid()
+  where d.asset_id = v_asset_id
+  returning d.policy_version into v_policy_version;
+
+  if v_policy_version is null then
+    raise exception 'Trading risk defaults are not configured for this asset.' using errcode = 'P0002';
+  end if;
+
+  return v_policy_version;
+end;
+$;
+
+revoke all on function public.admin_get_trading_risk_policy_defaults() from public, anon;
+revoke all on function public.admin_update_trading_risk_policy_defaults(text, boolean, numeric, numeric, numeric, numeric, numeric, numeric) from public, anon;
+grant execute on function public.admin_get_trading_risk_policy_defaults() to authenticated;
+grant execute on function public.admin_update_trading_risk_policy_defaults(text, boolean, numeric, numeric, numeric, numeric, numeric, numeric) to authenticated;
 
 comment on function public.pool_quote(uuid, text, numeric) is
   'Quotes the new Peer Pool entry and the user''s aggregate outcome position under the market-specific versioned payout policy.';
