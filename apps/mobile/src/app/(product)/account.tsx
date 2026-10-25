@@ -374,7 +374,6 @@ export default function AccountScreen() {
           <AccountRow icon="bookmark" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Watchlist" subtitle="Saved markets and price moves" onPress={() => router.push('/watchlist')} />
           <AccountRow icon="wallet" iconBackground={theme.colors.warningSoft} iconColor={theme.colors.warning} title="Payment Methods" subtitle="Linked bank accounts and payment options" onPress={() => router.push('/account/funding')} last />
         </SettingsGroup>
-        </TourTarget>
 
         <SettingsGroup title="Security">
           <AccountRow icon="lock" iconBackground={theme.colors.yesSoft} iconColor={theme.colors.yes} title="Security Settings" subtitle="Password, PIN, biometric login" onPress={() => router.push('/account/security')} />
@@ -393,6 +392,7 @@ export default function AccountScreen() {
           <AccountRow icon="fileText" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Terms & Policies" subtitle="Terms of service, privacy policy, risk disclosures" onPress={() => router.push('/account/policies')} />
           <AccountRow icon="info" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="About VAD Market" subtitle="App version and legal information" onPress={() => router.push('/account/about')} last />
         </SettingsGroup>
+        </TourTarget>
 
         {adminAccessFor === userId && hasAdminAccess ? (
           <SettingsGroup title="Administration">
