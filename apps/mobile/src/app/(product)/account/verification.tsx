@@ -1,5 +1,6 @@
 import { KycCard } from '@/components/kyc-card';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
+import { TourTarget } from '@/features/tour/tour-provider';
 
 export default function AccountVerificationScreen() {
   return (
