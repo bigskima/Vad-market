@@ -123,6 +123,11 @@ begin
     raise exception 'Peer Pool settlement must account for capped-payout surplus refunds';
   end if;
 
+  if position('estimatedNetProfitLossIfCorrect' in pg_get_functiondef('public.pool_quote(uuid,text,numeric)'::regprocedure)) = 0
+     or position('estimatedLosingSideRefund' in pg_get_functiondef('public.pool_quote(uuid,text,numeric)'::regprocedure)) = 0 then
+    raise exception 'Peer Pool quote must report combined profit/loss and capped surplus refund estimates';
+  end if;
+
   if position('vad-onchain-pool:' in pg_get_functiondef(
     'public.internal_prepare_onchain_prediction(uuid,uuid,uuid,text,text,numeric,text)'::regprocedure
   )) = 0 then
