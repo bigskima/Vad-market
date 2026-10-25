@@ -237,7 +237,7 @@ begin
 
   with candidates as materialized (
     select e.id,e.public_id,e.title,e.category,e.status,e.resolution_scope,
-           e.normalized_parameters,e.closes_at,e.resolves_after,e.created_at as opened_at,
+           e.normalized_parameters,e.opens_at as opened_at,e.closes_at,e.resolves_after,
            p.id as policy_id,p.public_id as policy_public_id,
            p.source_hierarchy,p.consensus_rule,p.dispute_window_seconds,p.void_rule,
            c.code as capability_code
@@ -247,7 +247,10 @@ begin
     join oracle.capabilities c on c.id=p.capability_id
     where e.status='AWAITING_ORACLE'
       and upper(coalesce(e.resolution_scope->>'resolver_type','')) in ('VAD_REVIEW_V1','AI_EVIDENCE_RULE_V1')
-      and coalesce(e.resolves_after,e.closes_at) <= statement_timestamp()
+      and greatest(
+        coalesce(e.resolves_after,e.closes_at),
+        coalesce(nullif(e.resolution_scope->>'resolution_deadline','')::timestamptz,e.resolves_after,e.closes_at)
+      ) <= statement_timestamp()
       and not exists (
         select 1 from oracle.disputes d
         where d.event_id=e.id and d.status in ('OPEN','UNDER_REVIEW','ESCALATED')
@@ -437,7 +440,7 @@ begin
     raise exception 'Only AI-evidence markets can use this automatic void path' using errcode='42501';
   end if;
   if not (
-    coalesce(v_event.resolution_scope->>'condition','') ~* E'\\\\mvoid\\\\M'
+    coalesce(v_event.resolution_scope->>'condition','') ~* E'\\mvoid\\M'
     or coalesce(v_event.resolution_scope->>'void_rule','') <> ''
     or coalesce(v_event.resolution_scope->>'voidRule','') <> ''
   ) then
