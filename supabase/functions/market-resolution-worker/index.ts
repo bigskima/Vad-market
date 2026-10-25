@@ -118,7 +118,8 @@ async function fetchText(url: URL, maxChars = 7000): Promise<EvidenceSource | nu
 }
 
 async function searchEvidence(title: string, scope: RecordValue, oracleProviders: OracleProvider[]): Promise<EvidenceSource[]> {
-  const sourceList = Array.isArray(scope.sources) ? scope.sources : [];
+  const sourceList = Array.isArray(scope.sources) ? [...scope.sources] : [];
+  sourceList.push(scope.source_url, scope.sourceUrl);
   const allowedDomains = Array.from(new Set(sourceList.map((item) => validatePublicHttpsUrl(item)?.hostname).filter((x): x is string => Boolean(x))));
   const tavily = oracleProviders.find((p) => p.code === 'TAVILY' && p.environment === 'PRODUCTION'
     && p.status === 'ACTIVE' && p.capabilities?.some((c) => c.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE'));
