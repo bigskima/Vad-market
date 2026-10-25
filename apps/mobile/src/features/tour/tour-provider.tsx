@@ -1,4 +1,4 @@
-import { router, usePathname } from 'expo-router';
+import { router, useLocalSearchParams, usePathname } from 'expo-router';
 import {
   createContext,
   type PropsWithChildren,
@@ -58,6 +58,8 @@ const TourContext = createContext<TourContextValue | null>(null);
 
 export function ProductTourProvider({ children }: PropsWithChildren) {
   const pathname = usePathname();
+  const routeParams = useLocalSearchParams<{ tourSection?: string }>();
+  const tourSection = Array.isArray(routeParams.tourSection) ? routeParams.tourSection[0] : routeParams.tourSection;
   const { height: windowHeight } = useWindowDimensions();
   const { session } = useAuth();
   const productData = useProductDataContext();
@@ -271,6 +273,13 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
     const isMarketDetailStep = currentStep.route === '/market/[marketId]';
     const hasValidMarketRoute = isMarketDetailStep && pathname.startsWith('/market/');
     const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && productData.markets.length === 0;
+    const expectedMarketSection = currentStep.targetId === 'market-trading-ticket' ? 'Trade' : 'Overview';
+    if (hasValidMarketRoute && tourSection !== expectedMarketSection) {
+      setSpotlight(null);
+      setTargetUnavailable(false);
+      navigateToStep(currentStep);
+      return;
+    }
     if (pathname !== currentStep.route && !hasValidMarketRoute && !marketRouteCanFallBack) {
       setSpotlight(null);
       setTargetUnavailable(false);
@@ -330,7 +339,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [currentStep, navigateToStep, pathname, productData.markets.length, windowHeight]);
+  }, [currentStep, navigateToStep, pathname, productData.markets.length, tourSection, windowHeight]);
 
   useEffect(() => {
     if (!active || !currentStep) return;
