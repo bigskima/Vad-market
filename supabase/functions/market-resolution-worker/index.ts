@@ -565,52 +565,113 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
   if (!agreedOutcome || agreedEvidence.length === 0) {
     throw new Error('The agreed AI result lacks a configured outcome or verified evidence.');
   }
-  const chosenEvidence = agreedEvidence[0];
-  const oracleCode = chosenEvidence.source.source === 'SEARCH' ? 'TAVILY' : 'PUBLIC_RECORD';
-  const oracleProvider = oracleProviders.find((provider) =>
-    provider.code === oracleCode && provider.environment === 'PRODUCTION'
-    && provider.status === 'ACTIVE' && provider.capabilities?.some((value) => value.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE')
-  );
-  if (!oracleProvider) throw new Error('Evidence source is not backed by an active configured oracle provider.');
 
-  const idempotencyKey = 'ai-resolution-observation-v1:' + (await sha256([
-    event.eventPublicId, oracleCode, chosenEvidence.url, agreedOutcome, safeText(scope.condition, 1000),
-  ].join('|')));
-  const { data: observationId, error: observationError } = await admin.rpc('internal_record_verified_oracle_observation', {
-    p_event_id: event.eventId,
-    p_provider_id: oracleProvider.id,
-    p_source_code: oracleProvider.code,
-    p_observed_outcome: agreedOutcome,
-    p_payload: {
-      resolver_type: 'AI_EVIDENCE_RULE_V1',
-      ai_agreement_count: winningGroup.length,
-      ai_required_agreement: requiredAgreement,
-      ai_reviews: winningGroup.map((candidate) => ({
-        provider: candidate.runtime.providerCode,
-        model_code: candidate.runtime.modelCode,
-        prompt_version_id: candidate.runtime.promptVersionId,
+  // The existing oracle finalizer requires two distinct oracle-provider
+  // observations. Tie each observation to a separately fetched evidence path:
+  // PUBLIC_RECORD is the direct primary source, while TAVILY is a distinct
+  // search/corroboration path. Do not synthesize a second provider vote when
+  // only one evidence path was actually returned and cited by the models.
+  const directEvidence = agreedEvidence.find((item) => item.source.source === 'DIRECT');
+  const searchResultEvidence = agreedEvidence.find((item) => item.source.source === 'SEARCH');
+  const sourceCodes = new Set<string>();
+  const hierarchy = Array.isArray(event.sourceHierarchy) ? event.sourceHierarchy : [];
+  for (const entry of hierarchy) {
+    const value = typeof entry === 'string'
+      ? entry
+      : isRecord(entry) ? safeText(entry.provider_code ?? entry.providerCode ?? entry.code, 80) : '';
+    if (value) sourceCodes.add(value.toUpperCase());
+  }
+
+  const sourceEvidence = [
+    { code: 'PUBLIC_RECORD', evidence: directEvidence },
+    { code: 'TAVILY', evidence: searchResultEvidence },
+  ] as const;
+  const missingSource = sourceEvidence.find(({ code, evidence }) => !evidence || !sourceCodes.has(code));
+  if (missingSource) {
+    for (const candidate of winningGroup) {
+      await recordAttempt(admin, event, candidate.runtime, 'INCONCLUSIVE', {
+        proposedStatus: 'RESOLVED',
+        proposedOutcomeCode: agreedOutcome,
         confidence: candidate.validated.confidence,
         rationale: candidate.validated.rationale,
-        citations: candidate.evidenceSummary,
-      })),
-      resolution_condition: scope.condition ?? null,
-      evidence: evidenceSummary,
-      evidence_packet_hash: await sha256(JSON.stringify(packet)),
-      started_at: winningGroup[0].startedAt.toISOString(),
-    },
-    p_evidence_reference: chosenEvidence.url,
-    p_observed_at: new Date().toISOString(),
-    p_idempotency_key: idempotencyKey,
-  });
-  if (observationError || observationId == null) throw new Error('Oracle consensus rejected the evidence observation.');
+      }, { citations: candidate.evidenceSummary }, 'The approved oracle policy requires both configured primary and corroborating evidence paths before financial settlement.');
+    }
+    return {
+      eventPublicId: event.eventPublicId,
+      status: 'INCONCLUSIVE',
+      reason: 'TWO_SOURCE_ORACLE_QUORUM_REQUIRED',
+      availableEvidencePaths: agreedEvidence.map((item) => item.source.source),
+    };
+  }
 
+  const observationRecords: Array<{ providerCode: string; observationId: number; evidenceUrl: string }> = [];
+  for (const source of sourceEvidence) {
+    const chosenEvidence = source.evidence!;
+    const oracleProvider = oracleProviders.find((provider) =>
+      provider.code === source.code
+      && provider.environment === 'PRODUCTION'
+      && provider.status === 'ACTIVE'
+      && provider.capabilities?.some((value) => value.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE')
+      && (source.code !== 'TAVILY' || Boolean(provider.secretReference && Deno.env.get(provider.secretReference)?.trim()))
+    );
+    if (!oracleProvider) throw new Error('The approved oracle source ' + source.code + ' is not active and configured.');
+
+    const idempotencyKey = 'ai-resolution-observation-v1:' + (await sha256([
+      event.eventPublicId, oracleProvider.code, chosenEvidence.url, agreedOutcome, safeText(scope.condition, 1000),
+    ].join('|')));
+    const { data: observationId, error: observationError } = await admin.rpc('internal_record_verified_oracle_observation', {
+      p_event_id: event.eventId,
+      p_provider_id: oracleProvider.id,
+      p_source_code: oracleProvider.code,
+      p_observed_outcome: agreedOutcome,
+      p_payload: {
+        resolver_type: 'AI_EVIDENCE_RULE_V1',
+        oracle_source_path: chosenEvidence.source.source,
+        ai_agreement_count: winningGroup.length,
+        ai_required_agreement: requiredAgreement,
+        ai_reviews: winningGroup.map((candidate) => ({
+          provider: candidate.runtime.providerCode,
+          model_code: candidate.runtime.modelCode,
+          prompt_version_id: candidate.runtime.promptVersionId,
+          confidence: candidate.validated.confidence,
+          rationale: candidate.validated.rationale,
+          citations: candidate.evidenceSummary,
+        })),
+        resolution_condition: scope.condition ?? null,
+        source_evidence: {
+          url: chosenEvidence.url,
+          quote: chosenEvidence.quote,
+          published_at: chosenEvidence.publishedAt,
+          source_type: chosenEvidence.source.source,
+        },
+        evidence: evidenceSummary,
+        evidence_packet_hash: await sha256(JSON.stringify(packet)),
+      },
+      p_evidence_reference: chosenEvidence.url,
+      p_observed_at: new Date().toISOString(),
+      p_idempotency_key: idempotencyKey,
+    });
+    if (observationError || observationId == null) {
+      throw new Error('Oracle consensus rejected the ' + oracleProvider.code + ' evidence observation.');
+    }
+    observationRecords.push({
+      providerCode: oracleProvider.code,
+      observationId: Number(observationId),
+      evidenceUrl: chosenEvidence.url,
+    });
+  }
+
+  // The database consensus routine runs after each provider observation. Its
+  // new two-provider minimum prevents the first observation from becoming
+  // provisional; only matching evidence from both sources can enter the
+  // dispute window and later be finalized by the existing cron worker.
   for (const candidate of winningGroup) {
     await recordAttempt(admin, event, candidate.runtime, 'RESOLVED', {
       status: 'RESOLVED',
       outcomeCode: agreedOutcome,
       confidence: candidate.validated.confidence,
       rationale: candidate.validated.rationale,
-      observationId,
+      observationRecords,
       agreementCount: winningGroup.length,
       requiredAgreement,
     }, { citations: candidate.evidenceSummary }, null);
@@ -619,9 +680,9 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     eventPublicId: event.eventPublicId,
     status: 'RESOLVED',
     outcomeCode: agreedOutcome,
-    providers: winningGroup.map((candidate) => candidate.runtime.providerCode),
-    oracleProvider: oracleCode,
-    observationId,
+    aiProviders: winningGroup.map((candidate) => candidate.runtime.providerCode),
+    oracleProviders: observationRecords.map((record) => record.providerCode),
+    observationRecords,
     agreementCount: winningGroup.length,
   };
 }
