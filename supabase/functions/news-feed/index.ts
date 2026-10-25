@@ -174,56 +174,202 @@ function categoryForStory(title: string, requested: Category): Category {
   if (/technology|software|cybersecurity|chip|semiconductor/.test(text)) return 'TECHNOLOGY';
   return 'WORLD';
 }
+type FeedDefinition = { label: string; url: string; category: Category };
+
+const FEEDS: Record<Category, FeedDefinition[]> = {
+  ALL: [
+    { label: 'BBC News', url: 'https://feeds.bbci.co.uk/news/rss.xml', category: 'WORLD' },
+    { label: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'WORLD' },
+    { label: 'BBC Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', category: 'BUSINESS' },
+    { label: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', category: 'TECHNOLOGY' },
+    { label: 'The Guardian World', url: 'https://www.theguardian.com/world/rss', category: 'WORLD' },
+    { label: 'The Guardian Culture', url: 'https://www.theguardian.com/uk/culture/rss', category: 'ENTERTAINMENT' },
+    { label: 'BBC Sport', url: 'https://feeds.bbci.co.uk/sport/rss.xml', category: 'SPORTS' },
+  ],
+  POLITICS: [
+    { label: 'BBC Politics', url: 'https://feeds.bbci.co.uk/news/politics/rss.xml', category: 'POLITICS' },
+    { label: 'The Guardian Politics', url: 'https://www.theguardian.com/politics/rss', category: 'POLITICS' },
+    { label: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'WORLD' },
+  ],
+  WORLD: [
+    { label: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'WORLD' },
+    { label: 'The Guardian World', url: 'https://www.theguardian.com/world/rss', category: 'WORLD' },
+    { label: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', category: 'WORLD' },
+  ],
+  BUSINESS: [
+    { label: 'BBC Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', category: 'BUSINESS' },
+    { label: 'The Guardian Business', url: 'https://www.theguardian.com/uk/business/rss', category: 'BUSINESS' },
+    { label: 'Sky News Business', url: 'https://feeds.skynews.com/feeds/rss/business.xml', category: 'BUSINESS' },
+  ],
+  ECONOMY: [
+    { label: 'BBC Economy', url: 'https://feeds.bbci.co.uk/news/business/economy/rss.xml', category: 'ECONOMY' },
+    { label: 'The Guardian Business', url: 'https://www.theguardian.com/uk/business/rss', category: 'ECONOMY' },
+    { label: 'Sky News Business', url: 'https://feeds.skynews.com/feeds/rss/business.xml', category: 'ECONOMY' },
+  ],
+  TECHNOLOGY: [
+    { label: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', category: 'TECHNOLOGY' },
+    { label: 'The Guardian Technology', url: 'https://www.theguardian.com/uk/technology/rss', category: 'TECHNOLOGY' },
+    { label: 'Sky News Technology', url: 'https://feeds.skynews.com/feeds/rss/technology.xml', category: 'TECHNOLOGY' },
+  ],
+  AI: [
+    { label: 'The Guardian AI', url: 'https://www.theguardian.com/technology/artificialintelligenceai/rss', category: 'AI' },
+    { label: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', category: 'TECHNOLOGY' },
+    { label: 'The Guardian Technology', url: 'https://www.theguardian.com/uk/technology/rss', category: 'TECHNOLOGY' },
+  ],
+  SCIENCE: [
+    { label: 'BBC Science', url: 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml', category: 'SCIENCE' },
+    { label: 'The Guardian Science', url: 'https://www.theguardian.com/science/rss', category: 'SCIENCE' },
+  ],
+  HEALTH: [
+    { label: 'BBC Health', url: 'https://feeds.bbci.co.uk/news/health/rss.xml', category: 'HEALTH' },
+    { label: 'The Guardian Society', url: 'https://www.theguardian.com/society/rss', category: 'HEALTH' },
+  ],
+  SPORTS: [
+    { label: 'BBC Sport', url: 'https://feeds.bbci.co.uk/sport/rss.xml', category: 'SPORTS' },
+    { label: 'Sky News Sport', url: 'https://feeds.skynews.com/feeds/rss/sports.xml', category: 'SPORTS' },
+  ],
+  MUSIC: [
+    { label: 'The Guardian Music', url: 'https://www.theguardian.com/music/rss', category: 'MUSIC' },
+    { label: 'BBC Entertainment & Arts', url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml', category: 'ENTERTAINMENT' },
+  ],
+  ENTERTAINMENT: [
+    { label: 'BBC Entertainment & Arts', url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml', category: 'ENTERTAINMENT' },
+    { label: 'The Guardian Culture', url: 'https://www.theguardian.com/uk/culture/rss', category: 'ENTERTAINMENT' },
+    { label: 'Sky News Entertainment', url: 'https://feeds.skynews.com/feeds/rss/entertainment.xml', category: 'ENTERTAINMENT' },
+  ],
+};
+
+function xmlText(value: string): string {
+  const cdata = /<!\[CDATA\[([\s\S]*?)\]\]>/.exec(value)?.[1] ?? value;
+  return decodeEntities(cdata.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+}
+function xmlTag(xml: string, tagName: string): string | null {
+  const escaped = tagName.replace(/[.*+?^$|{}()[\]\\]/g, '\\$&');
+  const match = new RegExp('<' + escaped + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/' + escaped + '\\s*>', 'i').exec(xml);
+  return match?.[1] ?? null;
+}
+function xmlAttr(tag: string, name: string): string | null {
+  const escaped = name.replace(/[.*+?^$|{}()[\]\\]/g, '\\$&');
+  const match = new RegExp('\\b' + escaped + '\\s*=\\s*([\\'"])(.*?)\\1', 'i').exec(tag);
+  return match?.[2] ? decodeEntities(match[2]) : null;
+}
+function firstXmlImage(item: string): string | null {
+  const candidates = [...item.matchAll(/<(?:media:content|media:thumbnail|itunes:image|enclosure)\b[^>]*>/gi)];
+  for (const match of candidates) {
+    const tag = match[0];
+    const raw = xmlAttr(tag, 'url') ?? xmlAttr(tag, 'href');
+    const safe = safeHttpsUrl(raw);
+    if (safe) return safe;
+  }
+  const description = xmlTag(item, 'media:description') ?? xmlTag(item, 'description') ?? xmlTag(item, 'content:encoded') ?? '';
+  const htmlImage = /<img\b[^>]*\b(?:src|data-src)\s*=\s*(['"])(.*?)\1/i.exec(description)?.[2];
+  if (htmlImage) {
+    const imageUrl = safeHttpsUrl(htmlImage);
+    if (imageUrl) return imageUrl;
+  }
+  return null;
+}
+function parseFeed(xml: string, feed: FeedDefinition): Story[] {
+  const blocks = [...xml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item\s*>/gi)].map((match) => match[1]);
+  return blocks.flatMap((item): Story[] => {
+    const titleRaw = xmlTag(item, 'title');
+    const rawLink = xmlTag(item, 'link') ?? xmlAttr(/<link\b[^>]*>/i.exec(item)?.[0] ?? '', 'href');
+    const url = safeHttpsUrl(rawLink ? xmlText(rawLink) : null);
+    const title = titleRaw ? xmlText(titleRaw).replace(/\s+-\s+(?:BBC News|BBC Sport|The Guardian|Sky News|Al Jazeera)$/i, '').trim() : '';
+    if (!title || !url || title.length < 8) return [];
+    const description = xmlTag(item, 'description') ?? xmlTag(item, 'content:encoded') ?? '';
+    const summary = description ? xmlText(description).slice(0, 450) : '';
+    const sourceTag = xmlTag(item, 'source');
+    const sourceLabel = sourceTag ? xmlText(sourceTag) : '';
+    const publishedRaw = xmlTag(item, 'pubDate') ?? xmlTag(item, 'dc:date') ?? xmlTag(item, 'published') ?? xmlTag(item, 'updated');
+    const parsedDate = publishedRaw ? new Date(xmlText(publishedRaw)) : null;
+    const publishedAt = parsedDate && Number.isFinite(parsedDate.getTime()) ? parsedDate.toISOString() : null;
+    const imageUrl = firstXmlImage(item);
+    const inferredCategory = categoryForStory(title + ' ' + summary, feed.category);
+    return [{
+      id: '',
+      title: title.slice(0, 400),
+      url,
+      imageUrl,
+      source: sourceLabel || publisherFromUrl(url),
+      sourceCountry: null,
+      language: 'en',
+      publishedAt,
+      seenAt: publishedAt,
+      category: inferredCategory,
+      summary: summary || null,
+      author: xmlTag(item, 'dc:creator') ? xmlText(xmlTag(item, 'dc:creator')!) : null,
+      section: feed.category.replace(/_/g, ' '),
+      tags: categoryTags(inferredCategory),
+    }];
+  });
+}
+async function fetchRssFeed(feed: FeedDefinition): Promise<Story[]> {
+  const cached = CACHE.get('rss|' + feed.url);
+  if (cached && cached.expiresAt > Date.now()) {
+    return Array.isArray(cached.payload.stories) ? cached.payload.stories as Story[] : [];
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3800);
+  try {
+    const response = await fetch(feed.url, {
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: {
+        Accept: 'application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.2',
+        'User-Agent': 'VAD-News/1.0 (publisher-attributed headlines)',
+      },
+    });
+    if (!response.ok) throw new Error(feed.label + ' returned HTTP ' + response.status);
+    const xml = await response.text();
+    if (xml.length > 700_000 || !/<(?:rss|rdf:RDF|feed)\b/i.test(xml.slice(0, 6000))) {
+      throw new Error(feed.label + ' returned an invalid RSS feed');
+    }
+    const parsed = parseFeed(xml, feed).slice(0, 50);
+    CACHE.set('rss|' + feed.url, { expiresAt: Date.now() + 5 * 60_000, payload: { stories: parsed } });
+    return parsed;
+  } finally { clearTimeout(timeout); }
+}
+function matchesSearch(story: Story, search: string) {
+  if (!search) return true;
+  const terms = search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const text = (story.title + ' ' + (story.summary ?? '') + ' ' + story.source).toLowerCase();
+  return terms.every((term) => text.includes(term));
+}
 async function listStories(category: Category, search: string, limit: number) {
   const key = 'list|' + category + '|' + search.toLowerCase() + '|' + limit;
   const cached = CACHE.get(key);
   if (cached && cached.expiresAt > Date.now()) return { ...cached.payload, cached: true };
-  const url = new URL('https://api.gdeltproject.org/api/v2/doc/doc');
-  url.searchParams.set('query', queryFor(category, search));
-  url.searchParams.set('mode', 'ArtList');
-  url.searchParams.set('format', 'json');
-  url.searchParams.set('maxrecords', String(Math.max(10, Math.min(50, limit))));
-  url.searchParams.set('sort', 'DateDesc');
-  url.searchParams.set('timespan', '3days');
-  const response = await fetchText(url, 1_500_000);
-  const payload = JSON.parse(response.raw) as unknown;
-  if (!isRecord(payload)) throw new Error('The global news source returned an invalid response.');
-  const rows = Array.isArray(payload.articles) ? payload.articles.filter(isRecord) : [];
-  const stories: Story[] = [];
-  const seen = new Set<string>();
-  for (const row of rows) {
-    const title = safeText(row.title, 400);
-    const articleUrl = safeHttpsUrl(row.url);
-    if (!title || !articleUrl || seen.has(articleUrl)) continue;
-    seen.add(articleUrl);
-    const imageUrl = safeHttpsUrl(row.socialimage);
-    stories.push({
-      id: await digest(articleUrl),
-      title,
-      url: articleUrl,
-      imageUrl,
-      source: publisherFromUrl(articleUrl, row.domain),
-      sourceCountry: safeText(row.sourcecountry, 80) || null,
-      language: safeText(row.language, 40) || null,
-      publishedAt: null,
-      seenAt: seenDate(row.seendate),
-      category: categoryForStory(title, category),
-      summary: null,
-      author: null,
-      section: null,
-      tags: categoryTags(categoryForStory(title, category)),
-    });
+
+  const feedResults = await Promise.allSettled((FEEDS[category] ?? FEEDS.ALL).map(fetchRssFeed));
+  const flattened = feedResults.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
+  const unique = new Map<string, Story>();
+  for (const story of flattened) {
+    if (!matchesSearch(story, search)) continue;
+    const keyByUrl = story.url.toLowerCase().replace(/\/$/, '');
+    const current = unique.get(keyByUrl);
+    if (!current || (!current.imageUrl && story.imageUrl)) unique.set(keyByUrl, story);
   }
+  let stories = await Promise.all([...unique.values()].map(async (story) => ({ ...story, id: await digest(story.url) })));
+  stories.sort((a, b) => Date.parse(b.publishedAt ?? '') - Date.parse(a.publishedAt ?? ''));
+  stories = stories.slice(0, Math.max(10, Math.min(50, limit)));
+
+  if (!stories.length) {
+    throw new Error(feedResults.every((result) => result.status === 'rejected')
+      ? 'News providers are temporarily unavailable. Please retry.'
+      : 'No stories are available for this category yet.');
+  }
+  const publishers = [...new Set(stories.map((story) => story.source))];
   const result = {
-    source: 'GDELT global news index',
+    source: publishers.length > 1 ? 'Multiple news publishers' : publishers[0] ?? 'News publisher',
     fetchedAt: new Date().toISOString(),
     category,
     query: search,
     stories,
-    notice: 'Images and source metadata are supplied by the publishers and indexed by GDELT. Publication timestamps may be absent from the index; open a story for publisher metadata and the original report.',
+    notice: null,
     cached: false,
   };
-  CACHE.set(key, { expiresAt: Date.now() + TTL_MS, payload: result });
+  CACHE.set(key, { expiresAt: Date.now() + 60_000, payload: result });
   while (CACHE.size > MAX_CACHE_ENTRIES) CACHE.delete(CACHE.keys().next().value!);
   return result;
 }
