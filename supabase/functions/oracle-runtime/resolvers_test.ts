@@ -172,3 +172,45 @@ Deno.test('keyless crypto threshold policy selects Coinbase and Kraken, not paid
     'the approved two-source hierarchy must use keyless Coinbase and Kraken and exclude Pyth',
   );
 });
+
+Deno.test('football resolver maps home, draw and away labels to configured multi-outcome codes', () => {
+  const event = eventFixture({
+    title: 'Real Madrid vs Barcelona — match result',
+    category: 'SPORTS',
+    resolutionScope: {
+      resolver_type: 'FOOTBALL_MATCH_RESULT_V1',
+      subject: { home_team: 'Real Madrid', away_team: 'Barcelona' },
+      condition: 'THREE_WAY',
+    },
+    sourceHierarchy: ['THESPORTSDB'],
+    outcomes: [
+      { code: 'HOME', label: 'Real Madrid' },
+      { code: 'DRAW', label: 'Draw' },
+      { code: 'AWAY', label: 'Barcelona' },
+    ],
+  });
+  const spec = parseResolverSpec(event);
+  assert(spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1', 'expected football resolver');
+  assert(spec.condition === 'THREE_WAY', 'expected three-way result mode');
+  assert(spec.outcomeCodes.HOME_WIN === 'HOME', 'home win must map to the configured home code');
+  assert(spec.outcomeCodes.DRAW === 'DRAW', 'draw must map to the configured draw code');
+  assert(spec.outcomeCodes.AWAY_WIN === 'AWAY', 'away win must map to the configured away code');
+});
+
+Deno.test('football resolver does not silently treat a multi-outcome result as binary', () => {
+  const event = eventFixture({
+    category: 'SPORTS',
+    resolutionScope: {
+      resolver_type: 'FOOTBALL_MATCH_RESULT_V1',
+      subject: { home_team: 'Real Madrid', away_team: 'Barcelona' },
+    },
+    outcomes: [
+      { code: 'HOME', label: 'Real Madrid' },
+      { code: 'DRAW', label: 'Draw' },
+      { code: 'AWAY', label: 'Barcelona' },
+    ],
+  });
+  const spec = parseResolverSpec(event);
+  assert(spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1' && spec.condition === 'THREE_WAY', 'multi-outcome market must select one actual configured result');
+});
+
