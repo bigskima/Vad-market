@@ -195,6 +195,15 @@ export function AdminTradingRiskScreen() {
               </VadText>
             </View>
 
+            {policy.asset_code === 'USDC' ? (
+              <VadCard variant="muted" style={{ gap: 4, padding: theme.spacing.sm }}>
+                <VadText variant="bodyStrong">USDC payout-cap compatibility</VadText>
+                <VadText variant="caption" tone="secondary">
+                  VAD Settlement V1 does not support partial refunds to losing positions after a normal result. USDC markets therefore keep their existing payout formula until a compatible contract version is deployed. These USDC settings still enforce single-stake, combined-user and market-pool limits through the on-chain authorization path; the Peer Pool payout multiple is not active for V1 settlements.
+                </VadText>
+              </VadCard>
+            ) : null}
+
             <View style={{ flexDirection: density.narrow ? 'column' : 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
               {FIELDS.map((field) => (
                 <View key={field.key} style={{ flex: 1, flexBasis: density.narrow ? '100%' : '46%', minWidth: density.narrow ? '100%' : 220, gap: 3 }}>
