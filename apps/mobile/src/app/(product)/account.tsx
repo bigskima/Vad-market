@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
-import { Alert, Image, Platform, Pressable, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Image, Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -40,10 +40,13 @@ export default function AccountScreen() {
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [adminAccessFor, setAdminAccessFor] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const [testModeStatus, setTestModeStatus] = useState<TemporaryNgnMarketTestingStatus | null>(null);
   const [testModeSaving, setTestModeSaving] = useState(false);
   const [testModeLocationSaving, setTestModeLocationSaving] = useState(false);
   const [testModeError, setTestModeError] = useState<string | null>(null);
+  const [testModeNotice, setTestModeNotice] = useState<string | null>(null);
 
   const metadataName = typeof metadata.display_name === 'string' ? metadata.display_name.trim()
     : typeof metadata.full_name === 'string' ? metadata.full_name.trim() : '';
@@ -105,11 +108,17 @@ export default function AccountScreen() {
     return () => { ignore = true; };
   }, [userId]);
 
-  useEffect(() => {
-    if (!userId) return;
+  useFocusEffect(useCallback(() => {
+    if (!userId) return undefined;
     let ignore = false;
     void getTemporaryNgnMarketTestingStatus()
-      .then((status) => { if (!ignore) setTestModeStatus(status); })
+      .then((status) => {
+        if (!ignore) {
+          setTestModeStatus(status);
+          setTestModeError(null);
+          setTestModeNotice(null);
+        }
+      })
       .catch((reason) => {
         if (!ignore) {
           setTestModeStatus(null);
@@ -117,66 +126,63 @@ export default function AccountScreen() {
         }
       });
     return () => { ignore = true; };
-  }, [userId]);
+  }, [userId]));
 
 
 
   const isVerified = kycStatus?.status === 'VERIFIED';
   const kycCopy = getKycCopy(kycStatus);
-  const completeSignOut = () => {
-    setSigningOut(true);
-    void signOut()
-      .then(() => {
-        // Explicit navigation is important on web: some preview builds keep
-        // the current protected route mounted after the auth context clears.
-        router.replace('/');
-      })
-      .catch(() => {
-        if (Platform.OS === 'web' && typeof window !== 'undefined') {
-          window.alert('Could not log out. Please try again.');
-        } else {
-          Alert.alert('Could not log out', 'Please try again.');
-        }
-      })
-      .finally(() => setSigningOut(false));
+  const requestSignOut = () => {
+    setSignOutError(null);
+    setConfirmSignOut(true);
   };
 
-  const requestSignOut = () => {
-    const title = 'Log out of VAD Market?';
-    const message = 'You will need to sign in again to access your account.';
-
-    // React Native's Alert.alert is not a working confirmation dialog on web.
-    // Use the browser-native dialog there and keep the native alert on mobile.
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm(title + '\\n\\n' + message)) {
-        completeSignOut();
-      }
-      return;
+  const confirmAndSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    setSignOutError(null);
+    try {
+      await signOut();
+      setConfirmSignOut(false);
+      router.replace('/');
+    } catch {
+      setSignOutError('Could not log out. Please try again.');
+    } finally {
+      setSigningOut(false);
     }
-
-    Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: completeSignOut },
-    ]);
   };
 
   const verifyMarketTestingLocation = async () => {
     if (testModeLocationSaving) return;
     setTestModeLocationSaving(true);
     setTestModeError(null);
+    setTestModeNotice(null);
     try {
       const result = await verifyCurrentServiceLocation();
       if (!result.allowed) {
         throw new Error(locationVerificationMessage(result.reasonCode));
       }
-      const refreshed = await getTemporaryNgnMarketTestingStatus();
-      setTestModeStatus(refreshed);
-      if (!refreshed?.eligible) {
-        throw new Error(testModeBlockReason(refreshed ?? {
-          active: false, eligible: false, testModeEnabled: false,
-          reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE',
-        }));
+
+      // GPS verification succeeded. Market-testing eligibility is a separate
+      // check and must not overwrite a successful location result with a false
+      // "location unavailable" message.
+      let refreshed: TemporaryNgnMarketTestingStatus | null;
+      try {
+        refreshed = await getTemporaryNgnMarketTestingStatus();
+      } catch {
+        setTestModeNotice('Location verified. Market-testing status could not refresh; try again.');
+        return;
       }
+      setTestModeStatus(refreshed);
+      if (!refreshed?.active) {
+        setTestModeNotice('Location verified. No active NGN test credit is assigned to this account yet.');
+        return;
+      }
+      if (!refreshed.eligible) {
+        setTestModeNotice('Location verified. ' + testModeBlockReason(refreshed));
+        return;
+      }
+      setTestModeNotice('Location verified. You can now enable NGN market testing.');
     } catch (reason) {
       setTestModeError(reason instanceof Error ? reason.message : 'Current Nigeria location could not be verified.');
       try {
@@ -199,6 +205,7 @@ export default function AccountScreen() {
     }
     setTestModeSaving(true);
     setTestModeError(null);
+    setTestModeNotice(null);
     try {
       const status = await setTemporaryNgnMarketTesting(next);
       setTestModeStatus(status);
@@ -311,9 +318,21 @@ export default function AccountScreen() {
 
             {!testModeStatus.eligible ? (
               <View style={{ borderRadius: 12, borderWidth: 1, borderColor: theme.colors.warning, padding: 11, gap: 4 }}>
-                <VadText variant="bodyStrong">Location or account check required</VadText>
+                <VadText variant="bodyStrong">More checks required</VadText>
                 <VadText variant="caption" tone="secondary">{testModeBlockReason(testModeStatus)}</VadText>
-                {['LOCATION_CHECK_REQUIRED', 'LOCATION_CHECK_EXPIRED', 'LOCATION_MISMATCH', 'NETWORK_RISK'].includes(testModeStatus.reasonCode ?? '') ? (
+                {[
+                  'LOCATION_CHECK_REQUIRED',
+                  'LOCATION_CHECK_EXPIRED',
+                  'LOCATION_MISMATCH',
+                  'NETWORK_RISK',
+                  'LOCATION_PROVIDER_ERROR',
+                  'LOCATION_CHECK_FAILED',
+                  'NETWORK_RISK_UNRESOLVED',
+                  'LOCATION_VERIFICATION_UNAVAILABLE',
+                  'CLIENT_IP_UNAVAILABLE',
+                  'COUNTRY_UNRESOLVED',
+                  'LOCATION_SAVE_FAILED',
+                ].includes(testModeStatus.reasonCode ?? '') ? (
                   <View style={{ alignSelf: 'flex-start', paddingTop: 5 }}>
                     <VadButton
                       label={testModeLocationSaving ? 'Verifying location…' : 'Verify current location'}
@@ -336,9 +355,11 @@ export default function AccountScreen() {
             <VadText variant="caption" tone="secondary">
               This is non-cash credit for NGN market trading. Deposits and withdrawals stay disabled while it is active. Test credit cannot mix with cash-funded NGN.
             </VadText>
+            {testModeNotice ? <VadText variant="caption" tone="secondary">{testModeNotice}</VadText> : null}
             {testModeError ? <VadText variant="caption" tone="danger">{testModeError}</VadText> : null}
           </VadCard>
         ) : null}
+        {testModeNotice && !testModeStatus?.active ? <VadText variant="caption" tone="secondary">{testModeNotice}</VadText> : null}
         {testModeError && !testModeStatus?.active ? <VadText variant="caption" tone="danger">{testModeError}</VadText> : null}
 
         <SettingsGroup title="Account">
@@ -376,6 +397,27 @@ export default function AccountScreen() {
           <VadText variant="bodyStrong" tone="no" style={{ fontSize: density.phone ? 14 : 15 }}>{signingOut ? 'Logging out…' : 'Log Out'}</VadText>
           <VadIcon name="chevronRight" size={16} tone="no" />
         </Pressable>
+        {confirmSignOut ? (
+          <VadCard style={{ gap: 10, borderColor: theme.colors.no }}>
+            <VadText variant="bodyStrong">Log out of VAD Market?</VadText>
+            <VadText variant="caption" tone="secondary">You will need to sign in again to access your account.</VadText>
+            {signOutError ? <VadText variant="caption" tone="no">{signOutError}</VadText> : null}
+            <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: 8, justifyContent: 'flex-end' }}>
+              <VadButton
+                label="Cancel"
+                variant="secondary"
+                onPress={() => { setConfirmSignOut(false); setSignOutError(null); }}
+                disabled={signingOut}
+              />
+              <VadButton
+                label={signingOut ? 'Logging out…' : 'Log out'}
+                onPress={() => void confirmAndSignOut()}
+                loading={signingOut}
+                disabled={signingOut}
+              />
+            </View>
+          </VadCard>
+        ) : null}
       </View>
     </ProductRoute>
   );
