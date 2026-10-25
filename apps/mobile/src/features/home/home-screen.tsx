@@ -455,8 +455,8 @@ export function HomeScreen({
           ) : (
             <View style={{ padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
               <VadText variant="caption" tone="secondary">{trendingSettings.enabled
-                ? 'No available markets match this category yet. Try another category or browse all markets.'
-                : 'Market rankings are paused. Browse the available markets below in Markets.'}</VadText>
+                ? 'No markets match this category yet.'
+                : 'Browse the latest markets below.'}</VadText>
               <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                 <VadText variant="caption" tone="brand">Browse all markets</VadText>
               </Pressable>
