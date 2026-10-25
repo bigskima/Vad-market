@@ -16,6 +16,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
+import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import {
   getMyProductTour,
   setMyProductTourProgress,
@@ -63,6 +64,8 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const { height: windowHeight } = useWindowDimensions();
   const { session } = useAuth();
   const productData = useProductDataContext();
+  const currencyPreference = useCurrencyPreference();
+  const canUseNgnWalletRoutes = productData.activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
   const userId = session?.user.id ?? null;
   const [definition, setDefinition] = useState<ProductTourDefinition | null>(null);
   const [progress, setProgress] = useState<TourProgress>(DEFAULT_TOUR_PROGRESS);
@@ -115,9 +118,16 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   }, [userId]);
 
   const navigateToStep = useCallback((step: TourStep) => {
+    if (['/wallet/deposit', '/wallet/withdraw', '/wallet/send'].includes(step.route) && !canUseNgnWalletRoutes) {
+      router.replace('/wallet');
+      return;
+    }
     if (step.route === '/market/[marketId]') {
-      const market = productData.markets.find((item) => item.asset_code !== 'TNGN')
-        ?? productData.markets[0];
+      const market = productData.markets.find((item) => {
+        if (item.asset_code === 'TNGN' || !['NGN', 'USDC'].includes(item.asset_code)) return false;
+        const assetCode = item.asset_code as VADCurrency;
+        return currencyPreference.isCurrencyEligible(assetCode) && currencyPreference.isCurrencyEnabled(assetCode);
+      });
       if (!market) {
         router.replace('/markets');
         return;
@@ -132,7 +142,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       return;
     }
     if (pathname !== step.route) router.replace(step.route);
-  }, [pathname, productData.markets]);
+  }, [canUseNgnWalletRoutes, currencyPreference, pathname, productData.markets]);
 
   const saveProgress = useCallback((
     status: Exclude<TourProgressStatus, 'NEW'>,
@@ -272,7 +282,8 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
 
     const isMarketDetailStep = currentStep.route === '/market/[marketId]';
     const hasValidMarketRoute = isMarketDetailStep && pathname.startsWith('/market/');
-    const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && productData.markets.length === 0;
+    const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && !productData.markets.some((item) => item.asset_code !== 'TNGN' && ['NGN', 'USDC'].includes(item.asset_code) && currencyPreference.isCurrencyEnabled(item.asset_code as VADCurrency));
+    const walletRouteCanFallBack = ['/wallet/deposit', '/wallet/withdraw', '/wallet/send'].includes(currentStep.route) && !canUseNgnWalletRoutes && pathname === '/wallet';
     const expectedMarketSection = currentStep.targetId === 'market-trading-ticket' ? 'Trade' : 'Overview';
     if (hasValidMarketRoute && tourSection !== expectedMarketSection) {
       setSpotlight(null);
@@ -280,11 +291,11 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       navigateToStep(currentStep);
       return;
     }
-    if (pathname !== currentStep.route && !hasValidMarketRoute && !marketRouteCanFallBack) {
+    if (pathname !== currentStep.route && !hasValidMarketRoute && !marketRouteCanFallBack && !walletRouteCanFallBack) {
       setSpotlight(null);
       setTargetUnavailable(false);
       scrollControllerRef.current = null;
-      if (isMarketDetailStep && !productData.markets.length) {
+      if (isMarketDetailStep && !marketRouteCanFallBack) {
         setTargetUnavailable(true);
         router.replace('/markets');
       } else {
@@ -339,7 +350,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [currentStep, navigateToStep, pathname, productData.markets.length, tourSection, windowHeight]);
+  }, [canUseNgnWalletRoutes, currentStep, currencyPreference, navigateToStep, pathname, productData.markets, tourSection, windowHeight]);
 
   useEffect(() => {
     if (!active || !currentStep) return;
