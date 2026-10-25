@@ -6,6 +6,9 @@ export type EffectiveMarketStage =
   | 'OPEN'
   | 'CLOSED'
   | 'RESOLVING'
+  | 'RESULT_REVIEW'
+  | 'PAYOUT_ATTENTION'
+  | 'RETIRED_ASSET'
   | 'SETTLEMENT_PENDING'
   | 'SETTLED'
   | 'VOIDED'
@@ -51,14 +54,18 @@ export function getMarketTiming(market: MarketCatalogItem, nowMs: number) {
   const closesAt = timestamp(market.closes_at);
   const resolvesAt = timestamp(market.resolves_after);
   const resolutionFinal = resolutionStatus === 'FINAL' || resolutionStatus === 'VOID';
+  const resolutionProvisional = resolutionStatus === 'PROVISIONAL';
+  const resultTimePassed = resolvesAt != null && nowMs >= resolvesAt;
 
   let stage: EffectiveMarketStage;
   if (backendStatus === 'SETTLED') stage = 'SETTLED';
   else if (backendStatus === 'VOID' || backendStatus === 'VOIDED' || resolutionStatus === 'VOID') stage = 'VOIDED';
-  else if (backendStatus === 'SETTLEMENT_PENDING' || resolutionFinal) stage = 'SETTLEMENT_PENDING';
-  else if (backendStatus === 'RESOLVING' || backendStatus === 'RESOLVED') stage = 'RESOLVING';
-  else if (backendStatus === 'CLOSED') stage = resolvesAt != null && nowMs >= resolvesAt ? 'RESOLVING' : 'CLOSED';
-  else if ((backendStatus === 'OPEN' || backendStatus === 'ACTIVE') && resolvesAt != null && nowMs >= resolvesAt) stage = 'RESOLVING';
+  else if (backendStatus === 'SETTLEMENT_PENDING') stage = 'SETTLEMENT_PENDING';
+  else if (market.asset_code.toUpperCase() === 'TNGN') stage = 'RETIRED_ASSET';
+  else if (resolutionFinal) stage = 'PAYOUT_ATTENTION';
+  else if (resolutionProvisional || backendStatus === 'RESOLVING' || backendStatus === 'RESOLVED') stage = 'RESOLVING';
+  else if (backendStatus === 'CLOSED' || backendStatus === 'AWAITING_ORACLE') stage = resultTimePassed ? 'RESULT_REVIEW' : 'CLOSED';
+  else if ((backendStatus === 'OPEN' || backendStatus === 'ACTIVE') && resultTimePassed) stage = resolutionStatus ? 'RESOLVING' : 'RESULT_REVIEW';
   else if ((backendStatus === 'OPEN' || backendStatus === 'ACTIVE') && closesAt != null && nowMs >= closesAt) stage = 'CLOSED';
   else if ((backendStatus === 'OPEN' || backendStatus === 'ACTIVE' || backendStatus === 'SCHEDULED') && opensAt != null && nowMs < opensAt) stage = 'SCHEDULED';
   else if (backendStatus === 'OPEN' || backendStatus === 'ACTIVE') stage = 'OPEN';
@@ -81,23 +88,29 @@ export function getMarketTiming(market: MarketCatalogItem, nowMs: number) {
     stage === 'OPEN' ? 'Open'
       : stage === 'SCHEDULED' ? 'Scheduled'
         : stage === 'CLOSED' ? 'Closed'
-          : stage === 'RESOLVING' ? 'Result processing'
-            : stage === 'SETTLEMENT_PENDING' ? 'Payout processing'
-              : stage === 'SETTLED' ? 'Completed'
-                : stage === 'VOIDED' ? 'Cancelled'
-                  : stage === 'SUSPENDED' ? 'Paused'
-                    : 'Draft';
+          : stage === 'RESULT_REVIEW' ? 'Needs result review'
+            : stage === 'RESOLVING' ? 'Result under review'
+              : stage === 'PAYOUT_ATTENTION' ? 'Payout needs attention'
+                : stage === 'RETIRED_ASSET' ? 'Retired test asset'
+                  : stage === 'SETTLEMENT_PENDING' ? 'Payout processing'
+                    : stage === 'SETTLED' ? 'Completed'
+                      : stage === 'VOIDED' ? 'Cancelled'
+                        : stage === 'SUSPENDED' ? 'Paused'
+                          : 'Draft';
 
   const primaryTiming =
     stage === 'SCHEDULED' && openCountdown ? `Opens in ${openCountdown}`
       : stage === 'OPEN' && closeCountdown ? `Closes in ${closeCountdown}`
         : stage === 'CLOSED' && resolutionCountdown ? `Result check in ${resolutionCountdown}`
           : stage === 'CLOSED' ? 'Trading closed'
-            : stage === 'RESOLVING' ? 'Result processing'
-              : stage === 'SETTLEMENT_PENDING' ? 'Payout processing'
-                : stage === 'SETTLED' ? 'Settlement complete'
-                  : stage === 'VOIDED' ? 'Market cancelled'
-                    : statusLabel;
+            : stage === 'RESULT_REVIEW' ? 'Awaiting a verified outcome'
+              : stage === 'RESOLVING' ? 'Provisional result under review'
+                : stage === 'PAYOUT_ATTENTION' ? 'Result final · payout not queued'
+                  : stage === 'RETIRED_ASSET' ? 'Test asset retired'
+                    : stage === 'SETTLEMENT_PENDING' ? 'Payout processing'
+                      : stage === 'SETTLED' ? 'Settlement complete'
+                        : stage === 'VOIDED' ? 'Market cancelled'
+                          : statusLabel;
 
   return {
     stage,
