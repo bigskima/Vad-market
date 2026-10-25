@@ -102,7 +102,7 @@ async function fetchText(url: URL, maxChars = 7000): Promise<EvidenceSource | nu
       method: 'GET',
       redirect: 'error',
       headers: { Accept: 'text/html,application/xhtml+xml,text/plain,application/json' },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(7000),
     });
     if (!response.ok) return null;
     const declaredType = response.headers.get('content-type') ?? '';
@@ -142,7 +142,7 @@ async function searchEvidence(title: string, scope: RecordValue, oracleProviders
         include_raw_content: false,
         include_domains: allowedDomains,
       }),
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(8000),
     });
     if (!response.ok) return [];
     const payload = await response.json().catch(() => ({}));
@@ -248,7 +248,7 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: runtime.systemPrompt }, { role: 'user', content: userPrompt }],
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(15000),
     });
   } else if (runtime.adapter === 'GEMINI_GENERATE_CONTENT') {
     response = await fetch(runtime.endpoint.replaceAll('{model}', encodeURIComponent(runtime.modelCode)), {
@@ -259,7 +259,7 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         generationConfig: { temperature: 0, maxOutputTokens: 1400, responseMimeType: 'application/json' },
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(15000),
     });
   } else if (runtime.adapter === 'ANTHROPIC_MESSAGES') {
     if (!runtime.apiVersion) throw new Error('Anthropic API version is not configured.');
@@ -270,7 +270,7 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
         model: runtime.modelCode, temperature: 0, max_tokens: 1400, system: runtime.systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(15000),
     });
   } else if (runtime.adapter === 'CLOUDFLARE_WORKERS_AI') {
     response = await fetch(runtime.endpoint.replaceAll('{model}', encodeURIComponent(runtime.modelCode)), {
@@ -280,7 +280,7 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
         messages: [{ role: 'system', content: runtime.systemPrompt }, { role: 'user', content: userPrompt }],
         temperature: 0, max_tokens: 1400,
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(15000),
     });
   } else {
     throw new Error('Unsupported configured AI adapter.');
@@ -324,7 +324,7 @@ function validateOutput(raw: RecordValue, event: RecordValue, packet: EvidenceSo
 
 async function recordAttempt(admin: ReturnType<typeof createClient>, event: RecordValue, runtime: AiRuntime | null, status: string, output: RecordValue, evidence: RecordValue, failureReason: string | null) {
   const unique = [safeText(event.eventPublicId, 80), String(runtime?.aiProviderId ?? 'NO_MODEL'), new Date().toISOString(), status].join(':');
-  await admin.rpc('internal_record_market_resolution_attempt', {
+  const { error } = await admin.rpc('internal_record_market_resolution_attempt', {
     p_event_id: event.eventId,
     p_ai_provider_id: runtime?.aiProviderId ?? null,
     p_model_code: runtime?.modelCode ?? null,
@@ -333,6 +333,11 @@ async function recordAttempt(admin: ReturnType<typeof createClient>, event: Reco
     p_evidence_payload: evidence,
     p_failure_reason: failureReason,
     p_attempt_key: 'ai-resolution-v1:' + (await sha256(unique)),
+  });
+  if (error) console.error('Could not persist AI resolution attempt', {
+    eventPublicId: event.eventPublicId,
+    status,
+    code: error.code ?? null,
   });
 }
 
@@ -344,9 +349,11 @@ async function processEvent(admin: ReturnType<typeof createClient>, event: Recor
     const candidate = validatePublicHttpsUrl(scope[field]);
     if (candidate && !primaryUrls.some((existing) => existing.toString() === candidate.toString())) primaryUrls.push(candidate);
   }
-  const directResults = await Promise.all(primaryUrls.map((url) => fetchText(url)));
+  const [directResults, searchPacket] = await Promise.all([
+    Promise.all(primaryUrls.map((url) => fetchText(url))),
+    searchEvidence(safeText(event.title, 500), scope, oracleProviders),
+  ]);
   const directPacket = directResults.filter((value): value is EvidenceSource => Boolean(value));
-  const searchPacket = await searchEvidence(safeText(event.title, 500), scope, oracleProviders);
   const seen = new Set<string>();
   const packet = [...directPacket, ...searchPacket].filter((item) => {
     if (seen.has(item.url)) return false;
