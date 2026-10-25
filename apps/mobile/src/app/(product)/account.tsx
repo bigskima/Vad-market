@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Alert, Image, Pressable, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -123,15 +123,40 @@ export default function AccountScreen() {
 
   const isVerified = kycStatus?.status === 'VERIFIED';
   const kycCopy = getKycCopy(kycStatus);
-  const requestSignOut = () => {
-    Alert.alert('Log out of VAD Market?', 'You will need to sign in again to access your account.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: () => {
-        setSigningOut(true);
-        void signOut().catch(() => {
+  const completeSignOut = () => {
+    setSigningOut(true);
+    void signOut()
+      .then(() => {
+        // Explicit navigation is important on web: some preview builds keep
+        // the current protected route mounted after the auth context clears.
+        router.replace('/');
+      })
+      .catch(() => {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.alert('Could not log out. Please try again.');
+        } else {
           Alert.alert('Could not log out', 'Please try again.');
-        }).finally(() => setSigningOut(false));
-      } },
+        }
+      })
+      .finally(() => setSigningOut(false));
+  };
+
+  const requestSignOut = () => {
+    const title = 'Log out of VAD Market?';
+    const message = 'You will need to sign in again to access your account.';
+
+    // React Native's Alert.alert is not a working confirmation dialog on web.
+    // Use the browser-native dialog there and keep the native alert on mobile.
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(title + '\\n\\n' + message)) {
+        completeSignOut();
+      }
+      return;
+    }
+
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log Out', style: 'destructive', onPress: completeSignOut },
     ]);
   };
 
