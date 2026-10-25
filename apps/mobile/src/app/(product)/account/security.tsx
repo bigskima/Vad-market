@@ -6,6 +6,7 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { supabase } from '@/lib/supabase';
@@ -147,6 +148,7 @@ export default function AccountSecurityScreen() {
           <VadButton label="Send password reset email" variant="secondary" loading={working} disabled={!email} onPress={() => void sendPasswordReset()} />
         </VadCard>
 
+        <TourTarget id="security-settings">
         <VadCard style={{ gap: theme.spacing.sm }}>
           <View style={{ gap: 3 }}>
             <VadText variant="heading">Two-Factor Authentication</VadText>
@@ -185,6 +187,7 @@ export default function AccountSecurityScreen() {
             </View>
           )}
         </VadCard>
+        </TourTarget>
 
         <VadCard style={{ gap: 6 }}>
           <VadText variant="heading">Active Sessions</VadText>
