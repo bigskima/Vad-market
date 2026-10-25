@@ -250,11 +250,11 @@ function xmlTag(xml: string, tagName: string): string | null {
 }
 function xmlAttr(tag: string, name: string): string | null {
   const escaped = name.replace(/[.*+?^$|{}()[\]\\]/g, '\\$&');
-  const match = new RegExp('\\b' + escaped + '\\s*=\\s*([\\'"])(.*?)\\1', 'i').exec(tag);
+  const match = new RegExp("\\b" + escaped + "\\s*=\\s*(['\\"]) (.*?)\\1".replace("] (", "]("), 'i').exec(tag);
   return match?.[2] ? decodeEntities(match[2]) : null;
 }
 function firstXmlImage(item: string): string | null {
-  const candidates = [...item.matchAll(/<(?:media:content|media:thumbnail|itunes:image|enclosure)\b[^>]*>/gi)];
+  const candidates = [...item.matchAll(/<(?:media:content|media:thumbnail|itunes:image)\b[^>]*>/gi)];
   for (const match of candidates) {
     const tag = match[0];
     const raw = xmlAttr(tag, 'url') ?? xmlAttr(tag, 'href');
