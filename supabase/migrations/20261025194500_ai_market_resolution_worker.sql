@@ -942,6 +942,294 @@ grant execute on function public.internal_record_market_resolution_attempt(bigin
 grant execute on function public.internal_auto_void_vad_review_event(bigint,jsonb) to service_role;
 
 
+
+-- Database-driven official result pages for automatic sports evidence.
+-- Sources are catalog data, not provider URLs hard-coded into the runtime.
+update market.sports_competitions
+set metadata = coalesce(metadata,'{}'::jsonb) || jsonb_build_object(
+  'official_result_sources', jsonb_build_array(
+    'https://www.laliga.com/en-GB/laliga-easports/results',
+    'https://www.laliga.com/en-GB/laliga-easports'
+  ),
+  'official_result_source_name','LALIGA official results'
+), updated_at = statement_timestamp()
+where sport_code='FOOTBALL' and competition_code='PD';
+
+update market.sports_competitions
+set metadata = coalesce(metadata,'{}'::jsonb) || jsonb_build_object(
+  'official_result_sources', jsonb_build_array(
+    'https://www.premierleague.com/en/matches/results/2026-27',
+    'https://www.premierleague.com/en/matches/matches/2026-27'
+  ),
+  'official_result_source_name','Premier League official results'
+), updated_at = statement_timestamp()
+where sport_code='FOOTBALL' and competition_code='PL';
+
+update market.sports_competitions
+set metadata = coalesce(metadata,'{}'::jsonb) || jsonb_build_object(
+  'official_result_sources', jsonb_build_array(
+    'https://www.bundesliga.com/en/bundesliga',
+    'https://www.bundesliga.com/en/bundesliga/news/confirmed-kick-off-times-dates-2026-27-fixtures-23955'
+  ),
+  'official_result_source_name','Bundesliga official match results'
+), updated_at = statement_timestamp()
+where sport_code='FOOTBALL' and competition_code='BL1';
+
+update market.sports_competitions
+set metadata = coalesce(metadata,'{}'::jsonb) || jsonb_build_object(
+  'official_result_sources', jsonb_build_array(
+    'https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-phase-fixtures/',
+    'https://www.uefa.com/uefachampionsleague/'
+  ),
+  'official_result_source_name','UEFA Champions League official fixtures and results'
+), updated_at = statement_timestamp()
+where sport_code='FOOTBALL' and competition_code='CL';
+
+update market.sports_competitions
+set metadata = coalesce(metadata,'{}'::jsonb) || jsonb_build_object(
+  'official_result_sources', jsonb_build_array(
+    'https://www.legaseriea.it/serie-a/calendario-risultati',
+    'https://en.legaseriea.it/en/serie-a'
+  ),
+  'official_result_source_name','Lega Serie A official calendar and results'
+), updated_at = statement_timestamp()
+where sport_code='FOOTBALL' and competition_code='SA';
+
+create or replace function private.enrich_vad_sports_result_sources()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $function$
+declare
+  v_scope jsonb := coalesce(new.resolution_scope,'{}'::jsonb);
+  v_subject jsonb;
+  v_competition text;
+  v_profile jsonb;
+  v_profile_sources jsonb;
+  v_current_sources jsonb;
+  v_merged_sources jsonb;
+  v_source_name text;
+  v_source_url text;
+begin
+  if upper(coalesce(new.category,'')) <> 'SPORTS'
+     or upper(coalesce(v_scope->>'resolver_type','')) not in ('VAD_REVIEW_V1','AI_EVIDENCE_RULE_V1') then
+    return new;
+  end if;
+
+  v_subject := case when jsonb_typeof(v_scope->'subject')='object' then v_scope->'subject' else '{}'::jsonb end;
+  v_competition := nullif(btrim(coalesce(v_subject->>'competition',v_scope->>'competition')),'');
+  if v_competition is null then
+    return new;
+  end if;
+
+  select sc.metadata
+  into v_profile
+  from market.sports_competitions sc
+  where sc.status='ACTIVE'
+    and upper(sc.sport_code) in ('FOOTBALL','SOCCER')
+    and (
+      lower(sc.competition_name)=lower(v_competition)
+      or exists (
+        select 1 from jsonb_array_elements_text(coalesce(sc.aliases,'[]'::jsonb)) alias_name
+        where lower(alias_name)=lower(v_competition)
+      )
+    )
+    and jsonb_typeof(sc.metadata->'official_result_sources')='array'
+    and jsonb_array_length(sc.metadata->'official_result_sources')>0
+  order by sc.display_order,sc.competition_code
+  limit 1;
+
+  if v_profile is null then
+    return new;
+  end if;
+
+  v_profile_sources := v_profile->'official_result_sources';
+  v_source_name := nullif(v_profile->>'official_result_source_name','');
+  v_current_sources := case
+    when jsonb_typeof(v_scope->'sources')='array' then v_scope->'sources'
+    else '[]'::jsonb
+  end;
+
+  select coalesce(jsonb_agg(url order by priority,ord),'[]'::jsonb)
+  into v_merged_sources
+  from (
+    select url,min(priority) as priority,min(ord) as ord
+    from (
+      select value as url,0 as priority,ordinality as ord
+      from jsonb_array_elements_text(v_profile_sources) with ordinality
+      union all
+      select value as url,1 as priority,ordinality as ord
+      from jsonb_array_elements_text(v_current_sources) with ordinality
+    ) all_sources
+    where url like 'https://%'
+    group by url
+  ) deduped;
+
+  if jsonb_array_length(v_merged_sources)>0 then
+    v_source_url := v_merged_sources->>0;
+    v_scope := v_scope || jsonb_build_object('sources',v_merged_sources,'source_url',v_source_url);
+    if v_source_name is not null then
+      v_scope := v_scope || jsonb_build_object('source_name',v_source_name);
+    end if;
+    v_scope := v_scope || jsonb_build_object(
+      'verification',
+      'Automatic resolution uses the configured official competition result pages plus the configured corroborating evidence provider. Finality and payouts remain governed by VAD oracle consensus and dispute rules.'
+    );
+    new.resolution_scope := v_scope;
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists vad_sports_result_source_enrichment on market.canonical_events;
+create trigger vad_sports_result_source_enrichment
+before insert or update of resolution_scope,category on market.canonical_events
+for each row execute function private.enrich_vad_sports_result_sources();
+
+create or replace function private.route_vad_evidence_policy_by_resolver()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $function$
+declare
+  v_scope jsonb;
+  v_event_public_id uuid;
+  v_has_real_asset boolean;
+  v_policy_id bigint;
+  v_before_policy_id bigint := new.oracle_policy_id;
+begin
+  select e.resolution_scope,e.public_id
+  into v_scope,v_event_public_id
+  from market.canonical_events e
+  where e.id=new.event_id;
+
+  if upper(coalesce(v_scope->>'resolver_type','')) not in ('VAD_REVIEW_V1','AI_EVIDENCE_RULE_V1') then
+    return new;
+  end if;
+
+  select exists (
+    select 1
+    from market.instruments i
+    join public.assets a on a.id=i.asset_id
+    where i.canonical_event_id=new.event_id
+      and upper(a.code)<>'TNGN'
+      and not coalesce((a.metadata->>'sandbox_only')::boolean,false)
+  ) into v_has_real_asset;
+
+  if not coalesce(v_has_real_asset,false) then
+    return new;
+  end if;
+
+  if exists (
+    select 1
+    from oracle.policies p
+    where p.id=new.oracle_policy_id
+      and p.status='ACTIVE'
+      and p.approved_by is not null
+      and upper(coalesce(p.consensus_rule->>'environment','PRODUCTION'))='PRODUCTION'
+      and exists (
+        select 1 from jsonb_array_elements(p.source_hierarchy) h
+        where upper(coalesce(h->>'provider_code',h->>'providerCode',''))='PUBLIC_RECORD'
+      )
+      and exists (
+        select 1 from jsonb_array_elements(p.source_hierarchy) h
+        where upper(coalesce(h->>'provider_code',h->>'providerCode',''))='TAVILY'
+      )
+  ) then
+    return new;
+  end if;
+
+  select p.id into v_policy_id
+  from oracle.policies p
+  where p.status='ACTIVE'
+    and p.approved_by is not null
+    and p.effective_at<=statement_timestamp()
+    and upper(coalesce(p.consensus_rule->>'environment','PRODUCTION'))='PRODUCTION'
+    and upper(coalesce(p.consensus_rule->>'finalization_mode',''))='AUTO_AFTER_DISPUTE_WINDOW'
+    and coalesce(p.void_rule->>'mode','')='EQUAL_SPLIT'
+    and exists (
+      select 1 from jsonb_array_elements(p.source_hierarchy) h
+      where upper(coalesce(h->>'provider_code',h->>'providerCode',''))='PUBLIC_RECORD'
+    )
+    and exists (
+      select 1 from jsonb_array_elements(p.source_hierarchy) h
+      where upper(coalesce(h->>'provider_code',h->>'providerCode',''))='TAVILY'
+    )
+  order by p.version desc,p.effective_at desc,p.id desc
+  limit 1;
+
+  if v_policy_id is null then
+    raise exception 'No approved production evidence policy matches this automatic resolver' using errcode='23514';
+  end if;
+
+  new.oracle_policy_id := v_policy_id;
+  new.bound_at := statement_timestamp();
+
+  insert into audit.records(actor_type,action,resource_type,resource_id,reason,after_state,metadata)
+  values(
+    'SYSTEM','ORACLE_POLICY_ROUTED_BY_RESOLVER','CANONICAL_EVENT',coalesce(v_event_public_id::text,new.event_id::text),
+    'Replaced an incompatible policy binding with the approved evidence policy required by the event resolver.',
+    jsonb_build_object('oracle_policy_id',v_policy_id),
+    jsonb_build_object(
+      'previous_policy_id',v_before_policy_id,
+      'new_policy_id',v_policy_id,
+      'resolver_type',v_scope->>'resolver_type',
+      'category',v_scope->>'category'
+    )
+  );
+  return new;
+end;
+$function$;
+
+drop trigger if exists vad_policy_resolver_routing on oracle.event_policy_bindings;
+create trigger vad_policy_resolver_routing
+before insert or update on oracle.event_policy_bindings
+for each row execute function private.route_vad_evidence_policy_by_resolver();
+
+-- Repair existing real-asset evidence markets created with unrelated policy families.
+-- This changes only the source-policy binding; market text, outcomes, stakes and
+-- settlement terms remain untouched. The trigger writes a SYSTEM audit row.
+update oracle.event_policy_bindings b
+set bound_at=statement_timestamp()
+from market.canonical_events e
+where e.id=b.event_id
+  and upper(coalesce(e.resolution_scope->>'resolver_type','')) in ('VAD_REVIEW_V1','AI_EVIDENCE_RULE_V1')
+  and exists (
+    select 1
+    from market.instruments i
+    join public.assets a on a.id=i.asset_id
+    where i.canonical_event_id=e.id
+      and upper(a.code)<>'TNGN'
+      and not coalesce((a.metadata->>'sandbox_only')::boolean,false)
+  )
+  and not exists (
+    select 1
+    from oracle.policies p
+    where p.id=b.oracle_policy_id
+      and p.status='ACTIVE'
+      and p.approved_by is not null
+      and upper(coalesce(p.consensus_rule->>'environment','PRODUCTION'))='PRODUCTION'
+      and exists (
+        select 1 from jsonb_array_elements(p.source_hierarchy) h
+        where upper(coalesce(h->>'provider_code',h->>'providerCode',''))='PUBLIC_RECORD'
+      )
+      and exists (
+        select 1 from jsonb_array_elements(p.source_hierarchy) h
+        where upper(coalesce(h->>'provider_code',h->>'providerCode',''))='TAVILY'
+      )
+  );
+
+-- Enrich already-created evidence-based sports markets from the same competition
+-- catalogue used by the sports fixture/draft workflow.
+update market.canonical_events
+set resolution_scope=resolution_scope
+where upper(coalesce(category,''))='SPORTS'
+  and upper(coalesce(resolution_scope->>'resolver_type','')) in ('VAD_REVIEW_V1','AI_EVIDENCE_RULE_V1')
+  and jsonb_typeof(resolution_scope->'subject')='object'
+  and nullif(btrim(resolution_scope->'subject'->>'competition'),'') is not null;
+
 -- Run the bounded AI evidence resolver independently from provider ingestion.
 -- The existing finalizer and settlement jobs continue to own those stages.
 do $migration$
