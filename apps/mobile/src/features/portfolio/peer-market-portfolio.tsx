@@ -130,7 +130,7 @@ function StakeCard({ stake }: { stake: PoolStakeRow }) {
     <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: theme.spacing.sm }}>
         <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-          <VadText variant="caption" tone="brand">PEER-POOL STAKE</VadText>
+          <VadText variant="caption" tone="brand">Your prediction</VadText>
           <VadText variant="bodyStrong" numberOfLines={3}>{stake.market_title}</VadText>
           <VadText variant="caption" tone="tertiary">{stake.asset_code} · {friendly(stake.market_status)}</VadText>
         </View>
@@ -138,9 +138,8 @@ function StakeCard({ stake }: { stake: PoolStakeRow }) {
       </View>
       <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
         <Metric label="Committed" value={assetMoney(stake.amount, stake.asset_code)} />
-        <Metric label="VAD trading fee" value={assetMoney(stake.trading_fee, stake.asset_code)} />
+        <Metric label="Trading fee" value={assetMoney(stake.trading_fee, stake.asset_code)} />
       </View>
-      <VadText variant="caption" tone="secondary">This stake is held in the market’s participant collateral pool. VAD does not fund the opposing side.</VadText>
     </VadCard>
   );
 }

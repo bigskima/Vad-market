@@ -577,7 +577,7 @@ function MarketSnapshot({ market, timing, outcomes }: { market: MarketCatalogIte
                 </View>
               ))}
               <VadText variant="caption" tone="tertiary" style={{ paddingTop: 4 }}>
-                Published resolution criteria and finalized outcomes remain authoritative.
+                Final results follow these rules.
               </VadText>
             </View>
           ) : null}
@@ -722,7 +722,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
               {failed ? 'Full published details could not be loaded' : 'Published description unavailable'}
             </VadText>
             <VadText variant="caption" tone="secondary">
-              {failed ? detailState.errorMessage ?? 'Published details are temporarily unavailable. Please retry.' : 'The market remains connected to its live status and available context. VAD has not substituted invented resolution wording.'}
+              {failed ? detailState.errorMessage ?? 'Market details are temporarily unavailable. Please retry.' : 'More details are not available yet.'}
             </VadText>
             {failed ? (
               <Pressable
@@ -771,8 +771,8 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
       ) : null}
 
       <ProgressiveMarketSection
-        title="Resolution method & evidence"
-        subtitle={oracle ? `${oracle.policyName} · Version ${oracle.policyVersion}` : loading ? 'Loading configured oracle policy…' : 'Published verification details unavailable'}
+        title="Resolution"
+        subtitle={oracle ? 'How the result is verified' : loading ? 'Loading…' : 'Verification details unavailable'}
         expanded={verificationExpanded}
         onPress={() => setVerificationExpanded((current) => !current)}
       >
@@ -831,8 +831,8 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
       </ProgressiveMarketSection>
 
       <ProgressiveMarketSection
-        title="Available outcomes"
-        subtitle={outcomes.length ? `${outcomes.length} published outcome${outcomes.length === 1 ? '' : 's'}` : loading ? 'Loading configured outcomes…' : 'Outcome configuration unavailable'}
+        title="Outcomes"
+        subtitle={outcomes.length ? `${outcomes.length} options` : loading ? 'Loading…' : 'Outcomes unavailable'}
         expanded={outcomesExpanded}
         onPress={() => setOutcomesExpanded((current) => !current)}
       >
@@ -842,7 +842,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
             <VadChip label={outcome.code} tone={outcome.code.toUpperCase() === 'YES' ? 'yes' : outcome.code.toUpperCase() === 'NO' ? 'no' : 'neutral'} />
           </View>
         )) : (
-          <VadText variant="caption" tone="secondary">The market&apos;s configured outcomes will appear here when returned by the detail service.</VadText>
+          <VadText variant="caption" tone="secondary">No outcome details available yet.</VadText>
         )}
       </ProgressiveMarketSection>
     </View>

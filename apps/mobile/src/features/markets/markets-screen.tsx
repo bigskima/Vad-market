@@ -245,10 +245,9 @@ export function MarketsScreen({
   }, [visibleMarkets, activeCategoryExperience]);
 
   return (
-    <View style={{ gap: density.phone ? 14 : density.sectionGap }}>
+    <View style={{ gap: density.phone ? 10 : Math.min(18, density.sectionGap) }}>
       <PageHeader
         title="Markets"
-        subtitle="Discover and trade on real-world events."
         actions={[
           { icon: 'bell', label: 'Notifications', onPress: () => router.push('/notifications'), badge: unreadNotifications },
           { icon: 'fileText', label: 'News & headlines', onPress: () => router.push('/news') },
@@ -256,28 +255,6 @@ export function MarketsScreen({
           { icon: 'operations', label: 'Market filters', onPress: () => setFiltersExpanded((value) => !value) },
         ]}
       />
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: -2 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open News and headlines"
-          onPress={() => router.push('/news')}
-          style={({ pressed }) => ({
-            minHeight: 34,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            backgroundColor: theme.colors.surface,
-            paddingHorizontal: 10,
-            opacity: pressed ? 0.72 : 1,
-          })}
-        >
-          <VadIcon name="fileText" size={15} tone="brand" />
-          <VadText variant="caption" tone="brand">News & headlines</VadText>
-        </Pressable>
-      </View>
       <View style={{ alignItems: 'flex-end', marginTop: -8 }}>
         <VadText variant="caption" tone="secondary">{orderedMarkets.length} {orderedMarkets.length === 1 ? 'market' : 'markets'}</VadText>
       </View>
@@ -308,11 +285,11 @@ export function MarketsScreen({
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <VadIcon name="activity" size={20} tone="brand" />
-              <VadText variant="bodyStrong" style={{ fontSize: 19 }}>Trending Markets</VadText>
+              <VadText variant="bodyStrong" style={{ fontSize: 17 }}>Trending Markets</VadText>
             </View>
             <VadButton label="See all" variant="ghost" size="small" fullWidth={false} onPress={() => { setCategory('All'); setStage('all'); setSortMode('activity'); setQuery(''); setDebouncedQuery(''); setShowAllMarkets(true); }} />
           </View>
-          <VadText variant="caption" tone="secondary">{trendingMarkets.length && !showAllMarkets && !debouncedQuery && category === 'All' && stage === 'all' ? 'Ranked from verified trading activity.' : trendingMarkets.length ? 'Live market catalogue.' : 'No published trending ranking is available; showing the live catalogue by recent activity.'}</VadText>
+
         </View>
       ) : null}
 

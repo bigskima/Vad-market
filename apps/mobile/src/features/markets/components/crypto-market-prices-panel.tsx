@@ -118,7 +118,7 @@ export function CryptoMarketPricesPanel({
               {search.trim() ? 'Matching crypto assets' : 'Crypto prices'}
             </VadText>
             <VadText variant="caption" tone="secondary">
-              Browse assets returned by the configured public API—not a fixed Bitcoin/Ethereum list.
+              Browse crypto assets.
             </VadText>
           </View>
           <VadIcon name="markets" size={22} tone="brand" />
@@ -165,7 +165,7 @@ export function CryptoMarketPricesPanel({
       ) : (
         <VadEmptyState
           title="No crypto assets matched"
-          body="Try another coin name or symbol. Search results come from the configured public market-data API."
+          body="Try another coin or symbol."
         />
       )}
 
@@ -185,8 +185,7 @@ export function CryptoMarketPricesPanel({
       ) : null}
 
       <VadText variant="caption" tone="tertiary">
-        {fetchedAt ? `Public market-data snapshot · updated ${new Date(fetchedAt).toLocaleTimeString()}${staleSnapshot ? ' · STALE CACHED DATA — public source temporarily unavailable' : ''}. ` : ''}
-        Quotes refresh automatically. Historical sparklines may update less frequently than the current quote. Display prices and 24-hour changes never determine VAD market odds or final outcomes.
+        {fetchedAt ? `Updated ${new Date(fetchedAt).toLocaleTimeString()}${staleSnapshot ? ' · Cached' : ''}. ` : ''}Public prices are references, not VAD market odds.
       </VadText>
     </View>
   );
@@ -367,7 +366,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
       <View style={{ gap: 2 }}>
         <VadText variant="label" tone="brand">UNDERLYING CRYPTO ASSET</VadText>
         <VadText variant="caption" tone="secondary">
-          Public spot-market reference. This is separate from VAD&apos;s YES/NO price and never determines the outcome.
+          Public reference price · separate from market odds.
         </VadText>
       </View>
       {(loading || resolvedQuery !== normalizedQuery) && !displayedCoin ? (

@@ -148,7 +148,9 @@ export function PortfolioScreen({
   );
   const asset = assetOptions.includes(selectedAsset) ? selectedAsset : assetOptions[0] ?? 'NGN';
 
-  const marketsById = useMemo(() => new Map(markets.map((market) => [market.instrument_public_id, market])), [markets]);
+  const marketsById = useMemo(() => new Map(markets.map((market) => [market.instrument_public_id.toLowerCase(), market])), [markets]);
+  const getMarketForStake = (marketId: string, marketTitle?: string | null) =>
+    marketsById.get(String(marketId).toLowerCase()) ?? markets.find((market) => market.title === marketTitle);
   const marksByKey = useMemo(() => new Map(marks.map((mark) => [positionKey(mark.instrument_id, mark.outcome_code), mark])), [marks]);
   const positionsForAsset = useMemo<PositionModel[]>(() => positions
     .filter((position) => position.asset_code === asset)
@@ -429,14 +431,14 @@ export function PortfolioScreen({
           {activePoolStakes.length ? (
             <View style={{ gap: theme.spacing.sm }}>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                <VadText variant="bodyStrong">Committed predictions</VadText>
+                <VadText variant="bodyStrong">Predictions</VadText>
                 <VadText variant="caption" tone="secondary">{activePoolStakes.length} active</VadText>
               </View>
               {activePoolStakes.map((stake) => (
                 <PoolStakePositionCard
                   key={stake.stake_id}
                   stake={stake}
-                  market={marketsById.get(stake.market_id)}
+                  market={getMarketForStake(stake.market_id, stake.market_title)}
                   onPress={() => onOpenMarket(stake.market_id)}
                 />
               ))}
@@ -462,10 +464,10 @@ export function PortfolioScreen({
             </View>
           ) : (
             <VadEmptyState
-              title={activePoolStakes.length ? 'No additional exchange positions' : 'No positions match these filters'}
+              title={activePoolStakes.length ? 'No other positions yet' : 'No matching positions'}
               body={activePoolStakes.length
-                ? 'Your committed predictions are shown above. Exchange-traded positions will appear here when you hold matched contracts.'
-                : 'Adjust the filters or trade a market to see your positions here.'}
+                ? 'Your predictions are shown above.'
+                : 'Clear filters or trade a market to see positions here.'}
             />
           )}
         </View>

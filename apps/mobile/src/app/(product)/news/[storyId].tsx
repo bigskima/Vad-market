@@ -150,7 +150,7 @@ export default function NewsStoryRoute() {
             </View>
             {details?.publisherDetailsAvailable ? (
               <View style={{ borderRadius: 13, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: theme.colors.surfaceRaised }}>
-                <VadText variant="caption" tone="secondary">Publisher metadata</VadText>
+                
               </View>
             ) : null}
           </View>
@@ -182,13 +182,6 @@ export default function NewsStoryRoute() {
             <VadText variant="bodyStrong" style={{ fontSize: 17 }}>Story overview</VadText>
             <VadText variant="body" style={{ lineHeight: 24 }}>{details.summary}</VadText>
           </VadCard>
-        ) : !loading ? (
-          <VadCard variant="muted" style={{ gap: 7 }}>
-            <VadText variant="bodyStrong">Publisher summary unavailable</VadText>
-            <VadText variant="body" tone="secondary">
-              This publisher does not expose a readable summary in its public page metadata. The headline and indexed cover image came from the global news index; use the publisher link below for the complete report.
-            </VadText>
-          </VadCard>
         ) : null}
 
         <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
@@ -214,16 +207,13 @@ export default function NewsStoryRoute() {
         </VadCard>
 
         <VadCard variant="muted" style={{ gap: 7 }}>
-          <VadText variant="bodyStrong">Read the original report</VadText>
-          <VadText variant="body" tone="secondary">
-            VAD shows the publisher-provided headline, cover image and available page metadata. The complete article remains with its publisher.
-          </VadText>
+          <VadText variant="bodyStrong">Original article</VadText>
           <Pressable
             accessibilityRole="link"
             onPress={() => void openPublisher()}
             style={({ pressed }) => ({ minHeight: 48, borderRadius: 14, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.brandPrimary, opacity: pressed ? 0.82 : 1 })}
           >
-            <VadText variant="bodyStrong" style={{ color: theme.colors.textInverse }}>Open original article</VadText>
+            <VadText variant="bodyStrong" style={{ color: theme.colors.textInverse }}>Read at publisher</VadText>
             <VadIcon name="share" size={17} color={theme.colors.textInverse} />
           </Pressable>
         </VadCard>

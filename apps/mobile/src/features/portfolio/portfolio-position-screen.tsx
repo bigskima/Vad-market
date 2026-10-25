@@ -83,7 +83,7 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
             <Snapshot label="Avg. entry" value={pct(average)} />
           </View>
           <VadText variant="caption" tone="secondary">
-            This is your current conviction exposure. Final payout still depends on the market result.
+            Payout depends on the final result.
           </VadText>
         </VadCard>
 
@@ -98,7 +98,7 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
           <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(portfolioWeight * 100) }} style={{ height: 7, borderRadius: theme.radius.pill, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }}>
             <View style={{ width: allocationWidth, height: '100%', backgroundColor: yes ? theme.colors.yes : theme.colors.no }} />
           </View>
-          <VadText variant="caption" tone="secondary">This percentage compares only positions using the same currency.</VadText>
+          <VadText variant="caption" tone="secondary">Compared with positions in the same currency.</VadText>
           <VadButton
             label="Open market"
             variant="secondary"

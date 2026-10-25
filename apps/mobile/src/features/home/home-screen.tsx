@@ -239,22 +239,23 @@ export function HomeScreen({
   const balanceChangePercent = balanceChange !== null && historyValues[0] !== 0 ? (balanceChange / Math.abs(historyValues[0])) * 100 : null;
 
   return (
-    <View style={{ width: '100%', gap: density.compact ? 10 : 13 }}>
+    <View style={{ width: '100%', gap: density.compact ? 8 : 11 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 }}>
-        <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
-          {profileAvatarUrl ? <Image source={{ uri: profileAvatarUrl }} accessibilityLabel="Profile photo" onError={() => setProfileAvatarUrl(null)} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name="account" size={23} tone="secondary" />}
+        <View style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
+          {profileAvatarUrl ? <Image source={{ uri: profileAvatarUrl }} accessibilityLabel="Profile photo" onError={() => setProfileAvatarUrl(null)} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <VadIcon name="account" size={21} tone="secondary" />}
         </View>
         <View style={{ flex: 1, gap: 1 }}>
           <VadText variant="caption" tone="secondary">Good {getGreeting()},</VadText>
-          <VadText variant="bodyStrong" style={{ fontSize: 18, lineHeight: 22 }}>{(profileName || userName || 'VAD member').trim().split(/\s+/)[0]}</VadText>
+          <VadText variant="bodyStrong" style={{ fontSize: 17, lineHeight: 21 }}>{(profileName || userName || 'VAD member').trim().split(/\s+/)[0]}</VadText>
         </View>
         <HomeHeaderAction label="Search markets" icon="search" onPress={() => onExploreMarkets()} />
+        <HomeHeaderAction label="News & headlines" icon="fileText" onPress={() => router.push('/news')} />
         <HomeHeaderAction label="Financial markets" icon="activity" onPress={onOpenCryptoAssets} />
         <HomeHeaderAction label="Notifications" icon="bell" badge={hasUnreadNotifications} onPress={onNotifications} />
       </View>
 
       <TourTarget id="home-overview">
-        <View style={{ padding: density.compact ? 12 : 14, minHeight: density.compact ? 104 : 114, overflow: 'hidden', borderRadius: 19, borderWidth: 1, borderColor: theme.mode === 'dark' ? '#123B3B' : theme.colors.border, backgroundColor: theme.mode === 'dark' ? '#071B1D' : theme.colors.surface, gap: 3 }}>
+        <View style={{ padding: density.compact ? 11 : 13, minHeight: density.compact ? 96 : 106, overflow: 'hidden', borderRadius: 17, borderWidth: 1, borderColor: theme.mode === 'dark' ? '#123B3B' : theme.colors.border, backgroundColor: theme.mode === 'dark' ? '#071B1D' : theme.colors.surface, gap: 3 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Pressable
               accessibilityRole={displayCurrencies.length > 1 ? 'button' : undefined}
@@ -276,7 +277,7 @@ export function HomeScreen({
               <VadIcon name={balanceVisible ? 'eye' : 'eyeOff'} size={19} tone="secondary" />
             </Pressable>
           </View>
-          <VadText variant="title" style={{ fontSize: density.phone ? 27 : 31, lineHeight: density.phone ? 32 : 36, letterSpacing: -0.7 }}>
+          <VadText variant="title" style={{ fontSize: density.phone ? 25 : 29, lineHeight: density.phone ? 30 : 34, letterSpacing: -0.6 }}>
             {balanceVisible ? primaryBalance : '••••••••'}
           </VadText>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', paddingRight: 94 }}>
@@ -305,35 +306,6 @@ export function HomeScreen({
         <QuickAction label="Predict" icon="arrowUp" color="#3298F5" onPress={() => onExploreMarkets()} />
         <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
       </View>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Open News and headlines"
-        accessibilityHint="Browse politics, business, economics, technology, AI, science, health, sports, music and entertainment news."
-        onPress={() => router.push('/news')}
-        style={({ pressed }) => ({
-          minHeight: 48,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 11,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          backgroundColor: theme.colors.surface,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          opacity: pressed ? 0.78 : 1,
-        })}
-      >
-        <View style={{ width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
-          <VadIcon name="fileText" size={17} tone="brand" />
-        </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
-          <VadText variant="bodyStrong">News & headlines</VadText>
-          <VadText variant="caption" tone="secondary" numberOfLines={1}>Politics · Business · Economy · Tech · Sport · Culture</VadText>
-        </View>
-        <VadIcon name="chevronRight" size={17} tone="secondary" />
-      </Pressable>
 
       {promotions.length ? (
         promotionsToShow.length ? (
@@ -483,8 +455,8 @@ export function HomeScreen({
           ) : (
             <View style={{ padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
               <VadText variant="caption" tone="secondary">{trendingSettings.enabled
-                ? 'No available markets match this category yet. Try another category or browse all markets.'
-                : 'Market rankings are paused. Browse the available markets below in Markets.'}</VadText>
+                ? 'No markets match this category yet.'
+                : 'Browse the latest markets below.'}</VadText>
               <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                 <VadText variant="caption" tone="brand">Browse all markets</VadText>
               </Pressable>
@@ -496,7 +468,7 @@ export function HomeScreen({
   );
 }
 
-function HomeHeaderAction({ label, icon, badge = false, onPress }: { label: string; icon: 'search' | 'bell' | 'activity'; badge?: boolean; onPress: () => void }) {
+function HomeHeaderAction({ label, icon, badge = false, onPress }: { label: string; icon: 'search' | 'bell' | 'activity' | 'fileText'; badge?: boolean; onPress: () => void }) {
   const theme = useVadTheme();
   return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'transparent', opacity: pressed ? 0.7 : 1 })}><VadIcon name={icon} size={21} tone="secondary" />{badge ? <View style={{ position: 'absolute', right: 3, top: 3, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.background }} /> : null}</Pressable>;
 }

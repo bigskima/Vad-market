@@ -255,7 +255,7 @@ export function WalletScreen({
             </View>
           </View>
           {balanceHistoryError && !balanceHistory.length ? (
-            <VadText variant="caption" style={{ color: '#D4D8FF' }}>Balance trend temporarily unavailable; the amount above remains the current wallet summary.</VadText>
+            <VadText variant="caption" style={{ color: '#D4D8FF' }}>Balance history unavailable.</VadText>
           ) : null}
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -283,11 +283,8 @@ export function WalletScreen({
             </VadText>
           </View>
           <VadText variant="caption" tone="secondary">
-            This non-cash test allocation sits in the ordinary NGN ledger and uses the same market instrument, quote, pool stake, resolution and settlement engine as regular NGN markets. Deposits and withdrawals remain blocked. Email transfers are restricted to eligible, location-verified Nigerian VAD accounts whose NGN wallet can be safely marked as test credit; test funds cannot mix with cash-funded NGN.
+            Test credit is for NGN market trading. Deposits and withdrawals stay disabled while it is active. Transfers are limited to eligible, verified Nigerian accounts. Test funds cannot mix with cash-funded NGN.
           </VadText>
-          {temporaryNgnCredit.publicId ? (
-            <VadText variant="caption" tone="tertiary">Test-credit reference: {temporaryNgnCredit.publicId}</VadText>
-          ) : null}
         </VadCard>
       ) : null}
 

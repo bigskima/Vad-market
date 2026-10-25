@@ -165,7 +165,7 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <VadText variant="label" tone="brand">LIVE FINANCIAL PRICE</VadText>
           <VadText variant="bodyStrong">{quote?.name ?? details.symbol} {quote?.symbol ? '(' + quote.symbol + ')' : ''}</VadText>
-          <VadText variant="caption" tone="secondary">{quote?.source ?? (details.assetClass === 'CRYPTO' ? 'Configured crypto market-data source' : 'Configured financial market-data source')}</VadText>
+          <VadText variant="caption" tone="secondary">{quote?.source ?? (details.assetClass === 'CRYPTO' ? 'Crypto market data' : 'Financial market data')}</VadText>
         </View>
         {refreshing ? <VadChip label="Updating" tone="neutral" /> : <VadChip label={quote ? 'Quote loaded' : 'Waiting'} tone={quote ? 'yes' : 'warning'} />}
       </View>
@@ -185,7 +185,7 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
           <VadText variant="title" style={{ fontSize: density.phone ? 21 : 25 }}>
             {quote ? formatFinancialNumber(quote.price, quote.quoteCurrency) : '—'}
           </VadText>
-          {movementText ? <VadText variant="caption" tone={movementTone}>{movementText} · provider-reported change</VadText> : null}
+          {movementText ? <VadText variant="caption" tone={movementTone}>{movementText}</VadText> : null}
         </View>
       </View>
 
@@ -243,7 +243,7 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
       {error ? <VadErrorState title="Live quote could not refresh" message={error} onRetry={() => setRetryNonce((value) => value + 1)} /> : null}
       <VadText variant="caption" tone="tertiary">
         {quote?.sourceUpdatedAt ? 'Underlying quote timestamp: ' + new Date(quote.sourceUpdatedAt).toLocaleString() + '. ' : ''}
-        Quote freshness depends on the enabled provider and its plan. Public display quotes are context only; they do not settle this market. Final outcomes use the market’s published Oracle/resolution policy.
+        Prices are references. Results follow the published market rules.
       </VadText>
     </VadCard>
   );
