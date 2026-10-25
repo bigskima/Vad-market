@@ -19,7 +19,7 @@ export function MarketTimeStatus({
 }) {
   const theme = useVadTheme();
   const now = useLiveNow(1000);
-  const timing = describeMarketTiming(market.closes_at, market.status, now, market.resolves_after);
+  const timing = describeMarketTiming(market.closes_at, market.status, now, market.resolves_after, market.resolution_status);
   const palette = timingPalette(timing.tone, theme);
   const accessibilityTiming = [timing.headline, timing.absolute, timing.resolutionAbsolute, timing.detail].filter(Boolean).join('. ');
 
