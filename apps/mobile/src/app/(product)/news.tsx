@@ -10,6 +10,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { PageHeader } from '@/features/navigation/page-header';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { getNewsFeed, type NewsCategory, type NewsStory } from '@/services/news-api';
 
 const categories: { value: NewsCategory; label: string }[] = [
@@ -88,6 +89,7 @@ export default function NewsRoute() {
           ]}
         />
 
+        <TourTarget id="news-feed">
         <VadText variant="bodyStrong" style={{ fontSize: 17 }}>Top stories</VadText>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingRight: 8 }}>
           {categories.map((item) => {
@@ -113,6 +115,7 @@ export default function NewsRoute() {
             );
           })}
         </ScrollView>
+        </TourTarget>
 
         {loading ? (
           <View style={{ gap: theme.spacing.md }}>
