@@ -248,7 +248,6 @@ export function MarketsScreen({
     <View style={{ gap: density.phone ? 10 : Math.min(18, density.sectionGap) }}>
       <PageHeader
         title="Markets"
-        subtitle="Discover and trade on real-world events."
         actions={[
           { icon: 'bell', label: 'Notifications', onPress: () => router.push('/notifications'), badge: unreadNotifications },
           { icon: 'fileText', label: 'News & headlines', onPress: () => router.push('/news') },
