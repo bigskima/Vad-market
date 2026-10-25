@@ -4,7 +4,7 @@ import { ProductSubpage } from '@/features/navigation/product-subpage';
 export default function AccountProfileScreen() {
   return (
     <ProductSubpage title="Public profile" maxWidth={1040}>
-      <ProfileEditorCard />
+      <TourTarget id="profile-editor"><ProfileEditorCard /></TourTarget>
     </ProductSubpage>
   );
 }
