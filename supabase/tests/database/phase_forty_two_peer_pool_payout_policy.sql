@@ -92,6 +92,38 @@ begin
     raise exception 'Peer Pool settlement must account for capped-payout surplus refunds';
   end if;
 
+  if position('vad-onchain-pool:' in pg_get_functiondef(
+    'public.internal_prepare_onchain_prediction(uuid,uuid,uuid,text,text,numeric,text)'::regprocedure
+  )) = 0 then
+    raise exception 'On-chain USDC pool authorization must serialize exposure checks';
+  end if;
+
+  if position('pool_max_user_market_stake' in pg_get_functiondef(
+    'public.internal_prepare_onchain_prediction(uuid,uuid,uuid,text,text,numeric,text)'::regprocedure
+  )) = 0 then
+    raise exception 'On-chain USDC pool authorization must enforce cumulative user exposure';
+  end if;
+
+  if position('USDC' in pg_get_functiondef('private.attach_instrument_trading_risk_policy()'::regprocedure)) = 0 then
+    raise exception 'New on-chain USDC Peer Pool instruments must preserve V1 payout terms until a compatible contract is available';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'public.internal_prepare_onchain_prediction(uuid,uuid,uuid,text,text,numeric,text)',
+    'EXECUTE'
+  ) then
+    raise exception 'Internal on-chain authorization RPC must not be directly callable by authenticated clients';
+  end if;
+
+  if not has_function_privilege(
+    'service_role',
+    'public.internal_prepare_onchain_prediction(uuid,uuid,uuid,text,text,numeric,text)',
+    'EXECUTE'
+  ) then
+    raise exception 'Service role must execute internal on-chain authorization RPC';
+  end if;
+
   if has_function_privilege('anon', 'public.admin_get_trading_risk_policy_defaults()', 'EXECUTE') then
     raise exception 'Anonymous users must not read admin trading-risk defaults';
   end if;
