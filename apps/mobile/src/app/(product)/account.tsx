@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Alert, Image, Pressable, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -40,6 +40,8 @@ export default function AccountScreen() {
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [adminAccessFor, setAdminAccessFor] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const [testModeStatus, setTestModeStatus] = useState<TemporaryNgnMarketTestingStatus | null>(null);
   const [testModeSaving, setTestModeSaving] = useState(false);
   const [testModeLocationSaving, setTestModeLocationSaving] = useState(false);
@@ -124,15 +126,23 @@ export default function AccountScreen() {
   const isVerified = kycStatus?.status === 'VERIFIED';
   const kycCopy = getKycCopy(kycStatus);
   const requestSignOut = () => {
-    Alert.alert('Log out of VAD Market?', 'You will need to sign in again to access your account.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: () => {
-        setSigningOut(true);
-        void signOut().catch(() => {
-          Alert.alert('Could not log out', 'Please try again.');
-        }).finally(() => setSigningOut(false));
-      } },
-    ]);
+    setSignOutError(null);
+    setConfirmSignOut(true);
+  };
+
+  const confirmAndSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    setSignOutError(null);
+    try {
+      await signOut();
+      setConfirmSignOut(false);
+      router.replace('/');
+    } catch {
+      setSignOutError('Could not log out. Please try again.');
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const verifyMarketTestingLocation = async () => {
@@ -351,6 +361,27 @@ export default function AccountScreen() {
           <VadText variant="bodyStrong" tone="no" style={{ fontSize: density.phone ? 14 : 15 }}>{signingOut ? 'Logging out…' : 'Log Out'}</VadText>
           <VadIcon name="chevronRight" size={16} tone="no" />
         </Pressable>
+        {confirmSignOut ? (
+          <VadCard style={{ gap: 10, borderColor: theme.colors.no }}>
+            <VadText variant="bodyStrong">Log out of VAD Market?</VadText>
+            <VadText variant="caption" tone="secondary">You will need to sign in again to access your account.</VadText>
+            {signOutError ? <VadText variant="caption" tone="no">{signOutError}</VadText> : null}
+            <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: 8, justifyContent: 'flex-end' }}>
+              <VadButton
+                label="Cancel"
+                variant="secondary"
+                onPress={() => { setConfirmSignOut(false); setSignOutError(null); }}
+                disabled={signingOut}
+              />
+              <VadButton
+                label={signingOut ? 'Logging out…' : 'Log out'}
+                onPress={() => void confirmAndSignOut()}
+                loading={signingOut}
+                disabled={signingOut}
+              />
+            </View>
+          </VadCard>
+        ) : null}
       </View>
     </ProductRoute>
   );
