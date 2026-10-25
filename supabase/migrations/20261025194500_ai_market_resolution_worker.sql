@@ -1221,6 +1221,28 @@ where e.id=b.event_id
       )
   );
 
+-- Make the current Inter/Fiorentina evidence contract resolve against the
+-- official Serie A competition profile without changing its published condition.
+update market.canonical_events e
+set resolution_scope = coalesce(e.resolution_scope,'{}'::jsonb) || jsonb_build_object(
+  'subject',
+  coalesce(
+    case when jsonb_typeof(e.resolution_scope->'subject')='object' then e.resolution_scope->'subject' else '{}'::jsonb end,
+    '{}'::jsonb
+  ) || jsonb_build_object(
+    'sport','FOOTBALL',
+    'competition','Serie A',
+    'home_team','Inter Milan',
+    'away_team','Fiorentina'
+  )
+),
+updated_at=statement_timestamp()
+where upper(coalesce(e.category,''))='SPORTS'
+  and upper(coalesce(e.resolution_scope->>'resolver_type','')) in ('VAD_REVIEW_V1','AI_EVIDENCE_RULE_V1')
+  and lower(e.title) like '%inter milan%'
+  and lower(e.title) like '%fiorentina%'
+  and not (coalesce(e.resolution_scope->'subject','{}'::jsonb) ? 'competition');
+
 -- Enrich already-created evidence-based sports markets from the same competition
 -- catalogue used by the sports fixture/draft workflow.
 update market.canonical_events
