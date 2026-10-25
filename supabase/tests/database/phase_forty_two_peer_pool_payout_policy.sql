@@ -52,6 +52,15 @@ begin
   end if;
 
   if exists (
+    select 1 from market.trading_risk_policy_defaults d
+    left join market.trading_risk_policy_default_history h
+      on h.asset_id = d.asset_id and h.policy_version = d.policy_version
+    where h.asset_id is null
+  ) then
+    raise exception 'Each current risk-policy version must have an immutable history snapshot';
+  end if;
+
+  if exists (
     select 1 from market.instruments i
     left join market.instrument_trading_risk_policies p on p.instrument_id = i.id
     where p.instrument_id is null
