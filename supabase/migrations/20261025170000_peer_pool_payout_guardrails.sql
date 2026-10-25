@@ -1250,7 +1250,7 @@ begin
     'signature',null
   );
 end;
-$function$
+$function$;
 
 
 -- Admin configuration is versioned at the asset-default level. New instruments
