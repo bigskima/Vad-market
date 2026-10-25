@@ -39,6 +39,159 @@ async function fetchWithTimeout(
   return fetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs) });
 }
 
+
+type NormalizedNetworkResult = {
+  success: true;
+  data: {
+    location: { countryCode: string };
+    security: {
+      isVpn: boolean;
+      isProxy: boolean;
+      isTor: boolean;
+      isHosting: boolean;
+      isBlacklisted: boolean;
+    };
+  };
+};
+
+function isCompleteNetworkResult(value: unknown): value is NetworkLookupResult {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as NetworkLookupResult;
+  const security = candidate.data?.security;
+  return candidate.success === true
+    && isCountryCode(candidate.data?.location?.countryCode)
+    && typeof security?.isVpn === 'boolean'
+    && typeof security?.isProxy === 'boolean'
+    && typeof security?.isTor === 'boolean'
+    && typeof security?.isHosting === 'boolean'
+    && typeof security?.isBlacklisted === 'boolean';
+}
+
+/**
+ * whatismyip.ai is the preferred provider. ipwho.is is a no-key fallback for
+ * country plus VPN/proxy/Tor/hosting signals so one flaky upstream does not
+ * disable location verification for every user.
+ */
+async function lookupNetworkSignals(ip: string): Promise<{ data: NormalizedNetworkResult | null; provider: string }> {
+  try {
+    const response = await fetchWithTimeout(
+      `https://whatismyip.ai/api/lookup/${encodeURIComponent(ip)}`,
+      { headers: { 'Accept': 'application/json' } },
+      5000,
+    );
+    if (response.ok) {
+      const payload = await response.json() as unknown;
+      if (isCompleteNetworkResult(payload)) return { data: payload as NormalizedNetworkResult, provider: 'whatismyip.ai' };
+      console.warn('[verify-service-location] primary network provider returned incomplete signals');
+    } else {
+      console.warn('[verify-service-location] primary network provider returned non-2xx', { status: response.status });
+    }
+  } catch {
+    console.warn('[verify-service-location] primary network provider request failed');
+  }
+
+  try {
+    const response = await fetchWithTimeout(
+      `https://ipwho.is/${encodeURIComponent(ip)}?fields=success,country_code,security.proxy,security.vpn,security.tor,security.hosting,security.anonymous`,
+      { headers: { 'Accept': 'application/json' } },
+      6000,
+    );
+    if (!response.ok) {
+      console.warn('[verify-service-location] fallback network provider returned non-2xx', { status: response.status });
+      return { data: null, provider: 'none' };
+    }
+    const payload = await response.json() as {
+      success?: unknown;
+      country_code?: unknown;
+      security?: {
+        proxy?: unknown;
+        vpn?: unknown;
+        tor?: unknown;
+        hosting?: unknown;
+        anonymous?: unknown;
+        blacklisted?: unknown;
+      };
+    };
+    const security = payload.security;
+    const countryCode = payload.country_code;
+    if (
+      payload.success !== true || !isCountryCode(countryCode)
+      || typeof security?.proxy !== 'boolean'
+      || typeof security?.vpn !== 'boolean'
+      || typeof security?.tor !== 'boolean'
+      || typeof security?.hosting !== 'boolean'
+    ) {
+      console.warn('[verify-service-location] fallback network provider returned incomplete signals');
+      return { data: null, provider: 'none' };
+    }
+    const normalized: NormalizedNetworkResult = {
+      success: true,
+      data: {
+        location: { countryCode },
+        security: {
+          isVpn: security.vpn,
+          isProxy: security.proxy,
+          isTor: security.tor,
+          isHosting: security.hosting,
+          // The fallback exposes VPN/proxy/Tor/hosting but not a separate
+          // blacklist field in every response; the primary provider checks it.
+          isBlacklisted: security.blacklisted === true,
+        },
+      },
+    };
+    return { data: normalized, provider: 'ipwho.is' };
+  } catch {
+    console.warn('[verify-service-location] fallback network provider request failed');
+    return { data: null, provider: 'none' };
+  }
+}
+
+/** Use a second public reverse-geocoding source when Photon is unavailable. */
+async function lookupDeviceCountry(latitude: number, longitude: number): Promise<{ countryCode: string | null; provider: string }> {
+  try {
+    const response = await fetchWithTimeout(
+      `https://photon.komoot.io/reverse?lat=${latitude}&lon=${longitude}&lang=en`,
+      { headers: { 'Accept': 'application/geo+json', 'User-Agent': 'VADMarket/1.0 location-jurisdiction-check' } },
+      7000,
+    );
+    if (response.ok) {
+      const geo = await response.json() as {
+        features?: Array<{ properties?: { countrycode?: unknown } }>;
+      };
+      const country = geo.features
+        ?.map((feature) => feature?.properties?.countrycode)
+        .find((value): value is string => isCountryCode(value));
+      if (country) return { countryCode: country.toUpperCase(), provider: 'photon.komoot.io' };
+      console.warn('[verify-service-location] primary reverse geocoder returned no country');
+    } else {
+      console.warn('[verify-service-location] primary reverse geocoder returned non-2xx', { status: response.status });
+    }
+  } catch {
+    console.warn('[verify-service-location] primary reverse geocoder request failed');
+  }
+
+  try {
+    const response = await fetchWithTimeout(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+      { headers: { 'Accept': 'application/json' } },
+      6000,
+    );
+    if (!response.ok) {
+      console.warn('[verify-service-location] fallback reverse geocoder returned non-2xx', { status: response.status });
+      return { countryCode: null, provider: 'none' };
+    }
+    const payload = await response.json() as { countryCode?: unknown };
+    if (!isCountryCode(payload.countryCode)) {
+      console.warn('[verify-service-location] fallback reverse geocoder returned no country');
+      return { countryCode: null, provider: 'none' };
+    }
+    return { countryCode: payload.countryCode.toUpperCase(), provider: 'api.bigdatacloud.net' };
+  } catch {
+    console.warn('[verify-service-location] fallback reverse geocoder request failed');
+    return { countryCode: null, provider: 'none' };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' }, 405);
@@ -86,70 +239,30 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Public Nominatim is returning HTTP 403 from the Supabase Edge runtime.
-    // Use Photon for the GPS-coordinate country lookup. Photon exposes a GeoJSON
-    // reverse endpoint and countrycode in each feature; keep this low-volume
-    // (only an explicit user-triggered location check), with no address storage.
-    const [geoResult, networkResult] = await Promise.allSettled([
-      fetchWithTimeout(
-        `https://photon.komoot.io/reverse?lat=${latitude}&lon=${longitude}&lang=en`,
-        { headers: { 'Accept': 'application/geo+json', 'User-Agent': 'VADMarket/1.0 location-jurisdiction-check' } },
-        7000,
-      ),
-      fetchWithTimeout(
-        `https://whatismyip.ai/api/lookup/${encodeURIComponent(ip)}`,
-        { headers: { 'Accept': 'application/json' } },
-        5000,
-      ),
+    // Both country sources now have a fallback. Provider outages should not
+    // create a blanket location-verification outage, but incomplete risk data
+    // still fails closed.
+    const [geoLookup, networkLookup] = await Promise.all([
+      lookupDeviceCountry(latitude, longitude),
+      lookupNetworkSignals(ip),
     ]);
-
-    if (geoResult.status === 'rejected' || networkResult.status === 'rejected') {
-      console.warn('[verify-service-location] country or network provider request failed', {
-        countryProviderFailed: geoResult.status === 'rejected',
-        networkProviderFailed: networkResult.status === 'rejected',
-      });
-      return json({ error: 'Location verification provider unavailable', code: 'LOCATION_PROVIDER_ERROR' }, 503);
+    if (!geoLookup.countryCode) {
+      console.warn('[verify-service-location] both reverse-geocoding providers failed');
+      return json({ error: 'Could not determine the country for this device location', code: 'LOCATION_PROVIDER_ERROR' }, 503);
     }
-
-    const geoResponse = geoResult.value;
-    const networkResponse = networkResult.value;
-    if (!geoResponse.ok || !networkResponse.ok) {
-      console.warn('[verify-service-location] country or network provider returned non-2xx', {
-        countryProviderStatus: geoResponse.status,
-        networkProviderStatus: networkResponse.status,
-        countryProvider: 'photon.komoot.io',
-        networkProvider: 'whatismyip.ai',
-      });
-      return json({ error: 'Location verification provider unavailable', code: 'LOCATION_PROVIDER_ERROR' }, 503);
+    if (!networkLookup.data) {
+      console.warn('[verify-service-location] both network intelligence providers failed');
+      return json({ error: 'Network country and risk signals are unavailable', code: 'NETWORK_RISK_UNRESOLVED' }, 503);
     }
-
-    const geo = await geoResponse.json();
-    const network = await networkResponse.json() as NetworkLookupResult;
+    const network = networkLookup.data;
     const networkData = network.data;
-    const security = networkData?.security;
-
-    // Fail closed if any of the provider's security flags are absent. Never
-    // substitute the device GPS country for the client's network country.
-    const networkSignalsComplete =
-      network.success === true &&
-      isCountryCode(networkData?.location?.countryCode) &&
-      typeof security?.isVpn === 'boolean' &&
-      typeof security?.isProxy === 'boolean' &&
-      typeof security?.isTor === 'boolean' &&
-      typeof security?.isHosting === 'boolean' &&
-      typeof security?.isBlacklisted === 'boolean';
-
-    if (!networkSignalsComplete) {
-      console.warn('[verify-service-location] network provider response lacked required country or risk signals');
-      return json({ error: 'Network risk signals are unavailable', code: 'NETWORK_RISK_UNRESOLVED' }, 503);
-    }
-
-    const geoFeatures = Array.isArray(geo?.features) ? geo.features : [];
-    const geoCountryCode = geoFeatures
-      .map((feature: { properties?: { countrycode?: unknown } }) => feature?.properties?.countrycode)
-      .find((value: unknown) => isCountryCode(value));
-    const deviceCountry = String(geoCountryCode || '').trim().toUpperCase();
-    const ipCountry = String(networkData?.location?.countryCode || '').trim().toUpperCase();
+    const security = networkData.security;
+    const deviceCountry = geoLookup.countryCode;
+    const ipCountry = networkData.location.countryCode.toUpperCase();
+    console.info('[verify-service-location] country verification providers selected', {
+      countryProvider: geoLookup.provider,
+      networkProvider: networkLookup.provider,
+    });
     if (!isCountryCode(deviceCountry) || !isCountryCode(ipCountry)) {
       return json({ error: 'Unable to establish current country', code: 'COUNTRY_UNRESOLVED' }, 503);
     }
