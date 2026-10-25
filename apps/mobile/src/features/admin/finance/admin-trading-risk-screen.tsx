@@ -189,7 +189,6 @@ export function AdminTradingRiskScreen() {
                   { value: 'DISABLED', label: 'Disabled' },
                 ]}
                 onChange={(value) => patch(policy.asset_code, 'enabled', value === 'ENABLED')}
-                disabled={isSaving}
               />
               <VadText variant="caption" tone="secondary">
                 Disabled assets cannot create new instrument snapshots until the defaults are re-enabled.
