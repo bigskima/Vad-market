@@ -111,7 +111,7 @@ export function FeaturedMarketsCarousel({
   if (!liveMarkets.length) return (
     <View style={{ minHeight: 64, justifyContent: 'center', gap: 4, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, paddingHorizontal: 14, paddingVertical: 10 }}>
       <VadText variant="bodyStrong">{category === 'All' ? 'No featured markets right now' : `No featured ${category.toLowerCase()} markets right now`}</VadText>
-      <VadText variant="caption" tone="secondary">Featured markets appear here when VAD curates or ranks eligible open markets.</VadText>
+      <VadText variant="caption" tone="secondary">Check back for more highlights.</VadText>
     </View>
   );
 
@@ -121,7 +121,7 @@ export function FeaturedMarketsCarousel({
     <View style={{ gap: 8 }} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <VadText variant="bodyStrong" style={{ fontSize: 16 }}>Featured markets</VadText>
-        <VadText variant="caption" tone="secondary">Admin-curated and live-ranked markets</VadText>
+        
       </View>
       <ScrollView
         ref={scrollRef}
@@ -159,7 +159,7 @@ export function FeaturedMarketsCarousel({
           >
             <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
               <View style={{ alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4, backgroundColor: theme.colors.brandSoft }}>
-                <VadText variant="caption" tone="brand">{source === 'curated' ? 'Featured by VAD' : 'Featured by activity'}</VadText>
+                <VadText variant="caption" tone="brand">{source === 'curated' ? 'Featured' : 'Popular'}</VadText>
               </View>
               <VadText variant="bodyStrong" numberOfLines={3} style={{ fontSize: density.compact ? 16 : 18, lineHeight: density.compact ? 21 : 24 }}>{market.title}</VadText>
               <VadText variant="caption" tone="secondary" numberOfLines={2}>{market.category || 'Market'} · {market.asset_code} · {market.status === 'OPEN' ? 'Trading open' : market.status}</VadText>
