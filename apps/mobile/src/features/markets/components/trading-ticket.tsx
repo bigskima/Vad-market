@@ -496,6 +496,12 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
           <View style={{ gap: 2 }}>
             <QuoteLine label="Your stake" value={assetMoney(preparedUsdc.collateralAmount, 'USDC')} />
+            {preparedUsdc.authorization.maxEntryStake != null ? <QuoteLine label="Maximum single stake" value={assetMoney(preparedUsdc.authorization.maxEntryStake, 'USDC')} /> : null}
+            {preparedUsdc.authorization.existingUserExposure != null ? <QuoteLine label="Existing stake across this market" value={assetMoney(preparedUsdc.authorization.existingUserExposure, 'USDC')} /> : null}
+            {preparedUsdc.authorization.projectedUserExposure != null ? <QuoteLine label="Combined user stake after this entry" value={assetMoney(preparedUsdc.authorization.projectedUserExposure, 'USDC')} /> : null}
+            {preparedUsdc.authorization.maxUserMarketStake != null ? <QuoteLine label="Maximum combined user stake" value={assetMoney(preparedUsdc.authorization.maxUserMarketStake, 'USDC')} /> : null}
+            {preparedUsdc.authorization.projectedMarketPool != null ? <QuoteLine label="Projected market pool across venues" value={assetMoney(preparedUsdc.authorization.projectedMarketPool, 'USDC')} /> : null}
+            {preparedUsdc.authorization.maxMarketPool != null ? <QuoteLine label="Maximum market pool" value={assetMoney(preparedUsdc.authorization.maxMarketPool, 'USDC')} /> : null}
             <QuoteLine label="VAD trading fee" value={assetMoney(preparedUsdc.tradingFee, 'USDC')} />
             <QuoteLine label="Maximum USDC debit" value={assetMoney(preparedUsdc.maximumWalletDebit, 'USDC')} />
             <QuoteLine label="Network" value={selectedVenue?.chain_name ?? preparedUsdc.chainCode} />
@@ -512,6 +518,11 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             tone="warning"
             title="On-chain pool estimates are not shown yet"
             body="USDC pool size and payout estimates will appear after on-chain positions are indexed. Internal-ledger totals are not reused."
+          />
+          <InlineMessage
+            tone="warning"
+            title="USDC payout-cap compatibility"
+            body="VAD Settlement V1 cannot return a partial refund to losing positions after a normal result. The Peer Pool payout cap remains inactive for this protocol until a compatible contract version is deployed. The stake and cumulative exposure limits shown above are enforced before authorization."
           />
           <InlineMessage
             tone="brand"
