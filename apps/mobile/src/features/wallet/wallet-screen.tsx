@@ -285,9 +285,6 @@ export function WalletScreen({
           <VadText variant="caption" tone="secondary">
             Test credit is for NGN market trading. Deposits and withdrawals stay disabled while it is active. Transfers are limited to eligible, verified Nigerian accounts. Test funds cannot mix with cash-funded NGN.
           </VadText>
-          {temporaryNgnCredit.publicId ? (
- 
-          ) : null}
         </VadCard>
       ) : null}
 
