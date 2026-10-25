@@ -81,6 +81,11 @@ function finalResult(payload: JsonRecord) {
   return { score, actual } as const;
 }
 
+function resolveObservedOutcome(actual: 'HOME_WIN' | 'AWAY_WIN' | 'DRAW', spec: FootballResultSpec) {
+  if (spec.condition === 'THREE_WAY') return spec.outcomeCodes[actual];
+  return actual === spec.condition ? 'YES' : 'NO';
+}
+
 async function resolveTheSportsDbResult(
   provider: OracleProvider,
   resource: OracleResource,
@@ -124,7 +129,7 @@ async function resolveTheSportsDbResult(
   return {
     kind: 'observation',
     observation: {
-      observedOutcome: actual === spec.condition ? 'YES' : 'NO',
+      observedOutcome: resolveObservedOutcome(actual, spec),
       observedAt,
       evidenceReference: evidenceUrl,
       payload: {
@@ -194,7 +199,7 @@ async function resolveApiSportsResult(
   return {
     kind: 'observation',
     observation: {
-      observedOutcome: actual === spec.condition ? 'YES' : 'NO',
+      observedOutcome: resolveObservedOutcome(actual, spec),
       observedAt,
       evidenceReference: url.toString(),
       payload: {
@@ -224,6 +229,9 @@ export async function resolveFootballFixtureWithProvider(
   if (provider.code === 'THESPORTSDB') return resolveTheSportsDbResult(provider, resource, spec);
   if (provider.code === 'API_SPORTS') return resolveApiSportsResult(provider, resource, spec);
   if (/^\d+$/.test(resource.externalKey.trim())) {
+    if (spec.condition === 'THREE_WAY') {
+      return { kind: 'skipped', code: 'THREE_WAY_LEGACY_PROVIDER_UNSUPPORTED', detail: 'This provider adapter cannot safely map a three-way outcome; try the next configured result provider' };
+    }
     return resolveLegacyFootball(provider, resource, spec);
   }
   if (provider.code !== 'FOOTBALL_DATA') return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
@@ -298,7 +306,7 @@ export async function resolveFootballFixtureWithProvider(
   return {
     kind: 'observation',
     observation: {
-      observedOutcome: actual === spec.condition ? 'YES' : 'NO',
+      observedOutcome: resolveObservedOutcome(actual, spec),
       observedAt,
       evidenceReference: lookupUrl.toString(),
       payload: {
