@@ -46,6 +46,7 @@ export default function AccountScreen() {
   const [testModeSaving, setTestModeSaving] = useState(false);
   const [testModeLocationSaving, setTestModeLocationSaving] = useState(false);
   const [testModeError, setTestModeError] = useState<string | null>(null);
+  const [testModeNotice, setTestModeNotice] = useState<string | null>(null);
 
   const metadataName = typeof metadata.display_name === 'string' ? metadata.display_name.trim()
     : typeof metadata.full_name === 'string' ? metadata.full_name.trim() : '';
@@ -149,19 +150,33 @@ export default function AccountScreen() {
     if (testModeLocationSaving) return;
     setTestModeLocationSaving(true);
     setTestModeError(null);
+    setTestModeNotice(null);
     try {
       const result = await verifyCurrentServiceLocation();
       if (!result.allowed) {
         throw new Error(locationVerificationMessage(result.reasonCode));
       }
-      const refreshed = await getTemporaryNgnMarketTestingStatus();
-      setTestModeStatus(refreshed);
-      if (!refreshed?.eligible) {
-        throw new Error(testModeBlockReason(refreshed ?? {
-          active: false, eligible: false, testModeEnabled: false,
-          reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE',
-        }));
+
+      // GPS verification succeeded. Market-testing eligibility is a separate
+      // check and must not overwrite a successful location result with a false
+      // "location unavailable" message.
+      let refreshed: TemporaryNgnMarketTestingStatus | null;
+      try {
+        refreshed = await getTemporaryNgnMarketTestingStatus();
+      } catch {
+        setTestModeNotice('Location verified. Market-testing status could not refresh; try again.');
+        return;
       }
+      setTestModeStatus(refreshed);
+      if (!refreshed?.active) {
+        setTestModeNotice('Location verified. No active NGN test credit is assigned to this account yet.');
+        return;
+      }
+      if (!refreshed.eligible) {
+        setTestModeNotice('Location verified. ' + testModeBlockReason(refreshed));
+        return;
+      }
+      setTestModeNotice('Location verified. You can now enable NGN market testing.');
     } catch (reason) {
       setTestModeError(reason instanceof Error ? reason.message : 'Current Nigeria location could not be verified.');
       try {
@@ -184,6 +199,7 @@ export default function AccountScreen() {
     }
     setTestModeSaving(true);
     setTestModeError(null);
+    setTestModeNotice(null);
     try {
       const status = await setTemporaryNgnMarketTesting(next);
       setTestModeStatus(status);
@@ -321,9 +337,11 @@ export default function AccountScreen() {
             <VadText variant="caption" tone="secondary">
               This is non-cash credit for NGN market trading. Deposits and withdrawals stay disabled while it is active. Test credit cannot mix with cash-funded NGN.
             </VadText>
+            {testModeNotice ? <VadText variant="caption" tone="secondary">{testModeNotice}</VadText> : null}
             {testModeError ? <VadText variant="caption" tone="danger">{testModeError}</VadText> : null}
           </VadCard>
         ) : null}
+        {testModeNotice && !testModeStatus?.active ? <VadText variant="caption" tone="secondary">{testModeNotice}</VadText> : null}
         {testModeError && !testModeStatus?.active ? <VadText variant="caption" tone="danger">{testModeError}</VadText> : null}
 
         <SettingsGroup title="Account">
