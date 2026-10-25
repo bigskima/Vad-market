@@ -431,6 +431,26 @@ begin
   if jsonb_typeof(coalesce(p_evidence,'{}'::jsonb))<>'object' then
     raise exception 'Void evidence must be an object' using errcode='22023';
   end if;
+  if jsonb_array_length(
+    case when jsonb_typeof(p_evidence->'ai_reviews')='array' then p_evidence->'ai_reviews' else '[]'::jsonb end
+  ) < 2 then
+    raise exception 'Automatic void requires two independent AI decisions' using errcode='23514';
+  end if;
+  if not exists (
+    select 1
+    from jsonb_array_elements(
+      case when jsonb_typeof(p_evidence->'citations')='array' then p_evidence->'citations' else '[]'::jsonb end
+    ) citation
+    where upper(coalesce(citation->>'sourceType',''))='DIRECT'
+  ) or not exists (
+    select 1
+    from jsonb_array_elements(
+      case when jsonb_typeof(p_evidence->'citations')='array' then p_evidence->'citations' else '[]'::jsonb end
+    ) citation
+    where upper(coalesce(citation->>'sourceType',''))='SEARCH'
+  ) then
+    raise exception 'Automatic void requires primary and corroborating source evidence' using errcode='23514';
+  end if;
 
   select * into v_event from market.canonical_events where id=p_event_id for update;
   if v_event.id is null or v_event.status<>'AWAITING_ORACLE' then
