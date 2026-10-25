@@ -491,7 +491,26 @@ Deno.serve(async (req: Request) => {
     const oracleProviders = Array.isArray(providersResult.data) ? providersResult.data as unknown as OracleProvider[] : [];
     const results = [];
     for (const event of events) {
-      results.push(await processEvent(admin, event, runtimes, oracleProviders));
+      let processingError: string | null = null;
+      try {
+        results.push(await processEvent(admin, event, runtimes, oracleProviders));
+      } catch (error) {
+        processingError = error instanceof Error ? error.message.slice(0, 350) : 'Unexpected worker error.';
+        results.push({ eventPublicId: event.eventPublicId, status: 'FAILED', reason: processingError });
+        console.error('AI resolution event failed', { eventPublicId: event.eventPublicId, error: processingError });
+      } finally {
+        if (typeof event.claimToken === 'string') {
+          const { error } = await admin.rpc('internal_finish_market_resolution_claim', {
+            p_event_id: event.eventId,
+            p_claim_token: event.claimToken,
+            p_error: processingError,
+          });
+          if (error) console.error('Could not release AI resolution claim', {
+            eventPublicId: event.eventPublicId,
+            code: error.code ?? null,
+          });
+        }
+      }
     }
     return json({
       ok: true, action: 'resolve',
