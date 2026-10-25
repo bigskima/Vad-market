@@ -48,9 +48,9 @@ update integration.providers ip
 set capabilities = (
   select coalesce(jsonb_agg(capability order by capability), '[]'::jsonb)
   from (
-    select distinct upper(capability) as capability
+    select distinct upper(c.value) as capability
     from ai.providers ap
-    cross join lateral jsonb_array_elements_text(ap.capabilities) capability
+    cross join lateral jsonb_array_elements_text(ap.capabilities) as c(value)
     where ap.integration_provider_id = ip.id
   ) capabilities
 ), updated_at = statement_timestamp()
@@ -379,7 +379,7 @@ begin
     raise exception 'Only AI-evidence markets can use this automatic void path' using errcode='42501';
   end if;
   if not (
-    coalesce(v_event.resolution_scope->>'condition','') ~* '\mvoid\M'
+    coalesce(v_event.resolution_scope->>'condition','') ~* E'\\\\mvoid\\\\M'
     or coalesce(v_event.resolution_scope->>'void_rule','') <> ''
     or coalesce(v_event.resolution_scope->>'voidRule','') <> ''
   ) then
