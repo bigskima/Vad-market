@@ -386,7 +386,7 @@ export function HomeScreen({
               </View>
             ) : (
               <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 7 }}>
-                <VadText variant="bodyStrong">Your saved markets aren't visible right now</VadText>
+                <VadText variant="bodyStrong">Your saved markets are not visible right now</VadText>
                 <VadText variant="caption" tone="secondary">Your bookmarks are still saved. These markets may be unavailable in the current catalogue or hidden by your enabled currencies.</VadText>
                 <Pressable accessibilityRole="button" onPress={() => router.push('/watchlist')} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                   <VadText variant="caption" tone="brand">Open watchlist</VadText>
