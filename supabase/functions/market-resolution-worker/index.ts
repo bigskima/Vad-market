@@ -1,6 +1,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 type RecordValue = Record<string, unknown>;
+type RpcError = { message?: string; code?: string } | null;
+type RpcResult = { data: unknown; error: RpcError };
+type RpcClient = {
+  rpc: (functionName: string, args?: Record<string, unknown>) => PromiseLike<RpcResult>;
+};
 type EvidenceSource = {
   url: string;
   domain: string;
@@ -57,7 +62,7 @@ function credentials() {
   return { url, service };
 }
 
-async function authenticate(req: Request, admin: ReturnType<typeof createClient>) {
+async function authenticate(req: Request, admin: RpcClient) {
   const schedulerSecret = req.headers.get('x-vad-scheduler-secret')?.trim() ?? '';
   if (!schedulerSecret) throw new Error('SCHEDULER_AUTH_REQUIRED');
   const { data, error } = await admin.rpc('internal_validate_oracle_scheduler_secret', { p_secret: schedulerSecret });
@@ -356,7 +361,7 @@ function validateOutput(raw: RecordValue, event: RecordValue, packet: EvidenceSo
   return { status, outcomeCode, confidence, rationale, evidence };
 }
 
-async function recordAttempt(admin: ReturnType<typeof createClient>, event: RecordValue, runtime: AiRuntime | null, status: string, output: RecordValue, evidence: RecordValue, failureReason: string | null) {
+async function recordAttempt(admin: RpcClient, event: RecordValue, runtime: AiRuntime | null, status: string, output: RecordValue, evidence: RecordValue, failureReason: string | null) {
   const unique = [safeText(event.eventPublicId, 80), String(runtime?.aiProviderId ?? 'NO_MODEL'), new Date().toISOString(), status].join(':');
   const { error } = await admin.rpc('internal_record_market_resolution_attempt', {
     p_event_id: event.eventId,
@@ -375,7 +380,7 @@ async function recordAttempt(admin: ReturnType<typeof createClient>, event: Reco
   });
 }
 
-async function processEvent(admin: ReturnType<typeof createClient>, event: RecordValue, runtimes: AiRuntime[], oracleProviders: OracleProvider[]) {
+async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRuntime[], oracleProviders: OracleProvider[]) {
   const scope = isRecord(event.resolutionScope) ? event.resolutionScope : {};
   const sourcesRaw = Array.isArray(scope.sources) ? scope.sources : [];
   const primaryUrls = sourcesRaw.slice(0, 8).map((item) => validatePublicHttpsUrl(item)).filter((x): x is URL => Boolean(x));
@@ -499,7 +504,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return json({ ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
   try {
     const { url, service } = credentials();
-    const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+    const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } }) as unknown as RpcClient;
     await authenticate(req, admin);
 
     const body = await req.json().catch(() => ({}));
