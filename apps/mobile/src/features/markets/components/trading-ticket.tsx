@@ -547,6 +547,10 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <QuoteLine label="Your new stake" value={assetMoney(quote.amount, market.asset_code)} />
             <QuoteLine label={`Existing stake on ${outcomeLabel}`} value={assetMoney(quote.existingUserOutcomeStake ?? 0, market.asset_code)} />
             <QuoteLine label={`Combined ${outcomeLabel} stake if committed`} value={assetMoney(quote.combinedUserOutcomeStake ?? quote.amount, market.asset_code)} />
+            <QuoteLine label="Existing stakes across all outcomes" value={assetMoney(quote.existingUserTotalStake ?? 0, market.asset_code)} />
+            <QuoteLine label="Total stakes across outcomes if committed" value={assetMoney(quote.combinedUserTotalStake ?? quote.amount, market.asset_code)} />
+            {quote.maxUserMarketStake != null ? <QuoteLine label="Maximum combined stake per user" value={assetMoney(quote.maxUserMarketStake, market.asset_code)} /> : null}
+            {quote.maxMarketPool != null ? <QuoteLine label="Maximum market pool" value={assetMoney(quote.maxMarketPool, market.asset_code)} /> : null}
             <QuoteLine label="VAD trading fee on this entry" value={assetMoney(quote.tradingFee, market.asset_code)} />
             <QuoteLine label="Total wallet debit now" value={assetMoney(quote.maximumCashDebit, market.asset_code)} />
             <QuoteLine label="Pool after your stake" value={assetMoney(quote.poolTotalAfter, market.asset_code)} />
