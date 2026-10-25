@@ -130,6 +130,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
     if (step.route === '/market/[marketId]') {
       const market = productData.markets.find((item) => {
         if (item.asset_code === 'TNGN' || !['NGN', 'USDC'].some((code) => code === item.asset_code)) return false;
+        if (item.asset_code === 'USDC' && item.liquidity_mode !== 'POOL') return false;
         const assetCode = item.asset_code as VADCurrency;
         return currencyPreference.isCurrencyEligible(assetCode) && currencyPreference.isCurrencyEnabled(assetCode);
       });
@@ -287,7 +288,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
 
     const isMarketDetailStep = currentStep.route === '/market/[marketId]';
     const hasValidMarketRoute = isMarketDetailStep && pathname.startsWith('/market/');
-    const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && !productData.markets.some((item) => item.asset_code !== 'TNGN' && ['NGN', 'USDC'].some((code) => code === item.asset_code) && currencyPreference.isCurrencyEnabled(item.asset_code as VADCurrency));
+    const marketRouteCanFallBack = isMarketDetailStep && pathname === '/markets' && !productData.markets.some((item) => item.asset_code !== 'TNGN' && ['NGN', 'USDC'].some((code) => code === item.asset_code) && !(item.asset_code === 'USDC' && item.liquidity_mode !== 'POOL') && currencyPreference.isCurrencyEligible(item.asset_code as VADCurrency) && currencyPreference.isCurrencyEnabled(item.asset_code as VADCurrency));
     const isNgnDepositOrWithdrawal = ['/wallet/deposit', '/wallet/withdraw'].some((route) => route === currentStep.route);
     const walletRouteCanFallBack = ((isNgnDepositOrWithdrawal && !canUseNgnWalletRoutes) || (currentStep.route === '/wallet/activity' && !canViewWalletActivity)) && pathname === '/wallet';
     const expectedMarketSection = currentStep.targetId === 'market-trading-ticket' ? 'Trade' : 'Overview';
