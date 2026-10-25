@@ -44,6 +44,7 @@ function isTourRoute(value: unknown): value is TourRoute {
     || value === '/portfolio'
     || value === '/account'
     || value === '/watchlist'
+    || value === '/market/[marketId]'
     || value === '/wallet/activity'
     || value === '/wallet/deposit'
     || value === '/wallet/withdraw'
