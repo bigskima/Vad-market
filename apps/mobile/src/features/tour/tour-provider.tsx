@@ -68,6 +68,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<TourTargetRect | null>(null);
+  const [targetUnavailable, setTargetUnavailable] = useState(false);
   const [showReminderChoices, setShowReminderChoices] = useState(false);
   const targetsRef = useRef(new Map<string, TargetNode>());
   const scrollControllerRef = useRef<ScrollController | null>(null);
@@ -177,6 +178,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
     setProgress(nextProgress);
     setStepIndex(nextIndex);
     setSpotlight(null);
+    setTargetUnavailable(false);
     setShowReminderChoices(false);
     setActive(true);
     setError(null);
@@ -192,8 +194,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
         : 'We could not save your guided tour progress. Please try again.');
     });
 
-    const destination = manual ? '/home' : step.route;
-    if (pathname !== destination) router.replace(destination);
+    if (pathname !== step.route) router.replace(step.route);
   }, [pathname]);
 
   const startTour = useCallback((manual = false) => {
@@ -247,6 +248,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
 
     if (pathname !== currentStep.route) {
       setSpotlight(null);
+      setTargetUnavailable(false);
       scrollControllerRef.current = null;
       router.replace(currentStep.route);
       return;
@@ -261,11 +263,16 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       if (!node) {
         attempt += 1;
         if (attempt <= 24) setTimeout(measure, 90);
+        else setTargetUnavailable(true);
         return;
       }
 
       node.measureInWindow((x, y, width, height) => {
-        if (cancelled || width <= 0 || height <= 0) return;
+        if (cancelled) return;
+        if (width <= 0 || height <= 0) {
+          setTargetUnavailable(true);
+          return;
+        }
         const rect = { x, y, width, height };
         const controller = scrollControllerRef.current;
         const needsMovement = y < 118 || y + height > windowHeight - 270;
@@ -278,6 +285,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
         }
 
         const padding = 6;
+        setTargetUnavailable(false);
         setSpotlight({
           x: Math.max(4, x - padding),
           y: Math.max(4, y - padding),
@@ -316,6 +324,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
     }
     const nextIndex = stepIndex + 1;
     setSpotlight(null);
+    setTargetUnavailable(false);
     setShowReminderChoices(false);
     setStepIndex(nextIndex);
     saveProgress('IN_PROGRESS', steps[nextIndex]?.id ?? null);
@@ -380,6 +389,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
         active={active}
         step={currentStep}
         rect={spotlight}
+        targetUnavailable={targetUnavailable}
         stepNumber={stepIndex + 1}
         totalSteps={steps.length}
         showReminderChoices={showReminderChoices}
@@ -415,6 +425,7 @@ function TourOverlay({
   active,
   step,
   rect,
+  targetUnavailable,
   stepNumber,
   totalSteps,
   showReminderChoices,
@@ -427,6 +438,7 @@ function TourOverlay({
   active: boolean;
   step: TourStep | null;
   rect: TourTargetRect | null;
+  targetUnavailable: boolean;
   stepNumber: number;
   totalSteps: number;
   showReminderChoices: boolean;
@@ -520,7 +532,11 @@ function TourOverlay({
                 <VadText variant="heading">{step.title}</VadText>
                 <VadText tone="secondary">{step.body}</VadText>
                 {!rect ? (
-                  <VadText variant="caption" tone="tertiary">Moving to this part of VAD…</VadText>
+                  <VadText variant="caption" tone={targetUnavailable ? 'danger' : 'tertiary'}>
+                    {targetUnavailable
+                      ? 'This screen anchor is not available in this view. Continue to the next mapped control or go back.'
+                      : 'Moving to the selected control…'}
+                  </VadText>
                 ) : null}
               </View>
 
