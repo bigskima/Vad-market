@@ -300,12 +300,14 @@ export function HomeScreen({
         </View>
       </TourTarget>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6, paddingTop: 1, paddingBottom: 1 }}>
+      <TourTarget id="home-actions">
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6, paddingTop: 1, paddingBottom: 1 }}>
         <QuickAction label="Deposit" icon="plus" color="#20D99A" onPress={onDeposit} />
         <QuickAction label="Withdraw" icon="wallet" color="#625BFF" onPress={onWithdraw} />
         <QuickAction label="Predict" icon="arrowUp" color="#3298F5" onPress={() => onExploreMarkets()} />
         <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
-      </View>
+        </View>
+      </TourTarget>
 
       {promotions.length ? (
         promotionsToShow.length ? (
