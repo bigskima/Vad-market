@@ -7,6 +7,7 @@ import { AssistantEntry } from '@/features/assistant/assistant-entry';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
 import { SocialConvictionFeed } from '@/features/social/social-conviction-feed';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -70,11 +71,13 @@ export default function CommunityRoute() {
         </View>
       ) : null}
 
+      <TourTarget id="community-feed">
       <SocialConvictionFeed
         markets={data.markets}
         canCreatePost={canCreatePost}
         onOpenMarket={openMarket}
       />
+      </TourTarget>
     </ProductSubpage>
   );
 }
