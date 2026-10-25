@@ -1,5 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { View } from 'react-native';
+import { TourTarget } from '@/features/tour/tour-provider';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
@@ -21,6 +22,7 @@ export default function WalletActivityRoute() {
 
   return (
     <ProductSubpage title="Wallet activity" maxWidth={1040}>
+      <TourTarget id="wallet-history">
       <View style={{ gap: theme.spacing.xl }}>
         {data.sectionErrors.walletActivity && !data.walletActivity.length ? (
           <VadErrorState title="Wallet ledger could not be loaded" message={data.sectionErrors.walletActivity} onRetry={() => void data.refreshPortfolio()} />
@@ -29,6 +31,7 @@ export default function WalletActivityRoute() {
         )}
         <WalletActivityScreen onOpenTransaction={openTransaction} />
       </View>
+      </TourTarget>
     </ProductSubpage>
   );
 }
