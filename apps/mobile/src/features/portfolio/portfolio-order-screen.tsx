@@ -113,7 +113,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
         <VadProgressiveSection
           title="Historical order details"
           eyebrow="READ-ONLY RECORD"
-          description="This order is no longer open. No cancellation or account balance changes are available from this record."
+          description="This order is closed. No further actions are available."
           icon="activity"
           defaultExpanded
           summary={<VadText variant="caption" tone="tertiary">{archivedOrder.side} {archivedOrder.outcome_code}</VadText>}
@@ -286,7 +286,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
       <VadBottomSheet visible={confirmOpen} title="Cancel remaining order?" onClose={() => { if (!cancelling) setConfirmOpen(false); }}>
         <View style={{ gap: theme.spacing.md }}>
           <VadText variant="bodyStrong">{remaining.toLocaleString()} shares are still open.</VadText>
-          <VadText variant="caption" tone="secondary">Filled shares stay filled. Only the remaining open shares will be cancelled.</VadText>
+          <VadText variant="caption" tone="secondary">Filled shares remain. Only open shares will be cancelled.</VadText>
           {cancelError ? <VadCard style={{ borderColor: theme.colors.danger, backgroundColor: theme.colors.noSoft }}><VadText variant="caption" tone="danger">{cancelError}</VadText></VadCard> : null}
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
             <ContextFact label="Remaining" value={remaining.toLocaleString()} />
