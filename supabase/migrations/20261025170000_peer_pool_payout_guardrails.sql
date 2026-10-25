@@ -1499,6 +1499,15 @@ comment on function settlement.execute_pool_instrument(bigint) is
     'expectedQuoteSigner',v_expected_signer,
     'protocolKey',v_deployment.protocol_key,
     'protocolVersion',v_deployment.protocol_version,
+    'maxEntryStake',v_risk_policy.pool_max_entry_stake,
+    'maxUserMarketStake',v_risk_policy.pool_max_user_market_stake,
+    'maxMarketPool',v_risk_policy.pool_max_market_total,
+    'existingUserExposure',v_existing_user_exposure+v_pending_user_exposure,
+    'projectedUserExposure',v_existing_user_exposure+v_pending_user_exposure+p_amount,
+    'existingMarketPool',v_existing_market_exposure+v_pending_market_exposure,
+    'projectedMarketPool',v_existing_market_exposure+v_pending_market_exposure+p_amount,
+    'riskPolicyVersion',v_risk_policy.policy_version,
+    'payoutCapActive',false,
     'signature',null
   );
 end;
