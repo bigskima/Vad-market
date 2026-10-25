@@ -9,6 +9,7 @@ import { VadInput } from '@/components/ui/vad-input';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -320,7 +321,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
   return (
     <View style={{ gap: density.compact ? 10 : 12 }}>
-      <TradeStepRail step={step} secondLabel="Stake" />
+      <TourTarget id="market-trading-ticket"><TradeStepRail step={step} secondLabel="Stake" /></TourTarget>
       <CapabilityNotice canTrade={canTrade || hasTemporaryNgnTestCredit} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
       {hasTemporaryNgnTestCredit ? (
         <InlineMessage
@@ -753,7 +754,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
 
   return (
     <View style={{ gap: density.compact ? 10 : 12 }}>
-      <TradeStepRail step={step} secondLabel="Order" />
+      <TourTarget id="market-trading-ticket"><TradeStepRail step={step} secondLabel="Order" /></TourTarget>
       <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
 
       {step === 'prediction' ? (
