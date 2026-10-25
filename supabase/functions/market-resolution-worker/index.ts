@@ -391,6 +391,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     const candidate = validatePublicHttpsUrl(scope[field]);
     if (candidate && !primaryUrls.some((existing) => existing.toString() === candidate.toString())) primaryUrls.push(candidate);
   }
+
   const [directResults, searchPacket] = await Promise.all([
     Promise.all(primaryUrls.map((url) => fetchText(url))),
     searchEvidence(safeText(event.title, 500), scope, oracleProviders),
@@ -408,8 +409,19 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason: 'NO_READABLE_EVIDENCE' };
   }
 
-  const resultErrors: string[] = [];
-  for (const runtime of runtimes) {
+  // Use only models whose server-side credentials are available. When two or
+  // more models are configured, require two independent model decisions to agree
+  // before writing a financial oracle observation or invoking a void.
+  const configuredRuntimes = runtimes.filter((runtime) =>
+    Boolean(Deno.env.get(runtime.secretReference)?.trim())
+    && Boolean(runtime.endpoint && runtime.adapter && runtime.modelCode)
+  );
+  if (configuredRuntimes.length === 0) {
+    await recordAttempt(admin, event, null, 'INCONCLUSIVE', {}, { evidenceCount: packet.length }, 'No active free-only AI model has an available server-side credential.');
+    return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason: 'NO_CONFIGURED_AI_MODEL' };
+  }
+
+  const evaluations = await Promise.all(configuredRuntimes.map(async (runtime) => {
     const startedAt = new Date();
     try {
       const output = await callModel(runtime, event, packet);
@@ -419,87 +431,199 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
       }));
       if (validated.status === 'INCONCLUSIVE') {
         await recordAttempt(admin, event, runtime, 'INCONCLUSIVE', {
-          status: validated.status, confidence: validated.confidence, rationale: validated.rationale,
-        }, { citations: evidenceSummary }, null);
-        resultErrors.push(runtime.providerCode + ': inconclusive');
-        continue;
+          proposedStatus: validated.status, confidence: validated.confidence, rationale: validated.rationale,
+        }, { citations: evidenceSummary }, 'Model could not establish a result from the provided evidence.');
+        return { kind: 'INCONCLUSIVE' as const, runtime, reason: 'MODEL_INCONCLUSIVE' };
       }
-
-      if (validated.status === 'VOID') {
-        const condition = safeText(scope.condition, 4000);
-        const explicitVoid = /\bvoid\b/i.test(condition) || Boolean(scope.void_rule) || Boolean(scope.voidRule);
-        const deadlineRaw = safeText(scope.resolution_deadline ?? scope.resolutionDeadline, 100);
-        const deadline = deadlineRaw ? new Date(deadlineRaw) : null;
-        if (!explicitVoid || !deadline || !Number.isFinite(deadline.getTime()) || deadline.getTime() > Date.now()) {
-          await recordAttempt(admin, event, runtime, 'INCONCLUSIVE', {
-            status: 'VOID_REJECTED', confidence: validated.confidence, rationale: validated.rationale,
-          }, { citations: evidenceSummary }, 'Published void rule or deadline not satisfied.');
-          resultErrors.push(runtime.providerCode + ': void condition not satisfied');
-          continue;
-        }
-        const { data: voided, error: voidError } = await admin.rpc('internal_auto_void_vad_review_event', {
-          p_event_id: event.eventId,
-          p_evidence: {
-            ai_provider: runtime.providerCode, model_code: runtime.modelCode,
-            prompt_version_id: runtime.promptVersionId, confidence: validated.confidence,
-            rationale: validated.rationale, citations: evidenceSummary, evidence_packet_hash: await sha256(JSON.stringify(packet)),
-          },
-        });
-        if (voidError || voided !== true) throw new Error('Automatic void policy guard rejected the void.');
-        await recordAttempt(admin, event, runtime, 'VOIDED', {
-          status: 'VOID', rationale: validated.rationale, confidence: validated.confidence,
-        }, { citations: evidenceSummary }, null);
-        return { eventPublicId: event.eventPublicId, status: 'VOIDED', provider: runtime.providerCode };
-      }
-
-      const chosenEvidence = validated.evidence[0];
-      const oracleCode = chosenEvidence.source.source === 'SEARCH' ? 'TAVILY' : 'PUBLIC_RECORD';
-      const oracleProvider = oracleProviders.find((provider) =>
-        provider.code === oracleCode && provider.environment === 'PRODUCTION'
-        && provider.status === 'ACTIVE' && provider.capabilities?.some((value) => value.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE')
-      );
-      if (!oracleProvider) throw new Error('Evidence source is not backed by an active configured oracle provider.');
-      const idempotencyKey = 'ai-resolution-observation-v1:' + (await sha256([
-        event.eventPublicId, oracleCode, chosenEvidence.url, validated.outcomeCode ?? '', safeText(scope.condition, 1000),
-      ].join('|')));
-      const { data: observationId, error: observationError } = await admin.rpc('internal_record_verified_oracle_observation', {
-        p_event_id: event.eventId,
-        p_provider_id: oracleProvider.id,
-        p_source_code: oracleProvider.code,
-        p_observed_outcome: validated.outcomeCode,
-        p_payload: {
-          resolver_type: 'AI_EVIDENCE_RULE_V1',
-          ai_provider: runtime.providerCode,
-          model_code: runtime.modelCode,
-          prompt_version_id: runtime.promptVersionId,
-          confidence: validated.confidence,
-          rationale: validated.rationale,
-          resolution_condition: scope.condition ?? null,
-          evidence: evidenceSummary,
-          evidence_packet_hash: await sha256(JSON.stringify(packet)),
-          started_at: startedAt.toISOString(),
-        },
-        p_evidence_reference: chosenEvidence.url,
-        p_observed_at: new Date().toISOString(),
-        p_idempotency_key: idempotencyKey,
-      });
-      if (observationError || observationId == null) throw new Error('Oracle consensus rejected the evidence observation.');
-      await recordAttempt(admin, event, runtime, 'RESOLVED', {
-        status: 'RESOLVED', outcomeCode: validated.outcomeCode, confidence: validated.confidence,
-        rationale: validated.rationale, observationId,
-      }, { citations: evidenceSummary }, null);
-      return { eventPublicId: event.eventPublicId, status: 'RESOLVED', provider: runtime.providerCode, oracleProvider: oracleCode, observationId };
+      return { kind: 'CANDIDATE' as const, runtime, startedAt, validated, evidenceSummary };
     } catch (error) {
       const message = error instanceof Error ? error.message.slice(0, 350) : 'AI resolution failed.';
-      resultErrors.push(runtime.providerCode + ': ' + message);
       await recordAttempt(admin, event, runtime, 'FAILED', {}, { evidenceCount: packet.length }, message);
+      return { kind: 'FAILED' as const, runtime, reason: message };
     }
+  }));
+
+  const candidates = evaluations.filter((evaluation) => evaluation.kind === 'CANDIDATE');
+  if (candidates.length === 0) {
+    const reasons = evaluations.map((evaluation) =>
+      evaluation.kind === 'FAILED' ? evaluation.runtime.providerCode + ': ' + evaluation.reason
+        : evaluation.kind === 'INCONCLUSIVE' ? evaluation.runtime.providerCode + ': inconclusive'
+          : ''
+    ).filter(Boolean);
+    return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reasons: reasons.slice(0, 4) };
   }
 
-  if (resultErrors.length === 0) {
-    await recordAttempt(admin, event, null, 'INCONCLUSIVE', {}, { evidenceCount: packet.length }, 'No active free-only AI model is configured for resolution.');
+  const requiredAgreement = Math.min(2, configuredRuntimes.length);
+  const groups = new Map<string, typeof candidates>();
+  for (const candidate of candidates) {
+    const key = candidate.validated.status + ':' + (candidate.validated.outcomeCode ?? '');
+    const group = groups.get(key) ?? [];
+    group.push(candidate);
+    groups.set(key, group);
   }
-  return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reasons: resultErrors.slice(0, 4) };
+  const winningGroup = [...groups.values()].sort((a, b) => b.length - a.length)[0];
+  if (!winningGroup || winningGroup.length < requiredAgreement) {
+    for (const candidate of candidates) {
+      await recordAttempt(admin, event, candidate.runtime, 'INCONCLUSIVE', {
+        proposedStatus: candidate.validated.status,
+        proposedOutcomeCode: candidate.validated.outcomeCode,
+        confidence: candidate.validated.confidence,
+        rationale: candidate.validated.rationale,
+      }, { citations: candidate.evidenceSummary }, 'AI_MODEL_DISAGREEMENT: independent model agreement was not reached.');
+    }
+    return {
+      eventPublicId: event.eventPublicId,
+      status: 'INCONCLUSIVE',
+      reason: 'AI_MODEL_DISAGREEMENT',
+      modelDecisions: candidates.map((candidate) => ({
+        provider: candidate.runtime.providerCode,
+        status: candidate.validated.status,
+        outcomeCode: candidate.validated.outcomeCode,
+      })),
+    };
+  }
+
+  // Preserve the disagreement in the audit trail even when a majority exists.
+  const dissenters = candidates.filter((candidate) => !winningGroup.includes(candidate));
+  for (const candidate of dissenters) {
+    await recordAttempt(admin, event, candidate.runtime, 'INCONCLUSIVE', {
+      proposedStatus: candidate.validated.status,
+      proposedOutcomeCode: candidate.validated.outcomeCode,
+      confidence: candidate.validated.confidence,
+      rationale: candidate.validated.rationale,
+    }, { citations: candidate.evidenceSummary }, 'AI_MODEL_DISAGREEMENT: candidate differed from the agreed outcome.');
+  }
+
+  const agreedStatus = winningGroup[0].validated.status;
+  const agreementEvidence = winningGroup.flatMap((candidate) => candidate.validated.evidence);
+  const evidenceByKey = new Map<string, (typeof agreementEvidence)[number]>();
+  for (const evidence of agreementEvidence) evidenceByKey.set(evidence.url + '|' + evidence.quote, evidence);
+  const agreedEvidence = [...evidenceByKey.values()].sort((a, b) => {
+    const aPrimary = primaryUrls.some((url) => url.toString() === a.url) ? 0 : 1;
+    const bPrimary = primaryUrls.some((url) => url.toString() === b.url) ? 0 : 1;
+    const aDirect = a.source.source === 'DIRECT' ? 0 : 1;
+    const bDirect = b.source.source === 'DIRECT' ? 0 : 1;
+    return aPrimary - bPrimary || aDirect - bDirect || a.url.localeCompare(b.url);
+  });
+  const evidenceSummary = agreedEvidence.map((item) => ({
+    url: item.url, quote: item.quote, publishedAt: item.publishedAt, sourceType: item.source.source,
+  }));
+
+  if (agreedStatus === 'VOID') {
+    const condition = safeText(scope.condition, 4000);
+    const explicitVoid = /\bvoid\b/i.test(condition) || Boolean(scope.void_rule) || Boolean(scope.voidRule);
+    const deadlineRaw = safeText(scope.resolution_deadline ?? scope.resolutionDeadline, 100);
+    const deadline = deadlineRaw ? new Date(deadlineRaw) : null;
+    if (!explicitVoid || !deadline || !Number.isFinite(deadline.getTime()) || deadline.getTime() > Date.now()) {
+      for (const candidate of winningGroup) {
+        await recordAttempt(admin, event, candidate.runtime, 'INCONCLUSIVE', {
+          proposedStatus: 'VOID_REJECTED', confidence: candidate.validated.confidence, rationale: candidate.validated.rationale,
+        }, { citations: candidate.evidenceSummary }, 'Published void rule or deadline not satisfied.');
+      }
+      return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason: 'VOID_POLICY_GUARD_REJECTED' };
+    }
+
+    const { data: voided, error: voidError } = await admin.rpc('internal_auto_void_vad_review_event', {
+      p_event_id: event.eventId,
+      p_evidence: {
+        ai_reviews: winningGroup.map((candidate) => ({
+          provider: candidate.runtime.providerCode,
+          model_code: candidate.runtime.modelCode,
+          prompt_version_id: candidate.runtime.promptVersionId,
+          confidence: candidate.validated.confidence,
+          rationale: candidate.validated.rationale,
+          citations: candidate.evidenceSummary,
+        })),
+        agreement_count: winningGroup.length,
+        required_agreement: requiredAgreement,
+        citations: evidenceSummary,
+        evidence_packet_hash: await sha256(JSON.stringify(packet)),
+      },
+    });
+    if (voidError || voided !== true) {
+      const reason = 'Automatic void policy guard rejected the void.';
+      for (const candidate of winningGroup) {
+        await recordAttempt(admin, event, candidate.runtime, 'FAILED', {}, { citations: candidate.evidenceSummary }, reason);
+      }
+      throw new Error(reason);
+    }
+    for (const candidate of winningGroup) {
+      await recordAttempt(admin, event, candidate.runtime, 'VOIDED', {
+        status: 'VOID', rationale: candidate.validated.rationale, confidence: candidate.validated.confidence,
+        agreementCount: winningGroup.length,
+      }, { citations: candidate.evidenceSummary }, null);
+    }
+    return {
+      eventPublicId: event.eventPublicId,
+      status: 'VOIDED',
+      providers: winningGroup.map((candidate) => candidate.runtime.providerCode),
+      agreementCount: winningGroup.length,
+    };
+  }
+
+  const agreedOutcome = winningGroup[0].validated.outcomeCode;
+  if (!agreedOutcome || agreedEvidence.length === 0) {
+    throw new Error('The agreed AI result lacks a configured outcome or verified evidence.');
+  }
+  const chosenEvidence = agreedEvidence[0];
+  const oracleCode = chosenEvidence.source.source === 'SEARCH' ? 'TAVILY' : 'PUBLIC_RECORD';
+  const oracleProvider = oracleProviders.find((provider) =>
+    provider.code === oracleCode && provider.environment === 'PRODUCTION'
+    && provider.status === 'ACTIVE' && provider.capabilities?.some((value) => value.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE')
+  );
+  if (!oracleProvider) throw new Error('Evidence source is not backed by an active configured oracle provider.');
+
+  const idempotencyKey = 'ai-resolution-observation-v1:' + (await sha256([
+    event.eventPublicId, oracleCode, chosenEvidence.url, agreedOutcome, safeText(scope.condition, 1000),
+  ].join('|')));
+  const { data: observationId, error: observationError } = await admin.rpc('internal_record_verified_oracle_observation', {
+    p_event_id: event.eventId,
+    p_provider_id: oracleProvider.id,
+    p_source_code: oracleProvider.code,
+    p_observed_outcome: agreedOutcome,
+    p_payload: {
+      resolver_type: 'AI_EVIDENCE_RULE_V1',
+      ai_agreement_count: winningGroup.length,
+      ai_required_agreement: requiredAgreement,
+      ai_reviews: winningGroup.map((candidate) => ({
+        provider: candidate.runtime.providerCode,
+        model_code: candidate.runtime.modelCode,
+        prompt_version_id: candidate.runtime.promptVersionId,
+        confidence: candidate.validated.confidence,
+        rationale: candidate.validated.rationale,
+        citations: candidate.evidenceSummary,
+      })),
+      resolution_condition: scope.condition ?? null,
+      evidence: evidenceSummary,
+      evidence_packet_hash: await sha256(JSON.stringify(packet)),
+      started_at: winningGroup[0].startedAt.toISOString(),
+    },
+    p_evidence_reference: chosenEvidence.url,
+    p_observed_at: new Date().toISOString(),
+    p_idempotency_key: idempotencyKey,
+  });
+  if (observationError || observationId == null) throw new Error('Oracle consensus rejected the evidence observation.');
+
+  for (const candidate of winningGroup) {
+    await recordAttempt(admin, event, candidate.runtime, 'RESOLVED', {
+      status: 'RESOLVED',
+      outcomeCode: agreedOutcome,
+      confidence: candidate.validated.confidence,
+      rationale: candidate.validated.rationale,
+      observationId,
+      agreementCount: winningGroup.length,
+      requiredAgreement,
+    }, { citations: candidate.evidenceSummary }, null);
+  }
+  return {
+    eventPublicId: event.eventPublicId,
+    status: 'RESOLVED',
+    outcomeCode: agreedOutcome,
+    providers: winningGroup.map((candidate) => candidate.runtime.providerCode),
+    oracleProvider: oracleCode,
+    observationId,
+    agreementCount: winningGroup.length,
+  };
 }
 
 Deno.serve(async (req: Request) => {
