@@ -79,12 +79,12 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
       : assetClass === 'FOREX' ? 'Foreign exchange'
         : 'Economic indicators';
   const help = assetClass === 'STOCKS'
-    ? 'Search listed companies and ETFs by ticker or company name.'
+    ? 'Search companies and ETFs by name or ticker.'
     : assetClass === 'COMMODITIES'
-      ? 'Search configured commodity and energy benchmarks by symbol or name.'
+      ? 'Search commodities and energy by name or symbol.'
       : assetClass === 'FOREX'
-        ? 'Search currency pairs by symbol, such as EUR/USD.'
-        : 'Search published economic series by name or series identifier. Reported observations may be delayed or revised.';
+        ? 'Search currency pairs, such as EUR/USD.'
+        : 'Search economic indicators by name or ID.';
 
   return (
     <View style={{ gap: theme.spacing.md }}>
@@ -126,13 +126,13 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
           ))}
         </View>
       ) : (
-        <VadEmptyState title="No matching assets" body="Try a ticker, a shorter company name, or a different symbol. Results depend on the enabled provider's coverage." />
+        <VadEmptyState title="No matching assets" body="Try another name or symbol." />
       )}
       {notice ? <VadText variant="caption" tone="secondary">{notice}</VadText> : null}
       {error && items.length ? <VadText variant="caption" tone="warning">{error}</VadText> : null}
       {items.length ? (
         <VadText variant="caption" tone="tertiary">
-          {source ? source + ' · ' : ''}{fetchedAt ? 'Updated ' + new Date(fetchedAt).toLocaleString() : 'Provider timestamp unavailable'}{stale ? ' · Showing cached data because the provider could not refresh' : ''}. Display-only data; it does not determine VAD market outcomes.
+          {source ? source + ' · ' : ''}{fetchedAt ? 'Updated ' + new Date(fetchedAt).toLocaleString() : 'Latest available data'}{stale ? ' · Cached' : ''}
         </VadText>
       ) : null}
     </View>
@@ -165,12 +165,12 @@ function FinancialAssetCard({ item }: { item: FinancialMarketQuote }) {
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <View style={{ gap: 3, flex: 1, minWidth: 130 }}>
-          <VadText variant="caption" tone="secondary">{item.assetClass === 'ECONOMICS' ? 'Latest published value' : 'Current / latest price'}</VadText>
+          <VadText variant="caption" tone="secondary">{item.assetClass === 'ECONOMICS' ? 'Latest value' : 'Price'}</VadText>
           <VadText variant="title" style={{ fontSize: density.phone ? 23 : 27 }}>{priceText}</VadText>
         </View>
         {changeText ? (
           <View style={{ alignItems: 'flex-end', gap: 2 }}>
-            <VadText variant="caption" tone="secondary">Provider-reported change</VadText>
+            <VadText variant="caption" tone="secondary">Change</VadText>
             <VadText variant="bodyStrong" style={{ color: changeColor }}>{changeText}</VadText>
           </View>
         ) : null}
