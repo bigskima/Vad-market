@@ -1,6 +1,7 @@
 import { Redirect } from 'expo-router';
 import { PaymentReadinessCard } from '@/components/payment-readiness-card';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
 import { useCurrencyPreference } from '@/providers/currency-preference-provider';
@@ -16,6 +17,7 @@ export default function WithdrawRoute() {
 
   return (
     <ProductSubpage title="Withdraw" maxWidth={980}>
+      <TourTarget id="wallet-withdraw-form">
       <PaymentReadinessCard
         initialMode="WITHDRAWAL"
         lockMode
@@ -25,6 +27,7 @@ export default function WithdrawRoute() {
           runtime.isRefreshing && reason === 'CAPABILITIES_LOADING'
         }
       />
+      </TourTarget>
     </ProductSubpage>
   );
 }
