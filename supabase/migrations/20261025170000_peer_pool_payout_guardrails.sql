@@ -73,7 +73,10 @@ insert into market.instrument_trading_risk_policies (
   pool_max_payout_multiple, order_max_order_notional, order_max_user_market_exposure
 )
 select i.id, i.asset_id,
-       case when i.liquidity_model = 'POOL' then 'LEGACY' else 'BOUNDED' end,
+       case
+         when i.liquidity_model = 'POOL' and a.code = 'USDC' then 'LEGACY'
+         else 'BOUNDED'
+       end,
        coalesce(d.policy_version, 1),
        coalesce(d.pool_max_entry_stake, greatest(i.min_order_notional, 100000::numeric)),
        coalesce(d.pool_max_user_market_stake, greatest(i.min_order_notional, 250000::numeric)),
@@ -83,6 +86,7 @@ select i.id, i.asset_id,
        coalesce(d.order_max_order_notional, greatest(i.min_order_notional, 100000::numeric)),
        coalesce(d.order_max_user_market_exposure, greatest(i.min_order_notional, 250000::numeric))
 from market.instruments i
+join public.assets a on a.id = i.asset_id
 left join market.trading_risk_policy_defaults d on d.asset_id = i.asset_id
 on conflict (instrument_id) do nothing;
 
@@ -118,9 +122,25 @@ begin
     pool_max_entry_stake, pool_max_user_market_stake, pool_max_market_total,
     pool_max_payout_multiple, order_max_order_notional, order_max_user_market_exposure
   ) values (
-    new.id, new.asset_id, 'BOUNDED', d.policy_version,
+    new.id, new.asset_id,
+    case
+      -- Current USDC Settlement V1 cannot execute partial refunds on losing
+      -- positions after a normal result. Keep its payout economics unchanged
+      -- while still enforcing entry and cumulative exposure limits.
+      when new.liquidity_model = 'POOL'
+        and exists (select 1 from public.assets a where a.id = new.asset_id and a.code = 'USDC')
+        then 'LEGACY'
+      else 'BOUNDED'
+    end,
+    d.policy_version,
     d.pool_max_entry_stake, d.pool_max_user_market_stake, d.pool_max_market_total,
-    d.pool_max_payout_multiple, d.order_max_order_notional, d.order_max_user_market_exposure
+    case
+      when new.liquidity_model = 'POOL'
+        and exists (select 1 from public.assets a where a.id = new.asset_id and a.code = 'USDC')
+        then null
+      else d.pool_max_payout_multiple
+    end,
+    d.order_max_order_notional, d.order_max_user_market_exposure
   );
   return new;
 end;
@@ -771,6 +791,729 @@ begin
 end;
 $$;
 
+CREATE OR REPLACE FUNCTION public.internal_prepare_onchain_prediction(p_user_id uuid, p_wallet_id uuid, p_instrument_public_id uuid, p_outcome_code text, p_chain_code text, p_amount numeric, p_idempotency_key text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_account public.user_accounts;
+  v_instrument market.instruments;
+  v_asset public.assets;
+  v_outcome market.outcomes;
+  v_wallet blockchain.wallet_connections;
+  v_venue market.instrument_venues;
+  v_chain blockchain.chains;
+  v_rep blockchain.asset_representations;
+  v_deployment blockchain.contract_deployments;
+  v_intent blockchain.transaction_intents;
+  v_authorization blockchain.transaction_authorizations;
+  v_fee numeric(38,18):=0;
+  v_fee_pv bigint;
+  v_amount_atomic numeric(38,0);
+  v_fee_atomic numeric(38,0);
+  v_fee_quantized numeric(38,18);
+  v_scale numeric;
+  v_deadline timestamptz;
+  v_auth_id text;
+  v_position_id text;
+  v_market_id text;
+  v_outcome_id text;
+  v_expected_signer text;
+  v_existing_user uuid;
+  v_risk_policy market.instrument_trading_risk_policies;
+  v_existing_user_exposure numeric(38,18) := 0;
+  v_existing_market_exposure numeric(38,18) := 0;
+  v_pending_user_exposure numeric(38,18) := 0;
+  v_pending_market_exposure numeric(38,18) := 0;
+begin
+  if p_user_id is null or p_wallet_id is null or p_instrument_public_id is null then
+    raise exception 'On-chain prediction identity is required' using errcode='22023';
+  end if;
+  if p_idempotency_key is null
+     or char_length(btrim(p_idempotency_key))<12
+     or char_length(btrim(p_idempotency_key))>240 then
+    raise exception 'A valid on-chain idempotency key is required' using errcode='22023';
+  end if;
+
+  select ti.user_id into v_existing_user
+  from blockchain.transaction_intents ti
+  where ti.idempotency_key=p_idempotency_key;
+
+  if v_existing_user is not null then
+    if v_existing_user<>p_user_id then
+      raise exception 'On-chain idempotency key belongs to another account'
+        using errcode='23505';
+    end if;
+
+    select ti.* into v_intent
+    from blockchain.transaction_intents ti
+    where ti.idempotency_key=p_idempotency_key;
+    select ta.* into v_authorization
+    from blockchain.transaction_authorizations ta
+    where ta.intent_id=v_intent.id;
+
+    if v_authorization.id is null then
+      raise exception 'Existing on-chain intent is missing its authorization'
+        using errcode='P0001';
+    end if;
+
+    select c.* into v_chain from blockchain.chains c where c.id=v_authorization.chain_id;
+    select cd.* into v_deployment from blockchain.contract_deployments cd where cd.id=v_authorization.contract_deployment_id;
+    select ar.* into v_rep from blockchain.asset_representations ar where ar.id=v_authorization.asset_representation_id;
+
+    return jsonb_build_object(
+      'intentId',v_intent.public_id,
+      'intentStatus',v_intent.status,
+      'authorizationId',v_authorization.authorization_id,
+      'authorizationStatus',v_authorization.status,
+      'positionId',v_authorization.position_id,
+      'marketId',v_authorization.market_id,
+      'outcomeId',v_authorization.outcome_id,
+      'walletAddress',v_authorization.wallet_address,
+      'collateralAmount',v_authorization.amount,
+      'collateralAmountAtomic',v_authorization.amount_atomic::text,
+      'tradingFee',v_authorization.fee_amount,
+      'tradingFeeAmountAtomic',v_authorization.fee_amount_atomic::text,
+      'tradingFeePolicyVersionId',v_authorization.fee_policy_version_id,
+      'deadline',extract(epoch from v_authorization.expires_at)::bigint,
+      'chainCode',v_chain.code,
+      'evmChainId',v_chain.evm_chain_id,
+      'contractAddress',v_deployment.contract_address,
+      'tokenAddress',v_rep.token_address,
+      'tokenDecimals',v_rep.decimals,
+      'expectedQuoteSigner',v_deployment.metadata->>'quote_signer_address',
+      'protocolKey',v_deployment.protocol_key,
+      'protocolVersion',v_deployment.protocol_version,
+      'signature',v_authorization.signature
+    );
+  end if;
+
+  select * into v_account
+  from public.user_accounts ua
+  where ua.user_id=p_user_id and ua.status='ACTIVE';
+  if v_account.user_id is null then
+    raise exception 'Active VAD account required' using errcode='42501';
+  end if;
+
+  select i.* into v_instrument
+  from market.instruments i
+  where i.public_id=p_instrument_public_id;
+  if v_instrument.id is null then raise exception 'Market not found' using errcode='P0002'; end if;
+
+  select * into v_asset from public.assets a where a.id=v_instrument.asset_id;
+  if v_asset.code<>'USDC' or v_asset.status<>'ACTIVE' then
+    raise exception 'This settlement protocol is available only for active USDC markets' using errcode='P0001';
+  end if;
+  if v_instrument.liquidity_model<>'POOL' then
+    raise exception 'USDC Settlement V1 currently supports Peer Pool markets' using errcode='P0001';
+  end if;
+  if v_instrument.status<>'OPEN'
+     or v_instrument.opened_at is null
+     or v_instrument.opened_at>statement_timestamp()
+     or (v_instrument.closed_at is not null and v_instrument.closed_at<=statement_timestamp()) then
+    raise exception 'Market is not open' using errcode='P0001';
+  end if;
+  if not private.trade_access_satisfies(p_user_id,v_account.country_code,v_instrument.asset_id) then
+    raise exception 'Trading is not available for this account and market' using errcode='P0001';
+  end if;
+  if p_amount is null or p_amount<v_instrument.min_order_notional then
+    raise exception 'Stake is below the market minimum' using errcode='22023';
+  end if;
+
+  select * into v_risk_policy
+  from market.instrument_trading_risk_policies
+  where instrument_id = v_instrument.id;
+  if v_risk_policy.instrument_id is null then
+    raise exception 'Market risk policy is missing; on-chain stake was not authorized.'
+      using errcode='23514';
+  end if;
+  if p_amount > v_risk_policy.pool_max_entry_stake then
+    raise exception 'Stake exceeds this market''s maximum single-stake limit.'
+      using errcode='22023';
+  end if;
+
+  -- Serialise all outstanding on-chain pool authorizations for this instrument so
+  -- parallel prepare requests cannot bypass user or total-pool exposure limits.
+  perform pg_advisory_xact_lock(
+    hashtextextended('vad-onchain-pool:' || v_instrument.id::text, 0)
+  );
+
+  select coalesce(sum(bp.collateral_amount), 0)
+  into v_existing_market_exposure
+  from blockchain.positions bp
+  where bp.instrument_id = v_instrument.id
+    and bp.status in ('LOCKED','SETTLEMENT_READY');
+
+  select coalesce(sum(bp.collateral_amount), 0)
+  into v_existing_user_exposure
+  from blockchain.positions bp
+  where bp.instrument_id = v_instrument.id
+    and bp.user_id = p_user_id
+    and bp.status in ('LOCKED','SETTLEMENT_READY');
+
+  select coalesce(sum(ta.amount), 0),
+         coalesce(sum(ta.amount) filter (where ti.user_id = p_user_id), 0)
+  into v_pending_market_exposure, v_pending_user_exposure
+  from blockchain.transaction_authorizations ta
+  join blockchain.transaction_intents ti on ti.id = ta.intent_id
+  join market.instrument_venues iv on iv.id = ti.venue_id
+  where iv.instrument_id = v_instrument.id
+    and ti.action = 'PREDICT'
+    and ti.status in ('CREATED','AWAITING_SIGNATURE','SIGNED','SUBMITTED','CONFIRMING')
+    and (ti.status in ('SUBMITTED','CONFIRMING') or ti.expires_at > statement_timestamp())
+    and ta.authorization_type = 'PREDICT_LOCK'
+    and ta.status in ('PREPARED','SIGNED')
+    and not exists (
+      select 1 from blockchain.positions bp where bp.lock_intent_id = ti.id
+    );
+
+  if v_existing_user_exposure + v_pending_user_exposure + p_amount
+      > v_risk_policy.pool_max_user_market_stake then
+    raise exception 'Stake would exceed your maximum combined market exposure.'
+      using errcode='22023';
+  end if;
+
+  if v_existing_market_exposure + v_pending_market_exposure + p_amount
+      > v_risk_policy.pool_max_market_total then
+    raise exception 'Stake would exceed this market''s maximum committed pool.'
+      using errcode='22023';
+  end if;
+
+  select * into v_outcome
+  from market.outcomes o
+  where o.instrument_id=v_instrument.id
+    and o.code=upper(btrim(coalesce(p_outcome_code,'')));
+  if v_outcome.id is null then raise exception 'Outcome not found' using errcode='P0002'; end if;
+
+  select * into v_wallet
+  from blockchain.wallet_connections wc
+  where wc.public_id=p_wallet_id
+    and wc.user_id=p_user_id
+    and wc.status='VERIFIED';
+  if v_wallet.id is null then
+    raise exception 'A verified VAD wallet is required' using errcode='P0001';
+  end if;
+
+  select iv.* into v_venue
+  from market.instrument_venues iv
+  join blockchain.chains c on c.id=iv.chain_id
+  where iv.instrument_id=v_instrument.id
+    and iv.settlement_type='ONCHAIN'
+    and iv.status='ACTIVE'
+    and c.code=upper(btrim(coalesce(p_chain_code,'')))
+    and c.status='ACTIVE'
+    and c.chain_family='EVM'
+  limit 1;
+  if v_venue.id is null then
+    raise exception 'This market is not active on the selected EVM network' using errcode='P0001';
+  end if;
+
+  select * into v_chain from blockchain.chains c where c.id=v_venue.chain_id;
+  if v_chain.evm_chain_id is null then
+    raise exception 'Selected EVM network is missing its chain ID' using errcode='P0001';
+  end if;
+  if v_wallet.chain_family<>v_chain.chain_family then
+    raise exception 'Wallet family does not match this market network' using errcode='P0001';
+  end if;
+
+  if not exists(
+    select 1
+    from public.jurisdictions j
+    join blockchain.jurisdiction_chains jc
+      on jc.jurisdiction_id=j.id
+     and jc.chain_id=v_chain.id
+     and jc.status='ACTIVE'
+    where j.country_code=v_account.country_code and j.status='ACTIVE'
+  ) then
+    raise exception 'This blockchain network is not enabled for your account location' using errcode='P0001';
+  end if;
+
+  select * into v_rep
+  from blockchain.asset_representations ar
+  where ar.id=v_venue.asset_representation_id
+    and ar.chain_id=v_chain.id
+    and ar.asset_id=v_instrument.asset_id
+    and ar.status='ACTIVE';
+  if v_rep.id is null then
+    raise exception 'The approved USDC representation is not active on this network' using errcode='P0001';
+  end if;
+  if v_rep.token_standard<>'ERC20' or v_rep.token_address !~ '^0x[0-9a-fA-F]{40}
+revoke all on function private.enforce_pool_stake_risk_limits() from public, anon, authenticated;
+revoke all on function private.enforce_orderbook_risk_limits() from public, anon, authenticated;
+
+
+
+-- Admin configuration is versioned at the asset-default level. New instruments
+-- receive a snapshot; already-created instruments are not silently re-priced.
+create or replace function public.admin_get_trading_risk_policy_defaults()
+returns table (
+  asset_code text,
+  policy_version integer,
+  enabled boolean,
+  pool_max_entry_stake numeric,
+  pool_max_user_market_stake numeric,
+  pool_max_market_total numeric,
+  pool_max_payout_multiple numeric,
+  order_max_order_notional numeric,
+  order_max_user_market_exposure numeric,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if not private.has_permission('policies.manage') then
+    raise exception 'Permission required' using errcode = '42501';
+  end if;
+
+  return query
+  select a.code, d.policy_version, d.enabled,
+         d.pool_max_entry_stake, d.pool_max_user_market_stake, d.pool_max_market_total,
+         d.pool_max_payout_multiple, d.order_max_order_notional, d.order_max_user_market_exposure,
+         d.updated_at
+  from market.trading_risk_policy_defaults d
+  join public.assets a on a.id = d.asset_id
+  order by a.code;
+end;
+$;
+
+create or replace function public.admin_update_trading_risk_policy_defaults(
+  p_asset_code text,
+  p_enabled boolean,
+  p_pool_max_entry_stake numeric,
+  p_pool_max_user_market_stake numeric,
+  p_pool_max_market_total numeric,
+  p_pool_max_payout_multiple numeric,
+  p_order_max_order_notional numeric,
+  p_order_max_user_market_exposure numeric
+)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_asset_id bigint;
+  v_policy_version integer;
+begin
+  if not private.has_permission('policies.manage') then
+    raise exception 'Permission required' using errcode = '42501';
+  end if;
+
+  if p_asset_code is null or upper(trim(p_asset_code)) not in ('NGN','USDC') then
+    raise exception 'Trading risk defaults may only be configured for supported assets.' using errcode = '22023';
+  end if;
+  if p_enabled is null
+    or p_pool_max_entry_stake is null or p_pool_max_entry_stake <= 0
+    or p_pool_max_user_market_stake is null or p_pool_max_user_market_stake < p_pool_max_entry_stake
+    or p_pool_max_market_total is null or p_pool_max_market_total < p_pool_max_user_market_stake
+    or p_pool_max_payout_multiple is null or p_pool_max_payout_multiple <= 1
+    or p_order_max_order_notional is null or p_order_max_order_notional <= 0
+    or p_order_max_user_market_exposure is null or p_order_max_user_market_exposure < p_order_max_order_notional then
+    raise exception 'Risk limits are inconsistent. Maximums must be positive and cumulative exposure must be at least the single-entry maximum.' using errcode = '22023';
+  end if;
+
+  select a.id into v_asset_id
+  from public.assets a
+  where a.code = upper(trim(p_asset_code)) and a.status = 'ACTIVE';
+
+  if v_asset_id is null then
+    raise exception 'The asset is not active.' using errcode = '22023';
+  end if;
+
+  update market.trading_risk_policy_defaults d
+  set enabled = p_enabled,
+      policy_version = d.policy_version + 1,
+      pool_max_entry_stake = p_pool_max_entry_stake,
+      pool_max_user_market_stake = p_pool_max_user_market_stake,
+      pool_max_market_total = p_pool_max_market_total,
+      pool_max_payout_multiple = p_pool_max_payout_multiple,
+      order_max_order_notional = p_order_max_order_notional,
+      order_max_user_market_exposure = p_order_max_user_market_exposure,
+      updated_at = statement_timestamp(),
+      updated_by = auth.uid()
+  where d.asset_id = v_asset_id
+  returning d.policy_version into v_policy_version;
+
+  if v_policy_version is null then
+    raise exception 'Trading risk defaults are not configured for this asset.' using errcode = 'P0002';
+  end if;
+
+  return v_policy_version;
+end;
+$;
+
+revoke all on function public.admin_get_trading_risk_policy_defaults() from public, anon;
+revoke all on function public.admin_update_trading_risk_policy_defaults(text, boolean, numeric, numeric, numeric, numeric, numeric, numeric) from public, anon;
+grant execute on function public.admin_get_trading_risk_policy_defaults() to authenticated;
+grant execute on function public.admin_update_trading_risk_policy_defaults(text, boolean, numeric, numeric, numeric, numeric, numeric, numeric) to authenticated;
+
+comment on function public.pool_quote(uuid, text, numeric) is
+  'Quotes the new Peer Pool entry and the user''s aggregate outcome position under the market-specific versioned payout policy.';
+comment on function public.trade_quote(uuid, text, text, numeric, numeric) is
+  'Quotes Order Book orders with policy-driven per-order and cumulative user exposure limits.';
+comment on function settlement.execute_pool_instrument(bigint) is
+  'Settles Peer Pool positions under the instrument policy snapshot; legacy pools preserve original terms and bounded pools distribute capped-payout surplus as disclosed refunds.';
+ then
+    raise exception 'USDC Settlement V1 requires an approved ERC-20 representation' using errcode='P0001';
+  end if;
+
+  select * into v_deployment
+  from blockchain.contract_deployments cd
+  where cd.id=v_venue.contract_deployment_id
+    and cd.chain_id=v_chain.id
+    and cd.protocol_key='VAD_SETTLEMENT_V1'
+    and cd.protocol_version=1
+    and cd.status='ACTIVE';
+  if v_deployment.id is null or v_deployment.contract_address !~ '^0x[0-9a-fA-F]{40}
+revoke all on function private.enforce_pool_stake_risk_limits() from public, anon, authenticated;
+revoke all on function private.enforce_orderbook_risk_limits() from public, anon, authenticated;
+
+
+
+-- Admin configuration is versioned at the asset-default level. New instruments
+-- receive a snapshot; already-created instruments are not silently re-priced.
+create or replace function public.admin_get_trading_risk_policy_defaults()
+returns table (
+  asset_code text,
+  policy_version integer,
+  enabled boolean,
+  pool_max_entry_stake numeric,
+  pool_max_user_market_stake numeric,
+  pool_max_market_total numeric,
+  pool_max_payout_multiple numeric,
+  order_max_order_notional numeric,
+  order_max_user_market_exposure numeric,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if not private.has_permission('policies.manage') then
+    raise exception 'Permission required' using errcode = '42501';
+  end if;
+
+  return query
+  select a.code, d.policy_version, d.enabled,
+         d.pool_max_entry_stake, d.pool_max_user_market_stake, d.pool_max_market_total,
+         d.pool_max_payout_multiple, d.order_max_order_notional, d.order_max_user_market_exposure,
+         d.updated_at
+  from market.trading_risk_policy_defaults d
+  join public.assets a on a.id = d.asset_id
+  order by a.code;
+end;
+$;
+
+create or replace function public.admin_update_trading_risk_policy_defaults(
+  p_asset_code text,
+  p_enabled boolean,
+  p_pool_max_entry_stake numeric,
+  p_pool_max_user_market_stake numeric,
+  p_pool_max_market_total numeric,
+  p_pool_max_payout_multiple numeric,
+  p_order_max_order_notional numeric,
+  p_order_max_user_market_exposure numeric
+)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_asset_id bigint;
+  v_policy_version integer;
+begin
+  if not private.has_permission('policies.manage') then
+    raise exception 'Permission required' using errcode = '42501';
+  end if;
+
+  if p_asset_code is null or upper(trim(p_asset_code)) not in ('NGN','USDC') then
+    raise exception 'Trading risk defaults may only be configured for supported assets.' using errcode = '22023';
+  end if;
+  if p_enabled is null
+    or p_pool_max_entry_stake is null or p_pool_max_entry_stake <= 0
+    or p_pool_max_user_market_stake is null or p_pool_max_user_market_stake < p_pool_max_entry_stake
+    or p_pool_max_market_total is null or p_pool_max_market_total < p_pool_max_user_market_stake
+    or p_pool_max_payout_multiple is null or p_pool_max_payout_multiple <= 1
+    or p_order_max_order_notional is null or p_order_max_order_notional <= 0
+    or p_order_max_user_market_exposure is null or p_order_max_user_market_exposure < p_order_max_order_notional then
+    raise exception 'Risk limits are inconsistent. Maximums must be positive and cumulative exposure must be at least the single-entry maximum.' using errcode = '22023';
+  end if;
+
+  select a.id into v_asset_id
+  from public.assets a
+  where a.code = upper(trim(p_asset_code)) and a.status = 'ACTIVE';
+
+  if v_asset_id is null then
+    raise exception 'The asset is not active.' using errcode = '22023';
+  end if;
+
+  update market.trading_risk_policy_defaults d
+  set enabled = p_enabled,
+      policy_version = d.policy_version + 1,
+      pool_max_entry_stake = p_pool_max_entry_stake,
+      pool_max_user_market_stake = p_pool_max_user_market_stake,
+      pool_max_market_total = p_pool_max_market_total,
+      pool_max_payout_multiple = p_pool_max_payout_multiple,
+      order_max_order_notional = p_order_max_order_notional,
+      order_max_user_market_exposure = p_order_max_user_market_exposure,
+      updated_at = statement_timestamp(),
+      updated_by = auth.uid()
+  where d.asset_id = v_asset_id
+  returning d.policy_version into v_policy_version;
+
+  if v_policy_version is null then
+    raise exception 'Trading risk defaults are not configured for this asset.' using errcode = 'P0002';
+  end if;
+
+  return v_policy_version;
+end;
+$;
+
+revoke all on function public.admin_get_trading_risk_policy_defaults() from public, anon;
+revoke all on function public.admin_update_trading_risk_policy_defaults(text, boolean, numeric, numeric, numeric, numeric, numeric, numeric) from public, anon;
+grant execute on function public.admin_get_trading_risk_policy_defaults() to authenticated;
+grant execute on function public.admin_update_trading_risk_policy_defaults(text, boolean, numeric, numeric, numeric, numeric, numeric, numeric) to authenticated;
+
+comment on function public.pool_quote(uuid, text, numeric) is
+  'Quotes the new Peer Pool entry and the user''s aggregate outcome position under the market-specific versioned payout policy.';
+comment on function public.trade_quote(uuid, text, text, numeric, numeric) is
+  'Quotes Order Book orders with policy-driven per-order and cumulative user exposure limits.';
+comment on function settlement.execute_pool_instrument(bigint) is
+  'Settles Peer Pool positions under the instrument policy snapshot; legacy pools preserve original terms and bounded pools distribute capped-payout surplus as disclosed refunds.';
+ then
+    raise exception 'VAD Settlement V1 is not active on this network' using errcode='P0001';
+  end if;
+
+  v_expected_signer:=lower(btrim(coalesce(v_deployment.metadata->>'quote_signer_address','')));
+  if v_expected_signer !~ '^0x[0-9a-f]{40}
+revoke all on function private.enforce_pool_stake_risk_limits() from public, anon, authenticated;
+revoke all on function private.enforce_orderbook_risk_limits() from public, anon, authenticated;
+
+
+
+-- Admin configuration is versioned at the asset-default level. New instruments
+-- receive a snapshot; already-created instruments are not silently re-priced.
+create or replace function public.admin_get_trading_risk_policy_defaults()
+returns table (
+  asset_code text,
+  policy_version integer,
+  enabled boolean,
+  pool_max_entry_stake numeric,
+  pool_max_user_market_stake numeric,
+  pool_max_market_total numeric,
+  pool_max_payout_multiple numeric,
+  order_max_order_notional numeric,
+  order_max_user_market_exposure numeric,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if not private.has_permission('policies.manage') then
+    raise exception 'Permission required' using errcode = '42501';
+  end if;
+
+  return query
+  select a.code, d.policy_version, d.enabled,
+         d.pool_max_entry_stake, d.pool_max_user_market_stake, d.pool_max_market_total,
+         d.pool_max_payout_multiple, d.order_max_order_notional, d.order_max_user_market_exposure,
+         d.updated_at
+  from market.trading_risk_policy_defaults d
+  join public.assets a on a.id = d.asset_id
+  order by a.code;
+end;
+$;
+
+create or replace function public.admin_update_trading_risk_policy_defaults(
+  p_asset_code text,
+  p_enabled boolean,
+  p_pool_max_entry_stake numeric,
+  p_pool_max_user_market_stake numeric,
+  p_pool_max_market_total numeric,
+  p_pool_max_payout_multiple numeric,
+  p_order_max_order_notional numeric,
+  p_order_max_user_market_exposure numeric
+)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_asset_id bigint;
+  v_policy_version integer;
+begin
+  if not private.has_permission('policies.manage') then
+    raise exception 'Permission required' using errcode = '42501';
+  end if;
+
+  if p_asset_code is null or upper(trim(p_asset_code)) not in ('NGN','USDC') then
+    raise exception 'Trading risk defaults may only be configured for supported assets.' using errcode = '22023';
+  end if;
+  if p_enabled is null
+    or p_pool_max_entry_stake is null or p_pool_max_entry_stake <= 0
+    or p_pool_max_user_market_stake is null or p_pool_max_user_market_stake < p_pool_max_entry_stake
+    or p_pool_max_market_total is null or p_pool_max_market_total < p_pool_max_user_market_stake
+    or p_pool_max_payout_multiple is null or p_pool_max_payout_multiple <= 1
+    or p_order_max_order_notional is null or p_order_max_order_notional <= 0
+    or p_order_max_user_market_exposure is null or p_order_max_user_market_exposure < p_order_max_order_notional then
+    raise exception 'Risk limits are inconsistent. Maximums must be positive and cumulative exposure must be at least the single-entry maximum.' using errcode = '22023';
+  end if;
+
+  select a.id into v_asset_id
+  from public.assets a
+  where a.code = upper(trim(p_asset_code)) and a.status = 'ACTIVE';
+
+  if v_asset_id is null then
+    raise exception 'The asset is not active.' using errcode = '22023';
+  end if;
+
+  update market.trading_risk_policy_defaults d
+  set enabled = p_enabled,
+      policy_version = d.policy_version + 1,
+      pool_max_entry_stake = p_pool_max_entry_stake,
+      pool_max_user_market_stake = p_pool_max_user_market_stake,
+      pool_max_market_total = p_pool_max_market_total,
+      pool_max_payout_multiple = p_pool_max_payout_multiple,
+      order_max_order_notional = p_order_max_order_notional,
+      order_max_user_market_exposure = p_order_max_user_market_exposure,
+      updated_at = statement_timestamp(),
+      updated_by = auth.uid()
+  where d.asset_id = v_asset_id
+  returning d.policy_version into v_policy_version;
+
+  if v_policy_version is null then
+    raise exception 'Trading risk defaults are not configured for this asset.' using errcode = 'P0002';
+  end if;
+
+  return v_policy_version;
+end;
+$;
+
+revoke all on function public.admin_get_trading_risk_policy_defaults() from public, anon;
+revoke all on function public.admin_update_trading_risk_policy_defaults(text, boolean, numeric, numeric, numeric, numeric, numeric, numeric) from public, anon;
+grant execute on function public.admin_get_trading_risk_policy_defaults() to authenticated;
+grant execute on function public.admin_update_trading_risk_policy_defaults(text, boolean, numeric, numeric, numeric, numeric, numeric, numeric) to authenticated;
+
+comment on function public.pool_quote(uuid, text, numeric) is
+  'Quotes the new Peer Pool entry and the user''s aggregate outcome position under the market-specific versioned payout policy.';
+comment on function public.trade_quote(uuid, text, text, numeric, numeric) is
+  'Quotes Order Book orders with policy-driven per-order and cumulative user exposure limits.';
+comment on function settlement.execute_pool_instrument(bigint) is
+  'Settles Peer Pool positions under the instrument policy snapshot; legacy pools preserve original terms and bounded pools distribute capped-payout surplus as disclosed refunds.';
+ then
+    raise exception 'VAD quote signer is not configured for this deployment' using errcode='P0001';
+  end if;
+
+  v_amount_atomic:=private.asset_amount_to_atomic(p_amount,v_rep.decimals,true);
+  if v_amount_atomic<=0 then raise exception 'Stake amount must be greater than zero' using errcode='22023'; end if;
+
+  select q.fee_amount,q.policy_version_id into v_fee,v_fee_pv
+  from command.quote_trading_fee(p_amount,'TAKER') q;
+  v_fee:=coalesce(v_fee,0);
+  v_fee_atomic:=private.asset_amount_to_atomic(v_fee,v_rep.decimals,false);
+  v_scale:=power(10::numeric,v_rep.decimals);
+  v_fee_quantized:=v_fee_atomic/v_scale;
+  v_deadline:=statement_timestamp()+interval '5 minutes';
+
+  insert into blockchain.transaction_intents(
+    user_id,wallet_connection_id,venue_id,action,outcome_id,amount,status,
+    idempotency_key,expires_at,metadata
+  ) values(
+    p_user_id,v_wallet.id,v_venue.id,'PREDICT',v_outcome.id,p_amount,'CREATED',
+    btrim(p_idempotency_key),v_deadline,
+    jsonb_build_object(
+      'protocol_key','VAD_SETTLEMENT_V1',
+      'protocol_version',1,
+      'asset_code','USDC',
+      'fee_policy_name','trading_fee',
+      'fee_policy_version_id',v_fee_pv
+    )
+  )
+  returning * into v_intent;
+
+  v_auth_id:=private.onchain_bytes32('authorization',v_intent.public_id::text);
+  v_position_id:=private.onchain_bytes32('position',v_intent.public_id::text);
+  v_market_id:=private.onchain_bytes32('market',v_instrument.public_id::text);
+  v_outcome_id:=private.onchain_bytes32('outcome',v_outcome.public_id::text);
+
+  insert into blockchain.transaction_authorizations(
+    intent_id,chain_id,contract_deployment_id,asset_id,asset_representation_id,
+    authorization_type,authorization_id,position_id,market_id,outcome_id,
+    wallet_address,amount,amount_atomic,fee_policy_name,fee_policy_version_id,
+    fee_amount,fee_amount_atomic,expires_at,status,payload,metadata
+  ) values(
+    v_intent.id,v_chain.id,v_deployment.id,v_instrument.asset_id,v_rep.id,
+    'PREDICT_LOCK',v_auth_id,v_position_id,v_market_id,v_outcome_id,
+    v_wallet.wallet_address,p_amount,v_amount_atomic,'trading_fee',v_fee_pv,
+    v_fee_quantized,v_fee_atomic,v_deadline,'PREPARED',
+    jsonb_build_object(
+      'authorizationId',v_auth_id,
+      'positionId',v_position_id,
+      'marketId',v_market_id,
+      'outcomeId',v_outcome_id,
+      'user',v_wallet.wallet_address,
+      'collateralAmount',v_amount_atomic::text,
+      'tradingFeeAmount',v_fee_atomic::text,
+      'tradingFeePolicyVersion',coalesce(v_fee_pv,0)::text,
+      'deadline',extract(epoch from v_deadline)::bigint
+    ),
+    jsonb_build_object(
+      'market_public_id',v_instrument.public_id,
+      'outcome_public_id',v_outcome.public_id,
+      'chain_code',v_chain.code,
+      'token_address',v_rep.token_address,
+      'token_decimals',v_rep.decimals,
+      'expected_quote_signer',v_expected_signer
+    )
+  )
+  returning * into v_authorization;
+
+  update blockchain.transaction_intents set status='AWAITING_SIGNATURE'
+  where id=v_intent.id returning * into v_intent;
+
+  return jsonb_build_object(
+    'intentId',v_intent.public_id,
+    'intentStatus',v_intent.status,
+    'authorizationId',v_authorization.authorization_id,
+    'authorizationStatus',v_authorization.status,
+    'positionId',v_authorization.position_id,
+    'marketId',v_authorization.market_id,
+    'outcomeId',v_authorization.outcome_id,
+    'walletAddress',v_authorization.wallet_address,
+    'collateralAmount',v_authorization.amount,
+    'collateralAmountAtomic',v_authorization.amount_atomic::text,
+    'tradingFee',v_authorization.fee_amount,
+    'tradingFeeAmountAtomic',v_authorization.fee_amount_atomic::text,
+    'tradingFeePolicyVersionId',v_authorization.fee_policy_version_id,
+    'deadline',extract(epoch from v_authorization.expires_at)::bigint,
+    'chainCode',v_chain.code,
+    'evmChainId',v_chain.evm_chain_id,
+    'contractAddress',v_deployment.contract_address,
+    'tokenAddress',v_rep.token_address,
+    'tokenDecimals',v_rep.decimals,
+    'expectedQuoteSigner',v_expected_signer,
+    'protocolKey',v_deployment.protocol_key,
+    'protocolVersion',v_deployment.protocol_version,
+    'signature',null
+  );
+end;
+$function$
+
+
+revoke all on function public.internal_prepare_onchain_prediction(uuid, uuid, uuid, text, text, numeric, text)
+  from public, anon, authenticated;
+grant execute on function public.internal_prepare_onchain_prediction(uuid, uuid, uuid, text, text, numeric, text)
+  to service_role;
+
 revoke all on function private.attach_instrument_trading_risk_policy() from public, anon, authenticated;
 revoke all on function private.enforce_pool_stake_risk_limits() from public, anon, authenticated;
 revoke all on function private.enforce_orderbook_risk_limits() from public, anon, authenticated;
@@ -889,3 +1632,7 @@ comment on function public.trade_quote(uuid, text, text, numeric, numeric) is
   'Quotes Order Book orders with policy-driven per-order and cumulative user exposure limits.';
 comment on function settlement.execute_pool_instrument(bigint) is
   'Settles Peer Pool positions under the instrument policy snapshot; legacy pools preserve original terms and bounded pools distribute capped-payout surplus as disclosed refunds.';
+
+
+comment on function public.internal_prepare_onchain_prediction(uuid, uuid, uuid, text, text, numeric, text) is
+  'Prepares an on-chain USDC Peer Pool position only after enforcing the instrument policy snapshot, per-entry stake and serialized cumulative user/market exposure limits.';
