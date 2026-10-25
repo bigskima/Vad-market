@@ -1,0 +1,79 @@
+-- Replace the legacy getting-started sequence with a version whose target IDs map
+-- to real, named controls in the current product screens. Existing progress is kept;
+-- because auto_prompt_existing is false, users who already finished an older version
+-- are not unexpectedly interrupted.
+do $$
+declare
+  v_tour_id bigint;
+  v_version_id bigint;
+begin
+  select t.id into v_tour_id
+  from experience.product_tours t
+  where t.code = 'GETTING_STARTED';
+
+  if v_tour_id is null then
+    raise exception 'GETTING_STARTED product tour is missing; apply the guided-tour base migration first';
+  end if;
+
+  select v.id into v_version_id
+  from experience.product_tour_versions v
+  where v.tour_id = v_tour_id and v.version_number = 2;
+
+  if v_version_id is null then
+    insert into experience.product_tour_versions (
+      tour_id, version_number, version_label, effective_at, auto_prompt_existing
+    ) values (
+      v_tour_id, 2, '2026.10-real-screen-map', statement_timestamp(), false
+    ) returning id into v_version_id;
+  end if;
+
+  delete from experience.product_tour_steps where tour_version_id = v_version_id;
+
+  insert into experience.product_tour_steps (
+    tour_version_id, step_key, sequence, route, target_id, title, body, metadata
+  ) values
+    (v_version_id,'home-balance',1,'/home','home-overview','Your VAD home','This is your current balance overview. The amount and currency come from your enabled wallet accounts; use the visibility control when you want to hide the figure.','{"area":"home","kind":"summary"}'::jsonb),
+    (v_version_id,'home-actions',2,'/home','home-actions','Everyday money actions','These are the actual Home shortcuts for deposits, withdrawals, market discovery and sending. The tour will not submit a payment or trade on your behalf.','{"area":"home","kind":"actions"}'::jsonb),
+    (v_version_id,'home-discovery',3,'/home','home-categories','Discover current markets','Use the categories and market rows to narrow what you see. Open a market only after reviewing its question, closing time and resolution rules.','{"area":"home","kind":"discovery"}'::jsonb),
+    (v_version_id,'markets-filters',4,'/markets','markets-discovery','Filter the market catalogue','Search and category, activity, timing and status controls work together here. Change a filter to narrow the real catalogue; the tour highlights these controls without changing them.','{"area":"markets","kind":"filters"}'::jsonb),
+    (v_version_id,'markets-cards',5,'/markets','markets-results','Review market cards','These are live market results from the catalogue. Open a market to inspect its details, available outcomes, current pricing and close time before committing funds.','{"area":"markets","kind":"results"}'::jsonb),
+    (v_version_id,'market-details',6,'/market/[marketId]','market-detail-overview','Open the market detail screen','This is the actual market detail page for one available market. Review the question, timing, resolution context and outcome information before you trade.','{"area":"market-detail","kind":"overview"}'::jsonb),
+    (v_version_id,'market-trade-ticket',7,'/market/[marketId]','market-trading-ticket','Review the real trade ticket','Open the Trade section to inspect the real ticket, stake entry, price or payout estimate and limits. The tour will not submit an order or pool stake.','{"area":"market-detail","kind":"trade"}'::jsonb),
+    (v_version_id,'watchlist',8,'/watchlist','watchlist-list','Your saved markets','This is the dedicated Watchlist. Use the bookmark controls on market cards to save markets, and use the X control here to remove one. If it is empty, return to Markets and save a market first.','{"area":"watchlist","kind":"saved-markets"}'::jsonb),
+    (v_version_id,'wallet-overview',9,'/wallet','wallet-balance','Understand your wallet balance','Available funds, committed amounts and pending activity are presented separately. NGN and USDC are not automatically converted into one another.','{"area":"wallet","kind":"balances"}'::jsonb),
+    (v_version_id,'wallet-actions',10,'/wallet','wallet-actions','Choose a wallet action','These are the real Deposit, Withdraw, Transfer and History entry points. Availability depends on account eligibility, enabled currencies and payment readiness.','{"area":"wallet","kind":"actions"}'::jsonb),
+    (v_version_id,'wallet-activity-preview',11,'/wallet','wallet-activity','Review recent activity','Recent transactions show the latest recorded wallet events. Open History for the full ledger or open an item when a transaction detail is available.','{"area":"wallet","kind":"activity"}'::jsonb),
+    (v_version_id,'wallet-deposit',12,'/wallet/deposit','wallet-deposit-form','Deposit funds','Review the payment method, destination currency and capability status on this screen. The walkthrough never starts a deposit or authorizes a payment.','{"area":"wallet","kind":"deposit"}'::jsonb),
+    (v_version_id,'wallet-withdraw',13,'/wallet/withdraw','wallet-withdraw-form','Withdraw with care','This screen checks withdrawal readiness and presents the current flow. Review the displayed limits and status; the walkthrough will not submit a withdrawal.','{"area":"wallet","kind":"withdrawal"}'::jsonb),
+    (v_version_id,'wallet-history',14,'/wallet/activity','wallet-history','Open the full wallet history','The wallet activity page brings ledger events and payment activity together. Open a transaction for its status and recorded details.','{"area":"wallet","kind":"history"}'::jsonb),
+    (v_version_id,'wallet-send',15,'/wallet/send','wallet-send-form','Send to another user','This is the transfer flow. Verify the recipient and all displayed details carefully before any real transfer; moving to the next tour step does not submit it.','{"area":"wallet","kind":"send"}'::jsonb),
+    (v_version_id,'portfolio-summary',16,'/portfolio','portfolio-summary','Your positions and performance','Portfolio brings together active positions, pool stakes, filled holdings and valuation history. Values depend on the selected asset and available valuation marks.','{"area":"portfolio","kind":"summary"}'::jsonb),
+    (v_version_id,'portfolio-sections',17,'/portfolio','portfolio-switcher','Move through portfolio views','Use these tabs to switch between positions, open orders, history and performance. Each view uses the same portfolio data but answers a different question.','{"area":"portfolio","kind":"tabs"}'::jsonb),
+    (v_version_id,'account-home',18,'/account','account-overview','Account and identity','This is your account hub for profile details, identity status, app preferences and account-specific settings. Controls here open their own product screens.','{"area":"account","kind":"overview"}'::jsonb),
+    (v_version_id,'account-verification',19,'/account','account-verification','Check verification status','This real status row opens identity verification. Some funding or account capabilities may depend on verification and jurisdiction checks.','{"area":"account","kind":"verification-shortcut"}'::jsonb),
+    (v_version_id,'account-navigation',20,'/account','account-navigation','Find account settings','Use the Account group to open your profile, verification, saved markets and funding settings. The walkthrough visits the other settings screens in later steps.','{"area":"account","kind":"settings-navigation"}'::jsonb),
+    (v_version_id,'public-profile',21,'/account/profile','profile-editor','Manage your public profile','Edit the profile information shown by VAD. Only save details you want associated with your profile.','{"area":"account","kind":"profile"}'::jsonb),
+    (v_version_id,'identity-verification',22,'/account/verification','verification-details','Identity verification details','Review the current verification state and any actions requested from your account. Verification availability is subject to the configured provider and jurisdiction.','{"area":"account","kind":"verification"}'::jsonb),
+    (v_version_id,'funding-preferences',23,'/account/funding','funding-overview','Funding and withdrawal access','This overview shows the current funding and withdrawal capability state and why a capability may be unavailable. It does not change or bypass restrictions.','{"area":"account","kind":"funding"}'::jsonb),
+    (v_version_id,'region-preferences',24,'/account/region','region-settings','Region and available currencies','Your region influences legal availability and currency eligibility. Changing a display preference does not change jurisdiction eligibility.','{"area":"account","kind":"region"}'::jsonb),
+    (v_version_id,'appearance-preferences',25,'/account/appearance','appearance-settings','Personalize the interface','The real appearance controls let you choose a theme and display density where supported. These choices affect presentation, not account balances.','{"area":"account","kind":"appearance"}'::jsonb),
+    (v_version_id,'security-settings',26,'/account/security','security-settings','Protect your account','Review sign-in and multi-factor security settings. Never share authentication codes or recovery details.','{"area":"account","kind":"security"}'::jsonb),
+    (v_version_id,'policy-library',27,'/account/policies','policy-library','Read current policies','Use this page to review the terms and privacy information that apply to the product. Published requirements are presented separately from general settings.','{"area":"account","kind":"policies"}'::jsonb),
+    (v_version_id,'growth-tools',28,'/account/growth','growth-tools','Account growth and invitations','This page contains the growth and referral tools currently enabled for your account. Options may depend on eligibility or campaign availability.','{"area":"account","kind":"growth"}'::jsonb),
+    (v_version_id,'about-product',29,'/account/about','about-vad','About VAD','Find product information and relevant support or build details here. Return to Account when you need another setting.','{"area":"account","kind":"about"}'::jsonb),
+    (v_version_id,'notifications',30,'/notifications','notification-center','Your notification centre','Review updates associated with your account and market activity. Opening the route does not mark every item as read unless the screen itself does so.','{"area":"notifications","kind":"inbox"}'::jsonb),
+    (v_version_id,'news-feed',31,'/news','news-feed','News and headlines','Browse news content separately from market cards. Open a story to read its details; news context is not a guarantee of a market outcome.','{"area":"news","kind":"feed"}'::jsonb),
+    (v_version_id,'financial-assets',32,'/financial-markets','financial-assets','Explore financial markets','The financial markets screen provides asset-market information and relevant market data. Availability and freshness depend on the configured data providers.','{"area":"financial-markets","kind":"assets"}'::jsonb),
+    (v_version_id,'crypto-assets',33,'/financial-markets','crypto-assets-tab','Explore crypto assets','The Crypto tab in the financial market explorer presents supported crypto-asset information. A displayed asset price is reference information, not a promise of future performance.','{"area":"crypto-assets","kind":"assets"}'::jsonb),
+    (v_version_id,'community-feed',34,'/community','community-feed','Community discussions','Browse community posts and discussions. Treat user-generated content as opinions, and check market details and resolution rules before making a decision.','{"area":"community","kind":"feed"}'::jsonb),
+    (v_version_id,'assistant-guide',35,'/assistant','assistant-help','Ask the VAD assistant','Use the assistant to help navigate product information. Verify important financial or account decisions against the official details shown in VAD.','{"area":"assistant","kind":"guide"}'::jsonb),
+    (v_version_id,'market-creation',36,'/create-market','market-creation','Create a market','Market creation is subject to the configured workflow and permissions. Review the required fields and preview the market before submitting it for any approval or publication process.','{"area":"markets","kind":"creation"}'::jsonb);
+
+  update experience.product_tours
+  set current_version_id = v_version_id,
+      status = 'ACTIVE',
+      auto_start = true,
+      updated_at = statement_timestamp()
+  where id = v_tour_id;
+end;
+$$;
