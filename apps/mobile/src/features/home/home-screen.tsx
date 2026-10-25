@@ -339,7 +339,7 @@ export function HomeScreen({
         </View>
       ) : null}
 
-      {watchlistMarkets.length > 0 || (watchlistIds.length > 0 && Boolean(marketError)) ? (
+      {watchlistIds.length > 0 ? (
         <TourTarget id="home-watchlist">
           <View style={{ gap: 9 }}>
             <SectionHeading title="Watchlist" action="See all" onAction={() => router.push('/watchlist')} />
@@ -386,10 +386,10 @@ export function HomeScreen({
               </View>
             ) : (
               <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 7 }}>
-                <VadText variant="bodyStrong">Your watchlist is empty</VadText>
-                <VadText variant="caption" tone="secondary">Tap the bookmark on any market card or its detail page to save it here, along with its latest prices and trends.</VadText>
-                <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
-                  <VadText variant="caption" tone="brand">Browse markets</VadText>
+                <VadText variant="bodyStrong">Your saved markets aren't visible right now</VadText>
+                <VadText variant="caption" tone="secondary">Your bookmarks are still saved. These markets may be unavailable in the current catalogue or hidden by your enabled currencies.</VadText>
+                <Pressable accessibilityRole="button" onPress={() => router.push('/watchlist')} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
+                  <VadText variant="caption" tone="brand">Open watchlist</VadText>
                 </Pressable>
               </View>
             )}
