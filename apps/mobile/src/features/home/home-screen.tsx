@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 
@@ -304,6 +305,35 @@ export function HomeScreen({
         <QuickAction label="Predict" icon="arrowUp" color="#3298F5" onPress={() => onExploreMarkets()} />
         <QuickAction label="Send" icon="share" color="#253246" onPress={onSend} />
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open News and headlines"
+        accessibilityHint="Browse politics, business, economics, technology, AI, science, health, sports, music and entertainment news."
+        onPress={() => router.push('/news')}
+        style={({ pressed }) => ({
+          minHeight: 48,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 11,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.surface,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          opacity: pressed ? 0.78 : 1,
+        })}
+      >
+        <View style={{ width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+          <VadIcon name="fileText" size={17} tone="brand" />
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+          <VadText variant="bodyStrong">News & headlines</VadText>
+          <VadText variant="caption" tone="secondary" numberOfLines={1}>Politics · Business · Economy · Tech · Sport · Culture</VadText>
+        </View>
+        <VadIcon name="chevronRight" size={17} tone="secondary" />
+      </Pressable>
 
       {promotions.length ? (
         promotionsToShow.length ? (

@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
 import { VadLogo } from '@/components/brand/vad-logo';
@@ -83,6 +84,25 @@ export function ProductSidebar({
           );
         })}
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open News and headlines"
+        onPress={() => router.push('/news')}
+        style={({ pressed }) => ({
+          minHeight: 44,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+          paddingHorizontal: theme.spacing.md,
+          borderRadius: theme.radius.lg,
+          backgroundColor: pressed ? theme.colors.surfaceRaised : 'transparent',
+          opacity: pressed ? 0.68 : 1,
+        })}
+      >
+        <VadIcon name="fileText" size={19} tone="secondary" />
+        <VadText variant="bodyStrong" tone="secondary">News & headlines</VadText>
+      </Pressable>
 
       <Pressable
         accessibilityRole="button"

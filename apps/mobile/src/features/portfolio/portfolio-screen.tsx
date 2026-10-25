@@ -12,6 +12,7 @@ import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney, pct } from '@/features/markets/format';
 import { marketCategoryLabel, marketOutcomeLabel, marketStatusLabel } from '@/features/markets/market-display-labels';
+import { MarketThumbnail } from '@/features/markets/components/market-thumbnail';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
@@ -435,6 +436,7 @@ export function PortfolioScreen({
                 <PoolStakePositionCard
                   key={stake.stake_id}
                   stake={stake}
+                  market={marketsById.get(stake.market_id)}
                   onPress={() => onOpenMarket(stake.market_id)}
                 />
               ))}
@@ -523,7 +525,7 @@ export function PortfolioScreen({
   );
 }
 
-function PoolStakePositionCard({ stake, onPress }: { stake: PoolStakeRow; onPress: () => void }) {
+function PoolStakePositionCard({ stake, market, onPress }: { stake: PoolStakeRow; market?: MarketCatalogItem; onPress: () => void }) {
   const theme = useVadTheme();
   const density = useProductDensity();
   const outcome = String(stake.outcome_code).toUpperCase();
@@ -533,9 +535,13 @@ function PoolStakePositionCard({ stake, onPress }: { stake: PoolStakeRow; onPres
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Open ${stake.market_title} prediction`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
       <VadCard style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: density.phone ? 10 : 12, borderRadius: 15, backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-        <View style={{ width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised }}>
-          <VadIcon name="activity" size={20} tone="brand" />
-        </View>
+        {market ? (
+          <MarketThumbnail market={market} size={58} />
+        ) : (
+          <View style={{ width: 58, height: 58, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised }}>
+            <VadIcon name="activity" size={20} tone="brand" />
+          </View>
+        )}
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
           <VadText variant="bodyStrong" numberOfLines={2}>{stake.market_title}</VadText>
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
