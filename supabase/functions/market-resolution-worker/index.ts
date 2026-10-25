@@ -87,10 +87,10 @@ function validatePublicHttpsUrl(raw: unknown): URL | null {
 
 function extractPublishedAt(raw: string): string | null {
   const patterns = [
-    /<meta\\b[^>]*(?:property|name)=["'](?:article:published_time|datepublished|pubdate|publication_date|date)["'][^>]*content=["']([^"']+)["']/i,
-    /<meta\\b[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:article:published_time|datepublished|pubdate|publication_date|date)["']/i,
-    /"datePublished"\\s*:\\s*"([^"]+)"/i,
-    /<time\\b[^>]*datetime=["']([^"']+)["']/i,
+    /<meta\b[^>]*(?:property|name)=["'](?:article:published_time|datepublished|pubdate|publication_date|date)["'][^>]*content=["']([^"']+)["']/i,
+    /<meta\b[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:article:published_time|datepublished|pubdate|publication_date|date)["']/i,
+    /"datePublished"\s*:\s*"([^"]+)"/i,
+    /<time\b[^>]*datetime=["']([^"']+)["']/i,
   ];
   for (const pattern of patterns) {
     const candidate = raw.match(pattern)?.[1]?.trim();
