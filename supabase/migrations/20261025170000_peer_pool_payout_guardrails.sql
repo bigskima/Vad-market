@@ -73,10 +73,7 @@ insert into market.instrument_trading_risk_policies (
   pool_max_payout_multiple, order_max_order_notional, order_max_user_market_exposure
 )
 select i.id, i.asset_id,
-       case
-         when i.liquidity_model = 'POOL' and a.code = 'USDC' then 'LEGACY'
-         else 'BOUNDED'
-       end,
+       case when i.liquidity_model = 'POOL' then 'LEGACY' else 'BOUNDED' end,
        coalesce(d.policy_version, 1),
        coalesce(d.pool_max_entry_stake, greatest(i.min_order_notional, 100000::numeric)),
        coalesce(d.pool_max_user_market_stake, greatest(i.min_order_notional, 250000::numeric)),
@@ -86,7 +83,6 @@ select i.id, i.asset_id,
        coalesce(d.order_max_order_notional, greatest(i.min_order_notional, 100000::numeric)),
        coalesce(d.order_max_user_market_exposure, greatest(i.min_order_notional, 250000::numeric))
 from market.instruments i
-join public.assets a on a.id = i.asset_id
 left join market.trading_risk_policy_defaults d on d.asset_id = i.asset_id
 on conflict (instrument_id) do nothing;
 
