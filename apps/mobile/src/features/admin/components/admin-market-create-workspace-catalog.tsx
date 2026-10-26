@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -847,7 +847,17 @@ export function AdminMarketCreateWorkspaceCatalog() {
           </FieldGroup>
 
           <FieldGroup label="Category">
-            {categories.map((item) => <VadChip key={item.code} label={item.name} selected={category?.code === item.code} tone={category?.code === item.code ? 'brand' : 'neutral'} onPress={() => chooseCategory(item)} />)}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
+              {categories.map((item) => (
+                <VadChip
+                  key={item.code}
+                  label={item.name}
+                  selected={category?.code === item.code}
+                  tone={category?.code === item.code ? 'brand' : 'neutral'}
+                  onPress={() => chooseCategory(item)}
+                />
+              ))}
+            </ScrollView>
           </FieldGroup>
 
           {category?.description ? <VadCard variant="muted"><VadText variant="caption" tone="secondary">{category.description}</VadText></VadCard> : null}
@@ -887,8 +897,18 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
           {marketFormat === 'BINARY' && guided && category ? (
             <View style={{ gap: theme.spacing.lg }}>
-              <FieldGroup label="Market type">
-                {category.marketTypes.map((item) => <VadChip key={item.code} label={item.name} selected={marketType?.code === item.code} tone={marketType?.code === item.code ? 'brand' : 'neutral'} onPress={() => chooseMarketType(item)} />)}
+              <FieldGroup label="Subcategory · Market type">
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
+                  {category.marketTypes.map((item) => (
+                    <VadChip
+                      key={item.code}
+                      label={item.name}
+                      selected={marketType?.code === item.code}
+                      tone={marketType?.code === item.code ? 'brand' : 'neutral'}
+                      onPress={() => chooseMarketType(item)}
+                    />
+                  ))}
+                </ScrollView>
               </FieldGroup>
 
               {marketType?.description ? <VadCard variant="muted"><VadText variant="caption" tone="secondary">{marketType.description}</VadText></VadCard> : null}
