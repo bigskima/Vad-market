@@ -92,9 +92,9 @@ function parseTheSportsDbUtcTimestamp(value: unknown): Date | null {
   // TheSportsDB documents strTimestamp as UTC ISO time, sometimes without a
   // zone suffix. Its documented contract is UTC, so append Z only for that
   // exact known source format; never do this for arbitrary provider strings.
-  const isoUtcWithoutZone = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?$/.test(raw);
+  const isoUtcWithoutZone = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?$/.test(raw);
   const normalized = isoUtcWithoutZone ? raw + 'Z' : raw;
-  if (!/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(normalized)) return null;
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized)) return null;
   const parsed = new Date(normalized);
   return Number.isFinite(parsed.getTime()) ? parsed : null;
 }
@@ -108,7 +108,7 @@ async function resolveTheSportsDbByTeamsAndTime(
   const homeTeam = text(metadata.home_team, 180);
   const awayTeam = text(metadata.away_team, 180);
   const expectedKickoff = parseTheSportsDbUtcTimestamp(metadata.match_starts_at);
-  const baseUrl = provider.baseUrl?.replace(/\\/$/, '');
+  const baseUrl = provider.baseUrl?.replace(/\/$/, '');
   if (!homeTeam || !awayTeam || !expectedKickoff || !baseUrl
       || !baseUrl.startsWith('https://www.thesportsdb.com/api/v1/json/')) {
     return { kind: 'skipped', code: 'SPORTS_TEAM_TIME_MAPPING_INVALID', detail: 'TheSportsDB team and UTC kickoff mapping is incomplete' };
@@ -194,7 +194,11 @@ async function resolveTheSportsDbResult(
   spec: FootballResultSpec,
 ): Promise<ProviderResolutionResult> {
   if (!/^\d+$/.test(resource.externalKey.trim())) {
-    return { kind: 'skipped', code: 'SPORTS_RESOURCE_INVALID', detail: 'TheSportsDB event ID must be numeric' };
+    if (resource.externalKey.trim().toUpperCase() === 'AUTO'
+        && text(resource.metadata?.lookup_mode).toUpperCase() === 'TEAM_DATE_LOOKUP') {
+      return resolveTheSportsDbByTeamsAndTime(provider, resource, spec);
+    }
+    return { kind: 'skipped', code: 'SPORTS_RESOURCE_INVALID', detail: 'TheSportsDB requires a numeric event ID or a canonical team/date mapping' };
   }
   const baseUrl = provider.baseUrl?.replace(/\/$/, '');
   if (!baseUrl || !baseUrl.startsWith('https://www.thesportsdb.com/api/v1/json/')) {
