@@ -501,6 +501,29 @@ async function recordAttempt(admin: RpcClient, event: RecordValue, runtime: AiRu
 
 async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRuntime[], oracleProviders: OracleProvider[]) {
   const scope = isRecord(event.resolutionScope) ? event.resolutionScope : {};
+
+  // Check provider eligibility before fetching market sources. When every free
+  // model is suppressed by a 429/quota cooldown, repeated network searches
+  // cannot resolve anything and only add latency and provider load.
+  const configuredRuntimes = runtimes.filter((runtime) =>
+    Boolean(Deno.env.get(runtime.secretReference)?.trim())
+    && Boolean(runtime.endpoint && runtime.adapter && runtime.modelCode)
+  );
+  if (configuredRuntimes.length === 0) {
+    const registryHadCandidates = runtimes.length > 0;
+    const statusCode = registryHadCandidates ? 'AI_RUNTIME_CREDENTIALS_UNAVAILABLE' : 'NO_ELIGIBLE_AI_MODEL';
+    const reason = registryHadCandidates
+      ? 'The runtime registry returned models, but their server-side credentials or endpoints are unavailable.'
+      : 'No free-only production model is currently eligible. Models may be in a rate-limit/quota cooldown or disabled by provider readiness policy.';
+    await recordAttempt(admin, event, null, 'INCONCLUSIVE', {}, {
+      registryCandidateCount: runtimes.length,
+      registryCandidates: runtimes.map((runtime) => ({
+        providerCode: runtime.providerCode,
+        modelCode: runtime.modelCode,
+      })),
+    }, reason);
+    return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason: statusCode };
+  }
   const sourcesRaw = Array.isArray(scope.sources) ? scope.sources : [];
   const primaryUrls = sourcesRaw.slice(0, 8).map((item) => validatePublicHttpsUrl(item)).filter((x): x is URL => Boolean(x));
   for (const field of ['source_url', 'sourceUrl']) {
@@ -523,18 +546,6 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
   if (packet.length === 0) {
     await recordAttempt(admin, event, null, 'INCONCLUSIVE', {}, { sourceUrlsTried: primaryUrls.map((url) => url.toString()) }, 'No allowed public source returned readable evidence.');
     return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason: 'NO_READABLE_EVIDENCE' };
-  }
-
-  // Use only models whose server-side credentials are available. When two or
-  // more models are configured, require two independent model decisions to agree
-  // before writing a financial oracle observation or invoking a void.
-  const configuredRuntimes = runtimes.filter((runtime) =>
-    Boolean(Deno.env.get(runtime.secretReference)?.trim())
-    && Boolean(runtime.endpoint && runtime.adapter && runtime.modelCode)
-  );
-  if (configuredRuntimes.length === 0) {
-    await recordAttempt(admin, event, null, 'INCONCLUSIVE', {}, { evidenceCount: packet.length }, 'No active free-only AI model has an available server-side credential.');
-    return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason: 'NO_CONFIGURED_AI_MODEL' };
   }
 
   // Build the exact evidence excerpts placed in the model prompt. These same
