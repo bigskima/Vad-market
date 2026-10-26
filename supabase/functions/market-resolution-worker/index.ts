@@ -273,6 +273,12 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
   if (!key || !runtime.endpoint || !runtime.adapter || !runtime.modelCode) {
     throw new Error('AI provider endpoint, model or server-side credential is unavailable.');
   }
+  // Preserve the independent source paths without sending ten full pages into a
+  // free-tier model. The full packet is still used to verify citations below.
+  const modelPacket = [
+    ...packet.filter((source) => source.source === 'DIRECT').slice(0, 3),
+    ...packet.filter((source) => source.source === 'SEARCH').slice(0, 3),
+  ];
   const userPrompt = JSON.stringify({
     task: 'Determine the configured VAD market outcome using only the published resolution rule and evidence packet.',
     market: {
@@ -287,7 +293,7 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
       allowedOutcomes: event.outcomes,
     },
     sourceHierarchy: event.sourceHierarchy,
-    evidencePacket: packet.map((source) => ({
+    evidencePacket: modelPacket.map((source) => ({
       url: source.url,
       domain: source.domain,
       sourceType: source.source,
