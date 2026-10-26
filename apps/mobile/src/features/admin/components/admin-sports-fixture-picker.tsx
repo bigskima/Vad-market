@@ -10,6 +10,7 @@ import {
   type AdminSportsFixture,
 } from '@/services/admin-sports-fixture-api';
 import { useVadTheme } from '@/providers/theme-provider';
+import { formatDateTimeInDeviceZone } from '@/lib/time-zone';
 
 type FixturePage = Awaited<ReturnType<typeof getAdminSportsFixtures>>;
 
@@ -34,9 +35,7 @@ function rangeEnd(days: number) {
 }
 
 function kickoffLabel(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return value;
-  return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) + ' (local time)';
+  return formatDateTimeInDeviceZone(value);
 }
 
 export function AdminSportsFixturePicker({
