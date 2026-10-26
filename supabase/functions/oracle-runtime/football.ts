@@ -102,24 +102,6 @@ async function fetchJson(url: string, init: RequestInit = {}, timeoutMs = 15_000
   }
 }
 
-function finalResult(payload: JsonRecord) {
-  const score = isRecord(payload.score) ? payload.score : null;
-  const winner = text(score?.winner).toUpperCase();
-  const actual = winner === 'HOME_TEAM'
-    ? 'HOME_WIN'
-    : winner === 'AWAY_TEAM'
-      ? 'AWAY_WIN'
-      : winner === 'DRAW'
-        ? 'DRAW'
-        : null;
-  return { score, actual } as const;
-}
-
-function resolveObservedOutcome(actual: 'HOME_WIN' | 'AWAY_WIN' | 'DRAW', spec: FootballResultSpec) {
-  if (spec.condition === 'THREE_WAY') return spec.outcomeCodes[actual];
-  return actual === spec.condition ? 'YES' : 'NO';
-}
-
 async function resolveTheSportsDbResult(
   provider: OracleProvider,
   resource: OracleResource,
