@@ -569,6 +569,24 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
           outcomeCode: validated.outcomeCode,
         });
         const supplemental = validateOutput(supplementalOutput, event, modelPacket);
+        if (supplemental.status === 'INCONCLUSIVE') {
+          const proposedCitations = validated.evidence.map((item) => ({
+            url: item.url, quote: item.quote, publishedAt: item.publishedAt, sourceType: item.source.source,
+          }));
+          const supplementalCitations = supplemental.evidence.map((item) => ({
+            url: item.url, quote: item.quote, publishedAt: item.publishedAt, sourceType: item.source.source,
+          }));
+          await recordAttempt(admin, event, runtime, 'INCONCLUSIVE', {
+            proposedStatus: validated.status,
+            proposedOutcomeCode: validated.outcomeCode,
+            confidence: validated.confidence,
+            rationale: validated.rationale,
+          }, {
+            originalCitations: proposedCitations,
+            corroborationCitations: supplementalCitations,
+          }, 'SOURCE_CORROBORATION_INCONCLUSIVE: second pass could not verify the proposed result across the available source paths.');
+          return { kind: 'INCONCLUSIVE' as const, runtime, reason: 'SOURCE_CORROBORATION_INCONCLUSIVE' };
+        }
         if (supplemental.status !== validated.status || supplemental.outcomeCode !== validated.outcomeCode) {
           throw new Error('SOURCE_CORROBORATION_CHANGED_DECISION: evidence pass must preserve the original outcome.');
         }
