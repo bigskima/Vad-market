@@ -12,6 +12,7 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { AdminSportsFixturePicker } from './admin-sports-fixture-picker';
 import { useVadTheme } from '@/providers/theme-provider';
+import { formatDateTimeInDeviceZone } from '@/lib/time-zone';
 import {
   createAdminCatalogMarket,
   createAdminMultiOutcomeMarket,
@@ -554,7 +555,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           <VadText variant="bodyStrong">Fixture selected</VadText>
           <VadText>{selectedFixture.fixture.homeTeam} vs {selectedFixture.fixture.awayTeam}</VadText>
           <VadText variant="caption" tone="secondary">
-            {selectedFixture.fixture.competitionName} · {new Date(selectedFixture.fixture.startsAt).toLocaleString()} · Source: {selectedFixture.fixture.sourceName}
+            {selectedFixture.fixture.competitionName} · {formatDateTimeInDeviceZone(selectedFixture.fixture.startsAt)} · Source: {selectedFixture.fixture.sourceName}
           </VadText>
         </VadCard>
         <VadButton
