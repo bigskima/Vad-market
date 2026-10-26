@@ -43,15 +43,6 @@ For time-window questions, use only independently visible publication timestamps
   ),
   'ACTIVE'
 )
-on conflict(capability_key,version) do update
-set system_prompt=excluded.system_prompt,
-    output_schema=excluded.output_schema,
-    status='ACTIVE';
-
-update ai.prompt_versions
-set status='RETIRED'
-where capability_key='MARKET_RESOLUTION'
-  and version<2
-  and status='ACTIVE';
+on conflict(capability_key,version) do nothing;
 
 commit;
