@@ -86,6 +86,108 @@ function resolveObservedOutcome(actual: 'HOME_WIN' | 'AWAY_WIN' | 'DRAW', spec: 
   return actual === spec.condition ? 'YES' : 'NO';
 }
 
+function parseTheSportsDbUtcTimestamp(value: unknown): Date | null {
+  const raw = text(value, 80);
+  if (!raw) return null;
+  // TheSportsDB documents strTimestamp as UTC ISO time, sometimes without a
+  // zone suffix. Its documented contract is UTC, so append Z only for that
+  // exact known source format; never do this for arbitrary provider strings.
+  const isoUtcWithoutZone = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?$/.test(raw);
+  const normalized = isoUtcWithoutZone ? raw + 'Z' : raw;
+  if (!/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(normalized)) return null;
+  const parsed = new Date(normalized);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+async function resolveTheSportsDbByTeamsAndTime(
+  provider: OracleProvider,
+  resource: OracleResource,
+  spec: FootballResultSpec,
+): Promise<ProviderResolutionResult> {
+  const metadata = resource.metadata ?? {};
+  const homeTeam = text(metadata.home_team, 180);
+  const awayTeam = text(metadata.away_team, 180);
+  const expectedKickoff = parseTheSportsDbUtcTimestamp(metadata.match_starts_at);
+  const baseUrl = provider.baseUrl?.replace(/\\/$/, '');
+  if (!homeTeam || !awayTeam || !expectedKickoff || !baseUrl
+      || !baseUrl.startsWith('https://www.thesportsdb.com/api/v1/json/')) {
+    return { kind: 'skipped', code: 'SPORTS_TEAM_TIME_MAPPING_INVALID', detail: 'TheSportsDB team and UTC kickoff mapping is incomplete' };
+  }
+
+  const url = new URL(`${baseUrl}/eventsday.php`);
+  url.searchParams.set('d', expectedKickoff.toISOString().slice(0, 10));
+  url.searchParams.set('s', 'Soccer');
+  const raw = await fetchJson(url.toString());
+  if (!isRecord(raw) || !Array.isArray(raw.events)) {
+    throw new OracleRuntimeError('PROVIDER_PAYLOAD_INVALID', 'TheSportsDB event-day payload was invalid', 502);
+  }
+
+  const matches = raw.events.filter(isRecord)
+    .filter((event) => teamMatches({ name: event.strHomeTeam }, homeTeam)
+      && teamMatches({ name: event.strAwayTeam }, awayTeam))
+    .map((event) => {
+      const kickoff = parseTheSportsDbUtcTimestamp(event.strTimestamp);
+      const delta = kickoff ? Math.abs(kickoff.getTime() - expectedKickoff.getTime()) : Number.POSITIVE_INFINITY;
+      return { event, kickoff, delta };
+    })
+    .sort((a, b) => a.delta - b.delta);
+
+  const selected = matches[0];
+  if (!selected || !selected.kickoff) {
+    return { kind: 'skipped', code: 'MATCH_NOT_FOUND', detail: 'TheSportsDB did not return the configured home/away fixture with an explicit UTC kickoff timestamp' };
+  }
+  // If this feed has a different or rescheduled fixture, do not accept a
+  // similarly named event as corroboration for settlement.
+  if (selected.delta > 4 * 60 * 60 * 1000) {
+    return { kind: 'skipped', code: 'MATCH_TIME_MISMATCH', detail: 'TheSportsDB kickoff differed from the canonical UTC fixture by more than four hours' };
+  }
+
+  const event = selected.event;
+  const status = text(event.strStatus ?? event.strProgress, 40).toUpperCase();
+  if (!/(^FT$|^AET$|^PEN$|FINISHED|AFTER EXTRA TIME|AFTER PENALTIES|FULL.?TIME)/.test(status)) {
+    return { kind: 'skipped', code: 'MATCH_NOT_FINAL', detail: 'TheSportsDB has not published a verified full-time result yet' };
+  }
+  const homeRaw = event.intHomeScore;
+  const awayRaw = event.intAwayScore;
+  if (homeRaw === null || homeRaw === undefined || String(homeRaw).trim() === ''
+      || awayRaw === null || awayRaw === undefined || String(awayRaw).trim() === '') {
+    return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'TheSportsDB has not published both final scores' };
+  }
+  const homeScore = Number(homeRaw);
+  const awayScore = Number(awayRaw);
+  if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore) || homeScore < 0 || awayScore < 0) {
+    return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'TheSportsDB final scores are not valid non-negative numbers' };
+  }
+  const actual = homeScore > awayScore ? 'HOME_WIN' : awayScore > homeScore ? 'AWAY_WIN' : 'DRAW';
+  return {
+    kind: 'observation',
+    observation: {
+      observedOutcome: resolveObservedOutcome(actual, spec),
+      // Timestamp the observation when the verified final score was fetched;
+      // strTimestamp is the kickoff instant, not the result publication time.
+      observedAt: new Date(),
+      evidenceReference: url.toString(),
+      payload: {
+        resolver_type: spec.resolverType,
+        provider: provider.code,
+        fixture_lookup: 'TEAM_DATE_LOOKUP',
+        event_id: text(event.idEvent, 80) || null,
+        expected_kickoff_utc: expectedKickoff.toISOString(),
+        provider_kickoff_utc: selected.kickoff.toISOString(),
+        kickoff_delta_ms: selected.delta,
+        home_team: text(event.strHomeTeam, 120) || null,
+        away_team: text(event.strAwayTeam, 120) || null,
+        home_score: homeScore,
+        away_score: awayScore,
+        status,
+        requested_condition: spec.condition,
+        actual_result: actual,
+        provider_timestamp: text(event.strTimestamp, 80) || null,
+      },
+    },
+  };
+}
+
 async function resolveTheSportsDbResult(
   provider: OracleProvider,
   resource: OracleResource,
