@@ -131,12 +131,20 @@ async function recordObservation(
     payload: JsonRecord;
   },
 ) {
+  const stableSportsIdentity = resolverType.startsWith('FOOTBALL_')
+    ? [
+        String(observation.payload.match_id ?? observation.payload.fixture_id ?? observation.payload.event_id ?? event.eventPublicId),
+        String(observation.payload.home_score ?? ''),
+        String(observation.payload.away_score ?? ''),
+        observation.observedOutcome,
+      ].join(':')
+    : observation.observedAt.toISOString();
   const idempotencyKey = [
     'oracle-v1',
     event.eventPublicId,
     provider.code,
     resolverType,
-    observation.observedAt.toISOString(),
+    stableSportsIdentity,
   ].join(':');
   const { data, error } = await admin.rpc('internal_record_verified_oracle_observation', {
     p_event_id: event.eventId,
