@@ -193,8 +193,9 @@ async function resolveTheSportsDbResult(
   const homeName = text(selected.strHomeTeam, 120);
   const awayName = text(selected.strAwayTeam, 120);
   const rawTimestamp = text(selected.strTimestamp);
-  const eventTime = rawTimestamp ? new Date(rawTimestamp) : new Date();
-  const observedAt = Number.isFinite(eventTime.getTime()) ? eventTime : new Date();
+  // TheSportsDB exposes the fixture's kickoff timestamp, not its score-update time.
+  // Store ingestion time as observedAt and preserve kickoff separately as evidence.
+  const observedAt = new Date();
 
   return {
     kind: 'observation',
@@ -268,8 +269,7 @@ async function resolveApiSportsResult(
   const actual = homeScore > awayScore ? 'HOME_WIN' : awayScore > homeScore ? 'AWAY_WIN' : 'DRAW';
   const homeName = isRecord(row.teams) && isRecord(row.teams.home) ? text(row.teams.home.name, 120) : '';
   const awayName = isRecord(row.teams) && isRecord(row.teams.away) ? text(row.teams.away.name, 120) : '';
-  const updatedAt = new Date(text(fixture.date));
-  const observedAt = Number.isFinite(updatedAt.getTime()) ? updatedAt : new Date();
+  const observedAt = new Date();
   return {
     kind: 'observation',
     observation: {
@@ -280,6 +280,7 @@ async function resolveApiSportsResult(
         resolver_type: spec.resolverType,
         provider: provider.code,
         fixture_id: text(fixture.id, 80) || resource.externalKey,
+        fixture_date: fixture.date ?? null,
         home_team: homeName || null,
         away_team: awayName || null,
         home_score: homeScore,
@@ -374,10 +375,16 @@ export async function resolveFootballFixtureWithProvider(
   }
   const scoreNode = isRecord(payload.score) ? payload.score : {};
   const fullTime = isRecord(scoreNode.fullTime) ? scoreNode.fullTime : {};
-  const homeScore = Number(fullTime.home);
-  const awayScore = Number(fullTime.away);
+  const rawHomeScore = fullTime.home;
+  const rawAwayScore = fullTime.away;
+  if (rawHomeScore === null || rawHomeScore === undefined || String(rawHomeScore).trim() === ''
+      || rawAwayScore === null || rawAwayScore === undefined || String(rawAwayScore).trim() === '') {
+    return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'Football-Data has not published both full-time scores.' };
+  }
+  const homeScore = Number(rawHomeScore);
+  const awayScore = Number(rawAwayScore);
   if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore) || homeScore < 0 || awayScore < 0) {
-    return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'Football-Data has not published both valid full-time scores.' };
+    return { kind: 'skipped', code: 'SPORTS_RESULT_INVALID', detail: 'Football-Data full-time scores are not valid non-negative numbers.' };
   }
   const actual = homeScore > awayScore ? 'HOME_WIN' : awayScore > homeScore ? 'AWAY_WIN' : 'DRAW';
   const lastUpdated = new Date(text(payload.lastUpdated));
