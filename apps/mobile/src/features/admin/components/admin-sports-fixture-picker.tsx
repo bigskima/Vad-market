@@ -14,6 +14,12 @@ import { formatDateTimeInDeviceZone } from '@/lib/time-zone';
 
 type FixturePage = Awaited<ReturnType<typeof getAdminSportsFixtures>>;
 
+export type FootballBulkPublishReport = {
+  published: number;
+  alreadyAvailable: number;
+  failed: { fixture: string; reason: string }[];
+};
+
 type Props = {
   sportCode: string;
   competitionCode: string;
@@ -22,6 +28,9 @@ type Props = {
   providerCompetitionCode?: string | null;
   selectedFixtureId?: string | null;
   onSelect: (fixture: AdminSportsFixture, cacheKey: string) => void;
+  onBulkCreate?: (fixtures: AdminSportsFixture[]) => Promise<FootballBulkPublishReport>;
+  automaticPublishingAvailable?: boolean;
+  bulkCreateDisabledReason?: string | null;
 };
 
 function isoDate(date: Date) {
@@ -46,12 +55,19 @@ export function AdminSportsFixturePicker({
   providerCompetitionCode,
   selectedFixtureId,
   onSelect,
+  onBulkCreate,
+  automaticPublishingAvailable = false,
+  bulkCreateDisabledReason,
 }: Props) {
   const theme = useVadTheme();
   const [daysAhead, setDaysAhead] = useState<7 | 14>(7);
   const [pageState, setPageState] = useState<{ selectionKey: string; page: FixturePage } | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorState, setErrorState] = useState<{ selectionKey: string; message: string } | null>(null);
+  const [bulkConfirming, setBulkConfirming] = useState(false);
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkReport, setBulkReport] = useState<FootballBulkPublishReport | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
   const requestRef = useRef(0);
   const selectionKey = [
     sportCode.trim().toUpperCase(),
@@ -61,6 +77,25 @@ export function AdminSportsFixturePicker({
   ].join(':');
   const page = pageState?.selectionKey === selectionKey ? pageState.page : null;
   const error = errorState?.selectionKey === selectionKey ? errorState.message : null;
+  const upcomingFixtures = (page?.fixtures ?? []).filter((fixture) =>
+    fixture.isUpcoming && Number.isFinite(Date.parse(fixture.startsAt)) && Date.parse(fixture.startsAt) > Date.now()
+  );
+
+  async function runBulkCreate() {
+    if (!onBulkCreate || bulkWorking || !upcomingFixtures.length) return;
+    setBulkWorking(true);
+    setBulkError(null);
+    setBulkReport(null);
+    try {
+      const result = await onBulkCreate(upcomingFixtures);
+      setBulkReport(result);
+      setBulkConfirming(false);
+    } catch (value) {
+      setBulkError(value instanceof Error ? value.message : 'VAD could not publish the fixture markets.');
+    } finally {
+      setBulkWorking(false);
+    }
+  }
 
   const mappingReady = Boolean(
     sportCode.trim()
