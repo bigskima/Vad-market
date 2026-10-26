@@ -349,11 +349,73 @@ async function processEvent(
     }
   }
 
+  let automaticVoidProposed = false;
+  if (
+    observationsRecorded === 0
+    && (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1' || spec.resolverType === 'FOOTBALL_TOTAL_GOALS_THRESHOLD_V1')
+  ) {
+    const scope = event.resolutionScope ?? {};
+    const configuredVoid = isRecord(scope.void_rule) ? scope.void_rule : isRecord(scope.voidRule) ? scope.voidRule : null;
+    const voidMode = String(configuredVoid?.mode ?? '').toUpperCase();
+    const deadlineRaw = configuredVoid?.deadline ?? scope.resolution_deadline ?? scope.resolutionDeadline;
+    const deadline = typeof deadlineRaw === 'string' ? new Date(deadlineRaw) : null;
+    const requiredCodes = new Set(['FOOTBALL_DATA', 'THESPORTSDB']);
+    const providerCodes = new Set(providerPool.map((provider) => provider.code.toUpperCase()));
+    const recognizedNotFinal = (reason: unknown) => {
+      const code = typeof reason === 'string' ? reason.toUpperCase() : '';
+      return code === 'MATCH_NOT_FINAL'
+        || ['MATCH_SCHEDULED','MATCH_IN_PLAY','MATCH_PAUSED','MATCH_POSTPONED','MATCH_SUSPENDED','MATCH_DELAYED','MATCH_CANCELLED','MATCH_CANCELED','MATCH_ABANDONED'].includes(code);
+    };
+    const sourceResults = providerResults.filter((result) =>
+      typeof result.provider === 'string'
+      && requiredCodes.has(result.provider.toUpperCase())
+      && result.status === 'SKIPPED'
+      && recognizedNotFinal(result.reason)
+    );
+    const nonFinalCodes = new Set(sourceResults.map((result) => String(result.provider).toUpperCase()));
+    const allRequiredSourcesConfirmed = [...requiredCodes].every((code) =>
+      providerCodes.has(code) && nonFinalCodes.has(code)
+    );
+    if (
+      voidMode === 'EQUAL_SPLIT'
+      && deadline
+      && Number.isFinite(deadline.getTime())
+      && deadline.getTime() <= Date.now()
+      && allRequiredSourcesConfirmed
+    ) {
+      const { data, error } = await admin.rpc('internal_queue_deterministic_sports_void_event', {
+        p_event_id: event.eventId,
+        p_evidence: {
+          resolver_type: spec.resolverType,
+          policy_id: event.oraclePolicyPublicId,
+          automatic_void: true,
+          void_rule: 'EQUAL_SPLIT',
+          resolution_deadline: deadline.toISOString(),
+          resolution_condition: typeof scope.condition === 'string' ? scope.condition : null,
+          source_results: sourceResults.map((result) => ({
+            provider_code: String(result.provider).toUpperCase(),
+            status: result.status,
+            reason: result.reason,
+          })),
+        },
+      });
+      if (!error && data === true) {
+        automaticVoidProposed = true;
+      } else {
+        console.error('Deterministic sports auto-void was not queued', {
+          eventPublicId: event.eventPublicId,
+          code: error?.code ?? null,
+        });
+      }
+    }
+  }
+
   return {
     eventPublicId: event.eventPublicId,
     resolverType: spec.resolverType,
-    status: observationsRecorded > 0 ? 'PROCESSED' : 'WAITING_FOR_EVIDENCE',
+    status: automaticVoidProposed ? 'VOID_PROPOSED' : observationsRecorded > 0 ? 'PROCESSED' : 'WAITING_FOR_EVIDENCE',
     observationsRecorded,
+    automaticVoidProposed,
     providers: providerResults,
   };
 }
