@@ -1,3 +1,9 @@
+-- Rate-limit cooldowns are looked up by provider and recent attempt time.
+-- Keep this partial index focused on failed calls; successful audit history grows independently.
+create index if not exists ai_resolution_attempts_failed_provider_created_idx
+  on oracle.ai_resolution_attempts(ai_provider_id, created_at desc)
+  where status='FAILED';
+
 -- Respect AI provider 429/quota backoff for automatic market resolution.
 -- The worker still requires high-confidence quoted evidence and the configured
 -- independent oracle source quorum. Auto-void retains its stricter two-model guard.
