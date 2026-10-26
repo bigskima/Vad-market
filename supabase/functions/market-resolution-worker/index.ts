@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { missingEvidencePaths } from './evidence-coverage.ts';
 
 type RecordValue = Record<string, unknown>;
 type RpcError = { message?: string; code?: string } | null;
@@ -428,14 +429,6 @@ async function callModel(
     throw new Error(runtime.providerCode + ' returned no usable JSON text.' + (reason ? ' Detail: ' + reason : ''));
   }
   return parseModelJson(text);
-}
-
-function missingEvidencePaths(
-  evidence: Array<{ url: string; quote: string; publishedAt: string | null; source: EvidenceSource }>,
-  packet: EvidenceSource[],
-) {
-  const available = new Set(packet.map((source) => source.source));
-  return [...available].filter((sourceType) => !evidence.some((item) => item.source.source === sourceType));
 }
 
 function validateOutput(raw: RecordValue, event: RecordValue, packet: EvidenceSource[]) {
