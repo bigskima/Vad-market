@@ -273,12 +273,9 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
   if (!key || !runtime.endpoint || !runtime.adapter || !runtime.modelCode) {
     throw new Error('AI provider endpoint, model or server-side credential is unavailable.');
   }
-  // Preserve the independent source paths without sending ten full pages into a
-  // free-tier model. The full packet is still used to verify citations below.
-  const modelPacket = [
-    ...packet.filter((source) => source.source === 'DIRECT').slice(0, 3),
-    ...packet.filter((source) => source.source === 'SEARCH').slice(0, 3),
-  ];
+  // This packet is already compacted by the caller. Citation validation uses
+  // the same text below, so the model cannot cite a quote from unseen page text.
+  const modelPacket = packet;
   const userPrompt = JSON.stringify({
     task: 'Determine the configured VAD market outcome using only the published resolution rule and evidence packet.',
     market: {
@@ -298,13 +295,7 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
       domain: source.domain,
       sourceType: source.source,
       publishedAt: source.publishedAt,
-      // Keep the model payload within the free-tier context budget; the complete
-      // fetched text remains available for citation validation below.
-      content: compactEvidenceText(
-        source.text,
-        safeText(event.title, 500) + ' ' + safeText(isRecord(event.resolutionScope) ? (event.resolutionScope.condition ?? event.resolutionScope.rule) : '', 1800),
-        2200,
-      ),
+      content: source.text,
     })),
     requiredOutput: {
       status: 'RESOLVED | VOID | INCONCLUSIVE',
@@ -520,11 +511,28 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason: 'NO_CONFIGURED_AI_MODEL' };
   }
 
+  // Build the exact evidence excerpts placed in the model prompt. These same
+  // excerpts are passed into validateOutput, closing the gap where a model could
+  // cite material from a full page that it never received in context.
+  const queryText = safeText(event.title, 500) + ' ' + safeText(
+    isRecord(event.resolutionScope)
+      ? (event.resolutionScope.condition ?? event.resolutionScope.rule)
+      : '',
+    1800,
+  );
+  const modelPacket = [
+    ...packet.filter((source) => source.source === 'DIRECT').slice(0, 3),
+    ...packet.filter((source) => source.source === 'SEARCH').slice(0, 3),
+  ].map((source) => ({
+    ...source,
+    text: compactEvidenceText(source.text, queryText, 2200),
+  }));
+
   const evaluations = await Promise.all(configuredRuntimes.map(async (runtime) => {
     const startedAt = new Date();
     try {
-      const output = await callModel(runtime, event, packet);
-      const validated = validateOutput(output, event, packet);
+      const output = await callModel(runtime, event, modelPacket);
+      const validated = validateOutput(output, event, modelPacket);
       const evidenceSummary = validated.evidence.map((item) => ({
         url: item.url, quote: item.quote, publishedAt: item.publishedAt, sourceType: item.source.source,
       }));
