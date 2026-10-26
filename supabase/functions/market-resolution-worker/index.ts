@@ -268,7 +268,12 @@ function modelText(payload: unknown, adapter: string) {
   return '';
 }
 
-async function callModel(runtime: AiRuntime, event: RecordValue, packet: EvidenceSource[]) {
+async function callModel(
+  runtime: AiRuntime,
+  event: RecordValue,
+  packet: EvidenceSource[],
+  evidenceOnly?: { status: string; outcomeCode: string | null },
+) {
   const key = Deno.env.get(runtime.secretReference)?.trim();
   if (!key || !runtime.endpoint || !runtime.adapter || !runtime.modelCode) {
     throw new Error('AI provider endpoint, model or server-side credential is unavailable.');
@@ -276,8 +281,23 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
   // This packet is already compacted by the caller. Citation validation uses
   // the same text below, so the model cannot cite a quote from unseen page text.
   const modelPacket = packet;
+  const availableSourceTypes = [...new Set(modelPacket.map((source) => source.source))];
+  const requiresBothSourcePaths = availableSourceTypes.includes('DIRECT') && availableSourceTypes.includes('SEARCH');
   const userPrompt = JSON.stringify({
-    task: 'Determine the configured VAD market outcome using only the published resolution rule and evidence packet.',
+    task: evidenceOnly
+      ? 'CORROBORATION PASS ONLY: do not make a new prediction. Preserve the proposed status and outcome exactly. Find exact, verbatim evidence quotations in the supplied packet that independently support that same proposed result. When DIRECT and SEARCH sources are both available, cite at least one DIRECT quotation and at least one SEARCH quotation. If either source path does not support the same result, return INCONCLUSIVE with no outcome code.'
+      : 'Determine the configured VAD market outcome using only the published resolution rule and evidence packet. If DIRECT and SEARCH sources are both available, a RESOLVED or VOID answer must cite at least one exact quotation from each path. Do not omit the corroborating quotation just because the first source appears decisive.',
+    proposedDecision: evidenceOnly ? {
+      status: evidenceOnly.status,
+      outcomeCode: evidenceOnly.outcomeCode,
+    } : null,
+    evidencePolicy: {
+      availableSourceTypes,
+      twoPathEvidenceRequired: requiresBothSourcePaths,
+      instruction: requiresBothSourcePaths
+        ? 'For RESOLVED or VOID, the evidence array must include at least one DIRECT source quote and at least one SEARCH source quote. Do not invent quotes. If the evidence packet cannot support both paths, choose INCONCLUSIVE.'
+        : 'Cite all available source types that materially support the result. Never invent a quote.',
+    },
     market: {
       id: event.eventPublicId,
       title: event.title,
@@ -298,11 +318,16 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
       content: source.text,
     })),
     requiredOutput: {
-      status: 'RESOLVED | VOID | INCONCLUSIVE',
-      outcomeCode: 'one exact configured outcome code, or null',
+      status: evidenceOnly ? 'the proposed status unchanged, or INCONCLUSIVE' : 'RESOLVED | VOID | INCONCLUSIVE',
+      outcomeCode: evidenceOnly ? 'the proposed outcome unchanged, or null for INCONCLUSIVE' : 'one exact configured outcome code, or null',
       confidence: '0..1',
       rationale: 'explicitly apply rule, cutoff and source hierarchy',
-      evidence: [{ url: 'exact packet URL', quote: 'short exact quote in packet', publishedAt: 'ISO date or null' }],
+      evidence: requiresBothSourcePaths
+        ? [
+          { url: 'exact DIRECT packet URL', quote: 'short exact verbatim quote from DIRECT content' },
+          { url: 'exact SEARCH packet URL', quote: 'short exact verbatim quote from SEARCH content' },
+        ]
+        : [{ url: 'exact packet URL', quote: 'short exact quote in packet', publishedAt: 'ISO date or null' }],
     },
   });
 
@@ -403,6 +428,14 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
     throw new Error(runtime.providerCode + ' returned no usable JSON text.' + (reason ? ' Detail: ' + reason : ''));
   }
   return parseModelJson(text);
+}
+
+function missingEvidencePaths(
+  evidence: Array<{ url: string; quote: string; publishedAt: string | null; source: EvidenceSource }>,
+  packet: EvidenceSource[],
+) {
+  const available = new Set(packet.map((source) => source.source));
+  return [...available].filter((sourceType) => !evidence.some((item) => item.source.source === sourceType));
 }
 
 function validateOutput(raw: RecordValue, event: RecordValue, packet: EvidenceSource[]) {
@@ -533,6 +566,30 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     try {
       const output = await callModel(runtime, event, modelPacket);
       const validated = validateOutput(output, event, modelPacket);
+
+      // Some models return a correct result but cite only one of the configured
+      // source paths. Give the same configured model one narrow corroboration
+      // pass; do not relax source quorum or allow the result to change.
+      if (validated.status !== 'INCONCLUSIVE' && missingEvidencePaths(validated.evidence, modelPacket).length > 0) {
+        const supplementalOutput = await callModel(runtime, event, modelPacket, {
+          status: validated.status,
+          outcomeCode: validated.outcomeCode,
+        });
+        const supplemental = validateOutput(supplementalOutput, event, modelPacket);
+        if (supplemental.status !== validated.status || supplemental.outcomeCode !== validated.outcomeCode) {
+          throw new Error('SOURCE_CORROBORATION_CHANGED_DECISION: evidence pass must preserve the original outcome.');
+        }
+        const combinedEvidence = new Map<string, (typeof validated.evidence)[number]>();
+        for (const item of [...validated.evidence, ...supplemental.evidence]) {
+          combinedEvidence.set(item.source.source + '|' + item.url + '|' + item.quote, item);
+        }
+        validated.evidence = [...combinedEvidence.values()];
+        const remainingSources = missingEvidencePaths(validated.evidence, modelPacket);
+        if (remainingSources.length > 0) {
+          throw new Error('SOURCE_EVIDENCE_INCOMPLETE: missing corroboration from ' + remainingSources.join(', ') + '.');
+        }
+      }
+
       const evidenceSummary = validated.evidence.map((item) => ({
         url: item.url, quote: item.quote, publishedAt: item.publishedAt, sourceType: item.source.source,
       }));
@@ -545,7 +602,10 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
       return { kind: 'CANDIDATE' as const, runtime, startedAt, validated, evidenceSummary };
     } catch (error) {
       const message = error instanceof Error ? error.message.slice(0, 350) : 'AI resolution failed.';
-      await recordAttempt(admin, event, runtime, 'FAILED', {}, { evidenceCount: packet.length }, message);
+      await recordAttempt(admin, event, runtime, 'FAILED', {}, {
+        evidenceCount: packet.length,
+        sourceTypes: [...new Set(modelPacket.map((source) => source.source))],
+      }, message);
       return { kind: 'FAILED' as const, runtime, reason: message };
     }
   }));
