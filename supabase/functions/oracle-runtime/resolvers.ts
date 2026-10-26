@@ -7,6 +7,7 @@ import {
   type ProviderResolutionResult,
   type ResolverSpec,
   type CryptoTouchThresholdSpec,
+  type FootballTotalGoalsThresholdSpec,
 } from './types.ts';
 import { resolveCryptoWithProvider, resolveCryptoTouchWithCoinGecko, resolveCryptoTouchWithKraken } from './providers.ts';
 import { resolveFootballFixtureWithProvider } from './football.ts';
@@ -250,17 +251,48 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
   }
 
   if (resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
-    const conditionValue = stringValue(
-      typeof scope.condition === 'string' ? scope.condition : null,
+    const supportedConditions = new Set(['HOME_WIN','AWAY_WIN','DRAW','TEAM_WIN','THREE_WAY']);
+    const rawCondition = stringValue(
+      scope.condition_code,
+      scope.conditionCode,
+      scope.condition_type,
+      scope.conditionType,
+      condition.code,
+      condition.type,
       condition.value,
       condition.result,
       scope.result,
+      typeof scope.condition === 'string' && supportedConditions.has(scope.condition.trim().toUpperCase())
+        ? scope.condition
+        : null,
     )?.toUpperCase();
+    const targetTeam = stringValue(
+      scope.target_team,
+      scope.targetTeam,
+      condition.target_team,
+      condition.targetTeam,
+      isRecord(scope.condition) ? scope.condition.target_team : null,
+      isRecord(scope.condition) ? scope.condition.targetTeam : null,
+    );
     const codes = new Set(event.outcomes.map((outcome) => outcome.code.toUpperCase()));
     if (codes.has('YES') && codes.has('NO')) {
       ensureBinaryYesNo(event);
+      const conditionValue = targetTeam ? 'TEAM_WIN' : rawCondition;
+      if (conditionValue === 'TEAM_WIN') {
+        if (!targetTeam) {
+          throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Team-win markets must specify the exact target_team', 422);
+        }
+        const homeTeam = stringValue(subject.home_team, subject.homeTeam, scope.home_team, scope.homeTeam, subject.competitor_a, subject.competitorA);
+        const awayTeam = stringValue(subject.away_team, subject.awayTeam, scope.away_team, scope.awayTeam, subject.competitor_b, subject.competitorB);
+        const targetKey = normalizeOutcomeIdentifier(targetTeam);
+        const validParticipants = [homeTeam, awayTeam].filter((value): value is string => Boolean(value)).map(normalizeOutcomeIdentifier);
+        if (!validParticipants.includes(targetKey)) {
+          throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'target_team must match one of the configured participants', 422);
+        }
+        return { resolverType: 'FOOTBALL_MATCH_RESULT_V1', condition: 'TEAM_WIN', targetTeam };
+      }
       if (!['HOME_WIN','AWAY_WIN','DRAW'].includes(String(conditionValue))) {
-        throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Binary football resolver condition must be HOME_WIN, AWAY_WIN or DRAW', 422);
+        throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Binary football resolver requires an explicit HOME_WIN, AWAY_WIN, DRAW or TEAM_WIN condition', 422);
       }
       return {
         resolverType: 'FOOTBALL_MATCH_RESULT_V1',
@@ -272,6 +304,23 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
       condition: 'THREE_WAY',
       outcomeCodes: threeWayFootballOutcomeCodes(event),
     };
+  }
+
+  if (resolverType === 'FOOTBALL_TOTAL_GOALS_THRESHOLD_V1') {
+    ensureBinaryYesNo(event);
+    const operator = stringValue(scope.operator, condition.operator)?.toUpperCase();
+    const threshold = numericValue(scope.threshold, condition.threshold, scope.total_goals_threshold);
+    if (!['GT','GTE','LT','LTE'].includes(String(operator))) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Football goals resolver operator must be GT, GTE, LT or LTE', 422);
+    }
+    if (threshold === null || threshold < 0 || threshold > 50) {
+      throw new OracleRuntimeError('RESOLUTION_SCOPE_INVALID', 'Football total-goals threshold must be between 0 and 50', 422);
+    }
+    return {
+      resolverType: 'FOOTBALL_TOTAL_GOALS_THRESHOLD_V1',
+      operator: operator as 'GT' | 'GTE' | 'LT' | 'LTE',
+      threshold,
+    } satisfies FootballTotalGoalsThresholdSpec;
   }
 
   if (resolverType === 'PUBLIC_RECORD_RULE_V1') {
@@ -293,7 +342,7 @@ export function parseResolverSpec(event: DueOracleEvent): ResolverSpec {
 
 function requiredCapability(spec: ResolverSpec) {
   if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1' || spec.resolverType === 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1') return 'CRYPTO_PRICE_THRESHOLD';
-  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') return 'FOOTBALL_MATCH_RESULT';
+  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1' || spec.resolverType === 'FOOTBALL_TOTAL_GOALS_THRESHOLD_V1') return 'FOOTBALL_MATCH_RESULT';
   if (spec.resolverType === 'FINANCIAL_PRICE_THRESHOLD_V1') return 'FINANCIAL_PRICE_THRESHOLD';
   if (spec.resolverType === 'FRED_SERIES_THRESHOLD_V1') return 'FRED_SERIES_THRESHOLD';
   return 'PUBLIC_RECORD_EVIDENCE';
@@ -346,6 +395,80 @@ export function eligibleProviders(event: DueOracleEvent, spec: ResolverSpec, pro
     });
 }
 
+function sportsResourceFor(provider: OracleProvider, event: DueOracleEvent): OracleResource | null {
+  const existing = provider.resources.find((resource) =>
+    resource.status === 'ACTIVE'
+    && resource.resourceType === 'CANONICAL_EVENT'
+    && resource.canonicalKey === event.eventPublicId,
+  );
+  if (existing) return existing;
+
+  const scope = event.resolutionScope ?? {};
+  const subject = isRecord(scope.subject) ? scope.subject : {};
+  const normalized = event.normalizedParameters ?? {};
+  const homeTeam = stringValue(
+    subject.home_team, subject.homeTeam, subject.competitor_a, subject.competitorA,
+    subject.participant_a, subject.participantA, scope.home_team, scope.homeTeam,
+  );
+  const awayTeam = stringValue(
+    subject.away_team, subject.awayTeam, subject.competitor_b, subject.competitorB,
+    subject.participant_b, subject.participantB, scope.away_team, scope.awayTeam,
+  );
+  const kickoffRaw = stringValue(
+    subject.match_starts_at, subject.matchStartsAt, subject.starts_at, subject.startsAt,
+    scope.match_starts_at, scope.matchStartsAt, normalized.time_scope, normalized.timeScope,
+  );
+  const kickoff = kickoffRaw ? new Date(kickoffRaw) : null;
+  const competitionName = stringValue(subject.competition, subject.competition_name, subject.competitionName, scope.competition, normalized.competition);
+  if (!homeTeam || !awayTeam || homeTeam.toLowerCase() === awayTeam.toLowerCase()
+      || !kickoff || !Number.isFinite(kickoff.getTime()) || !competitionName) {
+    return null;
+  }
+
+  let competitionCode: string | null = null;
+  if (provider.code === 'FOOTBALL_DATA') {
+    const normalize = (value: string) => normalizeOutcomeIdentifier(value);
+    const competition = normalize(competitionName);
+    const mapped = provider.resources.find((resource) => {
+      if (resource.status !== 'ACTIVE' || resource.resourceType !== 'SPORTS_COMPETITION') return false;
+      const metadata = resource.metadata ?? {};
+      const aliases = Array.isArray(metadata.aliases)
+        ? metadata.aliases.filter((value): value is string => typeof value === 'string')
+        : [];
+      const names = [resource.canonicalKey, resource.externalKey, stringValue(metadata.display_name, metadata.displayName), ...aliases]
+        .filter((value): value is string => Boolean(value))
+        .map(normalize);
+      return names.includes(competition);
+    });
+    competitionCode = mapped?.externalKey ?? null;
+    if (!competitionCode) return null;
+  } else if (provider.code !== 'THESPORTSDB' && provider.code !== 'API_SPORTS') {
+    return null;
+  }
+
+  const explicitlyHomeAway = Boolean(
+    stringValue(subject.home_team, subject.homeTeam, scope.home_team, scope.homeTeam)
+    && stringValue(subject.away_team, subject.awayTeam, scope.away_team, scope.awayTeam),
+  );
+  return {
+    id: -Math.abs(event.eventId),
+    resourceType: 'CANONICAL_EVENT',
+    canonicalKey: event.eventPublicId,
+    externalKey: event.eventPublicId,
+    status: 'ACTIVE',
+    metadata: {
+      lookup_mode: provider.code === 'FOOTBALL_DATA' ? 'COMPETITION_DAY_TEAMS' : 'EVENTS_DAY_TEAMS',
+      competition_code: competitionCode,
+      competition_name: competitionName,
+      home_team: homeTeam,
+      away_team: awayTeam,
+      match_starts_at: kickoff.toISOString(),
+      allow_home_away_flip: scope.allow_home_away_flip === true || !explicitlyHomeAway,
+      canonical_event_public_id: event.eventPublicId,
+    },
+  };
+}
+
 export function resourceFor(provider: OracleProvider, event: DueOracleEvent, spec: ResolverSpec): OracleResource | null {
   if (spec.resolverType === 'CRYPTO_PRICE_THRESHOLD_V1' || spec.resolverType === 'CRYPTO_PRICE_TOUCH_THRESHOLD_V1') {
     const canonicalKey = `${spec.asset}/${spec.quote}`.toUpperCase();
@@ -355,10 +478,8 @@ export function resourceFor(provider: OracleProvider, event: DueOracleEvent, spe
       && resource.canonicalKey.toUpperCase() === canonicalKey,
     ) ?? null;
   }
-  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
-    return provider.resources.find((resource) =>
-      resource.status === 'ACTIVE' && resource.resourceType === 'CANONICAL_EVENT' && resource.canonicalKey === event.eventPublicId,
-    ) ?? null;
+  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1' || spec.resolverType === 'FOOTBALL_TOTAL_GOALS_THRESHOLD_V1') {
+    return sportsResourceFor(provider, event);
   }
   if (spec.resolverType === 'FINANCIAL_PRICE_THRESHOLD_V1') {
     const pair = `${spec.symbol}/${spec.quote}`.toUpperCase();
@@ -394,7 +515,7 @@ export async function resolveWithProvider(
     if (provider.code === 'TWELVE_DATA' || provider.code === 'COINBASE') return resolveFinancialPriceTouchThresholdWithProvider(provider, resource, spec);
     return { kind: 'skipped', code: 'PROVIDER_NOT_COMPATIBLE' };
   }
-  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1') {
+  if (spec.resolverType === 'FOOTBALL_MATCH_RESULT_V1' || spec.resolverType === 'FOOTBALL_TOTAL_GOALS_THRESHOLD_V1') {
     return resolveFootballFixtureWithProvider(provider, resource, spec);
   }
   if (spec.resolverType === 'FINANCIAL_PRICE_THRESHOLD_V1') {
