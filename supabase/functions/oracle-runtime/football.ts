@@ -1,6 +1,7 @@
 import { resolveFootballWithProvider as resolveLegacyFootball, providerSecret } from './providers.ts';
 import {
   type FootballResultSpec,
+  type FootballTotalGoalsThresholdSpec,
   type JsonRecord,
   type OracleProvider,
   type OracleResource,
@@ -27,16 +28,49 @@ function normalizeTeam(value: unknown) {
 }
 
 function teamMatches(team: unknown, expected: string) {
-  if (!isRecord(team)) return false;
   const wanted = normalizeTeam(expected);
   if (wanted.length < 3) return false;
-  const candidates = [team.name, team.shortName, team.tla]
+  const candidates = (isRecord(team) ? [team.name, team.shortName, team.tla] : [team])
     .map(normalizeTeam)
     .filter(Boolean);
   return candidates.some((candidate) =>
     candidate === wanted
     || (candidate.length >= 5 && wanted.length >= 5 && (candidate.includes(wanted) || wanted.includes(candidate))),
   );
+}
+
+type FootballResolverSpec = FootballResultSpec | FootballTotalGoalsThresholdSpec;
+
+function evaluateThreshold(value: number, operator: 'GT' | 'GTE' | 'LT' | 'LTE', threshold: number) {
+  if (operator === 'GT') return value > threshold;
+  if (operator === 'GTE') return value >= threshold;
+  if (operator === 'LT') return value < threshold;
+  return value <= threshold;
+}
+
+function resolveObservedOutcome(
+  actual: 'HOME_WIN' | 'AWAY_WIN' | 'DRAW',
+  spec: FootballResolverSpec,
+  teams: { home: string; away: string },
+  scores: { home: number; away: number },
+) {
+  if (spec.resolverType === 'FOOTBALL_TOTAL_GOALS_THRESHOLD_V1') {
+    const totalGoals = scores.home + scores.away;
+    return evaluateThreshold(totalGoals, spec.operator, spec.threshold) ? 'YES' : 'NO';
+  }
+  if (spec.condition === 'THREE_WAY') return spec.outcomeCodes[actual];
+  if (spec.condition === 'TEAM_WIN') {
+    if (teamMatches(teams.home, spec.targetTeam)) return actual === 'HOME_WIN' ? 'YES' : 'NO';
+    if (teamMatches(teams.away, spec.targetTeam)) return actual === 'AWAY_WIN' ? 'YES' : 'NO';
+    throw new OracleRuntimeError('FOOTBALL_TARGET_TEAM_MISMATCH', 'The target team did not match either team in the verified fixture.', 422);
+  }
+  return actual === spec.condition ? 'YES' : 'NO';
+}
+
+function conditionPayload(spec: FootballResolverSpec) {
+  return spec.resolverType === 'FOOTBALL_TOTAL_GOALS_THRESHOLD_V1'
+    ? { condition: 'TOTAL_GOALS_THRESHOLD', operator: spec.operator, threshold: spec.threshold }
+    : { condition: spec.condition, target_team: spec.condition === 'TEAM_WIN' ? spec.targetTeam : null };
 }
 
 function dayString(date: Date) {
