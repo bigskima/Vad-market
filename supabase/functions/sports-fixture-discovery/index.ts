@@ -131,7 +131,11 @@ async function authenticate(req: Request) {
 function normalizeFixture(match: ProviderMatch, provider: SportsProvider, competition: SportsCompetition, requestUrl: string) {
   const home = isRecord(match.homeTeam) ? match.homeTeam : {};
   const away = isRecord(match.awayTeam) ? match.awayTeam : {};
-  const kickoff = new Date(safeText(match.utcDate, 80));
+  const kickoffRaw = safeText(match.utcDate, 80);
+  // The provider contract is an absolute instant. Reject timezone-naive values;
+  // otherwise the Edge Function host timezone could shift kickoff by hours.
+  if (!/T.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(kickoffRaw)) return null;
+  const kickoff = new Date(kickoffRaw);
   const status = safeText(match.status, 40).toUpperCase();
   const externalId = match.id === null || match.id === undefined ? '' : String(match.id).trim().slice(0, 120);
   const homeName = safeText(home.name, 160);
