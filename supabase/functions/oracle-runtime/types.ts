@@ -70,6 +70,11 @@ export type FootballResultSpec =
     }
   | {
       resolverType: 'FOOTBALL_MATCH_RESULT_V1';
+      condition: 'TEAM_WIN';
+      targetTeam: string;
+    }
+  | {
+      resolverType: 'FOOTBALL_MATCH_RESULT_V1';
       condition: 'THREE_WAY';
       outcomeCodes: {
         HOME_WIN: string;
@@ -77,6 +82,12 @@ export type FootballResultSpec =
         DRAW: string;
       };
     };
+
+export type FootballTotalGoalsThresholdSpec = {
+  resolverType: 'FOOTBALL_TOTAL_GOALS_THRESHOLD_V1';
+  operator: 'GT' | 'GTE' | 'LT' | 'LTE';
+  threshold: number;
+};
 
 export type FinancialPriceThresholdSpec = {
   resolverType: 'FINANCIAL_PRICE_THRESHOLD_V1';
@@ -106,7 +117,7 @@ export type PublicRecordSpec = {
   recordDate?: string | null;
 };
 
-export type ResolverSpec = CryptoThresholdSpec | CryptoTouchThresholdSpec | FootballResultSpec | PublicRecordSpec | FinancialPriceThresholdSpec | FredSeriesThresholdSpec;
+export type ResolverSpec = CryptoThresholdSpec | CryptoTouchThresholdSpec | FootballResultSpec | FootballTotalGoalsThresholdSpec | PublicRecordSpec | FinancialPriceThresholdSpec | FredSeriesThresholdSpec;
 
 export type ProviderObservation = {
   observedOutcome: string;
