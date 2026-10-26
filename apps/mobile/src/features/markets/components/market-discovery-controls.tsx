@@ -1,4 +1,4 @@
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadIcon } from '@/components/ui/vad-icon';
@@ -8,6 +8,19 @@ import { useVadTheme } from '@/providers/theme-provider';
 
 export type MarketSortMode = 'activity' | 'closing' | 'newest';
 export type MarketStageFilter = 'live' | 'result' | 'complete' | 'all';
+
+export type MarketCategoryOption = {
+  value: string;
+  label: string;
+  count: number;
+};
+
+export type MarketSubcategoryOption = {
+  value: string;
+  label: string;
+  count: number;
+  kind: 'type' | 'group' | 'sport';
+};
 
 const SORT_OPTIONS: { value: MarketSortMode; label: string }[] = [
   { value: 'activity', label: 'Most active' },
@@ -28,6 +41,10 @@ export function MarketDiscoveryControls({
   categories,
   activeCategory,
   onCategoryChange,
+  subcategories,
+  activeSubcategory,
+  onSubcategoryChange,
+  activeCategoryLabel,
   stage,
   onStageChange,
   stageCounts,
@@ -38,9 +55,13 @@ export function MarketDiscoveryControls({
 }: {
   query: string;
   onQueryChange: (value: string) => void;
-  categories: string[];
+  categories: MarketCategoryOption[];
   activeCategory: string;
   onCategoryChange: (value: string) => void;
+  subcategories: MarketSubcategoryOption[];
+  activeSubcategory: string;
+  onSubcategoryChange: (value: string) => void;
+  activeCategoryLabel: string | null;
   stage?: MarketStageFilter;
   onStageChange?: (value: MarketStageFilter) => void;
   stageCounts?: { live: number; result: number; complete: number; all: number };
@@ -64,17 +85,93 @@ export function MarketDiscoveryControls({
         leading={<VadIcon name="search" size={19} tone="tertiary" />}
       />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
-        {['All', ...categories.filter((value) => value.toLowerCase() !== 'all')].map((category) => (
-          <VadChip
-            key={category}
-            label={category}
-            selected={category === activeCategory}
-            tone={category === activeCategory ? 'brand' : 'neutral'}
-            onPress={() => onCategoryChange(category)}
-          />
-        ))}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          alignItems: 'stretch',
+          gap: theme.spacing.lg,
+          paddingHorizontal: 2,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.border,
+        }}
+      >
+        {categories.map((option) => {
+          const selected = option.value === activeCategory;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="button"
+              accessibilityLabel={`${option.label}, ${option.count} markets`}
+              accessibilityState={{ selected }}
+              onPress={() => onCategoryChange(option.value)}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 5,
+                opacity: pressed ? 0.72 : 1,
+              })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: 3 }}>
+                <VadText
+                  variant={selected ? 'bodyStrong' : 'body'}
+                  tone={selected ? 'brand' : 'secondary'}
+                  style={{ fontSize: 14 }}
+                >
+                  {option.label}
+                </VadText>
+                {option.count > 0 ? (
+                  <VadText variant="caption" tone={selected ? 'brand' : 'tertiary'} style={{ fontSize: 10 }}>
+                    {option.count}
+                  </VadText>
+                ) : null}
+              </View>
+              <View
+                style={{
+                  height: 3,
+                  width: '100%',
+                  borderTopLeftRadius: 3,
+                  borderTopRightRadius: 3,
+                  backgroundColor: selected ? theme.colors.brandPrimary : 'transparent',
+                }}
+              />
+            </Pressable>
+          );
+        })}
       </ScrollView>
+
+      {activeCategoryLabel && subcategories.length ? (
+        <View style={{ gap: theme.spacing.xs }}>
+          <VadText variant="caption" tone="secondary">
+            {activeCategoryLabel} · Subcategories
+          </VadText>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}
+          >
+            <VadChip
+              label={`All ${activeCategoryLabel.toLowerCase()} markets`}
+              selected={activeSubcategory === 'all'}
+              tone={activeSubcategory === 'all' ? 'brand' : 'neutral'}
+              onPress={() => onSubcategoryChange('all')}
+            />
+            {subcategories.map((option) => {
+              const selected = option.value === activeSubcategory;
+              return (
+                <VadChip
+                  key={option.value}
+                  label={option.count > 0 ? `${option.label} · ${option.count}` : option.label}
+                  selected={selected}
+                  tone={selected ? 'brand' : 'neutral'}
+                  onPress={() => onSubcategoryChange(option.value)}
+                />
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
 
       {showAdvancedFilters ? (
         <View style={{ gap: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 14, backgroundColor: theme.colors.surface, padding: theme.spacing.sm }}>
