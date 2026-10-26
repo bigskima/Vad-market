@@ -10,8 +10,7 @@ set consensus_rule = coalesce(p.consensus_rule, '{}'::jsonb)
   || jsonb_build_object(
     'min_agreeing_providers', 2,
     'distinct_providers', true
-  ),
-  updated_at = statement_timestamp()
+  )
 where p.public_id = '0350f7b1-99ff-46e9-b7e6-ee2a8d8ac1ee'::uuid
   and p.status = 'ACTIVE'
   and upper(coalesce(p.consensus_rule->>'environment','PRODUCTION')) = 'PRODUCTION'
