@@ -330,7 +330,7 @@ export function MarketsScreen({
     items: listingMarkets,
     initialCount: pageSize,
     step: pageSize,
-    resetKey: `${debouncedQuery.toLowerCase()}|${category}|${sortMode}|${stage}|${columns}|${showAllMarkets}`,
+    resetKey: `${debouncedQuery.toLowerCase()}|${category}|${activeSubcategory}|${sortMode}|${stage}|${columns}|${showAllMarkets}`,
   });
 
   const visibleMarkets = progressive.visibleItems;
