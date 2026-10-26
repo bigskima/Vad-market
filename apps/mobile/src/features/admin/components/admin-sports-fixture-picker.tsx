@@ -205,6 +205,56 @@ export function AdminSportsFixturePicker({
                   No upcoming fixtures were returned for this date range. Try 14 days or choose another competition supported by the configured provider.
                 </VadText>
               )}
+              {sportCode.trim().toUpperCase() === 'FOOTBALL' && onBulkCreate && page.fixtures.length ? (
+                <VadCard variant="outlined" style={{ gap: theme.spacing.sm }}>
+                  <VadText variant="bodyStrong">Competition-wide publishing</VadText>
+                  <VadText variant="caption" tone="secondary">
+                    Create Home / Draw / Away markets for every upcoming fixture in this imported date range. VAD uses the provider's UTC kickoff instant, displays it in the device time zone, closes trading at kickoff, and starts automatic result checks after full time.
+                  </VadText>
+                  {!automaticPublishingAvailable ? (
+                    <VadText variant="caption" tone="warning">
+                      {bulkCreateDisabledReason || 'Automatic production result policy is not approved yet. Fixture discovery works, but VAD will not publish real-money markets without an approved two-source settlement policy.'}
+                    </VadText>
+                  ) : bulkCreateDisabledReason ? (
+                    <VadText variant="caption" tone="warning">{bulkCreateDisabledReason}</VadText>
+                  ) : null}
+                  <VadButton
+                    label={bulkWorking ? 'Publishing fixture markets…' : 'Prepare markets for ' + upcomingFixtures.length + ' upcoming fixtures'}
+                    onPress={() => { setBulkError(null); setBulkReport(null); setBulkConfirming(true); }}
+                    disabled={bulkWorking || loading || !upcomingFixtures.length || !automaticPublishingAvailable || Boolean(bulkCreateDisabledReason)}
+                    loading={bulkWorking}
+                  />
+                  {bulkConfirming ? (
+                    <VadCard variant="muted" style={{ gap: theme.spacing.sm }}>
+                      <VadText variant="bodyStrong">Confirm batch publishing</VadText>
+                      <VadText variant="caption" tone="secondary">
+                        This will publish {upcomingFixtures.length} live 1X2 markets in {competitionName || 'this competition'} using {page.source}. Each market opens now and closes exactly at the kickoff instant; an independent second source must confirm the final score before settlement. Fixtures already published are reused, not duplicated.
+                      </VadText>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+                        <VadButton
+                          label={bulkWorking ? 'Publishing…' : 'Confirm and publish'}
+                          onPress={() => void runBulkCreate()}
+                          disabled={bulkWorking || !automaticPublishingAvailable || Boolean(bulkCreateDisabledReason)}
+                          loading={bulkWorking}
+                        />
+                        <VadButton label="Cancel" variant="secondary" onPress={() => setBulkConfirming(false)} disabled={bulkWorking} />
+                      </View>
+                    </VadCard>
+                  ) : null}
+                  {bulkError ? <VadText variant="caption" tone="warning">{bulkError}</VadText> : null}
+                  {bulkReport ? (
+                    <View style={{ gap: 4 }}>
+                      <VadText variant="bodyStrong">
+                        Batch result: {bulkReport.published} published · {bulkReport.alreadyAvailable} already available · {bulkReport.failed.length} failed
+                      </VadText>
+                      {bulkReport.failed.slice(0, 5).map((item) => (
+                        <VadText key={item.fixture + item.reason} variant="caption" tone="warning">{item.fixture}: {item.reason}</VadText>
+                      ))}
+                      {bulkReport.failed.length > 5 ? <VadText variant="caption" tone="secondary">And {bulkReport.failed.length - 5} more failures.</VadText> : null}
+                    </View>
+                  ) : null}
+                </VadCard>
+              ) : null}
             </View>
           ) : null}
         </>
