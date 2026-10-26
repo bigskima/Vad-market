@@ -28,6 +28,8 @@ jobs:
         run: deno check --no-lock supabase/functions/oracle-runtime/index.ts
       - name: Type-check automatic AI evidence resolution worker
         run: deno check --no-lock supabase/functions/market-resolution-worker/index.ts
+      - name: Test AI resolution evidence-path coverage
+        run: deno test --no-lock supabase/functions/market-resolution-worker/evidence-coverage_test.ts
       - name: Type-check location verification endpoint
         run: deno check --no-lock supabase/functions/verify-service-location/index.ts
       - name: Type-check authenticated crypto AI draft endpoint
