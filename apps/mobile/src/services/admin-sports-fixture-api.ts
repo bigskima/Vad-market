@@ -111,3 +111,49 @@ export async function createAdminSportsMarketDraft(input: {
   }
   return payload as AdminSportsMarketDraft;
 }
+
+export type AdminAutomaticFootballMarketResult = {
+  status: 'PUBLISHED' | 'ALREADY_PUBLISHED' | 'ALREADY_EXISTS';
+  eventId: string;
+  instrumentId: string;
+  title: string;
+  outcomes: { code: string; label: string }[];
+  opensAt: string;
+  closesAt: string;
+  resolvesAfter: string;
+};
+
+export async function createAdminAutomaticFootballMarket(input: {
+  sportCode: string;
+  competitionCode: string;
+  competitionName: string;
+  providerCompetitionCode: string;
+  fixtureId: string;
+  homeTeam: string;
+  awayTeam: string;
+  startsAt: string;
+  countryCode: string;
+  assetCode: string;
+}): Promise<AdminAutomaticFootballMarketResult> {
+  const { data, error } = await supabase.rpc('admin_create_football_1x2_market_v1', {
+    p_sport_code: input.sportCode.trim().toUpperCase(),
+    p_competition_code: input.competitionCode.trim().toUpperCase(),
+    p_competition_name: input.competitionName.trim(),
+    p_provider_competition_code: input.providerCompetitionCode.trim().toUpperCase(),
+    p_fixture_id: input.fixtureId.trim(),
+    p_home_team: input.homeTeam.trim(),
+    p_away_team: input.awayTeam.trim(),
+    p_match_starts_at: input.startsAt,
+    p_country_code: input.countryCode.trim().toUpperCase(),
+    p_asset_code: input.assetCode.trim().toUpperCase(),
+    p_publish_now: true,
+  });
+  if (error) throw endpointError(error, 'The automatic football market could not be created.');
+  const payload = data as Partial<AdminAutomaticFootballMarketResult> & { error?: string; message?: string };
+  if (payload?.error) throw new Error(payload.message || 'The automatic football market could not be created.');
+  if (!payload?.eventId || !payload?.instrumentId || !payload?.title
+    || !['PUBLISHED', 'ALREADY_PUBLISHED', 'ALREADY_EXISTS'].includes(String(payload.status))) {
+    throw new Error('VAD returned an incomplete result while creating this fixture market.');
+  }
+  return payload as AdminAutomaticFootballMarketResult;
+}
