@@ -55,6 +55,42 @@ const sha256 = async (value: string) => {
 };
 const normalize = (value: string) => value.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
 
+function compactEvidenceText(value: string, query: string, maxChars = 2200) {
+  if (value.length <= maxChars) return value;
+  const stop = new Set(['will','with','from','that','this','have','has','had','was','were','are','the','and','for','not','when','what','where','which','after','before','official','market','publish','published','result']);
+  const terms = [...new Set(query.toLowerCase().split(/[^a-z0-9]+/).filter((term) => term.length >= 4 && !stop.has(term)))].slice(0, 18);
+  const chunkSize = 1300;
+  const stride = 900;
+  const chunks: Array<{ start: number; text: string; score: number }> = [];
+  for (let start = 0; start < value.length; start += stride) {
+    const text = value.slice(start, start + chunkSize);
+    const lower = text.toLowerCase();
+    const score = terms.reduce((sum, term) => sum + (lower.includes(term) ? 1 : 0), 0);
+    chunks.push({ start, text, score });
+  }
+  const selected = chunks
+    .sort((a, b) => b.score - a.score || a.start - b.start)
+    .slice(0, Math.max(1, Math.floor(maxChars / 1100)))
+    .sort((a, b) => a.start - b.start);
+  const compact = selected.map((chunk) => chunk.text).join('\n[...omitted source text...]\n');
+  return compact.length <= maxChars ? compact : compact.slice(0, maxChars);
+}
+
+function modelEndpoint(runtime: AiRuntime) {
+  let model: string;
+  if (runtime.adapter === 'CLOUDFLARE_WORKERS_AI') {
+    if (!/^@cf\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(runtime.modelCode)) {
+      throw new Error('Configured Cloudflare model identifier is invalid.');
+    }
+    // Cloudflare's REST path expects the literal @cf/vendor/model path segments.
+    // Encoding the slashes into %2F causes the model route to be rejected.
+    model = runtime.modelCode;
+  } else {
+    model = encodeURIComponent(runtime.modelCode);
+  }
+  return runtime.endpoint.replaceAll('{model}', model);
+}
+
 function credentials() {
   const url = Deno.env.get('SUPABASE_URL')?.trim();
   const service = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SECRET_KEY'))?.trim();
@@ -117,7 +153,7 @@ function stripHtml(value: string) {
     .trim();
 }
 
-async function fetchText(url: URL, maxChars = 7000): Promise<EvidenceSource | null> {
+async function fetchText(url: URL, maxChars = 18000): Promise<EvidenceSource | null> {
   try {
     const response = await fetch(url, {
       method: 'GET',
@@ -193,8 +229,15 @@ function parseModelJson(text: string): RecordValue {
   const source = text.trim().replace(/^\x60{3}(?:json)?/i, '').replace(/\x60{3}$/i, '').trim();
   const first = source.indexOf('{');
   const last = source.lastIndexOf('}');
-  if (first < 0 || last <= first) throw new Error('AI output did not contain a JSON object.');
-  const result: unknown = JSON.parse(source.slice(first, last + 1));
+  if (first < 0 || last <= first) {
+    throw new Error('AI output did not contain a JSON object. Output prefix: ' + safeText(source, 180));
+  }
+  let result: unknown;
+  try {
+    result = JSON.parse(source.slice(first, last + 1));
+  } catch {
+    throw new Error('AI output contained invalid JSON. Output prefix: ' + safeText(source, 180));
+  }
   if (!isRecord(result)) throw new Error('AI output was not a JSON object.');
   return result;
 }
@@ -230,6 +273,9 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
   if (!key || !runtime.endpoint || !runtime.adapter || !runtime.modelCode) {
     throw new Error('AI provider endpoint, model or server-side credential is unavailable.');
   }
+  // This packet is already compacted by the caller. Citation validation uses
+  // the same text below, so the model cannot cite a quote from unseen page text.
+  const modelPacket = packet;
   const userPrompt = JSON.stringify({
     task: 'Determine the configured VAD market outcome using only the published resolution rule and evidence packet.',
     market: {
@@ -244,7 +290,7 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
       allowedOutcomes: event.outcomes,
     },
     sourceHierarchy: event.sourceHierarchy,
-    evidencePacket: packet.map((source) => ({
+    evidencePacket: modelPacket.map((source) => ({
       url: source.url,
       domain: source.domain,
       sourceType: source.source,
@@ -261,9 +307,10 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
   });
 
   const commonHeaders = { 'Content-Type': 'application/json', Accept: 'application/json' };
+  const endpoint = modelEndpoint(runtime);
   let response: Response;
   if (runtime.adapter === 'OPENAI_COMPATIBLE') {
-    response = await fetch(runtime.endpoint.replaceAll('{model}', encodeURIComponent(runtime.modelCode)), {
+    response = await fetch(endpoint, {
       method: 'POST', redirect: 'error',
       headers: { ...commonHeaders, Authorization: 'Bearer ' + key },
       body: JSON.stringify({
@@ -274,19 +321,45 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
       signal: AbortSignal.timeout(15000),
     });
   } else if (runtime.adapter === 'GEMINI_GENERATE_CONTENT') {
-    response = await fetch(runtime.endpoint.replaceAll('{model}', encodeURIComponent(runtime.modelCode)), {
+    response = await fetch(endpoint, {
       method: 'POST', redirect: 'error',
       headers: { ...commonHeaders, 'x-goog-api-key': key },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: runtime.systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 1400, responseMimeType: 'application/json' },
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: 1400,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            properties: {
+              status: { type: 'STRING', enum: ['RESOLVED', 'VOID', 'INCONCLUSIVE'] },
+              outcomeCode: { type: 'STRING', nullable: true },
+              confidence: { type: 'NUMBER' },
+              rationale: { type: 'STRING' },
+              evidence: {
+                type: 'ARRAY',
+                items: {
+                  type: 'OBJECT',
+                  properties: {
+                    url: { type: 'STRING' },
+                    quote: { type: 'STRING' },
+                    publishedAt: { type: 'STRING', nullable: true },
+                  },
+                  required: ['url', 'quote'],
+                },
+              },
+            },
+            required: ['status', 'outcomeCode', 'confidence', 'rationale', 'evidence'],
+          },
+        },
       }),
       signal: AbortSignal.timeout(15000),
     });
   } else if (runtime.adapter === 'ANTHROPIC_MESSAGES') {
     if (!runtime.apiVersion) throw new Error('Anthropic API version is not configured.');
-    response = await fetch(runtime.endpoint.replaceAll('{model}', encodeURIComponent(runtime.modelCode)), {
+    response = await fetch(endpoint, {
       method: 'POST', redirect: 'error',
       headers: { ...commonHeaders, 'x-api-key': key, 'anthropic-version': runtime.apiVersion },
       body: JSON.stringify({
@@ -296,7 +369,7 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
       signal: AbortSignal.timeout(15000),
     });
   } else if (runtime.adapter === 'CLOUDFLARE_WORKERS_AI') {
-    response = await fetch(runtime.endpoint.replaceAll('{model}', encodeURIComponent(runtime.modelCode)), {
+    response = await fetch(endpoint, {
       method: 'POST', redirect: 'error',
       headers: { ...commonHeaders, Authorization: 'Bearer ' + key },
       body: JSON.stringify({
@@ -308,10 +381,27 @@ async function callModel(runtime: AiRuntime, event: RecordValue, packet: Evidenc
   } else {
     throw new Error('Unsupported configured AI adapter.');
   }
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error('AI provider returned HTTP ' + response.status + '.');
+  const responseBody = await response.text();
+  let payload: unknown = {};
+  try {
+    payload = JSON.parse(responseBody);
+  } catch {
+    payload = { raw_response_prefix: safeText(responseBody, 240) };
+  }
+  if (!response.ok) {
+    let detail = '';
+    if (isRecord(payload)) {
+      const errors = Array.isArray(payload.errors) ? payload.errors : [];
+      const firstError = isRecord(errors[0]) ? errors[0] : {};
+      detail = safeText(firstError.message ?? payload.message ?? payload.error ?? payload.raw_response_prefix, 240);
+    }
+    throw new Error(runtime.providerCode + ' returned HTTP ' + response.status + (detail ? ': ' + detail : '.'));
+  }
   const text = modelText(payload, runtime.adapter);
-  if (!text) throw new Error('AI provider returned no usable JSON text.');
+  if (!text) {
+    const reason = isRecord(payload) ? safeText(payload.promptFeedback ?? payload.finishReason ?? payload.error, 160) : '';
+    throw new Error(runtime.providerCode + ' returned no usable JSON text.' + (reason ? ' Detail: ' + reason : ''));
+  }
   return parseModelJson(text);
 }
 
@@ -421,11 +511,28 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason: 'NO_CONFIGURED_AI_MODEL' };
   }
 
+  // Build the exact evidence excerpts placed in the model prompt. These same
+  // excerpts are passed into validateOutput, closing the gap where a model could
+  // cite material from a full page that it never received in context.
+  const queryText = safeText(event.title, 500) + ' ' + safeText(
+    isRecord(event.resolutionScope)
+      ? (event.resolutionScope.condition ?? event.resolutionScope.rule)
+      : '',
+    1800,
+  );
+  const modelPacket = [
+    ...packet.filter((source) => source.source === 'DIRECT').slice(0, 3),
+    ...packet.filter((source) => source.source === 'SEARCH').slice(0, 3),
+  ].map((source) => ({
+    ...source,
+    text: compactEvidenceText(source.text, queryText, 2200),
+  }));
+
   const evaluations = await Promise.all(configuredRuntimes.map(async (runtime) => {
     const startedAt = new Date();
     try {
-      const output = await callModel(runtime, event, packet);
-      const validated = validateOutput(output, event, packet);
+      const output = await callModel(runtime, event, modelPacket);
+      const validated = validateOutput(output, event, modelPacket);
       const evidenceSummary = validated.evidence.map((item) => ({
         url: item.url, quote: item.quote, publishedAt: item.publishedAt, sourceType: item.source.source,
       }));
