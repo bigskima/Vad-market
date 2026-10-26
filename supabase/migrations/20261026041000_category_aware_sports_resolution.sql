@@ -129,8 +129,7 @@ begin
   end if;
   return v_scope;
 end;
-$function$
-
+$function$;
 
 -- Validate the policy's data sources and quorum when an administrator approves this draft.
 create or replace function private.guard_football_policy_approval()
@@ -928,7 +927,6 @@ begin
 
   return v_finalized;
 end;
-$function$
-
+$function$;
 
 commit;
