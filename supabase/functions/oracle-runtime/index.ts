@@ -125,7 +125,7 @@ async function recordObservation(
   provider: OracleProvider,
   resolverType: string,
   observation: {
-    observedOutcome: 'YES' | 'NO';
+    observedOutcome: string;
     observedAt: Date;
     evidenceReference: string;
     payload: JsonRecord;
