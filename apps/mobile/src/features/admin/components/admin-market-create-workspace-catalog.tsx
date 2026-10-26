@@ -10,7 +10,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
-import { AdminSportsFixturePicker } from './admin-sports-fixture-picker';
+import { AdminSportsFixturePicker, type FootballBulkPublishReport } from './admin-sports-fixture-picker';
 import { useVadTheme } from '@/providers/theme-provider';
 import { formatDateTimeInDeviceZone } from '@/lib/time-zone';
 import {
@@ -30,6 +30,7 @@ import {
   type CryptoOraclePolicyReadiness,
 } from '@/services/crypto-market-data-api';
 import {
+  createAdminAutomaticFootballMarket,
   createAdminSportsMarketDraft,
   type AdminSportsFixture,
 } from '@/services/admin-sports-fixture-api';
@@ -439,6 +440,53 @@ export function AdminMarketCreateWorkspaceCatalog() {
         competitor_b: fixture.awayTeam,
       }));
     }
+  }
+
+  async function publishCompetitionFootballMarkets(fixtures: AdminSportsFixture[]): Promise<FootballBulkPublishReport> {
+    const competition = selectedFootballCompetition;
+    if (!competition) throw new Error('Select an active, provider-mapped football competition first.');
+    if (!automaticFootballAvailable) throw new Error('Automatic production football publishing is disabled until the approved two-source result policy is active.');
+    if (!resolvedCountryCode || !resolvedAssetCode) throw new Error('Choose the jurisdiction and market currency in Trading Setup before publishing a competition batch.');
+
+    let cursor = 0;
+    let published = 0;
+    let alreadyAvailable = 0;
+    const failed: { fixture: string; reason: string }[] = [];
+    const worker = async () => {
+      while (cursor < fixtures.length) {
+        const fixture = fixtures[cursor++];
+        try {
+          const result = await createAdminAutomaticFootballMarket({
+            sportCode: fixture.sportCode,
+            competitionCode: fixture.competitionCode,
+            competitionName: fixture.competitionName,
+            providerCompetitionCode: fixture.providerCompetitionCode,
+            fixtureId: fixture.fixtureId,
+            homeTeam: fixture.homeTeam,
+            awayTeam: fixture.awayTeam,
+            startsAt: fixture.startsAt,
+            countryCode: resolvedCountryCode,
+            assetCode: resolvedAssetCode,
+          });
+          if (result.status === 'PUBLISHED') published += 1;
+          else alreadyAvailable += 1;
+        } catch (value) {
+          failed.push({
+            fixture: fixture.homeTeam + ' vs ' + fixture.awayTeam,
+            reason: value instanceof Error ? value.message : 'Market could not be published.',
+          });
+        }
+      }
+    };
+
+    setWorking(true);
+    setError(null);
+    try {
+      await Promise.all(Array.from({ length: Math.min(2, fixtures.length) }, () => worker()));
+    } finally {
+      setWorking(false);
+    }
+    return { published, alreadyAvailable, failed };
   }
 
   async function generateSportsMarketDraft() {
@@ -933,6 +981,11 @@ export function AdminMarketCreateWorkspaceCatalog() {
                     providerCompetitionCode={selectedFootballCompetition?.providerCompetitionCode}
                     selectedFixtureId={selectedFixture?.fixture.fixtureId}
                     onSelect={chooseSportsFixture}
+                    onBulkCreate={publishCompetitionFootballMarkets}
+                    automaticPublishingAvailable={automaticFootballAvailable}
+                    bulkCreateDisabledReason={!resolvedCountryCode || !resolvedAssetCode
+                      ? 'Choose jurisdiction and market currency in Trading Setup before publishing a competition batch.'
+                      : null}
                   />
                   <VadInput label="Home team" value={homeTeam} onChangeText={(value) => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setHomeTeam(value); setTitleEdited(false); }} placeholder="Real Betis" />
                   <VadInput label="Away team" value={awayTeam} onChangeText={(value) => { sportsDraftRequest.current += 1; setSportsDraftLoading(false); setSelectedFixture(null); setSportsDraftNotice(null); setAwayTeam(value); setTitleEdited(false); }} placeholder="Getafe" />
