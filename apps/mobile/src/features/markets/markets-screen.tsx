@@ -513,7 +513,7 @@ function humanizeCategoryCode(value: string) {
   return value
     .replaceAll('_', ' ')
     .toLowerCase()
-    .replace(/\\b\\w/g, (letter) => letter.toUpperCase());
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function marketContextString(market: MarketCatalogItem, key: string) {
@@ -529,7 +529,7 @@ function humanizeTaxonomyValue(value: string, categoryCode?: string | null) {
     .replaceAll('_', ' ')
     .replaceAll('-', ' ')
     .toLowerCase()
-    .replace(/\\b\\w/g, (letter) => letter.toUpperCase());
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function marketMatchesConfiguredSubcategory(
