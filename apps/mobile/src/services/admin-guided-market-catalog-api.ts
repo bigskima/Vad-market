@@ -272,6 +272,43 @@ export async function saveAdminSimpleGuidedMarketType(input: {
 }
 
 
+
+export async function saveAdminGuidedMarketTypeDefinition(input: {
+  code: string;
+  categoryCode: string;
+  name: string;
+  description?: string;
+  questionTemplate: string;
+  conditionTemplate: string;
+  sourceLabel: string;
+  sourceRequired: boolean;
+  fields: AdminGuidedCatalogField[];
+  displayOrder?: number;
+  enabled?: boolean;
+}) {
+  const { data, error } = await supabase.rpc('admin_save_guided_market_type_v2', {
+    p_code: input.code.trim().toUpperCase(),
+    p_category_code: input.categoryCode.trim().toUpperCase(),
+    p_name: input.name.trim(),
+    p_description: input.description?.trim() ?? '',
+    p_question_template: input.questionTemplate.trim(),
+    p_condition_template: input.conditionTemplate.trim(),
+    p_source_label: input.sourceLabel.trim(),
+    p_source_required: input.sourceRequired,
+    p_field_schema: input.fields.map((field) => ({
+      key: field.key.trim(),
+      label: field.label.trim(),
+      placeholder: field.placeholder?.trim() ?? '',
+      required: field.required === true,
+    })),
+    p_display_order: input.displayOrder ?? 100,
+    p_enabled: input.enabled !== false,
+  });
+  fail(error, 'The configured market type could not be saved.');
+  return data === true;
+}
+
+
 export type SportsMarketCompetition = {
   sportCode: string;
   status: 'ACTIVE' | 'DISABLED';
