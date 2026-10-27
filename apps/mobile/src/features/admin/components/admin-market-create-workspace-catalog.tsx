@@ -280,8 +280,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
     [options, resolvedCountryCode],
   );
   const availableAssets = (jurisdiction?.assets ?? []).filter((asset): asset is 'NGN' | 'USDC' => asset === 'NGN' || asset === 'USDC');
-  const resolvedAssetCode = assetCode && availableAssets.includes(assetCode)
-    ? assetCode
+  const selectedAssetCode: 'NGN' | 'USDC' | '' = assetCode === 'NGN' || assetCode === 'USDC' ? assetCode : '';
+  const resolvedAssetCode: 'NGN' | 'USDC' | '' = selectedAssetCode && availableAssets.includes(selectedAssetCode)
+    ? selectedAssetCode
     : availableAssets.includes('NGN')
       ? 'NGN'
       : availableAssets[0] ?? '';
