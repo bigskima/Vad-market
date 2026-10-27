@@ -102,7 +102,7 @@ export default function AdminSupportScreen() {
         <View style={{ gap: 8 }}>
           {loading ? <VadText tone="secondary">Loading tickets…</VadText> : tickets.length ? tickets.map((ticket) => (
             <VadCard key={ticket.id} variant={activeTicketId === ticket.id ? 'raised' : 'surface'} style={{ gap: 4, borderColor: activeTicketId === ticket.id ? theme.colors.brandPrimary : theme.colors.border }}>
-              <VadButton label={ticket.subject} variant="text" size="small" onPress={() => { setActiveTicketId(ticket.id); setError(null); }} />
+              <VadButton label={ticket.subject} variant="plain" size="small" onPress={() => { setActiveTicketId(ticket.id); setError(null); }} />
               <VadText variant="caption" tone="secondary">{ticket.user_email ?? ticket.user_id ?? 'User'} · {ticket.category.replaceAll('_', ' ')}</VadText>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 <VadChip label={ticket.status.replaceAll('_', ' ')} tone={ticket.status === 'OPEN' ? 'warning' : 'neutral'} />
