@@ -1,0 +1,293 @@
+-- VAD category coverage and in-app support.
+-- This migration is proposed for the feature branch only; it is not applied to any live database.
+
+begin;
+
+-- Add the missing political-publication market type through the same database
+-- catalog used by the admin category editor and Create Market workspace.
+insert into market.guided_market_types (
+  code, category_code, name, description, handler_code, question_template,
+  condition_template, source_label, source_required, field_schema,
+  display_order, status, metadata
+) values (
+  'POLITICS_POLICY_ANNOUNCEMENT',
+  'POLITICS',
+  'Official policy or government announcement',
+  'New public policy announcements from a specified government institution, with a defined eligible announcement and deadline.',
+  'VERIFIED_EVENT',
+  'Will {{institution}} publish {{announcement}} by {{deadline}}?',
+  'Resolve YES only when the configured official government publication source contains a new item matching the stated announcement criterion, first published after the market opens and no later than the published deadline. Record the canonical source URL and publication timestamp. An unavailable feed or search result absence is not evidence of NO; unresolved evidence must remain inconclusive.',
+  'Official government newsroom or publication feed',
+  true,
+  '[
+    {"key":"institution","label":"Government institution","required":true,"placeholder":"e.g. Nigeria State House"},
+    {"key":"announcement","label":"Qualifying announcement","required":true,"placeholder":"Define exactly what counts as a policy announcement"},
+    {"key":"deadline","label":"Deadline and timezone","required":true,"placeholder":"YYYY-MM-DD HH:mm WAT"}
+  ]'::jsonb,
+  60,
+  'ACTIVE',
+  '{"region_scope":"ADMIN_DEFINED","evidence_policy":"OFFICIAL_PUBLICATION_TIMESTAMP","supports_nigeria_africa":true}'::jsonb
+)
+on conflict (code) do update set
+  category_code = excluded.category_code,
+  name = excluded.name,
+  description = excluded.description,
+  handler_code = excluded.handler_code,
+  question_template = excluded.question_template,
+  condition_template = excluded.condition_template,
+  source_label = excluded.source_label,
+  source_required = excluded.source_required,
+  field_schema = excluded.field_schema,
+  status = 'ACTIVE',
+  metadata = coalesce(market.guided_market_types.metadata, '{}'::jsonb) || excluded.metadata,
+  updated_at = now();
+
+-- Support tickets and conversation messages use the existing authenticated
+-- Supabase identity and existing market-admin authorization; no second auth system.
+create table if not exists public.vad_support_tickets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  subject text not null check (char_length(trim(subject)) between 5 and 160),
+  category text not null default 'GENERAL'
+    check (category in ('GENERAL','TRADING','WALLET','ACCOUNT','MARKET_RESOLUTION','BUG_REPORT','SAFETY')),
+  status text not null default 'OPEN'
+    check (status in ('OPEN','IN_PROGRESS','WAITING_USER','RESOLVED','CLOSED')),
+  priority text not null default 'NORMAL'
+    check (priority in ('LOW','NORMAL','HIGH')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  last_message_at timestamptz not null default now()
+);
+
+create index if not exists vad_support_tickets_user_updated_idx
+  on public.vad_support_tickets(user_id, updated_at desc);
+create index if not exists vad_support_tickets_status_updated_idx
+  on public.vad_support_tickets(status, updated_at desc);
+
+create table if not exists public.vad_support_messages (
+  id uuid primary key default gen_random_uuid(),
+  ticket_id uuid not null references public.vad_support_tickets(id) on delete cascade,
+  sender_user_id uuid not null references auth.users(id) on delete restrict,
+  sender_role text not null check (sender_role in ('USER','ADMIN')),
+  body text not null check (char_length(trim(body)) between 1 and 6000),
+  created_at timestamptz not null default now()
+);
+create index if not exists vad_support_messages_ticket_created_idx
+  on public.vad_support_messages(ticket_id, created_at asc);
+
+alter table public.vad_support_tickets enable row level security;
+alter table public.vad_support_messages enable row level security;
+
+drop policy if exists vad_support_tickets_select_own on public.vad_support_tickets;
+create policy vad_support_tickets_select_own
+  on public.vad_support_tickets for select to authenticated
+  using (user_id = (select auth.uid()) or public.admin_can_manage_markets((select auth.uid())));
+
+drop policy if exists vad_support_messages_select_ticket_access on public.vad_support_messages;
+create policy vad_support_messages_select_ticket_access
+  on public.vad_support_messages for select to authenticated
+  using (
+    exists (
+      select 1 from public.vad_support_tickets t
+      where t.id = ticket_id
+        and (t.user_id = (select auth.uid()) or public.admin_can_manage_markets((select auth.uid())))
+    )
+  );
+
+-- Mutations are RPC-only. The client cannot set sender_role or another user's ID.
+revoke insert, update, delete on public.vad_support_tickets from anon, authenticated;
+revoke insert, update, delete on public.vad_support_messages from anon, authenticated;
+grant select on public.vad_support_tickets, public.vad_support_messages to authenticated;
+
+create or replace function public.create_vad_support_ticket(
+  p_subject text,
+  p_message text,
+  p_category text default 'GENERAL'
+) returns uuid
+language plpgsql security definer set search_path = ''
+as $function$
+declare
+  v_user_id uuid := auth.uid();
+  v_ticket_id uuid;
+  v_category text := upper(coalesce(nullif(trim(p_category), ''), 'GENERAL'));
+begin
+  if v_user_id is null then raise exception 'Authentication required' using errcode = '28000'; end if;
+  if char_length(trim(coalesce(p_subject, ''))) not between 5 and 160 then
+    raise exception 'Enter a subject between 5 and 160 characters.' using errcode = '22023';
+  end if;
+  if char_length(trim(coalesce(p_message, ''))) not between 1 and 6000 then
+    raise exception 'Enter a message of 1 to 6000 characters.' using errcode = '22023';
+  end if;
+  if v_category not in ('GENERAL','TRADING','WALLET','ACCOUNT','MARKET_RESOLUTION','BUG_REPORT','SAFETY') then
+    raise exception 'Choose a valid support category.' using errcode = '22023';
+  end if;
+  insert into public.vad_support_tickets(user_id, subject, category)
+  values (v_user_id, trim(p_subject), v_category)
+  returning id into v_ticket_id;
+  insert into public.vad_support_messages(ticket_id, sender_user_id, sender_role, body)
+  values (v_ticket_id, v_user_id, 'USER', trim(p_message));
+  return v_ticket_id;
+end;
+$function$;
+
+create or replace function public.list_my_vad_support_tickets()
+returns table (
+  id uuid, subject text, category text, status text, priority text,
+  created_at timestamptz, updated_at timestamptz, last_message_at timestamptz,
+  last_message text
+)
+language plpgsql stable security definer set search_path = ''
+as $function$
+begin
+  if auth.uid() is null then raise exception 'Authentication required' using errcode = '28000'; end if;
+  return query
+  select t.id, t.subject, t.category, t.status, t.priority, t.created_at, t.updated_at,
+         t.last_message_at,
+         (select left(m.body, 240) from public.vad_support_messages m
+          where m.ticket_id = t.id order by m.created_at desc limit 1)
+  from public.vad_support_tickets t
+  where t.user_id = auth.uid()
+  order by t.updated_at desc
+  limit 100;
+end;
+$function$;
+
+create or replace function public.get_vad_support_messages(p_ticket_id uuid)
+returns table (
+  id uuid, ticket_id uuid, sender_role text, body text, created_at timestamptz,
+  sender_display_name text
+)
+language plpgsql stable security definer set search_path = ''
+as $function$
+declare
+  v_user_id uuid := auth.uid();
+  v_is_admin boolean;
+begin
+  if v_user_id is null then raise exception 'Authentication required' using errcode = '28000'; end if;
+  v_is_admin := public.admin_can_manage_markets(v_user_id);
+  if not exists (
+    select 1 from public.vad_support_tickets t
+    where t.id = p_ticket_id and (t.user_id = v_user_id or v_is_admin)
+  ) then
+    raise exception 'Support ticket not found or access denied.' using errcode = '42501';
+  end if;
+  return query
+  select m.id, m.ticket_id, m.sender_role, m.body, m.created_at,
+         coalesce(nullif(u.raw_user_meta_data ->> 'display_name', ''),
+                  nullif(u.raw_user_meta_data ->> 'full_name', ''),
+                  case when m.sender_role = 'ADMIN' then 'VAD Support' else 'You' end)
+  from public.vad_support_messages m
+  join auth.users u on u.id = m.sender_user_id
+  where m.ticket_id = p_ticket_id
+  order by m.created_at asc
+  limit 500;
+end;
+$function$;
+
+create or replace function public.send_vad_support_message(
+  p_ticket_id uuid,
+  p_body text
+) returns uuid
+language plpgsql security definer set search_path = ''
+as $function$
+declare
+  v_user_id uuid := auth.uid();
+  v_message_id uuid;
+begin
+  if v_user_id is null then raise exception 'Authentication required' using errcode = '28000'; end if;
+  if char_length(trim(coalesce(p_body, ''))) not between 1 and 6000 then
+    raise exception 'Enter a message of 1 to 6000 characters.' using errcode = '22023';
+  end if;
+  if not exists (
+    select 1 from public.vad_support_tickets t
+    where t.id = p_ticket_id and t.user_id = v_user_id and t.status <> 'CLOSED'
+  ) then raise exception 'Support ticket is closed or not available.' using errcode = '42501'; end if;
+  insert into public.vad_support_messages(ticket_id, sender_user_id, sender_role, body)
+  values (p_ticket_id, v_user_id, 'USER', trim(p_body))
+  returning id into v_message_id;
+  update public.vad_support_tickets
+  set status = case when status = 'WAITING_USER' then 'IN_PROGRESS' else status end,
+      updated_at = now(), last_message_at = now()
+  where id = p_ticket_id;
+  return v_message_id;
+end;
+$function$;
+
+create or replace function public.admin_list_vad_support_tickets(p_status text default null)
+returns table (
+  id uuid, subject text, category text, status text, priority text,
+  user_id uuid, user_email text, created_at timestamptz, updated_at timestamptz,
+  last_message_at timestamptz, last_message text
+)
+language plpgsql stable security definer set search_path = ''
+as $function$
+declare
+  v_status text := nullif(upper(trim(coalesce(p_status, ''))), '');
+begin
+  if auth.uid() is null or not public.admin_can_manage_markets(auth.uid()) then
+    raise exception 'Support administration permission required.' using errcode = '42501';
+  end if;
+  if v_status is not null and v_status not in ('OPEN','IN_PROGRESS','WAITING_USER','RESOLVED','CLOSED') then
+    raise exception 'Choose a valid ticket status.' using errcode = '22023';
+  end if;
+  return query
+  select t.id,t.subject,t.category,t.status,t.priority,t.user_id,u.email,t.created_at,t.updated_at,t.last_message_at,
+         (select left(m.body,240) from public.vad_support_messages m
+          where m.ticket_id=t.id order by m.created_at desc limit 1)
+  from public.vad_support_tickets t
+  join auth.users u on u.id=t.user_id
+  where v_status is null or t.status=v_status
+  order by case t.status when 'OPEN' then 0 when 'IN_PROGRESS' then 1 when 'WAITING_USER' then 2 else 3 end,
+           t.updated_at desc
+  limit 300;
+end;
+$function$;
+
+create or replace function public.admin_reply_vad_support_ticket(
+  p_ticket_id uuid,
+  p_body text,
+  p_status text default 'WAITING_USER'
+) returns uuid
+language plpgsql security definer set search_path = ''
+as $function$
+declare
+  v_user_id uuid := auth.uid();
+  v_status text := upper(coalesce(nullif(trim(p_status), ''), 'WAITING_USER'));
+  v_message_id uuid;
+begin
+  if v_user_id is null or not public.admin_can_manage_markets(v_user_id) then
+    raise exception 'Support administration permission required.' using errcode = '42501';
+  end if;
+  if char_length(trim(coalesce(p_body, ''))) not between 1 and 6000 then
+    raise exception 'Enter a reply of 1 to 6000 characters.' using errcode = '22023';
+  end if;
+  if v_status not in ('IN_PROGRESS','WAITING_USER','RESOLVED','CLOSED') then
+    raise exception 'Choose a valid reply status.' using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.vad_support_tickets where id=p_ticket_id) then
+    raise exception 'Support ticket not found.' using errcode = 'P0002';
+  end if;
+  insert into public.vad_support_messages(ticket_id, sender_user_id, sender_role, body)
+  values (p_ticket_id, v_user_id, 'ADMIN', trim(p_body))
+  returning id into v_message_id;
+  update public.vad_support_tickets
+  set status=v_status, updated_at=now(), last_message_at=now()
+  where id=p_ticket_id;
+  return v_message_id;
+end;
+$function$;
+
+revoke all on function public.create_vad_support_ticket(text,text,text) from public, anon;
+revoke all on function public.list_my_vad_support_tickets() from public, anon;
+revoke all on function public.get_vad_support_messages(uuid) from public, anon;
+revoke all on function public.send_vad_support_message(uuid,text) from public, anon;
+revoke all on function public.admin_list_vad_support_tickets(text) from public, anon;
+revoke all on function public.admin_reply_vad_support_ticket(uuid,text,text) from public, anon;
+grant execute on function public.create_vad_support_ticket(text,text,text) to authenticated;
+grant execute on function public.list_my_vad_support_tickets() to authenticated;
+grant execute on function public.get_vad_support_messages(uuid) to authenticated;
+grant execute on function public.send_vad_support_message(uuid,text) to authenticated;
+grant execute on function public.admin_list_vad_support_tickets(text) to authenticated;
+grant execute on function public.admin_reply_vad_support_ticket(uuid,text,text) to authenticated;
+
+commit;
