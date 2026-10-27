@@ -42,7 +42,42 @@ function reasonCodeFrom(payload: VerificationErrorPayload) {
     : 'LOCATION_VERIFICATION_UNAVAILABLE';
 }
 
+const MAX_LOCATION_ACCURACY_METERS = 10_000;
+const MAX_LAST_KNOWN_AGE_MS = 24 * 60 * 60 * 1000;
+
+async function cachedVerifiedNigeriaLocation(): Promise<LocationVerificationResult | null> {
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id;
+    if (!userId) return null;
+    const { data, error } = await supabase
+      .from('user_location_verifications')
+      .select('device_country_code,ip_country_code,decision,vpn_detected,proxy_detected,tor_detected,hosting_detected,expires_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const unexpired = typeof data.expires_at === 'string' && Date.parse(data.expires_at) > Date.now();
+    const noRiskFlags = data.vpn_detected === false
+      && data.proxy_detected === false
+      && data.tor_detected === false
+      && data.hosting_detected === false;
+    if (data.decision !== 'VERIFIED'
+      || String(data.device_country_code).toUpperCase() !== 'NG'
+      || String(data.ip_country_code).toUpperCase() !== 'NG'
+      || !noRiskFlags || !unexpired) return null;
+    return { allowed: true, reasonCode: 'VERIFIED', expiresAt: data.expires_at };
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyCurrentServiceLocation(): Promise<LocationVerificationResult> {
+  // Reuse only an unexpired server-verified Nigeria decision with clean IP/GPS
+  // country agreement. This removes repeated GPS prompts without weakening the
+  // server-side country or network-risk checks.
+  const cached = await cachedVerifiedNigeriaLocation();
+  if (cached) return cached;
+
   let permission: Location.LocationPermissionResponse;
   try {
     permission = await Location.requestForegroundPermissionsAsync();
@@ -54,16 +89,28 @@ export async function verifyCurrentServiceLocation(): Promise<LocationVerificati
     return { allowed: false, reasonCode: 'LOCATION_PERMISSION_REQUIRED' };
   }
 
-  let position: Location.LocationObject;
+  let position: Location.LocationObject | null = null;
   try {
     position = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
     });
   } catch {
-    return { allowed: false, reasonCode: 'LOCATION_POSITION_UNAVAILABLE' };
+    // A fresh GPS fix can fail indoors or on low-end Android devices. A recent,
+    // reasonably accurate last-known fix is acceptable for country checks; the
+    // server still compares it with the current network jurisdiction.
+    try {
+      const lastKnown = await Location.getLastKnownPositionAsync({
+        maxAge: MAX_LAST_KNOWN_AGE_MS,
+        requiredAccuracy: MAX_LOCATION_ACCURACY_METERS,
+      });
+      if (lastKnown) position = lastKnown;
+    } catch {
+      // Return the normal actionable location error below.
+    }
   }
 
-  if (position.coords.accuracy == null || position.coords.accuracy > 1500) {
+  if (!position) return { allowed: false, reasonCode: 'LOCATION_POSITION_UNAVAILABLE' };
+  if (position.coords.accuracy == null || position.coords.accuracy > MAX_LOCATION_ACCURACY_METERS) {
     return { allowed: false, reasonCode: 'LOCATION_INACCURATE' };
   }
 
@@ -97,7 +144,7 @@ export function locationVerificationMessage(reasonCode: string) {
     case 'LOCATION_POSITION_UNAVAILABLE':
       return 'Your device location could not be read. Turn on device location services and try again.';
     case 'LOCATION_INACCURATE':
-      return 'Your location is not accurate enough. Move to an open area and retry.';
+      return 'Your device could not get a usable location reading. Turn on location services and retry from a place with better signal.';
     case 'LOCATION_MISMATCH':
       return 'Your device location and network country do not both verify Nigeria.';
     case 'OUTSIDE_NIGERIA':
