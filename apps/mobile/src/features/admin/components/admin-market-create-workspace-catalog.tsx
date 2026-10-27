@@ -642,6 +642,10 @@ export function AdminMarketCreateWorkspaceCatalog() {
       setTitle(draft.title);
       setTitleEdited(true);
       setDescription(draft.description);
+      // Put the AI proposal into the same editable resolution field that the
+      // market creation RPC saves. The selected market type and resolver stay
+      // unchanged, and an admin must review the proposal before publishing.
+      setResultCondition(draft.resolutionRules);
       setCustomDraftResolutionRules(draft.resolutionRules);
       setCustomDraftRiskNotes(draft.riskNotes);
       setCustomDraftNotice('Drafted with ' + draft.providerName + ' · ' + draft.modelCode + ' · prompt v' + draft.promptVersion + '. Not published; review before continuing.');
@@ -669,7 +673,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           <VadCard variant="outlined" style={{ gap: 4 }}>
             <VadText variant="bodyStrong">AI draft · administrator review required</VadText>
             <VadText variant="caption" tone="secondary">{customDraftNotice}</VadText>
-            {customDraftResolutionRules ? <View style={{ gap: 3 }}><VadText variant="caption" tone="secondary">AI wording suggestion (review only; configured resolver remains authoritative)</VadText><VadText variant="caption">{customDraftResolutionRules}</VadText></View> : null}
+            {customDraftResolutionRules ? <View style={{ gap: 3 }}><VadText variant="caption" tone="secondary">AI resolution suggestion copied to the editable rule above — verify it before creating or publishing</VadText><VadText variant="caption">{customDraftResolutionRules}</VadText></View> : null}
             {customDraftRiskNotes ? <VadText variant="caption" tone="warning">Review notes: {customDraftRiskNotes}</VadText> : null}
           </VadCard>
         ) : null}
