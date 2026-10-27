@@ -8,6 +8,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
 import { AdminRouteContainer } from '@/features/admin/components/admin-route-container';
+import { AdminPermissionGate } from '@/features/admin/components/admin-permission-gate';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -85,7 +86,8 @@ export default function AdminMarketAgentsScreen() {
   }
 
   return (
-    <AdminRouteContainer>
+    <AdminPermissionGate permissions={['markets.manage']}>
+      <AdminRouteContainer>
       <View style={{ gap: density.phone ? 12 : theme.spacing.lg, paddingBottom: theme.spacing.lg }}>
         <View style={{ gap: 4 }}>
           <VadText variant="label" tone="brand">AUTONOMOUS MARKET WORKFLOW</VadText>
@@ -140,6 +142,7 @@ export default function AdminMarketAgentsScreen() {
           )) : <VadCard variant="muted"><VadText>No agent keys have been created for this admin account.</VadText></VadCard>}
         </View>
       </View>
-    </AdminRouteContainer>
+      </AdminRouteContainer>
+    </AdminPermissionGate>
   );
 }
