@@ -8,6 +8,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
 import { AdminRouteContainer } from '@/features/admin/components/admin-route-container';
+import { AdminPermissionGate } from '@/features/admin/components/admin-permission-gate';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -86,7 +87,8 @@ export default function AdminSupportScreen() {
   }
 
   return (
-    <AdminRouteContainer>
+    <AdminPermissionGate permissions={['support.read']}>
+      <AdminRouteContainer>
       <View style={{ gap: density.phone ? 12 : theme.spacing.lg, paddingBottom: theme.spacing.lg }}>
         <View style={{ gap: 4 }}>
           <VadText variant="label" tone="brand">ADMIN OPERATIONS</VadText>
@@ -136,6 +138,7 @@ export default function AdminSupportScreen() {
           </VadCard>
         ) : null}
       </View>
-    </AdminRouteContainer>
+      </AdminRouteContainer>
+    </AdminPermissionGate>
   );
 }
