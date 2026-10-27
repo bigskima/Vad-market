@@ -50,6 +50,14 @@ const isRecord = (value: unknown): value is RecordValue => Boolean(value) && typ
 const safeText = (value: unknown, max = 2000) => typeof value === 'string'
   ? value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, max)
   : '';
+const resolutionRuleText = (scope: RecordValue, max = 2000) => safeText(
+  scope.condition
+    ?? scope.rule
+    ?? scope.resolution_rule
+    ?? scope.resolution_instructions
+    ?? scope.resolutionInstructions,
+  max,
+);
 const sha256 = async (value: string) => {
   const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -185,7 +193,7 @@ async function searchEvidence(title: string, scope: RecordValue, oracleProviders
   const apiKey = Deno.env.get(tavily.secretReference)?.trim();
   if (!apiKey) return [];
 
-  const rule = safeText(scope.condition ?? scope.rule ?? scope.resolution_rule, 2000);
+  const rule = resolutionRuleText(scope, 2000);
   const query = [title, rule, 'official result announcement date'].filter(Boolean).join(' ');
   try {
     const response = await fetch('https://api.tavily.com/search', {
@@ -459,7 +467,7 @@ function validateOutput(raw: RecordValue, event: RecordValue, packet: EvidenceSo
     }
     if (confidence < 0.9 || evidence.length === 0) throw new Error('Outcome lacks sufficient confidence or verifiable cited evidence.');
     const scope = isRecord(event.resolutionScope) ? event.resolutionScope : {};
-    const rule = safeText(scope.condition ?? scope.rule, 4000);
+    const rule = resolutionRuleText(scope, 4000);
     if (outcomeCode.toUpperCase() === 'YES' && /after market opening|between market opening|since the market opened/i.test(rule)) {
       const openedAt = new Date(safeText(event.openedAt, 80));
       const deadlineRaw = safeText(scope.resolution_deadline ?? scope.resolutionDeadline, 100);
@@ -553,7 +561,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
   // cite material from a full page that it never received in context.
   const queryText = safeText(event.title, 500) + ' ' + safeText(
     isRecord(event.resolutionScope)
-      ? (event.resolutionScope.condition ?? event.resolutionScope.rule)
+      ? resolutionRuleText(event.resolutionScope, 1800)
       : '',
     1800,
   );
@@ -727,7 +735,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
       }
       return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reason };
     }
-    const condition = safeText(scope.condition, 4000);
+    const condition = resolutionRuleText(scope, 4000);
     const explicitVoid = /\bvoid\b/i.test(condition) || Boolean(scope.void_rule) || Boolean(scope.voidRule);
     const deadlineRaw = safeText(scope.resolution_deadline ?? scope.resolutionDeadline, 100);
     const deadline = deadlineRaw ? new Date(deadlineRaw) : null;
@@ -815,7 +823,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
       if (!oracleProvider) throw new Error('The approved oracle source ' + source.code + ' is not active and configured.');
   
       const idempotencyKey = 'ai-resolution-observation-v1:' + (await sha256([
-        event.eventPublicId, oracleProvider.code, chosenEvidence.url, agreedOutcome, safeText(scope.condition, 1000),
+        event.eventPublicId, oracleProvider.code, chosenEvidence.url, agreedOutcome, resolutionRuleText(scope, 1000),
       ].join('|')));
       const { data: observationId, error: observationError } = await admin.rpc('internal_record_verified_oracle_observation', {
         p_event_id: event.eventId,
@@ -835,7 +843,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
             rationale: candidate.validated.rationale,
             citations: candidate.evidenceSummary,
           })),
-          resolution_condition: scope.condition ?? null,
+          resolution_condition: resolutionRuleText(scope, 4000) || null,
           source_evidence: {
             url: chosenEvidence.url,
             quote: chosenEvidence.quote,
