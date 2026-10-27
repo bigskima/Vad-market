@@ -742,11 +742,6 @@ export function AdminMarketCreateWorkspaceCatalog() {
     if (!Number.isFinite(minimumTrade) || minimumTrade <= 0 || !Number.isFinite(maximumTrade) || maximumTrade <= minimumTrade || maximumTrade > 1000000000000) {
       return setError('Set a positive minimum and a maximum greater than it for this market. The maximum supported amount is 1,000,000,000,000.');
     }
-    const minimumTrade = Number(minTradeAmount);
-    const maximumTrade = Number(maxTradeAmount);
-    if (!Number.isFinite(minimumTrade) || minimumTrade <= 0 || !Number.isFinite(maximumTrade) || maximumTrade <= minimumTrade) {
-      return setError('Enter a positive minimum trade amount and a maximum amount greater than the minimum.');
-    }
     if (!scheduleValid) return setError(scheduleFieldsValid && Date.parse(closesAt) <= clockNow
       ? 'The closing time has already passed. Choose a future closing time; expired markets cannot be published.'
       : 'Choose valid opening, closing and result-checking times.');
