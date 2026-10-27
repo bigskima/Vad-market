@@ -752,6 +752,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function continueFromSetup() {
     setError(null);
     if (!resolvedCountryCode || !resolvedAssetCode) return setError('Choose a market currency before continuing.');
+    if (tradeLimitsLoading) return setError('Wait for the configured trade limits to load before reviewing this market.');
     const minimumTrade = Number(minTradeAmount);
     const maximumTrade = Number(maxTradeAmount);
     if (!Number.isFinite(minimumTrade) || minimumTrade <= 0 || !Number.isFinite(maximumTrade) || maximumTrade <= minimumTrade) {
