@@ -37,6 +37,7 @@ export default function SupportScreen() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [messagesTicketId, setMessagesTicketId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [composeNew, setComposeNew] = useState(false);
@@ -48,6 +49,7 @@ export default function SupportScreen() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const activeTicket = tickets.find((item) => item.id === activeTicketId) ?? null;
+  const visibleMessages = messagesTicketId === activeTicketId ? messages : [];
 
   const reloadTickets = useCallback(async (preferredId?: string | null) => {
     const rows = await listMySupportTickets();
@@ -75,10 +77,10 @@ export default function SupportScreen() {
   }, []);
 
   useEffect(() => {
-    if (!activeTicketId) { setMessages([]); return; }
+    if (!activeTicketId) return;
     let active = true;
     void getSupportMessages(activeTicketId)
-      .then((rows) => { if (active) setMessages(rows); })
+      .then((rows) => { if (active) { setMessages(rows); setMessagesTicketId(activeTicketId); } })
       .catch((value: unknown) => { if (active) setError(value instanceof Error ? value.message : 'Conversation could not be loaded.'); });
     return () => { active = false; };
   }, [activeTicketId]);
@@ -106,6 +108,7 @@ export default function SupportScreen() {
       await sendSupportMessage(activeTicket.id, reply);
       setReply('');
       setMessages(await getSupportMessages(activeTicket.id));
+      setMessagesTicketId(activeTicket.id);
       await reloadTickets(activeTicket.id);
       setNotice('Reply sent.');
     } catch (value) {
