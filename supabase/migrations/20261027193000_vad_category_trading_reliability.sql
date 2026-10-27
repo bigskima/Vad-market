@@ -71,6 +71,7 @@ declare
   v_source text := btrim(coalesce(p_source_label,''));
   v_fields jsonb := coalesce(p_field_schema,'[]'::jsonb);
   v_tokens text[];
+  v_existing_handler text;
 begin
   if auth.uid() is null or not private.has_permission('markets.manage') then
     raise exception 'Market management permission required' using errcode='42501';
@@ -140,6 +141,14 @@ begin
     )
   ) then
     raise exception 'Every template variable must have a matching market parameter.' using errcode='22023';
+  end if;
+
+  select t.handler_code into v_existing_handler
+  from market.guided_market_types t
+  where t.code=v_code
+  for update;
+  if v_existing_handler is not null and v_existing_handler <> 'VERIFIED_EVENT' then
+    raise exception 'This market type has a specialized resolver and cannot be overwritten by the generic market-type editor.' using errcode='22023';
   end if;
 
   insert into market.guided_market_types (
