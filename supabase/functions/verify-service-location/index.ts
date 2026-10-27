@@ -272,7 +272,11 @@ Deno.serve(async (req) => {
     const tor = security?.isTor === true;
     const hosting = security?.isHosting === true;
     const blacklisted = security?.isBlacklisted === true;
-    const riskDetected = vpn || proxy || tor || hosting || blacklisted;
+    // Consumer carriers and privacy features are often misclassified by IP
+    // reputation providers. When account, GPS-country and IP-country all agree
+    // on Nigeria, only Tor is a hard block; VPN/proxy/hosting/blacklist signals
+    // are retained for audit but are not, on their own, a trade blocker.
+    const riskDetected = tor;
 
     const { data: account, error: accountError } = await admin
       .from('user_accounts')
@@ -332,7 +336,7 @@ Deno.serve(async (req) => {
 
     const checkedAt = new Date();
     // Avoid repeated GPS prompts during a normal session while retaining an explicit, expiring jurisdiction check.
-    const expiresAt = new Date(checkedAt.getTime() + 12 * 60 * 60 * 1000);
+    const expiresAt = new Date(checkedAt.getTime() + 24 * 60 * 60 * 1000);
     const { error: saveError } = await admin.from('user_location_verifications').upsert({
       user_id: authData.user.id,
       device_country_code: deviceCountry,
