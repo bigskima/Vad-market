@@ -207,7 +207,7 @@ export function WalletScreen({
                 backgroundColor: 'rgba(6,10,53,0.22)', opacity: pressed ? 0.75 : 1,
               })}
             >
-              <VadText variant="caption" style={{ color: '#F5F6FF', fontSize: 12 }}>{primaryCode || 'Currency'}</VadText>
+              <VadText variant="caption" tone="inverse" style={{ fontSize: 12 }}>{primaryCode || 'Currency'}</VadText>
               <VadIcon name={currencyPickerOpen ? 'close' : 'chevronRight'} size={13} color="#DDE2FF" />
             </Pressable>
           </View>
@@ -222,7 +222,7 @@ export function WalletScreen({
                   onPress={() => { setSelectedAsset(wallet.asset_code as VADCurrency); setCurrencyPickerOpen(false); }}
                   style={({ pressed }) => ({ borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: primaryCode === wallet.asset_code ? 'rgba(110,119,255,0.34)' : 'transparent', opacity: pressed ? 0.75 : 1 })}
                 >
-                  <VadText variant="caption" style={{ color: '#F5F6FF', fontSize: 12 }}>{wallet.asset_code}{primaryCode === wallet.asset_code ? '  ✓' : ''}</VadText>
+                  <VadText variant="caption" tone="inverse" style={{ fontSize: 12 }}>{wallet.asset_code}{primaryCode === wallet.asset_code ? '  ✓' : ''}</VadText>
                 </Pressable>
               ))}
             </View>
@@ -234,11 +234,11 @@ export function WalletScreen({
                 {balanceVisible && primary ? assetMoney(total, primaryCode) : '••••••••'}
               </VadText>
               {secondaryWallet ? (
-                <VadText variant="caption" numberOfLines={1} adjustsFontSizeToFit style={{ color: '#C9D0FF', fontSize: 12 }}>
+                <VadText variant="caption" tone="inverse" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 12 }}>
                   {balanceVisible ? `${secondaryWallet.asset_code} balance · ${assetMoney(secondaryTotal, secondaryWallet.asset_code)}` : `${secondaryWallet.asset_code} balance · ••••••`}
                 </VadText>
               ) : (
-                <VadText variant="caption" style={{ color: '#C9D0FF', fontSize: 12 }}>Wallet balance for {primaryCode || 'your selected currency'}</VadText>
+                <VadText variant="caption" tone="inverse" style={{ fontSize: 12 }}>Wallet balance for {primaryCode || 'your selected currency'}</VadText>
               )}
             </View>
             <View style={{ width: Math.max(108, Math.min(174, density.width * 0.37)), alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -255,7 +255,7 @@ export function WalletScreen({
             </View>
           </View>
           {balanceHistoryError && !balanceHistory.length ? (
-            <VadText variant="caption" style={{ color: '#D4D8FF' }}>Balance history unavailable.</VadText>
+            <VadText variant="caption" tone="inverse">Balance history unavailable.</VadText>
           ) : null}
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -263,7 +263,7 @@ export function WalletScreen({
             <WalletBalanceMetric icon="clock" label="In Use (Active Predictions)" value={balanceVisible ? assetMoney(reserved, primaryCode) : '••••••'} tone="inUse" />
           </View>
           {pending > 0 ? (
-            <VadText variant="caption" style={{ color: '#D8DDFF', fontSize: 10.5 }}>
+            <VadText variant="caption" tone="inverse" style={{ fontSize: 10.5 }}>
               Pending withdrawals · {balanceVisible ? assetMoney(pending, primaryCode) : '••••••'}
             </VadText>
           ) : null}
@@ -484,8 +484,8 @@ function WalletBalanceMetric({ icon, label, value, tone }: {
         <VadIcon name={icon} size={16} color={accent} />
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-        <VadText variant="caption" numberOfLines={1} style={{ color: '#C9D0FF', fontSize: 10.5 }}>{label}</VadText>
-        <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit style={{ color: '#FFFFFF', fontSize: 13 }}>{value}</VadText>
+        <VadText variant="caption" tone="inverse" numberOfLines={1} style={{ fontSize: 10.5 }}>{label}</VadText>
+        <VadText variant="bodyStrong" tone="inverse" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 13 }}>{value}</VadText>
       </View>
     </View>
   );
@@ -501,7 +501,7 @@ function WalletBalanceSparkline({ values, width, height, color }: {
   if (values.length < 2 || values.some((value) => !Number.isFinite(value))) {
     return (
       <View style={{ width, height, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 }}>
-        <VadText variant="caption" style={{ color: '#C9D0FF', fontSize: 9, textAlign: 'right' }}>History builds from posted wallet activity</VadText>
+        <VadText variant="caption" tone="inverse" style={{ fontSize: 9, textAlign: 'right' }}>History builds from posted wallet activity</VadText>
       </View>
     );
   }
