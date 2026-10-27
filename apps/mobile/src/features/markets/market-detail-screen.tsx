@@ -157,9 +157,9 @@ export function MarketDetailScreen({
   return (
     <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: 200 }}>
       <TourTarget id="market-detail-overview"><MarketDetailHeader market={market} /></TourTarget>
-      <MarketStakeSummary market={market} positions={positions} poolStakes={poolStakes} outcomes={outcomeRows} />
-      {hasLiveFinancialContext(market) ? <FinancialMarketLivePanel key={market.instrument_public_id} market={market} now={now} /> : null}
 
+      {/* Keep navigation immediately under the market header. Users can jump to
+          Trade, Rules or Activity without scrolling past quote/position panels. */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -177,6 +177,13 @@ export function MarketDetailScreen({
           />
         ))}
       </ScrollView>
+
+      {tab === 'Overview' ? (
+        <>
+          <MarketStakeSummary market={market} positions={positions} poolStakes={poolStakes} outcomes={outcomeRows} />
+          {hasLiveFinancialContext(market) ? <FinancialMarketLivePanel key={market.instrument_public_id} market={market} now={now} /> : null}
+        </>
+      ) : null}
 
       {tab === 'Overview' ? (
         <Overview
