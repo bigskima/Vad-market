@@ -77,19 +77,8 @@ async function handle(req: Request) {
     return json({ ok: true, ...((isRecord(data) ? data : {}) as Rec) });
   }
 
-  if (action === 'trade_limits') {
-    if (!hasScope(scopes, 'market:read')) return json({ error: 'SCOPE_REQUIRED', message: 'This key requires market:read.' }, 403);
-    const asset = textValue(body.assetCode, 12).toUpperCase();
-    const method = textValue(body.liquidityModel, 24).toUpperCase();
-    const { data, error } = await admin.rpc('agent_get_market_trade_limit_defaults', {
-      p_api_key: apiKey, p_asset_code: asset, p_liquidity_model: method,
-    });
-    if (error) return json({ error: 'TRADE_LIMITS_UNAVAILABLE', message: safeProviderError(error) }, 400);
-    return json({ ok: true, defaults: data });
-  }
-
   if (!['create_market', 'create_and_publish', 'draft_and_publish'].includes(action)) {
-    return json({ error: 'UNKNOWN_ACTION', message: 'Supported actions are catalog, trade_limits, create_market, create_and_publish and draft_and_publish.' }, 400);
+    return json({ error: 'UNKNOWN_ACTION', message: 'Supported actions are catalog, create_market, create_and_publish and draft_and_publish.' }, 400);
   }
   if (!hasScope(scopes, 'market:read') || !hasScope(scopes, 'market:create')) {
     return json({ error: 'SCOPE_REQUIRED', message: 'Creating a market requires both market:read and market:create.' }, 403);
@@ -176,18 +165,16 @@ async function handle(req: Request) {
   if (publishNow && Date.parse(opensAt) > Date.now()) return json({ error: 'FUTURE_OPEN', message: 'The VAD publication RPC only publishes after the opening time begins. Send publishNow=false to create a draft for a future opening.' }, 400);
   if (Date.parse(closesAt) <= Date.now() && publishNow) return json({ error: 'MARKET_EXPIRED', message: 'A market cannot be published after its closing time.' }, 400);
 
-  let defaults: Rec | null = null;
-  const defaultResult = await admin.rpc('agent_get_market_trade_limit_defaults', {
-    p_api_key: apiKey, p_asset_code: assetCode, p_liquidity_model: liquidityModel,
-  });
-  if (!defaultResult.error && isRecord(defaultResult.data)) defaults = defaultResult.data;
   let minTradeAmount: number;
   let maxTradeAmount: number;
   try {
-    minTradeAmount = amountValue(body.minTradeAmount ?? defaults?.minTradeAmount, 'minimum trade');
-    maxTradeAmount = amountValue(body.maxTradeAmount ?? defaults?.maxTradeAmount, 'maximum trade');
+    minTradeAmount = amountValue(body.minTradeAmount, 'minimum trade for this market');
+    maxTradeAmount = amountValue(body.maxTradeAmount, 'maximum trade for this market');
   } catch (error) {
-    return json({ error: 'TRADE_LIMITS_REQUIRED', message: safeProviderError(error) }, 400);
+    return json({
+      error: 'MARKET_SPECIFIC_TRADE_LIMITS_REQUIRED',
+      message: safeProviderError(error) || 'Supply minTradeAmount and maxTradeAmount for this market; VAD has no global trade-limit defaults.',
+    }, 400);
   }
   if (maxTradeAmount <= minTradeAmount) return json({ error: 'TRADE_LIMITS_INVALID', message: 'Maximum trade amount must be greater than the minimum.' }, 400);
 
