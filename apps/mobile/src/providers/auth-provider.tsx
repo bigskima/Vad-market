@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { Linking as NativeLinking, Platform } from 'react-native';
@@ -18,7 +19,14 @@ import { userFacingErrorMessage } from '@/lib/user-facing-error';
 interface AuthActionResult {
   ok: boolean;
   message?: string;
+  requiresMfa?: boolean;
 }
+
+type PendingTotpChallenge = {
+  factorId: string;
+  challengeId: string;
+  userId: string;
+};
 
 interface SignUpInput {
   displayName: string;
@@ -33,7 +41,10 @@ interface AuthContextValue {
   session: Session | null;
   isPasswordRecovery: boolean;
   verificationPromptPending: boolean;
+  mfaLoginRequired: boolean;
   signIn(email: string, password: string): Promise<AuthActionResult>;
+  verifyLoginMfaCode(code: string): Promise<AuthActionResult>;
+  cancelMfaLogin(): Promise<void>;
   signUp(input: SignUpInput): Promise<AuthActionResult>;
   signInWithProvider(provider: SocialProvider): Promise<AuthActionResult>;
   requestPasswordReset(email: string): Promise<AuthActionResult>;
@@ -48,6 +59,27 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const PHONE_PROMPT_KEY = 'vad:phone-verification-pending';
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 8000;
+
+async function createPendingTotpChallenge(): Promise<PendingTotpChallenge | null> {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  const session = sessionData.session;
+  if (!session) return null;
+
+  const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (assuranceError) throw assuranceError;
+  if (assurance.currentLevel === 'aal2') return null;
+
+  const { data: factorData, error: factorsError } = await supabase.auth.mfa.listFactors();
+  if (factorsError) throw factorsError;
+  const factor = (factorData.totp ?? []).find((item) => item.status === 'verified');
+  if (!factor) return null;
+
+  const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
+  if (challengeError) throw challengeError;
+  if (!challengeData.id) throw new Error('The authenticator challenge could not be started.');
+  return { factorId: factor.id, challengeId: challengeData.id, userId: session.user.id };
+}
 
 function authMessage(error: unknown, mode: 'signIn' | 'signUp') {
   return userFacingErrorMessage(error, mode === 'signIn' ? 'signIn' : 'signUp');
@@ -136,6 +168,12 @@ function persistPhonePrompt(value: boolean) {
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mfaLoginRequired, setMfaLoginRequired] = useState(false);
+  const pendingTotpChallengeRef = useRef<PendingTotpChallenge | null>(null);
+  const passwordSignInInProgressRef = useRef(false);
+  const mfaLoginPendingRef = useRef(false);
+  const mfaVerifyInProgressRef = useRef(false);
+  const bootstrapInProgressRef = useRef(true);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [verificationPromptPending, setVerificationPromptPending] = useState(readPhonePrompt);
 
@@ -155,20 +193,49 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (isMounted) setIsLoading(false);
     }, AUTH_BOOTSTRAP_TIMEOUT_MS);
 
-    void supabase.auth.getSession().then(({ data }) => {
+    void supabase.auth.getSession().then(async ({ data }) => {
       if (!isMounted) return;
       clearTimeout(bootstrapTimeout);
-      setSession(data.session);
-      if (data.session?.user.phone_confirmed_at) {
-        persistPhonePrompt(false);
-        setVerificationPromptPending(false);
-      } else if (data.session && readPhonePrompt()) {
-        setVerificationPromptPending(true);
+      try {
+        if (data.session) {
+          const challenge = await createPendingTotpChallenge();
+          if (challenge) {
+            pendingTotpChallengeRef.current = challenge;
+            mfaLoginPendingRef.current = true;
+            setMfaLoginRequired(true);
+            // Do not expose an AAL1 session to protected routes until TOTP verifies.
+            setSession(null);
+          } else {
+            pendingTotpChallengeRef.current = null;
+            mfaLoginPendingRef.current = false;
+            setMfaLoginRequired(false);
+            setSession(data.session);
+          }
+        } else {
+          setSession(null);
+        }
+        if (data.session?.user.phone_confirmed_at) {
+          persistPhonePrompt(false);
+          setVerificationPromptPending(false);
+        } else if (data.session && readPhonePrompt()) {
+          setVerificationPromptPending(true);
+        }
+      } catch {
+        // Fail closed if an existing authenticated session cannot complete an
+        // enabled authenticator check. The next password sign-in can retry it.
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+        setSession(null);
+        setMfaLoginRequired(false);
+        pendingTotpChallengeRef.current = null;
+        mfaLoginPendingRef.current = false;
+      } finally {
+        bootstrapInProgressRef.current = false;
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }).catch(() => {
       if (!isMounted) return;
       clearTimeout(bootstrapTimeout);
+      bootstrapInProgressRef.current = false;
       setIsLoading(false);
     });
 
@@ -176,6 +243,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       (event, nextSession) => {
         if (!isMounted) return;
         clearTimeout(bootstrapTimeout);
+        if (bootstrapInProgressRef.current || event === 'INITIAL_SESSION') return;
+        if (passwordSignInInProgressRef.current) return;
+        if (mfaLoginPendingRef.current && !mfaVerifyInProgressRef.current && event !== 'SIGNED_OUT') {
+          setSession(null);
+          setIsLoading(false);
+          return;
+        }
         setSession(nextSession);
         if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
         if (event === 'SIGNED_OUT') void clearDynamicWalletSessionSafe();
@@ -240,7 +314,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       session,
       isPasswordRecovery,
       verificationPromptPending,
+      mfaLoginRequired,
       async signIn(email, password) {
+        passwordSignInInProgressRef.current = true;
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
             email: email.trim().toLowerCase(),
@@ -252,14 +328,77 @@ export function AuthProvider({ children }: PropsWithChildren) {
             return { ok: false, message: 'We could not finish signing you in. Please try again.' };
           }
 
+          const challenge = await createPendingTotpChallenge();
+          if (challenge) {
+            pendingTotpChallengeRef.current = challenge;
+            mfaLoginPendingRef.current = true;
+            setMfaLoginRequired(true);
+            setSession(null);
+            setIsLoading(false);
+            return { ok: true, requiresMfa: true, message: 'Enter the six-digit code from your Google Authenticator app to finish signing in.' };
+          }
+
+          pendingTotpChallengeRef.current = null;
+          mfaLoginPendingRef.current = false;
+          setMfaLoginRequired(false);
           setSession(data.session);
           setIsLoading(false);
           requestPhonePrompt(data.session);
           return { ok: true };
         } catch (error) {
+          // Do not leave an unverified AAL1 session usable after a failed
+          // authenticator check; a retry starts from the normal sign-in form.
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+          pendingTotpChallengeRef.current = null;
+          mfaLoginPendingRef.current = false;
+          setMfaLoginRequired(false);
+          setSession(null);
           setIsLoading(false);
-          return { ok: false, message: authMessage(error, 'signIn') };
+          return { ok: false, message: error instanceof Error && error.message ? error.message : authMessage(error, 'signIn') };
+        } finally {
+          passwordSignInInProgressRef.current = false;
         }
+      },
+      async verifyLoginMfaCode(code) {
+        const pending = pendingTotpChallengeRef.current;
+        if (!pending || !mfaLoginPendingRef.current) return { ok: false, message: 'Your authenticator challenge has expired. Please sign in again.' };
+        if (!/^\\d{6}$/.test(code.trim())) return { ok: false, message: 'Enter the six-digit code shown by Google Authenticator.' };
+        mfaVerifyInProgressRef.current = true;
+        try {
+          const { error } = await supabase.auth.mfa.verify({
+            factorId: pending.factorId,
+            challengeId: pending.challengeId,
+            code: code.trim(),
+          });
+          if (error) return { ok: false, message: 'That authenticator code could not be verified. Check the current six-digit code and try again.' };
+          const { data: current, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError || !current.session || current.session.user.id !== pending.userId) {
+            return { ok: false, message: 'Authenticator verification succeeded, but VAD could not restore your session. Please sign in again.' };
+          }
+          const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (assuranceError || assurance.currentLevel !== 'aal2') {
+            return { ok: false, message: 'VAD could not confirm the higher-assurance session. Try the code again.' };
+          }
+          pendingTotpChallengeRef.current = null;
+          mfaLoginPendingRef.current = false;
+          setMfaLoginRequired(false);
+          setSession(current.session);
+          setIsLoading(false);
+          requestPhonePrompt(current.session);
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, message: userFacingErrorMessage(error, 'signIn') };
+        } finally {
+          mfaVerifyInProgressRef.current = false;
+        }
+      },
+      async cancelMfaLogin() {
+        pendingTotpChallengeRef.current = null;
+        mfaLoginPendingRef.current = false;
+        setMfaLoginRequired(false);
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+        setSession(null);
+        setIsLoading(false);
       },
       async signUp({ displayName, email, password }) {
         try {
@@ -414,6 +553,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         persistPhonePrompt(false);
         setVerificationPromptPending(false);
         setIsPasswordRecovery(false);
+        pendingTotpChallengeRef.current = null;
+        mfaLoginPendingRef.current = false;
+        mfaLoginPendingRef.current = false;
+        setMfaLoginRequired(false);
         await Promise.allSettled([
           clearDynamicWalletSessionSafe(),
           supabase.auth.signOut({ scope: 'local' }),
@@ -422,7 +565,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setIsLoading(false);
       },
     }),
-    [isLoading, isPasswordRecovery, requestPhonePrompt, session, verificationPromptPending],
+    [isLoading, isPasswordRecovery, mfaLoginRequired, requestPhonePrompt, session, verificationPromptPending],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
