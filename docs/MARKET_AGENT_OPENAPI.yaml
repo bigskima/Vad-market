@@ -1,0 +1,249 @@
+openapi: 3.1.0
+info:
+  title: VAD Market Agent API
+  version: 1.0.0
+  summary: Create, draft, and publish VAD prediction markets through the existing market lifecycle.
+  description: |
+    This API lets an authorized AI agent inspect the live database category catalogue,
+    get NGN/USDC Pool/Order Book trade-limit defaults, and create a draft or publish a
+    market. Every market is created through VAD's existing category, resolver, source,
+    trade-limit, publication and audit paths. It does not create a separate market system.
+
+    Configure the VAD agent key as a secret in the tool that imports this schema.
+    Never place the key in prompts, client-side source, public files or Git commits.
+    Use action=create_market for drafts. Publishing is a consequential operation.
+servers:
+  - url: https://kixxqfqntfzlprapqkem.supabase.co/functions/v1
+    description: VAD Market Supabase Edge Functions
+security:
+  - VADAgentKey: []
+paths:
+  /market-agent-api:
+    post:
+      operationId: vadMarketAgent
+      summary: Inspect VAD configuration or create/publish a prediction market
+      description: |
+        Supported actions:
+        - catalog: fetch active database-backed categories/types, jurisdiction options and supported methods.
+        - trade_limits: get default minimum/maximum for one asset and market method.
+        - create_market: create a draft by default.
+        - create_and_publish: publish through the existing VAD publication RPC when schedule and policy gates pass.
+        - draft_and_publish: use the configured custom-market AI helper to draft the wording/resolution rule, then create/publish through VAD's existing lifecycle. The caller must still provide a configured market type, a named source, a valid HTTPS source URL, explicit multi-outcome options if applicable, and accurate schedules.
+      x-openai-isConsequential: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/CatalogRequest'
+                - $ref: '#/components/schemas/TradeLimitsRequest'
+                - $ref: '#/components/schemas/CreateMarketRequest'
+            examples:
+              catalogue:
+                summary: Read live market categories and valid type codes before drafting
+                value:
+                  action: catalog
+              orderBookDefaults:
+                summary: Fetch NGN Order Book defaults
+                value:
+                  action: trade_limits
+                  assetCode: NGN
+                  liquidityModel: ORDER_BOOK
+              draftNigeriaPolicyMarket:
+                summary: Create a draft with verified source and automatic-resolution rules
+                value:
+                  action: create_market
+                  marketFormat: BINARY
+                  categoryCode: POLITICS
+                  marketTypeCode: POLITICS_POLICY_ANNOUNCEMENT
+                  title: Will Nigeria's State House publish a new presidential policy announcement by the stated deadline?
+                  description: A source-verified question about a new official announcement.
+                  details:
+                    institution: Nigeria State House
+                    announcement: A new presidential policy announcement meeting the published criteria
+                    deadline: 2026-10-28T20:30:00+01:00
+                  condition: Resolve YES only if the official State House source contains a qualifying announcement first published after market opening and no later than the deadline. Record the canonical URL and source publication timestamp. If the source is unavailable or evidence is inconclusive, do not resolve NO.
+                  sourceName: Official Nigeria State House newsroom
+                  sourceUrl: https://statehouse.gov.ng/
+                  regionScope: NIGERIA
+                  countryCode: NG
+                  assetCode: NGN
+                  liquidityModel: ORDER_BOOK
+                  minTradeAmount: 100
+                  maxTradeAmount: 100000
+                  opensAt: 2026-10-28T17:00:00+01:00
+                  closesAt: 2026-10-28T20:25:00+01:00
+                  resolvesAfter: 2026-10-28T20:45:00+01:00
+                  publishNow: false
+                  aiAssist: true
+      responses:
+        '200':
+          description: Catalogue/defaults or a successfully created draft/published market.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  operation:
+                    type: string
+                    enum: [DRAFT_CREATED, PUBLISHED]
+                  market:
+                    type: object
+                    additionalProperties: true
+                  aiDraft:
+                    type: object
+                    additionalProperties: true
+                  catalog:
+                    type: object
+                    additionalProperties: true
+                  options:
+                    type: object
+                    additionalProperties: true
+                  defaults:
+                    type: object
+                    additionalProperties: true
+                additionalProperties: true
+        '400':
+          description: Invalid schedule, category/type, source, trade limits, or market details.
+        '401':
+          description: Missing, revoked, or expired agent credential.
+        '403':
+          description: The key lacks the required scope, or its issuing admin no longer has market-management permission.
+        '503':
+          description: A configured source, provider, catalogue, or AI draft service is unavailable.
+components:
+  securitySchemes:
+    VADAgentKey:
+      type: apiKey
+      in: header
+      name: x-vad-agent-key
+      description: The one-time-displayed VAD market-agent credential. Store it in the importing tool's secret configuration.
+  schemas:
+    CatalogRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          const: catalog
+    TradeLimitsRequest:
+      type: object
+      required: [action, assetCode, liquidityModel]
+      properties:
+        action:
+          const: trade_limits
+        assetCode:
+          type: string
+          enum: [NGN, USDC]
+        liquidityModel:
+          type: string
+          enum: [POOL, ORDER_BOOK]
+    CreateMarketRequest:
+      type: object
+      required: [action, categoryCode, countryCode, assetCode, opensAt, closesAt, resolvesAfter]
+      properties:
+        action:
+          type: string
+          enum: [create_market, create_and_publish, draft_and_publish]
+          default: create_market
+        marketFormat:
+          type: string
+          enum: [BINARY, MULTI_OUTCOME]
+          default: BINARY
+        categoryCode:
+          type: string
+          description: Exact active code returned by action=catalog.
+        marketTypeCode:
+          type: string
+          description: Exact active type code returned by action=catalog. Required for binary markets and AI drafting.
+        title:
+          type: string
+          maxLength: 180
+        description:
+          type: string
+          maxLength: 1000
+        details:
+          type: object
+          additionalProperties:
+            type: string
+          description: Values keyed by the selected database market type's required field keys.
+        condition:
+          type: string
+          maxLength: 1800
+          description: Objective resolution rule. The configured resolver remains authoritative.
+        resolutionInstructions:
+          type: string
+          maxLength: 1800
+          description: Explicit instructions for multi-outcome markets when AI drafting is not requested.
+        outcomes:
+          type: array
+          minItems: 2
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 80
+          description: Required for MULTI_OUTCOME; the AI may not invent these choices.
+        sourceName:
+          type: string
+          maxLength: 180
+          description: Name of the official publisher, result owner, regulator, or other authoritative source.
+        sourceUrl:
+          type: string
+          format: uri
+          pattern: '^https://'
+          description: Required for generic VERIFIED_EVENT and MULTI_OUTCOME markets so VAD can fetch direct evidence and restrict corroborating search to this domain.
+        regionScope:
+          type: string
+          enum: [NIGERIA, AFRICA, GLOBAL]
+          default: NIGERIA
+        countryCode:
+          type: string
+          description: Active jurisdiction code from action=catalog options, e.g. NG.
+        assetCode:
+          type: string
+          enum: [NGN, USDC]
+        liquidityModel:
+          type: string
+          enum: [POOL, ORDER_BOOK]
+          default: POOL
+          description: MULTI_OUTCOME markets use POOL.
+        minTradeAmount:
+          type: number
+          exclusiveMinimum: 0
+          description: Optional override; defaults to the admin-configured amount for this asset/method.
+        maxTradeAmount:
+          type: number
+          exclusiveMinimum: 0
+          description: Optional override; must be greater than minTradeAmount/default minimum.
+        opensAt:
+          type: string
+          format: date-time
+          description: ISO 8601 including timezone offset.
+        closesAt:
+          type: string
+          format: date-time
+          description: ISO 8601 including timezone offset; later than opensAt.
+        resolvesAfter:
+          type: string
+          format: date-time
+          description: ISO 8601 including timezone offset; at or after close.
+        publishNow:
+          type: boolean
+          default: false
+          description: Use true only when the opening time has begun and all publication/source checks have passed. Omission defaults to draft only for action=create_market; other creation actions default to publish.
+        aiAssist:
+          type: boolean
+          default: false
+          description: Use VAD's configured free-tier AI draft helper to draft wording and a resolution rule for an existing generic database type. It never changes the resolver, invents source facts, or resolves the market.
+        featureRank:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          default: 100
+        publicationReason:
+          type: string
+          maxLength: 500
+      additionalProperties: false
