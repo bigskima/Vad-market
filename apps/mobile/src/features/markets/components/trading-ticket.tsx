@@ -28,6 +28,8 @@ import {
   placePoolStake,
   quotePoolStake,
   quoteTrade,
+  getMarketTradeRules,
+  type MarketTradeRules,
   type MarketCatalogItem,
   type MarketOutcomeSummaryRow,
   type OrderStatus,
@@ -698,12 +700,32 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   const [working, setWorking] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [placeError, setPlaceError] = useState<string | null>(null);
+  const [tradeRules, setTradeRules] = useState<MarketTradeRules | null>(null);
+  const [tradeRulesLoading, setTradeRulesLoading] = useState(true);
+  const [tradeRulesError, setTradeRulesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void getMarketTradeRules(market.instrument_public_id)
+      .then((value) => { if (active) setTradeRules(value); })
+      .catch((value: unknown) => {
+        if (active) setTradeRulesError(value instanceof Error ? value.message : 'Market trade limits could not be loaded.');
+      })
+      .finally(() => { if (active) setTradeRulesLoading(false); });
+    return () => { active = false; };
+  }, [market.instrument_public_id]);
 
   const tradeReady = canTrade && !capabilityLoading;
   const priceValue = Number(price);
   const quantityValue = Number(quantity);
-  const inputValid = price.trim().length > 0 && Number.isFinite(priceValue) && priceValue > 0 && priceValue < 1 && Number.isFinite(quantityValue) && quantityValue > 0;
-  const estimatedNotional = useMemo(() => assetMoney((Number.isFinite(priceValue) ? priceValue : 0) * (Number.isFinite(quantityValue) ? quantityValue : 0), market.asset_code), [market.asset_code, priceValue, quantityValue]);
+  const estimatedNotionalValue = (Number.isFinite(priceValue) ? priceValue : 0) * (Number.isFinite(quantityValue) ? quantityValue : 0);
+  const minimumOrderValue = Number(tradeRules?.minTradeAmount);
+  const maximumOrderValue = Number(tradeRules?.maxTradeAmount);
+  const validPriceAndQuantity = price.trim().length > 0 && Number.isFinite(priceValue) && priceValue > 0 && priceValue < 1 && Number.isFinite(quantityValue) && quantityValue > 0;
+  const belowMarketMinimum = Boolean(tradeRules && validPriceAndQuantity && estimatedNotionalValue < minimumOrderValue);
+  const aboveMarketMaximum = Boolean(tradeRules && validPriceAndQuantity && estimatedNotionalValue > maximumOrderValue);
+  const inputValid = validPriceAndQuantity && !belowMarketMinimum && !aboveMarketMaximum;
+  const estimatedNotional = useMemo(() => assetMoney(estimatedNotionalValue, market.asset_code), [market.asset_code, estimatedNotionalValue]);
 
   function resetDownstream() {
     setQuote(null);
@@ -800,13 +822,24 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
 
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
             <MiniMetric label="Outcome" value={outcome} />
-            <MiniMetric label="Order value" value={inputValid ? estimatedNotional : '—'} />
+            <MiniMetric label="Order value" value={validPriceAndQuantity ? estimatedNotional : '—'} />
             <MiniMetric label="Currency" value={market.asset_code} />
           </View>
+          {tradeRules ? (
+            <VadText variant="caption" tone="secondary">
+              Per-order notional: minimum {assetMoney(tradeRules.minTradeAmount, market.asset_code)} · maximum {assetMoney(tradeRules.maxTradeAmount, market.asset_code)}. Order value is limit price × shares.
+            </VadText>
+          ) : tradeRulesLoading ? (
+            <VadText variant="caption" tone="secondary">Loading this market’s trading limits…</VadText>
+          ) : tradeRulesError ? (
+            <VadText variant="caption" tone="warning">{tradeRulesError} VAD will still enforce the limits on the server.</VadText>
+          ) : null}
+          {belowMarketMinimum ? <InlineMessage tone="warning" title="Order is below the market minimum" body={`This order is ${estimatedNotional}. Increase the limit price or shares so its value is at least ${assetMoney(tradeRules?.minTradeAmount ?? 0, market.asset_code)}.`} /> : null}
+          {aboveMarketMaximum ? <InlineMessage tone="warning" title="Order exceeds this market’s limit" body={`This order is ${estimatedNotional}. Reduce the limit price or shares to stay at or below ${assetMoney(tradeRules?.maxTradeAmount ?? 0, market.asset_code)}.`} /> : null}
           {quoteError ? <InlineMessage tone="danger" title="Order review unavailable" body={quoteError} /> : null}
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Back" variant="secondary" onPress={() => setStep('prediction')} style={{ flex: 1 }} />
-            <VadButton label="Review order & fees" loading={working} disabled={!tradeReady || working || !inputValid} onPress={() => void prepareReview()} style={{ flex: 1.4 }} />
+            <VadButton label="Review order & fees" loading={working} disabled={!tradeReady || working || tradeRulesLoading || !inputValid} onPress={() => void prepareReview()} style={{ flex: 1.4 }} />
           </View>
         </VadCard>
       ) : null}
