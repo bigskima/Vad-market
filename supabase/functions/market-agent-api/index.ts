@@ -102,7 +102,7 @@ async function handle(req: Request) {
   const countryCode = textValue(body.countryCode, 12).toUpperCase();
   const liquidityModel = format === 'MULTI_OUTCOME' ? 'POOL' : textValue(body.liquidityModel, 30).toUpperCase();
   if (!categoryCode) return json({ error: 'CATEGORY_REQUIRED', message: 'Provide categoryCode from the VAD database catalogue.' }, 400);
-  if (!['NGN', 'USDC'].includes(assetCode)) return json({ error: 'CURRENCY_UNSUPPORTED', message: 'Only active NGN and USDC markets can be created. TNGN is retired.' }, 400);
+  if (!['NGN', 'USDC'].includes(assetCode)) return json({ error: 'CURRENCY_UNSUPPORTED', message: 'Only active NGN and USDC markets can be created.' }, 400);
   if (!['POOL', 'ORDER_BOOK'].includes(liquidityModel)) return json({ error: 'TRADING_METHOD_REQUIRED', message: 'Choose POOL or ORDER_BOOK.' }, 400);
   if (format === 'BINARY' && !marketTypeCode) return json({ error: 'MARKET_TYPE_REQUIRED', message: 'Provide a configured database marketTypeCode.' }, 400);
 
@@ -160,7 +160,7 @@ async function handle(req: Request) {
   if (Date.parse(closesAt) <= Date.parse(opensAt) || Date.parse(resolvesAfter) < Date.parse(closesAt)) {
     return json({ error: 'INVALID_SCHEDULE', message: 'Closing time must be after opening, and result-checking time must be at or after closing.' }, 400);
   }
-  const publishNow = body.publishNow === undefined ? true : body.publishNow === true;
+  const publishNow = body.publishNow === undefined ? action !== 'create_market' : body.publishNow === true;
   if (publishNow && !hasScope(scopes, 'market:publish')) return json({ error: 'SCOPE_REQUIRED', message: 'Publishing requires market:publish.' }, 403);
   if (publishNow && Date.parse(opensAt) > Date.now()) return json({ error: 'FUTURE_OPEN', message: 'The VAD publication RPC only publishes after the opening time begins. Send publishNow=false to create a draft for a future opening.' }, 400);
   if (Date.parse(closesAt) <= Date.now() && publishNow) return json({ error: 'MARKET_EXPIRED', message: 'A market cannot be published after its closing time.' }, 400);
