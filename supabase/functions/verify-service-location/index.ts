@@ -331,7 +331,8 @@ Deno.serve(async (req) => {
     }
 
     const checkedAt = new Date();
-    const expiresAt = new Date(checkedAt.getTime() + 2 * 60 * 1000);
+    // Avoid repeated GPS prompts during a normal session while retaining an explicit, expiring jurisdiction check.
+    const expiresAt = new Date(checkedAt.getTime() + 12 * 60 * 60 * 1000);
     const { error: saveError } = await admin.from('user_location_verifications').upsert({
       user_id: authData.user.id,
       device_country_code: deviceCountry,
