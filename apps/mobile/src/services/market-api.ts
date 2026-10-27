@@ -527,25 +527,53 @@ async function getMarketAssetCode(instrumentPublicId: string) {
 }
 
 function tradingErrorMessage(error: { message: string; code?: string } | null, fallback: string) {
-  const message = String(error?.message ?? '').toLowerCase();
+  const original = String(error?.message ?? '').trim();
+  const message = original.toLowerCase();
   if (message.includes('location verification') || message.includes('current location') || message.includes('network are verified')) {
-    return 'NGN trading requires current Nigeria location and network verification. Complete the location check in your account, then retry. Temporary test credit does not bypass this requirement.';
+    return 'NGN trading requires a recent successful Nigeria location check. Allow location access and retry; successful verification now remains valid for 12 hours.';
   }
   if (message.includes('trading is not available for this account and market')) {
-    return 'This account is not currently eligible to trade this market. For NGN testing, confirm your current Nigeria location is verified and that the market is open.';
+    return 'VAD could not confirm trading eligibility for this market. For NGN, verify Nigeria location once and retry. If it continues, the market, account country or trading capability may need attention.';
   }
   if (message.includes('market is not open')) {
-    return 'This market is no longer open for new trades. Choose an OPEN market; settled markets remain viewable but cannot accept stakes.';
+    return 'This market is no longer open for new orders. Choose an OPEN market; settled markets remain viewable but cannot accept orders.';
+  }
+  if (message.includes('this market uses peer-funded pooled staking')) {
+    return 'This market uses pool staking, not the order book. Return to the market and use its pool prediction flow.';
   }
   if (message.includes('temporary test credit cannot join') || message.includes('restricted to non-cash test-credit trading')) {
     return 'This market cannot mix temporary test funds with cash-funded stakes. Choose an eligible OPEN NGN market with no existing real-money exposure.';
   }
-  if (message.includes('below the market minimum') || message.includes('below market minimum')) {
-    return 'The stake is below this market’s minimum. Increase the amount and review the quote again.';
+  if (message.includes('below market minimum') || message.includes('below market minimum notional')) {
+    return 'The order value is below this market’s minimum. Increase the share quantity or limit price and try again.';
   }
-  if (message.includes('insufficient available balance')) {
-    return 'Your available NGN balance does not cover the stake and trading fee.';
+  if (message.includes('invalid price') || message.includes('price must')) {
+    return 'Enter a limit price greater than 0 and below 1 per share.';
   }
+  if (message.includes('invalid quantity') || message.includes('quantity must')) {
+    return 'Enter a share quantity greater than zero.';
+  }
+  if (message.includes('exceeds this market') || message.includes('maximum exposure')) {
+    return 'This order exceeds the configured order-value or market-exposure limit. Reduce the order size and retry.';
+  }
+  if (message.includes('insufficient available balance') || message.includes('insufficient balance')) {
+    return 'Your available balance does not cover the order and applicable fees.';
+  }
+  if (message.includes('outcome not found')) {
+    return 'This outcome is no longer available. Refresh the market and choose an active YES or NO outcome.';
+  }
+  if (message.includes('risk policy is missing') || message.includes('fee policy')) {
+    return 'This market is missing required trading configuration. The VAD team needs to correct the market setup before orders can be placed.';
+  }
+  if (message.includes('market not found')) {
+    return 'This market is no longer available. Refresh Markets and choose an active listing.';
+  }
+  // PostgREST sometimes returns SQL exception text in a stable, human-readable
+  // message. Preserve that actionable detail unless it looks like schema,
+  // permission, SQL, or provider internals.
+  const looksInternal = /\\b(?:sqlstate|postgres|postgrest|schema cache|permission denied|stack trace|function .* does not exist|relation .* does not exist)\\b/i.test(original)
+    || /^(?:PGRST|\d{5})/.test(String(error?.code ?? ''));
+  if (original && original.length <= 220 && !looksInternal) return original;
   return fallback;
 }
 
