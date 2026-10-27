@@ -1,5 +1,5 @@
 -- VAD category coverage and in-app support.
--- This migration is proposed for the feature branch only; it is not applied to any live database.
+-- Adds category configuration, support RPCs, and the shared custom-draft AI prompt.
 
 begin;
 
