@@ -894,6 +894,13 @@ begin
     raise exception 'Order is below market minimum notional' using errcode='22023';
   end if;
 
+  select o.id,o.public_id into order_id,order_public_id
+  from trading.orders o
+  where o.idempotency_key=p_idempotency_key and o.user_id=p_user_id;
+  if order_public_id is not null then
+    perform command.match_best_order(order_id);
+    return order_public_id;
+  end if;
   if p_side='BUY' then
     perform pg_advisory_xact_lock(hashtextextended('vad-market-exposure:'||p_user_id::text||':'||p_market_id::text,0));
   end if;
@@ -934,13 +941,6 @@ begin
     raise exception 'Order would exceed your maximum exposure for this market.' using errcode='22023';
   end if;
 
-  select o.id,o.public_id into order_id,order_public_id
-  from trading.orders o
-  where o.idempotency_key=p_idempotency_key and o.user_id=p_user_id;
-  if order_public_id is not null then
-    perform command.match_best_order(order_id);
-    return order_public_id;
-  end if;
 
   seq:=nextval('trading.order_sequence');
   if p_side='BUY' then
