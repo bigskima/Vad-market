@@ -34,6 +34,7 @@ import {
 } from '@/services/admin-sports-fixture-api';
 import { createAdminCryptoMarketDraft } from '@/services/crypto-market-draft-api';
 import { createAdminCustomMarketDraft } from '@/services/admin-custom-market-draft-api';
+import { getAdminMarketTradeLimitDefaults } from '@/services/admin-market-trade-limits-api';
 import {
   createAdminGuidedMarket,
   getAdminMarketAutoOptions,
@@ -126,6 +127,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [customDraftLoading, setCustomDraftLoading] = useState(false);
   const [customDraftNotice, setCustomDraftNotice] = useState<string | null>(null);
   const [customDraftRiskNotes, setCustomDraftRiskNotes] = useState<string | null>(null);
+  const [customDraftResolutionRules, setCustomDraftResolutionRules] = useState<string | null>(null);
 
   const [competition, setCompetition] = useState('');
   const [homeTeam, setHomeTeam] = useState('');
@@ -137,6 +139,10 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [countryCode, setCountryCode] = useState('');
   const [assetCode, setAssetCode] = useState('');
   const [liquidityModel, setLiquidityModel] = useState<LiquidityModel>('POOL');
+  const [minTradeAmount, setMinTradeAmount] = useState('');
+  const [maxTradeAmount, setMaxTradeAmount] = useState('');
+  const [tradeLimitsLoading, setTradeLimitsLoading] = useState(false);
+  const [tradeLimitsError, setTradeLimitsError] = useState<string | null>(null);
   const [opensAt, setOpensAt] = useState('');
   const [closesAt, setClosesAt] = useState('');
   const [resolvesAfter, setResolvesAfter] = useState('');
@@ -281,12 +287,42 @@ export function AdminMarketCreateWorkspaceCatalog() {
     : availableAssets.includes('NGN')
       ? 'NGN'
       : availableAssets[0] ?? '';
+  const effectiveLiquidityModel: LiquidityModel = marketFormat === 'MULTI_OUTCOME' ? 'POOL' : liquidityModel;
   const guided = creationStyle === 'GUIDED';
   const football = marketFormat === 'BINARY' && marketType?.handler === 'FOOTBALL_MATCH';
   const cryptoThreshold = marketFormat === 'BINARY' && marketType?.handler === 'CRYPTO_THRESHOLD';
   const automaticFootball = football && resultChecking === 'AUTOMATIC';
   const automaticFootballAvailable = options?.guided.football.automaticProductionAvailable === true;
   const footballCompetitions = options?.guided.football.competitions ?? [];
+
+  const tradeLimitsRequest = useRef(0);
+  useEffect(() => {
+    const requestId = ++tradeLimitsRequest.current;
+    let active = true;
+    if ((resolvedAssetCode !== 'NGN' && resolvedAssetCode !== 'USDC')
+      || (effectiveLiquidityModel !== 'POOL' && effectiveLiquidityModel !== 'ORDER_BOOK')) {
+      setTradeLimitsError('Choose an enabled NGN or USDC market currency.');
+      return () => { active = false; };
+    }
+    setTradeLimitsLoading(true);
+    setTradeLimitsError(null);
+    void getAdminMarketTradeLimitDefaults(resolvedAssetCode, effectiveLiquidityModel)
+      .then((defaults) => {
+        if (!active || requestId !== tradeLimitsRequest.current) return;
+        setMinTradeAmount(String(defaults.minTradeAmount));
+        setMaxTradeAmount(String(defaults.maxTradeAmount));
+      })
+      .catch((value: unknown) => {
+        if (!active || requestId !== tradeLimitsRequest.current) return;
+        setTradeLimitsError(value instanceof Error ? value.message : 'Trade-limit defaults could not be loaded.');
+        setMinTradeAmount('');
+        setMaxTradeAmount('');
+      })
+      .finally(() => {
+        if (active && requestId === tradeLimitsRequest.current) setTradeLimitsLoading(false);
+      });
+    return () => { active = false; };
+  }, [resolvedAssetCode, effectiveLiquidityModel]);
 
   const selectedFootballCompetition = useMemo(() => {
     const value = competition.trim().toLocaleLowerCase();
@@ -584,6 +620,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setCustomDraftLoading(true);
     setCustomDraftNotice(null);
     setCustomDraftRiskNotes(null);
+    setCustomDraftResolutionRules(null);
     setError(null);
     try {
       const condition = resultCondition.trim()
@@ -606,7 +643,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
       setTitle(draft.title);
       setTitleEdited(true);
       setDescription(draft.description);
-      setResultCondition(draft.resolutionRules);
+      setCustomDraftResolutionRules(draft.resolutionRules);
       setCustomDraftRiskNotes(draft.riskNotes);
       setCustomDraftNotice('Drafted with ' + draft.providerName + ' · ' + draft.modelCode + ' · prompt v' + draft.promptVersion + '. Not published; review before continuing.');
     } catch (value) {
@@ -633,6 +670,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           <VadCard variant="outlined" style={{ gap: 4 }}>
             <VadText variant="bodyStrong">AI draft · administrator review required</VadText>
             <VadText variant="caption" tone="secondary">{customDraftNotice}</VadText>
+            {customDraftResolutionRules ? <View style={{ gap: 3 }}><VadText variant="caption" tone="secondary">AI wording suggestion (review only; configured resolver remains authoritative)</VadText><VadText variant="caption">{customDraftResolutionRules}</VadText></View> : null}
             {customDraftRiskNotes ? <VadText variant="caption" tone="warning">Review notes: {customDraftRiskNotes}</VadText> : null}
           </VadCard>
         ) : null}
@@ -714,6 +752,11 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function continueFromSetup() {
     setError(null);
     if (!resolvedCountryCode || !resolvedAssetCode) return setError('Choose a market currency before continuing.');
+    const minimumTrade = Number(minTradeAmount);
+    const maximumTrade = Number(maxTradeAmount);
+    if (!Number.isFinite(minimumTrade) || minimumTrade <= 0 || !Number.isFinite(maximumTrade) || maximumTrade <= minimumTrade) {
+      return setError('Enter a positive minimum trade amount and a maximum amount greater than the minimum.');
+    }
     if (!scheduleValid) return setError(scheduleFieldsValid && Date.parse(closesAt) <= clockNow
       ? 'The closing time has already passed. Choose a future closing time; expired markets cannot be published.'
       : 'Choose valid opening, closing and result-checking times.');
@@ -792,7 +835,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
         resolvesAfter: new Date(resolvesAfter).toISOString(),
         countryCode: resolvedCountryCode,
         assetCode: resolvedAssetCode,
-        liquidityModel,
+        liquidityModel: effectiveLiquidityModel,
+        minTradeAmount: Number(minTradeAmount),
+        maxTradeAmount: Number(maxTradeAmount),
         publishNow: publicationChoice === 'NOW',
       };
       let result: Record<string, unknown>;
@@ -1269,6 +1314,34 @@ export function AdminMarketCreateWorkspaceCatalog() {
               </VadCard>
             </View>
           )}
+          <View style={{ gap: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.lg, padding: theme.spacing.md }}>
+            <View style={{ gap: 4 }}>
+              <VadText variant="bodyStrong">Market trade limits · {resolvedAssetCode || 'currency'} · {effectiveLiquidityModel === 'ORDER_BOOK' ? 'Order Book' : 'Peer Pool'}</VadText>
+              <VadText variant="caption" tone="secondary">
+                {effectiveLiquidityModel === 'ORDER_BOOK'
+                  ? 'Limits apply to the full order value (limit price × share quantity), not the number of shares.'
+                  : 'Limits apply to each individual stake. Users cannot stake below or above these market-specific amounts.'}
+              </VadText>
+            </View>
+            {tradeLimitsLoading ? <VadText variant="caption" tone="secondary">Loading the configured defaults…</VadText> : null}
+            {tradeLimitsError ? <VadText variant="caption" tone="warning">{tradeLimitsError} You can enter market values below; defaults will remain unavailable until corrected in Admin → Market limits.</VadText> : null}
+            <VadInput
+              label={`Minimum trade amount (${resolvedAssetCode})`}
+              value={minTradeAmount}
+              onChangeText={(value) => { setMinTradeAmount(value.replace(/[^0-9.]/g, '')); setError(null); }}
+              placeholder={resolvedAssetCode === 'NGN' ? '100' : '0.01'}
+              keyboardType="decimal-pad"
+              hint="Enforced by the database for this individual market."
+            />
+            <VadInput
+              label={`Maximum trade amount (${resolvedAssetCode})`}
+              value={maxTradeAmount}
+              onChangeText={(value) => { setMaxTradeAmount(value.replace(/[^0-9.]/g, '')); setError(null); }}
+              placeholder={resolvedAssetCode === 'NGN' ? '100000' : '250'}
+              keyboardType="decimal-pad"
+              hint={effectiveLiquidityModel === 'ORDER_BOOK' ? 'Maximum notional per order; account-level exposure limits still apply.' : 'Maximum amount for one pool stake; market and user aggregate caps still apply.'}
+            />
+          </View>
           <VadDateTimeField label="Opens" value={opensAt} onChange={setOpensAt} hint="When users can begin trading." />
           <VadDateTimeField label="Closes" value={closesAt} onChange={setClosesAt} minDate={opensAt || undefined} hint={automaticFootball ? 'For match-result markets, close no later than kickoff.' : 'Trading stops at this time.'} />
           <VadDateTimeField label="Check result after" value={resolvesAfter} onChange={setResolvesAfter} minDate={closesAt || opensAt || undefined} hint={automaticFootball ? 'At least two hours after kickoff so VAD waits for a final result.' : 'VAD begins result verification from this time.'} />
@@ -1289,6 +1362,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
           {football ? <ReviewRow label="Match" value={`${homeTeam} vs ${awayTeam} · ${competition}`} /> : null}
           {football && matchStartsAt ? <ReviewRow label="Kickoff" value={new Date(matchStartsAt).toLocaleString()} /> : null}
           <ReviewRow label="Currency" value={resolvedAssetCode} />
+          <ReviewRow label="Trading method" value={effectiveLiquidityModel === 'ORDER_BOOK' ? 'Order Book' : 'Peer Pool'} />
+          <ReviewRow label="Minimum trade" value={minTradeAmount + ' ' + resolvedAssetCode} />
+          <ReviewRow label="Maximum trade" value={maxTradeAmount + ' ' + resolvedAssetCode} />
           <ReviewRow label="Market format" value={marketFormat === 'MULTI_OUTCOME' ? `Multiple outcomes · ${multiOutcomeOptions.length} choices` : 'Yes / No'} />
           {marketFormat === 'MULTI_OUTCOME' ? (
             <>
