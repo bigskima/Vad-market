@@ -472,7 +472,7 @@ begin
   insert into audit.records(actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata)
   values(auth.uid(),'ADMIN','MARKET_AGENT_KEY_CREATED','MARKET_AGENT_KEY',v_id::text,
     'Created a scoped market-agent API credential',
-    jsonb_build_object('name',v_name,'scopes',v_scopes,'expires_at',p_expires_at));
+    jsonb_build_object('name',v_name,'scopes',v_scopes,'expires_at',v_expires_at));
   return jsonb_build_object('id',v_id,'name',v_name,'apiKey',v_raw_token,'scopes',v_scopes,'expiresAt',v_expires_at);
 end;
 $function$;
@@ -612,7 +612,8 @@ begin
       'source_name',nullif(btrim(coalesce(p_details->>'source_name',p_source_name,'')),''),
       'source_url',nullif(btrim(coalesce(p_details->>'source_url',p_source_url,'')),'')
     );
-    p_title,p_description,v_category_name,v_market_setup,p_opens_at,p_closes_at,p_resolves_after,
+    v_result:=public.admin_create_guided_market_v5(
+      p_title,p_description,v_category_name,v_market_setup,p_opens_at,p_closes_at,p_resolves_after,
       p_country_code,p_asset_code,p_liquidity_model,p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true),
       p_feature_rank,p_publication_reason
     );
