@@ -133,18 +133,36 @@ function safeDetails(value: unknown): RecordValue {
 async function handle(req: Request) {
   const authorization = req.headers.get('authorization') ?? '';
   const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
+  const agentApiKey = (req.headers.get('x-vad-agent-key') ?? '').trim();
   const url = Deno.env.get('SUPABASE_URL')?.trim();
   const anon = (Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SUPABASE_PUBLISHABLE_KEY'))?.trim();
   const service = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SECRET_KEY'))?.trim();
-  if (!token) return json({ error: 'AUTH_REQUIRED', message: 'Sign in with an administrator account to draft a market.' }, 401);
-  if (!url || !anon || !service) return json({ error: 'SERVICE_UNAVAILABLE', message: 'The custom market draft service is not configured.' }, 503);
+  if (!url || !service || !anon) return json({ error: 'SERVICE_UNAVAILABLE', message: 'The custom market draft service is not configured.' }, 503);
+  if (!agentApiKey && !token) return json({ error: 'AUTH_REQUIRED', message: 'Sign in as an administrator or send an authorized x-vad-agent-key.' }, 401);
 
-  const user = createClient(url, anon, { global: { headers: { Authorization: authorization } }, auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: authData, error: authError } = await user.auth.getUser(token);
-  if (authError || !authData.user) return json({ error: 'AUTH_INVALID', message: 'Your administrator session is invalid or expired.' }, 401);
-  const { data: catalog, error: catalogError } = await user.rpc('admin_guided_market_catalog');
-  if (catalogError || !isRecord(catalog) || !Array.isArray(catalog.categories)) {
-    return json({ error: 'CATALOG_UNAVAILABLE', message: 'The configured market catalog could not be loaded. Check your market-management permission.' }, 403);
+  const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+  let catalog: unknown;
+  if (agentApiKey) {
+    const { data: context, error: contextError } = await admin.rpc('internal_market_agent_context', { p_api_key: agentApiKey });
+    if (contextError || !isRecord(context)) return json({ error: 'AGENT_UNAUTHORIZED', message: 'The market-agent key is invalid or expired.' }, 401);
+    const scopes = Array.isArray(context.scopes) ? context.scopes : [];
+    if (!scopes.includes('market:read') || !scopes.includes('market:create')) {
+      return json({ error: 'AGENT_SCOPE_REQUIRED', message: 'AI market drafting requires market:read and market:create scopes.' }, 403);
+    }
+    const { data, error } = await admin.rpc('agent_guided_market_catalog', { p_api_key: agentApiKey });
+    if (error || !isRecord(data) || !Array.isArray(data.categories)) {
+      return json({ error: 'CATALOG_UNAVAILABLE', message: 'The configured market catalog could not be loaded for this agent.' }, 403);
+    }
+    catalog = data;
+  } else {
+    const user = createClient(url, anon, { global: { headers: { Authorization: authorization } }, auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: authData, error: authError } = await user.auth.getUser(token);
+    if (authError || !authData.user) return json({ error: 'AUTH_INVALID', message: 'Your administrator session is invalid or expired.' }, 401);
+    const { data, error } = await user.rpc('admin_guided_market_catalog');
+    if (error || !isRecord(data) || !Array.isArray(data.categories)) {
+      return json({ error: 'CATALOG_UNAVAILABLE', message: 'The configured market catalog could not be loaded. Check your market-management permission.' }, 403);
+    }
+    catalog = data;
   }
 
   let body: RecordValue;
@@ -177,7 +195,7 @@ async function handle(req: Request) {
 
   let category: RecordValue | null = null;
   let selected: MarketType | null = null;
-  for (const rawCategory of catalog.categories) {
+  for (const rawCategory of (catalog as RecordValue).categories as unknown[]) {
     if (!isRecord(rawCategory) || !Array.isArray(rawCategory.marketTypes)) continue;
     const found = (rawCategory.marketTypes as unknown[]).find((rawType) => isRecord(rawType)
       && safeText(rawType.code, 80).toUpperCase() === marketTypeCode);
@@ -201,7 +219,6 @@ async function handle(req: Request) {
   if (!category || !selected) return json({ error: 'UNKNOWN_MARKET_TYPE', message: 'The selected market type is not configured under this category.' }, 400);
   if (selected.sourceRequired && !sourceName) return json({ error: 'SOURCE_REQUIRED', message: 'Add the authoritative source before preparing this market draft.' }, 400);
 
-  const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: context, error: contextError } = await admin.rpc('internal_custom_market_draft_context');
   if (contextError || !isRecord(context) || !isRecord(context.prompt)) {
     return json({ error: 'AI_DRAFT_CONFIG_UNAVAILABLE', message: 'Custom-market AI drafting is not configured. Check the active CUSTOM_MARKET_DRAFT prompt and administrator AI provider settings.' }, 503);
