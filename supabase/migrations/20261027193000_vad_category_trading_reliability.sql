@@ -108,21 +108,21 @@ begin
   end if;
   if exists (
     select 1
-    from jsonb_array_elements(v_fields) as row(value)
-    where jsonb_typeof(row.value) <> 'object'
-      or coalesce(row.value->>'key','') !~ '^[a-z][a-z0-9_]{0,49}$'
-      or btrim(coalesce(row.value->>'label','')) = ''
-      or length(coalesce(row.value->>'label','')) > 120
-      or length(coalesce(row.value->>'placeholder','')) > 240
+    from jsonb_array_elements(v_fields) as field_item(value)
+    where jsonb_typeof(field_item.value) <> 'object'
+      or coalesce(field_item.value->>'key','') !~ '^[a-z][a-z0-9_]{0,49}$'
+      or btrim(coalesce(field_item.value->>'label','')) = ''
+      or length(coalesce(field_item.value->>'label','')) > 120
+      or length(coalesce(field_item.value->>'placeholder','')) > 240
   ) then
     raise exception 'Every parameter needs a valid lowercase key, label and supported placeholder length.' using errcode='22023';
   end if;
   if exists (
     select 1
     from (
-      select row.value->>'key' as field_key
-      from jsonb_array_elements(v_fields) as row(value)
-      group by row.value->>'key'
+      select field_item.value->>'key' as field_key
+      from jsonb_array_elements(v_fields) as field_item(value)
+      group by field_item.value->>'key'
       having count(*) > 1
     ) duplicates
   ) then
@@ -136,8 +136,8 @@ begin
     select 1
     from unnest(v_tokens) as tokens(token)
     where not exists (
-      select 1 from jsonb_array_elements(v_fields) as row(value)
-      where row.value->>'key'=tokens.token
+      select 1 from jsonb_array_elements(v_fields) as field_item(value)
+      where field_item.value->>'key'=tokens.token
     )
   ) then
     raise exception 'Every template variable must have a matching market parameter.' using errcode='22023';
