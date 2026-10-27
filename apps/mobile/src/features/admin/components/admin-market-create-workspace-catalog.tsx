@@ -296,14 +296,13 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const footballCompetitions = options?.guided.football.competitions ?? [];
 
   const tradeLimitsRequest = useRef(0);
+  const invalidTradeLimitSelection = (resolvedAssetCode !== 'NGN' && resolvedAssetCode !== 'USDC')
+    || (effectiveLiquidityModel !== 'POOL' && effectiveLiquidityModel !== 'ORDER_BOOK');
+  const displayedTradeLimitsError = tradeLimitsError ?? (invalidTradeLimitSelection ? 'Choose an enabled NGN or USDC market currency.' : null);
   useEffect(() => {
     const requestId = ++tradeLimitsRequest.current;
     let active = true;
-    if ((resolvedAssetCode !== 'NGN' && resolvedAssetCode !== 'USDC')
-      || (effectiveLiquidityModel !== 'POOL' && effectiveLiquidityModel !== 'ORDER_BOOK')) {
-      setTradeLimitsError('Choose an enabled NGN or USDC market currency.');
-      return () => { active = false; };
-    }
+    if (invalidTradeLimitSelection) return () => { active = false; };
     setTradeLimitsLoading(true);
     setTradeLimitsError(null);
     void getAdminMarketTradeLimitDefaults(resolvedAssetCode, effectiveLiquidityModel)
@@ -322,7 +321,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
         if (active && requestId === tradeLimitsRequest.current) setTradeLimitsLoading(false);
       });
     return () => { active = false; };
-  }, [resolvedAssetCode, effectiveLiquidityModel]);
+  }, [resolvedAssetCode, effectiveLiquidityModel, invalidTradeLimitSelection]);
 
   const selectedFootballCompetition = useMemo(() => {
     const value = competition.trim().toLocaleLowerCase();
@@ -1325,7 +1324,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
               </VadText>
             </View>
             {tradeLimitsLoading ? <VadText variant="caption" tone="secondary">Loading the configured defaults…</VadText> : null}
-            {tradeLimitsError ? <VadText variant="caption" tone="warning">{tradeLimitsError} You can enter market values below; defaults will remain unavailable until corrected in Admin → Market limits.</VadText> : null}
+            {displayedTradeLimitsError ? <VadText variant="caption" tone="warning">{displayedTradeLimitsError} You can enter market values below; defaults will remain unavailable until corrected in Admin → Market limits.</VadText> : null}
             <VadInput
               label={`Minimum trade amount (${resolvedAssetCode})`}
               value={minTradeAmount}
