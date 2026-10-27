@@ -197,6 +197,10 @@ async function handle(req: Request) {
     + 'Outcome geography: ' + regionScope + '. Only events within this published geographic scope are eligible.';
   const publishReason = textValue(body.publicationReason, 500) || 'Published through the authorized VAD Market Agent API';
   let aiDraft: Rec | null = null;
+  if (format === 'MULTI_OUTCOME' && (body.aiAssist === true || action === 'draft_and_publish')) {
+    return json({ error: 'AI_DRAFT_FORMAT_UNSUPPORTED', message: 'For multiple-outcome markets, provide outcomes and resolutionInstructions explicitly. The configured AI draft helper is currently bound to a database-backed binary market type.' }, 400);
+  }
+  if (format === 'MULTI_OUTCOME' && !sourceName) return json({ error: 'SOURCE_REQUIRED', message: 'Multi-outcome markets require a named authoritative source.' }, 400);
   if (body.aiAssist === true || action === 'draft_and_publish') {
     const draftResponse = await fetch(url + '/functions/v1/custom-market-draft', {
       method: 'POST',
@@ -257,7 +261,7 @@ async function handle(req: Request) {
       p_min_trade_amount: minTradeAmount,
       p_max_trade_amount: maxTradeAmount,
       p_publish_now: publishNow,
-      p_feature_rank: Number.isFinite(Number(body.featureRank)) ? Math.max(0, Math.min(10000, Math.floor(Number(body.featureRank))) : 100,
+      p_feature_rank: Number.isFinite(Number(body.featureRank)) ? Math.max(0, Math.min(10000, Math.floor(Number(body.featureRank)))) : 100,
       p_publication_reason: publishReason,
     });
     result = response.data; createError = response.error;
@@ -281,7 +285,7 @@ async function handle(req: Request) {
       p_min_trade_amount: minTradeAmount,
       p_max_trade_amount: maxTradeAmount,
       p_publish_now: publishNow,
-      p_feature_rank: Number.isFinite(Number(body.featureRank)) ? Math.max(0, Math.min(10000, Math.floor(Number(body.featureRank))) : 100,
+      p_feature_rank: Number.isFinite(Number(body.featureRank)) ? Math.max(0, Math.min(10000, Math.floor(Number(body.featureRank)))) : 100,
       p_publication_reason: publishReason,
     });
     result = response.data; createError = response.error;
