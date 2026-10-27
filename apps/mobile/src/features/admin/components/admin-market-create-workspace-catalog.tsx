@@ -34,7 +34,6 @@ import {
 } from '@/services/admin-sports-fixture-api';
 import { createAdminCryptoMarketDraft } from '@/services/crypto-market-draft-api';
 import { createAdminCustomMarketDraft } from '@/services/admin-custom-market-draft-api';
-import { getAdminMarketTradeLimitDefaults } from '@/services/admin-market-trade-limits-api';
 import {
   createAdminGuidedMarket,
   getAdminMarketAutoOptions,
@@ -141,8 +140,6 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [liquidityModel, setLiquidityModel] = useState<LiquidityModel>('POOL');
   const [minTradeAmount, setMinTradeAmount] = useState('');
   const [maxTradeAmount, setMaxTradeAmount] = useState('');
-  const [tradeLimitsResolvedKey, setTradeLimitsResolvedKey] = useState('');
-  const [tradeLimitsErrorState, setTradeLimitsErrorState] = useState<{ key: string; message: string } | null>(null);
   const [opensAt, setOpensAt] = useState('');
   const [closesAt, setClosesAt] = useState('');
   const [resolvesAfter, setResolvesAfter] = useState('');
@@ -294,38 +291,11 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const automaticFootballAvailable = options?.guided.football.automaticProductionAvailable === true;
   const footballCompetitions = options?.guided.football.competitions ?? [];
 
-  const tradeLimitsRequest = useRef(0);
   const invalidTradeLimitSelection = (resolvedAssetCode !== 'NGN' && resolvedAssetCode !== 'USDC')
     || (effectiveLiquidityModel !== 'POOL' && effectiveLiquidityModel !== 'ORDER_BOOK');
-  const tradeLimitsKey = resolvedAssetCode + ':' + effectiveLiquidityModel;
-  const tradeLimitsLoading = !invalidTradeLimitSelection && tradeLimitsResolvedKey !== tradeLimitsKey;
-  const currentTradeLimitsError = tradeLimitsErrorState?.key === tradeLimitsKey ? tradeLimitsErrorState.message : null;
-  const displayedTradeLimitsError = currentTradeLimitsError ?? (invalidTradeLimitSelection ? 'Choose an enabled NGN or USDC market currency.' : null);
-  useEffect(() => {
-    const requestId = ++tradeLimitsRequest.current;
-    let active = true;
-    if (invalidTradeLimitSelection) return () => { active = false; };
-    void getAdminMarketTradeLimitDefaults(resolvedAssetCode, effectiveLiquidityModel)
-      .then((defaults) => {
-        if (!active || requestId !== tradeLimitsRequest.current) return;
-        setMinTradeAmount(String(defaults.minTradeAmount));
-        setMaxTradeAmount(String(defaults.maxTradeAmount));
-        setTradeLimitsErrorState(null);
-      })
-      .catch((value: unknown) => {
-        if (!active || requestId !== tradeLimitsRequest.current) return;
-        setTradeLimitsErrorState({
-          key: tradeLimitsKey,
-          message: value instanceof Error ? value.message : 'Trade-limit defaults could not be loaded.',
-        });
-        setMinTradeAmount('');
-        setMaxTradeAmount('');
-      })
-      .finally(() => {
-        if (active && requestId === tradeLimitsRequest.current) setTradeLimitsResolvedKey(tradeLimitsKey);
-      });
-    return () => { active = false; };
-  }, [resolvedAssetCode, effectiveLiquidityModel, invalidTradeLimitSelection, tradeLimitsKey]);
+  const displayedTradeLimitsError = invalidTradeLimitSelection
+    ? 'Choose an enabled NGN or USDC currency and a supported trading method for this market.'
+    : null;
 
   const selectedFootballCompetition = useMemo(() => {
     const value = competition.trim().toLocaleLowerCase();
@@ -766,7 +736,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function continueFromSetup() {
     setError(null);
     if (!resolvedCountryCode || !resolvedAssetCode) return setError('Choose a market currency before continuing.');
-    if (tradeLimitsLoading) return setError('Wait for the configured trade limits to load before reviewing this market.');
+    if (invalidTradeLimitSelection) return setError(displayedTradeLimitsError ?? 'Choose a supported trading currency and method.');
+    const minimumTrade = Number(minTradeAmount);
+    const maximumTrade = Number(maxTradeAmount);
+    if (!Number.isFinite(minimumTrade) || minimumTrade <= 0 || !Number.isFinite(maximumTrade) || maximumTrade <= minimumTrade || maximumTrade > 1000000000000) {
+      return setError('Set a positive minimum and a maximum greater than it for this market. The maximum supported amount is 1,000,000,000,000.');
+    }
     const minimumTrade = Number(minTradeAmount);
     const maximumTrade = Number(maxTradeAmount);
     if (!Number.isFinite(minimumTrade) || minimumTrade <= 0 || !Number.isFinite(maximumTrade) || maximumTrade <= minimumTrade) {
@@ -791,6 +766,13 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   async function createMarket() {
     if (working) return;
+    const minimumTrade = Number(minTradeAmount);
+    const maximumTrade = Number(maxTradeAmount);
+    if (invalidTradeLimitSelection || !Number.isFinite(minimumTrade) || minimumTrade <= 0 || !Number.isFinite(maximumTrade) || maximumTrade <= minimumTrade || maximumTrade > 1000000000000) {
+      setError('Enter a valid minimum and maximum for this market before creating or publishing it. These amounts are saved only to this market.');
+      setStep(2);
+      return;
+    }
     if (!scheduleValid) {
       setError(scheduleFieldsValid && Date.parse(closesAt) <= clockNow
         ? 'The closing time has already passed. Choose a future closing time before creating the market.'
@@ -924,6 +906,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setCountryCode('');
     setAssetCode('');
     setLiquidityModel('POOL');
+    setMinTradeAmount('');
+    setMaxTradeAmount('');
     setOpensAt('');
     setClosesAt('');
     setResolvesAfter('');
@@ -1341,21 +1325,20 @@ export function AdminMarketCreateWorkspaceCatalog() {
                   : 'Limits apply to each individual stake. Users cannot stake below or above these market-specific amounts.'}
               </VadText>
             </View>
-            {tradeLimitsLoading ? <VadText variant="caption" tone="secondary">Loading the configured defaults…</VadText> : null}
-            {displayedTradeLimitsError ? <VadText variant="caption" tone="warning">{displayedTradeLimitsError} You can enter market values below; defaults will remain unavailable until corrected in Admin → Market limits.</VadText> : null}
+            {displayedTradeLimitsError ? <VadText variant="caption" tone="warning">{displayedTradeLimitsError}</VadText> : null}
             <VadInput
-              label={`Minimum trade amount (${resolvedAssetCode})`}
+              label={`This market’s minimum (${resolvedAssetCode})`}
               value={minTradeAmount}
               onChangeText={(value) => { setMinTradeAmount(value.replace(/[^0-9.]/g, '')); setError(null); }}
-              placeholder={resolvedAssetCode === 'NGN' ? '100' : '0.01'}
+              placeholder={resolvedAssetCode === 'NGN' ? 'Enter this market’s minimum' : 'Enter this market’s minimum'}
               keyboardType="decimal-pad"
               hint="Enforced by the database for this individual market."
             />
             <VadInput
-              label={`Maximum trade amount (${resolvedAssetCode})`}
+              label={`This market’s maximum (${resolvedAssetCode})`}
               value={maxTradeAmount}
               onChangeText={(value) => { setMaxTradeAmount(value.replace(/[^0-9.]/g, '')); setError(null); }}
-              placeholder={resolvedAssetCode === 'NGN' ? '100000' : '250'}
+              placeholder={resolvedAssetCode === 'NGN' ? 'Enter this market’s maximum' : 'Enter this market’s maximum'}
               keyboardType="decimal-pad"
               hint={effectiveLiquidityModel === 'ORDER_BOOK' ? 'Maximum notional per order; account-level exposure limits still apply.' : 'Maximum amount for one pool stake; market and user aggregate caps still apply.'}
             />
