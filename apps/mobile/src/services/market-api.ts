@@ -530,7 +530,7 @@ function tradingErrorMessage(error: { message: string; code?: string } | null, f
   const original = String(error?.message ?? '').trim();
   const message = original.toLowerCase();
   if (message.includes('location verification') || message.includes('current location') || message.includes('network are verified')) {
-    return 'NGN trading requires a recent successful Nigeria location check. Allow location access and retry; successful verification now remains valid for 12 hours.';
+    return 'NGN trading requires a recent successful Nigeria location check. Allow location access and retry; successful verification now remains valid for up to 4 hours.';
   }
   if (message.includes('trading is not available for this account and market')) {
     return 'VAD could not confirm trading eligibility for this market. For NGN, verify Nigeria location once and retry. If it continues, the market, account country or trading capability may need attention.';
@@ -599,7 +599,7 @@ export async function quotePoolStake(input: { instrumentPublicId: string; outcom
 export async function placePoolStake(quote: PoolQuote) {
   const assetCode = await getMarketAssetCode(quote.instrumentPublicId);
   if (assetCode !== 'NGN' && assetCode !== 'USDC') {
-    throw new Error('TNGN markets are permanently retired. Select a real NGN or supported USDC market.');
+    throw new Error('This market uses a retired or unsupported settlement currency. Select an available NGN or supported USDC market.');
   }
   await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `pool:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
@@ -651,7 +651,9 @@ export async function placeOrder(quote: TradeQuote) {
     p_quantity: quote.quantity,
     p_idempotency_key: idempotencyKey,
   });
-  assertNoError(error, 'trading');
+  if (error) {
+    throw new Error(tradingErrorMessage(error, 'We could not place this order right now. Check the price, quantity, market status, and available balance, then retry.'));
+  }
   const orderId = data as string;
   return getOrderStatus(orderId);
 }
