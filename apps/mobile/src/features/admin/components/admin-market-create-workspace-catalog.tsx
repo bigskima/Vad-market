@@ -660,7 +660,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
   }
 
   function renderCustomDraftControls() {
-    if (creationStyle !== 'CUSTOM' || !marketType || football || cryptoThreshold || marketFormat !== 'BINARY') return null;
+    if (creationStyle !== 'CUSTOM' || !marketType || football || cryptoThreshold) return null;
     return (
       <View style={{ gap: theme.spacing.sm }}>
         <VadButton
@@ -670,7 +670,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           loading={customDraftLoading}
         />
         <VadText variant="caption" tone="secondary">
-          Uses VAD’s configured AI provider and the selected database market type. The helper cannot invent sources, change the resolver, publish, or settle a market.
+          Uses VAD’s configured AI provider and the selected database market type. The helper cannot invent sources or outcome choices, change the resolver, publish, or settle a market.
         </VadText>
         {customDraftNotice ? (
           <VadCard variant="outlined" style={{ gap: 4 }}>
