@@ -67,8 +67,8 @@ type CreateMarketInput = {
   countryCode: string;
   assetCode: string;
   liquidityModel?: 'POOL' | 'ORDER_BOOK';
-  minTradeAmount: number;
-  maxTradeAmount: number;
+  minTradeAmount?: number;
+  maxTradeAmount?: number;
   publishNow?: boolean;
 };
 
@@ -233,7 +233,12 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
 }
 
 export async function createAdminGuidedMarket(input: CreateMarketInput & { setup: AdminGuidedMarketSetup }) {
-  const { data, error } = await supabase.rpc('admin_create_guided_market_v5', {
+  const hasExplicitTradeLimits = Number.isFinite(input.minTradeAmount)
+    && Number(input.minTradeAmount) > 0
+    && Number.isFinite(input.maxTradeAmount)
+    && Number(input.maxTradeAmount) > Number(input.minTradeAmount);
+  const rpcName = hasExplicitTradeLimits ? 'admin_create_guided_market_v5' : 'admin_create_guided_market_v4';
+  const parameters: Record<string, unknown> = {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_category: input.category.trim(),
@@ -244,10 +249,13 @@ export async function createAdminGuidedMarket(input: CreateMarketInput & { setup
     p_country_code: input.countryCode,
     p_asset_code: input.assetCode,
     p_liquidity_model: input.liquidityModel ?? 'POOL',
-    p_min_trade_amount: input.minTradeAmount,
-    p_max_trade_amount: input.maxTradeAmount,
     p_publish_now: input.publishNow === true,
-  });
+  };
+  if (hasExplicitTradeLimits) {
+    parameters.p_min_trade_amount = input.minTradeAmount;
+    parameters.p_max_trade_amount = input.maxTradeAmount;
+  }
+  const { data, error } = await supabase.rpc(rpcName, parameters);
   fail(error, 'We could not create this guided VAD market right now.');
   return (data ?? {}) as Record<string, unknown>;
 }
