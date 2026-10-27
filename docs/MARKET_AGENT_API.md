@@ -7,7 +7,7 @@ This API lets an authorized AI agent create a market draft or publish a market w
 1. Sign in with an admin account that has `markets.manage` permission.
 2. Open **Account → Admin operations → Market agent access**.
 3. Create a key with only the permissions required:
-   - `market:read`: read the configured market categories, market types and trade-limit defaults.
+   - `market:read`: read the configured market categories, market types, jurisdiction options and supported trading methods.
    - `market:create`: create markets using the database-backed creation pipeline.
    - `market:publish`: publish immediately when all market rules and time gates pass.
 4. Store the displayed key in the AI tool's **secret/credential configuration**. It is displayed only once; VAD stores a SHA-256 digest, not the raw key. Never put the key in a GitHub commit, public prompt, client-side source file, or screenshot. Revoke the key from the same page when access is no longer needed.
@@ -44,16 +44,6 @@ Request:
 ```
 
 The response contains the active database-backed `catalog.categories` (including each category's configured market types and parameter fields) and `options` (eligible jurisdictions and currencies, trading methods, and supported setup capabilities). Use the returned codes and field keys; do not invent a category or market type.
-
-To get the default limits for a given trading method and currency:
-
-```json
-{
-  "action": "trade_limits",
-  "assetCode": "NGN",
-  "liquidityModel": "ORDER_BOOK"
-}
-```
 
 ## 2. Create a market directly
 
@@ -126,10 +116,10 @@ The multi-outcome path requires explicit, unique outcomes from the caller; VAD d
 - `POOL` enforces the per-market minimum/maximum on each stake and continues to enforce aggregate pool/user risk limits.
 - `ORDER_BOOK` enforces the per-market minimum/maximum on each order's notional value (limit price × share quantity), in addition to separate user-market exposure controls.
 - Amounts are applied server-side before publication. Quote and commit paths also check the limits; changing the client request cannot bypass them.
-- When `minTradeAmount` / `maxTradeAmount` are omitted, VAD uses the admin-configured defaults for that currency and trading method.
+- `minTradeAmount` and `maxTradeAmount` are required for every create request. Each pair is stored on that individual market; no global trade-limit preset exists, and the next market must be configured separately.
 
 ## Automatic create-and-publish safety
 
 The endpoint fails closed when any of these are invalid: agent scope, current issuer permission, category/type, required parameters, allowed currency/jurisdiction, authoritative source, schedule, active resolver-specific creation prerequisites, or min/max amount. Publication still uses `admin_publish_market` through the existing creation wrapper and records an audit event; it does not directly insert a published market row.
 
-A successful response includes `operation` (`PUBLISHED` or `DRAFT_CREATED`), the created market payload, the applied limits, currency, trading method, and optional AI draft metadata. A failed response includes an `error` code and message; fix the input or configuration and retry rather than treating a failed response as a published market.
+A successful response includes `operation` (`PUBLISHED` or `DRAFT_CREATED`), the created market payload, the market-specific applied limits, currency, trading method, and optional AI draft metadata. A failed response includes an `error` code and message; fix the input or configuration and retry rather than treating a failed response as a published market.
