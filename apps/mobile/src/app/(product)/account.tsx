@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Image, Pressable, View } from 'react-native';
+import { Image, Modal, Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -236,6 +236,9 @@ export default function AccountScreen() {
             <VadIcon name="bell" size={25} tone="primary" />
             {unreadNotificationCount > 0 ? <View style={{ position: 'absolute', top: 4, right: 3, width: 9, height: 9, borderRadius: 5, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.background }} /> : null}
           </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Log out" onPress={requestSignOut} disabled={signingOut} style={({ pressed }) => ({ width: 39, height: 39, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.noSoft, borderWidth: 1, borderColor: theme.colors.no, opacity: pressed || signingOut ? 0.65 : 1 })}>
+            <VadIcon name="logOut" size={21} tone="no" />
+          </Pressable>
         </View>
 
         <TourTarget id="account-overview">
@@ -389,43 +392,41 @@ export default function AccountScreen() {
         </SettingsGroup>
 
         <SettingsGroup title="Support">
-          <AccountRow icon="lifeBuoy" iconBackground={theme.colors.yesSoft} iconColor={theme.colors.yes} title="Help & Support" subtitle="FAQs, contact and available support options" />
+          <AccountRow icon="lifeBuoy" iconBackground={theme.colors.yesSoft} iconColor={theme.colors.yes} title="Help & Support" subtitle="Ask a question, report a problem, and follow replies" onPress={() => router.push('/support')} />
           <AccountRow icon="fileText" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Terms & Policies" subtitle="Terms of service, privacy policy, risk disclosures" onPress={() => router.push('/account/policies')} />
           <AccountRow icon="info" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="About VAD Market" subtitle="App version and legal information" onPress={() => router.push('/account/about')} last />
         </SettingsGroup>
 
         {adminAccessFor === userId && hasAdminAccess ? (
           <SettingsGroup title="Administration">
-            <AccountRow icon="operations" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Admin operations" subtitle="Operations dashboard" onPress={() => router.push('/admin')} last />
+            <AccountRow icon="operations" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Admin operations" subtitle="Operations dashboard" onPress={() => router.push('/admin')} />
+            <AccountRow icon="lifeBuoy" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Support inbox" subtitle="Reply to users and manage support tickets" onPress={() => router.push('/admin/support')} last />
           </SettingsGroup>
         ) : null}
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Log out" disabled={signingOut} onPress={requestSignOut} style={({ pressed }) => ({ minHeight: density.phone ? 46 : 48, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.no, backgroundColor: theme.colors.noSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: pressed || signingOut ? 0.65 : 1 })}>
-          <VadIcon name="logOut" size={17} tone="no" />
-          <VadText variant="bodyStrong" tone="no" style={{ fontSize: density.phone ? 14 : 15 }}>{signingOut ? 'Logging out…' : 'Log Out'}</VadText>
-          <VadIcon name="chevronRight" size={16} tone="no" />
-        </Pressable>
-        {confirmSignOut ? (
-          <VadCard style={{ gap: 10, borderColor: theme.colors.no }}>
-            <VadText variant="bodyStrong">Log out of VAD Market?</VadText>
-            <VadText variant="caption" tone="secondary">You will need to sign in again to access your account.</VadText>
-            {signOutError ? <VadText variant="caption" tone="no">{signOutError}</VadText> : null}
-            <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: 8, justifyContent: 'flex-end' }}>
-              <VadButton
-                label="Cancel"
-                variant="secondary"
-                onPress={() => { setConfirmSignOut(false); setSignOutError(null); }}
-                disabled={signingOut}
-              />
-              <VadButton
-                label={signingOut ? 'Logging out…' : 'Log out'}
-                onPress={() => void confirmAndSignOut()}
-                loading={signingOut}
-                disabled={signingOut}
-              />
-            </View>
-          </VadCard>
-        ) : null}
+        <Modal
+          visible={confirmSignOut}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={() => { if (!signingOut) { setConfirmSignOut(false); setSignOutError(null); } }}
+        >
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 22, backgroundColor: 'rgba(0,0,0,0.58)' }}>
+            <VadCard style={{ width: '100%', maxWidth: 430, gap: 12, padding: 18, borderColor: theme.colors.no, backgroundColor: theme.colors.surfaceRaised }}>
+              <VadText variant="title">Log out of VAD Market?</VadText>
+              <VadText variant="body" tone="secondary">You will need to sign in again to access your account.</VadText>
+              {signOutError ? <VadText variant="caption" tone="no">{signOutError}</VadText> : null}
+              <View style={{ flexDirection: density.phone ? 'column' : 'row', gap: 8, justifyContent: 'flex-end' }}>
+                <View style={{ flex: 1 }}>
+                  <VadButton label="Cancel" variant="secondary" onPress={() => { setConfirmSignOut(false); setSignOutError(null); }} disabled={signingOut} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <VadButton label={signingOut ? 'Logging out…' : 'Log out'} onPress={() => void confirmAndSignOut()} loading={signingOut} disabled={signingOut} />
+                </View>
+              </View>
+            </VadCard>
+          </View>
+        </Modal>
       </View>
     </ProductRoute>
   );
