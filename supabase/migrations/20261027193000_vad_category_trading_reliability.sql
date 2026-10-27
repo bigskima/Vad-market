@@ -81,7 +81,7 @@ alter table public.vad_support_messages enable row level security;
 drop policy if exists vad_support_tickets_select_own on public.vad_support_tickets;
 create policy vad_support_tickets_select_own
   on public.vad_support_tickets for select to authenticated
-  using (user_id = (select auth.uid()) or public.admin_can_manage_markets((select auth.uid())));
+  using (user_id = (select auth.uid()) or private.has_permission('support.read'));
 
 drop policy if exists vad_support_messages_select_ticket_access on public.vad_support_messages;
 create policy vad_support_messages_select_ticket_access
@@ -164,7 +164,7 @@ declare
   v_is_admin boolean;
 begin
   if v_user_id is null then raise exception 'Authentication required' using errcode = '28000'; end if;
-  v_is_admin := public.admin_can_manage_markets(v_user_id);
+  v_is_admin := private.has_permission('support.read');
   if not exists (
     select 1 from public.vad_support_tickets t
     where t.id = p_ticket_id and (t.user_id = v_user_id or v_is_admin)
@@ -224,7 +224,7 @@ as $function$
 declare
   v_status text := nullif(upper(trim(coalesce(p_status, ''))), '');
 begin
-  if auth.uid() is null or not public.admin_can_manage_markets(auth.uid()) then
+  if auth.uid() is null or not private.has_permission('support.read') then
     raise exception 'Support administration permission required.' using errcode = '42501';
   end if;
   if v_status is not null and v_status not in ('OPEN','IN_PROGRESS','WAITING_USER','RESOLVED','CLOSED') then
