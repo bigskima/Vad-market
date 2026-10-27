@@ -42,8 +42,8 @@ function reasonCodeFrom(payload: VerificationErrorPayload) {
     : 'LOCATION_VERIFICATION_UNAVAILABLE';
 }
 
-const MAX_LOCATION_ACCURACY_METERS = 10_000;
-const MAX_LAST_KNOWN_AGE_MS = 24 * 60 * 60 * 1000;
+const MAX_LOCATION_ACCURACY_METERS = 25_000;
+const MAX_LAST_KNOWN_AGE_MS = 72 * 60 * 60 * 1000;
 
 async function cachedVerifiedNigeriaLocation(): Promise<LocationVerificationResult | null> {
   try {
