@@ -43,14 +43,16 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
 
   useEffect(() => {
     // A TOTP-enabled session may be restored asynchronously after this screen
-    // mounts. Keep the user on the authenticator step rather than credentials.
-    if (mfaLoginRequired) {
+    // mounts. Defer the UI transition until after the effect has committed.
+    if (!mfaLoginRequired) return;
+    const timer = setTimeout(() => {
       setMode('signIn');
       setView('mfa');
       setMfaCode('');
       setMessage('Enter the current six-digit code from your Google Authenticator app to finish signing in.');
       setMessageKind('info');
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [mfaLoginRequired]);
 
   const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
