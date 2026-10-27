@@ -828,6 +828,173 @@ $function$;
 revoke all on function public.market_trade_rules(uuid) from public, anon;
 grant execute on function public.market_trade_rules(uuid) to authenticated;
 
+-- Enforce order-book max notional and total exposure at the reservation
+-- boundary as well as in trade_quote. Direct place_order calls must not be able
+-- to bypass the quote/review step to submit an oversized order.
+create or replace function command.reserve_for_order(
+  p_user_id uuid,
+  p_market_id bigint,
+  p_outcome_id bigint,
+  p_side text,
+  p_price numeric,
+  p_quantity numeric,
+  p_idempotency_key text
+) returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  instrument market.instruments;
+  outcome market.outcomes;
+  risk_policy market.instrument_trading_risk_policies;
+  required_amount numeric(38,18);
+  fee_reserve numeric(38,18):=0;
+  fee_pv bigint;
+  total_reserve numeric(38,18);
+  available_account bigint;
+  reserved_account bigint;
+  current_available numeric(38,18);
+  available_shares numeric(38,18);
+  current_exposure numeric(38,18):=0;
+  projected_exposure numeric(38,18):=0;
+  order_public_id uuid;
+  order_id bigint;
+  seq bigint;
+begin
+  if p_side not in ('BUY','SELL') then
+    raise exception 'Unsupported order side' using errcode='22023';
+  end if;
+  if p_price is null or p_price<=0 or p_quantity is null or p_quantity<=0 then
+    raise exception 'Positive price and quantity required' using errcode='22023';
+  end if;
+
+  select * into instrument
+  from market.instruments
+  where id=p_market_id
+  for share;
+  if instrument.id is null then raise exception 'Market not found' using errcode='P0002'; end if;
+  if instrument.status<>'OPEN' or instrument.opened_at is null
+    or instrument.opened_at>statement_timestamp()
+    or (instrument.closed_at is not null and instrument.closed_at<=statement_timestamp()) then
+    raise exception 'Market is not open for trading' using errcode='P0001';
+  end if;
+  if p_price>=instrument.settlement_unit then
+    raise exception 'Price must be below settlement unit' using errcode='22023';
+  end if;
+
+  select * into outcome
+  from market.outcomes
+  where id=p_outcome_id and instrument_id=p_market_id;
+  if outcome.id is null then raise exception 'Outcome not found for market' using errcode='P0002'; end if;
+
+  required_amount:=round(p_price*p_quantity,18);
+  if required_amount<instrument.min_order_notional then
+    raise exception 'Order is below market minimum notional' using errcode='22023';
+  end if;
+
+  select * into risk_policy
+  from market.instrument_trading_risk_policies
+  where instrument_id=instrument.id;
+  if risk_policy.instrument_id is null
+    or risk_policy.order_max_order_notional is null
+    or risk_policy.order_max_order_notional<=0
+    or risk_policy.order_max_user_market_exposure is null
+    or risk_policy.order_max_user_market_exposure<=0 then
+    raise exception 'Market risk policy is missing or invalid.' using errcode='23514';
+  end if;
+  if required_amount>risk_policy.order_max_order_notional then
+    raise exception 'Order exceeds this market''s maximum order value.' using errcode='22023';
+  end if;
+
+  select
+    coalesce((
+      select sum(greatest(p.total_cost_basis,0))
+      from trading.positions p
+      where p.user_id=p_user_id and p.instrument_id=instrument.id
+    ),0)
+    +
+    coalesce((
+      select sum(greatest(o.quantity-o.filled_quantity,0)*o.limit_price)
+      from trading.orders o
+      where o.user_id=p_user_id
+        and o.instrument_id=instrument.id
+        and upper(o.side)='BUY'
+        and o.status in ('OPEN','PARTIALLY_FILLED','PENDING','RESERVED')
+    ),0)
+  into current_exposure;
+  projected_exposure:=current_exposure+case when p_side='BUY' then required_amount else 0 end;
+  if p_side='BUY' and projected_exposure>risk_policy.order_max_user_market_exposure then
+    raise exception 'Order would exceed your maximum exposure for this market.' using errcode='22023';
+  end if;
+
+  select o.id,o.public_id into order_id,order_public_id
+  from trading.orders o
+  where o.idempotency_key=p_idempotency_key and o.user_id=p_user_id;
+  if order_public_id is not null then
+    perform command.match_best_order(order_id);
+    return order_public_id;
+  end if;
+
+  seq:=nextval('trading.order_sequence');
+  if p_side='BUY' then
+    select q.fee_amount,q.policy_version_id into fee_reserve,fee_pv
+    from command.max_trading_fee_reserve(required_amount) q;
+    total_reserve:=required_amount+coalesce(fee_reserve,0);
+    available_account:=finance.ensure_user_account(p_user_id,instrument.asset_id,'USER_AVAILABLE');
+    reserved_account:=finance.ensure_user_account(p_user_id,instrument.asset_id,'USER_RESERVED');
+    perform pg_advisory_xact_lock(hashtextextended('vad-wallet:'||p_user_id::text||':'||instrument.asset_id::text,0));
+    current_available:=finance.account_balance(available_account);
+    if current_available<total_reserve then
+      raise exception 'Insufficient available balance including trading fee reserve' using errcode='P0001';
+    end if;
+    perform finance.transfer(
+      instrument.asset_id,available_account,reserved_account,total_reserve,
+      'ORDER_RESERVE','reserve:'||p_idempotency_key,'ORDER',p_idempotency_key,
+      'Reserve notional and worst-case trading fee for VAD limit order',p_user_id
+    );
+    insert into trading.orders(
+      user_id,instrument_id,outcome_id,side,order_type,limit_price,quantity,
+      filled_quantity,reserved_account_id,sequence_number,status,idempotency_key
+    ) values(
+      p_user_id,p_market_id,p_outcome_id,'BUY','LIMIT',p_price,p_quantity,
+      0,reserved_account,seq,'OPEN',p_idempotency_key
+    ) returning id,public_id into order_id,order_public_id;
+    insert into trading.order_reservations(
+      order_id,asset_id,reserved_account_id,initial_reserved,initial_fee_reserved,fee_policy_version_id
+    ) values(order_id,instrument.asset_id,reserved_account,required_amount,coalesce(fee_reserve,0),fee_pv);
+  else
+    perform pg_advisory_xact_lock(hashtextextended('vad-position:'||p_user_id::text||':'||p_market_id::text||':'||p_outcome_id::text,0));
+    available_shares:=command.position_available_to_sell(p_user_id,p_market_id,p_outcome_id);
+    if available_shares<p_quantity then raise exception 'Insufficient available shares' using errcode='P0001'; end if;
+    insert into trading.orders(
+      user_id,instrument_id,outcome_id,side,order_type,limit_price,quantity,
+      filled_quantity,reserved_account_id,sequence_number,status,idempotency_key
+    ) values(
+      p_user_id,p_market_id,p_outcome_id,'SELL','LIMIT',p_price,p_quantity,
+      0,null,seq,'OPEN',p_idempotency_key
+    ) returning id,public_id into order_id,order_public_id;
+    insert into trading.share_reservations(order_id,user_id,instrument_id,outcome_id,initial_quantity)
+    values(order_id,p_user_id,p_market_id,p_outcome_id,p_quantity);
+  end if;
+
+  insert into eventing.domain_events(event_type,aggregate_type,aggregate_id,payload,idempotency_key)
+  values(
+    'ORDER_PLACED','ORDER',order_public_id::text,
+    jsonb_build_object(
+      'order_id',order_public_id,'instrument_id',p_market_id,'outcome_id',p_outcome_id,
+      'user_id',p_user_id,'side',p_side,'price',p_price,'quantity',p_quantity,
+      'fee_reserve',fee_reserve,'market_max_order_notional',risk_policy.order_max_order_notional
+    ),
+    'order-placed:'||order_public_id::text
+  )
+  on conflict(idempotency_key) do nothing;
+
+  perform command.match_best_order(order_id);
+  return order_public_id;
+end;
+$function$;
+
 -- Remove the retired user-facing TNGN RPC surface. Historical instrument, ledger,
 -- and journal rows are deliberately preserved, along with triggers that prevent
 -- mutations of retired TNGN records and the legacy settlement safety hook.
