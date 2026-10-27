@@ -100,7 +100,7 @@ export default function AdminSupportScreen() {
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
           {filters.map((value) => <VadChip key={value} label={value.replaceAll('_', ' ')} selected={filter === value} tone={filter === value ? 'brand' : 'neutral'} onPress={() => setFilter(value)} />)}
-          <VadButton label="Refresh" size="small" variant="secondary" loading={loading} disabled={loading} onPress={() => { setLoading(true); void reload().catch((value: unknown) => setError(value instanceof Error ? value.message : 'Refresh failed.')).finally(() => setLoading(false)); }} />
+          <VadButton label="Refresh" size="small" variant="secondary" loading={loading} disabled={loading} onPress={() => { setLoadedFilter(null); void reload().catch((value: unknown) => setError(value instanceof Error ? value.message : 'Refresh failed.')).finally(() => setLoadedFilter(filter)); }} />
         </View>
         {notice ? <VadCard variant="muted"><VadText tone="yes">{notice}</VadText></VadCard> : null}
         {error ? <VadErrorState title="Support inbox error" message={error} onRetry={() => { setError(null); void reload().catch((value: unknown) => setError(value instanceof Error ? value.message : 'Refresh failed.')); }} /> : null}
