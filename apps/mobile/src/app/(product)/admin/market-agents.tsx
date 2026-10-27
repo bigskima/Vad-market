@@ -53,9 +53,20 @@ export default function AdminMarketAgentsScreen() {
   }, []);
 
   function toggleScope(value: MarketAgentScope) {
-    setScopes((current) => current.includes(value)
-      ? current.filter((scope) => scope !== value)
-      : [...current, value]);
+    setScopes((current) => {
+      if (current.includes(value)) {
+        if (value === 'market:read' && current.some((scope) => scope === 'market:create' || scope === 'market:publish')) {
+          return current.filter((scope) => scope !== 'market:read' && scope !== 'market:create' && scope !== 'market:publish');
+        }
+        if (value === 'market:create') return current.filter((scope) => scope !== 'market:create' && scope !== 'market:publish');
+        return current.filter((scope) => scope !== value);
+      }
+      const next = [...current, value];
+      if ((value === 'market:create' || value === 'market:publish') && !next.includes('market:read')) {
+        next.unshift('market:read');
+      }
+      return next;
+    });
   }
 
   async function createKey() {
