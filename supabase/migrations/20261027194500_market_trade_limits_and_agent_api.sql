@@ -1018,6 +1018,54 @@ begin
 end;
 $function$;
 
+-- Fail closed for automatic evidence markets that do not have a source URL
+-- usable by the direct-evidence and domain-scoped corroboration worker. The
+-- sports enrichment trigger runs first and can attach its official competition
+-- URLs before this guard validates the finished scope.
+create or replace function private.require_vad_auto_resolution_source_url()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_scope jsonb := coalesce(new.resolution_scope,'{}'::jsonb);
+  v_resolver text := upper(coalesce(v_scope->>'resolver_type',''));
+  v_url text := nullif(btrim(coalesce(v_scope->>'source_url',v_scope->>'sourceUrl','')),'');
+  v_has_url boolean := false;
+begin
+  if v_resolver not in ('VAD_REVIEW_V1','AI_EVIDENCE_RULE_V1') then
+    return new;
+  end if;
+
+  if v_url ~* '^[h][t][t][p][s]://[^/[:space:]]+[.][^/[:space:]]+' then
+    return new;
+  end if;
+
+  if jsonb_typeof(v_scope->'sources')='array' then
+    select exists (
+      select 1
+      from jsonb_array_elements_text(v_scope->'sources') as source_value(value)
+      where source_value.value ~* '^[h][t][t][p][s]://[^/[:space:]]+[.][^/[:space:]]+'
+    ) into v_has_url;
+  end if;
+
+  if v_has_url then
+    return new;
+  end if;
+
+  raise exception 'Automatic evidence resolution requires an authoritative HTTPS URL with a public domain. Add the source URL before creating this market.'
+    using errcode='22023';
+end;
+$function$;
+
+drop trigger if exists zzzz_require_vad_auto_resolution_source_url on market.canonical_events;
+create trigger zzzz_require_vad_auto_resolution_source_url
+before insert or update of resolution_scope,category on market.canonical_events
+for each row execute function private.require_vad_auto_resolution_source_url();
+
+revoke all on function private.require_vad_auto_resolution_source_url() from public, anon, authenticated;
+
 -- Permanently retire the old TNGN demo settlement/variant path. Keep the
 -- disabled asset, closed/settled market instruments, finance history and guard
 -- triggers that reject new TNGN ledger entries/instrument writes.
