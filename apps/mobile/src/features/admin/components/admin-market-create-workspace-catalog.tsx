@@ -141,8 +141,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [liquidityModel, setLiquidityModel] = useState<LiquidityModel>('POOL');
   const [minTradeAmount, setMinTradeAmount] = useState('');
   const [maxTradeAmount, setMaxTradeAmount] = useState('');
-  const [tradeLimitsLoading, setTradeLimitsLoading] = useState(false);
-  const [tradeLimitsError, setTradeLimitsError] = useState<string | null>(null);
+  const [tradeLimitsResolvedKey, setTradeLimitsResolvedKey] = useState('');
+  const [tradeLimitsErrorState, setTradeLimitsErrorState] = useState<{ key: string; message: string } | null>(null);
   const [opensAt, setOpensAt] = useState('');
   const [closesAt, setClosesAt] = useState('');
   const [resolvesAfter, setResolvesAfter] = useState('');
@@ -279,9 +279,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     () => options?.jurisdictions.find((item) => item.countryCode === resolvedCountryCode) ?? null,
     [options, resolvedCountryCode],
   );
-  // TNGN is decommissioned at the asset, runtime and policy layers. Filter it
-  // out even if a cached jurisdiction response still includes the old code.
-  const availableAssets = (jurisdiction?.assets ?? []).filter((asset) => asset !== 'TNGN');
+  const availableAssets = (jurisdiction?.assets ?? []).filter((asset) => asset === 'NGN' || asset === 'USDC');
   const resolvedAssetCode = assetCode && availableAssets.includes(assetCode)
     ? assetCode
     : availableAssets.includes('NGN')
@@ -298,30 +296,35 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const tradeLimitsRequest = useRef(0);
   const invalidTradeLimitSelection = (resolvedAssetCode !== 'NGN' && resolvedAssetCode !== 'USDC')
     || (effectiveLiquidityModel !== 'POOL' && effectiveLiquidityModel !== 'ORDER_BOOK');
-  const displayedTradeLimitsError = tradeLimitsError ?? (invalidTradeLimitSelection ? 'Choose an enabled NGN or USDC market currency.' : null);
+  const tradeLimitsKey = resolvedAssetCode + ':' + effectiveLiquidityModel;
+  const tradeLimitsLoading = !invalidTradeLimitSelection && tradeLimitsResolvedKey !== tradeLimitsKey;
+  const currentTradeLimitsError = tradeLimitsErrorState?.key === tradeLimitsKey ? tradeLimitsErrorState.message : null;
+  const displayedTradeLimitsError = currentTradeLimitsError ?? (invalidTradeLimitSelection ? 'Choose an enabled NGN or USDC market currency.' : null);
   useEffect(() => {
     const requestId = ++tradeLimitsRequest.current;
     let active = true;
     if (invalidTradeLimitSelection) return () => { active = false; };
-    setTradeLimitsLoading(true);
-    setTradeLimitsError(null);
     void getAdminMarketTradeLimitDefaults(resolvedAssetCode, effectiveLiquidityModel)
       .then((defaults) => {
         if (!active || requestId !== tradeLimitsRequest.current) return;
         setMinTradeAmount(String(defaults.minTradeAmount));
         setMaxTradeAmount(String(defaults.maxTradeAmount));
+        setTradeLimitsErrorState(null);
       })
       .catch((value: unknown) => {
         if (!active || requestId !== tradeLimitsRequest.current) return;
-        setTradeLimitsError(value instanceof Error ? value.message : 'Trade-limit defaults could not be loaded.');
+        setTradeLimitsErrorState({
+          key: tradeLimitsKey,
+          message: value instanceof Error ? value.message : 'Trade-limit defaults could not be loaded.',
+        });
         setMinTradeAmount('');
         setMaxTradeAmount('');
       })
       .finally(() => {
-        if (active && requestId === tradeLimitsRequest.current) setTradeLimitsLoading(false);
+        if (active && requestId === tradeLimitsRequest.current) setTradeLimitsResolvedKey(tradeLimitsKey);
       });
     return () => { active = false; };
-  }, [resolvedAssetCode, effectiveLiquidityModel, invalidTradeLimitSelection]);
+  }, [resolvedAssetCode, effectiveLiquidityModel, invalidTradeLimitSelection, tradeLimitsKey]);
 
   const selectedFootballCompetition = useMemo(() => {
     const value = competition.trim().toLocaleLowerCase();
