@@ -400,7 +400,6 @@ export default function AccountScreen() {
         {adminAccessFor === userId && hasAdminAccess ? (
           <SettingsGroup title="Administration">
             <AccountRow icon="operations" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Admin operations" subtitle="Operations dashboard" onPress={() => router.push('/admin')} />
-            <AccountRow icon="activity" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Market limits" subtitle="Configure default min/max amounts for NGN and USDC" onPress={() => router.push('/admin/market-limits')} />
             <AccountRow icon="shieldCheck" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Market agent access" subtitle="Issue or revoke keys for authorized AI agents" onPress={() => router.push('/admin/market-agents')} />
             <AccountRow icon="lifeBuoy" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Support inbox" subtitle="Reply to users and manage support tickets" onPress={() => router.push('/admin/support')} last />
           </SettingsGroup>
