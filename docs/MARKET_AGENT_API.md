@@ -76,7 +76,7 @@ The standard request uses a configured binary market type. Required fields depen
   "minTradeAmount": 100,
   "maxTradeAmount": 100000,
   "opensAt": "2026-10-28T17:00:00+01:00",
-  "closesAt": "2026-10-28T20:25:00+01:00",
+  "closesAt": "2026-10-28T20:30:00+01:00",
   "resolvesAfter": "2026-10-28T20:45:00+01:00",
   "publishNow": false,
   "aiAssist": true
