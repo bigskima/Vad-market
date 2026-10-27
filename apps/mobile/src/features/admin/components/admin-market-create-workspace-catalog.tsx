@@ -591,8 +591,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
       setStep(2);
       return;
     }
-    if (!guided) return setStep(2);
-    if (!marketType) return setError('Choose the kind of event you are creating.');
+    if (!marketType) return setError('Choose a database-configured market type so VAD can attach its authoritative source and resolution rules.');
 
     if (cryptoThreshold) {
       if (cryptoDraftLoading) return setError('Wait for the AI draft to finish before continuing to trading setup.');
@@ -739,8 +738,6 @@ export function AdminMarketCreateWorkspaceCatalog() {
           sourceName,
           sourceUrl,
         });
-      } else if (!guided) {
-        result = await createAdminCustomMarket({ ...common, category: category.name });
       } else if (football) {
         result = await createAdminGuidedMarket({
           ...common,
@@ -845,6 +842,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
             <VadChip label="Guided setup" selected={creationStyle === 'GUIDED'} tone={creationStyle === 'GUIDED' ? 'brand' : 'neutral'} onPress={() => { setCreationStyle('GUIDED'); setTitleEdited(false); setError(null); }} />
             <VadChip label="Custom question" selected={creationStyle === 'CUSTOM'} tone={creationStyle === 'CUSTOM' ? 'brand' : 'neutral'} onPress={() => { setCreationStyle('CUSTOM'); setError(null); }} />
           </FieldGroup>
+          {creationStyle === 'CUSTOM' ? (
+            <VadCard variant="muted" style={{ gap: 4 }}>
+              <VadText variant="bodyStrong">Custom wording, shared VAD resolution</VadText>
+              <VadText variant="caption" tone="secondary">Choose the closest database-configured market type below. Your custom question and condition still use that type’s authoritative source and VAD’s automatic resolution workflow; custom wording does not switch the market to manual settlement.</VadText>
+            </VadCard>
+          ) : null}
 
           <FieldGroup label="Category">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
@@ -895,7 +898,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
             </VadCard>
           ) : null}
 
-          {marketFormat === 'BINARY' && guided && category ? (
+          {marketFormat === 'BINARY' && category ? (
             <View style={{ gap: theme.spacing.lg }}>
               <FieldGroup label="Subcategory · Market type">
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
@@ -1102,7 +1105,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
           {marketFormat === 'BINARY' ? (
             <>
-              <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write one clear YES/NO question.'} />
+              <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write your own clear YES/NO question. Keep the selected database market type and verified resolution source aligned with your wording.'} />
               <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
             </>
           ) : (
@@ -1196,7 +1199,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           <SectionTitle eyebrow="STEP 3 · REVIEW" title="Review and finish." text="Save it as a draft or publish immediately. VAD stores the technical result rules behind the scenes." />
           <ReviewRow label="Question" value={effectiveTitle.trim()} />
           <ReviewRow label="Category" value={category?.name ?? ''} />
-          {guided ? <ReviewRow label="Market type" value={marketType?.name ?? 'Guided event'} /> : null}
+          {marketFormat === 'BINARY' ? <ReviewRow label="Market type" value={marketType?.name ?? 'Not selected'} /> : null}
           {football ? <ReviewRow label="Match" value={`${homeTeam} vs ${awayTeam} · ${competition}`} /> : null}
           {football && matchStartsAt ? <ReviewRow label="Kickoff" value={new Date(matchStartsAt).toLocaleString()} /> : null}
           <ReviewRow label="Currency" value={resolvedAssetCode} />
