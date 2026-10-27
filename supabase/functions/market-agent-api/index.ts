@@ -151,6 +151,12 @@ async function handle(req: Request) {
   if (sourceUrl && (!sourceUrl.startsWith('https://') || (() => { try { new URL(sourceUrl); return false; } catch { return true; } })())) {
     return json({ error: 'INVALID_SOURCE_URL', message: 'sourceUrl must be a valid HTTPS URL.' }, 400);
   }
+  if (wantsAiDraft && handler === 'VERIFIED_EVENT' && !sourceUrl) {
+    return json({ error: 'SOURCE_URL_REQUIRED', message: 'Automatic resolution needs an authoritative HTTPS source URL so VAD can fetch direct evidence and restrict corroborating search to the correct domain.' }, 400);
+  }
+  if (format === 'MULTI_OUTCOME' && !sourceUrl) {
+    return json({ error: 'SOURCE_URL_REQUIRED', message: 'Multi-outcome markets need an authoritative HTTPS source URL for automatic evidence resolution.' }, 400);
+  }
 
   let opensAt: string;
   let closesAt: string;
@@ -214,6 +220,9 @@ async function handle(req: Request) {
       error: 'MULTI_OUTCOME_TYPE_UNSUPPORTED',
       message: 'This specialized market type cannot be republished as a generic multi-outcome market. Choose a generic evidence market type or use its supported binary flow.',
     }, 400);
+  }
+  if (format === 'BINARY' && handler === 'VERIFIED_EVENT' && !sourceUrl) {
+    return json({ error: 'SOURCE_URL_REQUIRED', message: 'Automatic resolution needs an authoritative HTTPS source URL; no market was created.' }, 400);
   }
   if (format === 'BINARY' && handler === 'VERIFIED_EVENT' && !configuredCondition.trim() && !wantsAiDraft) {
     return json({ error: 'RESOLUTION_REQUIRED', message: 'Provide resolution instructions or request an AI draft from the configured market type.' }, 400);
