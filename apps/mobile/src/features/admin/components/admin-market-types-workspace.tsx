@@ -13,9 +13,10 @@ import { useVadTheme } from '@/providers/theme-provider';
 import {
   getAdminGuidedMarketCatalog,
   saveAdminGuidedCategory,
-  saveAdminSimpleGuidedMarketType,
+  saveAdminGuidedMarketTypeDefinition,
   setAdminGuidedCategoryPresentation,
   type AdminGuidedCatalogCategory,
+  type AdminGuidedCatalogField,
 } from '@/services/admin-guided-market-catalog-api';
 
 type EditorMode = 'CATEGORY' | 'MARKET_TYPE';
@@ -48,7 +49,15 @@ export function AdminMarketTypesWorkspace() {
   const [selectedCategoryCode, setSelectedCategoryCode] = useState('');
   const [typeName, setTypeName] = useState('');
   const [typeDescription, setTypeDescription] = useState('');
-  const [sourceLabel, setSourceLabel] = useState('Authoritative result source');
+  const [sourceLabel, setSourceLabel] = useState('Official government, publisher or result-owner source');
+  const [sourceRequired, setSourceRequired] = useState(true);
+  const [typeQuestionTemplate, setTypeQuestionTemplate] = useState('Will {{subject}} {{outcome}} by {{deadline}}?');
+  const [typeConditionTemplate, setTypeConditionTemplate] = useState("Resolve YES only when the named authoritative source confirms that {{subject}} has {{outcome}} by {{deadline}}. Use the source's original publication timestamp. If the source is unavailable or evidence is ambiguous, do not resolve NO merely because no matching result was found.");
+  const [typeFields, setTypeFields] = useState<AdminGuidedCatalogField[]>([
+    { key: 'subject', label: 'Subject / institution', placeholder: 'Who or what the market concerns', required: true },
+    { key: 'outcome', label: 'Qualifying outcome', placeholder: 'Precisely define the event', required: true },
+    { key: 'deadline', label: 'Deadline and timezone', placeholder: 'YYYY-MM-DD HH:mm WAT', required: true },
+  ]);
 
   async function reload(preferredCode?: string) {
     const catalog = await getAdminGuidedMarketCatalog();
@@ -120,26 +129,67 @@ export function AdminMarketTypesWorkspace() {
     }
   }
 
+  function updateTypeField(index: number, key: keyof AdminGuidedCatalogField, value: string | boolean) {
+    setTypeFields((current) => current.map((field, position) => {
+      if (position !== index) return field;
+      if (key === 'required') return { ...field, required: value === true };
+      if (key === 'key') return { ...field, key: String(value).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 50) };
+      return { ...field, [key]: String(value) };
+    }));
+  }
+
   async function saveMarketType() {
     const name = typeName.trim();
+    const question = typeQuestionTemplate.trim();
+    const condition = typeConditionTemplate.trim();
+    const fields = typeFields.map((field) => ({
+      key: field.key.trim(),
+      label: field.label.trim(),
+      placeholder: field.placeholder?.trim() ?? '',
+      required: field.required === true,
+    }));
     if (!selectedCategory || !name) return setError('Choose a category and enter a market type name.');
+    if (!question) return setError('Add a question template so the type can generate a clear market question.');
+    if (condition.length < 20) return setError('Write an objective resolution condition of at least 20 characters.');
+    if (!sourceLabel.trim()) return setError('Name the authoritative source or source class.');
+    if (!fields.length) return setError('Add at least one parameter field.');
+    const keys = fields.map((field) => field.key);
+    if (fields.some((field) => !/^[a-z][a-z0-9_]{0,49}$/.test(field.key) || !field.label)) {
+      return setError('Each field needs a unique lowercase key (letters, numbers and underscores) and a label.');
+    }
+    if (new Set(keys).size !== keys.length) return setError('Parameter keys must be unique.');
+    const placeholders = [...(question + ' ' + condition).matchAll(/\\{\\{([A-Za-z0-9_]+)\\}\\}/g)].map((match) => match[1]);
+    const missing = placeholders.find((placeholder) => !keys.includes(placeholder));
+    if (missing) return setError('Add a parameter field for every template variable, including {{' + missing + '}}.');
     setWorking(true);
     setError(null);
     setSuccess(null);
     try {
-      await saveAdminSimpleGuidedMarketType({
+      await saveAdminGuidedMarketTypeDefinition({
         code: `${selectedCategory.code}_${codeFrom(name)}`,
         categoryCode: selectedCategory.code,
         name,
         description: typeDescription.trim(),
-        sourceLabel: sourceLabel.trim() || 'Authoritative result source',
+        questionTemplate: question,
+        conditionTemplate: condition,
+        sourceLabel: sourceLabel.trim(),
+        sourceRequired,
+        fields,
         displayOrder: selectedCategory.marketTypes.length * 10 + 10,
       });
-      await reload();
+      await reload(selectedCategory.code);
       setTypeName('');
       setTypeDescription('');
-      setSourceLabel('Authoritative result source');
-      setSuccess('Market type added. Admins can use it immediately without an app deployment.');
+      setSourceLabel('Official government, publisher or result-owner source');
+      setSourceRequired(true);
+      setTypeQuestionTemplate('Will {{subject}} {{outcome}} by {{deadline}}?');
+      setTypeConditionTemplate("Resolve YES only when the named authoritative source confirms that {{subject}} has {{outcome}} by {{deadline}}. Use the source's original publication timestamp. If the source is unavailable or evidence is ambiguous, do not resolve NO merely because no matching result was found.");
+      setTypeFields([
+        { key: 'subject', label: 'Subject / institution', placeholder: 'Who or what the market concerns', required: true },
+        { key: 'outcome', label: 'Qualifying outcome', placeholder: 'Precisely define the event', required: true },
+        { key: 'deadline', label: 'Deadline and timezone', placeholder: 'YYYY-MM-DD HH:mm WAT', required: true },
+      ]);
+      setSuccess('Market type saved with its question template, required parameters, authoritative source policy and resolution condition. Create Market and the agent API now use this database configuration.');
     } catch (value) {
       setError(value instanceof Error ? value.message : 'Market type could not be saved.');
     } finally {
@@ -213,14 +263,44 @@ export function AdminMarketTypesWorkspace() {
                 }}
               />
             </VadCard>
-            <VadInput label="Market type name" value={typeName} onChangeText={setTypeName} placeholder="e.g. Fashion award winner" />
+            <VadInput label="Market type name" value={typeName} onChangeText={setTypeName} placeholder="e.g. Official policy announcement" />
             <VadInput label="Short description · optional" value={typeDescription} onChangeText={setTypeDescription} multiline placeholder="Explain when an admin should choose this." />
-            <VadInput label="Result source label" value={sourceLabel} onChangeText={setSourceLabel} placeholder="e.g. Official award organizer" />
+
+            <VadText variant="bodyStrong">Question template</VadText>
+            <VadInput label="Question with {{field}} variables" value={typeQuestionTemplate} onChangeText={setTypeQuestionTemplate} multiline placeholder="Will {{subject}} {{outcome}} by {{deadline}}?" hint="Use variables whose keys match fields below. VAD fills these from the admin's entered details." />
+            <VadText variant="bodyStrong">Objective resolution condition</VadText>
+            <VadInput label="When should YES resolve?" value={typeConditionTemplate} onChangeText={setTypeConditionTemplate} multiline placeholder="Define the evidence, eligible publication time, deadline and what to do if evidence is inconclusive." hint="This condition is saved with the DB market type and the chosen resolver. AI may propose wording but cannot silently replace this rule." />
+
+            <VadText variant="bodyStrong">Authoritative source</VadText>
+            <VadInput label="Source name or source class" value={sourceLabel} onChangeText={setSourceLabel} placeholder="e.g. Official State House newsroom" />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 }}>
+              <VadText variant="caption" tone="secondary">Require source before creation</VadText>
+              <VadChip label="Required" selected={sourceRequired} tone={sourceRequired ? 'brand' : 'neutral'} onPress={() => setSourceRequired(true)} />
+              <VadChip label="Optional" selected={!sourceRequired} tone={!sourceRequired ? 'brand' : 'neutral'} onPress={() => setSourceRequired(false)} />
+            </View>
+
+            <View style={{ gap: theme.spacing.sm }}>
+              <VadText variant="bodyStrong">Market parameters</VadText>
+              <VadText variant="caption" tone="secondary">Create the fields admins fill in at market creation. The key is used inside templates; label and placeholder are what the admin sees.</VadText>
+              {typeFields.map((field, index) => (
+                <VadCard key={field.key || index} variant="muted" style={{ gap: theme.spacing.sm }}>
+                  <VadInput label="Field key" value={field.key} onChangeText={(value) => updateTypeField(index, 'key', value)} placeholder="institution" autoCapitalize="none" />
+                  <VadInput label="Field label" value={field.label} onChangeText={(value) => updateTypeField(index, 'label', value)} placeholder="Government institution" />
+                  <VadInput label="Placeholder / example" value={field.placeholder ?? ''} onChangeText={(value) => updateTypeField(index, 'placeholder', value)} placeholder="e.g. Nigeria State House" />
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 }}>
+                    <VadChip label={field.required ? 'Required' : 'Optional'} selected={field.required} tone={field.required ? 'brand' : 'neutral'} onPress={() => updateTypeField(index, 'required', !field.required)} />
+                    <VadButton label="Remove field" size="small" variant="secondary" onPress={() => setTypeFields((current) => current.filter((_, position) => position !== index))} />
+                  </View>
+                </VadCard>
+              ))}
+              <VadButton label="Add parameter field" size="small" variant="secondary" onPress={() => setTypeFields((current) => [...current, { key: `field_${current.length + 1}`, label: '', placeholder: '', required: true }])} />
+            </View>
+
             <VadCard variant="muted" style={{ gap: 4 }}>
-              <VadText variant="bodyStrong">Simple market type</VadText>
-              <VadText variant="caption" tone="secondary">Admins creating this type will write the YES condition in plain language and choose an authoritative source. Common built-in types can still have more structured fields.</VadText>
+              <VadText variant="bodyStrong">Resolver mode: Verified event</VadText>
+              <VadText variant="caption" tone="secondary">Custom types use VAD's existing verified-event resolution handler. Do not select a specialized handler unless its source and runtime are already supported. Every question still uses a configured source and condition; a custom label does not disable resolution safeguards.</VadText>
             </VadCard>
-            <VadButton label={working ? 'Saving…' : 'Add market type'} disabled={working} onPress={() => void saveMarketType()} />
+            <VadButton label={working ? 'Saving market type…' : 'Save configured market type'} disabled={working} onPress={() => void saveMarketType()} />
           </View>
         )}
 
