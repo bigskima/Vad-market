@@ -381,6 +381,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function chooseCategory(next: AdminGuidedCatalogCategory) {
     setCategoryCode(next.code);
     setMarketTypeCode(next.marketTypes[0]?.code ?? '');
+    setMinTradeAmount('');
+    setMaxTradeAmount('');
     clearMarketDetails();
     if (next.marketTypes[0]?.handler === 'FOOTBALL_MATCH') setResultChecking('AUTOMATIC');
     setError(null);
@@ -388,6 +390,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   function chooseMarketType(next: AdminGuidedCatalogMarketType) {
     setMarketTypeCode(next.code);
+    setMinTradeAmount('');
+    setMaxTradeAmount('');
     clearMarketDetails();
     if (next.handler === 'FOOTBALL_MATCH') setResultChecking('AUTOMATIC');
     setError(null);
@@ -998,6 +1002,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
               selected={marketFormat === 'BINARY'}
               tone={marketFormat === 'BINARY' ? 'brand' : 'neutral'}
               onPress={() => {
+                if (marketFormat !== 'BINARY') { setMinTradeAmount(''); setMaxTradeAmount(''); }
                 setMarketFormat('BINARY');
                 setTitleEdited(Boolean(title.trim()));
                 setError(null);
@@ -1011,6 +1016,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
                 if (marketFormat !== 'MULTI_OUTCOME') {
                   setTitle(effectiveTitle);
                   setTitleEdited(true);
+                  setMinTradeAmount('');
+                  setMaxTradeAmount('');
                 }
                 setMarketFormat('MULTI_OUTCOME');
                 setLiquidityModel('POOL');
