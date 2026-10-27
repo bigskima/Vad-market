@@ -442,6 +442,7 @@ declare
   v_scopes text[] := coalesce(p_scopes,array['market:read','market:create','market:publish']);
   v_raw_token text;
   v_id uuid;
+  v_expires_at timestamptz := coalesce(p_expires_at, statement_timestamp() + interval '90 days');
 begin
   if auth.uid() is null or not private.has_permission('markets.manage') then
     raise exception 'Market management permission required' using errcode='42501';
@@ -455,18 +456,18 @@ begin
   ) then
     raise exception 'Choose only supported market agent permissions.' using errcode='22023';
   end if;
-  if p_expires_at is not null and p_expires_at <= statement_timestamp() then
+  if v_expires_at <= statement_timestamp() then
     raise exception 'The agent key expiry must be in the future.' using errcode='22023';
   end if;
   v_raw_token:=encode(extensions.gen_random_bytes(32),'hex');
   insert into market.agent_api_keys(name,created_by,token_hash,scopes,expires_at)
-  values(v_name,auth.uid(),encode(extensions.digest(v_raw_token,'sha256'),'hex'),v_scopes,p_expires_at)
+  values(v_name,auth.uid(),encode(extensions.digest(v_raw_token,'sha256'),'hex'),v_scopes,v_expires_at)
   returning id into v_id;
   insert into audit.records(actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata)
   values(auth.uid(),'ADMIN','MARKET_AGENT_KEY_CREATED','MARKET_AGENT_KEY',v_id::text,
     'Created a scoped market-agent API credential',
     jsonb_build_object('name',v_name,'scopes',v_scopes,'expires_at',p_expires_at));
-  return jsonb_build_object('id',v_id,'name',v_name,'apiKey',v_raw_token,'scopes',v_scopes,'expiresAt',p_expires_at);
+  return jsonb_build_object('id',v_id,'name',v_name,'apiKey',v_raw_token,'scopes',v_scopes,'expiresAt',v_expires_at);
 end;
 $function$;
 
@@ -757,5 +758,14 @@ grant execute on function public.agent_create_multi_outcome_market_v1(text,text,
 grant execute on function public.agent_guided_market_catalog(text) to service_role;
 grant execute on function public.agent_create_market_v1(text,text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) to service_role;
 grant execute on function public.place_pool_stake_pre_market_limits(uuid,text,numeric,text) to service_role;
+
+-- Remove the retired user-facing TNGN RPC surface. Historical instrument, ledger,
+-- and journal rows are deliberately preserved, along with triggers that prevent
+-- mutations of retired TNGN records and the legacy settlement safety hook.
+drop function if exists public.admin_set_tngn_demo_mode(boolean);
+drop function if exists public.my_tngn_demo_ledger_activity(integer);
+drop function if exists public.my_tngn_market_orders();
+drop function if exists public.place_tngn_market_stake(uuid,text,numeric,text);
+drop function if exists public.tngn_pool_quote(uuid,text,numeric);
 
 commit;
