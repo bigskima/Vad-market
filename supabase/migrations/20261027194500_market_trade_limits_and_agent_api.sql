@@ -183,7 +183,9 @@ create or replace function public.admin_create_catalog_market_v3(
   p_liquidity_model text,
   p_min_trade_amount numeric,
   p_max_trade_amount numeric,
-  p_publish_now boolean default false
+  p_publish_now boolean default false,
+  p_feature_rank integer default 100,
+  p_publication_reason text default 'Published during catalog market creation with explicit trade limits'
 ) returns jsonb
 language plpgsql security definer set search_path = ''
 as $function$
@@ -220,7 +222,7 @@ begin
     if p_closes_at <= statement_timestamp() then
       raise exception 'A market cannot be published after its closing time.' using errcode='22023';
     end if;
-    perform public.admin_publish_market(v_id,100,'Published during guided creation with explicit trade limits');
+    perform public.admin_publish_market(v_id,coalesce(p_feature_rank,100),coalesce(nullif(btrim(coalesce(p_publication_reason,'')),''),'Published during creation with explicit trade limits'));
     v_result:=v_result||jsonb_build_object('publication_status','PUBLISHED');
   else
     v_result:=v_result||jsonb_build_object('publication_status','DRAFT');
@@ -242,7 +244,9 @@ create or replace function public.admin_create_guided_market_v5(
   p_liquidity_model text,
   p_min_trade_amount numeric,
   p_max_trade_amount numeric,
-  p_publish_now boolean default false
+  p_publish_now boolean default false,
+  p_feature_rank integer default 100,
+  p_publication_reason text default 'Published during guided market creation with explicit trade limits'
 ) returns jsonb
 language plpgsql security definer set search_path = ''
 as $function$
@@ -265,7 +269,7 @@ begin
     if p_opens_at > statement_timestamp() or p_closes_at <= statement_timestamp() then
       raise exception 'Publish now requires an open window that has started and has not closed.' using errcode='22023';
     end if;
-    perform public.admin_publish_market(v_id,100,'Published during guided creation with explicit trade limits');
+    perform public.admin_publish_market(v_id,coalesce(p_feature_rank,100),coalesce(nullif(btrim(coalesce(p_publication_reason,'')),''),'Published during creation with explicit trade limits'));
     v_result:=v_result||jsonb_build_object('publication_status','PUBLISHED');
   else
     v_result:=v_result||jsonb_build_object('publication_status','DRAFT');
@@ -289,7 +293,9 @@ create or replace function public.admin_create_multi_outcome_market_v2(
   p_asset_code text,
   p_min_trade_amount numeric,
   p_max_trade_amount numeric,
-  p_publish_now boolean default false
+  p_publish_now boolean default false,
+  p_feature_rank integer default 100,
+  p_publication_reason text default 'Published during multiple-outcome creation with explicit trade limits'
 ) returns jsonb
 language plpgsql security definer set search_path = ''
 as $function$
@@ -311,7 +317,7 @@ begin
     if p_opens_at > statement_timestamp() or p_closes_at <= statement_timestamp() then
       raise exception 'Publish now requires an open window that has started and has not closed.' using errcode='22023';
     end if;
-    perform public.admin_publish_market(v_id,100,'Published during multiple-outcome creation with explicit trade limits');
+    perform public.admin_publish_market(v_id,coalesce(p_feature_rank,100),coalesce(nullif(btrim(coalesce(p_publication_reason,'')),''),'Published during multiple-outcome creation with explicit trade limits'));
     v_result:=v_result||jsonb_build_object('publication_status','PUBLISHED');
   else
     v_result:=v_result||jsonb_build_object('publication_status','DRAFT');
@@ -606,15 +612,15 @@ begin
       'source_name',nullif(btrim(coalesce(p_details->>'source_name',p_source_name,'')),''),
       'source_url',nullif(btrim(coalesce(p_details->>'source_url',p_source_url,'')),'')
     );
-    v_result:=public.admin_create_guided_market_v5(
-      p_title,p_description,v_category_name,v_market_setup,p_opens_at,p_closes_at,p_resolves_after,
-      p_country_code,p_asset_code,p_liquidity_model,p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true)
+    p_title,p_description,v_category_name,v_market_setup,p_opens_at,p_closes_at,p_resolves_after,
+      p_country_code,p_asset_code,p_liquidity_model,p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true),
+      p_feature_rank,p_publication_reason
     );
   else
     v_result:=public.admin_create_catalog_market_v3(
       p_title,p_description,p_market_type_code,p_details,p_condition,p_source_name,p_source_url,
       p_opens_at,p_closes_at,p_resolves_after,p_country_code,p_asset_code,p_liquidity_model,
-      p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true)
+      p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true),p_feature_rank,p_publication_reason
     );
   end if;
   v_id:=nullif(v_result->>'instrument_id','')::uuid;
@@ -715,7 +721,7 @@ begin
   v_result:=public.admin_create_multi_outcome_market_v2(
     p_title,p_description,v_category_name,p_outcomes,p_resolution_instructions,p_source_name,p_source_url,
     p_opens_at,p_closes_at,p_resolves_after,p_country_code,p_asset_code,
-    p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true)
+    p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true),p_feature_rank,p_publication_reason
   );
   v_id:=nullif(v_result->>'instrument_id','')::uuid;
   insert into audit.records(actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata)
@@ -731,9 +737,9 @@ $function$;
 revoke all on function public.admin_get_market_trade_limit_defaults(text,text) from public, anon;
 revoke all on function public.admin_save_market_trade_limit_defaults(text,text,numeric,numeric) from public, anon;
 revoke all on function private.apply_market_trade_limits(uuid,numeric,numeric,text) from public, anon, authenticated;
-revoke all on function public.admin_create_catalog_market_v3(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean) from public, anon;
-revoke all on function public.admin_create_guided_market_v5(text,text,text,jsonb,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean) from public, anon;
-revoke all on function public.admin_create_multi_outcome_market_v2(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,numeric,numeric,boolean) from public, anon;
+revoke all on function public.admin_create_catalog_market_v3(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) from public, anon;
+revoke all on function public.admin_create_guided_market_v5(text,text,text,jsonb,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) from public, anon;
+revoke all on function public.admin_create_multi_outcome_market_v2(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,numeric,numeric,boolean,integer,text) from public, anon;
 revoke all on function public.admin_issue_market_agent_key(text,text[],timestamptz) from public, anon;
 revoke all on function public.admin_list_market_agent_keys() from public, anon;
 revoke all on function public.admin_revoke_market_agent_key(uuid) from public, anon;
@@ -745,9 +751,9 @@ revoke all on function public.agent_guided_market_catalog(text) from public, ano
 revoke all on function public.agent_create_market_v1(text,text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) from public, anon, authenticated;
 grant execute on function public.admin_get_market_trade_limit_defaults(text,text) to authenticated;
 grant execute on function public.admin_save_market_trade_limit_defaults(text,text,numeric,numeric) to authenticated;
-grant execute on function public.admin_create_catalog_market_v3(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean) to authenticated;
-grant execute on function public.admin_create_guided_market_v5(text,text,text,jsonb,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean) to authenticated;
-grant execute on function public.admin_create_multi_outcome_market_v2(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,numeric,numeric,boolean) to authenticated;
+grant execute on function public.admin_create_catalog_market_v3(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) to authenticated;
+grant execute on function public.admin_create_guided_market_v5(text,text,text,jsonb,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) to authenticated;
+grant execute on function public.admin_create_multi_outcome_market_v2(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,numeric,numeric,boolean,integer,text) to authenticated;
 grant execute on function public.admin_issue_market_agent_key(text,text[],timestamptz) to authenticated;
 grant execute on function public.admin_list_market_agent_keys() to authenticated;
 grant execute on function public.admin_revoke_market_agent_key(uuid) to authenticated;
