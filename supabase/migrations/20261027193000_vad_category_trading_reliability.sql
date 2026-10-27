@@ -123,7 +123,7 @@ create policy vad_support_messages_select_ticket_access
     exists (
       select 1 from public.vad_support_tickets t
       where t.id = ticket_id
-        and (t.user_id = (select auth.uid()) or public.admin_can_manage_markets((select auth.uid())))
+        and (t.user_id = (select auth.uid()) or private.has_permission('support.read'))
     )
   );
 
