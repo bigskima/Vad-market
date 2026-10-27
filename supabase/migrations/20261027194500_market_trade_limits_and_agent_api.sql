@@ -192,12 +192,25 @@ as $function$
 declare
   v_result jsonb;
   v_id uuid;
+  v_handler text;
   v_model text := upper(btrim(coalesce(p_liquidity_model,'')));
 begin
   if auth.uid() is null or not private.has_permission('markets.manage') then
     raise exception 'Market management permission required' using errcode='42501';
   end if;
   if v_model not in ('POOL','ORDER_BOOK') then raise exception 'Choose Peer Pool or Order Book.' using errcode='22023'; end if;
+
+  if upper(btrim(coalesce(p_market_type_code,'')))<>'CRYPTO_PRICE_THRESHOLD' then
+    select upper(t.handler_code) into v_handler
+    from market.guided_market_types t
+    where upper(t.code)=upper(btrim(coalesce(p_market_type_code,'')))
+      and t.status='ACTIVE';
+    if v_handler='VERIFIED_EVENT'
+      and (nullif(btrim(coalesce(p_source_url,'')),'') is null
+        or btrim(coalesce(p_source_url,'')) !~* '^https://[^[:space:]]+') then
+      raise exception 'Automatic market resolution requires an authoritative HTTPS source URL. The evidence worker uses that domain for direct fetching and scoped corroboration.' using errcode='22023';
+    end if;
+  end if;
 
   if upper(btrim(coalesce(p_market_type_code,'')))='CRYPTO_PRICE_THRESHOLD' then
     v_result:=public.admin_create_crypto_threshold_market(
@@ -305,6 +318,10 @@ declare
 begin
   if auth.uid() is null or not private.has_permission('markets.manage') then
     raise exception 'Market management permission required' using errcode='42501';
+  end if;
+  if nullif(btrim(coalesce(p_source_url,'')),'') is null
+    or btrim(coalesce(p_source_url,'')) !~* '^https://[^[:space:]]+' then
+    raise exception 'Automatic multi-outcome resolution requires an authoritative HTTPS source URL for direct evidence and scoped corroboration.' using errcode='22023';
   end if;
   v_result:=public.admin_create_multi_outcome_market_v1(
     p_title,p_description,p_category,p_outcomes,p_resolution_instructions,p_source_name,p_source_url,
