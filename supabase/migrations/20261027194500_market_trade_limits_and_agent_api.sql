@@ -759,6 +759,12 @@ grant execute on function public.agent_guided_market_catalog(text) to service_ro
 grant execute on function public.agent_create_market_v1(text,text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) to service_role;
 grant execute on function public.place_pool_stake_pre_market_limits(uuid,text,numeric,text) to service_role;
 
+-- Keep the public display quote cache short enough for the app's polling
+-- loop while sharing cache entries across users and identical asset queries.
+update market.market_data_sources
+set cache_seconds=15,updated_at=statement_timestamp()
+where code='COINGECKO' and status='ACTIVE';
+
 -- Remove the retired user-facing TNGN RPC surface. Historical instrument, ledger,
 -- and journal rows are deliberately preserved, along with triggers that prevent
 -- mutations of retired TNGN records and the legacy settlement safety hook.
