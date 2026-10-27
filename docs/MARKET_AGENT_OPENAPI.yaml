@@ -5,8 +5,8 @@ info:
   summary: Create, draft, and publish VAD prediction markets through the existing market lifecycle.
   description: |
     This API lets an authorized AI agent inspect the live database category catalogue,
-    get NGN/USDC Pool/Order Book trade-limit defaults, and create a draft or publish a
-    market. Every market is created through VAD's existing category, resolver, source,
+    inspect the category catalogue and create a draft or publish a market with
+    explicitly configured trade limits for that market. Every market is created through VAD's existing category, resolver, source,
     trade-limit, publication and audit paths. It does not create a separate market system.
 
     Configure the VAD agent key as a secret in the tool that imports this schema.
@@ -25,7 +25,6 @@ paths:
       description: |
         Supported actions:
         - catalog: fetch active database-backed categories/types, jurisdiction options and supported methods.
-        - trade_limits: get default minimum/maximum for one asset and market method.
         - create_market: create a draft by default.
         - create_and_publish: publish through the existing VAD publication RPC when schedule and policy gates pass.
         - draft_and_publish: use the configured custom-market AI helper to draft the wording/resolution rule, then create/publish through VAD's existing lifecycle. The caller must still provide a configured market type, a named source, a valid HTTPS source URL, explicit multi-outcome options if applicable, and accurate schedules.
@@ -44,12 +43,6 @@ paths:
                 summary: Read live market categories and valid type codes before drafting
                 value:
                   action: catalog
-              orderBookDefaults:
-                summary: Fetch NGN Order Book defaults
-                value:
-                  action: trade_limits
-                  assetCode: NGN
-                  liquidityModel: ORDER_BOOK
               draftNigeriaPolicyMarket:
                 summary: Create a draft with verified source and automatic-resolution rules
                 value:
@@ -79,7 +72,7 @@ paths:
                   aiAssist: true
       responses:
         '200':
-          description: Catalogue/defaults or a successfully created draft/published market.
+          description: Catalogue or a successfully created draft/published market.
           content:
             application/json:
               schema:
@@ -100,9 +93,6 @@ paths:
                     type: object
                     additionalProperties: true
                   options:
-                    type: object
-                    additionalProperties: true
-                  defaults:
                     type: object
                     additionalProperties: true
                 additionalProperties: true
@@ -128,21 +118,9 @@ components:
       properties:
         action:
           const: catalog
-    TradeLimitsRequest:
-      type: object
-      required: [action, assetCode, liquidityModel]
-      properties:
-        action:
-          const: trade_limits
-        assetCode:
-          type: string
-          enum: [NGN, USDC]
-        liquidityModel:
-          type: string
-          enum: [POOL, ORDER_BOOK]
     CreateMarketRequest:
       type: object
-      required: [action, categoryCode, countryCode, assetCode, opensAt, closesAt, resolvesAfter]
+      required: [action, categoryCode, countryCode, assetCode, minTradeAmount, maxTradeAmount, opensAt, closesAt, resolvesAfter]
       properties:
         action:
           type: string
@@ -213,11 +191,11 @@ components:
         minTradeAmount:
           type: number
           exclusiveMinimum: 0
-          description: Optional override; defaults to the admin-configured amount for this asset/method.
+          description: Required minimum trade amount for this specific market; not shared with other markets.
         maxTradeAmount:
           type: number
           exclusiveMinimum: 0
-          description: Optional override; must be greater than minTradeAmount/default minimum.
+          description: Required maximum trade amount for this specific market; must be greater than minTradeAmount.
         opensAt:
           type: string
           format: date-time
