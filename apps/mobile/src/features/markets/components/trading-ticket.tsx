@@ -723,7 +723,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   const validPriceAndQuantity = price.trim().length > 0 && Number.isFinite(priceValue) && priceValue > 0 && priceValue < 1 && Number.isFinite(quantityValue) && quantityValue > 0;
   const belowMarketMinimum = Boolean(tradeRules && validPriceAndQuantity && estimatedNotionalValue < minimumOrderValue);
   const aboveMarketMaximum = Boolean(tradeRules && validPriceAndQuantity && estimatedNotionalValue > maximumOrderValue);
-  const inputValid = validPriceAndQuantity && !belowMarketMinimum && !aboveMarketMaximum;
+  const inputValid = Boolean(tradeRules) && validPriceAndQuantity && !belowMarketMinimum && !aboveMarketMaximum;
   const estimatedNotional = useMemo(() => assetMoney(estimatedNotionalValue, market.asset_code), [market.asset_code, estimatedNotionalValue]);
 
   function resetDownstream() {
