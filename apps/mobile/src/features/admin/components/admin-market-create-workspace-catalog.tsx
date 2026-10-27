@@ -279,7 +279,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     () => options?.jurisdictions.find((item) => item.countryCode === resolvedCountryCode) ?? null,
     [options, resolvedCountryCode],
   );
-  const availableAssets = (jurisdiction?.assets ?? []).filter((asset) => asset === 'NGN' || asset === 'USDC');
+  const availableAssets = (jurisdiction?.assets ?? []).filter((asset): asset is 'NGN' | 'USDC' => asset === 'NGN' || asset === 'USDC');
   const resolvedAssetCode = assetCode && availableAssets.includes(assetCode)
     ? assetCode
     : availableAssets.includes('NGN')
