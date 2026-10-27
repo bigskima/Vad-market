@@ -218,6 +218,9 @@ async function handle(req: Request) {
   }
   if (!category || !selected) return json({ error: 'UNKNOWN_MARKET_TYPE', message: 'The selected market type is not configured under this category.' }, 400);
   if (selected.sourceRequired && !sourceName) return json({ error: 'SOURCE_REQUIRED', message: 'Add the authoritative source before preparing this market draft.' }, 400);
+  if (selected.handler === 'VERIFIED_EVENT' && !sourceUrl) {
+    return json({ error: 'SOURCE_URL_REQUIRED', message: 'Provide an official HTTPS source URL. Automatic resolution needs a configured source domain for direct evidence and scoped corroboration.' }, 400);
+  }
 
   const { data: context, error: contextError } = await admin.rpc('internal_custom_market_draft_context');
   if (contextError || !isRecord(context) || !isRecord(context.prompt)) {
