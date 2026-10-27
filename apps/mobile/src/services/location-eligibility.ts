@@ -57,14 +57,15 @@ async function cachedVerifiedNigeriaLocation(): Promise<LocationVerificationResu
       .maybeSingle();
     if (error || !data) return null;
     const unexpired = typeof data.expires_at === 'string' && Date.parse(data.expires_at) > Date.now();
-    const noRiskFlags = data.vpn_detected === false
-      && data.proxy_detected === false
-      && data.tor_detected === false
-      && data.hosting_detected === false;
+    // The server now treats only Tor as a hard location-risk blocker when
+    // account, device and network country all agree. Other reputation flags
+    // are often false positives on consumer mobile networks and must not break
+    // the 24-hour cache for an otherwise verified Nigerian session.
+    const noBlockingRisk = data.tor_detected === false;
     if (data.decision !== 'VERIFIED'
       || String(data.device_country_code).toUpperCase() !== 'NG'
       || String(data.ip_country_code).toUpperCase() !== 'NG'
-      || !noRiskFlags || !unexpired) return null;
+      || !noBlockingRisk || !unexpired) return null;
     return { allowed: true, reasonCode: 'VERIFIED', expiresAt: data.expires_at };
   } catch {
     return null;
@@ -150,7 +151,7 @@ export function locationVerificationMessage(reasonCode: string) {
     case 'OUTSIDE_NIGERIA':
       return 'NGN market testing requires your current device and network location to be in Nigeria.';
     case 'NETWORK_RISK':
-      return 'Disable VPN, proxy, Tor, or hosting-network routing, then retry the location check.';
+      return 'The connection was identified as Tor. Turn Tor off, then retry the Nigeria location check.';
     case 'NETWORK_RISK_UNRESOLVED':
       return 'The network-risk check returned incomplete data. Please retry shortly.';
     case 'CLIENT_IP_UNAVAILABLE':
