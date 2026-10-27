@@ -9,7 +9,6 @@ import { VadText } from '@/components/ui/vad-text';
 import type { AdminHref } from '@/features/admin/components/admin-navigation';
 import { useAdminResponsive } from '@/features/admin/components/use-admin-responsive';
 import { AdminMetricCard } from '@/features/admin/dashboard/admin-metric-card';
-import { TngnDemoAdminControl } from '@/features/admin/dashboard/tngn-demo-admin-control';
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAnyAdminPermission } from '@/services/admin-control-api';
@@ -148,8 +147,7 @@ export function AdminDashboardScreen() {
 
   return (
     <View style={{ gap: theme.spacing.xl }}>
-      {canManageSettings ? <TngnDemoAdminControl /> : null}
-      {canManageHomeContent ? (
+            {canManageHomeContent ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open promotional banners and campaign editor"
