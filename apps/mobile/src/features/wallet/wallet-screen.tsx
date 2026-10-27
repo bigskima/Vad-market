@@ -184,7 +184,7 @@ export function WalletScreen({
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <VadText variant="body" tone="secondary" style={{ color: '#C9D0FF', fontSize: 14 }}>Total Balance</VadText>
+              <VadText variant="body" tone="inverse" style={{ fontSize: 14 }}>Total Balance</VadText>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={balanceVisible ? 'Hide balance' : 'Show balance'}
@@ -230,7 +230,7 @@ export function WalletScreen({
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 78 }}>
             <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
-              <VadText variant="title" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 31 : 37, lineHeight: density.phone ? 37 : 44, letterSpacing: -1, color: '#FFFFFF' }}>
+              <VadText variant="title" tone="inverse" numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: density.phone ? 31 : 37, lineHeight: density.phone ? 37 : 44, letterSpacing: -1 }}>
                 {balanceVisible && primary ? assetMoney(total, primaryCode) : '••••••••'}
               </VadText>
               {secondaryWallet ? (
