@@ -8,6 +8,9 @@ export type AdminHref =
   | '/admin/governance'
   | '/admin/create-market'
   | '/admin/market-types'
+  | '/admin/market-limits'
+  | '/admin/market-agents'
+  | '/admin/support'
   | '/admin/market-publishing'
   | '/admin/market-discovery'
   | '/admin/launch-policy'
@@ -89,7 +92,7 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         label: 'Categories & Market Types',
         shortLabel: 'Types',
         href: '/admin/market-types',
-        description: 'Add categories and simple guided market types without changing app code',
+        description: 'Configure database-driven categories, required fields, question templates, and resolution conditions',
         permissions: ['markets.manage'],
       },
       {
@@ -97,6 +100,20 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         shortLabel: 'Publish',
         href: '/admin/market-publishing',
         description: 'Publish approved markets and manage the VAD Markets collection',
+        permissions: ['markets.manage'],
+      },
+      {
+        label: 'Default Trade Limits',
+        shortLabel: 'Limits',
+        href: '/admin/market-limits',
+        description: 'Set default minimum and maximum trade amounts for NGN and USDC, by Pool or Order Book',
+        permissions: ['markets.manage'],
+      },
+      {
+        label: 'AI Market Agent Access',
+        shortLabel: 'AI Agent',
+        href: '/admin/market-agents',
+        description: 'Issue, scope and revoke API credentials for authorized market-creation agents',
         permissions: ['markets.manage'],
       },
       {
@@ -183,6 +200,13 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         href: '/admin/users',
         description: 'Account review, restrictions and bans',
         permissions: ['users.manage', 'support.read', 'admin.roles.manage'],
+      },
+      {
+        label: 'Support Inbox',
+        shortLabel: 'Support',
+        href: '/admin/support',
+        description: 'Read user reports, reply to support tickets, and update their status',
+        permissions: ['support.read'],
       },
       {
         label: 'Content',
