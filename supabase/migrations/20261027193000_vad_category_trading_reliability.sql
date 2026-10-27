@@ -75,7 +75,114 @@ begin
   if auth.uid() is null or not private.has_permission('markets.manage') then
     raise exception 'Market management permission required' using errcode='42501';
   end if;
-  if v_code !~ '^[A-Z][A-Z0-9_]{1,79}
+  if v_code !~ '^[A-Z][A-Z0-9_]{1,79}$' then
+    raise exception 'Market type code must start with a letter and contain only uppercase letters, numbers and underscores.' using errcode='22023';
+  end if;
+  if v_name = '' then
+    raise exception 'Market type name is required.' using errcode='22023';
+  end if;
+  if char_length(v_name) > 160 or char_length(v_description) > 1000 then
+    raise exception 'Market type name or description is too long.' using errcode='22023';
+  end if;
+  if char_length(v_question) < 10 or char_length(v_question) > 500 then
+    raise exception 'Question template must contain 10 to 500 characters.' using errcode='22023';
+  end if;
+  if char_length(v_condition) < 20 or char_length(v_condition) > 1800 then
+    raise exception 'Resolution condition must contain 20 to 1800 characters.' using errcode='22023';
+  end if;
+  if v_source = '' or char_length(v_source) > 160 then
+    raise exception 'Name an authoritative source or source class (up to 160 characters).' using errcode='22023';
+  end if;
+  if not exists (
+    select 1 from market.guided_categories c
+    where c.code=v_category and c.status='ACTIVE'
+  ) then
+    raise exception 'Choose an active database market category.' using errcode='22023';
+  end if;
+  if jsonb_typeof(v_fields) <> 'array' then
+    raise exception 'Market type parameters must be a JSON array.' using errcode='22023';
+  end if;
+  if jsonb_array_length(v_fields) < 1 or jsonb_array_length(v_fields) > 40 then
+    raise exception 'Add between 1 and 40 market parameters.' using errcode='22023';
+  end if;
+  if exists (
+    select 1
+    from jsonb_array_elements(v_fields) as row(value)
+    where jsonb_typeof(row.value) <> 'object'
+      or coalesce(row.value->>'key','') !~ '^[a-z][a-z0-9_]{0,49}$'
+      or btrim(coalesce(row.value->>'label','')) = ''
+      or length(coalesce(row.value->>'label','')) > 120
+      or length(coalesce(row.value->>'placeholder','')) > 240
+  ) then
+    raise exception 'Every parameter needs a valid lowercase key, label and supported placeholder length.' using errcode='22023';
+  end if;
+  if exists (
+    select 1
+    from (
+      select row.value->>'key' as field_key
+      from jsonb_array_elements(v_fields) as row(value)
+      group by row.value->>'key'
+      having count(*) > 1
+    ) duplicates
+  ) then
+    raise exception 'Market parameter keys must be unique.' using errcode='22023';
+  end if;
+
+  select coalesce(array_agg(distinct capture[1]), array[]::text[])
+  into v_tokens
+  from regexp_matches(v_question || ' ' || v_condition, '\{\{([A-Za-z0-9_]+)\}\}', 'g') as capture;
+  if exists (
+    select 1
+    from unnest(v_tokens) as tokens(token)
+    where not exists (
+      select 1 from jsonb_array_elements(v_fields) as row(value)
+      where row.value->>'key'=tokens.token
+    )
+  ) then
+    raise exception 'Every template variable must have a matching market parameter.' using errcode='22023';
+  end if;
+
+  insert into market.guided_market_types (
+    code,category_code,name,description,handler_code,question_template,
+    condition_template,source_label,source_required,field_schema,
+    display_order,status,metadata
+  ) values (
+    v_code,v_category,v_name,v_description,'VERIFIED_EVENT',v_question,
+    v_condition,v_source,coalesce(p_source_required,true),v_fields,
+    greatest(coalesce(p_display_order,100),0),
+    case when coalesce(p_enabled,true) then 'ACTIVE' else 'DISABLED' end,
+    jsonb_build_object('admin_created',true,'definition_version',2)
+  )
+  on conflict(code) do update set
+    category_code=excluded.category_code,
+    name=excluded.name,
+    description=excluded.description,
+    handler_code=excluded.handler_code,
+    question_template=excluded.question_template,
+    condition_template=excluded.condition_template,
+    source_label=excluded.source_label,
+    source_required=excluded.source_required,
+    field_schema=excluded.field_schema,
+    display_order=excluded.display_order,
+    status=excluded.status,
+    metadata=coalesce(market.guided_market_types.metadata,'{}'::jsonb)
+      || jsonb_build_object('admin_created',true,'definition_version',2),
+    updated_at=statement_timestamp();
+
+  insert into audit.records(actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata)
+  values (
+    auth.uid(),'ADMIN','GUIDED_MARKET_TYPE_SAVED','GUIDED_MARKET_TYPE',v_code,
+    'Saved a database-driven market type definition',
+    jsonb_build_object('category_code',v_category,'source_required',coalesce(p_source_required,true),
+      'field_count',jsonb_array_length(v_fields),'enabled',coalesce(p_enabled,true))
+  );
+  return true;
+end;
+$function$;
+
+revoke all on function public.admin_save_guided_market_type_v2(text,text,text,text,text,text,text,boolean,jsonb,integer,boolean) from public, anon;
+grant execute on function public.admin_save_guided_market_type_v2(text,text,text,text,text,text,text,boolean,jsonb,integer,boolean) to authenticated;
+
 -- Supabase identity and existing market-admin authorization; no second auth system.
 create table if not exists public.vad_support_tickets (
   id uuid primary key default gen_random_uuid(),
