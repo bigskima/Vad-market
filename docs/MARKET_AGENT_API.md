@@ -16,7 +16,7 @@ New keys expire after 90 days by default. Every call checks that the key is acti
 
 ## Endpoint
 
-`POST https://<SUPABASE_PROJECT_URL>/functions/v1/market-agent-api`
+`POST https://kixxqfqntfzlprapqkem.supabase.co/functions/v1/market-agent-api`
 
 Headers:
 
@@ -26,6 +26,12 @@ x-vad-agent-key: <SECRET_AGENT_KEY>
 ```
 
 Do not use the Supabase service-role key as the agent credential. The agent key is separate and limited to the scopes above.
+
+## Connect ChatGPT or another AI tool
+
+The importable OpenAPI schema is in [`docs/MARKET_AGENT_OPENAPI.yaml`](./MARKET_AGENT_OPENAPI.yaml). Import that file into the GPT Action or agent-tool connector that will call VAD. Configure the custom header `x-vad-agent-key` as a **secret credential**—never paste the key into the OpenAPI file or ordinary instructions. The first-time setup still requires an administrator to issue and authorize the scoped key in VAD. This makes the endpoint callable by the connected tool; it does not automatically enable market publishing from every general ChatGPT conversation unless that conversation has the configured action/tool available.
+
+Use `action: "catalog"` before drafting. Have the agent select only a returned category/type, read the applicable trade limits, and send the official source URL, explicit resolution rule, geography and accurate schedule. For consequential publication, require a human confirmation in the AI tool or use `publishNow: false` to create a draft first.
 
 ## 1. Read the current catalogue
 
