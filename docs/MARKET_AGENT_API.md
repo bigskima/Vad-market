@@ -112,7 +112,7 @@ The AI helper can suggest a question and description. It cannot create a missing
 }
 ```
 
-The multi-outcome path requires explicit unique outcomes and resolution instructions. AI-assisted multi-outcome resolution drafting is intentionally not enabled by this endpoint yet; provide the source and instructions explicitly.
+The multi-outcome path requires explicit, unique outcomes from the caller; VAD does not let AI invent candidate names or options. Set `aiAssist: true` (or use `draft_and_publish`) to draft the question, description and resolution wording from the selected database market type, then review it before publication. The agent still has to supply the outcomes and authoritative source explicitly.
 
 ## Amounts and trading methods
 
