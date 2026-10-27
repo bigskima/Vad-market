@@ -96,6 +96,7 @@ async function handle(req: Request) {
   }
 
   const format = textValue(body.marketFormat, 30).toUpperCase() === 'MULTI_OUTCOME' ? 'MULTI_OUTCOME' : 'BINARY';
+  const wantsAiDraft = body.aiAssist === true || action === 'draft_and_publish';
   const categoryCode = textValue(body.categoryCode, 80).toUpperCase();
   const marketTypeCode = textValue(body.marketTypeCode, 100).toUpperCase();
   const assetCode = textValue(body.assetCode, 12).toUpperCase();
@@ -104,7 +105,9 @@ async function handle(req: Request) {
   if (!categoryCode) return json({ error: 'CATEGORY_REQUIRED', message: 'Provide categoryCode from the VAD database catalogue.' }, 400);
   if (!['NGN', 'USDC'].includes(assetCode)) return json({ error: 'CURRENCY_UNSUPPORTED', message: 'Only active NGN and USDC markets can be created.' }, 400);
   if (!['POOL', 'ORDER_BOOK'].includes(liquidityModel)) return json({ error: 'TRADING_METHOD_REQUIRED', message: 'Choose POOL or ORDER_BOOK.' }, 400);
-  if (format === 'BINARY' && !marketTypeCode) return json({ error: 'MARKET_TYPE_REQUIRED', message: 'Provide a configured database marketTypeCode.' }, 400);
+  if ((format === 'BINARY' || wantsAiDraft) && !marketTypeCode) {
+    return json({ error: 'MARKET_TYPE_REQUIRED', message: 'Provide a configured database marketTypeCode; AI drafting must use an existing market type and resolver.' }, 400);
+  }
 
   const { data: optionsPayload, error: optionsError } = await admin.rpc('agent_market_creation_options', { p_api_key: apiKey });
   if (optionsError || !isRecord(optionsPayload)) return json({ error: 'MARKET_OPTIONS_UNAVAILABLE', message: safeProviderError(optionsError ?? new Error('Market options are unavailable.')) }, 503);
@@ -123,10 +126,12 @@ async function handle(req: Request) {
 
   const rawDetails = sanitizedDetails(body.details);
   const marketTypes = Array.isArray(category.marketTypes) ? category.marketTypes.filter(isRecord) : [];
-  const marketType = format === 'BINARY'
-    ? marketTypes.find((item) => textValue(item.code, 100).toUpperCase() === marketTypeCode)
+  const marketType = marketTypeCode
+    ? marketTypes.find((item) => textValue(item.code, 100).toUpperCase() === marketTypeCode) ?? null
     : null;
-  if (format === 'BINARY' && !marketType) return json({ error: 'UNKNOWN_MARKET_TYPE', message: 'The requested market type is not configured under this category.' }, 400);
+  if ((format === 'BINARY' || wantsAiDraft) && !marketType) {
+    return json({ error: 'UNKNOWN_MARKET_TYPE', message: 'AI market drafting requires an active market type configured under the selected category.' }, 400);
+  }
   const handler = textValue(marketType?.handler, 80).toUpperCase();
   const fields = Array.isArray(marketType?.fields) ? marketType.fields.filter(isRecord) : [];
   const missing = fields.find((field) => field.required === true && !textValue(rawDetails[textValue(field.key, 80)], 1000));
@@ -140,7 +145,7 @@ async function handle(req: Request) {
 
   const sourceName = textValue(body.sourceName ?? rawDetails.source_name, 180);
   const sourceUrl = textValue(body.sourceUrl ?? rawDetails.source_url, 1200);
-  if (format === 'BINARY' && marketType?.sourceRequired === true && !sourceName) {
+  if ((format === 'BINARY' || wantsAiDraft) && marketType?.sourceRequired === true && !sourceName) {
     return json({ error: 'SOURCE_REQUIRED', message: 'This market type requires a named authoritative result source.' }, 400);
   }
   if (sourceUrl && (!sourceUrl.startsWith('https://') || (() => { try { new URL(sourceUrl); return false; } catch { return true; } })())) {
@@ -190,7 +195,7 @@ async function handle(req: Request) {
   const description = textValue(body.description, 1000);
   const configuredCondition = textValue(body.condition, 1800)
     || fillTemplate(textValue(marketType?.conditionTemplate, 1800), values);
-  if (format === 'BINARY' && /\{\{[A-Za-z0-9_]+\}\}/.test(configuredCondition)) {
+  if (!wantsAiDraft && format === 'BINARY' && /\{\{[A-Za-z0-9_]+\}\}/.test(configuredCondition)) {
     return json({ error: 'RESOLUTION_FIELDS_MISSING', message: 'The configured resolution condition still has empty fields. Supply the required database-backed market details.' }, 400);
   }
   const geographicCondition = (configuredCondition ? configuredCondition + '\n\n' : '')
@@ -198,7 +203,6 @@ async function handle(req: Request) {
   const publishReason = textValue(body.publicationReason, 500) || 'Published through the authorized VAD Market Agent API';
   let aiDraft: Rec | null = null;
   if (format === 'MULTI_OUTCOME' && !sourceName) return json({ error: 'SOURCE_REQUIRED', message: 'Multi-outcome markets require a named authoritative source.' }, 400);
-  const wantsAiDraft = body.aiAssist === true || action === 'draft_and_publish';
   if (wantsAiDraft && format === 'BINARY' && handler !== 'VERIFIED_EVENT') {
     return json({
       error: 'AI_DRAFT_REQUIRES_GENERIC_RESOLVER',
@@ -242,10 +246,10 @@ async function handle(req: Request) {
 
   const finalTitle = aiDraft ? textValue(aiDraft.title, 180) : title;
   const finalDescription = aiDraft ? textValue(aiDraft.description, 1000) || description : description;
-  const finalCondition = aiDraft && format === 'BINARY' && handler === 'VERIFIED_EVENT'
+  const finalCondition = aiDraft
     ? textValue(aiDraft.resolutionRules, 1800)
-    : configuredCondition;
-  if (format === 'BINARY' && handler === 'VERIFIED_EVENT') {
+    : configuredCondition || textValue(body.resolutionInstructions, 1800);
+  if (format === 'MULTI_OUTCOME' || (format === 'BINARY' && handler === 'VERIFIED_EVENT')) {
     if (finalCondition.trim().length < 20) {
       return json({ error: 'RESOLUTION_REQUIRED', message: 'Resolution instructions must contain at least 20 characters; no market was created.' }, 400);
     }
@@ -260,7 +264,7 @@ async function handle(req: Request) {
     if (outcomes.length < 2 || outcomes.length > 20 || new Set(outcomes.map((value) => value.toLowerCase())).size !== outcomes.length) {
       return json({ error: 'OUTCOMES_INVALID', message: 'A multi-outcome market requires between 2 and 20 unique named outcomes.' }, 400);
     }
-    const resolutionInstructions = aiDraft ? textValue(aiDraft.resolutionRules, 1800) : (configuredCondition || textValue(body.resolutionInstructions, 1800));
+    const resolutionInstructions = finalCondition;
     if (resolutionInstructions.length < 10) return json({ error: 'RESOLUTION_REQUIRED', message: 'Provide resolution instructions for the multi-outcome market.' }, 400);
     const response = await admin.rpc('agent_create_multi_outcome_market_v1', {
       p_api_key: apiKey,
