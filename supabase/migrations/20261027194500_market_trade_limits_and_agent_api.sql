@@ -771,6 +771,63 @@ update market.market_data_sources
 set cache_seconds=15,updated_at=statement_timestamp()
 where code='COINGECKO' and status='ACTIVE';
 
+-- Give the trading ticket the same authoritative per-market rules that
+-- trade_quote/place_order enforce, so users can fix too-small/too-large orders
+-- before opening a quote.
+create or replace function public.market_trade_rules(p_instrument_public_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_instrument market.instruments;
+  v_risk market.instrument_trading_risk_policies;
+  v_asset_code text;
+  v_max_trade_amount numeric(38,18);
+begin
+  if auth.uid() is null then raise exception 'Authentication required' using errcode='28000'; end if;
+
+  select i.* into v_instrument
+  from market.instruments i
+  join public.market_catalog mc on mc.instrument_public_id=i.public_id
+  where i.public_id=p_instrument_public_id and i.status='OPEN';
+  if v_instrument.id is null then raise exception 'Market is not available for trading.' using errcode='P0002'; end if;
+
+  select a.code into v_asset_code
+  from public.assets a
+  where a.id=v_instrument.asset_id and a.status='ACTIVE' and a.code in ('NGN','USDC');
+  if v_asset_code is null then raise exception 'This market currency is not enabled for trading.' using errcode='22023'; end if;
+
+  select * into v_risk from market.instrument_trading_risk_policies where instrument_id=v_instrument.id;
+  if v_risk.instrument_id is null then raise exception 'Market risk limits are not configured.' using errcode='23514'; end if;
+
+  v_max_trade_amount := case
+    when v_instrument.liquidity_model='ORDER_BOOK' then v_risk.order_max_order_notional
+    when v_instrument.liquidity_model='POOL' then v_risk.pool_max_entry_stake
+    else null
+  end;
+  if v_instrument.min_order_notional is null or v_instrument.min_order_notional<=0
+    or v_max_trade_amount is null or v_max_trade_amount<=v_instrument.min_order_notional then
+    raise exception 'Market trade limits are not configured correctly.' using errcode='23514';
+  end if;
+
+  return jsonb_build_object(
+    'instrumentPublicId',v_instrument.public_id,
+    'assetCode',v_asset_code,
+    'liquidityModel',v_instrument.liquidity_model,
+    'minTradeAmount',v_instrument.min_order_notional,
+    'maxTradeAmount',v_max_trade_amount,
+    'maxUserMarketExposure',case when v_instrument.liquidity_model='ORDER_BOOK' then v_risk.order_max_user_market_exposure else v_risk.pool_max_user_market_stake end,
+    'policyVersion',v_risk.policy_version
+  );
+end;
+$function$;
+
+revoke all on function public.market_trade_rules(uuid) from public, anon;
+grant execute on function public.market_trade_rules(uuid) to authenticated;
+
 -- Remove the retired user-facing TNGN RPC surface. Historical instrument, ledger,
 -- and journal rows are deliberately preserved, along with triggers that prevent
 -- mutations of retired TNGN records and the legacy settlement safety hook.
