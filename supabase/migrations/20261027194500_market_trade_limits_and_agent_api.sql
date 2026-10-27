@@ -893,9 +893,14 @@ begin
     raise exception 'Order is below market minimum notional' using errcode='22023';
   end if;
 
+  if p_side='BUY' then
+    perform pg_advisory_xact_lock(hashtextextended('vad-market-exposure:'||p_user_id::text||':'||p_market_id::text,0));
+  end if;
+
   select * into risk_policy
   from market.instrument_trading_risk_policies
-  where instrument_id=instrument.id;
+  where instrument_id=instrument.id
+  for share;
   if risk_policy.instrument_id is null
     or risk_policy.order_max_order_notional is null
     or risk_policy.order_max_order_notional<=0
