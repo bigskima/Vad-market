@@ -970,21 +970,17 @@ for each row execute function private.require_vad_auto_resolution_source_url();
 
 revoke all on function private.require_vad_auto_resolution_source_url() from public, anon, authenticated;
 
--- Permanently retire the old TNGN demo settlement/variant path. Keep the
--- disabled asset, closed/settled market instruments, finance history and guard
--- triggers that reject new TNGN ledger entries/instrument writes.
+-- Preserve historical TNGN settlement records and safety hooks. The retired
+-- sandbox asset remains disabled; existing instrument/order guards prevent new
+-- TNGN trades, while old closed markets retain their historical resolution path.
 update public.assets
 set status='DISABLED',
     metadata=coalesce(metadata,'{}'::jsonb)
       || jsonb_build_object('retired',true,'retirement_reason','TNGN sandbox removed; historical records retained')
 where upper(code)='TNGN';
 
-drop trigger if exists market_catalog_settle_tngn_orders on public.market_catalog;
-drop function if exists private.on_tngn_market_resolution_settle();
-drop function if exists private.settle_tngn_market_orders(uuid);
-drop function if exists private.ensure_tngn_market_variant(uuid);
-drop function if exists private.on_market_catalog_tngn_variant_sync();
-
+-- Keep the existing TNGN settlement safety hook for historical demo markets.
+-- The asset remains disabled and instrument/order guards prevent new TNGN trading.
 
 -- Retire the earlier global preset surface if it was partially installed in an
 -- environment. Active per-market risk policies and historical trades are kept.
