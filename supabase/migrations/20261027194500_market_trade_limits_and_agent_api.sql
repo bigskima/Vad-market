@@ -333,6 +333,18 @@ begin
   );
   v_id:=nullif(v_result->>'instrument_id','')::uuid;
   if v_id is null then raise exception 'The multiple-outcome market was created without a usable instrument ID.' using errcode='P0001'; end if;
+
+  -- The underlying legacy helper labels this scope as manual, but VAD's existing
+  -- AI evidence worker resolves VAD_REVIEW_V1 events automatically once closed,
+  -- provided both the configured source and corroborating evidence are usable.
+  update market.canonical_events e
+  set resolution_scope=coalesce(e.resolution_scope,'{}'::jsonb) || jsonb_build_object(
+        'verification','Automatic VAD evidence resolution reads the configured official source and corroborating evidence. Ambiguous or unavailable evidence remains unresolved; finalization follows the existing VAD oracle policy.'
+      ),
+      updated_at=statement_timestamp()
+  from market.instruments i
+  where i.public_id=v_id and e.id=i.canonical_event_id;
+
   perform private.apply_market_trade_limits(v_id,p_min_trade_amount,p_max_trade_amount,'POOL');
   if coalesce(p_publish_now,false) then
     if p_opens_at > statement_timestamp() or p_closes_at <= statement_timestamp() then
