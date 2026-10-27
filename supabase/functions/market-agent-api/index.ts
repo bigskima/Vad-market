@@ -252,7 +252,7 @@ async function handle(req: Request) {
     if (finalCondition.trim().length < 20) {
       return json({ error: 'RESOLUTION_REQUIRED', message: 'Resolution instructions must contain at least 20 characters; no market was created.' }, 400);
     }
-    if (/\\{\\{[A-Za-z0-9_]+\\}\\}/.test(finalCondition)) {
+    if (/\{\{[A-Za-z0-9_]+\}\}/.test(finalCondition)) {
       return json({ error: 'RESOLUTION_FIELDS_MISSING', message: 'Resolution instructions still contain unfilled template fields; no market was created.' }, 400);
     }
   }
@@ -294,7 +294,7 @@ async function handle(req: Request) {
       p_market_type_code: marketTypeCode,
       p_category_code: categoryCode,
       p_details: rawDetails,
-      p_condition: (finalCondition.trim() ? finalCondition.trim() + '\\n\\n' : '') + 'Outcome geography: ' + regionScope + '. Only events within this published geographic scope are eligible.',
+      p_condition: (finalCondition.trim() ? finalCondition.trim() + '\n\n' : '') + 'Outcome geography: ' + regionScope + '. Only events within this published geographic scope are eligible.',
       p_source_name: sourceName,
       p_source_url: sourceUrl || null,
       p_opens_at: opensAt,
