@@ -207,7 +207,9 @@ begin
       and t.status='ACTIVE';
     if v_handler='VERIFIED_EVENT'
       and (nullif(btrim(coalesce(p_source_url,'')),'') is null
-        or btrim(coalesce(p_source_url,'')) !~* '^https://[^[:space:]]+') then
+        or btrim(coalesce(p_source_url,'')) !~* '^[h][t][t][p][s]://[^/[:space:]]+[.][^/[:space:]]+'
+        or btrim(coalesce(p_source_url,'')) ~* '^[h][t][t][p][s]://[0-9]{1,3}([.][0-9]{1,3}){3}([:/]|$)'
+        or btrim(coalesce(p_source_url,'')) ~* '[.](local|localhost|test|internal)([:/]|$)') then
       raise exception 'Automatic market resolution requires an authoritative HTTPS source URL. The evidence worker uses that domain for direct fetching and scoped corroboration.' using errcode='22023';
     end if;
   end if;
@@ -320,7 +322,9 @@ begin
     raise exception 'Market management permission required' using errcode='42501';
   end if;
   if nullif(btrim(coalesce(p_source_url,'')),'') is null
-    or btrim(coalesce(p_source_url,'')) !~* '^https://[^[:space:]]+' then
+    or btrim(coalesce(p_source_url,'')) !~* '^[h][t][t][p][s]://[^/[:space:]]+[.][^/[:space:]]+'
+        or btrim(coalesce(p_source_url,'')) ~* '^[h][t][t][p][s]://[0-9]{1,3}([.][0-9]{1,3}){3}([:/]|$)'
+        or btrim(coalesce(p_source_url,'')) ~* '[.](local|localhost|test|internal)([:/]|$)' then
     raise exception 'Automatic multi-outcome resolution requires an authoritative HTTPS source URL for direct evidence and scoped corroboration.' using errcode='22023';
   end if;
   v_result:=public.admin_create_multi_outcome_market_v1(
@@ -1038,7 +1042,9 @@ begin
     return new;
   end if;
 
-  if v_url ~* '^[h][t][t][p][s]://[^/[:space:]]+[.][^/[:space:]]+' then
+  if v_url ~* '^[h][t][t][p][s]://[^/[:space:]]+[.][^/[:space:]]+'
+    and v_url !~* '^[h][t][t][p][s]://[0-9]{1,3}([.][0-9]{1,3}){3}([:/]|$)'
+    and v_url !~* '[.](local|localhost|test|internal)([:/]|$)' then
     return new;
   end if;
 
@@ -1047,6 +1053,8 @@ begin
       select 1
       from jsonb_array_elements_text(v_scope->'sources') as source_value(value)
       where source_value.value ~* '^[h][t][t][p][s]://[^/[:space:]]+[.][^/[:space:]]+'
+        and source_value.value !~* '^[h][t][t][p][s]://[0-9]{1,3}([.][0-9]{1,3}){3}([:/]|$)'
+        and source_value.value !~* '[.](local|localhost|test|internal)([:/]|$)'
     ) into v_has_url;
   end if;
 
