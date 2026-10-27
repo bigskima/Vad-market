@@ -1,4 +1,4 @@
-import { userFacingError } from '@/lib/user-facing-error';
+import { userFacingError, type UserErrorContext } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
 
 export type SupportCategory =
@@ -35,8 +35,8 @@ export type SupportMessage = {
   sender_display_name: string;
 };
 
-function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback: string): never | void {
-  if (error) throw userFacingError(error, 'account', fallback);
+function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback: string, context: UserErrorContext = 'profile'): never | void {
+  if (error) throw userFacingError(error, context, fallback);
 }
 
 export async function listMySupportTickets(): Promise<SupportTicket[]> {
@@ -80,7 +80,7 @@ export async function adminListSupportTickets(status?: SupportStatus | 'ALL'): P
   const { data, error } = await supabase.rpc('admin_list_vad_support_tickets', {
     p_status: status && status !== 'ALL' ? status : null,
   });
-  fail(error, 'The support inbox could not be loaded.');
+  fail(error, 'The support inbox could not be loaded.', 'admin');
   return (Array.isArray(data) ? data : []) as SupportTicket[];
 }
 
@@ -94,7 +94,7 @@ export async function adminReplySupportTicket(input: {
     p_body: input.body.trim(),
     p_status: input.status,
   });
-  fail(error, 'The support reply could not be sent.');
+  fail(error, 'The support reply could not be sent.', 'admin');
   if (typeof data !== 'string' || !data) throw new Error('VAD did not confirm the support reply.');
   return data;
 }
