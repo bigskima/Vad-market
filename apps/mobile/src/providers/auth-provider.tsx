@@ -308,6 +308,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         // Invalid or expired callbacks return the user to the normal sign-in flow.
       } finally {
         authRedirectInProgressRef.current = false;
+        bootstrapInProgressRef.current = false;
       }
     };
 
@@ -378,6 +379,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return { ok: false, message: error instanceof Error && error.message ? error.message : authMessage(error, 'signIn') };
         } finally {
           passwordSignInInProgressRef.current = false;
+          // If session bootstrap timed out, an explicit login attempt has now
+          // resolved the initial auth state and normal token events can resume.
+          bootstrapInProgressRef.current = false;
         }
       },
       async verifyLoginMfaCode(code) {
