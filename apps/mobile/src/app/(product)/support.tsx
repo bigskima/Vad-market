@@ -150,7 +150,7 @@ export default function SupportScreen() {
           {loading ? <VadText tone="secondary">Loading your requests…</VadText> : tickets.length ? (
             tickets.map((ticket) => (
               <VadCard key={ticket.id} variant={activeTicketId === ticket.id ? 'raised' : 'surface'} style={{ gap: 5, borderColor: activeTicketId === ticket.id ? theme.colors.brandPrimary : theme.colors.border }}>
-                <VadButton label={ticket.subject} variant="text" size="small" onPress={() => { setActiveTicketId(ticket.id); setComposeNew(false); setError(null); }} />
+                <VadButton label={ticket.subject} variant="plain" size="small" onPress={() => { setActiveTicketId(ticket.id); setComposeNew(false); setError(null); }} />
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                   <VadChip label={ticket.status.replaceAll('_', ' ')} tone={ticket.status === 'RESOLVED' || ticket.status === 'CLOSED' ? 'yes' : 'neutral'} />
                   <VadChip label={ticket.category.replaceAll('_', ' ')} tone="neutral" />
