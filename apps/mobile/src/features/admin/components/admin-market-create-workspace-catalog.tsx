@@ -1428,7 +1428,7 @@ function SourceFields({ label, sourceName, sourceUrl, setSourceName, setSourceUr
   setSourceName: (value: string) => void;
   setSourceUrl: (value: string) => void;
 }) {
-  return <View style={{ gap: 10 }}><VadInput label={label} value={sourceName} onChangeText={setSourceName} placeholder="e.g. Recording Academy, official league, regulator" /><VadInput label="Official source website · required for automatic resolution" value={sourceUrl} onChangeText={setSourceUrl} autoCapitalize="none" placeholder="https://official-source.example/…" /></View>;
+  return <View style={{ gap: 10 }}><VadInput label={label} value={sourceName} onChangeText={setSourceName} placeholder="e.g. Recording Academy, official league, regulator" /><VadInput label="Official source website · required for generic and multi-outcome markets" value={sourceUrl} onChangeText={setSourceUrl} autoCapitalize="none" placeholder="https://official-source.example/…" /></View>;
 }
 
 function ReviewRow({ label, value }: { label: string; value: string }) {
