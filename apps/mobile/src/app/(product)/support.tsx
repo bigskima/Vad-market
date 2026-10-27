@@ -172,7 +172,7 @@ export default function SupportScreen() {
               <VadText variant="caption" tone="secondary">{activeTicket.category.replaceAll('_', ' ')} · {activeTicket.status.replaceAll('_', ' ')}</VadText>
             </View>
             <ScrollView style={{ maxHeight: 380 }} contentContainerStyle={{ gap: 9 }}>
-              {messages.map((message) => (
+              {visibleMessages.map((message) => (
                 <View key={message.id} style={{ alignSelf: message.sender_role === 'USER' ? 'flex-end' : 'flex-start', maxWidth: '92%', padding: 10, gap: 4, borderRadius: 12, backgroundColor: message.sender_role === 'USER' ? theme.colors.brandSoft : theme.colors.surfaceMuted, borderWidth: 1, borderColor: theme.colors.border }}>
                   <VadText variant="caption" tone="secondary">{message.sender_role === 'USER' ? 'You' : 'VAD Support'} · {new Date(message.created_at).toLocaleString()}</VadText>
                   <VadText>{message.body}</VadText>
