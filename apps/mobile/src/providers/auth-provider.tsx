@@ -246,7 +246,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         clearTimeout(bootstrapTimeout);
         if (bootstrapInProgressRef.current || event === 'INITIAL_SESSION') return;
         if (authRedirectInProgressRef.current || passwordSignInInProgressRef.current) return;
-        if (mfaLoginPendingRef.current && !mfaVerifyInProgressRef.current && event !== 'SIGNED_OUT') {
+        // The verification request itself can emit an auth-state event. Do not
+        // expose that session until the explicit AAL2 check below has passed.
+        if (mfaVerifyInProgressRef.current) return;
+        if (mfaLoginPendingRef.current && event !== 'SIGNED_OUT') {
           setSession(null);
           setIsLoading(false);
           return;
