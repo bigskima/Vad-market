@@ -365,4 +365,13 @@ $function$;
 revoke all on function public.internal_custom_market_draft_context() from public, anon, authenticated;
 grant execute on function public.internal_custom_market_draft_context() to service_role;
 
+
+-- Keep the existing public crypto quote source current enough for the live
+-- market panel; this changes display-feed caching, not oracle resolution rules.
+update market.market_data_sources
+set cache_seconds = 15,
+    updated_at = now()
+where code = 'COINGECKO'
+  and status = 'ACTIVE';
+
 commit;
