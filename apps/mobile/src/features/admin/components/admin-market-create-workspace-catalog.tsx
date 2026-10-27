@@ -1254,14 +1254,14 @@ export function AdminMarketCreateWorkspaceCatalog() {
           <SectionTitle eyebrow="STEP 2 · TRADING SETUP" title="Choose how this market trades." text="Choose the currency, trading method and timing. Peer Pool and Order Book are available independently of the market currency." />
           {options && options.jurisdictions.length > 1 ? (
             <FieldGroup label="Jurisdiction">
-              {options.jurisdictions.map((item) => <VadChip key={item.countryCode} label={item.name} selected={resolvedCountryCode === item.countryCode} onPress={() => { setCountryCode(item.countryCode); setAssetCode(''); }} />)}
+              {options.jurisdictions.map((item) => <VadChip key={item.countryCode} label={item.name} selected={resolvedCountryCode === item.countryCode} onPress={() => { setCountryCode(item.countryCode); setAssetCode(''); setMinTradeAmount(''); setMaxTradeAmount(''); }} />)}
             </FieldGroup>
           ) : null}
           {jurisdiction ? (
             <View style={{ gap: 8 }}>
               <FieldGroup label="Market currency">
                 {availableAssets.map((asset) => (
-                  <VadChip key={asset} label={asset} selected={resolvedAssetCode === asset} tone={resolvedAssetCode === asset ? 'brand' : 'neutral'} onPress={() => setAssetCode(asset)} />
+                  <VadChip key={asset} label={asset} selected={resolvedAssetCode === asset} tone={resolvedAssetCode === asset ? 'brand' : 'neutral'} onPress={() => { if (assetCode !== asset) { setAssetCode(asset); setMinTradeAmount(''); setMaxTradeAmount(''); setError(null); } }} />
                 ))}
               </FieldGroup>
               {availableAssets.length ? (
@@ -1302,7 +1302,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                     label={method.name}
                     selected={liquidityModel === method.code}
                     tone={liquidityModel === method.code ? 'brand' : 'neutral'}
-                    onPress={() => { setLiquidityModel(method.code); setError(null); }}
+                    onPress={() => { if (liquidityModel !== method.code) { setLiquidityModel(method.code); setMinTradeAmount(''); setMaxTradeAmount(''); setError(null); } }}
                   />
                 ))}
               </FieldGroup>
@@ -1324,13 +1324,16 @@ export function AdminMarketCreateWorkspaceCatalog() {
                   ? 'Limits apply to the full order value (limit price × share quantity), not the number of shares.'
                   : 'Limits apply to each individual stake. Users cannot stake below or above these market-specific amounts.'}
               </VadText>
+              <VadText variant="caption" tone="secondary">
+                Enter both amounts for this market only. They are saved with this market and are not reused as defaults for another market.
+              </VadText>
             </View>
             {displayedTradeLimitsError ? <VadText variant="caption" tone="warning">{displayedTradeLimitsError}</VadText> : null}
             <VadInput
               label={`This market’s minimum (${resolvedAssetCode})`}
               value={minTradeAmount}
               onChangeText={(value) => { setMinTradeAmount(value.replace(/[^0-9.]/g, '')); setError(null); }}
-              placeholder={resolvedAssetCode === 'NGN' ? 'Enter this market’s minimum' : 'Enter this market’s minimum'}
+              placeholder="Enter this market’s minimum"
               keyboardType="decimal-pad"
               hint="Enforced by the database for this individual market."
             />
@@ -1338,7 +1341,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
               label={`This market’s maximum (${resolvedAssetCode})`}
               value={maxTradeAmount}
               onChangeText={(value) => { setMaxTradeAmount(value.replace(/[^0-9.]/g, '')); setError(null); }}
-              placeholder={resolvedAssetCode === 'NGN' ? 'Enter this market’s maximum' : 'Enter this market’s maximum'}
+              placeholder="Enter this market’s maximum"
               keyboardType="decimal-pad"
               hint={effectiveLiquidityModel === 'ORDER_BOOK' ? 'Maximum notional per order; account-level exposure limits still apply.' : 'Maximum amount for one pool stake; market and user aggregate caps still apply.'}
             />
