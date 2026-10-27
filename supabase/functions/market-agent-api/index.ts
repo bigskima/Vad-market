@@ -203,10 +203,16 @@ async function handle(req: Request) {
   const publishReason = textValue(body.publicationReason, 500) || 'Published through the authorized VAD Market Agent API';
   let aiDraft: Rec | null = null;
   if (format === 'MULTI_OUTCOME' && !sourceName) return json({ error: 'SOURCE_REQUIRED', message: 'Multi-outcome markets require a named authoritative source.' }, 400);
-  if (wantsAiDraft && format === 'BINARY' && handler !== 'VERIFIED_EVENT') {
+  if (wantsAiDraft && handler !== 'VERIFIED_EVENT') {
     return json({
       error: 'AI_DRAFT_REQUIRES_GENERIC_RESOLVER',
-      message: 'This market type has a specialized resolver. Supply its structured fields and resolution condition directly; VAD will not use the generic AI helper to overwrite specialized football or crypto rules.',
+      message: 'AI drafting requires a database-configured generic evidence resolver. Supply structured fields for specialized football/crypto resolvers directly; their rules cannot be replaced by generic AI wording.',
+    }, 400);
+  }
+  if (format === 'MULTI_OUTCOME' && marketType && handler !== 'VERIFIED_EVENT') {
+    return json({
+      error: 'MULTI_OUTCOME_TYPE_UNSUPPORTED',
+      message: 'This specialized market type cannot be republished as a generic multi-outcome market. Choose a generic evidence market type or use its supported binary flow.',
     }, 400);
   }
   if (format === 'BINARY' && handler === 'VERIFIED_EVENT' && !configuredCondition.trim() && !wantsAiDraft) {
@@ -248,7 +254,9 @@ async function handle(req: Request) {
   const finalDescription = aiDraft ? textValue(aiDraft.description, 1000) || description : description;
   const finalCondition = aiDraft
     ? textValue(aiDraft.resolutionRules, 1800)
-    : configuredCondition || textValue(body.resolutionInstructions, 1800);
+    : format === 'MULTI_OUTCOME'
+      ? textValue(body.resolutionInstructions, 1800) || configuredCondition
+      : configuredCondition;
   if (format === 'MULTI_OUTCOME' || (format === 'BINARY' && handler === 'VERIFIED_EVENT')) {
     if (finalCondition.trim().length < 20) {
       return json({ error: 'RESOLUTION_REQUIRED', message: 'Resolution instructions must contain at least 20 characters; no market was created.' }, 400);
