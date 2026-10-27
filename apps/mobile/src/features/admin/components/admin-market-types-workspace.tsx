@@ -298,7 +298,7 @@ export function AdminMarketTypesWorkspace() {
 
             <VadCard variant="muted" style={{ gap: 4 }}>
               <VadText variant="bodyStrong">Resolver mode: Verified event</VadText>
-              <VadText variant="caption" tone="secondary">Custom types use VAD's existing verified-event resolution handler. Do not select a specialized handler unless its source and runtime are already supported. Every question still uses a configured source and condition; a custom label does not disable resolution safeguards.</VadText>
+              <VadText variant="caption" tone="secondary">Custom types use VAD&apos;s existing verified-event resolution handler. Do not select a specialized handler unless its source and runtime are already supported. Every question still uses a configured source and condition; a custom label does not disable resolution safeguards.</VadText>
             </VadCard>
             <VadButton label={working ? 'Saving market type…' : 'Save configured market type'} disabled={working} onPress={() => void saveMarketType()} />
           </View>
