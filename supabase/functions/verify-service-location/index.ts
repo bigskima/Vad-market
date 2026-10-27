@@ -250,10 +250,14 @@ Deno.serve(async (req) => {
       console.warn('[verify-service-location] both network intelligence providers failed');
       return json({ error: 'Network country and risk signals are unavailable', code: 'NETWORK_RISK_UNRESOLVED' }, 503);
     }
+    if (!isCountryCode(geoLookup.countryCode)) {
+      console.warn('[verify-service-location] both reverse-geocoding providers failed');
+      return json({ error: 'Could not determine the country for this device location', code: 'LOCATION_PROVIDER_ERROR' }, 503);
+    }
     const network = networkLookup.data;
     const networkData = network.data;
     const security = networkData.security;
-    let deviceCountry = geoLookup.countryCode;
+    const deviceCountry = geoLookup.countryCode;
     const ipCountry = networkData.location.countryCode.toUpperCase();
     console.info('[verify-service-location] country verification providers selected', {
       countryProvider: geoLookup.provider,
@@ -281,26 +285,6 @@ Deno.serve(async (req) => {
     }
 
     let accountCountry = String(account?.country_code || '').trim().toUpperCase();
-
-    // If public reverse-geocoding is offline, allow a conservative fallback only
-    // when the declared account country and independent network country are both
-    // Nigeria, the device coordinates are in Nigeria's coarse geographic bounds,
-    // and all network-risk signals are explicitly clean. No IP-only bypass.
-    const withinNigeriaFallbackBounds =
-      latitude >= 4.0 && latitude <= 14.0 &&
-      longitude >= 2.0 && longitude <= 15.5;
-    if (!isCountryCode(deviceCountry)
-      && accountCountry === 'NG'
-      && ipCountry === 'NG'
-      && withinNigeriaFallbackBounds
-      && !riskDetected) {
-      deviceCountry = 'NG';
-      console.warn('[verify-service-location] using bounded GPS + verified Nigeria network fallback');
-    }
-    if (!isCountryCode(deviceCountry)) {
-      console.warn('[verify-service-location] reverse-geocoding unavailable and fallback could not establish Nigeria');
-      return json({ error: 'Could not determine the country for this device location', code: 'LOCATION_PROVIDER_ERROR' }, 503);
-    }
 
     // Normalize common Nigeria aliases written by older onboarding clients. These
     // values identify the same declared jurisdiction; live GPS and network checks
