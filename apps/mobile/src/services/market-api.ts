@@ -33,6 +33,33 @@ export type MarketCatalogItem = {
   updated_at: string;
 };
 
+export type MarketTradeRules = {
+  instrumentPublicId: string;
+  assetCode: 'NGN' | 'USDC';
+  liquidityModel: 'POOL' | 'ORDER_BOOK';
+  minTradeAmount: number | string;
+  maxTradeAmount: number | string;
+  maxUserMarketExposure: number | string | null;
+  policyVersion: number;
+};
+
+export async function getMarketTradeRules(instrumentPublicId: string): Promise<MarketTradeRules> {
+  const { data, error } = await supabase.rpc('market_trade_rules', {
+    p_instrument_public_id: instrumentPublicId,
+  });
+  assertNoError(error, 'markets', 'We could not load this market’s trading limits right now.');
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('This market’s trading limits are not available.');
+  }
+  const value = data as Partial<MarketTradeRules>;
+  const minimum = Number(value.minTradeAmount);
+  const maximum = Number(value.maxTradeAmount);
+  if (!Number.isFinite(minimum) || minimum <= 0 || !Number.isFinite(maximum) || maximum <= minimum) {
+    throw new Error('This market’s minimum and maximum trade amounts are not configured correctly.');
+  }
+  return value as MarketTradeRules;
+}
+
 export type TradeQuote = {
   instrumentPublicId: string;
   instrumentId: number;
