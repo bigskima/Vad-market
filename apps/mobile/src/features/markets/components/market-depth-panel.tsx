@@ -20,19 +20,34 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
 
   useEffect(() => {
     let active = true;
-    void Promise.resolve().then(() => {
-      if (!active) return;
-      setLoading(true);
-      setFailed(false);
-      return getMarketOrderBook(instrumentId);
-    }).then((next) => {
-      if (active && next) setBook(next);
-    }).catch(() => {
-      if (active) setFailed(true);
-    }).finally(() => {
-      if (active) setLoading(false);
-    });
-    return () => { active = false; };
+    let inFlight = false;
+    let firstLoad = true;
+    const loadBook = async () => {
+      if (!active || inFlight) return;
+      inFlight = true;
+      if (firstLoad) setLoading(true);
+      try {
+        const next = await getMarketOrderBook(instrumentId);
+        if (active) {
+          setBook(next);
+          setFailed(false);
+        }
+      } catch {
+        if (active) setFailed(true);
+      } finally {
+        inFlight = false;
+        if (active && firstLoad) {
+          firstLoad = false;
+          setLoading(false);
+        }
+      }
+    };
+    void Promise.resolve().then(loadBook);
+    const interval = setInterval(() => void loadBook(), 15_000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [instrumentId]);
 
   const yes = (book?.yesBids ?? []).slice(0, 4);
