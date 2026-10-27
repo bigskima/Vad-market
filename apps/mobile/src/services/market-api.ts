@@ -552,7 +552,7 @@ function tradingErrorMessage(error: { message: string; code?: string } | null, f
 export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: string; amount: number }) {
   const assetCode = await getMarketAssetCode(input.instrumentPublicId);
   if (assetCode !== 'NGN' && assetCode !== 'USDC') {
-    throw new Error('TNGN markets are permanently retired. Select a real NGN or supported USDC market.');
+    throw new Error('This market uses a retired or unsupported settlement currency. Select an available NGN or supported USDC market.');
   }
   // Validate the real-time location before quoting, so the user sees the actual
   // prerequisite instead of the generic "Prediction review unavailable" fallback.
@@ -588,6 +588,9 @@ export async function placePoolStake(quote: PoolQuote) {
 }
 
 export async function quoteTrade(input: { instrumentPublicId: string; outcomeCode: string; side: 'BUY' | 'SELL'; price: number; quantity: number }) {
+  // Use the same NGN jurisdiction gate before quoting and before placement.
+  // A cached, unexpired verified result avoids repeatedly prompting for GPS.
+  await ensureNgnLocationForInstrument(input.instrumentPublicId);
   const { data, error } = await supabase.rpc('trade_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
@@ -595,7 +598,9 @@ export async function quoteTrade(input: { instrumentPublicId: string; outcomeCod
     p_price: input.price,
     p_quantity: input.quantity,
   });
-  assertNoError(error, 'trading', 'We could not prepare this trade right now. Please try again.');
+  if (error) {
+    throw new Error(tradingErrorMessage(error, 'We could not prepare this order right now. Check the order price, quantity, market status and available balance, then retry.'));
+  }
   return data as TradeQuote;
 }
 
