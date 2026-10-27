@@ -360,8 +360,7 @@ function assertNoError(
 }
 
 export async function listMarkets() {
-  // Historical TNGN records remain in the database for audit, but TNGN is
-  // fully retired and must never re-enter the live market catalogue.
+  // The live catalogue includes only currently supported user currencies.
   const { data, error } = await supabase
     .from('market_catalog')
     .select('*')
