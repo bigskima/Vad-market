@@ -33,8 +33,8 @@ import {
   type AdminSportsFixture,
 } from '@/services/admin-sports-fixture-api';
 import { createAdminCryptoMarketDraft } from '@/services/crypto-market-draft-api';
+import { createAdminCustomMarketDraft } from '@/services/admin-custom-market-draft-api';
 import {
-  createAdminCustomMarket,
   createAdminGuidedMarket,
   getAdminMarketAutoOptions,
   type AdminMarketAutoOptions,
@@ -47,6 +47,7 @@ type ResultChecking = 'AUTOMATIC' | 'VERIFIED';
 type Prediction = 'HOME_WIN' | 'DRAW' | 'AWAY_WIN';
 type PublicationChoice = 'DRAFT' | 'NOW';
 type LiquidityModel = 'POOL' | 'ORDER_BOOK';
+type RegionScope = 'NIGERIA' | 'AFRICA' | 'GLOBAL';
 
 function suggestedFromTemplate(template: string, details: Record<string, string>) {
   if (!template.trim()) return '';
@@ -121,6 +122,10 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [sourceName, setSourceName] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [resultCondition, setResultCondition] = useState('');
+  const [regionScope, setRegionScope] = useState<RegionScope>('NIGERIA');
+  const [customDraftLoading, setCustomDraftLoading] = useState(false);
+  const [customDraftNotice, setCustomDraftNotice] = useState<string | null>(null);
+  const [customDraftRiskNotes, setCustomDraftRiskNotes] = useState<string | null>(null);
 
   const [competition, setCompetition] = useState('');
   const [homeTeam, setHomeTeam] = useState('');
@@ -277,8 +282,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
       ? 'NGN'
       : availableAssets[0] ?? '';
   const guided = creationStyle === 'GUIDED';
-  const football = marketFormat === 'BINARY' && guided && marketType?.handler === 'FOOTBALL_MATCH';
-  const cryptoThreshold = marketFormat === 'BINARY' && guided && marketType?.handler === 'CRYPTO_THRESHOLD';
+  const football = marketFormat === 'BINARY' && marketType?.handler === 'FOOTBALL_MATCH';
+  const cryptoThreshold = marketFormat === 'BINARY' && marketType?.handler === 'CRYPTO_THRESHOLD';
   const automaticFootball = football && resultChecking === 'AUTOMATIC';
   const automaticFootballAvailable = options?.guided.football.automaticProductionAvailable === true;
   const footballCompetitions = options?.guided.football.competitions ?? [];
@@ -573,6 +578,68 @@ export function AdminMarketCreateWorkspaceCatalog() {
     );
   }
 
+  async function generateCustomMarketDraft() {
+    if (customDraftLoading || working) return;
+    if (!category || !marketType) return setError('Choose a category and database-configured market type first.');
+    setCustomDraftLoading(true);
+    setCustomDraftNotice(null);
+    setCustomDraftRiskNotes(null);
+    setError(null);
+    try {
+      const condition = resultCondition.trim()
+        || suggestedFromTemplate(marketType.conditionTemplate, details)
+        || marketType.conditionTemplate;
+      const draft = await createAdminCustomMarketDraft({
+        categoryCode: category.code,
+        marketTypeCode: marketType.code,
+        title: effectiveTitle,
+        description,
+        details,
+        condition,
+        sourceName,
+        sourceUrl,
+        regionScope: cryptoThreshold ? 'GLOBAL' : regionScope,
+        opensAt: opensAt && Number.isFinite(Date.parse(opensAt)) ? new Date(opensAt).toISOString() : undefined,
+        closesAt: closesAt && Number.isFinite(Date.parse(closesAt)) ? new Date(closesAt).toISOString() : undefined,
+        resolvesAfter: resolvesAfter && Number.isFinite(Date.parse(resolvesAfter)) ? new Date(resolvesAfter).toISOString() : undefined,
+      });
+      setTitle(draft.title);
+      setTitleEdited(true);
+      setDescription(draft.description);
+      setResultCondition(draft.resolutionRules);
+      setCustomDraftRiskNotes(draft.riskNotes);
+      setCustomDraftNotice('Drafted with ' + draft.providerName + ' · ' + draft.modelCode + ' · prompt v' + draft.promptVersion + '. Not published; review before continuing.');
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'VAD could not prepare a custom market draft.');
+    } finally {
+      setCustomDraftLoading(false);
+    }
+  }
+
+  function renderCustomDraftControls() {
+    if (creationStyle !== 'CUSTOM' || !marketType || football || cryptoThreshold || marketFormat !== 'BINARY') return null;
+    return (
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadButton
+          label={customDraftLoading ? 'Preparing AI draft…' : 'Help draft question & resolution with AI'}
+          onPress={() => void generateCustomMarketDraft()}
+          disabled={customDraftLoading || working || !category || (marketType.sourceRequired && !sourceName.trim())}
+          loading={customDraftLoading}
+        />
+        <VadText variant="caption" tone="secondary">
+          Uses VAD’s configured AI provider and the selected database market type. The helper cannot invent sources, change the resolver, publish, or settle a market.
+        </VadText>
+        {customDraftNotice ? (
+          <VadCard variant="outlined" style={{ gap: 4 }}>
+            <VadText variant="bodyStrong">AI draft · administrator review required</VadText>
+            <VadText variant="caption" tone="secondary">{customDraftNotice}</VadText>
+            {customDraftRiskNotes ? <VadText variant="caption" tone="warning">Review notes: {customDraftRiskNotes}</VadText> : null}
+          </VadCard>
+        ) : null}
+      </View>
+    );
+  }
+
   async function continueFromMarket() {
     setError(null);
     if (!category) return setError('Choose a market category.');
@@ -764,7 +831,10 @@ export function AdminMarketCreateWorkspaceCatalog() {
           ...common,
           marketTypeCode: marketType.code,
           details,
-          condition: resultCondition,
+          condition: [
+            resultCondition.trim() || suggestedFromTemplate(marketType.conditionTemplate, details) || marketType.conditionTemplate,
+            'Outcome geography: ' + (cryptoThreshold ? 'GLOBAL' : regionScope) + '. Only events within this published geographic scope are eligible.',
+          ].filter(Boolean).join('\n\n'),
           sourceName,
           sourceUrl,
         });
@@ -796,6 +866,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setOpensAt('');
     setClosesAt('');
     setResolvesAfter('');
+    setRegionScope('NIGERIA');
+    setCustomDraftNotice(null);
+    setCustomDraftRiskNotes(null);
     setError(null);
   }
 
@@ -864,6 +937,18 @@ export function AdminMarketCreateWorkspaceCatalog() {
           </FieldGroup>
 
           {category?.description ? <VadCard variant="muted"><VadText variant="caption" tone="secondary">{category.description}</VadText></VadCard> : null}
+
+          {!cryptoThreshold ? (
+            <FieldGroup label="Market geography">
+              {([
+                ['NIGERIA', 'Nigeria'],
+                ['AFRICA', 'Africa'],
+                ['GLOBAL', 'Global'],
+              ] as const).map(([value, label]) => (
+                <VadChip key={value} label={label} selected={regionScope === value} tone={regionScope === value ? 'brand' : 'neutral'} onPress={() => setRegionScope(value)} />
+              ))}
+            </FieldGroup>
+          ) : null}
 
           <FieldGroup label="Market format">
             <VadChip
@@ -1101,7 +1186,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
             </View>
           ) : null}
 
-          {marketFormat === 'BINARY' && category?.code === 'SPORTS' ? renderSportsDraftControls() : null}
+          {marketFormat === 'BINARY' && football ? renderSportsDraftControls() : null}
+          {renderCustomDraftControls()}
 
           {marketFormat === 'BINARY' ? (
             <>
