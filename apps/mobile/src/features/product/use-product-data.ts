@@ -326,6 +326,33 @@ export function useProductData(enabled = true, userId: string | null = null) {
     };
   }, [enabled, refreshMarkets, refreshPortfolio, userId]);
 
+  // Realtime delivers immediate catalog changes when connected. These
+  // low-frequency fallbacks recover dropped/disconnected Realtime events so
+  // market prices and account state don't depend on a manual page refresh.
+  useEffect(() => {
+    if (!enabled || !userId) return;
+    let active = true;
+    let marketTimer: ReturnType<typeof setTimeout> | null = null;
+    let portfolioTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const pollMarkets = async () => {
+      await refreshMarkets();
+      if (active) marketTimer = setTimeout(() => void pollMarkets(), 15_000);
+    };
+    const pollPortfolio = async () => {
+      await refreshPortfolio();
+      if (active) portfolioTimer = setTimeout(() => void pollPortfolio(), 60_000);
+    };
+
+    marketTimer = setTimeout(() => void pollMarkets(), 15_000);
+    portfolioTimer = setTimeout(() => void pollPortfolio(), 60_000);
+    return () => {
+      active = false;
+      if (marketTimer) clearTimeout(marketTimer);
+      if (portfolioTimer) clearTimeout(portfolioTimer);
+    };
+  }, [enabled, refreshMarkets, refreshPortfolio, userId]);
+
   const refresh = useCallback(async () => {
     if (!enabled) return;
     setRefreshing(true);
