@@ -45,7 +45,7 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
   const passwordValid = mode === 'signIn' ? password.length > 0 : password.length >= 8;
   const nameValid = mode === 'signIn' || displayName.trim().length >= 2;
   const canSubmit = view === 'mfa'
-    ? /^\\d{6}$/.test(mfaCode.trim()) && !isSubmitting
+    ? /^\d{6}$/.test(mfaCode.trim()) && !isSubmitting
     : emailValid && passwordValid && nameValid && !isSubmitting;
 
   function resetMessages() {
@@ -102,7 +102,7 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
   }
 
   async function submitMfa() {
-    if (!/^\\d{6}$/.test(mfaCode.trim()) || isSubmitting) return;
+    if (!/^\d{6}$/.test(mfaCode.trim()) || isSubmitting) return;
     setIsSubmitting(true);
     setMessage(null);
     try {
@@ -295,7 +295,7 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
                       label="Six-digit authenticator code"
                       floatingLabel
                       value={mfaCode}
-                      onChangeText={(value) => { setMfaCode(value.replace(/\\D/g, '').slice(0, 6)); setMessage(null); }}
+                      onChangeText={(value) => { setMfaCode(value.replace(/\D/g, '').slice(0, 6)); setMessage(null); }}
                       keyboardType="number-pad"
                       textContentType="oneTimeCode"
                       autoComplete="one-time-code"
