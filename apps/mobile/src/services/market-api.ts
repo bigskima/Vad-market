@@ -365,7 +365,7 @@ export async function listMarkets() {
   const { data, error } = await supabase
     .from('market_catalog')
     .select('*')
-    .neq('asset_code', 'TNGN')
+    .in('asset_code', ['NGN', 'USDC'])
     .order('updated_at', { ascending: false });
   assertNoError(error, 'markets');
   return (data ?? []) as MarketCatalogItem[];
@@ -439,8 +439,8 @@ export async function getPublishedMarketDetail(instrumentPublicId: string): Prom
     throw new Error('Published market details are not available for this market.');
   }
   const detail = data as PublishedMarketDetail;
-  if (String(detail.assetCode ?? '').toUpperCase() === 'TNGN') {
-    throw new Error('This market is no longer available.');
+  if (!['NGN', 'USDC'].includes(String(detail.assetCode ?? '').toUpperCase())) {
+    throw new Error('This market is no longer available for trading.');
   }
   return detail;
 }
