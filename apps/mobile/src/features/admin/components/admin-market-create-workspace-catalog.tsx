@@ -936,13 +936,15 @@ export function AdminMarketCreateWorkspaceCatalog() {
   if (loading) return <View style={{ gap: theme.spacing.md }}><VadSkeleton width="50%" height={32} /><VadSkeleton height={120} /><VadSkeleton height={280} /></View>;
 
   const publicationStatus = String(created?.publication_status ?? 'DRAFT').toUpperCase();
-  const resultLabel = marketFormat === 'MULTI_OUTCOME'
-    ? `Manual review${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
-    : guided
+  const resultLabel = cryptoThreshold
+    ? 'Automatic price resolution · Coinbase + Kraken'
+    : football
       ? automaticFootball
         ? `Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`
         : `Verified result${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
-      : 'VAD configured result checking';
+      : (marketFormat === 'MULTI_OUTCOME' || marketType?.handler === 'VERIFIED_EVENT')
+        ? `Automatic evidence resolution · ${sourceName.trim() || 'configured authoritative source'}`
+        : 'VAD configured result checking';
 
   if (created) {
     return (
