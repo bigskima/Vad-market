@@ -85,7 +85,7 @@ The standard request uses a configured binary market type. Required fields depen
 
 This sample creates a **draft** because `publishNow` is `false`. Set it to `true` (or use action `create_and_publish` with `publishNow: true`) only when the opening time has started, closing time is still in the future, the source and resolver are appropriate, and the market is ready to trade. Replace dates and times with the actual schedule; the example is illustrative.
 
-The AI helper can suggest a question and description. It cannot create a missing DB category/type, change the selected resolver, invent a source, bypass crypto-oracle policy, publish a future market, or override market trading limits. VAD's configured server-side market handler remains authoritative.
+The AI helper can suggest a question and description. It cannot create a missing DB category/type, change the selected resolver, invent a source, bypass crypto-oracle policy, publish a future market, or override market trading limits. Generic `VERIFIED_EVENT` and multi-outcome markets also require a verified HTTPS `sourceUrl`: VAD fetches direct evidence and restricts corroborating search to that configured domain. A source name alone is not sufficient for automatic resolution. VAD's configured server-side market handler remains authoritative.
 
 ## 3. Multi-outcome market
 
