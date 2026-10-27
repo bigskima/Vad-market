@@ -555,7 +555,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setIsPasswordRecovery(false);
         pendingTotpChallengeRef.current = null;
         mfaLoginPendingRef.current = false;
-        mfaLoginPendingRef.current = false;
         setMfaLoginRequired(false);
         await Promise.allSettled([
           clearDynamicWalletSessionSafe(),
