@@ -557,7 +557,7 @@ function tradingErrorMessage(error: { message: string; code?: string } | null, f
   const original = String(error?.message ?? '').trim();
   const message = original.toLowerCase();
   if (message.includes('location verification') || message.includes('current location') || message.includes('network are verified')) {
-    return 'NGN trading requires a recent successful Nigeria location check. Allow location access and retry; successful verification now remains valid for up to 4 hours.';
+    return 'NGN trading requires a recent successful Nigeria location check. Allow location access and retry; successful verification now remains valid for up to 24 hours.';
   }
   if (message.includes('trading is not available for this account and market')) {
     return 'VAD could not confirm trading eligibility for this market. For NGN, verify Nigeria location once and retry. If it continues, the market, account country or trading capability may need attention.';
@@ -580,8 +580,11 @@ function tradingErrorMessage(error: { message: string; code?: string } | null, f
   if (message.includes('invalid quantity') || message.includes('quantity must')) {
     return 'Enter a share quantity greater than zero.';
   }
+  if (message.includes('maximum order value')) {
+    return 'This order is above this market’s maximum order value. Reduce the share quantity or limit price and retry.';
+  }
   if (message.includes('exceeds this market') || message.includes('maximum exposure')) {
-    return 'This order exceeds the configured order-value or market-exposure limit. Reduce the order size and retry.';
+    return 'This order would exceed your total exposure limit for this market. Reduce the order size or close an existing position.';
   }
   if (message.includes('insufficient available balance') || message.includes('insufficient balance')) {
     return 'Your available balance does not cover the order and applicable fees.';
