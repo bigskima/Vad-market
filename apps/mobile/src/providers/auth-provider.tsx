@@ -362,7 +362,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       async verifyLoginMfaCode(code) {
         const pending = pendingTotpChallengeRef.current;
         if (!pending || !mfaLoginPendingRef.current) return { ok: false, message: 'Your authenticator challenge has expired. Please sign in again.' };
-        if (!/^\\d{6}$/.test(code.trim())) return { ok: false, message: 'Enter the six-digit code shown by Google Authenticator.' };
+        if (!/^\d{6}$/.test(code.trim())) return { ok: false, message: 'Enter the six-digit code shown by Google Authenticator.' };
         mfaVerifyInProgressRef.current = true;
         try {
           const { error } = await supabase.auth.mfa.verify({
