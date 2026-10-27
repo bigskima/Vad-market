@@ -667,7 +667,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
         <VadButton
           label={customDraftLoading ? 'Preparing AI draft…' : 'Help draft question & resolution with AI'}
           onPress={() => void generateCustomMarketDraft()}
-          disabled={customDraftLoading || working || !category || (marketType.sourceRequired && !sourceName.trim())}
+          disabled={customDraftLoading || working || !category || (marketType.sourceRequired && !sourceName.trim()) || (marketType.handler === 'VERIFIED_EVENT' && !/^https:\/\//i.test(sourceUrl.trim()))}
           loading={customDraftLoading}
         />
         <VadText variant="caption" tone="secondary">
@@ -698,7 +698,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
       }
       if (resultCondition.trim().length < 10) return setError('Describe how VAD should determine the winning option.');
       if (!sourceName.trim()) return setError('Add the authoritative result source for this market.');
-      if (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim())) return setError('The source link must start with https://.');
+      if (!sourceUrl.trim()) return setError('Add the official HTTPS source URL. Automatic resolution needs a known source domain for direct evidence and scoped corroboration.');
+      if (!/^https:\/\//i.test(sourceUrl.trim())) return setError('The source link must start with https://.');
       setLiquidityModel('POOL');
       setStep(2);
       return;
@@ -752,6 +753,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
       if (missing) return setError(`Add ${missing.label} before continuing.`);
       if (!marketType.conditionTemplate.trim() && !resultCondition.trim()) return setError('Explain in plain language what must happen for YES to win.');
       if (marketType.sourceRequired && !sourceName.trim()) return setError('Add the authoritative result source VAD should use.');
+      if (marketType.handler === 'VERIFIED_EVENT' && !sourceUrl.trim()) {
+        return setError('Add the official HTTPS source URL. Automatic resolution needs a known source domain for direct evidence and scoped corroboration.');
+      }
+      if (marketType.handler === 'VERIFIED_EVENT' && !/^https:\/\//i.test(sourceUrl.trim())) {
+        return setError('The source URL for this automatic market must start with https://.');
+      }
     }
     setStep(2);
   }
@@ -805,7 +812,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
       !multiOutcomeOptionsValid
       || resultCondition.trim().length < 10
       || !sourceName.trim()
-      || (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim()))
+      || !sourceUrl.trim()
+      || !/^https:\/\//i.test(sourceUrl.trim())
     )) {
       setStep(1);
       setError('Review the market question, 2–20 unique choices, resolution instructions and official source.');
@@ -1420,7 +1428,7 @@ function SourceFields({ label, sourceName, sourceUrl, setSourceName, setSourceUr
   setSourceName: (value: string) => void;
   setSourceUrl: (value: string) => void;
 }) {
-  return <View style={{ gap: 10 }}><VadInput label={label} value={sourceName} onChangeText={setSourceName} placeholder="e.g. Recording Academy, official league, regulator" /><VadInput label="Source website · optional" value={sourceUrl} onChangeText={setSourceUrl} autoCapitalize="none" placeholder="https://…" /></View>;
+  return <View style={{ gap: 10 }}><VadInput label={label} value={sourceName} onChangeText={setSourceName} placeholder="e.g. Recording Academy, official league, regulator" /><VadInput label="Official source website · required for automatic resolution" value={sourceUrl} onChangeText={setSourceUrl} autoCapitalize="none" placeholder="https://official-source.example/…" /></View>;
 }
 
 function ReviewRow({ label, value }: { label: string; value: string }) {
