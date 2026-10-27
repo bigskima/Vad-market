@@ -244,6 +244,8 @@ export async function createAdminGuidedMarket(input: CreateMarketInput & { setup
     p_country_code: input.countryCode,
     p_asset_code: input.assetCode,
     p_liquidity_model: input.liquidityModel ?? 'POOL',
+    p_min_trade_amount: input.minTradeAmount,
+    p_max_trade_amount: input.maxTradeAmount,
     p_publish_now: input.publishNow === true,
   });
   fail(error, 'We could not create this guided VAD market right now.');
