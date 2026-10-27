@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
   if (
     !Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
     !Number.isFinite(longitude) || longitude < -180 || longitude > 180 ||
-    !Number.isFinite(accuracyMeters) || accuracyMeters < 0 || accuracyMeters > 10000
+    !Number.isFinite(accuracyMeters) || accuracyMeters < 0 || accuracyMeters > 25000
   ) {
     return json({ error: 'Location is missing or too imprecise', code: 'LOCATION_INACCURATE' }, 400);
   }
