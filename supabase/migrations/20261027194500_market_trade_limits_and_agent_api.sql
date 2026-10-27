@@ -1,101 +1,10 @@
 -- Market-specific trade limits and a narrowly-scoped API for authorized market agents.
--- Safe to stage in a PR; this migration is not applied to the connected production database.
+-- Applies market-scoped min/max values only; no global defaults are stored.
 
 begin;
 
-create table if not exists market.trade_limit_defaults (
-  asset_code text not null check (asset_code in ('NGN','USDC')),
-  liquidity_model text not null check (liquidity_model in ('POOL','ORDER_BOOK')),
-  min_trade_amount numeric(38,18) not null check (min_trade_amount > 0),
-  max_trade_amount numeric(38,18) not null check (max_trade_amount > min_trade_amount),
-  updated_at timestamptz not null default statement_timestamp(),
-  updated_by uuid references auth.users(id) on delete set null,
-  primary key (asset_code, liquidity_model)
-);
-
--- Defaults are editable admin presets. Each market copies the chosen values
--- into its instrument and risk-policy rows, which enforce the limits at trade time.
-insert into market.trade_limit_defaults(asset_code,liquidity_model,min_trade_amount,max_trade_amount)
-values
-  ('NGN','POOL',100,50000),
-  ('NGN','ORDER_BOOK',100,100000),
-  ('USDC','POOL',0.01,100),
-  ('USDC','ORDER_BOOK',0.01,250)
-on conflict(asset_code,liquidity_model) do nothing;
-
-revoke all on market.trade_limit_defaults from public, anon, authenticated;
-
-create or replace function public.admin_get_market_trade_limit_defaults(
-  p_asset_code text,
-  p_liquidity_model text
-) returns jsonb
-language plpgsql security definer set search_path = ''
-as $function$
-declare
-  v_asset text := upper(btrim(coalesce(p_asset_code,'')));
-  v_model text := upper(btrim(coalesce(p_liquidity_model,'')));
-  v_result jsonb;
-begin
-  if auth.uid() is null or not private.has_permission('markets.manage') then
-    raise exception 'Market management permission required' using errcode='42501';
-  end if;
-  if v_asset not in ('NGN','USDC') or v_model not in ('POOL','ORDER_BOOK') then
-    raise exception 'Choose an enabled NGN or USDC currency and a supported trading method.' using errcode='22023';
-  end if;
-  select jsonb_build_object(
-    'assetCode',asset_code,
-    'liquidityModel',liquidity_model,
-    'minTradeAmount',min_trade_amount,
-    'maxTradeAmount',max_trade_amount,
-    'updatedAt',updated_at
-  ) into v_result
-  from market.trade_limit_defaults
-  where asset_code=v_asset and liquidity_model=v_model;
-  if v_result is null then raise exception 'Trading limit defaults are not configured.' using errcode='P0002'; end if;
-  return v_result;
-end;
-$function$;
-
-create or replace function public.admin_save_market_trade_limit_defaults(
-  p_asset_code text,
-  p_liquidity_model text,
-  p_min_trade_amount numeric,
-  p_max_trade_amount numeric
-) returns boolean
-language plpgsql security definer set search_path = ''
-as $function$
-declare
-  v_asset text := upper(btrim(coalesce(p_asset_code,'')));
-  v_model text := upper(btrim(coalesce(p_liquidity_model,'')));
-begin
-  if auth.uid() is null or not private.has_permission('markets.manage') then
-    raise exception 'Market management permission required' using errcode='42501';
-  end if;
-  if v_asset not in ('NGN','USDC') or v_model not in ('POOL','ORDER_BOOK') then
-    raise exception 'Choose an enabled NGN or USDC currency and a supported trading method.' using errcode='22023';
-  end if;
-  if p_min_trade_amount is null or p_max_trade_amount is null
-     or p_min_trade_amount <= 0 or p_max_trade_amount <= p_min_trade_amount then
-    raise exception 'The maximum trade amount must be greater than a positive minimum.' using errcode='22023';
-  end if;
-  if p_min_trade_amount > 1000000000000 or p_max_trade_amount > 1000000000000 then
-    raise exception 'Trade limits are above the supported configuration range.' using errcode='22023';
-  end if;
-  insert into market.trade_limit_defaults(asset_code,liquidity_model,min_trade_amount,max_trade_amount,updated_at,updated_by)
-  values(v_asset,v_model,p_min_trade_amount,p_max_trade_amount,statement_timestamp(),auth.uid())
-  on conflict(asset_code,liquidity_model) do update set
-    min_trade_amount=excluded.min_trade_amount,
-    max_trade_amount=excluded.max_trade_amount,
-    updated_at=excluded.updated_at,
-    updated_by=excluded.updated_by;
-  insert into audit.records(actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata)
-  values(auth.uid(),'ADMIN','MARKET_TRADE_LIMIT_DEFAULTS_UPDATED','MARKET_TRADE_LIMIT_DEFAULTS',
-    v_asset||':'||v_model,'Updated default trade limits',
-    jsonb_build_object('asset_code',v_asset,'liquidity_model',v_model,
-      'min_trade_amount',p_min_trade_amount,'max_trade_amount',p_max_trade_amount));
-  return true;
-end;
-$function$;
+-- Per-market trade limits are entered during market creation and copied
+-- directly into that market's instrument and risk policy; no global defaults.
 
 create or replace function private.apply_market_trade_limits(
   p_instrument_public_id uuid,
@@ -689,25 +598,6 @@ begin
 end;
 $function$;
 
-create or replace function public.agent_get_market_trade_limit_defaults(
-  p_api_key text,
-  p_asset_code text,
-  p_liquidity_model text
-) returns jsonb
-language plpgsql security definer set search_path = ''
-as $function$
-declare
-  v_context jsonb;
-begin
-  v_context:=public.internal_market_agent_context(p_api_key);
-  if not (v_context->'scopes' @> '["market:read"]'::jsonb) then
-    raise exception 'The agent key lacks market:read scope' using errcode='42501';
-  end if;
-  perform set_config('request.jwt.claim.sub',v_context->>'adminUserId',true);
-  return public.admin_get_market_trade_limit_defaults(p_asset_code,p_liquidity_model);
-end;
-$function$;
-
 create or replace function public.agent_create_multi_outcome_market_v1(
   p_api_key text,
   p_title text,
@@ -768,8 +658,6 @@ begin
 end;
 $function$;
 
-revoke all on function public.admin_get_market_trade_limit_defaults(text,text) from public, anon;
-revoke all on function public.admin_save_market_trade_limit_defaults(text,text,numeric,numeric) from public, anon;
 revoke all on function private.apply_market_trade_limits(uuid,numeric,numeric,text) from public, anon, authenticated;
 revoke all on function public.admin_create_catalog_market_v3(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) from public, anon;
 revoke all on function public.admin_create_guided_market_v5(text,text,text,jsonb,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) from public, anon;
@@ -779,12 +667,9 @@ revoke all on function public.admin_list_market_agent_keys() from public, anon;
 revoke all on function public.admin_revoke_market_agent_key(uuid) from public, anon;
 revoke all on function public.internal_market_agent_context(text) from public, anon, authenticated;
 revoke all on function public.agent_market_creation_options(text) from public, anon, authenticated;
-revoke all on function public.agent_get_market_trade_limit_defaults(text,text,text) from public, anon, authenticated;
 revoke all on function public.agent_create_multi_outcome_market_v1(text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,numeric,numeric,boolean,integer,text) from public, anon, authenticated;
 revoke all on function public.agent_guided_market_catalog(text) from public, anon, authenticated;
 revoke all on function public.agent_create_market_v1(text,text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) from public, anon, authenticated;
-grant execute on function public.admin_get_market_trade_limit_defaults(text,text) to authenticated;
-grant execute on function public.admin_save_market_trade_limit_defaults(text,text,numeric,numeric) to authenticated;
 grant execute on function public.admin_create_catalog_market_v3(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) to authenticated;
 grant execute on function public.admin_create_guided_market_v5(text,text,text,jsonb,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) to authenticated;
 grant execute on function public.admin_create_multi_outcome_market_v2(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,numeric,numeric,boolean,integer,text) to authenticated;
@@ -793,7 +678,6 @@ grant execute on function public.admin_list_market_agent_keys() to authenticated
 grant execute on function public.admin_revoke_market_agent_key(uuid) to authenticated;
 grant execute on function public.internal_market_agent_context(text) to service_role;
 grant execute on function public.agent_market_creation_options(text) to service_role;
-grant execute on function public.agent_get_market_trade_limit_defaults(text,text,text) to service_role;
 grant execute on function public.agent_create_multi_outcome_market_v1(text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,numeric,numeric,boolean,integer,text) to service_role;
 grant execute on function public.agent_guided_market_catalog(text) to service_role;
 grant execute on function public.agent_create_market_v1(text,text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) to service_role;
@@ -1100,6 +984,14 @@ drop function if exists private.on_tngn_market_resolution_settle();
 drop function if exists private.settle_tngn_market_orders(uuid);
 drop function if exists private.ensure_tngn_market_variant(uuid);
 drop function if exists private.on_market_catalog_tngn_variant_sync();
+
+
+-- Retire the earlier global preset surface if it was partially installed in an
+-- environment. Active per-market risk policies and historical trades are kept.
+drop function if exists public.agent_get_market_trade_limit_defaults(text,text,text);
+drop function if exists public.admin_get_market_trade_limit_defaults(text,text);
+drop function if exists public.admin_save_market_trade_limit_defaults(text,text,numeric,numeric);
+drop table if exists market.trade_limit_defaults;
 
 -- Remove the retired user-facing TNGN RPC surface. Historical instrument, ledger,
 -- and journal rows are deliberately preserved, along with triggers that prevent
