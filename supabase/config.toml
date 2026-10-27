@@ -467,3 +467,11 @@ enabled = true
 # Supabase gateway JWT verification must be disabled for the Vault cron caller.
 verify_jwt = false
 entrypoint = "./functions/market-resolution-worker/index.ts"
+
+# These two endpoints authenticate inside the function: one uses scoped VAD
+# agent keys; the draft helper accepts either a normal admin JWT or an agent key.
+[functions.market-agent-api]
+verify_jwt = false
+
+[functions.custom-market-draft]
+verify_jwt = false

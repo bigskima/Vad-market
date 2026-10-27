@@ -33,6 +33,33 @@ export type MarketCatalogItem = {
   updated_at: string;
 };
 
+export type MarketTradeRules = {
+  instrumentPublicId: string;
+  assetCode: 'NGN' | 'USDC';
+  liquidityModel: 'POOL' | 'ORDER_BOOK';
+  minTradeAmount: number | string;
+  maxTradeAmount: number | string;
+  maxUserMarketExposure: number | string | null;
+  policyVersion: number;
+};
+
+export async function getMarketTradeRules(instrumentPublicId: string): Promise<MarketTradeRules> {
+  const { data, error } = await supabase.rpc('market_trade_rules', {
+    p_instrument_public_id: instrumentPublicId,
+  });
+  assertNoError(error, 'markets', 'We could not load this market’s trading limits right now.');
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('This market’s trading limits are not available.');
+  }
+  const value = data as Partial<MarketTradeRules>;
+  const minimum = Number(value.minTradeAmount);
+  const maximum = Number(value.maxTradeAmount);
+  if (!Number.isFinite(minimum) || minimum <= 0 || !Number.isFinite(maximum) || maximum <= minimum) {
+    throw new Error('This market’s minimum and maximum trade amounts are not configured correctly.');
+  }
+  return value as MarketTradeRules;
+}
+
 export type TradeQuote = {
   instrumentPublicId: string;
   instrumentId: number;
@@ -333,12 +360,11 @@ function assertNoError(
 }
 
 export async function listMarkets() {
-  // Historical TNGN records remain in the database for audit, but TNGN is
-  // fully retired and must never re-enter the live market catalogue.
+  // The live catalogue includes only currently supported user currencies.
   const { data, error } = await supabase
     .from('market_catalog')
     .select('*')
-    .neq('asset_code', 'TNGN')
+    .in('asset_code', ['NGN', 'USDC'])
     .order('updated_at', { ascending: false });
   assertNoError(error, 'markets');
   return (data ?? []) as MarketCatalogItem[];
@@ -412,8 +438,8 @@ export async function getPublishedMarketDetail(instrumentPublicId: string): Prom
     throw new Error('Published market details are not available for this market.');
   }
   const detail = data as PublishedMarketDetail;
-  if (String(detail.assetCode ?? '').toUpperCase() === 'TNGN') {
-    throw new Error('This market is no longer available.');
+  if (!['NGN', 'USDC'].includes(String(detail.assetCode ?? '').toUpperCase())) {
+    throw new Error('This market is no longer available for trading.');
   }
   return detail;
 }
@@ -527,32 +553,63 @@ async function getMarketAssetCode(instrumentPublicId: string) {
 }
 
 function tradingErrorMessage(error: { message: string; code?: string } | null, fallback: string) {
-  const message = String(error?.message ?? '').toLowerCase();
+  const original = String(error?.message ?? '').trim();
+  const message = original.toLowerCase();
   if (message.includes('location verification') || message.includes('current location') || message.includes('network are verified')) {
-    return 'NGN trading requires current Nigeria location and network verification. Complete the location check in your account, then retry. Temporary test credit does not bypass this requirement.';
+    return 'NGN trading requires a recent successful Nigeria location check. Allow location access and retry; successful verification now remains valid for up to 24 hours.';
   }
   if (message.includes('trading is not available for this account and market')) {
-    return 'This account is not currently eligible to trade this market. For NGN testing, confirm your current Nigeria location is verified and that the market is open.';
+    return 'VAD could not confirm trading eligibility for this market. For NGN, verify Nigeria location once and retry. If it continues, the market, account country or trading capability may need attention.';
   }
   if (message.includes('market is not open')) {
-    return 'This market is no longer open for new trades. Choose an OPEN market; settled markets remain viewable but cannot accept stakes.';
+    return 'This market is no longer open for new orders. Choose an OPEN market; settled markets remain viewable but cannot accept orders.';
+  }
+  if (message.includes('this market uses peer-funded pooled staking')) {
+    return 'This market uses pool staking, not the order book. Return to the market and use its pool prediction flow.';
   }
   if (message.includes('temporary test credit cannot join') || message.includes('restricted to non-cash test-credit trading')) {
     return 'This market cannot mix temporary test funds with cash-funded stakes. Choose an eligible OPEN NGN market with no existing real-money exposure.';
   }
-  if (message.includes('below the market minimum') || message.includes('below market minimum')) {
-    return 'The stake is below this market’s minimum. Increase the amount and review the quote again.';
+  if (message.includes('below market minimum') || message.includes('below market minimum notional')) {
+    return 'The order value is below this market’s minimum. Increase the share quantity or limit price and try again.';
   }
-  if (message.includes('insufficient available balance')) {
-    return 'Your available NGN balance does not cover the stake and trading fee.';
+  if (message.includes('invalid price') || message.includes('price must')) {
+    return 'Enter a limit price greater than 0 and below 1 per share.';
   }
+  if (message.includes('invalid quantity') || message.includes('quantity must')) {
+    return 'Enter a share quantity greater than zero.';
+  }
+  if (message.includes('maximum order value')) {
+    return 'This order is above this market’s maximum order value. Reduce the share quantity or limit price and retry.';
+  }
+  if (message.includes('exceeds this market') || message.includes('maximum exposure')) {
+    return 'This order would exceed your total exposure limit for this market. Reduce the order size or close an existing position.';
+  }
+  if (message.includes('insufficient available balance') || message.includes('insufficient balance')) {
+    return 'Your available balance does not cover the order and applicable fees.';
+  }
+  if (message.includes('outcome not found')) {
+    return 'This outcome is no longer available. Refresh the market and choose an active YES or NO outcome.';
+  }
+  if (message.includes('risk policy is missing') || message.includes('fee policy')) {
+    return 'This market is missing required trading configuration. The VAD team needs to correct the market setup before orders can be placed.';
+  }
+  if (message.includes('market not found')) {
+    return 'This market is no longer available. Refresh Markets and choose an active listing.';
+  }
+  // PostgREST sometimes returns SQL exception text in a stable, human-readable
+  // message. Preserve that actionable detail unless it looks like schema,
+  // permission, SQL, or provider internals.
+  const looksInternal = /\\b(?:sqlstate|postgres|postgrest|schema cache|permission denied|stack trace|function .* does not exist|relation .* does not exist)\\b/i.test(original)
+    || /^(?:PGRST|\d{5})/.test(String(error?.code ?? ''));
+  if (original && original.length <= 220 && !looksInternal) return original;
   return fallback;
 }
 
 export async function quotePoolStake(input: { instrumentPublicId: string; outcomeCode: string; amount: number }) {
   const assetCode = await getMarketAssetCode(input.instrumentPublicId);
   if (assetCode !== 'NGN' && assetCode !== 'USDC') {
-    throw new Error('TNGN markets are permanently retired. Select a real NGN or supported USDC market.');
+    throw new Error('This market uses a retired or unsupported settlement currency. Select an available NGN or supported USDC market.');
   }
   // Validate the real-time location before quoting, so the user sees the actual
   // prerequisite instead of the generic "Prediction review unavailable" fallback.
@@ -571,7 +628,7 @@ export async function quotePoolStake(input: { instrumentPublicId: string; outcom
 export async function placePoolStake(quote: PoolQuote) {
   const assetCode = await getMarketAssetCode(quote.instrumentPublicId);
   if (assetCode !== 'NGN' && assetCode !== 'USDC') {
-    throw new Error('TNGN markets are permanently retired. Select a real NGN or supported USDC market.');
+    throw new Error('This market uses a retired or unsupported settlement currency. Select an available NGN or supported USDC market.');
   }
   await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `pool:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
@@ -588,6 +645,9 @@ export async function placePoolStake(quote: PoolQuote) {
 }
 
 export async function quoteTrade(input: { instrumentPublicId: string; outcomeCode: string; side: 'BUY' | 'SELL'; price: number; quantity: number }) {
+  // Use the same NGN jurisdiction gate before quoting and before placement.
+  // A cached, unexpired verified result avoids repeatedly prompting for GPS.
+  await ensureNgnLocationForInstrument(input.instrumentPublicId);
   const { data, error } = await supabase.rpc('trade_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
@@ -595,7 +655,9 @@ export async function quoteTrade(input: { instrumentPublicId: string; outcomeCod
     p_price: input.price,
     p_quantity: input.quantity,
   });
-  assertNoError(error, 'trading', 'We could not prepare this trade right now. Please try again.');
+  if (error) {
+    throw new Error(tradingErrorMessage(error, 'We could not prepare this order right now. Check the order price, quantity, market status and available balance, then retry.'));
+  }
   return data as TradeQuote;
 }
 
@@ -618,7 +680,9 @@ export async function placeOrder(quote: TradeQuote) {
     p_quantity: quote.quantity,
     p_idempotency_key: idempotencyKey,
   });
-  assertNoError(error, 'trading');
+  if (error) {
+    throw new Error(tradingErrorMessage(error, 'We could not place this order right now. Check the price, quantity, market status, and available balance, then retry.'));
+  }
   const orderId = data as string;
   return getOrderStatus(orderId);
 }

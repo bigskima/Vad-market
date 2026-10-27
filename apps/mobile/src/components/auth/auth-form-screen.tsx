@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -20,16 +20,17 @@ import type { AuthMode } from './welcome-screen';
 
 type Props = { initialMode: AuthMode; onBack(): void };
 type MessageKind = 'info' | 'success' | 'error';
-type AuthView = 'credentials' | 'forgot';
+type AuthView = 'credentials' | 'forgot' | 'mfa';
 
 export function AuthFormScreen({ initialMode, onBack }: Props) {
-  const { signIn, signUp, signInWithProvider, requestPasswordReset } = useAuth();
+  const { signIn, signUp, signInWithProvider, requestPasswordReset, verifyLoginMfaCode, cancelMfaLogin, mfaLoginRequired } = useAuth();
   const theme = useVadTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 768;
   const compact = width < 380;
   const [mode, setMode] = useState<AuthMode>(initialMode);
-  const [view, setView] = useState<AuthView>('credentials');
+  const [view, setView] = useState<AuthView>(mfaLoginRequired ? 'mfa' : 'credentials');
+  const [mfaCode, setMfaCode] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,10 +41,26 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
   const [signupComplete, setSignupComplete] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
+  useEffect(() => {
+    // A TOTP-enabled session may be restored asynchronously after this screen
+    // mounts. Defer the UI transition until after the effect has committed.
+    if (!mfaLoginRequired) return;
+    const timer = setTimeout(() => {
+      setMode('signIn');
+      setView('mfa');
+      setMfaCode('');
+      setMessage('Enter the current six-digit code from your Google Authenticator app to finish signing in.');
+      setMessageKind('info');
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [mfaLoginRequired]);
+
   const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
   const passwordValid = mode === 'signIn' ? password.length > 0 : password.length >= 8;
   const nameValid = mode === 'signIn' || displayName.trim().length >= 2;
-  const canSubmit = emailValid && passwordValid && nameValid && !isSubmitting;
+  const canSubmit = view === 'mfa'
+    ? /^\d{6}$/.test(mfaCode.trim()) && !isSubmitting
+    : emailValid && passwordValid && nameValid && !isSubmitting;
 
   function resetMessages() {
     setMessage(null);
@@ -52,14 +69,16 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
   }
 
   function switchMode(nextMode: AuthMode) {
+    if (view === 'mfa') void cancelMfaLogin();
     setMode(nextMode);
     setView('credentials');
+    setMfaCode('');
     resetMessages();
     setPassword('');
   }
 
   async function submit() {
-    if (!canSubmit) return;
+    if (view !== 'credentials' || !canSubmit) return;
     setIsSubmitting(true);
     resetMessages();
 
@@ -74,6 +93,14 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
         return;
       }
 
+      if (result.requiresMfa) {
+        setView('mfa');
+        setMfaCode('');
+        setMessage(result.message ?? 'Enter the six-digit code from your Google Authenticator app.');
+        setMessageKind('info');
+        return;
+      }
+
       if (mode === 'signUp' && result.message) {
         setMessage(result.message);
         setMessageKind('success');
@@ -82,6 +109,28 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
       }
     } catch {
       setMessage('VAD could not complete this request. Check your connection and try again.');
+      setMessageKind('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function submitMfa() {
+    if (!/^\d{6}$/.test(mfaCode.trim()) || isSubmitting) return;
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      const result = await verifyLoginMfaCode(mfaCode.trim());
+      if (!result.ok) {
+        setMessage(result.message ?? 'The authenticator code could not be verified.');
+        setMessageKind('error');
+        return;
+      }
+      setMfaCode('');
+      setView('credentials');
+      resetMessages();
+    } catch {
+      setMessage('VAD could not verify that authenticator code. Check the current code and retry.');
       setMessageKind('error');
     } finally {
       setIsSubmitting(false);
@@ -136,10 +185,16 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={view === 'forgot' ? 'Back to sign in' : 'Back to welcome'}
+                accessibilityLabel={view === 'forgot' || view === 'mfa' ? 'Back to sign in' : 'Back to welcome'}
                 onPress={() => {
                   if (view === 'forgot') {
                     setView('credentials');
+                    resetMessages();
+                  } else if (view === 'mfa') {
+                    void cancelMfaLogin();
+                    setMfaCode('');
+                    setView('credentials');
+                    setMode('signIn');
                     resetMessages();
                   } else {
                     onBack();
@@ -171,14 +226,18 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
                   <VadText variant="display">
                     {view === 'forgot'
                       ? 'Get back to your account.'
-                      : mode === 'signIn'
+                      : view === 'mfa'
+                        ? 'One more step.'
+                        : mode === 'signIn'
                         ? 'Welcome back.'
                         : 'Back outcomes you understand.'}
                   </VadText>
                   <VadText tone="secondary" style={{ maxWidth: 520 }}>
                     {view === 'forgot'
                       ? 'Reset your password without affecting your wallet, positions or account activity.'
-                      : mode === 'signIn'
+                      : view === 'mfa'
+                        ? 'Enter the current six-digit code from your authenticator app to secure your sign-in.'
+                        : mode === 'signIn'
                         ? 'Sign in to return to your markets, positions, wallet and community.'
                         : 'Create one account for markets, trading, your wallet and your public track record.'}
                   </VadText>
@@ -239,6 +298,42 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
                     </View>
                     <VadButton label="Continue to sign in" onPress={() => switchMode('signIn')} />
                   </View>
+                ) : view === 'mfa' ? (
+                  <>
+                    <View style={{ gap: theme.spacing.xs }}>
+                      <VadText variant="caption" tone="brand">AUTHENTICATOR CHECK</VadText>
+                      <VadText variant="title">Verify your sign-in</VadText>
+                      <VadText variant="caption" tone="secondary">Your account has Google Authenticator enabled. VAD requires the current code before opening your account.</VadText>
+                    </View>
+                    <VadInput
+                      label="Six-digit authenticator code"
+                      floatingLabel
+                      value={mfaCode}
+                      onChangeText={(value) => { setMfaCode(value.replace(/\D/g, '').slice(0, 6)); setMessage(null); }}
+                      keyboardType="number-pad"
+                      textContentType="oneTimeCode"
+                      autoComplete="one-time-code"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      maxLength={6}
+                      returnKeyType="done"
+                      onSubmitEditing={() => void submitMfa()}
+                      hint="Open Google Authenticator and use the current six-digit code."
+                    />
+                    {message ? <MessageBanner background={messageBackground} tone={messageTone} message={message} /> : null}
+                    <VadButton
+                      label="Verify and sign in"
+                      loading={isSubmitting}
+                      disabled={!canSubmit}
+                      onPress={() => void submitMfa()}
+                    />
+                    <VadButton
+                      label="Cancel sign-in"
+                      variant="plain"
+                      disabled={isSubmitting}
+                      onPress={() => { void cancelMfaLogin(); setMfaCode(''); setView('credentials'); setMode('signIn'); resetMessages(); }}
+                    />
+                  </>
                 ) : (
                   <>
                     <View

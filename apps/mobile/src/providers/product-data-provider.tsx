@@ -34,14 +34,12 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
 
   const visibleData = useMemo<ProductDataValue>(() => {
     const markets = filterMarketsByAssets(data.markets, activeAssetCodes);
-    const realLedgerAssetCodes = activeAssetCodes.filter((code) => code !== 'TNGN');
     const visibleMarketIds = new Set(markets.map((market) => market.instrument_public_id));
-    const realMoneyMarketIds = new Set(markets.filter((market) => market.asset_code !== 'TNGN').map((market) => market.instrument_public_id));
     const notifications = data.notifications.filter((notification) =>
-      isAssetScopedNotificationVisible(notification, realLedgerAssetCodes, realMoneyMarketIds),
+      isAssetScopedNotificationVisible(notification, activeAssetCodes, visibleMarketIds),
     );
     const liveNotification = data.liveNotification &&
-      isAssetScopedNotificationVisible(data.liveNotification, realLedgerAssetCodes, realMoneyMarketIds)
+      isAssetScopedNotificationVisible(data.liveNotification, activeAssetCodes, visibleMarketIds)
         ? data.liveNotification
         : null;
 
@@ -50,16 +48,13 @@ export function ProductDataProvider({ children }: PropsWithChildren) {
       activeAssetCodes,
       countryCode: runtimeCapabilities.context.countryCode,
       markets,
-      // TNGN rows are supplied by the isolated demo-account RPCs, not the real finance ledger.
       wallet: filterAssetRows(data.wallet, activeAssetCodes),
       walletActivity: filterAssetRows(data.walletActivity, activeAssetCodes),
-      positions: filterAssetRows(data.positions, realLedgerAssetCodes),
-      orders: filterAssetRows(data.orders, realLedgerAssetCodes),
-      // TNGN prediction stakes come from my_tngn_market_orders and remain isolated from real-money stakes.
+      positions: filterAssetRows(data.positions, activeAssetCodes),
+      orders: filterAssetRows(data.orders, activeAssetCodes),
       poolStakes: filterAssetRows(data.poolStakes, activeAssetCodes),
-      // TNGN history is reconstructed from the isolated demo-order RPC, not the real-money history table.
       marketHistory: filterAssetRows(data.marketHistory, activeAssetCodes),
-      settlements: filterAssetRows(data.settlements, realLedgerAssetCodes),
+      settlements: filterAssetRows(data.settlements, activeAssetCodes),
       notifications,
       liveNotification,
       homePromotions: data.homePromotions.filter((promotion) =>

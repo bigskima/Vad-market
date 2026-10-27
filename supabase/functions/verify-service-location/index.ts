@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
   if (
     !Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
     !Number.isFinite(longitude) || longitude < -180 || longitude > 180 ||
-    !Number.isFinite(accuracyMeters) || accuracyMeters < 0 || accuracyMeters > 1500
+    !Number.isFinite(accuracyMeters) || accuracyMeters < 0 || accuracyMeters > 25000
   ) {
     return json({ error: 'Location is missing or too imprecise', code: 'LOCATION_INACCURATE' }, 400);
   }
@@ -246,13 +246,13 @@ Deno.serve(async (req) => {
       lookupDeviceCountry(latitude, longitude),
       lookupNetworkSignals(ip),
     ]);
-    if (!geoLookup.countryCode) {
-      console.warn('[verify-service-location] both reverse-geocoding providers failed');
-      return json({ error: 'Could not determine the country for this device location', code: 'LOCATION_PROVIDER_ERROR' }, 503);
-    }
     if (!networkLookup.data) {
       console.warn('[verify-service-location] both network intelligence providers failed');
       return json({ error: 'Network country and risk signals are unavailable', code: 'NETWORK_RISK_UNRESOLVED' }, 503);
+    }
+    if (!isCountryCode(geoLookup.countryCode)) {
+      console.warn('[verify-service-location] both reverse-geocoding providers failed');
+      return json({ error: 'Could not determine the country for this device location', code: 'LOCATION_PROVIDER_ERROR' }, 503);
     }
     const network = networkLookup.data;
     const networkData = network.data;
@@ -263,8 +263,8 @@ Deno.serve(async (req) => {
       countryProvider: geoLookup.provider,
       networkProvider: networkLookup.provider,
     });
-    if (!isCountryCode(deviceCountry) || !isCountryCode(ipCountry)) {
-      return json({ error: 'Unable to establish current country', code: 'COUNTRY_UNRESOLVED' }, 503);
+    if (!isCountryCode(ipCountry)) {
+      return json({ error: 'Unable to establish the connection country', code: 'COUNTRY_UNRESOLVED' }, 503);
     }
 
     const vpn = security?.isVpn === true;
@@ -272,7 +272,11 @@ Deno.serve(async (req) => {
     const tor = security?.isTor === true;
     const hosting = security?.isHosting === true;
     const blacklisted = security?.isBlacklisted === true;
-    const riskDetected = vpn || proxy || tor || hosting || blacklisted;
+    // Consumer carriers and privacy features are often misclassified by IP
+    // reputation providers. When account, GPS-country and IP-country all agree
+    // on Nigeria, only Tor is a hard block; VPN/proxy/hosting/blacklist signals
+    // are retained for audit but are not, on their own, a trade blocker.
+    const riskDetected = tor;
 
     const { data: account, error: accountError } = await admin
       .from('user_accounts')
@@ -331,7 +335,8 @@ Deno.serve(async (req) => {
     }
 
     const checkedAt = new Date();
-    const expiresAt = new Date(checkedAt.getTime() + 2 * 60 * 1000);
+    // Avoid repeated GPS prompts during a normal session while retaining an explicit, expiring jurisdiction check.
+    const expiresAt = new Date(checkedAt.getTime() + 24 * 60 * 60 * 1000);
     const { error: saveError } = await admin.from('user_location_verifications').upsert({
       user_id: authData.user.id,
       device_country_code: deviceCountry,

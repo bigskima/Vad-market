@@ -61,6 +61,8 @@ type CreateCatalogMarketInput = {
   countryCode: string;
   assetCode: string;
   liquidityModel: 'POOL' | 'ORDER_BOOK';
+  minTradeAmount: number;
+  maxTradeAmount: number;
   publishNow?: boolean;
 };
 
@@ -77,6 +79,8 @@ export type CreateMultiOutcomeMarketInput = {
   resolvesAfter: string;
   countryCode: string;
   assetCode: string;
+  minTradeAmount: number;
+  maxTradeAmount: number;
   publishNow?: boolean;
 };
 
@@ -183,10 +187,7 @@ export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) 
       .map(([key, value]) => [key, String(value ?? '').trim()])
       .filter(([, value]) => Boolean(value)),
   );
-  const rpcName = input.marketTypeCode === 'CRYPTO_PRICE_THRESHOLD'
-    ? 'admin_create_crypto_threshold_market'
-    : 'admin_create_catalog_market_v2';
-  const { data, error } = await supabase.rpc(rpcName, {
+  const { data, error } = await supabase.rpc('admin_create_catalog_market_v3', {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_market_type_code: input.marketTypeCode,
@@ -200,6 +201,8 @@ export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) 
     p_country_code: input.countryCode,
     p_asset_code: input.assetCode,
     p_liquidity_model: input.liquidityModel,
+    p_min_trade_amount: input.minTradeAmount,
+    p_max_trade_amount: input.maxTradeAmount,
     p_publish_now: input.publishNow === true,
   });
   fail(error, 'We could not create this guided VAD market right now.');
@@ -207,7 +210,7 @@ export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) 
 }
 
 export async function createAdminMultiOutcomeMarket(input: CreateMultiOutcomeMarketInput) {
-  const { data, error } = await supabase.rpc('admin_create_multi_outcome_market_v1', {
+  const { data, error } = await supabase.rpc('admin_create_multi_outcome_market_v2', {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_category: input.category.trim(),
@@ -220,6 +223,8 @@ export async function createAdminMultiOutcomeMarket(input: CreateMultiOutcomeMar
     p_resolves_after: input.resolvesAfter,
     p_country_code: input.countryCode,
     p_asset_code: input.assetCode,
+    p_min_trade_amount: input.minTradeAmount,
+    p_max_trade_amount: input.maxTradeAmount,
     p_publish_now: input.publishNow === true,
   });
   fail(error, 'We could not create this multiple-outcome market right now.');
@@ -263,6 +268,43 @@ export async function saveAdminSimpleGuidedMarketType(input: {
     p_enabled: input.enabled !== false,
   });
   fail(error, 'We could not save this market type right now.');
+  return data === true;
+}
+
+
+
+export async function saveAdminGuidedMarketTypeDefinition(input: {
+  code: string;
+  categoryCode: string;
+  name: string;
+  description?: string;
+  questionTemplate: string;
+  conditionTemplate: string;
+  sourceLabel: string;
+  sourceRequired: boolean;
+  fields: AdminGuidedCatalogField[];
+  displayOrder?: number;
+  enabled?: boolean;
+}) {
+  const { data, error } = await supabase.rpc('admin_save_guided_market_type_v2', {
+    p_code: input.code.trim().toUpperCase(),
+    p_category_code: input.categoryCode.trim().toUpperCase(),
+    p_name: input.name.trim(),
+    p_description: input.description?.trim() ?? '',
+    p_question_template: input.questionTemplate.trim(),
+    p_condition_template: input.conditionTemplate.trim(),
+    p_source_label: input.sourceLabel.trim(),
+    p_source_required: input.sourceRequired,
+    p_field_schema: input.fields.map((field) => ({
+      key: field.key.trim(),
+      label: field.label.trim(),
+      placeholder: field.placeholder?.trim() ?? '',
+      required: field.required === true,
+    })),
+    p_display_order: input.displayOrder ?? 100,
+    p_enabled: input.enabled !== false,
+  });
+  fail(error, 'The configured market type could not be saved.');
   return data === true;
 }
 

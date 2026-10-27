@@ -567,9 +567,9 @@ function categoryMatches(value: string | null, category: Category) {
   return (value ?? '').trim().toLocaleLowerCase() === category.trim().toLocaleLowerCase();
 }
 function formatMoney(value: number, asset: string) {
+  if (asset !== 'NGN' && asset !== 'USDC') return '—';
   const number = value.toLocaleString(asset === 'NGN' ? 'en-NG' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (asset === 'NGN') return '₦' + number;
-  return asset === 'TNGN' ? `TNGN ${number}` : `${number} USDC`;
+  return asset === 'NGN' ? '₦' + number : number + ' USDC';
 }
 function formatProbability(value: number | string | null | undefined) { const n = Number(value); return Number.isFinite(n) ? `${Math.round(n <= 1 ? n * 100 : n)}%` : '—'; }
 function formatVolume(value: number | string | null | undefined, asset: string) { const n = Number(value); if (!Number.isFinite(n)) return 'Volume unavailable'; const compact = new Intl.NumberFormat(asset === 'NGN' ? 'en-NG' : 'en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n); return asset === 'NGN' ? `₦${compact}` : `${compact} USDC`; }

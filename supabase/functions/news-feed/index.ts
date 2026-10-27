@@ -174,10 +174,28 @@ function categoryForStory(title: string, requested: Category): Category {
   if (/technology|software|cybersecurity|chip|semiconductor/.test(text)) return 'TECHNOLOGY';
   return 'WORLD';
 }
-type FeedDefinition = { label: string; url: string; category: Category };
+type FeedDefinition = { label: string; url: string; category: Category; country?: 'NG' | 'AF' | null };
 
+const NIGERIA_FEEDS = {
+  latest: { label: 'PUNCH Nigeria', url: 'https://rss.punchng.com/v1/category/latest_news', category: 'WORLD' as Category, country: 'NG' as const },
+  politics: { label: 'PUNCH Politics', url: 'https://rss.punchng.com/v1/category/politics', category: 'POLITICS' as Category, country: 'NG' as const },
+  business: { label: 'PUNCH Business', url: 'https://rss.punchng.com/v1/category/business', category: 'BUSINESS' as Category, country: 'NG' as const },
+  technology: { label: 'PUNCH Technology', url: 'https://rss.punchng.com/v1/category/technology', category: 'TECHNOLOGY' as Category, country: 'NG' as const },
+  entertainment: { label: 'PUNCH Entertainment', url: 'https://rss.punchng.com/v1/category/entertainment', category: 'ENTERTAINMENT' as Category, country: 'NG' as const },
+  health: { label: 'PUNCH Health', url: 'https://rss.punchng.com/v1/category/health', category: 'HEALTH' as Category, country: 'NG' as const },
+  premiumTimes: { label: 'Premium Times Nigeria', url: 'https://www.premiumtimesng.com/feed', category: 'WORLD' as Category, country: 'NG' as const },
+  guardianNigeria: { label: 'The Guardian Nigeria', url: 'https://guardian.ng/feed/', category: 'WORLD' as Category, country: 'NG' as const },
+};
+const AFRICA_FEEDS = {
+  africanews: { label: 'Africanews', url: 'https://www.africanews.com/feed/rss', category: 'WORLD' as Category, country: 'AF' as const },
+};
 const FEEDS: Record<Category, FeedDefinition[]> = {
   ALL: [
+    NIGERIA_FEEDS.latest,
+    NIGERIA_FEEDS.premiumTimes,
+    NIGERIA_FEEDS.guardianNigeria,
+    AFRICA_FEEDS.africanews,
+    NIGERIA_FEEDS.technology,
     { label: 'BBC News', url: 'https://feeds.bbci.co.uk/news/rss.xml', category: 'WORLD' },
     { label: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'WORLD' },
     { label: 'BBC Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', category: 'BUSINESS' },
@@ -187,52 +205,64 @@ const FEEDS: Record<Category, FeedDefinition[]> = {
     { label: 'BBC Sport', url: 'https://feeds.bbci.co.uk/sport/rss.xml', category: 'SPORTS' },
   ],
   POLITICS: [
+    NIGERIA_FEEDS.politics, NIGERIA_FEEDS.latest, NIGERIA_FEEDS.premiumTimes, NIGERIA_FEEDS.guardianNigeria,
+    AFRICA_FEEDS.africanews,
     { label: 'BBC Politics', url: 'https://feeds.bbci.co.uk/news/politics/rss.xml', category: 'POLITICS' },
     { label: 'The Guardian Politics', url: 'https://www.theguardian.com/politics/rss', category: 'POLITICS' },
     { label: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'WORLD' },
   ],
   WORLD: [
+    NIGERIA_FEEDS.latest, NIGERIA_FEEDS.premiumTimes, NIGERIA_FEEDS.guardianNigeria, AFRICA_FEEDS.africanews,
     { label: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'WORLD' },
     { label: 'The Guardian World', url: 'https://www.theguardian.com/world/rss', category: 'WORLD' },
     { label: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', category: 'WORLD' },
   ],
   BUSINESS: [
+    NIGERIA_FEEDS.business, NIGERIA_FEEDS.premiumTimes, NIGERIA_FEEDS.guardianNigeria, AFRICA_FEEDS.africanews,
     { label: 'BBC Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', category: 'BUSINESS' },
     { label: 'The Guardian Business', url: 'https://www.theguardian.com/uk/business/rss', category: 'BUSINESS' },
     { label: 'Sky News Business', url: 'https://feeds.skynews.com/feeds/rss/business.xml', category: 'BUSINESS' },
   ],
   ECONOMY: [
+    NIGERIA_FEEDS.business, NIGERIA_FEEDS.latest, NIGERIA_FEEDS.premiumTimes, NIGERIA_FEEDS.guardianNigeria, AFRICA_FEEDS.africanews,
     { label: 'BBC Economy', url: 'https://feeds.bbci.co.uk/news/business/economy/rss.xml', category: 'ECONOMY' },
     { label: 'The Guardian Business', url: 'https://www.theguardian.com/uk/business/rss', category: 'ECONOMY' },
     { label: 'Sky News Business', url: 'https://feeds.skynews.com/feeds/rss/business.xml', category: 'ECONOMY' },
   ],
   TECHNOLOGY: [
+    NIGERIA_FEEDS.technology, NIGERIA_FEEDS.latest, NIGERIA_FEEDS.guardianNigeria, NIGERIA_FEEDS.premiumTimes, AFRICA_FEEDS.africanews,
     { label: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', category: 'TECHNOLOGY' },
     { label: 'The Guardian Technology', url: 'https://www.theguardian.com/uk/technology/rss', category: 'TECHNOLOGY' },
     { label: 'Sky News Technology', url: 'https://feeds.skynews.com/feeds/rss/technology.xml', category: 'TECHNOLOGY' },
   ],
   AI: [
+    NIGERIA_FEEDS.technology, NIGERIA_FEEDS.guardianNigeria, NIGERIA_FEEDS.premiumTimes, AFRICA_FEEDS.africanews,
     { label: 'The Guardian AI', url: 'https://www.theguardian.com/technology/artificialintelligenceai/rss', category: 'AI' },
     { label: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', category: 'TECHNOLOGY' },
     { label: 'The Guardian Technology', url: 'https://www.theguardian.com/uk/technology/rss', category: 'TECHNOLOGY' },
   ],
   SCIENCE: [
+    NIGERIA_FEEDS.guardianNigeria, AFRICA_FEEDS.africanews,
     { label: 'BBC Science', url: 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml', category: 'SCIENCE' },
     { label: 'The Guardian Science', url: 'https://www.theguardian.com/science/rss', category: 'SCIENCE' },
   ],
   HEALTH: [
+    NIGERIA_FEEDS.health, NIGERIA_FEEDS.latest, NIGERIA_FEEDS.guardianNigeria, AFRICA_FEEDS.africanews,
     { label: 'BBC Health', url: 'https://feeds.bbci.co.uk/news/health/rss.xml', category: 'HEALTH' },
     { label: 'The Guardian Society', url: 'https://www.theguardian.com/society/rss', category: 'HEALTH' },
   ],
   SPORTS: [
+    NIGERIA_FEEDS.latest, NIGERIA_FEEDS.guardianNigeria, AFRICA_FEEDS.africanews,
     { label: 'BBC Sport', url: 'https://feeds.bbci.co.uk/sport/rss.xml', category: 'SPORTS' },
     { label: 'Sky News Sport', url: 'https://feeds.skynews.com/feeds/rss/sports.xml', category: 'SPORTS' },
   ],
   MUSIC: [
+    NIGERIA_FEEDS.entertainment, NIGERIA_FEEDS.guardianNigeria, AFRICA_FEEDS.africanews,
     { label: 'The Guardian Music', url: 'https://www.theguardian.com/music/rss', category: 'MUSIC' },
     { label: 'BBC Entertainment & Arts', url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml', category: 'ENTERTAINMENT' },
   ],
   ENTERTAINMENT: [
+    NIGERIA_FEEDS.entertainment, NIGERIA_FEEDS.latest, NIGERIA_FEEDS.guardianNigeria, AFRICA_FEEDS.africanews,
     { label: 'BBC Entertainment & Arts', url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml', category: 'ENTERTAINMENT' },
     { label: 'The Guardian Culture', url: 'https://www.theguardian.com/uk/culture/rss', category: 'ENTERTAINMENT' },
     { label: 'Sky News Entertainment', url: 'https://feeds.skynews.com/feeds/rss/entertainment.xml', category: 'ENTERTAINMENT' },
@@ -294,7 +324,7 @@ function parseFeed(xml: string, feed: FeedDefinition): Story[] {
       url,
       imageUrl,
       source: sourceLabel || publisherFromUrl(url),
-      sourceCountry: null,
+      sourceCountry: feed.country ?? null,
       language: 'en',
       publishedAt,
       seenAt: publishedAt,
@@ -356,7 +386,13 @@ async function listStories(category: Category, search: string, limit: number) {
     if (!current || (!current.imageUrl && displayStory.imageUrl)) unique.set(keyByUrl, displayStory);
   }
   let stories = await Promise.all([...unique.values()].map(async (story) => ({ ...story, id: await digest(story.url) })));
-  stories.sort((a, b) => Date.parse(b.publishedAt ?? '') - Date.parse(a.publishedAt ?? ''));
+  // Nigeria first, then continental African coverage, followed by global
+  // sources; publication time orders stories within each region.
+  stories.sort((a, b) => {
+    const rank = (value: string | null) => value === 'NG' ? 0 : value === 'AF' ? 1 : 2;
+    return rank(a.sourceCountry) - rank(b.sourceCountry)
+      || Date.parse(b.publishedAt ?? '') - Date.parse(a.publishedAt ?? '');
+  });
   stories = stories.slice(0, Math.max(10, Math.min(50, limit)));
 
   if (!stories.length) {

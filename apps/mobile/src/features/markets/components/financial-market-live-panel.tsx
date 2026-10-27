@@ -81,7 +81,7 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
             ?? result.coins[0];
           if (match) {
             nextQuote = quoteFromCrypto(match, result.quoteCurrency, result.source);
-            nextDelaySeconds = Math.max(15, Math.min(3600, result.cacheSeconds ?? 30));
+            nextDelaySeconds = Math.max(15, Math.min(30, result.cacheSeconds ?? 15));
           }
         } else {
           const result = await getFinancialMarketData({

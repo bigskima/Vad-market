@@ -33,8 +33,8 @@ import {
   type AdminSportsFixture,
 } from '@/services/admin-sports-fixture-api';
 import { createAdminCryptoMarketDraft } from '@/services/crypto-market-draft-api';
+import { createAdminCustomMarketDraft } from '@/services/admin-custom-market-draft-api';
 import {
-  createAdminCustomMarket,
   createAdminGuidedMarket,
   getAdminMarketAutoOptions,
   type AdminMarketAutoOptions,
@@ -47,6 +47,7 @@ type ResultChecking = 'AUTOMATIC' | 'VERIFIED';
 type Prediction = 'HOME_WIN' | 'DRAW' | 'AWAY_WIN';
 type PublicationChoice = 'DRAFT' | 'NOW';
 type LiquidityModel = 'POOL' | 'ORDER_BOOK';
+type RegionScope = 'NIGERIA' | 'AFRICA' | 'GLOBAL';
 
 function suggestedFromTemplate(template: string, details: Record<string, string>) {
   if (!template.trim()) return '';
@@ -121,6 +122,11 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [sourceName, setSourceName] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [resultCondition, setResultCondition] = useState('');
+  const [regionScope, setRegionScope] = useState<RegionScope>('NIGERIA');
+  const [customDraftLoading, setCustomDraftLoading] = useState(false);
+  const [customDraftNotice, setCustomDraftNotice] = useState<string | null>(null);
+  const [customDraftRiskNotes, setCustomDraftRiskNotes] = useState<string | null>(null);
+  const [customDraftResolutionRules, setCustomDraftResolutionRules] = useState<string | null>(null);
 
   const [competition, setCompetition] = useState('');
   const [homeTeam, setHomeTeam] = useState('');
@@ -132,6 +138,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
   const [countryCode, setCountryCode] = useState('');
   const [assetCode, setAssetCode] = useState('');
   const [liquidityModel, setLiquidityModel] = useState<LiquidityModel>('POOL');
+  const [minTradeAmount, setMinTradeAmount] = useState('');
+  const [maxTradeAmount, setMaxTradeAmount] = useState('');
   const [opensAt, setOpensAt] = useState('');
   const [closesAt, setClosesAt] = useState('');
   const [resolvesAfter, setResolvesAfter] = useState('');
@@ -268,20 +276,26 @@ export function AdminMarketCreateWorkspaceCatalog() {
     () => options?.jurisdictions.find((item) => item.countryCode === resolvedCountryCode) ?? null,
     [options, resolvedCountryCode],
   );
-  // TNGN is decommissioned at the asset, runtime and policy layers. Filter it
-  // out even if a cached jurisdiction response still includes the old code.
-  const availableAssets = (jurisdiction?.assets ?? []).filter((asset) => asset !== 'TNGN');
-  const resolvedAssetCode = assetCode && availableAssets.includes(assetCode)
-    ? assetCode
+  const availableAssets = (jurisdiction?.assets ?? []).filter((asset): asset is 'NGN' | 'USDC' => asset === 'NGN' || asset === 'USDC');
+  const selectedAssetCode: 'NGN' | 'USDC' | '' = assetCode === 'NGN' || assetCode === 'USDC' ? assetCode : '';
+  const resolvedAssetCode: 'NGN' | 'USDC' | '' = selectedAssetCode && availableAssets.includes(selectedAssetCode)
+    ? selectedAssetCode
     : availableAssets.includes('NGN')
       ? 'NGN'
       : availableAssets[0] ?? '';
+  const effectiveLiquidityModel: LiquidityModel = marketFormat === 'MULTI_OUTCOME' ? 'POOL' : liquidityModel;
   const guided = creationStyle === 'GUIDED';
-  const football = marketFormat === 'BINARY' && guided && marketType?.handler === 'FOOTBALL_MATCH';
-  const cryptoThreshold = marketFormat === 'BINARY' && guided && marketType?.handler === 'CRYPTO_THRESHOLD';
+  const football = marketFormat === 'BINARY' && marketType?.handler === 'FOOTBALL_MATCH';
+  const cryptoThreshold = marketFormat === 'BINARY' && marketType?.handler === 'CRYPTO_THRESHOLD';
   const automaticFootball = football && resultChecking === 'AUTOMATIC';
   const automaticFootballAvailable = options?.guided.football.automaticProductionAvailable === true;
   const footballCompetitions = options?.guided.football.competitions ?? [];
+
+  const invalidTradeLimitSelection = (resolvedAssetCode !== 'NGN' && resolvedAssetCode !== 'USDC')
+    || (effectiveLiquidityModel !== 'POOL' && effectiveLiquidityModel !== 'ORDER_BOOK');
+  const displayedTradeLimitsError = invalidTradeLimitSelection
+    ? 'Choose an enabled NGN or USDC currency and a supported trading method for this market.'
+    : null;
 
   const selectedFootballCompetition = useMemo(() => {
     const value = competition.trim().toLocaleLowerCase();
@@ -367,6 +381,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function chooseCategory(next: AdminGuidedCatalogCategory) {
     setCategoryCode(next.code);
     setMarketTypeCode(next.marketTypes[0]?.code ?? '');
+    setMinTradeAmount('');
+    setMaxTradeAmount('');
     clearMarketDetails();
     if (next.marketTypes[0]?.handler === 'FOOTBALL_MATCH') setResultChecking('AUTOMATIC');
     setError(null);
@@ -374,6 +390,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   function chooseMarketType(next: AdminGuidedCatalogMarketType) {
     setMarketTypeCode(next.code);
+    setMinTradeAmount('');
+    setMaxTradeAmount('');
     clearMarketDetails();
     if (next.handler === 'FOOTBALL_MATCH') setResultChecking('AUTOMATIC');
     setError(null);
@@ -573,6 +591,74 @@ export function AdminMarketCreateWorkspaceCatalog() {
     );
   }
 
+  async function generateCustomMarketDraft() {
+    if (customDraftLoading || working) return;
+    if (!category || !marketType) return setError('Choose a category and database-configured market type first.');
+    setCustomDraftLoading(true);
+    setCustomDraftNotice(null);
+    setCustomDraftRiskNotes(null);
+    setCustomDraftResolutionRules(null);
+    setError(null);
+    try {
+      const condition = resultCondition.trim()
+        || suggestedFromTemplate(marketType.conditionTemplate, details)
+        || marketType.conditionTemplate;
+      const draft = await createAdminCustomMarketDraft({
+        categoryCode: category.code,
+        marketTypeCode: marketType.code,
+        title: effectiveTitle,
+        description,
+        details,
+        condition,
+        sourceName,
+        sourceUrl,
+        regionScope: cryptoThreshold ? 'GLOBAL' : regionScope,
+        opensAt: opensAt && Number.isFinite(Date.parse(opensAt)) ? new Date(opensAt).toISOString() : undefined,
+        closesAt: closesAt && Number.isFinite(Date.parse(closesAt)) ? new Date(closesAt).toISOString() : undefined,
+        resolvesAfter: resolvesAfter && Number.isFinite(Date.parse(resolvesAfter)) ? new Date(resolvesAfter).toISOString() : undefined,
+      });
+      setTitle(draft.title);
+      setTitleEdited(true);
+      setDescription(draft.description);
+      // Put the AI proposal into the same editable resolution field that the
+      // market creation RPC saves. The selected market type and resolver stay
+      // unchanged, and an admin must review the proposal before publishing.
+      setResultCondition(draft.resolutionRules);
+      setCustomDraftResolutionRules(draft.resolutionRules);
+      setCustomDraftRiskNotes(draft.riskNotes);
+      setCustomDraftNotice('Drafted with ' + draft.providerName + ' · ' + draft.modelCode + ' · prompt v' + draft.promptVersion + '. Not published; review before continuing.');
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'VAD could not prepare a custom market draft.');
+    } finally {
+      setCustomDraftLoading(false);
+    }
+  }
+
+  function renderCustomDraftControls() {
+    if (creationStyle !== 'CUSTOM' || !marketType || football || cryptoThreshold) return null;
+    return (
+      <View style={{ gap: theme.spacing.sm }}>
+        <VadButton
+          label={customDraftLoading ? 'Preparing AI draft…' : 'Help draft question & resolution with AI'}
+          onPress={() => void generateCustomMarketDraft()}
+          disabled={customDraftLoading || working || !category || (marketType.sourceRequired && !sourceName.trim()) || (marketType.handler === 'VERIFIED_EVENT' && !/^https:\/\//i.test(sourceUrl.trim()))}
+          loading={customDraftLoading}
+        />
+        <VadText variant="caption" tone="secondary">
+          Uses VAD’s configured AI provider and the selected database market type. The helper cannot invent sources or outcome choices, change the resolver, publish, or settle a market.
+        </VadText>
+        {customDraftNotice ? (
+          <VadCard variant="outlined" style={{ gap: 4 }}>
+            <VadText variant="bodyStrong">AI draft · administrator review required</VadText>
+            <VadText variant="caption" tone="secondary">{customDraftNotice}</VadText>
+            {customDraftResolutionRules ? <View style={{ gap: 3 }}><VadText variant="caption" tone="secondary">AI resolution suggestion copied to the editable rule above — verify it before creating or publishing</VadText><VadText variant="caption">{customDraftResolutionRules}</VadText></View> : null}
+            {customDraftRiskNotes ? <VadText variant="caption" tone="warning">Review notes: {customDraftRiskNotes}</VadText> : null}
+          </VadCard>
+        ) : null}
+      </View>
+    );
+  }
+
   async function continueFromMarket() {
     setError(null);
     if (!category) return setError('Choose a market category.');
@@ -586,13 +672,13 @@ export function AdminMarketCreateWorkspaceCatalog() {
       }
       if (resultCondition.trim().length < 10) return setError('Describe how VAD should determine the winning option.');
       if (!sourceName.trim()) return setError('Add the authoritative result source for this market.');
-      if (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim())) return setError('The source link must start with https://.');
+      if (!sourceUrl.trim()) return setError('Add the official HTTPS source URL. Automatic resolution needs a known source domain for direct evidence and scoped corroboration.');
+      if (!/^https:\/\//i.test(sourceUrl.trim())) return setError('The source link must start with https://.');
       setLiquidityModel('POOL');
       setStep(2);
       return;
     }
-    if (!guided) return setStep(2);
-    if (!marketType) return setError('Choose the kind of event you are creating.');
+    if (!marketType) return setError('Choose a database-configured market type so VAD can attach its authoritative source and resolution rules.');
 
     if (cryptoThreshold) {
       if (cryptoDraftLoading) return setError('Wait for the AI draft to finish before continuing to trading setup.');
@@ -641,6 +727,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
       if (missing) return setError(`Add ${missing.label} before continuing.`);
       if (!marketType.conditionTemplate.trim() && !resultCondition.trim()) return setError('Explain in plain language what must happen for YES to win.');
       if (marketType.sourceRequired && !sourceName.trim()) return setError('Add the authoritative result source VAD should use.');
+      if (marketType.handler === 'VERIFIED_EVENT' && !sourceUrl.trim()) {
+        return setError('Add the official HTTPS source URL. Automatic resolution needs a known source domain for direct evidence and scoped corroboration.');
+      }
+      if (marketType.handler === 'VERIFIED_EVENT' && !/^https:\/\//i.test(sourceUrl.trim())) {
+        return setError('The source URL for this automatic market must start with https://.');
+      }
     }
     setStep(2);
   }
@@ -648,6 +740,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
   function continueFromSetup() {
     setError(null);
     if (!resolvedCountryCode || !resolvedAssetCode) return setError('Choose a market currency before continuing.');
+    if (invalidTradeLimitSelection) return setError(displayedTradeLimitsError ?? 'Choose a supported trading currency and method.');
+    const minimumTrade = Number(minTradeAmount);
+    const maximumTrade = Number(maxTradeAmount);
+    if (!Number.isFinite(minimumTrade) || minimumTrade <= 0 || !Number.isFinite(maximumTrade) || maximumTrade <= minimumTrade || maximumTrade > 1000000000000) {
+      return setError('Set a positive minimum and a maximum greater than it for this market. The maximum supported amount is 1,000,000,000,000.');
+    }
     if (!scheduleValid) return setError(scheduleFieldsValid && Date.parse(closesAt) <= clockNow
       ? 'The closing time has already passed. Choose a future closing time; expired markets cannot be published.'
       : 'Choose valid opening, closing and result-checking times.');
@@ -667,6 +765,13 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
   async function createMarket() {
     if (working) return;
+    const minimumTrade = Number(minTradeAmount);
+    const maximumTrade = Number(maxTradeAmount);
+    if (invalidTradeLimitSelection || !Number.isFinite(minimumTrade) || minimumTrade <= 0 || !Number.isFinite(maximumTrade) || maximumTrade <= minimumTrade || maximumTrade > 1000000000000) {
+      setError('Enter a valid minimum and maximum for this market before creating or publishing it. These amounts are saved only to this market.');
+      setStep(2);
+      return;
+    }
     if (!scheduleValid) {
       setError(scheduleFieldsValid && Date.parse(closesAt) <= clockNow
         ? 'The closing time has already passed. Choose a future closing time before creating the market.'
@@ -688,7 +793,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
       !multiOutcomeOptionsValid
       || resultCondition.trim().length < 10
       || !sourceName.trim()
-      || (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim()))
+      || !sourceUrl.trim()
+      || !/^https:\/\//i.test(sourceUrl.trim())
     )) {
       setStep(1);
       setError('Review the market question, 2–20 unique choices, resolution instructions and official source.');
@@ -726,7 +832,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
         resolvesAfter: new Date(resolvesAfter).toISOString(),
         countryCode: resolvedCountryCode,
         assetCode: resolvedAssetCode,
-        liquidityModel,
+        liquidityModel: effectiveLiquidityModel,
+        minTradeAmount: Number(minTradeAmount),
+        maxTradeAmount: Number(maxTradeAmount),
         publishNow: publicationChoice === 'NOW',
       };
       let result: Record<string, unknown>;
@@ -739,8 +847,6 @@ export function AdminMarketCreateWorkspaceCatalog() {
           sourceName,
           sourceUrl,
         });
-      } else if (!guided) {
-        result = await createAdminCustomMarket({ ...common, category: category.name });
       } else if (football) {
         result = await createAdminGuidedMarket({
           ...common,
@@ -767,7 +873,10 @@ export function AdminMarketCreateWorkspaceCatalog() {
           ...common,
           marketTypeCode: marketType.code,
           details,
-          condition: resultCondition,
+          condition: [
+            resultCondition.trim() || suggestedFromTemplate(marketType.conditionTemplate, details) || marketType.conditionTemplate,
+            'Outcome geography: ' + (cryptoThreshold ? 'GLOBAL' : regionScope) + '. Only events within this published geographic scope are eligible.',
+          ].filter(Boolean).join('\n\n'),
           sourceName,
           sourceUrl,
         });
@@ -796,22 +905,29 @@ export function AdminMarketCreateWorkspaceCatalog() {
     setCountryCode('');
     setAssetCode('');
     setLiquidityModel('POOL');
+    setMinTradeAmount('');
+    setMaxTradeAmount('');
     setOpensAt('');
     setClosesAt('');
     setResolvesAfter('');
+    setRegionScope('NIGERIA');
+    setCustomDraftNotice(null);
+    setCustomDraftRiskNotes(null);
     setError(null);
   }
 
   if (loading) return <View style={{ gap: theme.spacing.md }}><VadSkeleton width="50%" height={32} /><VadSkeleton height={120} /><VadSkeleton height={280} /></View>;
 
   const publicationStatus = String(created?.publication_status ?? 'DRAFT').toUpperCase();
-  const resultLabel = marketFormat === 'MULTI_OUTCOME'
-    ? `Manual review${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
-    : guided
+  const resultLabel = cryptoThreshold
+    ? 'Automatic price resolution · Coinbase + Kraken'
+    : football
       ? automaticFootball
         ? `Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`
         : `Verified result${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
-      : 'VAD configured result checking';
+      : (marketFormat === 'MULTI_OUTCOME' || marketType?.handler === 'VERIFIED_EVENT')
+        ? `Automatic evidence resolution · ${sourceName.trim() || 'configured authoritative source'}`
+        : 'VAD configured result checking';
 
   if (created) {
     return (
@@ -845,6 +961,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
             <VadChip label="Guided setup" selected={creationStyle === 'GUIDED'} tone={creationStyle === 'GUIDED' ? 'brand' : 'neutral'} onPress={() => { setCreationStyle('GUIDED'); setTitleEdited(false); setError(null); }} />
             <VadChip label="Custom question" selected={creationStyle === 'CUSTOM'} tone={creationStyle === 'CUSTOM' ? 'brand' : 'neutral'} onPress={() => { setCreationStyle('CUSTOM'); setError(null); }} />
           </FieldGroup>
+          {creationStyle === 'CUSTOM' ? (
+            <VadCard variant="muted" style={{ gap: 4 }}>
+              <VadText variant="bodyStrong">Custom wording, shared VAD resolution</VadText>
+              <VadText variant="caption" tone="secondary">Choose the closest database-configured market type below. Your custom question and condition still use that type’s authoritative source and VAD’s automatic resolution workflow; custom wording does not switch the market to manual settlement.</VadText>
+            </VadCard>
+          ) : null}
 
           <FieldGroup label="Category">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
@@ -862,12 +984,25 @@ export function AdminMarketCreateWorkspaceCatalog() {
 
           {category?.description ? <VadCard variant="muted"><VadText variant="caption" tone="secondary">{category.description}</VadText></VadCard> : null}
 
+          {!cryptoThreshold ? (
+            <FieldGroup label="Market geography">
+              {([
+                ['NIGERIA', 'Nigeria'],
+                ['AFRICA', 'Africa'],
+                ['GLOBAL', 'Global'],
+              ] as const).map(([value, label]) => (
+                <VadChip key={value} label={label} selected={regionScope === value} tone={regionScope === value ? 'brand' : 'neutral'} onPress={() => setRegionScope(value)} />
+              ))}
+            </FieldGroup>
+          ) : null}
+
           <FieldGroup label="Market format">
             <VadChip
               label="Yes / No"
               selected={marketFormat === 'BINARY'}
               tone={marketFormat === 'BINARY' ? 'brand' : 'neutral'}
               onPress={() => {
+                if (marketFormat !== 'BINARY') { setMinTradeAmount(''); setMaxTradeAmount(''); }
                 setMarketFormat('BINARY');
                 setTitleEdited(Boolean(title.trim()));
                 setError(null);
@@ -881,6 +1016,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
                 if (marketFormat !== 'MULTI_OUTCOME') {
                   setTitle(effectiveTitle);
                   setTitleEdited(true);
+                  setMinTradeAmount('');
+                  setMaxTradeAmount('');
                 }
                 setMarketFormat('MULTI_OUTCOME');
                 setLiquidityModel('POOL');
@@ -895,7 +1032,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
             </VadCard>
           ) : null}
 
-          {marketFormat === 'BINARY' && guided && category ? (
+          {marketFormat === 'BINARY' && category ? (
             <View style={{ gap: theme.spacing.lg }}>
               <FieldGroup label="Subcategory · Market type">
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs, paddingRight: theme.spacing.md }}>
@@ -1098,11 +1235,12 @@ export function AdminMarketCreateWorkspaceCatalog() {
             </View>
           ) : null}
 
-          {marketFormat === 'BINARY' && category?.code === 'SPORTS' ? renderSportsDraftControls() : null}
+          {marketFormat === 'BINARY' && football ? renderSportsDraftControls() : null}
+          {renderCustomDraftControls()}
 
           {marketFormat === 'BINARY' ? (
             <>
-              <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write one clear YES/NO question.'} />
+              <VadInput label="Market question" value={effectiveTitle} onChangeText={(value) => { setTitle(value); setTitleEdited(true); setError(null); }} multiline placeholder="Will … happen before …?" hint={guided ? 'VAD suggests a question for structured market types. You can edit it.' : 'Write your own clear YES/NO question. Keep the selected database market type and verified resolution source aligned with your wording.'} />
               <VadInput label="Short context · optional" value={description} onChangeText={setDescription} multiline placeholder="Add useful context for traders." />
             </>
           ) : (
@@ -1118,20 +1256,20 @@ export function AdminMarketCreateWorkspaceCatalog() {
           <SectionTitle eyebrow="STEP 2 · TRADING SETUP" title="Choose how this market trades." text="Choose the currency, trading method and timing. Peer Pool and Order Book are available independently of the market currency." />
           {options && options.jurisdictions.length > 1 ? (
             <FieldGroup label="Jurisdiction">
-              {options.jurisdictions.map((item) => <VadChip key={item.countryCode} label={item.name} selected={resolvedCountryCode === item.countryCode} onPress={() => { setCountryCode(item.countryCode); setAssetCode(''); }} />)}
+              {options.jurisdictions.map((item) => <VadChip key={item.countryCode} label={item.name} selected={resolvedCountryCode === item.countryCode} onPress={() => { setCountryCode(item.countryCode); setAssetCode(''); setMinTradeAmount(''); setMaxTradeAmount(''); }} />)}
             </FieldGroup>
           ) : null}
           {jurisdiction ? (
             <View style={{ gap: 8 }}>
               <FieldGroup label="Market currency">
                 {availableAssets.map((asset) => (
-                  <VadChip key={asset} label={asset} selected={resolvedAssetCode === asset} tone={resolvedAssetCode === asset ? 'brand' : 'neutral'} onPress={() => setAssetCode(asset)} />
+                  <VadChip key={asset} label={asset} selected={resolvedAssetCode === asset} tone={resolvedAssetCode === asset ? 'brand' : 'neutral'} onPress={() => { if (assetCode !== asset) { setAssetCode(asset); setMinTradeAmount(''); setMaxTradeAmount(''); setError(null); } }} />
                 ))}
               </FieldGroup>
               {availableAssets.length ? (
                 <VadCard variant="muted" style={{ gap: 3 }}>
                   <VadText variant="bodyStrong">Production market currency</VadText>
-                  <VadText variant="caption" tone="secondary">Markets use the selected NGN or USDC wallet and the normal order and settlement engine. TNGN test trading has been permanently retired.</VadText>
+                  <VadText variant="caption" tone="secondary">Markets use the selected eligible NGN or USDC wallet and VAD’s normal order and settlement engine.</VadText>
                 </VadCard>
               ) : (
                 <VadErrorState title="No eligible market currency" message="This jurisdiction has no enabled production currency. Update asset eligibility before creating a market." />
@@ -1166,7 +1304,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                     label={method.name}
                     selected={liquidityModel === method.code}
                     tone={liquidityModel === method.code ? 'brand' : 'neutral'}
-                    onPress={() => { setLiquidityModel(method.code); setError(null); }}
+                    onPress={() => { if (liquidityModel !== method.code) { setLiquidityModel(method.code); setMinTradeAmount(''); setMaxTradeAmount(''); setError(null); } }}
                   />
                 ))}
               </FieldGroup>
@@ -1180,6 +1318,36 @@ export function AdminMarketCreateWorkspaceCatalog() {
               </VadCard>
             </View>
           )}
+          <View style={{ gap: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.lg, padding: theme.spacing.md }}>
+            <View style={{ gap: 4 }}>
+              <VadText variant="bodyStrong">Market trade limits · {resolvedAssetCode || 'currency'} · {effectiveLiquidityModel === 'ORDER_BOOK' ? 'Order Book' : 'Peer Pool'}</VadText>
+              <VadText variant="caption" tone="secondary">
+                {effectiveLiquidityModel === 'ORDER_BOOK'
+                  ? 'Limits apply to the full order value (limit price × share quantity), not the number of shares.'
+                  : 'Limits apply to each individual stake. Users cannot stake below or above these market-specific amounts.'}
+              </VadText>
+              <VadText variant="caption" tone="secondary">
+                Enter both amounts for this market only. They are saved with this market and are not reused as defaults for another market.
+              </VadText>
+            </View>
+            {displayedTradeLimitsError ? <VadText variant="caption" tone="warning">{displayedTradeLimitsError}</VadText> : null}
+            <VadInput
+              label={`This market’s minimum (${resolvedAssetCode})`}
+              value={minTradeAmount}
+              onChangeText={(value) => { setMinTradeAmount(value.replace(/[^0-9.]/g, '')); setError(null); }}
+              placeholder="Enter this market’s minimum"
+              keyboardType="decimal-pad"
+              hint="Enforced by the database for this individual market."
+            />
+            <VadInput
+              label={`This market’s maximum (${resolvedAssetCode})`}
+              value={maxTradeAmount}
+              onChangeText={(value) => { setMaxTradeAmount(value.replace(/[^0-9.]/g, '')); setError(null); }}
+              placeholder="Enter this market’s maximum"
+              keyboardType="decimal-pad"
+              hint={effectiveLiquidityModel === 'ORDER_BOOK' ? 'Maximum notional per order; account-level exposure limits still apply.' : 'Maximum amount for one pool stake; market and user aggregate caps still apply.'}
+            />
+          </View>
           <VadDateTimeField label="Opens" value={opensAt} onChange={setOpensAt} hint="When users can begin trading." />
           <VadDateTimeField label="Closes" value={closesAt} onChange={setClosesAt} minDate={opensAt || undefined} hint={automaticFootball ? 'For match-result markets, close no later than kickoff.' : 'Trading stops at this time.'} />
           <VadDateTimeField label="Check result after" value={resolvesAfter} onChange={setResolvesAfter} minDate={closesAt || opensAt || undefined} hint={automaticFootball ? 'At least two hours after kickoff so VAD waits for a final result.' : 'VAD begins result verification from this time.'} />
@@ -1196,10 +1364,13 @@ export function AdminMarketCreateWorkspaceCatalog() {
           <SectionTitle eyebrow="STEP 3 · REVIEW" title="Review and finish." text="Save it as a draft or publish immediately. VAD stores the technical result rules behind the scenes." />
           <ReviewRow label="Question" value={effectiveTitle.trim()} />
           <ReviewRow label="Category" value={category?.name ?? ''} />
-          {guided ? <ReviewRow label="Market type" value={marketType?.name ?? 'Guided event'} /> : null}
+          {marketFormat === 'BINARY' ? <ReviewRow label="Market type" value={marketType?.name ?? 'Not selected'} /> : null}
           {football ? <ReviewRow label="Match" value={`${homeTeam} vs ${awayTeam} · ${competition}`} /> : null}
           {football && matchStartsAt ? <ReviewRow label="Kickoff" value={new Date(matchStartsAt).toLocaleString()} /> : null}
           <ReviewRow label="Currency" value={resolvedAssetCode} />
+          <ReviewRow label="Trading method" value={effectiveLiquidityModel === 'ORDER_BOOK' ? 'Order Book' : 'Peer Pool'} />
+          <ReviewRow label="Minimum trade" value={minTradeAmount + ' ' + resolvedAssetCode} />
+          <ReviewRow label="Maximum trade" value={maxTradeAmount + ' ' + resolvedAssetCode} />
           <ReviewRow label="Market format" value={marketFormat === 'MULTI_OUTCOME' ? `Multiple outcomes · ${multiOutcomeOptions.length} choices` : 'Yes / No'} />
           {marketFormat === 'MULTI_OUTCOME' ? (
             <>
@@ -1247,7 +1418,7 @@ function SourceFields({ label, sourceName, sourceUrl, setSourceName, setSourceUr
   setSourceName: (value: string) => void;
   setSourceUrl: (value: string) => void;
 }) {
-  return <View style={{ gap: 10 }}><VadInput label={label} value={sourceName} onChangeText={setSourceName} placeholder="e.g. Recording Academy, official league, regulator" /><VadInput label="Source website · optional" value={sourceUrl} onChangeText={setSourceUrl} autoCapitalize="none" placeholder="https://…" /></View>;
+  return <View style={{ gap: 10 }}><VadInput label={label} value={sourceName} onChangeText={setSourceName} placeholder="e.g. Recording Academy, official league, regulator" /><VadInput label="Official source website · required for generic and multi-outcome markets" value={sourceUrl} onChangeText={setSourceUrl} autoCapitalize="none" placeholder="https://official-source.example/…" /></View>;
 }
 
 function ReviewRow({ label, value }: { label: string; value: string }) {
