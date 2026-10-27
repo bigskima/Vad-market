@@ -42,8 +42,11 @@ export function CryptoMarketPricesPanel({
   useEffect(() => {
     let active = true;
     const query = search.trim();
+    let refreshInFlight = false;
 
     const refresh = async (showLoading: boolean) => {
+      if (refreshInFlight) return;
+      refreshInFlight = true;
       if (showLoading) setLoading(true);
       setError(null);
       try {
@@ -62,11 +65,13 @@ export function CryptoMarketPricesPanel({
         setError(reason instanceof Error ? reason.message : 'Crypto market prices are temporarily unavailable.');
       } finally {
         if (active) setLoading(false);
+        refreshInFlight = false;
       }
     };
 
     const initial = setTimeout(() => void refresh(true), 0);
-    const refreshInterval = setInterval(() => void refresh(false), 30_000);
+    // Poll at the backend's 15-second crypto quote cache interval while mounted.
+    const refreshInterval = setInterval(() => void refresh(false), 15_000);
     return () => {
       active = false;
       clearTimeout(initial);
