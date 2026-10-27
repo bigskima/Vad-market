@@ -627,6 +627,106 @@ begin
 end;
 $function$;
 
+
+create or replace function public.agent_market_creation_options(p_api_key text)
+returns jsonb
+language plpgsql security definer set search_path = ''
+as $function$
+declare
+  v_context jsonb;
+  v_catalog jsonb;
+  v_options jsonb;
+begin
+  v_context:=public.internal_market_agent_context(p_api_key);
+  if not (v_context->'scopes' @> '["market:read"]'::jsonb) then
+    raise exception 'The agent key lacks market:read scope' using errcode='42501';
+  end if;
+  perform set_config('request.jwt.claim.sub',v_context->>'adminUserId',true);
+  v_catalog:=public.admin_guided_market_catalog();
+  v_options:=public.admin_market_approval_options_v2();
+  return jsonb_build_object('catalog',v_catalog,'options',v_options);
+end;
+$function$;
+
+create or replace function public.agent_get_market_trade_limit_defaults(
+  p_api_key text,
+  p_asset_code text,
+  p_liquidity_model text
+) returns jsonb
+language plpgsql security definer set search_path = ''
+as $function$
+declare
+  v_context jsonb;
+begin
+  v_context:=public.internal_market_agent_context(p_api_key);
+  if not (v_context->'scopes' @> '["market:read"]'::jsonb) then
+    raise exception 'The agent key lacks market:read scope' using errcode='42501';
+  end if;
+  perform set_config('request.jwt.claim.sub',v_context->>'adminUserId',true);
+  return public.admin_get_market_trade_limit_defaults(p_asset_code,p_liquidity_model);
+end;
+$function$;
+
+create or replace function public.agent_create_multi_outcome_market_v1(
+  p_api_key text,
+  p_title text,
+  p_description text,
+  p_category_code text,
+  p_outcomes jsonb,
+  p_resolution_instructions text,
+  p_source_name text,
+  p_source_url text,
+  p_opens_at timestamptz,
+  p_closes_at timestamptz,
+  p_resolves_after timestamptz,
+  p_country_code text,
+  p_asset_code text,
+  p_min_trade_amount numeric,
+  p_max_trade_amount numeric,
+  p_publish_now boolean default true,
+  p_feature_rank integer default 100,
+  p_publication_reason text default 'Published through the authorized VAD Market Agent API'
+) returns jsonb
+language plpgsql security definer set search_path = ''
+as $function$
+declare
+  v_context jsonb;
+  v_category_name text;
+  v_user_id uuid;
+  v_id uuid;
+  v_scopes jsonb;
+  v_result jsonb;
+begin
+  v_context:=public.internal_market_agent_context(p_api_key);
+  v_scopes:=v_context->'scopes';
+  if not (v_scopes @> '["market:create"]'::jsonb) or not (v_scopes @> '["market:read"]'::jsonb) then
+    raise exception 'The agent key requires market:read and market:create scopes' using errcode='42501';
+  end if;
+  if coalesce(p_publish_now,true) and not (v_scopes @> '["market:publish"]'::jsonb) then
+    raise exception 'The agent key lacks market:publish scope' using errcode='42501';
+  end if;
+  select c.name into v_category_name
+  from market.guided_categories c
+  where upper(c.code)=upper(btrim(coalesce(p_category_code,''))) and c.status='ACTIVE';
+  if v_category_name is null then raise exception 'Choose an active database market category.' using errcode='22023'; end if;
+  v_user_id:=(v_context->>'adminUserId')::uuid;
+  perform set_config('request.jwt.claim.sub',v_user_id::text,true);
+  v_result:=public.admin_create_multi_outcome_market_v2(
+    p_title,p_description,v_category_name,p_outcomes,p_resolution_instructions,p_source_name,p_source_url,
+    p_opens_at,p_closes_at,p_resolves_after,p_country_code,p_asset_code,
+    p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true)
+  );
+  v_id:=nullif(v_result->>'instrument_id','')::uuid;
+  insert into audit.records(actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata)
+  values(v_user_id,'AGENT','MARKET_AGENT_CREATED_MULTI_OUTCOME_MARKET','MARKET_INSTRUMENT',coalesce(v_id::text,''),
+    coalesce(nullif(btrim(p_publication_reason),''),'Published through the authorized VAD Market Agent API'),
+    jsonb_build_object('agent_key_id',v_context->>'id','agent_name',v_context->>'name',
+      'category_code',p_category_code,'market_format','MULTI_OUTCOME','publish_now',coalesce(p_publish_now,true),
+      'min_trade_amount',p_min_trade_amount,'max_trade_amount',p_max_trade_amount));
+  return v_result||jsonb_build_object('agent',jsonb_build_object('keyId',v_context->>'id','name',v_context->>'name'));
+end;
+$function$;
+
 revoke all on function public.admin_get_market_trade_limit_defaults(text,text) from public, anon;
 revoke all on function public.admin_save_market_trade_limit_defaults(text,text,numeric,numeric) from public, anon;
 revoke all on function private.apply_market_trade_limits(uuid,numeric,numeric,text) from public, anon, authenticated;
@@ -637,6 +737,9 @@ revoke all on function public.admin_issue_market_agent_key(text,text[],timestamp
 revoke all on function public.admin_list_market_agent_keys() from public, anon;
 revoke all on function public.admin_revoke_market_agent_key(uuid) from public, anon;
 revoke all on function public.internal_market_agent_context(text) from public, anon, authenticated;
+revoke all on function public.agent_market_creation_options(text) from public, anon, authenticated;
+revoke all on function public.agent_get_market_trade_limit_defaults(text,text,text) from public, anon, authenticated;
+revoke all on function public.agent_create_multi_outcome_market_v1(text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,numeric,numeric,boolean,integer,text) from public, anon, authenticated;
 revoke all on function public.agent_guided_market_catalog(text) from public, anon, authenticated;
 revoke all on function public.agent_create_market_v1(text,text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) from public, anon, authenticated;
 grant execute on function public.admin_get_market_trade_limit_defaults(text,text) to authenticated;
@@ -648,6 +751,9 @@ grant execute on function public.admin_issue_market_agent_key(text,text[],timest
 grant execute on function public.admin_list_market_agent_keys() to authenticated;
 grant execute on function public.admin_revoke_market_agent_key(uuid) to authenticated;
 grant execute on function public.internal_market_agent_context(text) to service_role;
+grant execute on function public.agent_market_creation_options(text) to service_role;
+grant execute on function public.agent_get_market_trade_limit_defaults(text,text,text) to service_role;
+grant execute on function public.agent_create_multi_outcome_market_v1(text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,numeric,numeric,boolean,integer,text) to service_role;
 grant execute on function public.agent_guided_market_catalog(text) to service_role;
 grant execute on function public.agent_create_market_v1(text,text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) to service_role;
 grant execute on function public.place_pool_stake_pre_market_limits(uuid,text,numeric,text) to service_role;
