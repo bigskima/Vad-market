@@ -1000,6 +1000,21 @@ begin
 end;
 $function$;
 
+-- Permanently retire the old TNGN demo settlement/variant path. Keep the
+-- disabled asset, closed/settled market instruments, finance history and guard
+-- triggers that reject new TNGN ledger entries/instrument writes.
+update public.assets
+set status='DISABLED',
+    metadata=coalesce(metadata,'{}'::jsonb)
+      || jsonb_build_object('retired',true,'retirement_reason','TNGN sandbox removed; historical records retained')
+where upper(code)='TNGN';
+
+drop trigger if exists market_catalog_settle_tngn_orders on public.market_catalog;
+drop function if exists private.on_tngn_market_resolution_settle();
+drop function if exists private.settle_tngn_market_orders(uuid);
+drop function if exists private.ensure_tngn_market_variant(uuid);
+drop function if exists private.on_market_catalog_tngn_variant_sync();
+
 -- Remove the retired user-facing TNGN RPC surface. Historical instrument, ledger,
 -- and journal rows are deliberately preserved, along with triggers that prevent
 -- mutations of retired TNGN records and the legacy settlement safety hook.
