@@ -201,7 +201,17 @@ async function handle(req: Request) {
     return json({ error: 'AI_DRAFT_FORMAT_UNSUPPORTED', message: 'For multiple-outcome markets, provide outcomes and resolutionInstructions explicitly. The configured AI draft helper is currently bound to a database-backed binary market type.' }, 400);
   }
   if (format === 'MULTI_OUTCOME' && !sourceName) return json({ error: 'SOURCE_REQUIRED', message: 'Multi-outcome markets require a named authoritative source.' }, 400);
-  if (body.aiAssist === true || action === 'draft_and_publish') {
+  const wantsAiDraft = body.aiAssist === true || action === 'draft_and_publish';
+  if (wantsAiDraft && format === 'BINARY' && handler !== 'VERIFIED_EVENT') {
+    return json({
+      error: 'AI_DRAFT_REQUIRES_GENERIC_RESOLVER',
+      message: 'This market type has a specialized resolver. Supply its structured fields and resolution condition directly; VAD will not use the generic AI helper to overwrite specialized football or crypto rules.',
+    }, 400);
+  }
+  if (format === 'BINARY' && handler === 'VERIFIED_EVENT' && !configuredCondition.trim() && !wantsAiDraft) {
+    return json({ error: 'RESOLUTION_REQUIRED', message: 'Provide resolution instructions or request an AI draft from the configured market type.' }, 400);
+  }
+  if (wantsAiDraft) {
     const draftResponse = await fetch(url + '/functions/v1/custom-market-draft', {
       method: 'POST',
       headers: {
@@ -235,6 +245,17 @@ async function handle(req: Request) {
 
   const finalTitle = aiDraft ? textValue(aiDraft.title, 180) : title;
   const finalDescription = aiDraft ? textValue(aiDraft.description, 1000) || description : description;
+  const finalCondition = aiDraft && format === 'BINARY' && handler === 'VERIFIED_EVENT'
+    ? textValue(aiDraft.resolutionRules, 1800)
+    : configuredCondition;
+  if (format === 'BINARY' && handler === 'VERIFIED_EVENT') {
+    if (finalCondition.trim().length < 20) {
+      return json({ error: 'RESOLUTION_REQUIRED', message: 'Resolution instructions must contain at least 20 characters; no market was created.' }, 400);
+    }
+    if (/\\{\\{[A-Za-z0-9_]+\\}\\}/.test(finalCondition)) {
+      return json({ error: 'RESOLUTION_FIELDS_MISSING', message: 'Resolution instructions still contain unfilled template fields; no market was created.' }, 400);
+    }
+  }
   let result: unknown;
   let createError: unknown = null;
   if (format === 'MULTI_OUTCOME') {
@@ -273,7 +294,7 @@ async function handle(req: Request) {
       p_market_type_code: marketTypeCode,
       p_category_code: categoryCode,
       p_details: rawDetails,
-      p_condition: geographicCondition,
+      p_condition: (finalCondition.trim() ? finalCondition.trim() + '\\n\\n' : '') + 'Outcome geography: ' + regionScope + '. Only events within this published geographic scope are eligible.',
       p_source_name: sourceName,
       p_source_url: sourceUrl || null,
       p_opens_at: opensAt,
