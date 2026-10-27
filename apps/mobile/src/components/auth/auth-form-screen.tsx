@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -40,6 +40,18 @@ export function AuthFormScreen({ initialMode, onBack }: Props) {
   const [messageKind, setMessageKind] = useState<MessageKind>('info');
   const [signupComplete, setSignupComplete] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+
+  useEffect(() => {
+    // A TOTP-enabled session may be restored asynchronously after this screen
+    // mounts. Keep the user on the authenticator step rather than credentials.
+    if (mfaLoginRequired) {
+      setMode('signIn');
+      setView('mfa');
+      setMfaCode('');
+      setMessage('Enter the current six-digit code from your Google Authenticator app to finish signing in.');
+      setMessageKind('info');
+    }
+  }, [mfaLoginRequired]);
 
   const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
   const passwordValid = mode === 'signIn' ? password.length > 0 : password.length >= 8;
