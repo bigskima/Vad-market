@@ -63,10 +63,9 @@ type TicketProps = {
 };
 
 export function TradingTicket(props: TicketProps) {
-  // Hard stop in the client as well as the database: historic TNGN markets
-  // remain viewable, but can never open a new ticket or submit a stake.
-  if (props.market.asset_code === 'TNGN') return <RetiredTngnTicket />;
-
+  if (props.market.asset_code !== 'NGN' && props.market.asset_code !== 'USDC') {
+    return <UnsupportedMarketCurrency />;
+  }
   if (props.market.asset_code === 'USDC' && props.market.liquidity_mode !== 'POOL') {
     return <UnsupportedUsdcOrderBook />;
   }
@@ -74,13 +73,13 @@ export function TradingTicket(props: TicketProps) {
   return <OrderBookTradingTicket {...props} />;
 }
 
-function RetiredTngnTicket() {
+function UnsupportedMarketCurrency() {
   const theme = useVadTheme();
   return (
     <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md }}>
-      <VadText variant="bodyStrong">TNGN sandbox retired</VadText>
+      <VadText variant="bodyStrong">Market currency unavailable</VadText>
       <VadText variant="caption" tone="secondary">
-        This is a historical TNGN record. It cannot accept new predictions or affect your NGN wallet. TNGN and its trading RPCs are disabled. Use a currently OPEN real NGN or supported USDC market instead.
+        This market cannot accept trades in its current currency. Choose an open market using a currently supported currency.
       </VadText>
     </VadCard>
   );
