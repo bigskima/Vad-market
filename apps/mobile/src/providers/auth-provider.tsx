@@ -174,6 +174,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const mfaLoginPendingRef = useRef(false);
   const mfaVerifyInProgressRef = useRef(false);
   const bootstrapInProgressRef = useRef(true);
+  const authRedirectInProgressRef = useRef(false);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [verificationPromptPending, setVerificationPromptPending] = useState(readPhonePrompt);
 
@@ -244,7 +245,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (!isMounted) return;
         clearTimeout(bootstrapTimeout);
         if (bootstrapInProgressRef.current || event === 'INITIAL_SESSION') return;
-        if (passwordSignInInProgressRef.current) return;
+        if (authRedirectInProgressRef.current || passwordSignInInProgressRef.current) return;
         if (mfaLoginPendingRef.current && !mfaVerifyInProgressRef.current && event !== 'SIGNED_OUT') {
           setSession(null);
           setIsLoading(false);
@@ -275,18 +276,35 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const handleUrl = async (url: string | null) => {
       if (!url) return;
+      authRedirectInProgressRef.current = true;
       try {
         const result = await consumeAuthRedirect(url);
         if (!active || !result) return;
-        if (result.session) {
+        if (result.session && !result.recovery) {
+          const challenge = await createPendingTotpChallenge();
+          if (challenge) {
+            pendingTotpChallengeRef.current = challenge;
+            mfaLoginPendingRef.current = true;
+            setMfaLoginRequired(true);
+            setSession(null);
+          } else {
+            pendingTotpChallengeRef.current = null;
+            mfaLoginPendingRef.current = false;
+            setMfaLoginRequired(false);
+            setSession(result.session);
+            requestPhonePrompt(result.session);
+          }
+          setIsLoading(false);
+        } else if (result.session) {
           setSession(result.session);
           setIsLoading(false);
         }
         if (result.recovery) setIsPasswordRecovery(true);
-        if (result.session && !result.recovery) requestPhonePrompt(result.session);
         clearWebAuthUrl();
       } catch {
         // Invalid or expired callbacks return the user to the normal sign-in flow.
+      } finally {
+        authRedirectInProgressRef.current = false;
       }
     };
 
