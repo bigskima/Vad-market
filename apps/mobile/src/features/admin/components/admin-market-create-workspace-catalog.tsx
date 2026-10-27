@@ -1220,7 +1220,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
               {availableAssets.length ? (
                 <VadCard variant="muted" style={{ gap: 3 }}>
                   <VadText variant="bodyStrong">Production market currency</VadText>
-                  <VadText variant="caption" tone="secondary">Markets use the selected NGN or USDC wallet and the normal order and settlement engine. TNGN test trading has been permanently retired.</VadText>
+                  <VadText variant="caption" tone="secondary">Markets use the selected eligible NGN or USDC wallet and VAD’s normal order and settlement engine.</VadText>
                 </VadCard>
               ) : (
                 <VadErrorState title="No eligible market currency" message="This jurisdiction has no enabled production currency. Update asset eligibility before creating a market." />
