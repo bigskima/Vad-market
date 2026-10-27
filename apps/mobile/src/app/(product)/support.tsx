@@ -57,7 +57,7 @@ export default function SupportScreen() {
     const nextId = preferredId ?? activeTicketId;
     const selected = rows.find((row) => row.id === nextId) ?? rows[0] ?? null;
     setActiveTicketId(selected?.id ?? null);
-    if (!selected) setMessages([]);
+    if (!selected) { setMessages([]); setMessagesTicketId(null); }
     return selected;
   }, [activeTicketId]);
 
