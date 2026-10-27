@@ -171,6 +171,7 @@ create or replace function public.admin_create_catalog_market_v3(
   p_title text,
   p_description text,
   p_market_type_code text,
+  p_category_code text,
   p_details jsonb,
   p_condition text,
   p_source_name text,
@@ -572,20 +573,49 @@ declare
   v_id uuid;
   v_scopes jsonb;
   v_user_id uuid;
+  v_handler text;
+  v_category_name text;
+  v_market_setup jsonb;
 begin
   v_context:=public.internal_market_agent_context(p_api_key);
   v_scopes:=v_context->'scopes';
   if not (v_scopes @> '["market:create"]'::jsonb) then raise exception 'The agent key lacks market:create scope' using errcode='42501'; end if;
+  if not (v_scopes @> '["market:read"]'::jsonb) then raise exception 'The agent key lacks market:read scope' using errcode='42501'; end if;
   if coalesce(p_publish_now,true) and not (v_scopes @> '["market:publish"]'::jsonb) then
     raise exception 'The agent key lacks market:publish scope' using errcode='42501';
   end if;
   v_user_id:=(v_context->>'adminUserId')::uuid;
   perform set_config('request.jwt.claim.sub',v_user_id::text,true);
-  v_result:=public.admin_create_catalog_market_v3(
-    p_title,p_description,p_market_type_code,p_details,p_condition,p_source_name,p_source_url,
-    p_opens_at,p_closes_at,p_resolves_after,p_country_code,p_asset_code,p_liquidity_model,
-    p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true)
-  );
+  select upper(t.handler_code),c.name into v_handler,v_category_name
+  from market.guided_market_types t
+  join market.guided_categories c on c.code=t.category_code
+  where upper(t.code)=upper(btrim(coalesce(p_market_type_code,'')))
+    and upper(t.category_code)=upper(btrim(coalesce(p_category_code,'')))
+    and t.status='ACTIVE' and c.status='ACTIVE';
+  if v_handler is null then raise exception 'The requested market type is not active in that database category.' using errcode='22023'; end if;
+  if v_handler='FOOTBALL_MATCH' then
+    v_market_setup:=jsonb_build_object(
+      'kind','FOOTBALL_MATCH',
+      'result_checking',upper(coalesce(p_details->>'result_checking','AUTOMATIC')),
+      'competition',coalesce(nullif(btrim(p_details->>'competition'),''),''),
+      'home_team',coalesce(nullif(btrim(p_details->>'home_team'),''),''),
+      'away_team',coalesce(nullif(btrim(p_details->>'away_team'),''),''),
+      'prediction',upper(coalesce(p_details->>'prediction','HOME_WIN')),
+      'match_starts_at',p_details->>'match_starts_at',
+      'source_name',nullif(btrim(coalesce(p_details->>'source_name',p_source_name,'')),''),
+      'source_url',nullif(btrim(coalesce(p_details->>'source_url',p_source_url,'')),'')
+    );
+    v_result:=public.admin_create_guided_market_v5(
+      p_title,p_description,v_category_name,v_market_setup,p_opens_at,p_closes_at,p_resolves_after,
+      p_country_code,p_asset_code,p_liquidity_model,p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true)
+    );
+  else
+    v_result:=public.admin_create_catalog_market_v3(
+      p_title,p_description,p_market_type_code,p_details,p_condition,p_source_name,p_source_url,
+      p_opens_at,p_closes_at,p_resolves_after,p_country_code,p_asset_code,p_liquidity_model,
+      p_min_trade_amount,p_max_trade_amount,coalesce(p_publish_now,true)
+    );
+  end if;
   v_id:=nullif(v_result->>'instrument_id','')::uuid;
   insert into audit.records(actor_user_id,actor_type,action,resource_type,resource_id,reason,metadata)
   values(v_user_id,'AGENT','MARKET_AGENT_CREATED_MARKET','MARKET_INSTRUMENT',coalesce(v_id::text,''),
@@ -608,7 +638,7 @@ revoke all on function public.admin_list_market_agent_keys() from public, anon;
 revoke all on function public.admin_revoke_market_agent_key(uuid) from public, anon;
 revoke all on function public.internal_market_agent_context(text) from public, anon, authenticated;
 revoke all on function public.agent_guided_market_catalog(text) from public, anon, authenticated;
-revoke all on function public.agent_create_market_v1(text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) from public, anon, authenticated;
+revoke all on function public.agent_create_market_v1(text,text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) from public, anon, authenticated;
 grant execute on function public.admin_get_market_trade_limit_defaults(text,text) to authenticated;
 grant execute on function public.admin_save_market_trade_limit_defaults(text,text,numeric,numeric) to authenticated;
 grant execute on function public.admin_create_catalog_market_v3(text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean) to authenticated;
@@ -619,7 +649,7 @@ grant execute on function public.admin_list_market_agent_keys() to authenticated
 grant execute on function public.admin_revoke_market_agent_key(uuid) to authenticated;
 grant execute on function public.internal_market_agent_context(text) to service_role;
 grant execute on function public.agent_guided_market_catalog(text) to service_role;
-grant execute on function public.agent_create_market_v1(text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) to service_role;
+grant execute on function public.agent_create_market_v1(text,text,text,text,text,jsonb,text,text,text,timestamptz,timestamptz,timestamptz,text,text,text,numeric,numeric,boolean,integer,text) to service_role;
 grant execute on function public.place_pool_stake_pre_market_limits(uuid,text,numeric,text) to service_role;
 
 commit;
