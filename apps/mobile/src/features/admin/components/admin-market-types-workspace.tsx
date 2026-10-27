@@ -158,7 +158,7 @@ export function AdminMarketTypesWorkspace() {
       return setError('Each field needs a unique lowercase key (letters, numbers and underscores) and a label.');
     }
     if (new Set(keys).size !== keys.length) return setError('Parameter keys must be unique.');
-    const placeholders = [...(question + ' ' + condition).matchAll(/\\{\\{([A-Za-z0-9_]+)\\}\\}/g)].map((match) => match[1]);
+    const placeholders = [...(question + ' ' + condition).matchAll(/\{\{([A-Za-z0-9_]+)\}\}/g)].map((match) => match[1]);
     const missing = placeholders.find((placeholder) => !keys.includes(placeholder));
     if (missing) return setError('Add a parameter field for every template variable, including {{' + missing + '}}.');
     setWorking(true);
