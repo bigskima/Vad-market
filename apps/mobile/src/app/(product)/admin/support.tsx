@@ -32,12 +32,15 @@ export default function AdminSupportScreen() {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [reply, setReply] = useState('');
   const [nextStatus, setNextStatus] = useState<Exclude<SupportStatus, 'OPEN'>>('WAITING_USER');
-  const [loading, setLoading] = useState(true);
+  const [loadedFilter, setLoadedFilter] = useState<SupportStatus | 'ALL' | null>(null);
+  const loading = loadedFilter !== filter;
+  const [messagesTicketId, setMessagesTicketId] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const activeTicket = tickets.find((item) => item.id === activeTicketId) ?? null;
+  const visibleMessages = messagesTicketId === activeTicketId ? messages : [];
 
   const reload = useCallback(async (preferredId?: string | null) => {
     const rows = await adminListSupportTickets(filter);
@@ -51,22 +54,21 @@ export default function AdminSupportScreen() {
 
   useEffect(() => {
     let active = true;
-    setLoading(true); setError(null);
     void adminListSupportTickets(filter)
       .then((rows) => {
         if (!active) return;
         setTickets(rows); setActiveTicketId(rows[0]?.id ?? null);
       })
       .catch((value: unknown) => { if (active) setError(value instanceof Error ? value.message : 'Support inbox could not be loaded.'); })
-      .finally(() => { if (active) setLoading(false); });
+      .finally(() => { if (active) setLoadedFilter(filter); });
     return () => { active = false; };
   }, [filter]);
 
   useEffect(() => {
-    if (!activeTicketId) { setMessages([]); return; }
+    if (!activeTicketId) return;
     let active = true;
     void getSupportMessages(activeTicketId)
-      .then((rows) => { if (active) setMessages(rows); })
+      .then((rows) => { if (active) { setMessages(rows); setMessagesTicketId(activeTicketId); } })
       .catch((value: unknown) => { if (active) setError(value instanceof Error ? value.message : 'Conversation could not be loaded.'); });
     return () => { active = false; };
   }, [activeTicketId]);
@@ -80,6 +82,7 @@ export default function AdminSupportScreen() {
       setReply('');
       await reload(activeTicket.id);
       setMessages(await getSupportMessages(activeTicket.id));
+      setMessagesTicketId(activeTicket.id);
       setNotice('Reply sent and ticket status updated.');
     } catch (value) {
       setError(value instanceof Error ? value.message : 'Support reply could not be sent.');
