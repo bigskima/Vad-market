@@ -26,16 +26,15 @@ export default function AdminMarketLimitsScreen() {
   const [method, setMethod] = useState<TradingMethod>('ORDER_BOOK');
   const [minimum, setMinimum] = useState('100');
   const [maximum, setMaximum] = useState('100000');
-  const [loading, setLoading] = useState(true);
+  const [loadedKey, setLoadedKey] = useState('');
+  const configKey = `${asset}:${method}`;
+  const loading = loadedKey !== configKey;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError(null);
-    setNotice(null);
     void getAdminMarketTradeLimitDefaults(asset, method)
       .then((value) => {
         if (!active) return;
@@ -45,9 +44,9 @@ export default function AdminMarketLimitsScreen() {
       .catch((value: unknown) => {
         if (active) setError(value instanceof Error ? value.message : 'Trade limits could not be loaded.');
       })
-      .finally(() => { if (active) setLoading(false); });
+      .finally(() => { if (active) setLoadedKey(configKey); });
     return () => { active = false; };
-  }, [asset, method]);
+  }, [asset, method, configKey]);
 
   async function save() {
     const min = Number(minimum);
@@ -108,11 +107,10 @@ export default function AdminMarketLimitsScreen() {
           />
           {notice ? <VadCard variant="muted"><VadText tone="yes">{notice}</VadText></VadCard> : null}
           {error ? <VadErrorState title="Trade limits need attention" message={error} onRetry={() => {
-            setLoading(true);
             void getAdminMarketTradeLimitDefaults(asset, method)
               .then((value) => { setMinimum(String(value.minTradeAmount)); setMaximum(String(value.maxTradeAmount)); setError(null); })
               .catch((value: unknown) => setError(value instanceof Error ? value.message : 'Trade limits could not be loaded.'))
-              .finally(() => setLoading(false));
+              .finally(() => setLoadedKey(configKey));
           }} /> : null}
           <VadButton label={saving ? 'Saving defaults…' : 'Save defaults'} loading={saving} disabled={loading || saving} onPress={() => void save()} />
         </VadCard>
