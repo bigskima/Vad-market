@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Modal, Pressable, ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -64,6 +64,7 @@ export function MarketDetailScreen({
   onRefreshMarket?: () => Promise<void>;
 }) {
   const density = useProductDensity();
+  const theme = useVadTheme();
   const currencyPreference = useCurrencyPreference();
   const now = useLiveNow();
   const timing = getMarketTiming(market, now);
@@ -82,13 +83,23 @@ export function MarketDetailScreen({
   const selectedOutcomeCode = chosenOutcome?.instrumentId === market.instrument_public_id
     ? chosenOutcome.code
     : initialOutcome ?? (multiOutcomeMarket ? outcomeRows[0]?.outcome_code : undefined);
-  const tabKey = `${screenKey}:${initialTab}`;
-  const [tabState, setTabState] = useState<{ key: string; tab: DetailTab }>(() => ({ key: tabKey, tab: initialTab === 'Trade' || initialOutcome ? 'Trade' : 'Overview' }));
-  const tab = tabState.key === tabKey ? tabState.tab : initialTab === 'Trade' || initialOutcome ? 'Trade' : 'Overview';
-  const setTab = (nextTab: DetailTab) => setTabState({ key: tabKey, tab: nextTab });
+  const sectionKey = `${screenKey}:${initialTab}`;
+  const initialSection = initialTab === 'Overview' ? null : initialTab;
+  const [sectionState, setSectionState] = useState<{ key: string; section: DetailTab | null }>(() => ({
+    key: sectionKey,
+    section: initialOutcome ? 'Trade' : initialSection,
+  }));
+  const openSection = sectionState.key === sectionKey
+    ? sectionState.section
+    : initialOutcome ? 'Trade' : initialSection;
+  const activeTab: DetailTab = openSection ?? 'Overview';
+  const setSection = (nextSection: DetailTab) => setSectionState({
+    key: sectionKey,
+    section: nextSection === 'Overview' ? null : nextSection,
+  });
   const openTrade = (outcomeCode?: string) => {
     if (outcomeCode) setChosenOutcome({ instrumentId: market.instrument_public_id, code: outcomeCode });
-    setTab('Trade');
+    setSection('Trade');
   };
   const closeRefreshDone = useRef(false);
   const resolveRefreshDone = useRef(false);
@@ -155,11 +166,16 @@ export function MarketDetailScreen({
   }
 
   return (
-    <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: 200 }}>
+    <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: 18 }}>
       <TourTarget id="market-detail-overview"><MarketDetailHeader market={market} /></TourTarget>
 
-      {/* Keep navigation immediately under the market header. Users can jump to
-          Trade, Rules or Activity without scrolling past quote/position panels. */}
+      <VadButton
+        label="Trade now"
+        size="small"
+        onPress={() => openTrade(multiOutcomeMarket ? selectedOutcomeCode : undefined)}
+        leading={<VadIcon name="markets" size={15} tone="inverse" />}
+      />
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -171,50 +187,99 @@ export function MarketDetailScreen({
           <VadChip
             key={item.value}
             label={item.label}
-            selected={tab === item.value}
-            tone={tab === item.value ? 'brand' : 'neutral'}
-            onPress={() => setTab(item.value)}
+            selected={activeTab === item.value}
+            tone={activeTab === item.value ? 'brand' : 'neutral'}
+            onPress={() => setSection(item.value)}
           />
         ))}
       </ScrollView>
 
-      {tab === 'Overview' ? (
+      {activeTab === 'Overview' ? (
         <>
           <MarketStakeSummary market={market} positions={positions} poolStakes={poolStakes} outcomes={outcomeRows} />
           {hasLiveFinancialContext(market) ? <FinancialMarketLivePanel key={market.instrument_public_id} market={market} now={now} /> : null}
+          <Overview
+            market={market}
+            timing={timing}
+            outcomes={outcomeRows}
+            outcomesLoading={outcomeRowsLoading}
+            outcomesError={outcomeRowsError}
+            onTrade={openTrade}
+          />
         </>
       ) : null}
 
-      {tab === 'Overview' ? (
-        <Overview
-          market={market}
-          timing={timing}
-          outcomes={outcomeRows}
-          outcomesLoading={outcomeRowsLoading}
-          outcomesError={outcomeRowsError}
-          onTrade={openTrade}
-        />
-      ) : null}
-      {tab === 'Chart' ? <Activity market={market} /> : null}
-      {tab === 'Trade' ? (
-        <TradingTicket
-          key={`${market.instrument_public_id}:${selectedOutcomeCode ?? 'default'}`}
-          market={market}
-          initialOutcome={selectedOutcomeCode}
-          outcomes={outcomeRows}
-          canTrade={effectiveCanTrade}
-          tradeReason={effectiveTradeReason}
-          capabilityLoading={tradeCapabilityLoading}
-          onPlaced={onPlaced}
-        />
-      ) : null}
-      {tab === 'Discussion' ? (
-        <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} marketFilter={market} />
-      ) : null}
-      {tab === 'Rules' ? <Rules key={market.instrument_public_id} market={market} timing={timing} /> : null}
-
+      <Modal
+        visible={openSection !== null}
+        transparent
+        animationType="slide"
+        presentationStyle="overFullScreen"
+        onRequestClose={() => setSection('Overview')}
+      >
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.58)' }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close market section"
+            onPress={() => setSection('Overview')}
+            style={{ flex: 1 }}
+          />
+          <View style={{
+            maxHeight: '88%',
+            borderTopLeftRadius: 22,
+            borderTopRightRadius: 22,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            overflow: 'hidden',
+          }}>
+            <View style={{ alignItems: 'center', paddingTop: 9 }}>
+              <View style={{ width: 38, height: 4, borderRadius: 4, backgroundColor: theme.colors.border }} />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingHorizontal: 15, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                <VadText variant="heading">
+                  {openSection === 'Trade' ? 'Trade this market' : openSection === 'Chart' ? 'Market activity' : openSection === 'Discussion' ? 'Market chat' : openSection === 'Rules' ? 'Market rules' : 'Market overview'}
+                </VadText>
+                <VadText variant="caption" tone="secondary">
+                  {openSection === 'Trade' ? 'Choose an outcome and place your trade.' : openSection === 'Chart' ? 'Explore price history and order-book depth.' : openSection === 'Discussion' ? 'Read and join the conversation.' : 'Review the published market information.'}
+                </VadText>
+              </View>
+              <VadButton label="Close" size="small" variant="secondary" onPress={() => setSection('Overview')} />
+            </View>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={{ padding: 12, paddingBottom: 14, gap: 12 }}
+            >
+              {openSection === 'Trade' ? (
+                <TradingTicket
+                  key={`${market.instrument_public_id}:${selectedOutcomeCode ?? 'default'}`}
+                  market={market}
+                  initialOutcome={selectedOutcomeCode}
+                  outcomes={outcomeRows}
+                  canTrade={effectiveCanTrade}
+                  tradeReason={effectiveTradeReason}
+                  capabilityLoading={tradeCapabilityLoading}
+                  onPlaced={onPlaced}
+                />
+              ) : null}
+              {openSection === 'Chart' ? <Activity market={market} /> : null}
+              {openSection === 'Discussion' ? (
+                <SocialConvictionFeed markets={markets} canCreatePost={canCreatePost} onOpenMarket={onOpenMarket} marketFilter={market} />
+              ) : null}
+              {openSection === 'Rules' ? <Rules key={market.instrument_public_id} market={market} timing={timing} /> : null}
+            </ScrollView>
+            {openSection !== 'Trade' ? (
+              <View style={{ paddingHorizontal: 12, paddingTop: 9, paddingBottom: 14, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+                <VadButton label="Trade now" onPress={() => openTrade(multiOutcomeMarket ? selectedOutcomeCode : undefined)} />
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
+}
 }
 
 function Overview({ market, timing, outcomes, outcomesLoading, outcomesError, onTrade }: {
