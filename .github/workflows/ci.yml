@@ -61,7 +61,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `### VAD CI lint report\\n\\n\\`\\`\\`text\\n${output}\\n\\`\\`\\``
+              body: `### VAD CI lint report\n\n\`\`\`text\n${output}\n\`\`\``
             });
       - run: npm test --if-present
       - run: npm run build:web
