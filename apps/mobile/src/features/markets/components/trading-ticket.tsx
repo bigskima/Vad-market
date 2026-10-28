@@ -702,6 +702,18 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   const [tradeRules, setTradeRules] = useState<MarketTradeRules | null>(null);
   const [tradeRulesLoading, setTradeRulesLoading] = useState(true);
   const [tradeRulesError, setTradeRulesError] = useState<string | null>(null);
+  const [temporaryNgnCredit, setTemporaryNgnCredit] = useState<TemporaryNgnTestCreditStatus | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (market.asset_code !== 'NGN') {
+      return () => { active = false; };
+    }
+    void getTemporaryNgnTestCreditStatus()
+      .then((status) => { if (active) setTemporaryNgnCredit(status?.active ? status : null); })
+      .catch(() => { if (active) setTemporaryNgnCredit(null); });
+    return () => { active = false; };
+  }, [market.asset_code]);
 
   useEffect(() => {
     let active = true;
@@ -714,7 +726,9 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
     return () => { active = false; };
   }, [market.instrument_public_id]);
 
-  const tradeReady = canTrade && !capabilityLoading;
+  const hasTemporaryNgnTestCredit = market.asset_code === 'NGN' && temporaryNgnCredit?.active === true;
+  // Match Peer Pool: test credit may unlock the review UI, but the shared server-side NGN gate remains mandatory.
+  const tradeReady = (canTrade || hasTemporaryNgnTestCredit) && !capabilityLoading;
   const priceValue = Number(price);
   const quantityValue = Number(quantity);
   const estimatedNotionalValue = (Number.isFinite(priceValue) ? priceValue : 0) * (Number.isFinite(quantityValue) ? quantityValue : 0);
@@ -776,7 +790,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   return (
     <View style={{ gap: density.compact ? 10 : 12 }}>
       <TourTarget id="market-trading-ticket"><TradeStepRail step={step} secondLabel="Order" /></TourTarget>
-      <CapabilityNotice canTrade={canTrade} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
+      <CapabilityNotice canTrade={canTrade || hasTemporaryNgnTestCredit} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
 
       {step === 'prediction' ? (
         <VadCard variant="raised" style={{ gap: 9, padding: 12 }}>
