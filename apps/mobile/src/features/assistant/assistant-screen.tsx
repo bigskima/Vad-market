@@ -10,6 +10,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadIconButton } from '@/components/ui/vad-icon-button';
 import { VadText } from '@/components/ui/vad-text';
+import { AssistantConversationSkeleton, AssistantThreadsSkeleton } from '@/components/ui/screen-skeletons';
 import {
   isGenericContentVisible,
   sanitizeAssistantAssetResponse,
@@ -269,10 +270,7 @@ export function AssistantScreen({
         ) : null}
 
         {loadingConversation ? (
-          <View style={{ minHeight: 180, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm }}>
-            <ActivityIndicator color={theme.colors.brandPrimary} />
-            <VadText variant="caption" tone="secondary">Opening conversation…</VadText>
-          </View>
+          <AssistantConversationSkeleton />
         ) : messages.length ? (
           <View style={{ gap: theme.spacing.sm }}>
             {messages.map((message) => <AssistantBubble key={message.id} message={message} />)}
@@ -331,10 +329,7 @@ export function AssistantScreen({
         <View style={{ gap: theme.spacing.sm }}>
           <VadButton label="New conversation" variant="secondary" onPress={newConversation} />
           {loadingThreads ? (
-            <View style={{ minHeight: 100, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <ActivityIndicator color={theme.colors.brandPrimary} />
-              <VadText variant="caption" tone="secondary">Loading conversations…</VadText>
-            </View>
+            <AssistantThreadsSkeleton />
           ) : threads.length ? (
             threads.slice(0, 20).map((thread) => (
               <Pressable
