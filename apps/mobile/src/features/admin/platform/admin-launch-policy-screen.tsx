@@ -76,8 +76,8 @@ export function AdminLaunchPolicyScreen() {
         <PolicyRow title="Launch phase" status={launch?.status ?? 'MISSING'} detail={launch ? `Version ${launch.version} · ${String(launch.configuration.country_code ?? '—')} · ${String(launch.configuration.settlement_asset ?? '—')}` : 'No active launch phase policy found.'} />
         <PolicyRow title="Market admission" status={market?.status ?? 'MISSING'} detail={market ? `Version ${market.version} · Auto publish ${market.configuration.auto_publish_enabled === true ? 'on' : 'off'} · Min order ${String(market.configuration.minimum_order_notional ?? '—')}` : 'No market admission policy found.'} />
         <PolicyRow title="Settlement fee" status={settlement?.status ?? 'MISSING'} detail={settlement ? `Version ${settlement.version} · Rate ${bpsLabel(settlement.configuration.rate_bps)}` : 'No active settlement fee exists yet.'} />
-        <PolicyRow title="Production oracle" status={productionOracle?.status ?? 'MISSING'} detail={productionOracle ? `${productionOracle.name} · v${productionOracle.version} · dispute ${durationLabel(productionOracle.disputeWindowSeconds)}` : 'No ACTIVE production oracle policy is available.'} />
-        <PolicyRow title="Sandbox oracle" status={sandboxOracle?.status ?? 'MISSING'} detail={sandboxOracle ? `${sandboxOracle.name} · v${sandboxOracle.version} · ${durationLabel(sandboxOracle.disputeWindowSeconds)} dispute window` : 'Sandbox policy has not been created.'} />
+        <PolicyRow title="Production result verification" status={productionOracle?.status ?? 'MISSING'} detail={productionOracle ? `${productionOracle.name} · v${productionOracle.version} · dispute ${durationLabel(productionOracle.disputeWindowSeconds)}` : 'No active production result-verification policy is available.'} />
+        <PolicyRow title="Test result verification" status={sandboxOracle?.status ?? 'MISSING'} detail={sandboxOracle ? `${sandboxOracle.name} · v${sandboxOracle.version} · ${durationLabel(sandboxOracle.disputeWindowSeconds)} dispute window` : 'Test result-verification policy has not been created.'} />
       </View>
 
       <VadCard variant="muted" style={{ gap: theme.spacing.md }}>

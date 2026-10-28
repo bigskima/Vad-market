@@ -237,7 +237,7 @@ export function AdminRolesScreen() {
       </View>
 
       <OperationsSection title="Role catalogue" description="Super Admin is intentionally excluded from ordinary assignment." count={roles.length}>
-        {roles.map((role) => <OperationsRow key={role.role_code} title={role.role_name} detail={role.description} meta={`${role.assigned_count} active assignment${Number(role.assigned_count) === 1 ? '' : 's'}`} status={role.role_code === 'SUPER_ADMIN' ? 'PROTECTED' : 'ASSIGNABLE'} ready={role.role_code !== 'SUPER_ADMIN'} />)}
+        {roles.map((role) => <OperationsRow key={role.role_code} title={role.role_code === 'ORACLE_REVIEWER' ? 'Result Reviewer' : role.role_name} detail={role.description.replaceAll('Oracle', 'result verification').replaceAll('oracle', 'result verification')} meta={`${role.assigned_count} active assignment${Number(role.assigned_count) === 1 ? '' : 's'}`} status={role.role_code === 'SUPER_ADMIN' ? 'PROTECTED' : 'ASSIGNABLE'} ready={role.role_code !== 'SUPER_ADMIN'} />)}
       </OperationsSection>
 
       <View style={{ gap: theme.spacing.sm }}>

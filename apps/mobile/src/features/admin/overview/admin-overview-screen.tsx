@@ -11,9 +11,9 @@ export function AdminOverviewScreen({ summary, marketQueue, oracleQueue }: { sum
   const theme = useVadTheme();
   return <View style={{ gap: theme.spacing.lg }}>
     <View><VadText variant="title">VAD Admin Overview</VadText><VadText tone="secondary">Access to controls depends on your assigned permissions.</VadText></View>
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>{Object.entries(summary).filter(([key]) => key !== 'generatedAt').map(([key, value]) => <VadCard key={key} variant="raised" style={{ minWidth: 130, flexGrow: 1, gap: theme.spacing.xxs }}><VadText variant="heading">{String(value)}</VadText><VadText variant="caption" tone="secondary">{key.replace(/([A-Z])/g, ' $1')}</VadText></VadCard>)}</View>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>{Object.entries(summary).filter(([key]) => key !== 'generatedAt').map(([key, value]) => <VadCard key={key} variant="raised" style={{ minWidth: 130, flexGrow: 1, gap: theme.spacing.xxs }}><VadText variant="heading">{String(value)}</VadText><VadText variant="caption" tone="secondary">{key === 'oracleQueue' ? 'Result review queue' : key.replace(/([A-Z])/g, ' $1').replace(/^oracle\b/i, 'Result review')}</VadText></VadCard>)}</View>
     <VadButton label="Open operations" variant="secondary" onPress={() => router.push('/admin-operations')} />
     <View style={{ gap: theme.spacing.sm }}><VadText variant="heading">Market review queue</VadText><RecordList rows={marketQueue} empty="No market proposals need review." /></View>
-    <View style={{ gap: theme.spacing.sm }}><VadText variant="heading">Oracle queue</VadText><RecordList rows={oracleQueue} empty="No oracle cases need attention." /></View>
+    <View style={{ gap: theme.spacing.sm }}><VadText variant="heading">Result review queue</VadText><RecordList rows={oracleQueue} empty="No results need review." /></View>
   </View>;
 }

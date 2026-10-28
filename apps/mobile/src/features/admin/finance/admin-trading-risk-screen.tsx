@@ -180,7 +180,7 @@ export function AdminTradingRiskScreen() {
         </VadCard>
       ) : policies.length === 0 ? (
         <VadCard variant="surface" style={{ gap: 4, padding: theme.spacing.md }}>
-          <VadText variant="bodyStrong">No trading risk policies configured</VadText>
+          <VadText variant="bodyStrong">No risk policies yet</VadText>
           <VadText variant="caption" tone="secondary">Configure an active risk policy for a supported asset before creating markets.</VadText>
           <VadButton label="Retry" variant="secondary" onPress={() => void load()} />
         </VadCard>
