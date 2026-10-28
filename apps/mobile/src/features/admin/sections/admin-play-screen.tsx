@@ -561,7 +561,6 @@ export function AdminPlayScreen() {
                 {sponsorImagePath ? (
                   <>
                     <Image source={{ uri: playMediaPublicUrl(sponsorImagePath) ?? undefined }} accessibilityLabel="Sponsor creative preview" resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
-                    <VadText variant="caption" tone="tertiary"></VadText>
                   </>
                 ) : null}
               </View>
