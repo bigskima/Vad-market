@@ -74,6 +74,7 @@ export async function markAccountOnboardingStarted() {
         ? metadata.vad_onboarding_started_at
         : new Date().toISOString(),
     vad_onboarding_deferred_until: null,
+    vad_onboarding_completed_at: null,
   });
 }
 
