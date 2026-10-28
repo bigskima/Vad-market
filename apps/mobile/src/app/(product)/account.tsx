@@ -398,7 +398,7 @@ export default function AccountScreen() {
         </SettingsGroup>
 
         <SettingsGroup title="Grow with VAD">
-          <AccountRow icon="community" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Rewards & Referrals" subtitle="Share your invite code and track rewards" onPress={() => router.push('/account/referrals')} last />
+          <AccountRow icon="community" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Rewards & Referrals" subtitle="Share your invite code and track rewards" onPress={() => router.push('/referrals')} last />
         </SettingsGroup>
 
         <SettingsGroup title="Support">
