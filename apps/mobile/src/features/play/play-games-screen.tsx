@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
+import { PlayAdSlot } from './play-ad-slot';
 import { listPublishedPlayExperiences, playFriendlyError, type PlayExperience, playExperienceLabel } from '@/services/play-api';
 import { PlayExperienceTile } from './play-experience-tile';
 import { PlayLoadingState, PlayMessageState } from './play-states';
@@ -76,6 +77,8 @@ export function PlayGamesScreen() {
       </View>
 
       <PlayTabNavigation active="Games" />
+
+      <PlayAdSlot placementCode="play-games-inline" />
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, paddingHorizontal: theme.spacing.md, minHeight: 48 }}>
         <VadIcon name="search" size={18} tone="tertiary" />

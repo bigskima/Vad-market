@@ -5,6 +5,7 @@ import { Image, Pressable, View } from 'react-native';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
+import { PlayAdSlot } from './play-ad-slot';
 import { getPublishedPlayExperience, playFriendlyError, type PlayExperience, playExperienceLabel } from '@/services/play-api';
 import { PlayLoadingState, PlayMessageState } from './play-states';
 import { PlayTabNavigation } from './play-tab-navigation';
@@ -77,6 +78,8 @@ export function PlayExperienceDetailScreen() {
       </Pressable>
 
       <PlayTabNavigation active="Discover" />
+
+      <PlayAdSlot placementCode="play-experience-inline" />
 
       {loading ? (
         <PlayLoadingState label="Loading experience details" />

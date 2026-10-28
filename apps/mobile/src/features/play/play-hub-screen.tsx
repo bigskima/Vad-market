@@ -4,6 +4,7 @@ import { ImageBackground, Pressable, ScrollView, View } from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
+import { PlayAdSlot } from './play-ad-slot';
 import { listPublishedPlayExperiences, playFriendlyError, type PlayExperience, playExperienceLabel } from '@/services/play-api';
 import { PlayExperienceTile } from './play-experience-tile';
 import { PlayLoadingState, PlayMessageState } from './play-states';
@@ -64,6 +65,8 @@ export function PlayHubScreen() {
       </View>
 
       <PlayTabNavigation active="Discover" />
+
+      <PlayAdSlot placementCode="play-discover-banner" />
 
       <ImageBackground
         source={playHeroArt}
