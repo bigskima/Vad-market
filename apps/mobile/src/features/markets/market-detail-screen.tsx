@@ -489,21 +489,46 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
     label: field.label,
     value: firstContextText(...field.keys.map((key) => subject[key] ?? details[key] ?? context[key])),
   })).filter((entry) => entry.value && entry.value.length <= 160).slice(0, 4);
-  if (!entries.length) return null;
   const displayTitle = firstContextText(subject.name, subject.title, context.market_question, context.marketQuestion) || selected.title;
+  const badgeTitle = firstContextText(
+    subject.asset_name, subject.assetName, subject.company_name, subject.companyName,
+    subject.artist_name, subject.artistName, subject.model_name, subject.modelName,
+    subject.issuer, subject.performer, subject.name, subject.title,
+    details.asset_name, details.company_name, context.asset_name, context.company_name,
+    context.issuer, context.company, context.artist, context.model_name,
+  ) || displayTitle;
+  const badgeSymbol = firstContextText(
+    subject.symbol, subject.ticker, subject.stock_symbol, subject.stockSymbol, subject.pair,
+    details.symbol, details.ticker, context.symbol, context.ticker, context.stock_symbol,
+  );
+  const badgeImageUrl = safeContextImageUrl(firstContextText(
+    subject.logo_url, subject.logoUrl, subject.image_url, subject.imageUrl,
+    subject.badge_url, subject.badgeUrl, subject.icon_url, subject.iconUrl,
+    subject.company_logo_url, subject.companyLogoUrl, subject.company_logo, subject.companyLogo,
+    subject.asset_logo, subject.assetLogo, subject.coin_logo, subject.coinLogo,
+    subject.cover_image, subject.image,
+    details.logo_url, details.logoUrl, details.image_url, details.imageUrl,
+    details.company_logo_url, details.asset_logo, details.coin_logo,
+    context.logo_url, context.logoUrl, context.image_url, context.imageUrl,
+    context.badge_url, context.icon_url, context.company_logo_url, context.asset_logo, context.coin_logo,
+  ));
+  if (!entries.length && !badgeImageUrl && !badgeSymbol && !badgeTitle) return null;
 
   return (
     <VadCard variant="surface" style={{ padding: 14, gap: 10, borderRadius: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 9 }}>
-        <View style={{ width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
-          <VadIcon name={profile === 'CRYPTO' ? 'activity' : profile === 'STOCKS' ? 'portfolio' : profile === 'MUSIC' ? 'community' : profile === 'AI' ? 'info' : 'globe'} size={17} tone="brand" />
-        </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <CategorySubjectBadge
+          title={badgeTitle}
+          symbol={badgeSymbol}
+          imageUrl={badgeImageUrl}
+          fallbackIcon={profile === 'CRYPTO' ? 'activity' : profile === 'STOCKS' ? 'portfolio' : profile === 'MUSIC' ? 'community' : profile === 'AI' ? 'info' : 'globe'}
+        />
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <VadText variant="label" tone="brand">{selected.title}</VadText>
-          <VadText variant="caption" tone="secondary">{selected.lead}</VadText>
+          <VadText variant="caption" tone="secondary" numberOfLines={2}>{selected.lead}</VadText>
         </View>
       </View>
-      {displayTitle !== selected.title ? <VadText variant="bodyStrong">{displayTitle}</VadText> : null}
+      {badgeTitle && badgeTitle !== selected.title && badgeTitle !== displayTitle ? <VadText variant="bodyStrong">{badgeTitle}</VadText> : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
         {entries.map((entry) => (
           <View key={entry.label} style={{ flex: 1, minWidth: '42%', borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, padding: 10, borderRadius: 12, gap: 4 }}>
@@ -513,6 +538,28 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
         ))}
       </View>
     </VadCard>
+  );
+}
+
+function CategorySubjectBadge({ title, symbol, imageUrl, fallbackIcon }: {
+  title: string;
+  symbol: string | null;
+  imageUrl: string | null;
+  fallbackIcon: 'activity' | 'portfolio' | 'community' | 'info' | 'globe';
+}) {
+  const theme = useVadTheme();
+  const label = (symbol || title || '').trim();
+  const initials = label.replace(/[^a-z0-9]/gi, '').slice(0, 4).toUpperCase();
+  return (
+    <View style={{ width: 46, height: 46, borderRadius: 13, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border }}>
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} accessibilityLabel={title ? title + ' badge' : 'Market subject badge'} resizeMode="contain" style={{ width: 40, height: 40 }} />
+      ) : symbol || initials ? (
+        <VadText variant="bodyStrong" tone="brand" style={{ fontSize: label.length > 4 ? 11 : 14 }}>{symbol || initials}</VadText>
+      ) : (
+        <VadIcon name={fallbackIcon} size={18} tone="brand" />
+      )}
+    </View>
   );
 }
 
@@ -547,6 +594,20 @@ function firstContextText(...values: unknown[]): string | null {
     }
   }
   return null;
+}
+
+function safeContextImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password) return null;
+    const host = url.hostname.toLowerCase();
+    if (!host || host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return null;
+    if (/^(127\.|10\.|192\.168\.|169\.254\.)/.test(host) || host === '::1' || host.startsWith('fc') || host.startsWith('fe80')) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 function safeSportsImageUrl(value: unknown): string | null {
