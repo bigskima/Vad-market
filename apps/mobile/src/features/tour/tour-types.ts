@@ -3,7 +3,7 @@ export type TourRoute =
   | '/wallet/activity' | '/wallet/deposit' | '/wallet/withdraw' | '/wallet/send'
   | '/account/profile' | '/account/verification' | '/account/funding' | '/account/region'
   | '/account/appearance' | '/account/security' | '/account/policies' | '/account/growth' | '/account/about'
-  | '/notifications' | '/news' | '/financial-markets' | '/crypto-assets' | '/community' | '/assistant' | '/create-market';
+  | '/notifications' | '/news' | '/financial-markets' | '/crypto-assets' | '/community' | '/assistant' | '/create-market' | '/play';
 
 export type TourStep = {
   id: string;
