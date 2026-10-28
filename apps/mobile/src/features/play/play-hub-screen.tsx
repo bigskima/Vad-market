@@ -56,6 +56,8 @@ export function PlayHubScreen() {
 
   const categories = [...new Set(experiences.map((item) => item.experience_type))];
 
+  if (loading) return <PlayHubSkeleton />;
+
   return (
     <View style={{ gap: theme.spacing.lg }}>
       <TourTarget id="play-hub-overview">
@@ -134,9 +136,7 @@ export function PlayHubScreen() {
           ) : null}
         </View>
 
-        {loading ? (
-          <PlayHubSkeleton />
-        ) : error ? (
+        {error ? (
           <PlayMessageState title="The catalogue is unavailable" body={error} actionLabel="Try again" onAction={refresh} tone="error" />
         ) : experiences.length === 0 ? (
           <PlayMessageState
