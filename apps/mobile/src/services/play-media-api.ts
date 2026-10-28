@@ -24,8 +24,6 @@ export function playMediaPublicUrl(path: string | null | undefined) {
   if (
     /^[a-z][a-z0-9+.-]*:/i.test(value)
     || value.startsWith('/')
-    || value.includes('..')
-    || value.includes('\\\\')
     || !/^[A-Za-z0-9_./-]+$/.test(value)
   ) return null;
   return supabase.storage.from(PLAY_MEDIA_BUCKET).getPublicUrl(value).data.publicUrl;
