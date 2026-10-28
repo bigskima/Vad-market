@@ -82,13 +82,11 @@ export function PlayHubScreen() {
       >
         <View style={{ flex: 1, minHeight: 210, justifyContent: 'flex-end', padding: theme.spacing.xl, backgroundColor: 'rgba(10, 12, 27, 0.56)', gap: 9 }}>
           <View style={{ alignSelf: 'flex-start', borderRadius: theme.radius.pill, backgroundColor: 'rgba(255,255,255,0.16)', paddingHorizontal: 10, paddingVertical: 6 }}>
-            <VadText variant="caption" tone="inverse" style={{ letterSpacing: 1 }}>DISCOVER GAMES</VadText>
           </View>
           <VadText variant="title" tone="inverse" style={{ fontSize: 29, lineHeight: 34, maxWidth: 390 }}>
             Find your next game.
           </VadText>
           <VadText tone="inverse" style={{ opacity: 0.86, maxWidth: 440 }}>
-            Discover live experiences.
           </VadText>
         </View>
       </ImageBackground>
@@ -129,7 +127,6 @@ export function PlayHubScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flex: 1, gap: 3 }}>
             <VadText variant="heading">Live games</VadText>
-            <VadText variant="caption" tone="secondary">Published experiences</VadText>
           </View>
           {experiences.length > 0 ? (
             <VadText variant="caption" tone="tertiary">{experiences.length} live</VadText>
@@ -137,11 +134,11 @@ export function PlayHubScreen() {
         </View>
 
         {error ? (
-          <PlayMessageState title="The catalogue is unavailable" body={error} actionLabel="Try again" onAction={refresh} tone="error" />
+          <PlayMessageState title="Can't load games" body="Try again in a moment." actionLabel="Try again" onAction={refresh} tone="error" />
         ) : experiences.length === 0 ? (
           <PlayMessageState
             title="No games yet"
-            body="Published games will appear here."
+            body="New games will appear here."
             actionLabel="Browse games"
             onAction={() => router.push('/play/games')}
           />
@@ -161,8 +158,8 @@ export function PlayHubScreen() {
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'center', borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.lg }}>
         <View style={{ flex: 1, gap: 4 }}>
-          <VadText variant="heading">View activity</VadText>
-          <VadText variant="caption" tone="secondary">Your activity and results.</VadText>
+          <VadText variant="heading">Your activity</VadText>
+          <VadText variant="caption" tone="secondary">Your results.</VadText>
         </View>
         <Pressable
           accessibilityRole="button"
