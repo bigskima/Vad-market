@@ -147,51 +147,83 @@ async function lookupNetworkSignals(ip: string): Promise<{ data: NormalizedNetwo
 }
 
 /** Use a second public reverse-geocoding source when Photon is unavailable. */
-async function lookupDeviceCountry(latitude: number, longitude: number): Promise<{ countryCode: string | null; provider: string }> {
-  try {
-    const response = await fetchWithTimeout(
-      `https://photon.komoot.io/reverse?lat=${latitude}&lon=${longitude}&lang=en`,
-      { headers: { 'Accept': 'application/geo+json', 'User-Agent': 'VADMarket/1.0 location-jurisdiction-check' } },
-      7000,
-    );
-    if (response.ok) {
-      const geo = await response.json() as {
-        features?: Array<{ properties?: { countrycode?: unknown } }>;
-      };
-      const country = geo.features
-        ?.map((feature) => feature?.properties?.countrycode)
-        .find((value): value is string => isCountryCode(value));
-      if (country) return { countryCode: country.toUpperCase(), provider: 'photon.komoot.io' };
-      console.warn('[verify-service-location] primary reverse geocoder returned no country');
-    } else {
-      console.warn('[verify-service-location] primary reverse geocoder returned non-2xx', { status: response.status });
-    }
-  } catch {
-    console.warn('[verify-service-location] primary reverse geocoder request failed');
-  }
+type PhotonFeature = {
+  properties?: {
+    countrycode?: unknown;
+    country_code?: unknown;
+    countryCode?: unknown;
+    country_code_iso2?: unknown;
+  };
+};
 
-  try {
-    const response = await fetchWithTimeout(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
-      { headers: { 'Accept': 'application/json' } },
-      6000,
-    );
-    if (!response.ok) {
-      console.warn('[verify-service-location] fallback reverse geocoder returned non-2xx', { status: response.status });
-      return { countryCode: null, provider: 'none' };
-    }
-    const payload = await response.json() as { countryCode?: unknown };
-    if (!isCountryCode(payload.countryCode)) {
-      console.warn('[verify-service-location] fallback reverse geocoder returned no country');
-      return { countryCode: null, provider: 'none' };
-    }
-    return { countryCode: payload.countryCode.toUpperCase(), provider: 'api.bigdatacloud.net' };
-  } catch {
-    console.warn('[verify-service-location] fallback reverse geocoder request failed');
-    return { countryCode: null, provider: 'none' };
+function countryCodeFromPhoton(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const features = (payload as { features?: unknown }).features;
+  if (!Array.isArray(features)) return null;
+  for (const item of features as PhotonFeature[]) {
+    const properties = item?.properties;
+    const candidate = [
+      properties?.countrycode,
+      properties?.country_code,
+      properties?.countryCode,
+      properties?.country_code_iso2,
+    ].find((value) => isCountryCode(value));
+    if (isCountryCode(candidate)) return candidate.toUpperCase();
   }
+  return null;
 }
 
+/**
+ * Resolve only the country for a current, permission-granted device coordinate.
+ * Ask Photon for its country layer first; the generic reverse result may select
+ * a nearby road/building feature whose properties do not include countrycode.
+ */
+async function lookupDeviceCountry(latitude: number, longitude: number): Promise<{ countryCode: string | null; provider: string }> {
+  const endpoints = [
+    {
+      name: 'photon.komoot.io country layer',
+      url: `https://photon.komoot.io/reverse?lat=${latitude}&lon=${longitude}&lang=en&layer=country&limit=1`,
+      timeout: 7000,
+    },
+    {
+      name: 'photon.komoot.io reverse fallback',
+      url: `https://photon.komoot.io/reverse?lat=${latitude}&lon=${longitude}&lang=en&limit=5`,
+      timeout: 6000,
+    },
+  ] as const;
+
+  for (let index = 0; index < endpoints.length; index += 1) {
+    const endpoint = endpoints[index];
+    try {
+      const response = await fetchWithTimeout(
+        endpoint.url,
+        { headers: { 'Accept': 'application/geo+json', 'User-Agent': 'VADMarket/1.0 location-jurisdiction-check' } },
+        endpoint.timeout,
+      );
+      if (!response.ok) {
+        console.warn('[verify-service-location] reverse geocoder returned non-2xx', {
+          provider: endpoint.name,
+          status: response.status,
+        });
+        continue;
+      }
+      const countryCode = countryCodeFromPhoton(await response.json() as unknown);
+      if (countryCode) return { countryCode, provider: endpoint.name };
+      console.warn('[verify-service-location] reverse geocoder response contained no country code', {
+        provider: endpoint.name,
+      });
+    } catch {
+      console.warn('[verify-service-location] reverse geocoder request failed', {
+        provider: endpoint.name,
+      });
+    }
+  }
+
+  // BigDataCloud's "reverse-geocode-client" endpoint is for direct client-side
+  // calls; using it from this Edge Function returns HTTP 400 and violates the
+  // provider's usage terms. Do not fall back to a client-only endpoint here.
+  return { countryCode: null, provider: 'none' };
+}
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' }, 405);
