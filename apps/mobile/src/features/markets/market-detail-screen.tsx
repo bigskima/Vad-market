@@ -299,8 +299,6 @@ function SportsMatchupCard({ market }: { market: MarketCatalogItem }) {
 
   const homeTeam = firstContextText(subject.home_team, subject.homeTeam, context.home_team, context.homeTeam, subject.competitor_a, context.competitor_a, subject.team_home);
   const awayTeam = firstContextText(subject.away_team, subject.awayTeam, context.away_team, context.awayTeam, subject.competitor_b, context.competitor_b, subject.team_away);
-  if (!homeTeam || !awayTeam) return null;
-
   const competition = firstContextText(subject.competition, context.competition, context.group_key, market.group_key, market.category);
   const sport = firstContextText(subject.sport, context.sport, context.sport_code);
   const contextHomeLogo = safeSportsImageUrl(firstContextText(subject.home_team_crest, subject.homeTeamCrest, subject.home_team_logo, subject.homeTeamLogo, context.home_team_crest, context.homeTeamCrest, context.home_team_logo));
@@ -311,12 +309,14 @@ function SportsMatchupCard({ market }: { market: MarketCatalogItem }) {
 
   useEffect(() => {
     let active = true;
-    if (contextHomeLogo && contextAwayLogo && contextStartsAt && contextVenue) return () => { active = false; };
+    if (!homeTeam || !awayTeam || (contextHomeLogo && contextAwayLogo && contextStartsAt && contextVenue)) return () => { active = false; };
     void getSportsMatchMetadata({ homeTeam, awayTeam, competition })
       .then((value) => { if (active) setMetadataState({ instrumentId: market.instrument_public_id, value }); })
       .catch(() => { if (active) setMetadataState({ instrumentId: market.instrument_public_id, value: null }); });
     return () => { active = false; };
   }, [market.instrument_public_id, homeTeam, awayTeam, competition, contextHomeLogo, contextAwayLogo, contextStartsAt, contextVenue]);
+
+  if (!homeTeam || !awayTeam) return null;
 
   const metadata = metadataState?.instrumentId === market.instrument_public_id ? metadataState.value : null;
   const homeLogo = contextHomeLogo ?? safeSportsImageUrl(metadata?.home_team_crest);
