@@ -808,7 +808,7 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
       ) : error ? (
         <VadCard variant="muted" style={{ gap: 4, borderWidth: 1, borderColor: theme.colors.no }}>
           <VadText variant="bodyStrong">Outcomes unavailable</VadText>
-          <VadText variant="caption" tone="secondary">{error}</VadText>
+          <VadText variant="caption" tone="secondary">Could not load outcomes. Try again.</VadText>
         </VadCard>
       ) : outcomes.length ? (
         <View style={{ gap: theme.spacing.xs }}>
