@@ -44,11 +44,15 @@ export default function AdminSupportScreen() {
 
   const reload = useCallback(async (preferredId?: string | null) => {
     const rows = await adminListSupportTickets(filter);
+    setError(null);
     setTickets(rows);
     const nextId = preferredId ?? activeTicketId;
     const selected = rows.find((item) => item.id === nextId) ?? rows[0] ?? null;
     setActiveTicketId(selected?.id ?? null);
-    if (!selected) setMessages([]);
+    if (!selected) {
+      setMessages([]);
+      setMessagesTicketId(null);
+    }
     return selected;
   }, [activeTicketId, filter]);
 
@@ -57,9 +61,22 @@ export default function AdminSupportScreen() {
     void adminListSupportTickets(filter)
       .then((rows) => {
         if (!active) return;
-        setTickets(rows); setActiveTicketId(rows[0]?.id ?? null);
+        setError(null);
+        setTickets(rows);
+        setActiveTicketId(rows[0]?.id ?? null);
+        if (!rows.length) {
+          setMessages([]);
+          setMessagesTicketId(null);
+        }
       })
-      .catch((value: unknown) => { if (active) setError(value instanceof Error ? value.message : 'Support inbox could not be loaded.'); })
+      .catch((value: unknown) => {
+        if (!active) return;
+        setTickets([]);
+        setActiveTicketId(null);
+        setMessages([]);
+        setMessagesTicketId(null);
+        setError(value instanceof Error ? value.message : 'Support inbox could not be loaded.');
+      })
       .finally(() => { if (active) setLoadedFilter(filter); });
     return () => { active = false; };
   }, [filter]);
@@ -99,7 +116,7 @@ export default function AdminSupportScreen() {
           <VadText variant="caption" tone="secondary">Respond to user questions, trading issues, wallet reports and resolution disputes.</VadText>
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
-          {filters.map((value) => <VadChip key={value} label={value.replaceAll('_', ' ')} selected={filter === value} tone={filter === value ? 'brand' : 'neutral'} onPress={() => setFilter(value)} />)}
+          {filters.map((value) => <VadChip key={value} label={value.replaceAll('_', ' ')} selected={filter === value} tone={filter === value ? 'brand' : 'neutral'} onPress={() => { setError(null); setNotice(null); setFilter(value); }} />)}
           <VadButton label="Refresh" size="small" variant="secondary" loading={loading} disabled={loading} onPress={() => { setLoadedFilter(null); void reload().catch((value: unknown) => setError(value instanceof Error ? value.message : 'Refresh failed.')).finally(() => setLoadedFilter(filter)); }} />
         </View>
         {notice ? <VadCard variant="muted"><VadText tone="yes">{notice}</VadText></VadCard> : null}
@@ -115,7 +132,7 @@ export default function AdminSupportScreen() {
               </View>
               {ticket.last_message ? <VadText variant="caption" tone="secondary">{ticket.last_message}</VadText> : null}
             </VadCard>
-          )) : <VadCard variant="muted"><VadText>No support tickets in this filter.</VadText></VadCard>}
+          )) : error ? null : <VadCard variant="muted"><VadText>No support tickets in this filter.</VadText></VadCard>}
         </View>
         {activeTicket ? (
           <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
@@ -125,7 +142,7 @@ export default function AdminSupportScreen() {
               <VadText variant="caption" tone="secondary">{activeTicket.user_email ?? activeTicket.user_id} · {activeTicket.category.replaceAll('_', ' ')} · {activeTicket.status.replaceAll('_', ' ')}</VadText>
             </View>
             <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={{ gap: 9 }}>
-              {messages.map((message) => (
+              {visibleMessages.map((message) => (
                 <View key={message.id} style={{ alignSelf: message.sender_role === 'ADMIN' ? 'flex-end' : 'flex-start', maxWidth: '92%', padding: 10, gap: 4, borderRadius: 12, backgroundColor: message.sender_role === 'ADMIN' ? theme.colors.brandSoft : theme.colors.surfaceMuted, borderWidth: 1, borderColor: theme.colors.border }}>
                   <VadText variant="caption" tone="secondary">{message.sender_display_name || message.sender_role} · {new Date(message.created_at).toLocaleString()}</VadText>
                   <VadText>{message.body}</VadText>

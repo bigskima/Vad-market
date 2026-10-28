@@ -362,6 +362,7 @@ export function MarketsScreen({
         title="Markets"
         actions={[
           { icon: 'bell', label: 'Notifications', onPress: () => router.push('/notifications'), badge: unreadNotifications },
+          { icon: 'lifeBuoy', label: 'Help & Support', onPress: () => router.push('/support') },
           { icon: 'fileText', label: 'News & headlines', onPress: () => router.push('/news') },
           { icon: 'globe', label: 'Financial markets', onPress: () => router.push('/financial-markets') },
           { icon: 'operations', label: 'Market filters', onPress: () => setFiltersExpanded((value) => !value) },

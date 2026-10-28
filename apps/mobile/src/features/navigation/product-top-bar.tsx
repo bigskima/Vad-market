@@ -21,6 +21,7 @@ export function ProductTopBar({
   onAccount,
   onSearch,
   onNotices,
+  onSupport,
   noticeCount = 0,
 }: {
   active: ProductTab;
@@ -36,6 +37,7 @@ export function ProductTopBar({
   onAccount: () => void;
   onSearch: () => void;
   onNotices: () => void;
+  onSupport: () => void;
   noticeCount?: number;
 }) {
   const theme = useVadTheme();
@@ -75,6 +77,7 @@ export function ProductTopBar({
           <View style={{ flex: 1 }} />
           <WalletAction onPress={onWallet} />
           {canCreate ? <CompactCreateAction onPress={onCreate} /> : null}
+          <HeaderIcon label="Open support" icon="lifeBuoy" onPress={onSupport} />
           <View>
             <HeaderIcon label="Open notifications" icon="bell" onPress={onNotices} />
             {noticeCount > 0 ? (
@@ -243,6 +246,7 @@ export function ProductTopBar({
 
           {!density.narrow ? <HeaderIcon label="Open VAD Assistant" icon="activity" onPress={onAssistant} /> : null}
 
+          <HeaderIcon label="Open support" icon="lifeBuoy" onPress={onSupport} />
           <View>
             <HeaderIcon label="Open notifications" icon="bell" onPress={onNotices} />
             {noticeCount > 0 ? (
@@ -345,7 +349,7 @@ function CompactCreateAction({ onPress }: { onPress: () => void }) {
   );
 }
 
-function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'activity' | 'operations'; onPress: () => void }) {
+function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'activity' | 'operations' | 'lifeBuoy'; onPress: () => void }) {
   const theme = useVadTheme();
   return (
     <Pressable

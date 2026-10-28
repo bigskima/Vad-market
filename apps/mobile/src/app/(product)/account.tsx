@@ -236,6 +236,9 @@ export default function AccountScreen() {
             <VadIcon name="bell" size={25} tone="primary" />
             {unreadNotificationCount > 0 ? <View style={{ position: 'absolute', top: 4, right: 3, width: 9, height: 9, borderRadius: 5, backgroundColor: theme.colors.no, borderWidth: 1, borderColor: theme.colors.background }} /> : null}
           </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Help & Support" onPress={() => router.push('/support')} style={({ pressed }) => ({ width: 39, height: 39, borderRadius: 20, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
+            <VadIcon name="lifeBuoy" size={23} tone="primary" />
+          </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Log out" onPress={requestSignOut} disabled={signingOut} style={({ pressed }) => ({ width: 39, height: 39, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.noSoft, borderWidth: 1, borderColor: theme.colors.no, opacity: pressed || signingOut ? 0.65 : 1 })}>
             <VadIcon name="logOut" size={21} tone="no" />
           </Pressable>
