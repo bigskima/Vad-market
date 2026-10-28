@@ -1,3 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+
 import { claimGrowthCode } from '@/services/growth-api';
 import { supabase } from '@/lib/supabase';
 
@@ -9,58 +12,93 @@ type PendingGrowthCode = {
   savedAt: number;
 };
 
-export function rememberPendingGrowthCode(code: string) {
+async function readStorageValue() {
+  if (Platform.OS === 'web' && typeof globalThis.localStorage !== 'undefined') {
+    try {
+      return globalThis.localStorage.getItem(PENDING_GROWTH_CODE_KEY);
+    } catch {
+      // Continue to the platform storage fallback if browser storage is blocked.
+    }
+  }
+
+  return AsyncStorage.getItem(PENDING_GROWTH_CODE_KEY);
+}
+
+async function writeStorageValue(value: string) {
+  if (Platform.OS === 'web' && typeof globalThis.localStorage !== 'undefined') {
+    try {
+      globalThis.localStorage.setItem(PENDING_GROWTH_CODE_KEY, value);
+      return;
+    } catch {
+      // Continue to the platform storage fallback if browser storage is blocked.
+    }
+  }
+
+  await AsyncStorage.setItem(PENDING_GROWTH_CODE_KEY, value);
+}
+
+export async function rememberPendingGrowthCode(code: string) {
   const normalized = code.trim().toUpperCase();
   if (!normalized) return;
+
   const payload: PendingGrowthCode = { code: normalized, savedAt: Date.now() };
   try {
-    globalThis.localStorage?.setItem(PENDING_GROWTH_CODE_KEY, JSON.stringify(payload));
+    await writeStorageValue(JSON.stringify(payload));
   } catch {
     // The landing flow remains usable even if this device does not persist local state.
   }
 }
 
-export function readPendingGrowthCode() {
+export async function readPendingGrowthCode() {
   try {
-    const raw = globalThis.localStorage?.getItem(PENDING_GROWTH_CODE_KEY);
+    const raw = await readStorageValue();
     if (!raw) return null;
+
     const value = JSON.parse(raw) as Partial<PendingGrowthCode>;
     if (typeof value.code !== 'string' || typeof value.savedAt !== 'number') {
-      clearPendingGrowthCode();
+      await clearPendingGrowthCode();
       return null;
     }
     if (Date.now() - value.savedAt > MAX_PENDING_AGE_MS) {
-      clearPendingGrowthCode();
+      await clearPendingGrowthCode();
       return null;
     }
     return value.code.trim().toUpperCase() || null;
   } catch {
-    clearPendingGrowthCode();
+    await clearPendingGrowthCode();
     return null;
   }
 }
 
-export function clearPendingGrowthCode() {
+export async function clearPendingGrowthCode() {
   try {
-    globalThis.localStorage?.removeItem(PENDING_GROWTH_CODE_KEY);
+    if (Platform.OS === 'web' && typeof globalThis.localStorage !== 'undefined') {
+      try {
+        globalThis.localStorage.removeItem(PENDING_GROWTH_CODE_KEY);
+        return;
+      } catch {
+        // Continue to the platform storage fallback if browser storage is blocked.
+      }
+    }
+    await AsyncStorage.removeItem(PENDING_GROWTH_CODE_KEY);
   } catch {
     // Nothing else is required.
   }
 }
 
 export async function applyPendingGrowthCode() {
-  const code = readPendingGrowthCode();
+  const code = await readPendingGrowthCode();
   if (!code) return null;
 
   try {
     const result = await claimGrowthCode(code);
-    clearPendingGrowthCode();
+    await clearPendingGrowthCode();
     return result;
   } catch {
     // A signed-in account can only have one acquisition source. We make one
     // background attempt and then clear the pending code so failed/expired
     // campaigns never create a retry loop on every screen render.
-    clearPendingGrowthCode();
+    await clearPendingGrowthCode();
     return null;
   }
 }
