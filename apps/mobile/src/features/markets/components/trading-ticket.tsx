@@ -562,7 +562,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 3 · REVIEW</VadText>
             <VadText variant="heading">Confirm your prediction.</VadText>
-            <VadText variant="caption" tone="secondary">Check what leaves your wallet and the estimated settlement if you're correct.</VadText>
+            <VadText variant="caption" tone="secondary">Check what leaves your wallet and the estimated settlement if the outcome wins.</VadText>
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
