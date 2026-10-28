@@ -346,7 +346,7 @@ export function WalletScreen({
           ) : (
             <VadEmptyState title="No transactions yet" body="Deposits, trades, payouts and refunds appear here." actionLabel="Deposit NGN" onAction={onDeposit} />
           )}
-          {walletActivityError ? <VadText variant="caption" tone="secondary">Some recent activity could not be refreshed. Open History to retry the complete ledger.</VadText> : null}
+          {walletActivityError ? <VadText variant="caption" tone="secondary">Some recent activity couldn't refresh. Open History to try again.</VadText> : null}
         </View>
       </TourTarget>
 
