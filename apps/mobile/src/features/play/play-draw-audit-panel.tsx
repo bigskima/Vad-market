@@ -123,7 +123,7 @@ export function PlayDrawAuditPanel({ campaignId }: { campaignId: string }) {
               <VadText variant="label">Eligible ticket codes</VadText>
               {tickets.map((ticket) => (
                 <View key={ticket.ticketId} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-                  <VadText variant="caption" tabularNums>{ticket.ticketCode}</VadText>
+                  <VadText variant="caption">{ticket.ticketCode}</VadText>
                   <VadText variant="caption" tone={ticket.status === 'WINNER' ? 'yes' : 'secondary'}>{ticket.status === 'WINNER' ? 'Winner' : 'Eligible'}</VadText>
                 </View>
               ))}
