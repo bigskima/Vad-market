@@ -8,6 +8,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
@@ -62,7 +63,7 @@ export function CryptoMarketPricesPanel({
         setError(null);
       } catch (reason) {
         if (!active) return;
-        setError(reason instanceof Error ? reason.message : 'Crypto market prices are temporarily unavailable.');
+        setError(userFacingErrorMessage(reason, 'general', 'Crypto prices are unavailable. Try again.'));
       } finally {
         if (active) setLoading(false);
         refreshInFlight = false;
@@ -101,7 +102,7 @@ export function CryptoMarketPricesPanel({
       setFetchedAt(result.fetchedAt);
       setStaleSnapshot(result.stale === true);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'More crypto prices could not be loaded.');
+      setError(userFacingErrorMessage(reason, 'general', 'Could not load more crypto prices. Try again.'));
     } finally {
       setLoadingMore(false);
     }
@@ -155,7 +156,7 @@ export function CryptoMarketPricesPanel({
                 setStaleSnapshot(result.stale === true);
                 setError(null);
               })
-              .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Crypto market prices are unavailable.'))
+              .catch((reason: unknown) => setError(userFacingErrorMessage(reason, 'general', 'Crypto prices are unavailable. Try again.')))
               .finally(() => setLoading(false));
           }}
         />
@@ -353,7 +354,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
         if (active) {
           setCoin(null);
           setResolvedQuery(normalizeAssetQuery(query));
-          setError(reason instanceof Error ? reason.message : 'Public crypto price is temporarily unavailable.');
+          setError(userFacingErrorMessage(reason, 'general', 'Public crypto price is unavailable. Try again.'));
         }
       } finally {
         if (active) setLoading(false);

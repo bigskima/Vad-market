@@ -7,6 +7,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
@@ -105,10 +106,10 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
           });
           setError(null);
         } else {
-          setError('A usable live quote was not returned for ' + details.symbol + '. The market remains governed by its published rules.');
+          setError('Live price unavailable for ' + details.symbol + '. Try again.');
         }
       } catch (value) {
-        if (active) setError(value instanceof Error ? value.message : 'Live financial market data is temporarily unavailable.');
+        if (active) setError(userFacingErrorMessage(value, 'general', 'Live price is unavailable. Try again.'));
       } finally {
         if (active) {
           setLoading(false);

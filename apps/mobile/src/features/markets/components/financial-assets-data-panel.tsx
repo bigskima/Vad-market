@@ -7,6 +7,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import { getFinancialMarketData, type FinancialAssetClass, type FinancialMarketQuote } from '@/services/financial-market-data-api';
@@ -115,7 +116,7 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
                 setNotice(page.message ?? null);
                 setError(null);
               })
-              .catch((value: unknown) => setError(value instanceof Error ? value.message : 'The selected financial data feed is unavailable.'))
+              .catch((value: unknown) => setError(userFacingErrorMessage(value, 'general', 'Financial data is unavailable. Try again.'))
               .finally(() => setLoading(false));
           }}
         />

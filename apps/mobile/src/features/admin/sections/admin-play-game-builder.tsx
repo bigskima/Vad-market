@@ -390,7 +390,7 @@ export function AdminPlayGameBuilder({
       ) : null}
 
       <VadButton label={isPrizeDraw ? 'Save game and campaign drafts' : 'Save game draft'} onPress={() => void saveDraft()} loading={working === 'save'} disabled={working !== null} />
-      <VadText variant="caption" tone="tertiary">Saving does not publish the game or enable paid play. Reviews and runtime controls remain separate.</VadText>
+      <VadText variant="caption" tone="tertiary">Saving keeps the game in draft. Reviews are required before publishing or enabling paid play.</VadText>
     </View>
   );
 }
