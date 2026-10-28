@@ -150,7 +150,13 @@ export function AdminPlayScreen() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) void load();
+    });
+    return () => { active = false; };
+  }, [load]);
 
   const directSponsor = dashboard.adProviders.find((provider) => provider.provider_key === 'direct-sponsor');
   const placementsCount = dashboard.adPlacements.length;
