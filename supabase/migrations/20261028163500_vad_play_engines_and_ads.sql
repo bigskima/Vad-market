@@ -198,12 +198,12 @@ create table if not exists public.play_ad_providers (
 -- Initial progress is zero, but the qualifying amount is updated only by a reconciler
 -- that reads the existing VAD payment/financial ledger; this table is not a money ledger.
 alter table public.play_campaigns
-  add column if not exists qualifying_net_proceeds_amount numeric(24,8) not null default 0
-  check (qualifying_net_proceeds_amount >= 0);
+  add column if not exists qualifying_funds_amount numeric(24,8) not null default 0
+  check (qualifying_funds_amount >= 0);
 alter table public.play_campaigns
   add column if not exists prize_delivered_at timestamptz;
 
-grant select (qualifying_net_proceeds_amount) on public.play_campaigns to authenticated;
+grant select (qualifying_funds_amount) on public.play_campaigns to authenticated;
 
 insert into public.play_ad_providers
   (provider_key, display_name, adapter_key, supported_platforms, status, public_config)
@@ -396,7 +396,7 @@ begin
   end if;
 
   if new.status in ('FUNDING_TARGET_MET','DRAW_ELIGIBLE','DRAW_AUTHORIZED','DRAWN','SETTLED') then
-    if new.qualifying_net_proceeds_amount < new.funding_threshold_amount
+    if new.qualifying_funds_amount < new.funding_threshold_amount
        or new.funding_target_met_at is null then
       raise exception 'The campaign has not met its configured funding threshold';
     end if;
@@ -428,7 +428,7 @@ $$;
 drop trigger if exists play_campaign_engine_guard on public.play_campaigns;
 create trigger play_campaign_engine_guard
 before insert or update of
-  experience_id, status, qualifying_net_proceeds_amount, funding_target_met_at,
+  experience_id, status, qualifying_funds_amount, funding_target_met_at,
   entries_closed_at, funds_reconciled_at, prize_secured_at, compliance_approved_at,
   draw_authorized_at, drawn_at, prize_delivered_at
 on public.play_campaigns
@@ -600,7 +600,7 @@ begin
         'profit_target_value', c.profit_target_value,
         'campaign_cost_budget_amount', c.campaign_cost_budget_amount,
         'funding_threshold_amount', c.funding_threshold_amount,
-        'qualifying_net_proceeds_amount', c.qualifying_net_proceeds_amount,
+        'qualifying_funds_amount', c.qualifying_funds_amount,
         'entry_price_amount', c.entry_price_amount, 'max_entries', c.max_entries,
         'entry_limit_per_user', c.entry_limit_per_user, 'status', c.status,
         'rules_public', c.rules_public, 'opens_at', c.opens_at, 'closes_at', c.closes_at,
@@ -973,5 +973,5 @@ grant execute on function public.admin_play_set_direct_sponsor_status(boolean) t
 
 commit;
 
-comment on column public.play_campaigns.qualifying_net_proceeds_amount is
-  'Reconciled proceeds projection from the existing VAD money ledger. It is not a new wallet or financial ledger and is updated only by trusted server workflows.';
+comment on column public.play_campaigns.qualifying_funds_amount is
+  'Reconciled qualifying campaign funds projection from the existing VAD financial ledger/campaign reserve. It is not a new wallet or financial ledger and is updated only by trusted server workflows.';

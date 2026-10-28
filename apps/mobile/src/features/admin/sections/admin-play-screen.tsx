@@ -384,7 +384,7 @@ export function AdminPlayScreen() {
                 </View>
                 <VadText tone="secondary">{campaign.prize_title} · {campaign.currency_code}</VadText>
                 <VadText variant="caption" tone="secondary">Threshold: {moneyLabel(campaign.funding_threshold_amount, campaign.currency_code)}</VadText>
-                <VadText variant="caption" tone="secondary">Reconciled proceeds: {moneyLabel(campaign.qualifying_net_proceeds_amount, campaign.currency_code)}</VadText>
+                <VadText variant="caption" tone="secondary">Qualifying funds: {moneyLabel(campaign.qualifying_funds_amount, campaign.currency_code)}</VadText>
               </View>
             </VadCard>
           )) : <VadText tone="secondary">No campaign drafts are recorded yet.</VadText>}

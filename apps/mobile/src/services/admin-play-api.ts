@@ -46,7 +46,7 @@ export type PlayAdminCampaign = {
   profit_target_value: number | string;
   campaign_cost_budget_amount: number | string;
   funding_threshold_amount: number | string;
-  qualifying_net_proceeds_amount: number | string;
+  qualifying_funds_amount: number | string;
   entry_price_amount: number | string;
   max_entries: number | null;
   entry_limit_per_user: number | null;
