@@ -331,8 +331,8 @@ export default function AccountOnboardingScreen() {
               {allOnboardingComplete
                 ? 'Your account essentials, first deposit and first trade are complete. You can continue using VAD and return to your account dashboard whenever you need it.'
                 : allRequiredComplete
-                  ? 'You're ready to explore VAD. Make your first deposit and trade now, or return in 7 days.'
-                  : 'Your progress is saved. We'll show only the steps you still need to finish.'}
+                  ? 'You are ready to explore VAD. Make your first deposit and trade now, or return in 7 days.'
+                  : 'Your progress is saved. We will show only the steps you still need to finish.'}
             </VadText>
           </View>
 
