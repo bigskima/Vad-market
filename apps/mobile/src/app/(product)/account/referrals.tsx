@@ -1,7 +1,7 @@
 import * as ExpoLinking from 'expo-linking';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Platform, Pressable, Share, View } from 'react-native';
+import { Platform, Share, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
