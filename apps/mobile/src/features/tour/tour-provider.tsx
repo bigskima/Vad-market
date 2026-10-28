@@ -16,6 +16,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
+import { shouldPromptAccountOnboarding } from '@/services/account-onboarding-api';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import {
   getMyProductTour,
@@ -68,6 +69,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
   const canUseNgnWalletRoutes = productData.activeAssetCodes.includes('NGN') && currencyPreference.isCurrencyEnabled('NGN');
   const canViewWalletActivity = productData.activeAssetCodes.includes('NGN');
   const userId = session?.user.id ?? null;
+  const accountOnboardingPending = shouldPromptAccountOnboarding(session?.user);
   const [definition, setDefinition] = useState<ProductTourDefinition | null>(null);
   const [progress, setProgress] = useState<TourProgress>(DEFAULT_TOUR_PROGRESS);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
@@ -273,6 +275,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       || !progressReady
       || loading
       || active
+      || accountOnboardingPending
       || pathname !== '/home'
       || autoStartedRef.current
       || !definition?.available
@@ -281,7 +284,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
 
     const timer = setTimeout(() => startTour(false), 1100);
     return () => clearTimeout(timer);
-  }, [active, definition, loading, pathname, progressReady, startTour, userId]);
+  }, [accountOnboardingPending, active, definition, loading, pathname, progressReady, startTour, userId]);
 
   const revealStep = useCallback(() => {
     if (!currentStep) return;
