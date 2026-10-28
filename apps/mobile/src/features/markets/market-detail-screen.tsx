@@ -964,7 +964,7 @@ function MarketSnapshot({ market, timing, outcomes }: { market: MarketCatalogIte
                 ? 'Each option has its own pool. Shares reflect current stakes, not the result.'
                 : timing.stage === 'OPEN'
                   ? 'Prices will appear when available.'
-                  : 'This market isn't trading. Check Activity for past trades.'}
+                  : "This market isn't trading. Check Activity for past trades."}
             </VadText>
           </View>
         ) : null}
