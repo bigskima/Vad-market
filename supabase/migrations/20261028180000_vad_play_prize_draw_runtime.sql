@@ -637,8 +637,7 @@ begin
   end if;
 
   update public.play_experiences
-  set status='PUBLISHED', published_at=statement_timestamp(), updated_at=statement_timestamp(),
-      public_config = public_config || jsonb_build_object('legalReviewReference', btrim(p_legal_review_reference))
+  set status='PUBLISHED', published_at=statement_timestamp(), updated_at=statement_timestamp()
   where id=p_experience_id
   returning * into v_experience;
 
