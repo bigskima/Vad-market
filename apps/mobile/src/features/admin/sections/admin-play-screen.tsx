@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -8,7 +8,9 @@ import { VadText } from '@/components/ui/vad-text';
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
+import { playMediaPublicUrl, uploadPlayMedia } from '@/services/play-media-api';
 import { AdminPlayOperationsPanel } from './admin-play-operations-panel';
+import { AdminPlayGameBuilder } from './admin-play-game-builder';
 import {
   getAdminPlayDashboard,
   saveAdminPlayAdPlacement,
@@ -18,7 +20,7 @@ import {
   type PlayAdminDashboard,
 } from '@/services/admin-play-api';
 
-type Section = 'overview' | 'experience' | 'campaign' | 'ads' | 'operations';
+type Section = 'builder' | 'overview' | 'experience' | 'campaign' | 'ads' | 'operations';
 
 const emptyDashboard: PlayAdminDashboard = {
   engines: [], releases: [], experiences: [], campaigns: [], adProviders: [], adPlacements: [], rewards: [],
@@ -106,14 +108,14 @@ export function AdminPlayScreen() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [section, setSection] = useState<Section>('overview');
+  const [section, setSection] = useState<Section>('builder');
 
   const [experienceSlug, setExperienceSlug] = useState('');
   const [experienceTitle, setExperienceTitle] = useState('');
   const [experienceType, setExperienceType] = useState('');
   const [experienceEngine, setExperienceEngine] = useState('');
   const [experienceDescription, setExperienceDescription] = useState('');
-  const [experienceImageUrl, setExperienceImageUrl] = useState('');
+  const [experienceImagePath, setExperienceImagePath] = useState('');
 
   const [campaignExperience, setCampaignExperience] = useState('');
   const [campaignSlug, setCampaignSlug] = useState('');
@@ -135,7 +137,7 @@ export function AdminPlayScreen() {
   const [sponsorName, setSponsorName] = useState('');
   const [sponsorTitle, setSponsorTitle] = useState('');
   const [sponsorBody, setSponsorBody] = useState('');
-  const [sponsorImage, setSponsorImage] = useState('');
+  const [sponsorImagePath, setSponsorImagePath] = useState('');
   const [sponsorClick, setSponsorClick] = useState('');
   const [platforms, setPlatforms] = useState<string[]>(['WEB', 'ANDROID', 'IOS']);
   const [placementStatus, setPlacementStatus] = useState<'DRAFT' | 'ACTIVE'>('DRAFT');
@@ -190,6 +192,23 @@ export function AdminPlayScreen() {
     }
   }
 
+  async function uploadArtworkFor(target: 'experience' | 'sponsor') {
+    setWorking(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const path = await uploadPlayMedia();
+      if (!path) return;
+      if (target === 'experience') setExperienceImagePath(path);
+      else setSponsorImagePath(path);
+      setMessage('Artwork uploaded to VAD Play storage.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Artwork could not be uploaded.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
   async function createExperience() {
     if (!experienceSlug.trim() || !experienceTitle.trim() || !experienceType.trim() || !experienceEngine) {
       setError('Complete the experience slug, title, type and engine.');
@@ -202,8 +221,8 @@ export function AdminPlayScreen() {
       experience_type: experienceType.trim().toUpperCase().replace(/[\s-]+/g, '_'),
       engine_key: experienceEngine,
       status: 'DRAFT',
-      hero_asset_url: experienceImageUrl.trim() || null,
-      card_asset_url: experienceImageUrl.trim() || null,
+      hero_asset_url: experienceImagePath.trim() || null,
+      card_asset_url: experienceImagePath.trim() || null,
       public_config: {},
       engine_config: {},
     }), 'Experience draft saved.');
@@ -211,7 +230,7 @@ export function AdminPlayScreen() {
     setExperienceTitle('');
     setExperienceType('');
     setExperienceDescription('');
-    setExperienceImageUrl('');
+    setExperienceImagePath('');
   }
 
   async function createCampaign() {
@@ -283,7 +302,7 @@ export function AdminPlayScreen() {
         sponsor_name: sponsorName.trim(),
         title: sponsorTitle.trim(),
         body: sponsorBody.trim(),
-        image_url: sponsorImage.trim(),
+        image_url: sponsorImagePath.trim(),
         click_url: sponsorClick.trim(),
         image_alt: sponsorTitle.trim(),
         cta_label: 'Learn more',
@@ -293,7 +312,7 @@ export function AdminPlayScreen() {
     setSponsorName('');
     setSponsorTitle('');
     setSponsorBody('');
-    setSponsorImage('');
+    setSponsorImagePath('');
     setSponsorClick('');
     setPlacementStatus('DRAFT');
   }
@@ -327,7 +346,7 @@ export function AdminPlayScreen() {
       <View style={{ gap: 5 }}>
         <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.5 }}>VAD OPERATIONS</VadText>
         <VadText variant="title">VAD Play & Ads</VadText>
-        <VadText tone="secondary">Configure experiences, campaign economics and sponsor placements. Publishing and live game activation remain separately gated.</VadText>
+        <VadText tone="secondary">Create a game draft, configure campaign economics and review operations.</VadText>
       </View>
 
       {error ? (
@@ -349,6 +368,7 @@ export function AdminPlayScreen() {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {([
+          ['builder', 'Create game'],
           ['overview', 'Overview'],
           ['experience', 'Experience drafts'],
           ['campaign', 'Campaign drafts'],
@@ -358,6 +378,8 @@ export function AdminPlayScreen() {
           <SectionTab key={key} active={section === key} label={label} onPress={() => { setSection(key); setError(null); setMessage(null); }} />
         ))}
       </View>
+
+      {section === 'builder' ? <AdminPlayGameBuilder dashboard={dashboard} onSaved={load} /> : null}
 
       {section === 'overview' ? (
         <>
@@ -429,7 +451,21 @@ export function AdminPlayScreen() {
               </View>
             </View>
             <VadInput label="Description (optional)" value={experienceDescription} onChangeText={setExperienceDescription} multiline placeholder="Describe the experience" />
-            <VadInput label="HTTPS image URL (optional)" value={experienceImageUrl} onChangeText={setExperienceImageUrl} autoCapitalize="none" keyboardType="url" placeholder="https://…" />
+            <View style={{ gap: 8 }}>
+              <VadButton
+                label={experienceImagePath ? 'Replace uploaded artwork' : 'Upload artwork'}
+                variant="secondary"
+                onPress={() => void uploadArtworkFor('experience')}
+                loading={working}
+                disabled={working}
+              />
+              {experienceImagePath ? (
+                <>
+                  <Image source={{ uri: playMediaPublicUrl(experienceImagePath) ?? undefined }} accessibilityLabel="Experience artwork preview" resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
+                  <VadText variant="caption" tone="tertiary">Saved in VAD Play storage.</VadText>
+                </>
+              ) : null}
+            </View>
             <VadButton label="Save experience draft" loading={working} disabled={working} onPress={() => void createExperience()} />
           </View>
         </VadCard>
@@ -519,7 +555,21 @@ export function AdminPlayScreen() {
               <VadInput label="Sponsor name (optional)" value={sponsorName} onChangeText={setSponsorName} placeholder="Brand or partner name" />
               <VadInput label="Creative title" value={sponsorTitle} onChangeText={setSponsorTitle} placeholder="Sponsored message" />
               <VadInput label="Message (optional)" value={sponsorBody} onChangeText={setSponsorBody} multiline placeholder="Short sponsor message" />
-              <VadInput label="Image URL (HTTPS, optional)" value={sponsorImage} onChangeText={setSponsorImage} keyboardType="url" autoCapitalize="none" placeholder="https://…" />
+              <View style={{ gap: 8 }}>
+                <VadButton
+                  label={sponsorImagePath ? 'Replace uploaded creative image' : 'Upload creative image'}
+                  variant="secondary"
+                  onPress={() => void uploadArtworkFor('sponsor')}
+                  loading={working}
+                  disabled={working}
+                />
+                {sponsorImagePath ? (
+                  <>
+                    <Image source={{ uri: playMediaPublicUrl(sponsorImagePath) ?? undefined }} accessibilityLabel="Sponsor creative preview" resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
+                    <VadText variant="caption" tone="tertiary">Saved in VAD Play storage.</VadText>
+                  </>
+                ) : null}
+              </View>
               <VadInput label="Click URL (HTTPS, optional)" value={sponsorClick} onChangeText={setSponsorClick} keyboardType="url" autoCapitalize="none" placeholder="https://…" />
               <View style={{ gap: 8 }}>
                 <VadText variant="label">Platforms</VadText>
