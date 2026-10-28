@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -13,7 +13,7 @@ import { useProductDensity } from '@/hooks/use-product-density';
 import { exactTime, getMarketTiming } from '@/lib/market-timing';
 import { useVadTheme } from '@/providers/theme-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
-import { getMarketOutcomeSummary, getPublishedMarketDetail, type MarketCatalogItem, type MarketOutcomeSummaryRow, type PoolStakeRow, type PositionRow, type PublishedMarketDetail } from '@/services/market-api';
+import { getMarketOutcomeSummary, getPublishedMarketDetail, getSportsMatchMetadata, type MarketCatalogItem, type MarketOutcomeSummaryRow, type PoolStakeRow, type PositionRow, type PublishedMarketDetail, type SportsMatchMetadata } from '@/services/market-api';
 import { MarketDetailHeader } from './components/market-detail-header';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { FinancialMarketLivePanel, hasLiveFinancialContext } from './components/financial-market-live-panel';
@@ -168,6 +168,7 @@ export function MarketDetailScreen({
   return (
     <View style={{ gap: density.compact ? 12 : density.sectionGap, paddingBottom: 18 }}>
       <TourTarget id="market-detail-overview"><MarketDetailHeader market={market} /></TourTarget>
+      <CategorySpecificMarketDetails market={market} />
 
       <VadButton
         label="Trade now"
@@ -279,6 +280,275 @@ export function MarketDetailScreen({
       </Modal>
     </View>
   );
+}
+
+type SportsMetadataState = { instrumentId: string; value: SportsMatchMetadata | null };
+
+function CategorySpecificMarketDetails({ market }: { market: MarketCatalogItem }) {
+  const profile = String(market.presentation_profile ?? 'EVENT').toUpperCase();
+  if (profile === 'SPORTS') return <SportsMatchupCard market={market} />;
+  return <CategoryContextCard market={market} profile={profile} />;
+}
+
+function SportsMatchupCard({ market }: { market: MarketCatalogItem }) {
+  const theme = useVadTheme();
+  const density = useProductDensity();
+  const context = asRecord(market.market_context);
+  const subject = asRecord(context.subject);
+  const details = asRecord(context.details);
+
+  const homeTeam = firstContextText(subject.home_team, subject.homeTeam, context.home_team, context.homeTeam, subject.competitor_a, context.competitor_a, subject.team_home);
+  const awayTeam = firstContextText(subject.away_team, subject.awayTeam, context.away_team, context.awayTeam, subject.competitor_b, context.competitor_b, subject.team_away);
+  if (!homeTeam || !awayTeam) return null;
+
+  const competition = firstContextText(subject.competition, context.competition, context.group_key, market.group_key, market.category);
+  const sport = firstContextText(subject.sport, context.sport, context.sport_code);
+  const contextHomeLogo = safeSportsImageUrl(firstContextText(subject.home_team_crest, subject.homeTeamCrest, subject.home_team_logo, subject.homeTeamLogo, context.home_team_crest, context.homeTeamCrest, context.home_team_logo));
+  const contextAwayLogo = safeSportsImageUrl(firstContextText(subject.away_team_crest, subject.awayTeamCrest, subject.away_team_logo, subject.awayTeamLogo, context.away_team_crest, context.awayTeamCrest, context.away_team_logo));
+  const contextStartsAt = firstContextText(subject.starts_at, subject.startsAt, context.starts_at, context.kickoff_at, context.kickoff, context.match_date, context.matchDate);
+  const contextVenue = firstContextText(subject.venue, context.venue, details.venue);
+  const [metadataState, setMetadataState] = useState<SportsMetadataState | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (contextHomeLogo && contextAwayLogo && contextStartsAt && contextVenue) return () => { active = false; };
+    void getSportsMatchMetadata({ homeTeam, awayTeam, competition })
+      .then((value) => { if (active) setMetadataState({ instrumentId: market.instrument_public_id, value }); })
+      .catch(() => { if (active) setMetadataState({ instrumentId: market.instrument_public_id, value: null }); });
+    return () => { active = false; };
+  }, [market.instrument_public_id, homeTeam, awayTeam, competition, contextHomeLogo, contextAwayLogo, contextStartsAt, contextVenue]);
+
+  const metadata = metadataState?.instrumentId === market.instrument_public_id ? metadataState.value : null;
+  const homeLogo = contextHomeLogo ?? safeSportsImageUrl(metadata?.home_team_crest);
+  const awayLogo = contextAwayLogo ?? safeSportsImageUrl(metadata?.away_team_crest);
+  const scheduledAt = contextStartsAt ?? metadata?.starts_at ?? null;
+  const venue = contextVenue ?? metadata?.venue ?? null;
+  const status = firstContextText(context.status, metadata?.match_status);
+  const condition = firstContextText(context.condition, context.resolution_rule, context.resolutionRule);
+
+  return (
+    <VadCard variant="surface" style={{ gap: density.phone ? 11 : 14, padding: density.phone ? 12 : 16, borderRadius: 18 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <VadText variant="label" tone="brand">MATCH CENTRE</VadText>
+          <VadText variant="caption" tone="secondary" numberOfLines={1}>{[competition, sport && sport.toUpperCase() !== competition?.toUpperCase() ? sport : null].filter(Boolean).join(' · ') || 'Sports fixture'}</VadText>
+        </View>
+        {status ? <VadChip label={friendlyMarketValue(status)} tone={['IN_PLAY', 'LIVE', 'PAUSED'].includes(status.toUpperCase()) ? 'warning' : 'neutral'} /> : null}
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ flex: 1, minWidth: 0, alignItems: 'center', gap: 8 }}>
+          <TeamCrest name={homeTeam} imageUrl={homeLogo} />
+          <VadText variant="bodyStrong" style={{ textAlign: 'center', lineHeight: 20 }} numberOfLines={3}>{homeTeam}</VadText>
+          <VadText variant="caption" tone="secondary">Home</VadText>
+        </View>
+        <View style={{ width: 42, alignItems: 'center', gap: 3 }}>
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
+            <VadText variant="bodyStrong" tone="secondary">VS</VadText>
+          </View>
+          <VadText variant="caption" tone="tertiary">Fixture</VadText>
+        </View>
+        <View style={{ flex: 1, minWidth: 0, alignItems: 'center', gap: 8 }}>
+          <TeamCrest name={awayTeam} imageUrl={awayLogo} />
+          <VadText variant="bodyStrong" style={{ textAlign: 'center', lineHeight: 20 }} numberOfLines={3}>{awayTeam}</VadText>
+          <VadText variant="caption" tone="secondary">Away</VadText>
+        </View>
+      </View>
+
+      {(scheduledAt || venue) ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+          {scheduledAt ? <MatchMetadataPill icon="clock" label={formatFixtureTime(scheduledAt)} /> : null}
+          {venue ? <MatchMetadataPill icon="globe" label={venue} /> : null}
+        </View>
+      ) : null}
+
+      {condition ? (
+        <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 10, gap: 4 }}>
+          <VadText variant="caption" tone="brand">MARKET QUESTION / RULE</VadText>
+          <VadText variant="body" style={{ lineHeight: 21 }}>{condition}</VadText>
+        </View>
+      ) : null}
+      <VadText variant="caption" tone="tertiary">Team badges and fixture details are shown when verified metadata is available. The market cover artwork above remains unchanged.</VadText>
+    </VadCard>
+  );
+}
+
+function TeamCrest({ name, imageUrl }: { name: string; imageUrl: string | null }) {
+  const theme = useVadTheme();
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('');
+  return (
+    <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} accessibilityLabel={`${name} club crest`} resizeMode="contain" style={{ width: 46, height: 46 }} />
+      ) : (
+        <VadText variant="bodyStrong" tone="brand" style={{ fontSize: 18 }}>{initials || '?'}</VadText>
+      )}
+    </View>
+  );
+}
+
+function MatchMetadataPill({ icon, label }: { icon: 'clock' | 'globe'; label: string }) {
+  const theme = useVadTheme();
+  return (
+    <View style={{ minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: theme.radius.pill, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '100%' }}>
+      <VadIcon name={icon} size={13} tone="secondary" />
+      <VadText variant="caption" tone="secondary" numberOfLines={2}>{label}</VadText>
+    </View>
+  );
+}
+
+function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; profile: string }) {
+  const theme = useVadTheme();
+  const context = asRecord(market.market_context);
+  const subject = asRecord(context.subject);
+  const details = asRecord(context.details);
+  const config: Record<string, { title: string; lead: string; fields: { label: string; keys: string[] }[] }> = {
+    CRYPTO: {
+      title: 'Asset details',
+      lead: 'The asset and benchmark used by this market.',
+      fields: [
+        { label: 'Asset', keys: ['asset', 'asset_name', 'assetName', 'symbol', 'ticker', 'pair'] },
+        { label: 'Reference', keys: ['reference_asset', 'referenceAsset', 'quote', 'benchmark', 'index'] },
+        { label: 'Threshold', keys: ['threshold', 'target_price', 'targetPrice', 'operator'] },
+        { label: 'Observation', keys: ['observation_time', 'observationTime', 'reporting_period', 'reportingPeriod'] },
+      ],
+    },
+    STOCKS: {
+      title: 'Company & market data',
+      lead: 'The company, ticker and financial measure this market follows.',
+      fields: [
+        { label: 'Company', keys: ['company', 'company_name', 'companyName', 'issuer'] },
+        { label: 'Ticker', keys: ['symbol', 'ticker', 'stock_symbol', 'stockSymbol'] },
+        { label: 'Measure', keys: ['metric', 'indicator', 'measure', 'threshold', 'operator'] },
+        { label: 'Period', keys: ['reporting_period', 'reportingPeriod', 'quarter', 'fiscal_year', 'fiscalYear'] },
+      ],
+    },
+    MUSIC: {
+      title: 'Artist & release',
+      lead: 'The artist, release or chart relevant to this question.',
+      fields: [
+        { label: 'Artist', keys: ['artist', 'artist_name', 'artistName', 'performer'] },
+        { label: 'Track / release', keys: ['song', 'track', 'album', 'release'] },
+        { label: 'Chart', keys: ['chart', 'chart_name', 'chartName', 'platform'] },
+        { label: 'Period', keys: ['reporting_period', 'reportingPeriod', 'date', 'release_date', 'releaseDate'] },
+      ],
+    },
+    AI: {
+      title: 'AI model & benchmark',
+      lead: 'The model or benchmark used to evaluate this market.',
+      fields: [
+        { label: 'Model', keys: ['model', 'model_name', 'modelName', 'system'] },
+        { label: 'Benchmark', keys: ['benchmark', 'benchmark_name', 'benchmarkName', 'dataset'] },
+        { label: 'Task', keys: ['task', 'metric', 'evaluation'] },
+        { label: 'Target', keys: ['threshold', 'target', 'operator', 'reporting_period'] },
+      ],
+    },
+    ECONOMICS: {
+      title: 'Economic indicator',
+      lead: 'The indicator, geography and reporting period.',
+      fields: [
+        { label: 'Indicator', keys: ['indicator', 'indicator_name', 'indicatorName', 'metric'] },
+        { label: 'Region', keys: ['country', 'region', 'economy', 'geography'] },
+        { label: 'Period', keys: ['reporting_period', 'reportingPeriod', 'month', 'quarter', 'year'] },
+        { label: 'Threshold', keys: ['threshold', 'operator', 'unit'] },
+      ],
+    },
+    ENTERTAINMENT: {
+      title: 'Entertainment details',
+      lead: 'The people, title or event connected to this question.',
+      fields: [
+        { label: 'Subject', keys: ['person', 'artist', 'actor', 'team', 'subject'] },
+        { label: 'Title / event', keys: ['film', 'show', 'series', 'event_name', 'eventName', 'award'] },
+        { label: 'Category', keys: ['category', 'award', 'genre', 'type'] },
+        { label: 'Date', keys: ['date', 'event_date', 'eventDate', 'reporting_period'] },
+      ],
+    },
+    PUBLIC_EVENTS: {
+      title: 'Event details',
+      lead: 'The event, location and relevant date from the published setup.',
+      fields: [
+        { label: 'Event', keys: ['event_name', 'eventName', 'event', 'subject'] },
+        { label: 'Location', keys: ['location', 'venue', 'region', 'country'] },
+        { label: 'Date', keys: ['date', 'event_date', 'eventDate', 'starts_at', 'startsAt'] },
+        { label: 'Threshold', keys: ['threshold', 'operator', 'metric'] },
+      ],
+    },
+    EVENT: {
+      title: 'Event context',
+      lead: 'Key details associated with the published event.',
+      fields: [
+        { label: 'Subject', keys: ['event_name', 'eventName', 'subject', 'event'] },
+        { label: 'Location', keys: ['location', 'venue', 'region'] },
+        { label: 'Date', keys: ['date', 'event_date', 'eventDate', 'starts_at', 'startsAt'] },
+        { label: 'Target', keys: ['threshold', 'operator', 'metric'] },
+      ],
+    },
+  };
+  const selected = config[profile] ?? config.EVENT;
+  const entries = selected.fields.map((field) => ({
+    label: field.label,
+    value: firstContextText(...field.keys.map((key) => subject[key] ?? details[key] ?? context[key])),
+  })).filter((entry) => entry.value && entry.value.length <= 160).slice(0, 4);
+  if (!entries.length) return null;
+  const displayTitle = firstContextText(subject.name, subject.title, context.market_question, context.marketQuestion) || selected.title;
+
+  return (
+    <VadCard variant="surface" style={{ padding: 14, gap: 10, borderRadius: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 9 }}>
+        <View style={{ width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
+          <VadIcon name={profile === 'CRYPTO' ? 'activity' : profile === 'STOCKS' ? 'portfolio' : profile === 'MUSIC' ? 'community' : profile === 'AI' ? 'info' : 'globe'} size={17} tone="brand" />
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <VadText variant="label" tone="brand">{selected.title}</VadText>
+          <VadText variant="caption" tone="secondary">{selected.lead}</VadText>
+        </View>
+      </View>
+      {displayTitle !== selected.title ? <VadText variant="bodyStrong">{displayTitle}</VadText> : null}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+        {entries.map((entry) => (
+          <View key={entry.label} style={{ flex: 1, minWidth: '42%', borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, padding: 10, borderRadius: 12, gap: 4 }}>
+            <VadText variant="caption" tone="tertiary">{entry.label}</VadText>
+            <VadText variant="bodyStrong" numberOfLines={3}>{entry.value}</VadText>
+          </View>
+        ))}
+      </View>
+    </VadCard>
+  );
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function firstContextText(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === 'string' || typeof value === 'number') {
+      const text = String(value).trim();
+      if (text && text.length <= 400) return text;
+    }
+  }
+  return null;
+}
+
+function safeSportsImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function formatFixtureTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function friendlyMarketValue(value: string) {
+  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function Overview({ market, timing, outcomes, outcomesLoading, outcomesError, onTrade }: {
