@@ -75,3 +75,21 @@ jobs:
           node-version: 22
       - name: Guard SQL migration dollar-quote terminators
         run: npm run check:sql-migrations
+
+  migration-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Start isolated local Supabase stack
+        run: npm run db:start
+      - name: Replay all migrations against local PostgreSQL
+        run: npm run db:reset -- --local --no-seed
+      - name: Stop local Supabase stack
+        if: always()
+        run: npm run db:stop -- --no-backup
