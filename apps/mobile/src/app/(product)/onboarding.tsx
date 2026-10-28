@@ -10,7 +10,6 @@ import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useAuth } from '@/providers/auth-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
-import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   deferAccountOnboarding,
@@ -34,7 +33,6 @@ type SetupTask = {
 export default function AccountOnboardingScreen() {
   const theme = useVadTheme();
   const { session } = useAuth();
-  const productData = useProductDataContext();
   const currency = useCurrencyPreference();
   const params = useLocalSearchParams<{ source?: string | string[] }>();
   const sourceValue = Array.isArray(params.source) ? params.source[0] : params.source;
@@ -93,7 +91,7 @@ export default function AccountOnboardingScreen() {
         if (!active) return;
         setState(next);
         if (isAccountSetupComplete(next) && !user.user_metadata?.vad_onboarding_completed_at && completionMarkAttempted.current !== user.id) {
-        completionMarkAttempted.current = user.id;
+          completionMarkAttempted.current = user.id;
           try {
             await markAccountOnboardingCompleted();
           } catch {
