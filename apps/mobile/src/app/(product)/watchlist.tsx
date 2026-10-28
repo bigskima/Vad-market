@@ -6,6 +6,7 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
+import { WatchlistRowsSkeleton } from '@/components/ui/product-screen-skeleton';
 import { MarketThumbnail } from '@/features/markets/components/market-thumbnail';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { ProductRoute } from '@/features/navigation/product-route';
@@ -102,7 +103,7 @@ export default function WatchlistRoute() {
         {error ? (
           <VadErrorState title="Watchlist unavailable" message={error} onRetry={() => void refreshWatchlist()} />
         ) : loading ? (
-          <VadText variant="body" tone="secondary">Loading saved markets…</VadText>
+          <WatchlistRowsSkeleton count={4} />
         ) : savedMarkets.length ? (
           <View style={{ gap: 8 }}>
             {savedMarkets.map((market) => (
