@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { router } from 'expo-router';
 import { Pressable, View } from 'react-native';
 
 import { VadCard } from '@/components/ui/vad-card';
@@ -160,6 +161,11 @@ export function WalletScreen({
           label: unreadNotificationCount > 0 ? `Notifications, ${unreadNotificationCount} unread` : 'Notifications',
           badge: unreadNotificationCount > 0,
           onPress: onNotifications,
+        },
+        {
+          icon: 'lifeBuoy',
+          label: 'Help & Support',
+          onPress: () => router.push('/support'),
         },
         {
           icon: 'settings',
