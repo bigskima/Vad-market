@@ -284,7 +284,7 @@ export function AdminPlayGameBuilder({
         <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
           <View style={{ gap: 4 }}>
             <VadText variant="heading">1. Describe the idea</VadText>
-            <VadText variant="caption" tone="secondary">AI fills in wording, not money values or legal approval.</VadText>
+            <VadText variant="caption" tone="secondary">AI helps with copy, but you set the numbers and approve the terms.</VadText>
           </View>
           <VadInput label="Game idea" value={idea} onChangeText={setIdea} multiline placeholder="What should players experience or win?" />
           <View style={{ gap: 8 }}>
@@ -348,7 +348,7 @@ export function AdminPlayGameBuilder({
           <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
             <View style={{ gap: 4 }}>
               <VadText variant="heading">4. Campaign economics</VadText>
-              <VadText variant="caption" tone="secondary">Set values for this campaign only. Nothing is prefilled.</VadText>
+              <VadText variant="caption" tone="secondary">Set the values for this campaign.</VadText>
             </View>
             <View style={{ gap: 8 }}>
               <VadText variant="label">Currency</VadText>
