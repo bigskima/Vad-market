@@ -11,6 +11,7 @@ import { hasAdminPermission } from '@/services/admin-control-api';
 import { playMediaPublicUrl, uploadPlayMedia } from '@/services/play-media-api';
 import { AdminPlayOperationsPanel } from './admin-play-operations-panel';
 import { AdminPlayGameBuilder } from './admin-play-game-builder';
+import { AdminPlaySkeleton } from '@/components/ui/screen-skeletons';
 import {
   getAdminPlayDashboard,
   saveAdminPlayAdPlacement,
@@ -333,12 +334,7 @@ export function AdminPlayScreen() {
   }
 
   if (loading) {
-    return (
-      <View style={{ gap: theme.spacing.md }}>
-        <VadText variant="title">VAD Play & Ads</VadText>
-        <VadText tone="secondary">Loading registered engines, campaign drafts and ad placements…</VadText>
-      </View>
-    );
+    return <AdminPlaySkeleton />;
   }
 
   return (
