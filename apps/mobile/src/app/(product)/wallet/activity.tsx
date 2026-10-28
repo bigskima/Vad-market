@@ -43,7 +43,7 @@ export default function WalletActivityRoute() {
           {data.loading && !data.walletActivity.length ? (
             <WalletLedgerSkeleton />
           ) : data.sectionErrors.walletActivity && !data.walletActivity.length ? (
-            <VadErrorState title="Wallet ledger unavailable" message={data.sectionErrors.walletActivity} onRetry={() => void data.refreshPortfolio()} />
+            <VadErrorState title="Wallet history unavailable" message={data.sectionErrors.walletActivity} onRetry={() => void data.refreshPortfolio()} />
           ) : (
             <WalletLedgerActivity rows={data.walletActivity} />
           )}
