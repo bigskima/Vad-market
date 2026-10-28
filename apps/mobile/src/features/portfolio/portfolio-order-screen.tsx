@@ -168,6 +168,13 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   const amount = (value: unknown) => assetMoney(value, currentOrder.asset_code);
   const createdRelative = relativeTime(currentOrder.created_at, now);
   const createdExact = new Date(currentOrder.created_at).toLocaleString();
+  const normalizedStatus = String(currentOrder.status).toUpperCase();
+  const statusTone: 'yes' | 'no' | 'brand' = normalizedStatus.includes('FILLED') || normalizedStatus.includes('COMPLETE')
+    ? 'yes'
+    : /CANCEL|EXPIRE|REJECT|FAIL/.test(normalizedStatus)
+      ? 'no'
+      : 'brand';
+  const canCancel = ['OPEN', 'PARTIALLY_FILLED'].includes(normalizedStatus) && remaining > 0;
 
   async function cancel() {
     setCancelling(true);
@@ -187,72 +194,92 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   return (
     <View style={{ gap: density.sectionGap, paddingBottom: density.phone ? theme.spacing.xl : 0 }}>
       <View style={{ gap: theme.spacing.xs }}>
-        <View style={{ flexDirection: 'row', gap: theme.spacing.xs, alignItems: 'center', flexWrap: 'wrap' }}>
-          <VadChip label={`${currentOrder.side} order`} tone="brand" />
-          <VadChip label={currentOrder.outcome_code} tone={yes ? 'yes' : 'no'} />
-          <VadChip label={currentOrder.asset_code} />
-          <VadChip label={orderStatusLabel(currentOrder.status)} />
-          <VadChip label={createdRelative.toUpperCase()} tone="neutral" />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.xs }}>
+          <View style={{ flexDirection: 'row', gap: theme.spacing.xs, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
+            <VadChip label={currentOrder.side} tone="brand" />
+            <VadChip label={currentOrder.outcome_code} tone={yes ? 'yes' : 'no'} />
+            <VadChip label={currentOrder.asset_code} />
+            <VadChip label={orderStatusLabel(currentOrder.status)} tone={statusTone} />
+          </View>
+          <VadText variant="caption" tone="tertiary">{createdRelative}</VadText>
         </View>
         <VadText variant="heading">{currentOrder.market_title}</VadText>
+        <VadText variant="caption" tone="secondary">Order #{shortOrderReference(String(currentOrder.order_id))}</VadText>
       </View>
 
-      <View style={{ flexDirection: wide ? 'row' : 'column', gap: theme.spacing.md }}>
-        <VadCard variant="brand" style={{ flex: 1.1, borderColor: yes ? theme.colors.yes : theme.colors.no, gap: theme.spacing.md, overflow: 'hidden' }}>
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              width: 150,
-              height: 150,
-              borderRadius: 75,
-              right: -58,
-              top: -72,
-              backgroundColor: yes ? theme.colors.yesSoft : theme.colors.noSoft,
-              opacity: 0.5,
-            }}
-          />
-          <VadText variant="caption" tone={yes ? 'yes' : 'no'}>PRICE PER SHARE · {currentOrder.asset_code}</VadText>
-          <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{amount(limitPrice)}</VadText>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <Snapshot label="Original shares" value={quantity.toLocaleString()} />
-            <Snapshot label="Original value" value={amount(originalNotional)} />
-          </View>
-          <VadText variant="caption" tone="secondary">Created {createdRelative}</VadText>
-        </VadCard>
-
-        <VadCard variant="raised" style={{ flex: 0.9, gap: theme.spacing.sm }}>
+      <VadCard variant="brand" style={{ borderColor: yes ? theme.colors.yes : theme.colors.no, gap: theme.spacing.sm, overflow: 'hidden' }}>
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            width: 124,
+            height: 124,
+            borderRadius: 62,
+            right: -50,
+            top: -58,
+            backgroundColor: yes ? theme.colors.yesSoft : theme.colors.noSoft,
+            opacity: 0.42,
+          }}
+        />
+        <View style={{ gap: 2 }}>
+          <VadText variant="caption" tone={yes ? 'yes' : 'no'}>LIMIT PRICE · {currentOrder.asset_code}</VadText>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
-            <View style={{ flex: 1, gap: 1 }}>
-              <VadText variant="caption" tone="secondary">ORDER PROGRESS</VadText>
-              <VadText variant="heading">{pct(fillPercent)}</VadText>
-            </View>
-            <VadText variant="caption" tone="tertiary">{remaining.toLocaleString()} shares remaining</VadText>
+            <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{amount(limitPrice)}</VadText>
+            <VadChip label={currentOrder.side === 'BUY' ? 'BUY ORDER' : 'SELL ORDER'} tone="brand" />
           </View>
-          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(fillPercent * 100) }} style={{ height: 7, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surfaceMuted, overflow: 'hidden' }}>
-            <View style={{ width: progressWidth, height: '100%', backgroundColor: theme.colors.brandPrimary }} />
+          <VadText variant="caption" tone="secondary">{quantity.toLocaleString()} shares · Original order value {amount(originalNotional)}</VadText>
+        </View>
+
+        <View style={{ height: 1, backgroundColor: theme.colors.border }} />
+        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+          <Snapshot label="Filled" value={filled.toLocaleString()} />
+          <Snapshot label="Remaining" value={remaining.toLocaleString()} />
+          <Snapshot label="Fill rate" value={pct(fillPercent)} />
+        </View>
+      </VadCard>
+
+      <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: theme.spacing.sm }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <VadText variant="caption" tone="secondary">ORDER PROGRESS</VadText>
+            <VadText variant="heading">{pct(fillPercent)} filled</VadText>
           </View>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <Snapshot label="Filled" value={filled.toLocaleString()} />
-            <Snapshot label="Remaining" value={remaining.toLocaleString()} />
-          </View>
+          <VadText variant="caption" tone="tertiary" style={{ textAlign: 'right' }}>{remaining.toLocaleString()} shares still open</VadText>
+        </View>
+        <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(fillPercent * 100) }} style={{ height: 9, borderRadius: theme.radius.pill, backgroundColor: theme.colors.surfaceMuted, overflow: 'hidden' }}>
+          <View style={{ width: progressWidth, height: '100%', borderRadius: theme.radius.pill, backgroundColor: yes ? theme.colors.yes : theme.colors.brandPrimary }} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+          <Snapshot label="Matched" value={`${filled.toLocaleString()} shares`} />
+          <Snapshot label="Still open" value={`${remaining.toLocaleString()} shares`} />
+        </View>
+        <VadText variant="caption" tone="secondary">Only matched shares become a position. Cancelling affects only the unfilled portion.</VadText>
+      </VadCard>
+
+      <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
+        <VadButton
+          label="Open market"
+          variant="secondary"
+          onPress={() => router.push({ pathname: '/market/[marketId]', params: { marketId: currentOrder.instrument_public_id } })}
+          style={{ flex: 1 }}
+        />
+        {canCancel ? (
           <VadButton
-            label="Open market"
-            variant="secondary"
-            onPress={() => router.push({ pathname: '/market/[marketId]', params: { marketId: currentOrder.instrument_public_id } })}
+            label="Cancel remaining"
+            variant="danger"
+            loading={cancelling}
+            disabled={cancelling}
+            onPress={() => { setCancelError(null); setConfirmOpen(true); }}
+            style={{ flex: 1 }}
           />
-          <View style={{ marginBottom: density.phone ? theme.spacing.md : 0 }}>
-            <VadButton label="Cancel remaining" variant="danger" loading={cancelling} disabled={remaining <= 0} onPress={() => { setCancelError(null); setConfirmOpen(true); }} />
-          </View>
-        </VadCard>
+        ) : null}
       </View>
 
       <VadProgressiveSection
-        title="What is still open"
-        eyebrow="REMAINING EXPOSURE"
+        title="Remaining exposure"
+        eyebrow="WHAT IS STILL OPEN"
         description="Only unfilled shares are affected if you cancel this order."
         icon="activity"
-        defaultExpanded={remaining > 0}
         summary={<VadText variant="caption" tone="tertiary">{remaining.toLocaleString()} shares · {amount(remainingNotional)}</VadText>}
       >
         <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
@@ -276,6 +303,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
         <Detail label="Created" value={`${createdExact} · ${createdRelative}`} />
         <Detail label="Action" value={currentOrder.side} />
         <Detail label="Price per share" value={amount(limitPrice)} />
+        <Detail label="Original order value" value={amount(originalNotional)} />
         <Detail label="Shares ordered" value={quantity.toLocaleString()} />
         <Detail label="Shares filled" value={filled.toLocaleString()} />
         <Detail label="Shares remaining" value={remaining.toLocaleString()} />
@@ -292,12 +320,16 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
             <ContextFact label="Remaining" value={remaining.toLocaleString()} />
             <ContextFact label="Value" value={amount(remainingNotional)} />
           </View>
-          <VadButton label="Cancel remaining" variant="danger" loading={cancelling} onPress={() => void cancel()} />
+          <VadButton label="Cancel remaining" variant="danger" loading={cancelling} disabled={cancelling} onPress={() => void cancel()} />
           <VadButton label="Keep order" variant="secondary" disabled={cancelling} onPress={() => setConfirmOpen(false)} />
         </View>
       </VadBottomSheet>
     </View>
   );
+}
+
+function shortOrderReference(value: string) {
+  return value.length > 16 ? `${value.slice(0, 8)}…${value.slice(-5)}` : value;
 }
 
 function relativeTime(value: string, now: number) {
