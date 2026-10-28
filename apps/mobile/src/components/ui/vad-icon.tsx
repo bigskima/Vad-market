@@ -39,7 +39,9 @@ export type VadIconName =
   | 'clock'
   | 'logOut'
   | 'settings'
-  | 'transfer';
+  | 'transfer'
+  | 'menu'
+  | 'circlePlay';
 
 type Tone = 'primary' | 'secondary' | 'tertiary' | 'brand' | 'yes' | 'no' | 'inverse';
 
@@ -66,6 +68,37 @@ export function VadIcon({
   } as const;
   const ink = color ?? tones[tone];
   const line = Math.max(1.5, size * 0.085);
+
+  if (name === 'menu') {
+    return (
+      <View style={{ width: size, height: size, justifyContent: 'center', gap: size * 0.16, paddingHorizontal: size * 0.1 }}>
+        {[0, 1, 2].map((item) => (
+          <View key={item} style={{ height: line, width: '100%', borderRadius: line, backgroundColor: ink }} />
+        ))}
+      </View>
+    );
+  }
+
+  if (name === 'circlePlay') {
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ position: 'absolute', width: size * 0.94, height: size * 0.94, borderWidth: line, borderColor: ink, borderRadius: size }} />
+        <View
+          style={{
+            width: 0,
+            height: 0,
+            borderTopWidth: size * 0.2,
+            borderBottomWidth: size * 0.2,
+            borderLeftWidth: size * 0.3,
+            borderTopColor: 'transparent',
+            borderBottomColor: 'transparent',
+            borderLeftColor: ink,
+            marginLeft: size * 0.08,
+          }}
+        />
+      </View>
+    );
+  }
 
   if (name === 'plus' || name === 'close') {
     return (

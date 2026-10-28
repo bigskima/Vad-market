@@ -78,7 +78,7 @@ begin
     'message','Temporary test credit: tradable on actual NGN markets using the normal market settlement pipeline, but not withdrawable or transferable.'
   );
 end;
-$function$
+$function$;
 
 
 revoke all on function public.my_temporary_ngn_test_credit_status() from public,anon;
@@ -170,7 +170,7 @@ begin
     'amountReturned',v_balance,'amountConsumed',greatest(v_grant.amount-least(v_grant.amount,v_balance),0),
     'overageReturned',greatest(v_balance-v_grant.amount,0),'idempotentReplay',false);
 end;
-$function$
+$function$;
 
 
 revoke all on function public.admin_revoke_temporary_ngn_test_credit(uuid,text) from public,anon;
@@ -268,7 +268,7 @@ begin
   ) on conflict(idempotency_key) do nothing;
   return intent.public_id;
 end;
-$function$
+$function$;
 
 
 revoke all on function public.create_payment_intent(text,text,numeric,text) from public,anon;

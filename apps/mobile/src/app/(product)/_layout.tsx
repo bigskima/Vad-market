@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { PolicyConsentBoundary } from '@/features/policy/policy-consent-boundary';
 import { ProductTourProvider } from '@/features/tour/tour-provider';
 import { ProductDataProvider } from '@/providers/product-data-provider';
+import { AccountOnboardingBoundary } from '@/features/onboarding/account-onboarding-boundary';
 import { useVadTheme } from '@/providers/theme-provider';
 
 export default function ProductLayout() {
@@ -14,13 +15,15 @@ export default function ProductLayout() {
     <PolicyConsentBoundary>
       <ProductDataProvider>
         <ProductTourProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: theme.colors.background },
-              animation: 'fade',
-            }}
-          />
+          <AccountOnboardingBoundary>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: theme.colors.background },
+                animation: 'fade',
+              }}
+            />
+          </AccountOnboardingBoundary>
         </ProductTourProvider>
       </ProductDataProvider>
     </PolicyConsentBoundary>

@@ -1,5 +1,9 @@
 name: VAD CI
 
+concurrency:
+  group: vad-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
   push:
@@ -65,3 +69,45 @@ jobs:
       - run: npm run build:web
       - if: steps.lint.outcome == 'failure'
         run: exit 1
+
+  migration-terminator-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Guard SQL migration dollar-quote terminators
+        run: npm run check:sql-migrations
+
+  migration-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Set isolated CI database ports
+        run: |
+          sed -i 's/^port = 54322$/port = 64322/' supabase/config.toml
+          sed -i 's/^shadow_port = 54320$/shadow_port = 64320/' supabase/config.toml
+      - name: Start isolated local Supabase stack
+        run: npm run db:start
+      - name: Replay all migrations against local PostgreSQL
+        run: npm run db:reset -- --local --no-seed
+      - name: Run VAD Play and guided-tour database invariants
+        shell: bash
+        run: |
+          if [ -f supabase/tests/database/vad_play_tour_invariants.test.sql ]; then
+            npm run supabase -- test db \
+              supabase/tests/database/vad_play_safety_invariants.test.sql \
+              supabase/tests/database/vad_play_tour_invariants.test.sql
+          else
+            npm run supabase -- test db supabase/tests/database/vad_play_safety_invariants.test.sql
+          fi
+      - name: Stop local Supabase stack
+        if: always()
+        run: npm run db:stop -- --no-backup

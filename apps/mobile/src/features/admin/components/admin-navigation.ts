@@ -28,7 +28,8 @@ export type AdminHref =
   | '/admin/crypto-networks'
   | '/admin/ai'
   | '/admin/roles'
-  | '/admin/service-controls';
+  | '/admin/service-controls'
+  | '/admin/play';
 
 export type AdminNavItem = {
   label: string;
@@ -162,6 +163,18 @@ export const adminNavigationGroups: AdminNavGroup[] = [
         href: '/admin/payments',
         description: 'Payments, withdrawals and refunds',
         permissions: ['finance.read', 'payments.refund'],
+      },
+    ],
+  },
+  {
+    label: 'VAD Play & Ads',
+    items: [
+      {
+        label: 'Play Experiences & Ads',
+        shortLabel: 'VAD Play',
+        href: '/admin/play',
+        description: 'Configure experience drafts, per-campaign economics, game-engine readiness and cross-platform sponsor placements',
+        permissions: ['play.manage'],
       },
     ],
   },

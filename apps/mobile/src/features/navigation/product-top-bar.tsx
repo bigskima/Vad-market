@@ -22,6 +22,7 @@ export function ProductTopBar({
   onSearch,
   onNotices,
   onSupport,
+  onMenu,
   noticeCount = 0,
 }: {
   active: ProductTab;
@@ -38,6 +39,7 @@ export function ProductTopBar({
   onSearch: () => void;
   onNotices: () => void;
   onSupport: () => void;
+  onMenu: () => void;
   noticeCount?: number;
 }) {
   const theme = useVadTheme();
@@ -245,6 +247,7 @@ export function ProductTopBar({
           ) : null}
 
           {!density.narrow ? <HeaderIcon label="Open VAD Assistant" icon="activity" onPress={onAssistant} /> : null}
+          <HeaderIcon label="Open VAD menu" icon="menu" onPress={onMenu} />
 
           <HeaderIcon label="Open support" icon="lifeBuoy" onPress={onSupport} />
           <View>
@@ -349,7 +352,7 @@ function CompactCreateAction({ onPress }: { onPress: () => void }) {
   );
 }
 
-function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'activity' | 'operations' | 'lifeBuoy'; onPress: () => void }) {
+function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'activity' | 'operations' | 'lifeBuoy' | 'menu'; onPress: () => void }) {
   const theme = useVadTheme();
   return (
     <Pressable

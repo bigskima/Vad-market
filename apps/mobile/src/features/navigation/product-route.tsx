@@ -1,7 +1,7 @@
 import type { RuntimeCapabilityKey } from '@vad/types';
 import { Redirect, router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -22,6 +22,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { ProductAnnouncementBar } from './product-announcement-bar';
+import { ProductMenuModal } from './product-menu-modal';
 import { ProductRightRail } from './product-right-rail';
 import { ProductSidebar } from './product-sidebar';
 import { ProductTabBar, type ProductTab } from './product-tab-bar';
@@ -46,11 +47,13 @@ export function ProductRoute({
 }: Props) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const shouldHideTopBar = hideTopBar || active === 'Home' || active === 'Markets' || active === 'Wallet';
+  const primaryRoute = active === 'Home' || active === 'Markets' || active === 'Wallet' || active === 'Play';
+  const shouldHideTopBar = hideTopBar || (primaryRoute && (density.phone || density.desktop));
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
-  const { registerScrollController } = useProductTour();
+  const { registerScrollController, startTour } = useProductTour();
+  const [menuVisible, setMenuVisible] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
   const scrollOffsetRef = useRef(0);
 
@@ -140,11 +143,13 @@ export function ProductRoute({
         ? '/home'
         : tab === 'Markets'
           ? '/markets'
-          : tab === 'Wallet'
-            ? '/wallet'
-            : tab === 'Portfolio'
-              ? '/portfolio'
-              : '/account';
+          : tab === 'Play'
+            ? '/play'
+            : tab === 'Wallet'
+              ? '/wallet'
+              : tab === 'Portfolio'
+                ? '/portfolio'
+                : '/account';
 
     router.replace(route);
   };
@@ -222,6 +227,7 @@ export function ProductRoute({
           onNotices={() => router.push('/notifications')}
           onSupport={() => router.push('/support')}
           noticeCount={noticeCount}
+          onMenu={() => setMenuVisible(true)}
         />
       ) : null}
 
@@ -238,6 +244,7 @@ export function ProductRoute({
             onCommunity={() => router.push('/community')}
             onCreate={() => router.push('/create-market')}
             onAdmin={() => router.push('/admin')}
+            onMenu={() => setMenuVisible(true)}
           />
         ) : null}
 
@@ -329,8 +336,19 @@ export function ProductRoute({
       </View>
 
       {density.phone ? (
-        <ProductTabBar active={active} onChange={navigate} />
+        <ProductTabBar active={active} onChange={navigate} onMenu={() => setMenuVisible(true)} />
       ) : null}
+
+      <ProductMenuModal
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        onStartTour={() => {
+          setMenuVisible(false);
+          startTour(true);
+        }}
+        isAdmin={Boolean(data.adminSummary)}
+        canCreate={canCreate}
+      />
     </View>
   );
 }

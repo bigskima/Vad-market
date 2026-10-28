@@ -12,7 +12,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 begin
   insert into public.demo_ledger_entries(user_id, entry_type, amount, reference_id, created_at)
   values(new.user_id, 'DEMO_GRANT', new.available_balance, 'initial-demo-balance', coalesce(new.created_at, statement_timestamp()))
@@ -20,7 +20,7 @@ begin
   do nothing;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists demo_accounts_record_initial_grant on public.demo_accounts;
 create trigger demo_accounts_record_initial_grant

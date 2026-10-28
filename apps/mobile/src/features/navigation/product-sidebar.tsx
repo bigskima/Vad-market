@@ -17,6 +17,7 @@ export function ProductSidebar({
   onCommunity,
   onCreate,
   onAdmin,
+  onMenu,
 }: {
   active: ProductTab;
   email: string;
@@ -26,6 +27,7 @@ export function ProductSidebar({
   onCommunity: () => void;
   onCreate: () => void;
   onAdmin: () => void;
+  onMenu: () => void;
 }) {
   const theme = useVadTheme();
   const initial = email.trim().charAt(0).toUpperCase() || 'V';
@@ -121,6 +123,25 @@ export function ProductSidebar({
       >
         <VadIcon name="community" size={19} tone="secondary" />
         <VadText variant="bodyStrong" tone="secondary">Community</VadText>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open VAD menu"
+        onPress={onMenu}
+        style={({ pressed }) => ({
+          minHeight: 44,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+          paddingHorizontal: theme.spacing.md,
+          borderRadius: theme.radius.lg,
+          backgroundColor: pressed ? theme.colors.surfaceRaised : 'transparent',
+          opacity: pressed ? 0.78 : 1,
+        })}
+      >
+        <VadIcon name="menu" size={19} tone="secondary" />
+        <VadText variant="bodyStrong" tone="secondary">Menu</VadText>
       </Pressable>
 
       <View style={{ flex: 1 }} />
