@@ -229,8 +229,8 @@ export function AssistantScreen({
       <VadCard variant="brand" style={{ gap: theme.spacing.sm, padding: theme.spacing.md, borderColor: theme.colors.brandPrimary }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, gap: 1 }}>
-            <VadText variant="caption" tone="brand">SUGGESTED QUESTIONS</VadText>
-            <VadText variant="caption" tone="secondary">Start with one tap, or write your own question below.</VadText>
+            <VadText variant="caption" tone="brand">SUGGESTED</VadText>
+            <VadText variant="caption" tone="secondary">Choose a question or ask your own.</VadText>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -255,7 +255,7 @@ export function AssistantScreen({
       </VadCard>
 
       {error ? (
-        <VadErrorState title="VAD Assistant needs a moment" message={error} onRetry={() => void loadThreads()} />
+        <VadErrorState title="Assistant unavailable" message={error} onRetry={() => void loadThreads()} />
       ) : null}
 
       <View style={{ gap: theme.spacing.md }}>
