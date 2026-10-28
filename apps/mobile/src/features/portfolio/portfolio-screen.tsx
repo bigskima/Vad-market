@@ -510,10 +510,10 @@ export function PortfolioScreen({
               {visibleHistory.remainingCount > 0 ? <VadButton label={`Show next ${visibleHistory.nextCount} history records`} variant="secondary" onPress={visibleHistory.showMore} /> : null}
             </View>
           ) : !sectionErrors?.marketHistory && !orderHistoryError ? (
-            <VadEmptyState title="No portfolio history yet" body="Trades, orders, outcomes, refunds and settlement results appear here from your account records." />
+            <VadEmptyState title="No portfolio history yet" body="Your trades, orders, outcomes, refunds and payouts appear here." />
           ) : null}
           {settlements.filter((row) => row.asset_code === asset).length ? (
-            <VadProgressiveSection title="Settlement receipts" icon="activity" summary={<VadText variant="caption" tone="tertiary">{settlements.filter((row) => row.asset_code === asset).length} persisted records</VadText>}>
+            <VadProgressiveSection title="Settlement receipts" icon="activity" summary={<VadText variant="caption" tone="tertiary">{settlements.filter((row) => row.asset_code === asset).length} settlements</VadText>}>
               {settlements.filter((row) => row.asset_code === asset).slice(0, 8).map((receipt) => <SettlementCard key={receipt.settlement_id} receipt={receipt} />)}
             </VadProgressiveSection>
           ) : null}
@@ -524,7 +524,7 @@ export function PortfolioScreen({
         <View style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 4 }}>
             <VadText variant="bodyStrong">Settled results · {period}</VadText>
-            <VadText variant="caption" tone="secondary">Every item below is a persisted market settlement in {asset}. Refunds and voids remain visible here, but do not count as wins or losses.</VadText>
+            <VadText variant="caption" tone="secondary">Settled results in {asset}. Refunds and voids aren't counted as wins or losses.</VadText>
           </View>
           {periodSettledRows.length ? (
             <View style={{ gap: theme.spacing.sm }}>
