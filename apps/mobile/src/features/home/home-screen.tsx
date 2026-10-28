@@ -287,7 +287,7 @@ export function HomeScreen({
                 {balanceChange >= 0 ? '▲ +' : '▼ '}{formatMoney(Math.abs(balanceChange), primaryAsset ?? 'NGN')}{balanceChangePercent !== null ? ` (${balanceChangePercent >= 0 ? '+' : ''}${balanceChangePercent.toFixed(1)}%)` : ''} · 30d
               </VadText>
             ) : (
-              <VadText variant="caption" tone="secondary">{primaryAsset ? `${primaryAsset} wallet balance` : 'No enabled wallet currency'}</VadText>
+              <VadText variant="caption" tone="secondary">{primaryAsset ? `${primaryAsset} wallet balance` : 'No wallet currency enabled'}</VadText>
             )}
             {secondaryBalances.map((item) => (
               <VadText key={item.code} variant="caption" tone="secondary">
@@ -371,24 +371,24 @@ export function HomeScreen({
               </ScrollView>
             ) : marketError && watchlistIds.length ? (
               <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
-                <VadText variant="bodyStrong">Saved markets temporarily unavailable</VadText>
-                <VadText variant="caption" tone="secondary">Your saved markets are safe. The market catalogue could not be refreshed.</VadText>
+                <VadText variant="bodyStrong">Saved markets unavailable</VadText>
+                <VadText variant="caption" tone="secondary">Couldn't refresh your saved markets.</VadText>
                 <Pressable accessibilityRole="button" onPress={onRetryMarkets} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
-                  <VadText variant="caption" tone="brand">Retry market data</VadText>
+                  <VadText variant="caption" tone="brand">Retry</VadText>
                 </Pressable>
               </View>
             ) : watchlistError ? (
               <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
-                <VadText variant="bodyStrong">Watchlist unavailable</VadText>
-                <VadText variant="caption" tone="secondary">We could not load your saved markets.</VadText>
+                <VadText variant="bodyStrong">Can't load watchlist</VadText>
+                <VadText variant="caption" tone="secondary">Couldn't load your saved markets.</VadText>
                 <Pressable accessibilityRole="button" onPress={() => void retryWatchlist()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                   <VadText variant="caption" tone="brand">Try again</VadText>
                 </Pressable>
               </View>
             ) : (
               <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 7 }}>
-                <VadText variant="bodyStrong">Your saved markets are not visible right now</VadText>
-                <VadText variant="caption" tone="secondary">Your bookmarks are still saved. These markets may be unavailable in the current catalogue or hidden by your enabled currencies.</VadText>
+                <VadText variant="bodyStrong">No saved markets available</VadText>
+                <VadText variant="caption" tone="secondary">Some saved markets aren't available right now.</VadText>
                 <Pressable accessibilityRole="button" onPress={() => router.push('/watchlist')} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                   <VadText variant="caption" tone="brand">Open watchlist</VadText>
                 </Pressable>
@@ -404,7 +404,7 @@ export function HomeScreen({
           {marketError && homeMarketRows.length ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
               <View style={{ flex: 1 }}>
-                <VadText variant="caption" tone="secondary">Showing previously loaded market data. Refresh failed.</VadText>
+                <VadText variant="caption" tone="secondary">Showing earlier market data.</VadText>
               </View>
               <Pressable accessibilityRole="button" onPress={onRetryMarkets} hitSlop={6}>
                 <VadText variant="caption" tone="brand">Retry</VadText>
@@ -449,8 +449,8 @@ export function HomeScreen({
             </View>
           )) : marketError ? (
             <View style={{ padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, gap: 8 }}>
-              <VadText variant="bodyStrong">Market data unavailable</VadText>
-              <VadText variant="caption" tone="secondary">{marketError}</VadText>
+              <VadText variant="bodyStrong">Can't load markets</VadText>
+              <VadText variant="caption" tone="secondary">Try again in a moment.</VadText>
               <Pressable accessibilityRole="button" onPress={onRetryMarkets} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                 <VadText variant="caption" tone="brand">Try again</VadText>
               </Pressable>
@@ -458,8 +458,8 @@ export function HomeScreen({
           ) : (
             <View style={{ padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
               <VadText variant="caption" tone="secondary">{trendingSettings.enabled
-                ? 'No markets match this category yet.'
-                : 'Browse the latest markets below.'}</VadText>
+                ? 'No markets here yet.'
+                : 'Explore all markets.'}</VadText>
               <Pressable accessibilityRole="button" onPress={() => onExploreMarkets()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                 <VadText variant="caption" tone="brand">Browse all markets</VadText>
               </Pressable>
@@ -571,4 +571,4 @@ function formatMoney(value: number, asset: string) {
   return asset === 'NGN' ? '₦' + number : number + ' USDC';
 }
 function formatProbability(value: number | string | null | undefined) { const n = Number(value); return Number.isFinite(n) ? `${Math.round(n <= 1 ? n * 100 : n)}%` : '—'; }
-function formatVolume(value: number | string | null | undefined, asset: string) { const n = Number(value); if (!Number.isFinite(n)) return 'Volume unavailable'; const compact = new Intl.NumberFormat(asset === 'NGN' ? 'en-NG' : 'en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n); return asset === 'NGN' ? `₦${compact}` : `${compact} USDC`; }
+function formatVolume(value: number | string | null | undefined, asset: string) { const n = Number(value); if (!Number.isFinite(n)) return '—'; const compact = new Intl.NumberFormat(asset === 'NGN' ? 'en-NG' : 'en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n); return asset === 'NGN' ? `₦${compact}` : `${compact} USDC`; }
