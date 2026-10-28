@@ -56,7 +56,7 @@ export function PlayAdSlot({ placementCode }: { placementCode: string }) {
       ) : null}
       <View style={{ flex: 1, minWidth: 0, padding: theme.spacing.md, justifyContent: 'center', gap: 5 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-          <VadIcon name="sparkles" size={12} tone="tertiary" />
+          <VadIcon name="info" size={12} tone="tertiary" />
           <VadText variant="caption" tone="tertiary">
             {creative.sponsorName ? 'Sponsored · ' + creative.sponsorName : 'Sponsored'}
           </VadText>
@@ -66,7 +66,7 @@ export function PlayAdSlot({ placementCode }: { placementCode: string }) {
         {creative.clickUrl ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
             <VadText variant="caption" tone="brand">{creative.ctaLabel}</VadText>
-            <VadIcon name="arrowUpRight" size={13} tone="brand" />
+            <VadIcon name="chevronRight" size={13} tone="brand" />
           </View>
         ) : null}
       </View>

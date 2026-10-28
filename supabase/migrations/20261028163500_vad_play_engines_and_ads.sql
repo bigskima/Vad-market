@@ -65,6 +65,46 @@ begin
   end if;
 end $$;
 
+
+-- An experience cannot be published while its registered server engine/release is
+-- still under review or paused. The catalogue does not make a missing engine live.
+create or replace function public.play_guard_experience_publishing()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $
+declare
+  v_engine_status text;
+  v_release_status text;
+begin
+  if new.status <> 'PUBLISHED' then
+    return new;
+  end if;
+
+  select r.rollout_status, rel.rollout_status
+    into v_engine_status, v_release_status
+  from public.play_engine_registry r
+  join public.play_engine_releases rel on rel.engine_key = r.engine_key
+  where r.engine_key = new.engine_key
+    and rel.version = (
+      select max(rel2.version)
+      from public.play_engine_releases rel2
+      where rel2.engine_key = r.engine_key
+    );
+
+  if v_engine_status is distinct from 'ENABLED'
+     or v_release_status is distinct from 'ENABLED' then
+    raise exception 'The selected VAD Play engine must be enabled before publishing';
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists play_experience_publish_guard on public.play_experiences;
+create trigger play_experience_publish_guard
+before insert or update of status, engine_key on public.play_experiences
+for each row execute function public.play_guard_experience_publishing();
+
 create table if not exists public.play_game_outcome_rules (
   id uuid primary key default gen_random_uuid(),
   experience_id uuid not null references public.play_experiences(id) on delete restrict,
@@ -149,6 +189,22 @@ create table if not exists public.play_ad_providers (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Initial progress is zero, but the qualifying amount is updated only by a reconciler
+-- that reads the existing VAD payment/financial ledger; this table is not a money ledger.
+alter table public.play_campaigns
+  add column if not exists qualifying_net_proceeds_amount numeric(24,8) not null default 0
+  check (qualifying_net_proceeds_amount >= 0);
+alter table public.play_campaigns
+  add column if not exists prize_delivered_at timestamptz;
+
+grant select (qualifying_net_proceeds_amount) on public.play_campaigns to authenticated;
+
+insert into public.play_ad_providers
+  (provider_key, display_name, adapter_key, supported_platforms, status, public_config)
+values
+  ('direct-sponsor', 'Direct Sponsorship', 'DIRECT_SPONSOR', array['WEB','ANDROID','IOS']::text[], 'DISABLED', '{}'::jsonb)
+on conflict (provider_key) do nothing;
 
 create table if not exists public.play_ad_placements (
   id uuid primary key default gen_random_uuid(),
@@ -292,7 +348,9 @@ create table if not exists public.play_reward_redemptions (
 create index if not exists play_reward_redemptions_user_recent_idx
   on public.play_reward_redemptions(user_id, created_at desc);
 
--- Ensure campaign economics and the campaign-type mapping remain data-driven.
+-- Enforce campaign-to-engine mapping and basic state gates in the database.
+-- Monetary proceeds must still be reconciled from VAD's existing financial ledger
+-- by a trusted server workflow; this field is a projection, not the source of truth.
 create or replace function public.play_validate_campaign_engine()
 returns trigger
 language plpgsql
@@ -300,23 +358,75 @@ set search_path = public, pg_temp
 as $$
 declare
   v_family text;
+  v_engine_status text;
+  v_release_status text;
 begin
-  select r.engine_family into v_family
+  select r.engine_family, r.rollout_status, rel.rollout_status
+    into v_family, v_engine_status, v_release_status
   from public.play_experiences e
   join public.play_engine_registry r on r.engine_key = e.engine_key
+  left join public.play_engine_releases rel
+    on rel.engine_key = r.engine_key
+   and rel.version = (
+      select max(rel2.version)
+      from public.play_engine_releases rel2
+      where rel2.engine_key = r.engine_key
+   )
   where e.id = new.experience_id;
 
   if v_family is distinct from 'PRIZE_DRAW' then
     raise exception 'This experience is not registered for the prize-draw engine';
   end if;
+
+  if new.status = 'OPEN' then
+    if v_engine_status is distinct from 'ENABLED'
+       or v_release_status is distinct from 'ENABLED' then
+      raise exception 'The prize-draw engine is not enabled for new campaigns';
+    end if;
+    if new.compliance_approved_at is null then
+      raise exception 'Compliance approval is required before a campaign can open';
+    end if;
+  end if;
+
+  if new.status in ('FUNDING_TARGET_MET','DRAW_ELIGIBLE','DRAW_AUTHORIZED','DRAWN','SETTLED') then
+    if new.qualifying_net_proceeds_amount < new.funding_threshold_amount
+       or new.funding_target_met_at is null then
+      raise exception 'The campaign has not met its configured funding threshold';
+    end if;
+  end if;
+
+  if new.status in ('DRAW_ELIGIBLE','DRAW_AUTHORIZED','DRAWN','SETTLED') then
+    if new.entries_closed_at is null
+       or new.funds_reconciled_at is null
+       or new.prize_secured_at is null
+       or new.compliance_approved_at is null then
+      raise exception 'The draw requires closed entries, reconciled proceeds, a secured prize, and compliance approval';
+    end if;
+  end if;
+
+  if new.status in ('DRAW_AUTHORIZED','DRAWN','SETTLED') and new.draw_authorized_at is null then
+    raise exception 'An authorized draw record is required';
+  end if;
+  if new.status in ('DRAWN','SETTLED') and new.drawn_at is null then
+    raise exception 'The draw result timestamp is required';
+  end if;
+  if new.status = 'SETTLED' and new.prize_delivered_at is null then
+    raise exception 'Prize delivery must be confirmed before settlement';
+  end if;
+
   return new;
 end;
 $$;
 
 drop trigger if exists play_campaign_engine_guard on public.play_campaigns;
 create trigger play_campaign_engine_guard
-before insert or update of experience_id on public.play_campaigns
+before insert or update of
+  experience_id, status, qualifying_net_proceeds_amount, funding_target_met_at,
+  entries_closed_at, funds_reconciled_at, prize_secured_at, compliance_approved_at,
+  draw_authorized_at, drawn_at, prize_delivered_at
+on public.play_campaigns
 for each row execute function public.play_validate_campaign_engine();
+
 
 alter table public.play_engine_registry enable row level security;
 alter table public.play_engine_releases enable row level security;
@@ -425,3 +535,6 @@ comment on table public.play_rewards is
   'Admin-managed non-cash reward catalogue. Cash and crypto wallet credits are not supported by this points catalogue.';
 
 commit;
+
+comment on column public.play_campaigns.qualifying_net_proceeds_amount is
+  'Reconciled proceeds projection from the existing VAD money ledger. It is not a new wallet or financial ledger and is updated only by trusted server workflows.';
