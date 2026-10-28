@@ -126,7 +126,10 @@ export function AdminPlayScreen() {
   const [campaignCosts, setCampaignCosts] = useState('');
   const [entryPrice, setEntryPrice] = useState('');
   const [maxEntries, setMaxEntries] = useState('');
+  const [maxTicketsPerPurchase, setMaxTicketsPerPurchase] = useState('');
   const [userEntryLimit, setUserEntryLimit] = useState('');
+  const [campaignTerms, setCampaignTerms] = useState('');
+  const [campaignRefundPolicy, setCampaignRefundPolicy] = useState('');
 
   const [placementCode, setPlacementCode] = useState('');
   const [sponsorName, setSponsorName] = useState('');
@@ -213,13 +216,23 @@ export function AdminPlayScreen() {
 
   async function createCampaign() {
     if (!campaignExperience || !campaignSlug.trim() || !campaignTitle.trim() || !prizeTitle.trim() || !currency.trim()
-      || !prizeCost.trim() || !profitMode || !profitValue.trim() || !campaignCosts.trim() || !entryPrice.trim()) {
-      setError('Enter every required campaign field. Prize cost, profit target and budget must be configured for each campaign.');
+      || !prizeCost.trim() || !profitMode || !profitValue.trim() || !campaignCosts.trim() || !entryPrice.trim()
+      || !maxEntries.trim() || !maxTicketsPerPurchase.trim()
+      || campaignTerms.trim().length < 20 || campaignRefundPolicy.trim().length < 10) {
+      setError('Complete all campaign fields, including a finite entry cap, per-purchase cap, published terms and refund policy.');
       return;
     }
     const numeric = [prizeCost, profitValue, campaignCosts, entryPrice].map(Number);
+    const entriesCap = Number(maxEntries);
+    const purchaseCap = Number(maxTicketsPerPurchase);
+    const perUserCap = userEntryLimit.trim() ? Number(userEntryLimit) : null;
     if (numeric.some((value) => !Number.isFinite(value)) || numeric[0] <= 0 || numeric[1] < 0 || numeric[2] < 0 || numeric[3] <= 0) {
       setError('Check the campaign amounts. Prize cost and entry price must be positive; target and cost budget cannot be negative.');
+      return;
+    }
+    if (!Number.isInteger(entriesCap) || entriesCap <= 0 || !Number.isInteger(purchaseCap) || purchaseCap <= 0 || purchaseCap > entriesCap
+      || (perUserCap !== null && (!Number.isInteger(perUserCap) || perUserCap <= 0 || perUserCap > entriesCap))) {
+      setError('Entry caps must be positive whole numbers. Per-purchase and per-user caps cannot exceed the campaign-wide cap.');
       return;
     }
     await runAction(() => saveAdminPlayCampaign({
@@ -233,9 +246,10 @@ export function AdminPlayScreen() {
       profit_target_value: numeric[1],
       campaign_cost_budget_amount: numeric[2],
       entry_price_amount: numeric[3],
-      max_entries: maxEntries.trim() ? Number(maxEntries) : null,
-      entry_limit_per_user: userEntryLimit.trim() ? Number(userEntryLimit) : null,
-      rules_public: {},
+      max_entries: entriesCap,
+      max_tickets_per_purchase: purchaseCap,
+      entry_limit_per_user: perUserCap,
+      rules_public: { terms: campaignTerms.trim(), refund_policy: campaignRefundPolicy.trim() },
       engine_config: {},
     }), 'Campaign draft saved. Its threshold is calculated from this campaign’s configuration.');
     setCampaignSlug('');
@@ -247,7 +261,10 @@ export function AdminPlayScreen() {
     setCampaignCosts('');
     setEntryPrice('');
     setMaxEntries('');
+    setMaxTicketsPerPurchase('');
     setUserEntryLimit('');
+    setCampaignTerms('');
+    setCampaignRefundPolicy('');
   }
 
   async function createSponsorPlacement() {
@@ -450,8 +467,11 @@ export function AdminPlayScreen() {
             <VadInput label={profitMode === 'PERCENT_OF_PRIZE' ? 'Profit target percentage (required)' : profitMode === 'FIXED_AMOUNT' ? 'Profit target amount (required)' : 'Profit target value (choose method first)'} value={profitValue} onChangeText={setProfitValue} keyboardType="decimal-pad" placeholder="Enter target for this campaign" />
             <VadInput label="Campaign cost budget (required)" value={campaignCosts} onChangeText={setCampaignCosts} keyboardType="decimal-pad" placeholder="Campaign costs paid from receipts" />
             <VadInput label="Entry price (required)" value={entryPrice} onChangeText={setEntryPrice} keyboardType="decimal-pad" placeholder="Price per entry" />
-            <VadInput label="Maximum entries (optional)" value={maxEntries} onChangeText={setMaxEntries} keyboardType="number-pad" placeholder="No maximum unless set" />
-            <VadInput label="Entry limit per user (optional)" value={userEntryLimit} onChangeText={setUserEntryLimit} keyboardType="number-pad" placeholder="No per-user limit unless set" />
+            <VadInput label="Campaign-wide maximum entries (required)" value={maxEntries} onChangeText={setMaxEntries} keyboardType="number-pad" placeholder="Set a finite total entry cap" />
+            <VadInput label="Maximum tickets per purchase (required)" value={maxTicketsPerPurchase} onChangeText={setMaxTicketsPerPurchase} keyboardType="number-pad" placeholder="Set the purchase cap for this campaign" />
+            <VadInput label="Entry limit per user (optional)" value={userEntryLimit} onChangeText={setUserEntryLimit} keyboardType="number-pad" placeholder="Leave blank for no separate per-user cap" />
+            <VadInput label="Published campaign terms (required)" value={campaignTerms} onChangeText={setCampaignTerms} multiline placeholder="Explain eligibility, draw timing, prize details and selection rules" hint="At least 20 characters. These terms are saved to the campaign and checked by the server before it can open." />
+            <VadInput label="Refund / funding-shortfall policy (required)" value={campaignRefundPolicy} onChangeText={setCampaignRefundPolicy} multiline placeholder="Explain when and how customers are refunded if the campaign cannot proceed" hint="At least 10 characters. Required before a campaign can open." />
             {campaignEstimate !== null ? (
               <View style={{ padding: theme.spacing.md, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, gap: 5 }}>
                 <VadText variant="caption" tone="secondary">Calculated funding threshold preview</VadText>
