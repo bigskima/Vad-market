@@ -27,7 +27,7 @@ type SetupTask = {
   description: string;
   complete: boolean;
   action: string;
-  route?: '/account/profile' | '/account/verification' | '/wallet' | '/markets';
+  route?: '/account/profile' | '/account/verification' | '/wallet' | '/markets' | '/watchlist';
   contact?: boolean;
 };
 
@@ -194,6 +194,18 @@ export default function AccountOnboardingScreen() {
             : 'Your trading history could not be confirmed just now. Explore Markets and return to refresh this checklist.',
         complete: state.firstTradeComplete,
         action: 'Explore markets',
+        route: '/markets',
+      },
+      {
+        key: 'watchlist',
+        title: state.watchlistComplete ? 'Market watchlist created' : 'Save a market to your watchlist',
+        description: state.watchlistComplete
+          ? 'Your saved markets are available from the Watchlist screen.'
+          : state.watchlistCheckAvailable
+            ? 'Save markets you want to follow so you can return to their prices and outcomes quickly.'
+            : 'Your watchlist status could not be confirmed. Open Markets and return to refresh this checklist.',
+        complete: state.watchlistComplete,
+        action: 'Browse markets',
         route: '/markets',
       },
     ];
@@ -366,7 +378,7 @@ export default function AccountOnboardingScreen() {
             <View style={{ gap: 10 }}>
               <View style={{ gap: 3 }}>
                 <VadText variant="heading">Your first milestones</VadText>
-                <VadText variant="caption" tone="secondary">VAD recognises a real completed deposit and a recorded trade. You can pause here and return later.</VadText>
+                <VadText variant="caption" tone="secondary">VAD checks completed funding, recorded trading activity and saved markets. You can pause here and continue later.</VadText>
               </View>
               <VadCard style={{ gap: 10, padding: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
