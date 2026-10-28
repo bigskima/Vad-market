@@ -9,7 +9,9 @@ import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getAccountSetupState,
+  isAccountOnboardingComplete,
   isAccountSetupComplete,
+  markAccountOnboardingCompleted,
   type AccountSetupState,
 } from '@/services/account-onboarding-api';
 
@@ -32,7 +34,14 @@ export function AccountSetupCard() {
     setLoading(true);
     setError(null);
     void getAccountSetupState(user, { includeMilestones: true }).then((next) => {
-      if (active) setState(next);
+      if (!active) return;
+      setState(next);
+      if (isAccountOnboardingComplete(next) && !user.user_metadata?.vad_onboarding_completed_at) {
+        void markAccountOnboardingCompleted().catch(() => {
+          // The visible checklist can still disappear once all five milestones
+          // are confirmed; the boundary retries this marker on a later visit.
+        });
+      }
     }).catch((reason) => {
       if (!active) return;
       setState(null);
@@ -50,14 +59,7 @@ export function AccountSetupCard() {
     router.push({ pathname: '/onboarding', params: { source: 'account' } });
   };
 
-  const allMilestonesComplete = Boolean(
-    state
-      && isAccountSetupComplete(state)
-      && state.firstDepositCheckAvailable
-      && state.firstDepositComplete
-      && state.firstTradeCheckAvailable
-      && state.firstTradeComplete,
-  );
+  const allMilestonesComplete = Boolean(state && isAccountOnboardingComplete(state));
   if (!loading && allMilestonesComplete) return null;
 
   const completed = state
