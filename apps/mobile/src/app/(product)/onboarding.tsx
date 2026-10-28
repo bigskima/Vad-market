@@ -1,5 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View, type DimensionValue } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -45,6 +45,7 @@ export default function AccountOnboardingScreen() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const completionMarkAttempted = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!user) {
@@ -57,7 +58,8 @@ export default function AccountOnboardingScreen() {
     try {
       const next = await getAccountSetupState(user);
       setState(next);
-      if (isAccountSetupComplete(next)) {
+      if (isAccountSetupComplete(next) && !user.user_metadata?.vad_onboarding_completed_at && completionMarkAttempted.current !== user.id) {
+        completionMarkAttempted.current = user.id;
         try {
           await markAccountOnboardingCompleted();
         } catch {
@@ -90,7 +92,8 @@ export default function AccountOnboardingScreen() {
         const next = await getAccountSetupState(user);
         if (!active) return;
         setState(next);
-        if (isAccountSetupComplete(next)) {
+        if (isAccountSetupComplete(next) && !user.user_metadata?.vad_onboarding_completed_at && completionMarkAttempted.current !== user.id) {
+        completionMarkAttempted.current = user.id;
           try {
             await markAccountOnboardingCompleted();
           } catch {
