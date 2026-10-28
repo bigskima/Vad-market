@@ -15,7 +15,7 @@ export function VadErrorState({
   onRetry?: () => void;
 }) {
   const theme = useVadTheme();
-  const includesTechnicalDetails = /\\b(?:supabase|postgrest|postgres(?:ql)?|pgrst\\d*|sqlstate|rpc|edge function|database error|schema cache|column .+ does not exist|relation .+ does not exist|api key|environment variable|internal server error|http [45]\\d{2}|typeerror|referenceerror|syntaxerror|stack trace|not configured|unexpected token|econnrefused|econnreset|connection refused|failed to fetch|networkerror|invalid input syntax|row[- ]level security|permission denied|check constraint)\\b/i.test(message);
+  const includesTechnicalDetails = /\b(?:supabase|postgrest|postgres(?:ql)?|pgrst\d*|sqlstate|rpc|edge function|database error|schema cache|column .+ does not exist|relation .+ does not exist|api key|environment variable|internal server error|http [45]\d{2}|typeerror|referenceerror|syntaxerror|stack trace|not configured|unexpected token|econnrefused|econnreset|connection refused|failed to fetch|networkerror|invalid input syntax|row[- ]level security|permission denied|check constraint)\b/i.test(message);
   const displayMessage = includesTechnicalDetails
     ? userFacingErrorMessage(message, 'general', 'Please try again shortly.')
     : message;
