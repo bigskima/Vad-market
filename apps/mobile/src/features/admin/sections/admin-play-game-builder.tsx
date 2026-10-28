@@ -270,7 +270,7 @@ export function AdminPlayGameBuilder({
 
       {error ? (
         <VadCard><View style={{ padding: theme.spacing.md, gap: 6 }}>
-          <VadText tone="danger" variant="label">Needs attention</VadText>
+          <VadText tone="no" variant="label">Needs attention</VadText>
           <VadText tone="secondary">{error}</VadText>
         </View></VadCard>
       ) : null}
@@ -335,7 +335,7 @@ export function AdminPlayGameBuilder({
             <Image source={{ uri: previewUrl }} accessibilityLabel={title ? `${title} artwork preview` : 'Game artwork preview'} resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
           ) : (
             <View style={{ minHeight: 78, borderRadius: theme.radius.lg, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-              <VadIcon name="image" size={20} tone="tertiary" />
+              <VadIcon name="camera" size={20} tone="tertiary" />
               <VadText variant="caption" tone="tertiary">No cover selected</VadText>
             </View>
           )}
