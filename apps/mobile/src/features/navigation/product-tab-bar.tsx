@@ -106,7 +106,7 @@ export function ProductTabBar({
                 variant="caption"
                 tone={selected ? 'brand' : 'tertiary'}
                 numberOfLines={1}
-                style={{ fontWeight: selected ? '700' : '500', fontSize: density.compact ? 10 : 11 }}
+                style={{ fontWeight: selected ? '700' : '500', fontSize: density.compact ? 9 : 10, lineHeight: 13, maxWidth: '100%' }}
               >
                 {tab.label}
               </VadText>

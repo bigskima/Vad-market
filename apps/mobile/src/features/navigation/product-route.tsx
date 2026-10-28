@@ -141,12 +141,12 @@ export function ProductRoute({
         : tab === 'Markets'
           ? '/markets'
           : tab === 'Play'
-          ? '/play'
-          : tab === 'Wallet'
-            ? '/wallet'
-            : tab === 'Portfolio'
-              ? '/portfolio'
-              : '/account';
+            ? '/play'
+            : tab === 'Wallet'
+              ? '/wallet'
+              : tab === 'Portfolio'
+                ? '/portfolio'
+                : '/account';
 
     router.replace(route);
   };
