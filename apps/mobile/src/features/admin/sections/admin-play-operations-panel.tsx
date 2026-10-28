@@ -80,7 +80,7 @@ export function AdminPlayOperationsPanel() {
       <View style={{ gap: 5 }}>
         <VadText variant="heading">Play operations ledger view</VadText>
         <VadText tone="secondary">
-          Read-only view of entry orders, draw records and settlement journal references. Financial source of truth remains VAD's existing double-entry ledger.
+          Read-only view of entry orders, draw records and settlement journal references. Financial source of truth remains VAD&apos;s existing double-entry ledger.
         </VadText>
       </View>
       {error ? (
