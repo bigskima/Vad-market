@@ -220,6 +220,7 @@ export function ProductRoute({
           onAccount={() => router.replace('/account')}
           onSearch={() => router.push('/markets')}
           onNotices={() => router.push('/notifications')}
+          onSupport={() => router.push('/support')}
           noticeCount={noticeCount}
         />
       ) : null}
