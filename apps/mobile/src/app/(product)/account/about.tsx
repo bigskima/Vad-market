@@ -30,7 +30,7 @@ export default function AboutVadScreen() {
           <VadIcon name="fileText" size={20} tone="brand" />
           <View style={{ flex: 1, gap: 2 }}>
             <VadText variant="bodyStrong">Legal documents</VadText>
-            <VadText variant="caption" tone="secondary">Open the currently published terms, privacy and risk disclosures.</VadText>
+            <VadText variant="caption" tone="secondary">View VAD’s Terms, Privacy Policy and Risk Disclosures.</VadText>
           </View>
           <VadIcon name="chevronRight" size={16} tone="tertiary" />
         </Pressable>

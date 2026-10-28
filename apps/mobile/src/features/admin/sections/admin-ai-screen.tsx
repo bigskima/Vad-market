@@ -207,7 +207,7 @@ export function AdminAiScreen() {
         <View style={{ gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="heading">Configured models</VadText>
-            <VadText variant="caption" tone="secondary">Review model capabilities here. Super Admins can enable Market builder for free-tier AI models without changing provider status.</VadText>
+            <VadText variant="caption" tone="secondary">Super Admins can enable Market Builder for eligible free AI models.</VadText>
           </View>
           {models.map((row) => (
             <AiModelRow

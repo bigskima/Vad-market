@@ -200,7 +200,7 @@ function AssetRevenueSection({
 
       <OperationsSection
         title="Revenue by source"
-        description="Each source is kept separate so VAD can see exactly where its fee income came from."
+        description="Track fee income by source."
         count={asset.vadRevenue.sources.length}
       >
         {asset.vadRevenue.sources.map((source) => (

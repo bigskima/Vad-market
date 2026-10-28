@@ -459,7 +459,7 @@ export function AdminGovernanceScreen() {
               </View>
             ) : (
               <View style={{ gap: theme.spacing.sm }}>
-                <VadText variant="bodyStrong">Which configured outcome matches the official result?</VadText>
+                <VadText variant="bodyStrong">Which outcome matches the official result?</VadText>
                 {outcomeChoicesLoading ? (
                   <View style={{ gap: theme.spacing.xs }}>
                     <VadSkeleton height={48} />
