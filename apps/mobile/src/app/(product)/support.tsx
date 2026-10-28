@@ -99,7 +99,6 @@ export default function SupportScreen() {
   const hasAiReplied = chatMessages.some((message) => message.role === 'ASSISTANT' && message.id !== 'support-welcome');
   const latestUserMessage = [...chatMessages].reverse().find((message) => message.role === 'USER')?.content ?? '';
   const resolvedSubject = handoffSubject.trim() || subjectFromMessage(latestUserMessage);
-  const activeCount = tickets.filter((ticket) => !['RESOLVED', 'CLOSED'].includes(ticket.status)).length;
 
   const sortedTickets = useMemo(
     () => [...tickets].sort((a, b) => Date.parse(b.last_message_at || b.updated_at) - Date.parse(a.last_message_at || a.updated_at)),
@@ -137,8 +136,10 @@ export default function SupportScreen() {
   useEffect(() => {
     if (!routeThreadId) return;
     let active = true;
-    setAiLoading(true);
-    void getAssistantThread(routeThreadId)
+    void Promise.resolve().then(() => {
+      if (active) setAiLoading(true);
+      return getAssistantThread(routeThreadId);
+    })
       .then((rows) => {
         if (!active) return;
         setAiThreadId(routeThreadId);
