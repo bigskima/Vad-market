@@ -16,12 +16,17 @@ export function GrowthAttributionBridge({ children }: PropsWithChildren) {
   const normalizedCode = typeof incomingCode === 'string' ? incomingCode.trim() : '';
 
   useEffect(() => {
-    if (normalizedCode) rememberPendingGrowthCode(normalizedCode);
+    if (normalizedCode) void rememberPendingGrowthCode(normalizedCode);
   }, [normalizedCode]);
 
   useEffect(() => {
     if (isLoading || !session) return;
-    void applyPendingGrowthCode();
+    void (async () => {
+      // Store the link's code before claiming it so native async storage
+      // cannot race the sign-in attribution check.
+      if (normalizedCode) await rememberPendingGrowthCode(normalizedCode);
+      await applyPendingGrowthCode();
+    })();
   }, [isLoading, session, normalizedCode]);
 
   return children;
