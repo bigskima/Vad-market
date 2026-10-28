@@ -106,6 +106,7 @@ export async function deferAccountOnboarding(
   await updateOnboardingMetadata({
     vad_onboarding_started_at: new Date().toISOString(),
     vad_onboarding_deferred_until: remindAt,
+    vad_onboarding_completed_at: null,
   });
   return remindAt;
 }
@@ -216,5 +217,13 @@ export async function getAccountSetupState(
 
 export function isAccountSetupComplete(state: AccountSetupState) {
   return state.contactConfirmed && state.profileComplete && state.kycComplete;
+}
+
+export function isAccountOnboardingComplete(state: AccountSetupState) {
+  return isAccountSetupComplete(state)
+    && state.firstDepositCheckAvailable
+    && state.firstDepositComplete
+    && state.firstTradeCheckAvailable
+    && state.firstTradeComplete;
 }
 
