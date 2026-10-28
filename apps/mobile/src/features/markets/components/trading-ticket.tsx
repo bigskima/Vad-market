@@ -288,9 +288,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       await onPlaced();
     } catch (error) {
       setPlaceError(
-        error instanceof Error
-          ? error.message
-          : 'Could not place prediction. Try again.',
+        userFacingErrorMessage(error, 'trading', 'Could not place your prediction. Try again.'),
       );
     } finally {
       setWorking(false);
@@ -323,8 +321,8 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       {hasTemporaryNgnTestCredit ? (
         <InlineMessage
           tone="warning"
-          title="Temporary NGN test credit active"
-          body="This is non-cash credit in the normal NGN ledger and uses this same market instrument, pool stake, resolution and settlement pipeline. Current Nigeria location verification is still required. Deposits and withdrawals are blocked; email transfers are limited to other eligible test-credit accounts and cannot mix with cash-funded NGN."
+          title="NGN test funds active"
+          body="These are test funds, not cash. Nigeria location verification is required. Deposits and withdrawals are disabled. Transfers are limited to eligible test accounts and stay separate from cash NGN."
         />
       ) : null}
 
