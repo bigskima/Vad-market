@@ -9,6 +9,7 @@ import {
   getSponsorCreative,
   type PlayAdPlacement,
 } from '@/services/play-ad-api';
+import { playMediaPublicUrl } from '@/services/play-media-api';
 
 export function PlayAdSlot({ placementCode }: { placementCode: string }) {
   const theme = useVadTheme();
@@ -26,6 +27,8 @@ export function PlayAdSlot({ placementCode }: { placementCode: string }) {
 
   const creative = getSponsorCreative(placement);
   if (!creative || (!creative.title && !creative.imageUrl)) return null;
+
+  const creativeImageUrl = playMediaPublicUrl(creative.imageUrl);
 
   const onOpen = async () => {
     if (!creative.clickUrl) return;
@@ -46,9 +49,9 @@ export function PlayAdSlot({ placementCode }: { placementCode: string }) {
       flexDirection: 'row',
       minHeight: 104,
     }}>
-      {creative.imageUrl ? (
+      {creativeImageUrl ? (
         <Image
-          source={{ uri: creative.imageUrl }}
+          source={{ uri: creativeImageUrl ?? undefined }}
           accessibilityLabel={creative.imageAlt || creative.title || 'Sponsored content'}
           resizeMode="cover"
           style={{ width: 112, minHeight: 104, backgroundColor: theme.colors.surfaceMuted }}
