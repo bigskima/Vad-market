@@ -4,6 +4,7 @@ import { ImageBackground, Pressable, ScrollView, View } from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
+import { TourTarget } from '@/features/tour/tour-provider';
 import { PlayAdSlot } from './play-ad-slot';
 import { listPublishedPlayExperiences, playFriendlyError, type PlayExperience, playExperienceLabel } from '@/services/play-api';
 import { PlayExperienceTile } from './play-experience-tile';
@@ -56,13 +57,15 @@ export function PlayHubScreen() {
 
   return (
     <View style={{ gap: theme.spacing.lg }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <View style={{ flex: 1, gap: 4 }}>
-          <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.6 }}>VAD PLAY</VadText>
-          <VadText variant="title">Make room for play.</VadText>
-          <VadText tone="secondary">Games, challenges and prize experiences in one hub.</VadText>
+      <TourTarget id="play-hub-overview">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.6 }}>VAD PLAY</VadText>
+            <VadText variant="title">Make room for play.</VadText>
+            <VadText tone="secondary">Games, challenges and prize experiences in one hub.</VadText>
+          </View>
         </View>
-      </View>
+      </TourTarget>
 
       <PlayTabNavigation active="Discover" />
 
