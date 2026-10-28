@@ -328,7 +328,7 @@ export function AdminPlayScreen() {
     return (
       <View style={{ gap: theme.spacing.md }}>
         <VadText variant="title">VAD Play</VadText>
-        <VadText tone="secondary">This area requires the play.manage permission. Ask a Super Admin to grant access.</VadText>
+        <VadText tone="secondary">You don't have access to manage VAD Play. Ask a Super Admin.</VadText>
       </View>
     );
   }
@@ -470,7 +470,7 @@ export function AdminPlayScreen() {
         <VadCard>
           <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
             <VadText variant="heading">Create prize campaign</VadText>
-            <VadText tone="secondary">Every campaign must define its own economics. No prize price, profit percentage, cost budget or collection threshold is assumed by this form.</VadText>
+            <VadText tone="secondary">Set the prize cost, profit target, campaign budget and entry limits for each campaign.</VadText>
             <View style={{ gap: 8 }}>
               <VadText variant="label">Experience</VadText>
               {dashboard.experiences.filter((item) => item.engine_key === 'PRIZE_DRAW').map((experience) => (
