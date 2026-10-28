@@ -72,8 +72,8 @@ export function PlayGamesScreen() {
     <View style={{ gap: theme.spacing.lg }}>
       <View style={{ gap: 5 }}>
         <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.4 }}>VAD PLAY</VadText>
-        <VadText variant="title">Games & experiences</VadText>
-        <VadText tone="secondary">Search the live catalogue and filter by the experience type.</VadText>
+        <VadText variant="title">Games</VadText>
+        <VadText tone="secondary">Find an experience.</VadText>
       </View>
 
       <PlayTabNavigation active="Games" />
@@ -141,8 +141,8 @@ export function PlayGamesScreen() {
         <PlayMessageState
           title={experiences.length === 0 ? 'The games catalogue is empty' : 'No matches found'}
           body={experiences.length === 0
-            ? 'No sample experiences are inserted by the app. When VAD publishes a supported experience in the database, it will appear here.'
-            : 'Try another search term or choose a different type.'}
+            ? 'New published games will appear here.'
+            : 'Try another search or type.'}
           actionLabel={experiences.length === 0 ? 'Back to Discover' : 'Clear filters'}
           onAction={() => {
             if (experiences.length === 0) router.replace('/play');
