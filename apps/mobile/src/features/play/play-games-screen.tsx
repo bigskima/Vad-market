@@ -69,6 +69,8 @@ export function PlayGamesScreen() {
     });
   }, [activeType, experiences, query]);
 
+  if (loading) return <PlayGamesSkeleton />;
+
   return (
     <View style={{ gap: theme.spacing.lg }}>
       <View style={{ gap: 5 }}>
@@ -134,9 +136,7 @@ export function PlayGamesScreen() {
         </View>
       ) : null}
 
-      {loading ? (
-        <PlayGamesSkeleton />
-      ) : error ? (
+      {error ? (
         <PlayMessageState title="Games could not be loaded" body={error} actionLabel="Retry" onAction={refresh} tone="error" />
       ) : filtered.length === 0 ? (
         <PlayMessageState
