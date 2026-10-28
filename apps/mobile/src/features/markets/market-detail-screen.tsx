@@ -489,18 +489,37 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
     label: field.label,
     value: firstContextText(...field.keys.map((key) => subject[key] ?? details[key] ?? context[key])),
   })).filter((entry) => entry.value && entry.value.length <= 160).slice(0, 4);
-  if (!entries.length) return null;
-  const displayTitle = firstContextText(subject.name, subject.title, context.market_question, context.marketQuestion) || selected.title;
+  const displayTitle = firstContextText(
+    subject.name, subject.title, subject.asset_name, subject.assetName,
+    subject.company_name, subject.companyName, subject.artist, subject.artist_name,
+    subject.model_name, subject.modelName, context.market_question, context.marketQuestion,
+  ) || selected.title;
+  const logoUrl = safeCategoryImageUrl(firstContextText(
+    subject.logo_url, subject.logoUrl, subject.image_url, subject.imageUrl,
+    subject.icon_url, subject.iconUrl, subject.asset_logo_url, subject.assetLogoUrl,
+    subject.company_logo_url, subject.companyLogoUrl, subject.issuer_logo_url, subject.issuerLogoUrl,
+    subject.poster_url, subject.posterUrl, subject.avatar_url, subject.avatarUrl,
+    details.logo_url, details.logoUrl, details.image_url, details.imageUrl,
+    context.logo_url, context.logoUrl, context.image_url, context.imageUrl,
+    context.icon_url, context.iconUrl, context.asset_logo_url, context.assetLogoUrl,
+  ));
+  const initials = displayTitle.split(/\\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('');
+  if (!entries.length && !logoUrl && displayTitle === selected.title) return null;
 
   return (
     <VadCard variant="surface" style={{ padding: 14, gap: 10, borderRadius: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 9 }}>
-        <View style={{ width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
-          <VadIcon name={profile === 'CRYPTO' ? 'activity' : profile === 'STOCKS' ? 'portfolio' : profile === 'MUSIC' ? 'community' : profile === 'AI' ? 'info' : 'globe'} size={17} tone="brand" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }}>
+          {logoUrl ? (
+            <Image source={{ uri: logoUrl }} accessibilityLabel={displayTitle + ' badge'} resizeMode="contain" style={{ width: 42, height: 42 }} />
+          ) : (
+            <VadText variant="bodyStrong" tone="brand">{initials || <VadIcon name={profile === 'CRYPTO' ? 'activity' : profile === 'STOCKS' ? 'portfolio' : profile === 'MUSIC' ? 'community' : profile === 'AI' ? 'info' : 'globe'} size={18} tone="brand" />}</VadText>
+          )}
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <VadText variant="label" tone="brand">{selected.title}</VadText>
-          <VadText variant="caption" tone="secondary">{selected.lead}</VadText>
+          <VadText variant="bodyStrong" numberOfLines={2}>{displayTitle}</VadText>
+          {selected.lead ? <VadText variant="caption" tone="secondary" numberOfLines={2}>{selected.lead}</VadText> : null}
         </View>
       </View>
       {displayTitle !== selected.title ? <VadText variant="bodyStrong">{displayTitle}</VadText> : null}
@@ -547,6 +566,19 @@ function firstContextText(...values: unknown[]): string | null {
     }
   }
   return null;
+}
+
+function safeCategoryImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 1000) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password) return null;
+    const host = url.hostname.toLowerCase();
+    if (!host || host === 'localhost' || host.endsWith('.local') || /^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(host)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 function safeSportsImageUrl(value: unknown): string | null {
