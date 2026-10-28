@@ -13,7 +13,7 @@ import { PlayTabNavigation } from './play-tab-navigation';
 
 function formatActivityDate(value: string) {
   const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) return 'Date unavailable';
+  if (Number.isNaN(parsed)) return '—';
   return new Date(parsed).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
@@ -74,8 +74,8 @@ export function PlayActivityScreen() {
         <PlayMessageState title="Your history could not be loaded" body={error} actionLabel="Try again" onAction={refresh} tone="error" />
       ) : activity.length === 0 ? (
         <PlayMessageState
-          title="Your Play history starts here"
-          body="There is no recorded Play activity on this account yet. Only server-confirmed activity appears here; the app does not invent entries or balances."
+          title="No activity yet"
+          body="Your games and results will appear here."
           actionLabel="Explore VAD Play"
           onAction={() => router.replace('/play')}
         />
