@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View, type DimensionValue } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { VadLogo } from '@/components/brand/vad-logo';
@@ -72,7 +72,7 @@ export default function AccountOnboardingScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, user?.email_confirmed_at, user?.phone_confirmed_at]);
+  }, [user]);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -108,7 +108,7 @@ export default function AccountOnboardingScreen() {
       }
     })();
     return () => { active = false; };
-  }, [user?.id, user?.email_confirmed_at, user?.phone_confirmed_at]));
+  }, [user]));
 
   const requiredTasks = useMemo<SetupTask[]>(() => {
     if (!state || !user) return [];
@@ -276,7 +276,7 @@ export default function AccountOnboardingScreen() {
                 <VadText variant="caption" tone="secondary">{completedRequired} of {requiredCount} complete</VadText>
               </View>
               <View style={{ height: 7, borderRadius: 5, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }}>
-                <View style={{ width: (String(progressPercent) + '%') as never, height: '100%', borderRadius: 5, backgroundColor: theme.colors.brandPrimary }} />
+                <View style={{ width: (String(progressPercent) + '%') as DimensionValue, height: '100%', borderRadius: 5, backgroundColor: theme.colors.brandPrimary }} />
               </View>
             </VadCard>
           ) : null}
