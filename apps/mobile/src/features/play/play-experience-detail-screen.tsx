@@ -15,7 +15,8 @@ import {
 } from '@/services/play-api';
 import { PlayAdSlot } from './play-ad-slot';
 import { PlayCampaignSummary } from './play-campaign-summary';
-import { PlayLoadingState, PlayMessageState } from './play-states';
+import { PlayMessageState } from './play-states';
+import { PlayExperienceDetailSkeleton } from '@/components/ui/screen-skeletons';
 import { PlayTabNavigation } from './play-tab-navigation';
 import { playMediaPublicUrl } from '@/services/play-media-api';
 
@@ -91,7 +92,7 @@ export function PlayExperienceDetailScreen() {
       <PlayAdSlot placementCode="play-experience-inline" />
 
       {loading ? (
-        <PlayLoadingState label="Loading experience details" />
+        <PlayExperienceDetailSkeleton />
       ) : error ? (
         <PlayMessageState title="Experience details are unavailable" body={error} actionLabel="Retry" onAction={() => void load()} tone="error" />
       ) : !experience ? (
