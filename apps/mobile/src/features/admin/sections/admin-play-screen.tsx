@@ -402,6 +402,8 @@ export function AdminPlayScreen() {
                   <StatusPill value={campaign.status} />
                 </View>
                 <VadText tone="secondary">{campaign.prize_title} · {campaign.currency_code}</VadText>
+                <VadText variant="caption" tone="secondary">Entry price: {moneyLabel(campaign.entry_price_amount, campaign.currency_code)}</VadText>
+                <VadText variant="caption" tone="secondary">Entry caps: {campaign.max_entries ?? 'Not set'} total · {campaign.max_tickets_per_purchase} per purchase</VadText>
                 <VadText variant="caption" tone="secondary">Threshold: {moneyLabel(campaign.funding_threshold_amount, campaign.currency_code)}</VadText>
                 <VadText variant="caption" tone="secondary">Qualifying funds: {moneyLabel(campaign.qualifying_funds_amount, campaign.currency_code)}</VadText>
               </View>
