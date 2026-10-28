@@ -172,7 +172,7 @@ export default function SupportScreen() {
   async function sendToAi(value = chatInput) {
     const message = value.trim();
     if (!message || aiSending || message.length > 2000) return;
-    const optimisticId = `support-user-${Date.now()}`;
+    const optimisticId = `support-user-${chatMessages.length}-${aiThreadId ?? 'new'}`;
     const optimistic: SupportChatMessage = {
       id: optimisticId,
       role: 'USER',
