@@ -153,22 +153,48 @@ type PhotonFeature = {
     country_code?: unknown;
     countryCode?: unknown;
     country_code_iso2?: unknown;
+    country?: unknown;
+    country_name?: unknown;
+    countryName?: unknown;
+    name?: unknown;
+    osm_key?: unknown;
+    osm_value?: unknown;
+    type?: unknown;
   };
 };
 
-function countryCodeFromPhoton(payload: unknown): string | null {
+function normalizedCountryName(value: unknown): string {
+  return typeof value === 'string'
+    ? value.normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').trim().toLowerCase()
+    : '';
+}
+
+function countryCodeFromPhoton(payload: unknown, countryLayer = false): string | null {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
   const features = (payload as { features?: unknown }).features;
   if (!Array.isArray(features)) return null;
   for (const item of features as PhotonFeature[]) {
     const properties = item?.properties;
+    if (!properties) continue;
     const candidate = [
-      properties?.countrycode,
-      properties?.country_code,
-      properties?.countryCode,
-      properties?.country_code_iso2,
+      properties.countrycode,
+      properties.country_code,
+      properties.countryCode,
+      properties.country_code_iso2,
     ].find((value) => isCountryCode(value));
     if (isCountryCode(candidate)) return candidate.toUpperCase();
+
+    // Photon normally includes countrycode, but country-boundary features and
+    // some reverse results only expose the country label. Resolve Nigeria's
+    // canonical name to ISO-3166-1 alpha-2 without guessing from the IP.
+    const countryName = normalizedCountryName(
+      properties.country ?? properties.country_name ?? properties.countryName,
+    );
+    const featureName = normalizedCountryName(properties.name);
+    const isCountryFeature = countryLayer
+      || normalizedCountryName(properties.osm_key) === 'place' && normalizedCountryName(properties.osm_value) === 'country'
+      || normalizedCountryName(properties.type) === 'country';
+    if (countryName === 'nigeria' || (isCountryFeature && featureName === 'nigeria')) return 'NG';
   }
   return null;
 }
@@ -207,7 +233,7 @@ async function lookupDeviceCountry(latitude: number, longitude: number): Promise
         });
         continue;
       }
-      const countryCode = countryCodeFromPhoton(await response.json() as unknown);
+      const countryCode = countryCodeFromPhoton(await response.json() as unknown, endpoint.name.includes('country layer'));
       if (countryCode) return { countryCode, provider: endpoint.name };
       console.warn('[verify-service-location] reverse geocoder response contained no country code', {
         provider: endpoint.name,
