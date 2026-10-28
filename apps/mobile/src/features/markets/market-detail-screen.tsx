@@ -781,7 +781,7 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
               <VadCard style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: density.phone ? 10 : 12 }}>
                 {outcomeCrest(outcome.outcome_label) ? (
                   <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }}>
-                    <Image source={{ uri: outcomeCrest(outcome.outcome_label) ?? undefined }} resizeMode="contain" accessibilityLabel={`${outcome.outcome_label} team crest`} style={{ width: 31, height: 31 }} />
+                    <Image source={{ uri: outcomeCrest(outcome.outcome_label)! }} resizeMode="contain" accessibilityLabel={`${outcome.outcome_label} team crest`} style={{ width: 31, height: 31 }} />
                   </View>
                 ) : (
                   <View style={{ width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>
