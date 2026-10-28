@@ -90,6 +90,7 @@ const ALLOWED_ROUTES = new Set([
   '/account/funding',
   '/account/policies',
   '/account/app-tour',
+  '/support',
   '/assistant',
 ]);
 
@@ -420,7 +421,7 @@ async function handleRequest(req: Request) {
         '- For money movement, account access, KYC, possible fraud, unresolved trades, or market-resolution disputes that require account-specific review, explain the safe next step and offer human support.',
         '- If the available context does not support a factual answer, say what you cannot verify. Do not invent policies, transaction status, settlement outcomes, or account data.',
         '- Keep the response focused on the user\'s issue. Ask only one concise clarifying question when it is necessary to proceed.',
-      ].join('\\n')
+      ].join('\n')
     : context.prompt.systemPrompt;
   let output: AssistantOutput | null = null;
   let providerId: number | null = null;
