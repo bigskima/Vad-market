@@ -6,6 +6,7 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadInput } from '@/components/ui/vad-input';
+import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
@@ -480,57 +481,73 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'review' && isUsdc && preparedUsdc ? (
-        <VadCard variant="brand" style={{ gap: 9, padding: 12 }}>
+        <VadCard variant="brand" style={{ gap: 10, padding: 12 }}>
           <View style={{ gap: 3 }}>
-            <VadText variant="caption" tone="brand">STEP 3 · FEE REVIEW · NOTHING LOCKED</VadText>
-            <VadText variant="heading">Confirm your USDC prediction.</VadText>
-            <VadText variant="caption" tone="secondary">
-              VAD signed these amounts using the active fee policy. Authorization expires at the time shown.
-            </VadText>
+            <VadText variant="caption" tone="brand">STEP 3 · REVIEW</VadText>
+            <VadText variant="heading">Confirm your prediction.</VadText>
+            <VadText variant="caption" tone="secondary">Nothing is committed until you confirm in your wallet.</VadText>
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            <VadChip label={outcomeLabel} tone={preparedUsdc.outcomeCode === 'YES' ? 'yes' : 'no'} />
+            <VadChip label={outcomeLabel} tone={outcomeTone} />
             <VadChip label="PEER POOL" tone="brand" />
             <VadChip label="USDC" />
             <VadChip label={preparedUsdc.chainCode} />
           </View>
 
-          <View style={{ gap: 2 }}>
-            <QuoteLine label="Your stake" value={assetMoney(preparedUsdc.collateralAmount, 'USDC')} />
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <MiniMetric label="Your stake" value={assetMoney(preparedUsdc.collateralAmount, 'USDC')} />
+            <MiniMetric label="VAD fee" value={assetMoney(preparedUsdc.tradingFee, 'USDC')} />
+          </View>
+          <View style={{ borderRadius: theme.radius.md, padding: theme.spacing.sm, gap: 5, backgroundColor: theme.colors.surface }}>
+            <VadText variant="caption" tone="tertiary">MAXIMUM WALLET DEBIT</VadText>
+            <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{assetMoney(preparedUsdc.maximumWalletDebit, 'USDC')}</VadText>
+            <VadText variant="caption" tone="secondary">Network: {selectedVenue?.chain_name ?? preparedUsdc.chainCode}</VadText>
+          </View>
+
+          <InlineMessage
+            tone="warning"
+            title="USDC settlement limitation"
+            body="Pool and payout estimates are not available yet for Settlement V1. Its payout cap is inactive, and network gas is paid separately. Your stake and exposure limits are checked before authorization."
+          />
+
+          <VadProgressiveSection
+            title="Full quote breakdown"
+            eyebrow="ADVANCED DETAILS"
+            description="Market limits, exposure, wallet, authorization and settlement notes."
+            icon="activity"
+            summary={<VadText variant="caption" tone="tertiary">View all quote details</VadText>}
+          >
             {preparedUsdc.authorization.maxEntryStake != null ? <QuoteLine label="Maximum single stake" value={assetMoney(preparedUsdc.authorization.maxEntryStake, 'USDC')} /> : null}
             {preparedUsdc.authorization.existingUserExposure != null ? <QuoteLine label="Existing stake across this market" value={assetMoney(preparedUsdc.authorization.existingUserExposure, 'USDC')} /> : null}
             {preparedUsdc.authorization.projectedUserExposure != null ? <QuoteLine label="Combined user stake after this entry" value={assetMoney(preparedUsdc.authorization.projectedUserExposure, 'USDC')} /> : null}
             {preparedUsdc.authorization.maxUserMarketStake != null ? <QuoteLine label="Maximum combined user stake" value={assetMoney(preparedUsdc.authorization.maxUserMarketStake, 'USDC')} /> : null}
             {preparedUsdc.authorization.projectedMarketPool != null ? <QuoteLine label="Projected market pool across venues" value={assetMoney(preparedUsdc.authorization.projectedMarketPool, 'USDC')} /> : null}
             {preparedUsdc.authorization.maxMarketPool != null ? <QuoteLine label="Maximum market pool" value={assetMoney(preparedUsdc.authorization.maxMarketPool, 'USDC')} /> : null}
-            <QuoteLine label="VAD trading fee" value={assetMoney(preparedUsdc.tradingFee, 'USDC')} />
-            <QuoteLine label="Maximum USDC debit" value={assetMoney(preparedUsdc.maximumWalletDebit, 'USDC')} />
-            <QuoteLine label="Network" value={selectedVenue?.chain_name ?? preparedUsdc.chainCode} />
             <QuoteLine label="Wallet" value={shortReference(preparedUsdc.walletAddress)} />
             <QuoteLine label="Authorization expires" value={formatAuthorizationExpiry(preparedUsdc.expiresAtUnix)} />
-          </View>
+            <InlineMessage
+              tone="brand"
+              title="Fee policy"
+              body="VAD sets fees through its approved policy. The contract enforces the signed fee and policy version."
+            />
+            <InlineMessage
+              tone="warning"
+              title="On-chain pool estimates"
+              body="USDC pool size and payout estimates will appear after on-chain positions are indexed. Internal-ledger totals are not reused."
+            />
+            <InlineMessage
+              tone="warning"
+              title="Payout-cap compatibility"
+              body="Settlement V1 cannot return a partial refund to losing positions after a normal result. The Peer Pool payout cap remains inactive for this protocol until a compatible contract version is deployed."
+            />
+            <InlineMessage
+              tone="brand"
+              title="Network gas"
+              body="Wallet gas is paid to the network separately. It is not a VAD fee or part of the debit above."
+            />
+          </VadProgressiveSection>
 
-          <InlineMessage
-            tone="brand"
-            title="Same VAD fee policy across supported currencies"
-            body="VAD sets fees through its approved policy. The contract enforces the signed fee and policy version."
-          />
-          <InlineMessage
-            tone="warning"
-            title="On-chain pool estimates are not shown yet"
-            body="USDC pool size and payout estimates will appear after on-chain positions are indexed. Internal-ledger totals are not reused."
-          />
-          <InlineMessage
-            tone="warning"
-            title="USDC payout-cap compatibility"
-            body="VAD Settlement V1 cannot return a partial refund to losing positions after a normal result. The Peer Pool payout cap remains inactive for this protocol until a compatible contract version is deployed. The stake and cumulative exposure limits shown above are enforced before authorization."
-          />
-          <InlineMessage
-            tone="brand"
-            title="Network gas is separate"
-            body="Wallet gas is paid to the network separately. It is not a VAD fee or part of the debit above."
-          />
           {placeError ? <InlineMessage tone="danger" title="USDC transaction not submitted" body={placeError} /> : null}
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
@@ -541,13 +558,11 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       ) : null}
 
       {step === 'review' && !isUsdc && quote ? (
-        <VadCard variant="brand" style={{ gap: 9, padding: 12 }}>
+        <VadCard variant="brand" style={{ gap: 10, padding: 12 }}>
           <View style={{ gap: 3 }}>
-            <VadText variant="caption" tone="brand">STEP 3 · REVIEW · NOT CHARGED YET</VadText>
+            <VadText variant="caption" tone="brand">STEP 3 · REVIEW</VadText>
             <VadText variant="heading">Confirm your prediction.</VadText>
-            <VadText variant="caption" tone="secondary">
-              Review fees and debit before committing. Payout estimates can change until market close.
-            </VadText>
+            <VadText variant="caption" tone="secondary">Check what leaves your wallet and the estimated settlement if you're correct.</VadText>
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -556,7 +571,39 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <VadChip label={market.asset_code} />
           </View>
 
-          <View style={{ gap: 2 }}>
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <MiniMetric label="Your stake" value={assetMoney(quote.amount, market.asset_code)} />
+            <MiniMetric label="VAD fee" value={assetMoney(quote.tradingFee, market.asset_code)} />
+          </View>
+
+          <View style={{ borderRadius: theme.radius.md, padding: theme.spacing.sm, gap: 5, backgroundColor: theme.colors.surface }}>
+            <VadText variant="caption" tone="tertiary">TOTAL DEBIT NOW</VadText>
+            <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{assetMoney(quote.maximumCashDebit, market.asset_code)}</VadText>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <VadText variant="caption" tone="tertiary">Est. net payout</VadText>
+                <VadText variant="bodyStrong">{assetMoney(quote.estimatedTotalNetSettlementPayout ?? quote.estimatedNetPayout, market.asset_code)}</VadText>
+              </View>
+              <View style={{ flex: 1 }}>
+                <VadText variant="caption" tone="tertiary">Est. profit / loss</VadText>
+                <VadText variant="bodyStrong" tone={Number(quote.estimatedNetProfitLossIfCorrect ?? 0) >= 0 ? 'yes' : 'no'}>
+                  {assetMoney(quote.estimatedNetProfitLossIfCorrect ?? 0, market.asset_code)}
+                </VadText>
+              </View>
+            </View>
+          </View>
+
+          <VadText variant="caption" tone="secondary">
+            Estimates can change as others stake. The entry fee is charged now; any settlement fee applies only if you win.
+          </VadText>
+
+          <VadProgressiveSection
+            title="Full quote breakdown"
+            eyebrow="ADVANCED DETAILS"
+            description="Your existing stakes, market limits, pool estimates and settlement calculation."
+            icon="activity"
+            summary={<VadText variant="caption" tone="tertiary">View all quote details</VadText>}
+          >
             <QuoteLine label="Your new stake" value={assetMoney(quote.amount, market.asset_code)} />
             <QuoteLine label={`Existing stake on ${outcomeLabel}`} value={assetMoney(quote.existingUserOutcomeStake ?? 0, market.asset_code)} />
             <QuoteLine label={`Combined ${outcomeLabel} stake if committed`} value={assetMoney(quote.combinedUserOutcomeStake ?? quote.amount, market.asset_code)} />
@@ -571,7 +618,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <QuoteLine label="Current implied share" value={probability(quote.impliedProbability)} />
             {quote.estimatedEntryGrossPayout != null ? <QuoteLine label="Estimated gross payout from this entry" value={assetMoney(quote.estimatedEntryGrossPayout, market.asset_code)} /> : null}
             <QuoteLine label="Estimated gross payout for your full winning position" value={assetMoney(quote.estimatedGrossPayout, market.asset_code)} />
-            {quote.appliedPayoutMultiple != null ? <QuoteLine label="Estimated payout multiple" value={`${Number(quote.appliedPayoutMultiple).toFixed(2)}×${quote.payoutCapApplies ? " (capped)" : ""}`} /> : null}
+            {quote.appliedPayoutMultiple != null ? <QuoteLine label="Estimated payout multiple" value={`${Number(quote.appliedPayoutMultiple).toFixed(2)}×${quote.payoutCapApplies ? ' (capped)' : ''}`} /> : null}
             {quote.maximumGrossPayoutMultiple != null ? <QuoteLine label="Market maximum payout multiple" value={`${Number(quote.maximumGrossPayoutMultiple).toFixed(2)}×`} /> : null}
             {quote.maxEntryStake != null ? <QuoteLine label="Maximum single stake" value={assetMoney(quote.maxEntryStake, market.asset_code)} /> : null}
             {quote.existingUserTradingFees != null ? <QuoteLine label="Trading fees already paid on existing entries" value={assetMoney(quote.existingUserTradingFees, market.asset_code)} /> : null}
@@ -581,11 +628,23 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <QuoteLine label="Estimated total settlement proceeds if correct" value={assetMoney(quote.estimatedTotalNetSettlementPayout ?? quote.estimatedNetPayout, market.asset_code)} />
             <QuoteLine label="Total cost across your position if committed" value={assetMoney(quote.estimatedTotalCostAfterCommit ?? quote.maximumCashDebit, market.asset_code)} />
             <QuoteLine label="Projected profit / loss if this outcome wins" value={assetMoney(quote.estimatedNetProfitLossIfCorrect ?? 0, market.asset_code)} />
-          </View>
+            <InlineMessage
+              tone="brand"
+              title="Profit estimate"
+              body="Projected profit or loss includes your existing stakes on both outcomes and their recorded trading fees. It assumes your selected outcome wins, uses the current pool and applicable policy, and can change before market close."
+            />
+            <InlineMessage
+              tone="brand"
+              title="Fee transparency"
+              body="The entry trading fee is charged now. The settlement fee is estimated on your combined winning-side position and deducted at settlement. Quotes are estimates and can change as other participants stake."
+            />
+            <InlineMessage
+              tone="brand"
+              title="Peer Pool settlement"
+              body="Winning payouts are stake-weighted. Bounded markets apply the published maximum payout multiple; any resulting surplus is returned to eligible losing-side participants under the market rules. VAD does not add company funds."
+            />
+          </VadProgressiveSection>
 
-          <InlineMessage tone="brand" title="Profit estimate" body="Projected profit or loss includes your existing stakes on both outcomes and their recorded trading fees. It assumes your selected outcome wins, uses the current pool and applicable policy, and can change before market close." />
-          <InlineMessage tone="brand" title="Fee transparency" body="The entry trading fee is charged now. The settlement fee is estimated on your combined winning-side position and deducted at settlement. Quotes are estimates and can change as other participants stake." />
-          <InlineMessage tone="brand" title="Peer Pool settlement" body="Winning payouts are stake-weighted. Bounded markets apply the published maximum payout multiple; any resulting surplus is returned to eligible losing-side participants under the market rules. VAD does not add company funds." />
           {placeError ? <InlineMessage tone="danger" title="Prediction not committed" body={placeError} /> : null}
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
@@ -858,18 +917,61 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
 
       {step === 'review' && quote ? (
-        <VadCard variant="brand" style={{ gap: 9, padding: 12 }}>
+        <VadCard variant="brand" style={{ gap: 10, padding: 12 }}>
           <View style={{ gap: 3 }}>
-            <VadText variant="caption" tone="brand">STEP 3 · MONEY & FEE PREVIEW · NOTHING PLACED YET</VadText>
-            <VadText variant="heading">Confirm before placing.</VadText>
-            <VadText variant="caption" tone="secondary">An order can remain unmatched. Only filled quantity becomes a real position. Maker/taker treatment depends on how the order fills.</VadText>
+            <VadText variant="caption" tone="brand">STEP 3 · REVIEW</VadText>
+            <VadText variant="heading">Review your order.</VadText>
+            <VadText variant="caption" tone="secondary">Your order can remain open until another trader matches it. Nothing is placed until you confirm.</VadText>
           </View>
+
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             <VadChip label={quote.outcomeCode} tone={quote.outcomeCode === 'YES' ? 'yes' : 'no'} />
             <VadChip label={quote.side} tone="brand" />
             <VadChip label="ORDER BOOK" />
           </View>
-          <View style={{ gap: 2 }}>
+
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <MiniMetric label="Order value" value={assetMoney(quote.notional, market.asset_code)} />
+            <MiniMetric label="Limit price" value={assetMoney(quote.price, market.asset_code)} />
+            <MiniMetric label="Shares" value={Number(quote.quantity).toLocaleString()} />
+          </View>
+
+          {quote.side === 'BUY' ? (
+            <View style={{ borderRadius: theme.radius.md, padding: theme.spacing.sm, gap: 5, backgroundColor: theme.colors.surface }}>
+              <VadText variant="caption" tone="tertiary">MAXIMUM WALLET DEBIT</VadText>
+              <VadText variant={density.phone ? 'title' : 'display'} numberOfLines={1} adjustsFontSizeToFit>{assetMoney(quote.maximumCashReservation, market.asset_code)}</VadText>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+                <VadText variant="caption" tone="secondary">Order value</VadText>
+                <VadText variant="caption" tone="secondary">{assetMoney(quote.notional, market.asset_code)}</VadText>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm }}>
+                <VadText variant="caption" tone="secondary">Maximum fee reserve</VadText>
+                <VadText variant="caption" tone="secondary">{assetMoney(quote.maximumFeeReserve, market.asset_code)}</VadText>
+              </View>
+            </View>
+          ) : (
+            <View style={{ borderRadius: theme.radius.md, padding: theme.spacing.sm, gap: 5, backgroundColor: theme.colors.surface }}>
+              <VadText variant="caption" tone="tertiary">SELL ORDER</VadText>
+              <VadText variant="bodyStrong">{Number(quote.availableSharesToSell).toLocaleString()} shares available to sell</VadText>
+              <VadText variant="caption" tone="secondary">The order can only fill up to your available position.</VadText>
+            </View>
+          )}
+
+          {quote.side === 'BUY' ? (
+            <QuoteLine label="Estimated net settlement if fully filled and correct" value={assetMoney(completeQuote?.estimatedNetSettlement ?? quote.potentialGrossSettlement, market.asset_code)} />
+          ) : null}
+
+          <VadText variant="caption" tone="secondary">
+            Maker/taker fees depend on how the order fills. Settlement fees apply only to an eligible winning payout and are estimates until resolution.
+          </VadText>
+
+          <VadProgressiveSection
+            title="Full quote breakdown"
+            eyebrow="ADVANCED DETAILS"
+            description="Market exposure, fee scenarios and settlement estimates."
+            icon="activity"
+            summary={<VadText variant="caption" tone="tertiary">View all quote details</VadText>}
+          >
             <QuoteLine label="Order value" value={assetMoney(quote.notional, market.asset_code)} />
             {quote.maxOrderNotional != null ? <QuoteLine label="Maximum order value" value={assetMoney(quote.maxOrderNotional, market.asset_code)} /> : null}
             {quote.currentUserMarketExposure != null ? <QuoteLine label="Current market exposure" value={assetMoney(quote.currentUserMarketExposure, market.asset_code)} /> : null}
@@ -884,8 +986,13 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
             <QuoteLine label="Gross settlement if fully filled and correct" value={assetMoney(quote.potentialGrossSettlement, market.asset_code)} />
             <QuoteLine label="Estimated VAD settlement fee if you win" value={assetMoney(completeQuote?.estimatedSettlementFee ?? 0, market.asset_code)} />
             <QuoteLine label="Estimated net settlement if you win" value={assetMoney(completeQuote?.estimatedNetSettlement ?? quote.potentialGrossSettlement, market.asset_code)} />
-          </View>
-          <InlineMessage tone="brand" title="Fee transparency" body="VAD reserves up to the displayed trading-fee amount for a BUY. The actual maker/taker fee follows the way each fill executes. The settlement fee applies only to an eligible winning payout and is shown here as an estimate before placement." />
+            <InlineMessage
+              tone="brand"
+              title="Fee transparency"
+              body="VAD reserves up to the displayed trading-fee amount for a BUY. The actual maker/taker fee follows the way each fill executes. The settlement fee applies only to an eligible winning payout and is shown here as an estimate before placement."
+            />
+          </VadProgressiveSection>
+
           {placeError ? <InlineMessage tone="danger" title="Order not placed" body={placeError} /> : null}
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Edit order" variant="secondary" disabled={working} onPress={() => setStep('order')} style={{ flex: 1 }} />
