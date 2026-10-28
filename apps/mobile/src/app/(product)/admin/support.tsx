@@ -118,7 +118,7 @@ export default function AdminSupportScreen() {
     return () => { active = false; };
   }, [activeTicketId]);
 
-  async function selectTicket(ticketId: string) {
+  function selectTicket(ticketId: string) {
     setActiveTicketId(ticketId);
     setError(null);
     setNotice(null);
