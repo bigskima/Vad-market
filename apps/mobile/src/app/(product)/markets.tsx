@@ -39,6 +39,7 @@ export default function MarketsRoute() {
       ) : (
         <MarketsScreen
           markets={data.markets}
+          loading={data.loading}
           onOpenMarket={openMarket}
           initialCategory={initialCategory}
           featuredMarkets={data.featuredMarkets}
