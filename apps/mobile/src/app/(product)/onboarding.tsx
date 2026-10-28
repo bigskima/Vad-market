@@ -15,6 +15,7 @@ import {
   deferAccountOnboarding,
   getAccountSetupState,
   markAccountOnboardingStarted,
+  isAccountOnboardingComplete,
   isAccountSetupComplete,
   markAccountOnboardingCompleted,
   type AccountSetupState,
@@ -58,7 +59,7 @@ export default function AccountOnboardingScreen() {
     try {
       const next = await getAccountSetupState(user, { includeMilestones: true });
       setState(next);
-      if (isAccountSetupComplete(next) && !user.user_metadata?.vad_onboarding_completed_at && completionMarkAttempted.current !== user.id) {
+      if (isAccountOnboardingComplete(next) && !user.user_metadata?.vad_onboarding_completed_at && completionMarkAttempted.current !== user.id) {
         completionMarkAttempted.current = user.id;
         try {
           await markAccountOnboardingCompleted();
@@ -103,7 +104,7 @@ export default function AccountOnboardingScreen() {
         const next = await getAccountSetupState(user, { includeMilestones: true });
         if (!active) return;
         setState(next);
-        if (isAccountSetupComplete(next) && !user.user_metadata?.vad_onboarding_completed_at && completionMarkAttempted.current !== user.id) {
+        if (isAccountOnboardingComplete(next) && !user.user_metadata?.vad_onboarding_completed_at && completionMarkAttempted.current !== user.id) {
           completionMarkAttempted.current = user.id;
           try {
             await markAccountOnboardingCompleted();
@@ -262,11 +263,18 @@ export default function AccountOnboardingScreen() {
     setWorking(true);
     setError(null);
     try {
-      await markAccountOnboardingCompleted();
+      if (state && isAccountOnboardingComplete(state)) {
+        await markAccountOnboardingCompleted();
+      } else {
+        // Account essentials can be complete before a member is ready to fund
+        // or trade. Let them continue into VAD and remind them after a week.
+        await deferAccountOnboarding(7);
+      }
       router.replace(returnToAccount ? '/account' : '/home');
-    } catch {
-      // The required steps are complete, so navigation should still work.
-      router.replace(returnToAccount ? '/account' : '/home');
+    } catch (reason) {
+      setError(reason instanceof Error
+        ? reason.message
+        : 'We could not save your onboarding progress. Please try again.');
     } finally {
       setWorking(false);
     }
@@ -465,7 +473,12 @@ export default function AccountOnboardingScreen() {
 
           <View style={{ gap: 9, paddingTop: 4 }}>
             {allRequiredComplete ? (
-              <VadButton label="Continue to VAD" size="large" loading={working} onPress={() => void continueToVAD()} />
+              <VadButton
+                label={working ? 'Saving…' : activationTasks.every((task) => task.complete) ? 'Finish onboarding' : 'Continue to VAD for now'}
+                size="large"
+                loading={working}
+                onPress={() => void continueToVAD()}
+              />
             ) : (
               <VadButton
                 label={working ? 'Saving…' : 'Remind me in 7 days'}
@@ -477,7 +490,7 @@ export default function AccountOnboardingScreen() {
               />
             )}
             <VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>
-              Verification may depend on the service available to your account. Optional security and currency preferences never block access to VAD.
+              VAD keeps first deposit and first trade on this checklist until they are confirmed. You can continue into the app and choose a seven-day reminder instead of completing them now.
             </VadText>
           </View>
         </ScrollView>
