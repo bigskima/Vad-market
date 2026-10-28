@@ -21,7 +21,6 @@ export const PRODUCT_TABS: {
 }[] = [
   { value: 'Home', label: 'Home', icon: 'home' },
   { value: 'Markets', label: 'Markets', icon: 'markets' },
-  { value: 'Play', label: 'Play', icon: 'activity' },
   { value: 'Wallet', label: 'Wallet', icon: 'wallet' },
   { value: 'Portfolio', label: 'Portfolio', icon: 'portfolio' },
   { value: 'Account', label: 'Account', icon: 'account' },
@@ -30,9 +29,11 @@ export const PRODUCT_TABS: {
 export function ProductTabBar({
   active,
   onChange,
+  onMenu,
 }: {
   active: ProductTab;
   onChange: (tab: ProductTab) => void;
+  onMenu: () => void;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -113,6 +114,30 @@ export function ProductTabBar({
             </Pressable>
           );
         })}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open VAD menu"
+          onPress={onMenu}
+          style={({ pressed }) => ({
+            flex: 1,
+            minWidth: 0,
+            minHeight: density.compact ? 46 : 50,
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            borderRadius: 19,
+            backgroundColor: pressed ? theme.colors.surfaceRaised : 'transparent',
+            opacity: pressed ? 0.78 : 1,
+            transform: [{ scale: pressed ? 0.96 : 1 }],
+          })}
+        >
+          <View style={{ minWidth: density.compact ? 30 : 34, height: density.compact ? 24 : 26, alignItems: 'center', justifyContent: 'center' }}>
+            <VadIcon name="menu" size={density.compact ? 19 : 21} tone="tertiary" />
+          </View>
+          <VadText variant="caption" tone="tertiary" numberOfLines={1} style={{ fontWeight: '500', fontSize: density.compact ? 9 : 10, lineHeight: 13, maxWidth: '100%' }}>
+            Menu
+          </VadText>
+        </Pressable>
       </View>
     </View>
   );
