@@ -1,3 +1,5 @@
+import * as Crypto from 'expo-crypto';
+
 import { supabase } from '@/lib/supabase';
 
 export type PlayExperience = {
@@ -15,6 +17,43 @@ export type PlayExperience = {
   display_order: number;
   published_at: string | null;
   public_config: Record<string, unknown> | null;
+};
+
+export type PlayCampaign = {
+  id: string;
+  experience_id: string;
+  slug: string;
+  title: string;
+  prize_title: string;
+  currency_code: string;
+  funding_threshold_amount: number | string;
+  qualifying_funds_amount: number | string;
+  entry_price_amount: number | string;
+  max_entries: number | null;
+  max_tickets_per_purchase: number;
+  entry_limit_per_user: number | null;
+  status: string;
+  rules_public: Record<string, unknown> | null;
+  opens_at: string | null;
+  closes_at: string | null;
+  published_at: string | null;
+};
+
+export type PlayTicket = {
+  ticketId: string;
+  ticketCode: string;
+  status: string;
+};
+
+export type PlayTicketPurchase = {
+  entryOrderId: string;
+  campaignId: string;
+  status: string;
+  ticketCount: number;
+  totalAmount: number | string;
+  currencyCode: string;
+  tickets: PlayTicket[];
+  idempotentReplay: boolean;
 };
 
 export type PlayActivity = {
@@ -56,6 +95,43 @@ export async function getPublishedPlayExperience(slug: string): Promise<PlayExpe
   return (data ?? null) as unknown as PlayExperience | null;
 }
 
+export async function listExperiencePlayCampaigns(experienceId: string): Promise<PlayCampaign[]> {
+  if (!experienceId) return [];
+
+  const { data, error } = await supabase
+    .from('play_campaigns')
+    .select('id, experience_id, slug, title, prize_title, currency_code, funding_threshold_amount, qualifying_funds_amount, entry_price_amount, max_entries, max_tickets_per_purchase, entry_limit_per_user, status, rules_public, opens_at, closes_at, published_at')
+    .eq('experience_id', experienceId)
+    .in('status', ['OPEN', 'FUNDING_TARGET_MET', 'FUNDING_SHORTFALL', 'ENTRY_CLOSED', 'DRAW_ELIGIBLE', 'DRAW_AUTHORIZED', 'DRAWN', 'SETTLED'])
+    .order('opens_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as unknown as PlayCampaign[];
+}
+
+export async function buyPlayTickets(
+  campaignId: string,
+  ticketCount: number,
+  idempotencyKey: string,
+): Promise<PlayTicketPurchase> {
+  const { data, error } = await supabase.rpc('play_buy_tickets', {
+    p_campaign_id: campaignId,
+    p_ticket_count: ticketCount,
+    p_idempotency_key: idempotencyKey,
+  });
+
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('VAD returned an unexpected ticket purchase response.');
+  }
+
+  return data as unknown as PlayTicketPurchase;
+}
+
+export function createPlayIdempotencyKey() {
+  return Crypto.randomUUID();
+}
+
 export async function listMyPlayActivity(userId: string): Promise<PlayActivity[]> {
   if (!userId) return [];
 
@@ -75,11 +151,57 @@ export function playFriendlyError(error: unknown) {
     ? String((error as { code?: unknown }).code ?? '')
     : '';
 
-  if (code === '42P01' || code === 'PGRST205' || code === 'PGRST200') {
-    return 'VAD Play data is not available in this environment yet. Apply the Play foundation migration and try again.';
+  if (['42P01', '42703', '42883', 'PGRST202', 'PGRST205', 'PGRST200'].includes(code)) {
+    return 'VAD Play database changes are not available in this environment yet. Apply the reviewed Play migrations and try again.';
   }
 
   return 'We could not load this Play information. Check your connection and try again.';
+}
+
+export function playPurchaseFriendlyError(error: unknown) {
+  const message = error instanceof Error
+    ? error.message.toLowerCase()
+    : typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message?: unknown }).message ?? '').toLowerCase()
+      : '';
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code?: unknown }).code ?? '')
+    : '';
+
+  if (message.includes('insufficient available balance')) {
+    return 'Your available VAD wallet balance is not enough for this purchase. Reduce the ticket quantity or fund your wallet.';
+  }
+  if (message.includes('location verification')) {
+    return 'Complete the required location verification before buying entries with NGN.';
+  }
+  if (message.includes('identity verification') || message.includes('kyc')) {
+    return 'Complete the required identity verification before buying paid entries.';
+  }
+  if (message.includes('jurisdiction')) {
+    return 'Paid entries in this currency are not available for your account’s current jurisdiction.';
+  }
+  if (message.includes('not accepting entries') || message.includes('campaign is not accepting')) {
+    return 'This campaign has stopped accepting entries. Refresh the page to see its latest status.';
+  }
+  if (message.includes('not enabled for paid entries') || message.includes('engine is not')) {
+    return 'Paid entries are not currently enabled for this game. No purchase was made.';
+  }
+  if (message.includes('exceeds this campaign')) {
+    return 'That ticket quantity exceeds this campaign’s limit. Choose a smaller quantity.';
+  }
+  if (message.includes('not enough entries remaining')) {
+    return 'There are not enough tickets remaining for that quantity. Refresh the campaign and try again.';
+  }
+  if (message.includes('sign in') || code === '28000') {
+    return 'Sign in to your VAD account before buying tickets.';
+  }
+  if (message.includes('idempotency key')) {
+    return 'This purchase request was already used. Retry the same request to confirm whether tickets were issued.';
+  }
+  if (message.includes('required reviews')) {
+    return 'This campaign has not completed its required approvals. No purchase was made.';
+  }
+  return 'We could not confirm this ticket purchase. Retry the same request before starting another purchase.';
 }
 
 export function playExperienceLabel(value: string) {
