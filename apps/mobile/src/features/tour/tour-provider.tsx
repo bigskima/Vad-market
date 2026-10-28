@@ -111,9 +111,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       setDefinition(null);
       setProgress(DEFAULT_TOUR_PROGRESS);
       setLoadedUserId(userId);
-      setError(loadError instanceof Error
-        ? loadError.message
-        : 'The guided tour is unavailable right now. You can try again later from Account.');
+      setError('Tour unavailable. Try again later from Account.');
       return null;
     } finally {
       setLoading(false);
@@ -187,9 +185,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
         tourVersionId: versionId,
       }));
     }).catch((saveError) => {
-      setError(saveError instanceof Error
-        ? saveError.message
-        : 'We could not save your guided tour progress. Please try again.');
+      setError('Could not save tour progress. Try again.');
     });
   }, [definition, progress]);
 
@@ -231,9 +227,7 @@ export function ProductTourProvider({ children }: PropsWithChildren) {
       status: 'IN_PROGRESS',
       currentStepKey: step.id,
     }).catch((saveError) => {
-      setError(saveError instanceof Error
-        ? saveError.message
-        : 'We could not save your guided tour progress. Please try again.');
+      setError('Could not save tour progress. Try again.');
     });
 
     navigateToStep(step);
@@ -577,31 +571,31 @@ function TourOverlay({
           {showReminderChoices ? (
             <>
               <View style={{ gap: 5 }}>
-                <VadText variant="caption" tone="brand">PAUSE THE TOUR</VadText>
-                <VadText variant="heading">When should VAD remind you?</VadText>
+                <VadText variant="caption" tone="brand">PAUSE TOUR</VadText>
+                <VadText variant="heading">Remind me later?</VadText>
                 <VadText variant="caption" tone="secondary">
-                  Finishing the tour turns automatic reminders off. You can still take it again from Account at any time.
+                  Finish to turn off reminders. Restart the tour anytime from Account.
                 </VadText>
               </View>
               <View style={{ gap: theme.spacing.xs }}>
                 <VadButton label="Remind me tomorrow" variant="tonal" onPress={() => onPostpone(24 * 60 * 60 * 1000)} />
                 <VadButton label="Remind me in 7 days" variant="secondary" onPress={() => onPostpone(7 * 24 * 60 * 60 * 1000)} />
                 <VadButton label="Remind me in 30 days" variant="secondary" onPress={() => onPostpone(30 * 24 * 60 * 60 * 1000)} />
-                <VadButton label="Don't remind me automatically" variant="ghost" onPress={() => onPostpone(null)} />
-                <VadButton label="Keep touring" variant="ghost" onPress={onKeepTouring} />
+                <VadButton label="Don't remind me" variant="ghost" onPress={() => onPostpone(null)} />
+                <VadButton label="Continue tour" variant="ghost" onPress={onKeepTouring} />
               </View>
             </>
           ) : (
             <>
               <View style={{ gap: 5 }}>
-                <VadText variant="caption" tone="brand">STEP {stepNumber} OF {totalSteps}</VadText>
+                <VadText variant="caption" tone="brand">Step {stepNumber} of {totalSteps}</VadText>
                 <VadText variant="heading">{step.title}</VadText>
                 <VadText tone="secondary">{step.body}</VadText>
                 {!rect ? (
                   <VadText variant="caption" tone={targetUnavailable ? 'danger' : 'tertiary'}>
                     {targetUnavailable
-                      ? 'This screen anchor is not available in this view. Continue to the next mapped control or go back.'
-                      : 'Moving to the selected control…'}
+                      ? 'This step isn't available here. Continue or go back.'
+                      : 'Finding this step…'}
                   </VadText>
                 ) : null}
               </View>
