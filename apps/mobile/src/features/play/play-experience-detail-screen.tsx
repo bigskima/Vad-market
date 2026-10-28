@@ -76,6 +76,8 @@ export function PlayExperienceDetailScreen() {
 
   const safeHeroUrl = playMediaPublicUrl(experience?.hero_asset_url);
 
+  if (loading) return <PlayExperienceDetailSkeleton />;
+
   return (
     <View style={{ gap: theme.spacing.lg }}>
       <Pressable
@@ -91,9 +93,7 @@ export function PlayExperienceDetailScreen() {
       <PlayTabNavigation active="Discover" />
       <PlayAdSlot placementCode="play-experience-inline" />
 
-      {loading ? (
-        <PlayExperienceDetailSkeleton />
-      ) : error ? (
+      {error ? (
         <PlayMessageState title="Experience details are unavailable" body={error} actionLabel="Retry" onAction={() => void load()} tone="error" />
       ) : !experience ? (
         <PlayMessageState title="This experience is not available" body="This experience is not currently published." actionLabel="Browse experiences" onAction={() => router.replace('/play/games')} />
