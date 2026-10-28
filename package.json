@@ -20,6 +20,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "check": "npm run lint && npm run typecheck && npm run test",
+    "check:sql-migrations": "node scripts/check-sql-migration-terminators.mjs",
     "supabase": "supabase",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
