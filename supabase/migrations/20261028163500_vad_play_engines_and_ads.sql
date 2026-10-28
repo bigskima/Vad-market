@@ -756,6 +756,10 @@ declare
   v_profit_value numeric;
   v_cost_budget numeric;
   v_entry_price numeric;
+  v_max_entries integer;
+  v_max_tickets_per_purchase integer;
+  v_entry_limit_per_user integer;
+  v_rules_public jsonb;
 begin
   if auth.uid() is null
      or not (private.is_super_admin() or private.has_permission('play.manage')) then
@@ -776,6 +780,10 @@ begin
   v_profit_value := nullif(p_payload->>'profit_target_value','')::numeric;
   v_cost_budget := nullif(p_payload->>'campaign_cost_budget_amount','')::numeric;
   v_entry_price := nullif(p_payload->>'entry_price_amount','')::numeric;
+  v_max_entries := nullif(p_payload->>'max_entries','')::integer;
+  v_max_tickets_per_purchase := nullif(p_payload->>'max_tickets_per_purchase','')::integer;
+  v_entry_limit_per_user := nullif(p_payload->>'entry_limit_per_user','')::integer;
+  v_rules_public := coalesce(p_payload->'rules_public','{}'::jsonb);
 
   if v_experience_id is null or v_slug = '' or v_title = '' or v_prize_title = '' or v_currency = '' then
     raise exception 'Experience, slug, campaign title, prize title and currency are required' using errcode = '22023';
@@ -785,9 +793,19 @@ begin
      or v_cost_budget is null or v_entry_price is null then
     raise exception 'Prize cost, profit mode/value, campaign cost budget, and entry price must all be explicitly configured' using errcode = '22023';
   end if;
-  if jsonb_typeof(coalesce(p_payload->'rules_public','{}'::jsonb)) <> 'object'
+  if jsonb_typeof(v_rules_public) <> 'object'
      or jsonb_typeof(coalesce(p_payload->'engine_config','{}'::jsonb)) <> 'object' then
     raise exception 'Campaign rules and engine configuration must be JSON objects' using errcode = '22023';
+  end if;
+  if v_max_entries is null or v_max_entries <= 0
+     or v_max_tickets_per_purchase is null or v_max_tickets_per_purchase <= 0
+     or v_max_tickets_per_purchase > v_max_entries
+     or (v_entry_limit_per_user is not null and (v_entry_limit_per_user <= 0 or v_entry_limit_per_user > v_max_entries)) then
+    raise exception 'Configure valid finite campaign, per-purchase and optional per-user entry caps' using errcode = '22023';
+  end if;
+  if char_length(btrim(coalesce(v_rules_public->>'terms',''))) < 20
+     or char_length(btrim(coalesce(v_rules_public->>'refund_policy',''))) < 10 then
+    raise exception 'Campaign terms and refund/shortfall policy are required before saving this campaign' using errcode = '22023';
   end if;
 
   if v_id is null then
@@ -795,14 +813,13 @@ begin
       experience_id, slug, title, prize_title, currency_code,
       prize_cost_amount, profit_target_mode, profit_target_value,
       campaign_cost_budget_amount, entry_price_amount,
-      max_entries, entry_limit_per_user, rules_public, engine_config, created_by
+      max_entries, max_tickets_per_purchase, entry_limit_per_user, rules_public, engine_config, created_by
     ) values (
       v_experience_id, v_slug, v_title, v_prize_title, v_currency,
       v_prize_cost, v_profit_mode, v_profit_value,
       v_cost_budget, v_entry_price,
-      nullif(p_payload->>'max_entries','')::integer,
-      nullif(p_payload->>'entry_limit_per_user','')::integer,
-      coalesce(p_payload->'rules_public','{}'::jsonb),
+      v_max_entries, v_max_tickets_per_purchase, v_entry_limit_per_user,
+      v_rules_public,
       coalesce(p_payload->'engine_config','{}'::jsonb), auth.uid()
     ) returning id into v_id;
   else
@@ -812,9 +829,10 @@ begin
         prize_cost_amount = v_prize_cost, profit_target_mode = v_profit_mode,
         profit_target_value = v_profit_value, campaign_cost_budget_amount = v_cost_budget,
         entry_price_amount = v_entry_price,
-        max_entries = nullif(p_payload->>'max_entries','')::integer,
-        entry_limit_per_user = nullif(p_payload->>'entry_limit_per_user','')::integer,
-        rules_public = coalesce(p_payload->'rules_public','{}'::jsonb),
+        max_entries = v_max_entries,
+        max_tickets_per_purchase = v_max_tickets_per_purchase,
+        entry_limit_per_user = v_entry_limit_per_user,
+        rules_public = v_rules_public,
         engine_config = coalesce(p_payload->'engine_config','{}'::jsonb),
         updated_at = now()
     where id = v_id and status in ('DRAFT','COMPLIANCE_REVIEW')
