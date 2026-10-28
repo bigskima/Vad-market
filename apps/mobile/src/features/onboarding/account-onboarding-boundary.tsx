@@ -7,7 +7,6 @@ import {
   getAccountSetupState,
   isAccountOnboardingComplete,
   markAccountOnboardingCompleted,
-  markAccountOnboardingStarted,
   shouldPromptAccountOnboarding,
 } from '@/services/account-onboarding-api';
 
@@ -59,24 +58,17 @@ export function AccountOnboardingBoundary({ children }: { children: ReactNode })
           return;
         }
 
-        try {
-          await markAccountOnboardingStarted();
-        } catch {
-          // The guided screen remains available; a metadata write must not lock
-          // a signed-in member out of the product.
-        }
         if (!cancelled) {
+          // Route first. The onboarding screen persists its started marker so
+          // updating Supabase auth metadata cannot cancel this navigation.
           router.replace({ pathname: '/onboarding', params: { source: 'auto' } });
         }
       } catch {
         // An unavailable setup check should be explained on the onboarding
         // screen and must still offer a persisted "remind me later" action.
-        try {
-          await markAccountOnboardingStarted();
-        } catch {
-          // Route to the retry/skip surface even if metadata is unavailable.
-        }
         if (!cancelled) {
+          // The checklist provides a retry and a persisted reminder when a
+          // status service is temporarily unavailable.
           router.replace({ pathname: '/onboarding', params: { source: 'auto' } });
         }
       }
