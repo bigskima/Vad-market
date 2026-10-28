@@ -16,13 +16,13 @@ export default function ProductLayout() {
       <ProductDataProvider>
         <ProductTourProvider>
           <AccountOnboardingBoundary>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: theme.colors.background },
-              animation: 'fade',
-            }}
-          />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: theme.colors.background },
+                animation: 'fade',
+              }}
+            />
           </AccountOnboardingBoundary>
         </ProductTourProvider>
       </ProductDataProvider>
