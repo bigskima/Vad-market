@@ -66,7 +66,7 @@ export function PeerMarketPortfolio({ poolStakes, marketHistory }: { poolStakes:
     <View style={{ gap: theme.spacing.md }}>
       <VadSectionHeader
         title="Predictions"
-        subtitle="Every committed prediction remains traceable. Wins and losses stay permanently recorded with the final result, fees, payout and P&L."
+        subtitle="Track your predictions, results and payouts."
       />
       <VadSegmentedControl
         value={tab}
@@ -88,19 +88,19 @@ export function PeerMarketPortfolio({ poolStakes, marketHistory }: { poolStakes:
               </View>
             ))}
           </View>
-        ) : <VadEmptyState title="No active pooled predictions" body="When you commit a stake to a peer-funded market, it appears here immediately and remains traceable through result and settlement." />
+        ) : <VadEmptyState title="No active pooled predictions" body="Your open predictions will appear here." />
       ) : null}
 
       {tab !== 'active' ? (
         rows.length ? (
           <View style={{ gap: theme.spacing.md }}>
             <VadCard variant="brand" style={{ gap: 4 }}>
-              <VadText variant="caption" tone="brand">PERMANENT RESULT RECORD</VadText>
+              <VadText variant="caption" tone="brand">RESULT HISTORY</VadText>
               <VadText variant="bodyStrong">
                 {tab === 'wins' ? 'Your settled wins live here.' : tab === 'losses' ? 'Your settled losses stay visible too.' : 'Refunds, voids and in-progress results stay separate.'}
               </VadText>
               <VadText variant="caption" tone="secondary">
-                Your private Portfolio always keeps the complete result. Before sharing or saving, you can independently hide payout and P&L from the social card.
+                Your private record stays complete. Hide payout or P&L on shared cards.
               </VadText>
             </VadCard>
             <View style={{ flexDirection: density.wide ? 'row' : 'column', flexWrap: density.wide ? 'wrap' : 'nowrap', gap: theme.spacing.md }}>
@@ -114,7 +114,7 @@ export function PeerMarketPortfolio({ poolStakes, marketHistory }: { poolStakes:
         ) : (
           <VadEmptyState
             title={tab === 'wins' ? 'No settled wins yet' : tab === 'losses' ? 'No settled losses yet' : 'No other results'}
-            body={tab === 'wins' ? 'A winning prediction appears here permanently after settlement, even after its celebration has been shown.' : tab === 'losses' ? 'When a prediction settles against your position, its full result and loss record appears here.' : 'Refunded, voided or still-settling markets appear here when applicable.'}
+            body={tab === 'wins' ? 'Your winning predictions appear here after settlement.' : tab === 'losses' ? 'Your settled losses appear here.' : 'Refunds, voids and pending results appear here.'}
           />
         )
       ) : null}
@@ -300,7 +300,7 @@ function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCa
       <View style={{ borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.sm, gap: theme.spacing.sm }}>
         <View style={{ gap: 2 }}>
           <VadText variant="caption" tone="brand">SHARE CARD PRIVACY</VadText>
-          <VadText variant="caption" tone="secondary">These switches affect only the exported/shared card. Your private Portfolio record stays complete.</VadText>
+          <VadText variant="caption" tone="secondary">Only shared cards are affected. Your private record stays complete.</VadText>
         </View>
         <PrivacyToggle label="Include payout" value={showPayout} onChange={setShowPayout} />
         <PrivacyToggle label="Include P&L" value={showPnl} onChange={setShowPnl} />
@@ -312,11 +312,11 @@ function ResultCard({ row, profile }: { row: MarketHistoryRow; profile: ResultCa
             <VadText variant="caption" tone="tertiary">YOUR INVITE CODE</VadText>
             <VadText variant="bodyStrong" tone="brand" selectable>{profile.inviteCode}</VadText>
           </View>
-          <VadChip label="INCLUDED ON CARD" tone="brand" />
+          <VadChip label="ON CARD" tone="brand" />
         </View>
       ) : null}
 
-      <VadText variant="caption" tone="secondary">The preview uses landscape bank-card proportions; payout and P&L privacy switches apply to shared financial details.</VadText>
+      <VadText variant="caption" tone="secondary">Choose what payout and P&L details appear on your shared card.</VadText>
       {actionError ? <VadText variant="caption" tone="danger">{actionError}</VadText> : null}
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
