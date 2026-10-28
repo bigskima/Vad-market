@@ -1,5 +1,11 @@
 import { supabase } from '@/lib/supabase';
 import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
+import {
+  getMarketHistory,
+  getPoolStakes,
+  getPortfolioOrderHistory,
+} from '@/services/market-api';
+import { getMyPaymentIntents } from '@/services/payment-api';
 
 export const ACCOUNT_ONBOARDING_REMINDER_DAYS = 7;
 const FRESH_ACCOUNT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -21,6 +27,10 @@ export type AccountSetupState = {
   kycComplete: boolean;
   kycStatus: KycStatus | null;
   mfaEnabled: boolean | null;
+  firstDepositComplete: boolean;
+  firstDepositCheckAvailable: boolean;
+  firstTradeComplete: boolean;
+  firstTradeCheckAvailable: boolean;
 };
 
 export function accountOnboardingIsDeferred(
@@ -98,6 +108,7 @@ export async function deferAccountOnboarding(
 
 export async function getAccountSetupState(
   user: AccountSetupUser,
+  options: { includeMilestones?: boolean } = {},
 ): Promise<AccountSetupState> {
   const [profileResult, kycResult] = await Promise.all([
     supabase
@@ -130,6 +141,44 @@ export async function getAccountSetupState(
     // MFA is a recommendation; its availability never blocks account setup.
   }
 
+  let firstDepositComplete = false;
+  let firstDepositCheckAvailable = false;
+  let firstTradeComplete = false;
+  let firstTradeCheckAvailable = false;
+
+  if (options.includeMilestones) {
+    const [paymentsResult, ordersResult, poolStakesResult, historyResult] = await Promise.allSettled([
+      getMyPaymentIntents(100),
+      getPortfolioOrderHistory(200),
+      getPoolStakes(),
+      getMarketHistory(),
+    ]);
+
+    if (paymentsResult.status === 'fulfilled') {
+      firstDepositCheckAvailable = true;
+      firstDepositComplete = paymentsResult.value.some((payment) => {
+        if (payment.operation !== 'DEPOSIT') return false;
+        const status = String(payment.status ?? '').toUpperCase();
+        return Boolean(payment.settled_at)
+          || ['SETTLED', 'COMPLETED', 'SUCCEEDED', 'SUCCESS', 'PAID'].includes(status);
+      });
+    }
+
+    // Count an actual fill or a committed/settled pool prediction as the first
+    // trade. Unfilled orders and merely opening a market do not qualify.
+    const ordersChecked = ordersResult.status === 'fulfilled';
+    const poolStakesChecked = poolStakesResult.status === 'fulfilled';
+    const historyChecked = historyResult.status === 'fulfilled';
+    firstTradeCheckAvailable = ordersChecked && poolStakesChecked && historyChecked;
+    firstTradeComplete = (
+      ordersChecked && ordersResult.value.some((order) => Number(order.filled_quantity) > 0)
+    ) || (
+      poolStakesChecked && poolStakesResult.value.some((stake) => Number(stake.amount) > 0)
+    ) || (
+      historyChecked && historyResult.value.length > 0
+    );
+  }
+
   return {
     contactConfirmed: Boolean(user.email_confirmed_at || user.phone_confirmed_at),
     contactKind: user.email ? 'email' : 'phone',
@@ -140,6 +189,10 @@ export async function getAccountSetupState(
     kycComplete,
     kycStatus,
     mfaEnabled,
+    firstDepositComplete,
+    firstDepositCheckAvailable,
+    firstTradeComplete,
+    firstTradeCheckAvailable,
   };
 }
 
