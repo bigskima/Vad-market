@@ -116,7 +116,7 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
                 setNotice(page.message ?? null);
                 setError(null);
               })
-              .catch((value: unknown) => setError(userFacingErrorMessage(value, 'general', 'Financial data is unavailable. Try again.'))
+              .catch((value: unknown) => setError(userFacingErrorMessage(value, 'general', 'Financial data is unavailable. Try again.')))
               .finally(() => setLoading(false));
           }}
         />
