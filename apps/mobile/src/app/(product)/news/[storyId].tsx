@@ -189,12 +189,12 @@ export default function NewsStoryRoute() {
           <DetailRow label="Publisher" value={details?.source || fallback.source || 'Not listed'} />
           <DetailRow label="Author" value={details?.author || fallback.author || 'Not provided'} />
           <DetailRow label="Section" value={details?.section || fallback.section || categoryLabel} />
-          <DetailRow label="Published" value={publishDate ? new Date(publishDate).toLocaleString() : 'Publisher timestamp unavailable'} />
-          <DetailRow label="Language" value={details?.language || fallback.language || 'Not indexed'} />
-          <DetailRow label="Publisher country" value={details?.sourceCountry || fallback.sourceCountry || 'Not indexed'} />
+          <DetailRow label="Published" value={publishDate ? new Date(publishDate).toLocaleString() : 'Date not listed'} />
+          <DetailRow label="Language" value={details?.language || fallback.language || 'Not provided'} />
+          <DetailRow label="Publisher country" value={details?.sourceCountry || fallback.sourceCountry || 'Not provided'} />
           {details?.tags?.length ? (
             <View style={{ gap: 6 }}>
-              <VadText variant="caption" tone="secondary">Publisher keywords</VadText>
+              <VadText variant="caption" tone="secondary">Topics</VadText>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 {details.tags.slice(0, 10).map((tag) => (
                   <View key={tag} style={{ paddingHorizontal: 9, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border }}>
