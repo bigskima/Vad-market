@@ -20,7 +20,6 @@ export function AccountSetupCard() {
   const [state, setState] = useState<AccountSetupState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [opening, setOpening] = useState(false);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -48,8 +47,6 @@ export function AccountSetupCard() {
   }, [user]));
 
   const openSetup = () => {
-    if (opening) return;
-    setOpening(true);
     router.push({ pathname: '/onboarding', params: { source: 'account' } });
   };
 
@@ -83,10 +80,9 @@ export function AccountSetupCard() {
       </View>
       {error ? <VadText variant="caption" tone="danger">{error}</VadText> : null}
       <VadButton
-        label={opening ? 'Opening setup…' : 'Review setup'}
+        label="Review setup"
         variant="secondary"
-        loading={opening}
-        onPress={() => void openSetup()}
+        onPress={openSetup}
       />
     </VadCard>
   );
