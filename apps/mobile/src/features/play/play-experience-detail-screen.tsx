@@ -42,7 +42,7 @@ export function PlayExperienceDetailScreen() {
     if (!slug) {
       setExperience(null);
       setCampaigns([]);
-      setError('The experience link is incomplete.');
+      setError('The game link is incomplete.');
       setLoading(false);
       return;
     }
@@ -90,11 +90,11 @@ export function PlayExperienceDetailScreen() {
       <PlayAdSlot placementCode="play-experience-inline" />
 
       {loading ? (
-        <PlayLoadingState label="Loading experience details" />
+        <PlayLoadingState label="Loading game details" variant="playDetail" />
       ) : error ? (
-        <PlayMessageState title="Experience details are unavailable" body={error} actionLabel="Retry" onAction={() => void load()} tone="error" />
+        <PlayMessageState title="Game details unavailable" body={error} actionLabel="Retry" onAction={() => void load()} tone="error" />
       ) : !experience ? (
-        <PlayMessageState title="This experience is not available" body="It may have been unpublished or its link may have changed. The catalogue only opens experiences that are currently published." actionLabel="Browse experiences" onAction={() => router.replace('/play/games')} />
+        <PlayMessageState title="Game unavailable" body="This game may have been unpublished." actionLabel="Browse games" onAction={() => router.replace('/play/games')} />
       ) : (
         <>
           {safeHeroUrl ? (
@@ -118,15 +118,15 @@ export function PlayExperienceDetailScreen() {
           {experience.engine_key === 'PRIZE_DRAW' ? (
             <View style={{ gap: theme.spacing.md }}>
               <View style={{ gap: 4 }}>
-                <VadText variant="heading">Prize campaigns</VadText>
-                <VadText tone="secondary">Campaign amounts, qualifying funds, deadlines and policies come from the published database record.</VadText>
+                <VadText variant="heading">Campaigns</VadText>
+                <VadText tone="secondary">Price, funding progress, deadline and rules.</VadText>
               </View>
               {campaignError ? (
-                <PlayMessageState title="Campaigns could not be loaded" body={campaignError} actionLabel="Refresh campaigns" onAction={() => void loadCampaigns(experience.id)} tone="error" />
+                <PlayMessageState title="Campaigns unavailable" body={campaignError} actionLabel="Refresh campaigns" onAction={() => void loadCampaigns(experience.id)} tone="error" />
               ) : campaigns.length === 0 ? (
                 <PlayMessageState
-                  title="No published campaigns are available"
-                  body="Only published campaign records appear here. A campaign is shown when its status and experience are eligible for public viewing."
+                  title="No campaigns live"
+                  body="Published campaigns will appear here."
                   actionLabel="Refresh campaigns"
                   onAction={() => void loadCampaigns(experience.id)}
                 />
@@ -143,7 +143,7 @@ export function PlayExperienceDetailScreen() {
                 <VadText variant="heading">This engine is not enabled</VadText>
               </View>
               <VadText tone="secondary">
-                This engine remains unavailable until its server runtime, independent review and explicit activation have passed the required checks. No demo outcomes or client-generated prizes are used.
+                This game engine is still under review.
               </VadText>
             </View>
           )}
@@ -153,7 +153,7 @@ export function PlayExperienceDetailScreen() {
             onPress={() => router.replace('/play/games')}
             style={({ pressed }) => ({ minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandPrimary, paddingHorizontal: 18, opacity: pressed ? 0.8 : 1 })}
           >
-            <VadText variant="label" tone="inverse">Explore other experiences</VadText>
+            <VadText variant="label" tone="inverse">More games</VadText>
           </Pressable>
         </>
       )}
