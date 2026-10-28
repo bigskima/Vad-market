@@ -5,6 +5,7 @@ import { TourTarget } from '@/features/tour/tour-provider';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
+import { WalletLedgerSkeleton } from '@/components/ui/screen-skeletons';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { WalletLedgerActivity } from '@/features/wallet/wallet-ledger-activity';
@@ -39,7 +40,9 @@ export default function WalletActivityRoute() {
             </VadCard>
           </Pressable>
 
-          {data.sectionErrors.walletActivity && !data.walletActivity.length ? (
+          {data.loading && !data.walletActivity.length ? (
+            <WalletLedgerSkeleton />
+          ) : data.sectionErrors.walletActivity && !data.walletActivity.length ? (
             <VadErrorState title="Wallet ledger unavailable" message={data.sectionErrors.walletActivity} onRetry={() => void data.refreshPortfolio()} />
           ) : (
             <WalletLedgerActivity rows={data.walletActivity} />
