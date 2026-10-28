@@ -31,8 +31,9 @@ Deno.serve(async (req: Request) => {
     if (authError || !authData.user) return json({ error: 'AUTH_INVALID', message: 'Your sign-in session is invalid or expired.' }, 401);
     const actor = createClient(url, anon, { global: { headers: { Authorization: 'Bearer ' + token } }, auth: { persistSession: false, autoRefreshToken: false } });
     const { data: access, error: accessError } = await actor.rpc('admin_my_access');
-    const permissions = Array.isArray(access?.permissions) ? access.permissions : [];
-    if (accessError || !(permissions.includes('play.manage') || access?.isSuperAdmin === true)) {
+    const accessRecord = isRecord(access) ? access : {};
+    const permissions = Array.isArray(accessRecord.permissions) ? accessRecord.permissions : [];
+    if (accessError || !(permissions.includes('play.manage') || accessRecord.isSuperAdmin === true)) {
       return json({ error: 'PLAY_PERMISSION_REQUIRED', message: 'The play.manage permission is required to generate artwork.' }, 403);
     }
 
