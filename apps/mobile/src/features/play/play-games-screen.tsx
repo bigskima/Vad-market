@@ -89,7 +89,7 @@ export function PlayGamesScreen() {
           accessibilityLabel="Search Play experiences"
           value={query}
           onChangeText={setQuery}
-          placeholder="Search games and experiences"
+          placeholder="Search games"
           placeholderTextColor={theme.colors.textTertiary}
           autoCapitalize="none"
           returnKeyType="search"
@@ -137,13 +137,13 @@ export function PlayGamesScreen() {
       ) : null}
 
       {error ? (
-        <PlayMessageState title="Games could not be loaded" body={error} actionLabel="Retry" onAction={refresh} tone="error" />
+        <PlayMessageState title="Can't load games" body="Try again in a moment." actionLabel="Retry" onAction={refresh} tone="error" />
       ) : filtered.length === 0 ? (
         <PlayMessageState
-          title={experiences.length === 0 ? 'The games catalogue is empty' : 'No matches found'}
+          title={experiences.length === 0 ? 'No games yet' : 'No matches'}
           body={experiences.length === 0
-            ? 'New published games will appear here.'
-            : 'Try another search or type.'}
+            ? 'New games will appear here.'
+            : 'Try another search or filter.'}
           actionLabel={experiences.length === 0 ? 'Back to Discover' : 'Clear filters'}
           onAction={() => {
             if (experiences.length === 0) router.replace('/play');
