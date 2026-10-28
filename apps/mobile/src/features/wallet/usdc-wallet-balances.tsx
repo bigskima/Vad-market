@@ -69,7 +69,7 @@ export function UsdcWalletBalances() {
       ) : !wallets.length ? (
         <VadEmptyState
           title="Verify an EVM wallet first"
-          body="After you activate and verify your VAD wallet, balances on Arc Mainnet and Polygon will appear here when their RPC endpoints are available."
+          body="Set up your VAD wallet to view USDC balances on supported networks."
         />
       ) : (
         <View style={{ gap: theme.spacing.sm }}>
