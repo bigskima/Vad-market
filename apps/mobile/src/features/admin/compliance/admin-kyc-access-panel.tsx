@@ -217,7 +217,7 @@ function AccessEditor({ row, onClose, onSaved }: { row: AdminKycAccessRow | null
         <View style={{ gap: theme.spacing.lg }}>
           <View style={{ gap: 2 }}>
             <VadText variant="heading">{row.display_name || row.email || 'VAD user'}</VadText>
-            <VadText variant="caption" tone="secondary">Actual KYC: {row.provider_kyc_status} · {row.verification_level}</VadText>
+            <VadText variant="caption" tone="secondary">Identity verification: {row.provider_kyc_status} · {row.verification_level}</VadText>
           </View>
 
           {row.global_override_enabled ? (
@@ -230,9 +230,9 @@ function AccessEditor({ row, onClose, onSaved }: { row: AdminKycAccessRow | null
           ) : null}
 
           <View style={{ borderWidth: 1, borderColor: theme.colors.warning, backgroundColor: theme.colors.warningSoft, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: 3 }}>
-            <VadText variant="bodyStrong" tone="warning">This does not mark Didit as verified.</VadText>
+            <VadText variant="bodyStrong" tone="warning">This does not complete the identity check.</VadText>
             <VadText variant="caption" tone="secondary">
-              Sandbox access supports sandbox-only assets such as Test NGN. Use ALL only when you intentionally want this account to bypass supported KYC and trading gates in production too.
+              Sandbox access supports sandbox-only assets such as Test NGN. Use All only when this account must bypass identity and trading checks in production.
             </VadText>
           </View>
 

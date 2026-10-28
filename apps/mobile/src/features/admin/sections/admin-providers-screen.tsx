@@ -566,11 +566,11 @@ export function AdminProvidersScreen() {
               && policy.status === 'ACTIVE' && Boolean(policy.approved_by)
               && isCoinbaseKrakenThresholdPolicy(policy)) ? (
               <VadText variant="caption" tone="secondary">
-                TNGN sandbox already has an approved, active Coinbase/Kraken policy. You do not need to approve an older sandbox draft.
+                The test environment already has an approved Coinbase/Kraken policy. You do not need to approve the older draft.
               </VadText>
             ) : null}
           </VadCard>
-          {policyError ? <VadErrorState title="Oracle policy review failed" message={policyError} /> : null}
+          {policyError ? <VadErrorState title="Result verification policy review failed" message={policyError} /> : null}
           {policyMessage ? (
             <VadCard variant="muted" style={{ gap: 2 }}>
               <VadText variant="bodyStrong" tone="yes">Policy updated</VadText>
@@ -602,7 +602,7 @@ export function AdminProvidersScreen() {
                       <VadChip label={policy.status} tone={policy.status === 'ACTIVE' ? 'yes' : policy.status === 'DRAFT' ? 'warning' : 'neutral'} />
                     </View>
                     <VadText variant="caption" tone="secondary">{sources || 'No source hierarchy defined.'}</VadText>
-                    <VadText variant="caption" tone="secondary">Consensus: {distinct ? 'distinct providers required' : 'distinct-provider rule not enabled'} · minimum agreeing providers: {quorum}</VadText>
+                    <VadText variant="caption" tone="secondary">Independent sources: {distinct ? 'Required' : 'Not required'} · Agreement needed: {quorum}</VadText>
                     <VadText variant="caption" tone="tertiary">Effective: {new Date(policy.effective_at).toLocaleString()} · {policy.approved_by ? 'Approved' : 'Not approved'}</VadText>
                     {policy.status === 'DRAFT' && canReviewOracle && isCoinbaseKrakenThresholdPolicy(policy) ? (
                       <VadButton

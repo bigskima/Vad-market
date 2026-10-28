@@ -207,7 +207,7 @@ export function AdminRolesScreen() {
         <View style={{ flex: 1, gap: theme.spacing.xs }}>
           <VadText variant="label" tone="brand">SUPER ADMIN</VadText>
           <VadText variant="title">Roles & operational authority.</VadText>
-          <VadText tone="secondary">Assign scoped operational roles without sharing Super Admin access. Every grant and revocation is written to the audit ledger.</VadText>
+          <VadText tone="secondary">Assign scoped operational roles without sharing Super Admin access. Role changes are logged for review.</VadText>
         </View>
         <View style={{ flex: wide ? 0.8 : undefined, gap: theme.spacing.sm, justifyContent: 'center' }}>
           <VadButton label="Assign operational role" onPress={() => openAssignment()} />
@@ -220,18 +220,18 @@ export function AdminRolesScreen() {
 
       <View style={{ borderWidth: 1, borderColor: dualControl.ready ? theme.colors.yes : theme.colors.warning, backgroundColor: dualControl.ready ? theme.colors.yesSoft : theme.colors.warningSoft, padding: theme.spacing.lg, gap: theme.spacing.md }}>
         <View style={{ gap: 3 }}>
-          <VadText variant="caption" tone={dualControl.ready ? 'yes' : 'warning'}>PRODUCTION DUAL CONTROL</VadText>
+          <VadText variant="caption" tone={dualControl.ready ? 'yes' : 'warning'}>PRODUCTION APPROVALS</VadText>
           <VadText variant="heading">Independent approval coverage</VadText>
           <VadText variant="caption" tone="secondary">Use a second trusted VAD account for production provider approvals. Do not share Super Admin access.</VadText>
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
           <View style={{ minWidth: 150, flexGrow: 1, gap: 2 }}><VadText variant="heading" tone={dualControl.providerOperators >= 2 ? 'yes' : 'warning'}>{dualControl.providerOperators}/2</VadText><VadText variant="caption" tone="secondary">Provider approvers</VadText></View>
-          <View style={{ minWidth: 150, flexGrow: 1, gap: 2 }}><VadText variant="heading" tone={dualControl.oracleReviewers >= 2 ? 'yes' : 'warning'}>{dualControl.oracleReviewers}/2</VadText><VadText variant="caption" tone="secondary">Oracle reviewers</VadText></View>
+          <View style={{ minWidth: 150, flexGrow: 1, gap: 2 }}><VadText variant="heading" tone={dualControl.oracleReviewers >= 2 ? 'yes' : 'warning'}>{dualControl.oracleReviewers}/2</VadText><VadText variant="caption" tone="secondary">Result reviewers</VadText></View>
         </View>
         {!dualControl.ready ? (
           <>
             <VadText variant="caption" tone="secondary">Assign provider and result-review roles to trusted operators, either on a second account or across two people.</VadText>
-            <VadButton label="Assign launch reviewer" size="small" fullWidth={false} onPress={() => openAssignment('Production dual-control coverage')} style={{ alignSelf: 'flex-start' }} />
+            <VadButton label="Assign launch reviewer" size="small" fullWidth={false} onPress={() => openAssignment('Production review access')} style={{ alignSelf: 'flex-start' }} />
           </>
         ) : <VadText variant="bodyStrong" tone="yes">Independent review coverage is ready.</VadText>}
       </View>

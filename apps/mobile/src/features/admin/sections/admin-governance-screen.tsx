@@ -337,7 +337,7 @@ export function AdminGovernanceScreen() {
         </OperationsSection>
       ) : tab === 'oracle' && canReviewOracle ? (
         <OperationsSection
-          title="Oracle queue"
+          title="Result review queue"
           description="Review proposed results, then finalize them after any dispute window and required independent review."
           count={data.oracleQueue.length}
         >
@@ -373,7 +373,7 @@ export function AdminGovernanceScreen() {
         </OperationsSection>
       ) : tab === 'policies' && canReviewOracle ? (
         <OperationsSection
-          title="Oracle policies"
+          title="Result verification policies"
           description="Set approved sources, agreement thresholds, dispute windows and void rules. A second reviewer must approve activation."
           count={policies.length}
         >
@@ -383,7 +383,7 @@ export function AdminGovernanceScreen() {
               <VadSkeleton height={72} />
             </View>
           ) : policyError ? (
-            <VadErrorState title="Oracle policies unavailable" message={policyError} onRetry={() => void loadPolicies()} />
+            <VadErrorState title="Result verification policies unavailable" message={policyError} onRetry={() => void loadPolicies()} />
           ) : policies.length ? (
             policies.map((policy) => {
               const providerCodes = policy.source_hierarchy
@@ -405,7 +405,7 @@ export function AdminGovernanceScreen() {
               );
             })
           ) : (
-            <EmptyText>No oracle policies are configured.</EmptyText>
+            <EmptyText>No result-verification policies are configured.</EmptyText>
           )}
         </OperationsSection>
       ) : (
@@ -431,9 +431,9 @@ export function AdminGovernanceScreen() {
         {selectedOracle ? (
           <View style={{ gap: theme.spacing.lg }}>
             <View style={{ gap: 2 }}>
-              <VadText variant="label" tone="brand">ORACLE CASE</VadText>
+              <VadText variant="label" tone="brand">RESULT REVIEW</VadText>
               <VadText variant="heading">
-                {String(selectedOracle.event_title ?? 'Oracle event')}
+                {String(selectedOracle.event_title ?? 'Market event')}
               </VadText>
               <VadText variant="caption" tone="secondary" selectable>
                 {String(selectedOracle.event_public_id ?? '')}
@@ -451,7 +451,7 @@ export function AdminGovernanceScreen() {
                 />
                 <ActionChoice
                   label="Finalize as void"
-                  detail="Use the active oracle policy's supported void behavior."
+                  detail="Use the approved void rules for this market."
                   selected={action === 'VOID'}
                   disabled={activeDisputes > 0}
                   onPress={() => setAction('VOID')}
@@ -484,7 +484,7 @@ export function AdminGovernanceScreen() {
                 ) : (
                   <VadErrorState
                     title="Configured outcomes unavailable"
-                    message={outcomeChoicesError ?? 'This market has no configured outcome choices. Refresh the Oracle queue or correct its market setup before resolving it.'}
+                    message={outcomeChoicesError ?? 'This market has no configured outcome choices. Refresh the queue or update the market before resolving it.'}
                   />
                 )}
               </View>

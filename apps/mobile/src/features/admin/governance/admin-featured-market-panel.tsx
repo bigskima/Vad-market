@@ -43,7 +43,7 @@ export function AdminFeaturedMarketPanel({ rows, settings, onChanged }: { rows: 
   }
 
   return <View style={{ gap: theme.spacing.md }}>
-    <DiscoveryRulePanel title="Featured Markets" subtitle="Highlights sustained completed trading activity over a longer period." enabled={enabled} onEnabledChange={setEnabled}>
+    <DiscoveryRulePanel title="Featured Markets" subtitle="Highlights markets with sustained trading activity." enabled={enabled} onEnabledChange={setEnabled}>
       <VadInput label="Minimum completed trading activity (₦)" value={minimum} onChangeText={(value) => setMinimum(value.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" />
       <DiscoveryChoiceGroup label="Measure activity over" options={[{ label: '6 hours', value: 6 }, { label: '24 hours', value: 24 }, { label: '7 days', value: 168 }]} value={windowHours} onChange={setWindowHours} />
       <VadInput label="Maximum markets shown" value={maximum} onChangeText={(value) => setMaximum(value.replace(/\D/g, ''))} keyboardType="number-pad" />

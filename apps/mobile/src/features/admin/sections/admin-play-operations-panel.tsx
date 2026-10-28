@@ -116,14 +116,14 @@ export function AdminPlayOperationsPanel() {
                     <VadText variant="label">{item.campaign_title}</VadText>
                     <VadText variant="caption" tone={item.status === 'PAID' ? 'yes' : item.status === 'REFUNDED' ? 'secondary' : 'warning'}>{statusLabel(item.status)}</VadText>
                   </View>
-                  <Meta label="Entry order ID" value={item.id} />
+                  <Meta label="Entry reference" value={item.id} />
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
                     <Meta label="Tickets" value={item.ticket_count} />
                     <Meta label="Total" value={money(item.total_amount, item.currency_code)} />
                     <Meta label="Created" value={new Date(item.created_at).toLocaleString()} />
                   </View>
-                  <Meta label="Payment journal" value={item.ledger_journal_id} />
-                  <Meta label="Refund journal" value={item.refund_journal_id} />
+                  <Meta label="Payment reference" value={item.ledger_journal_id} />
+                  <Meta label="Refund reference" value={item.refund_journal_id} />
                   {item.refund_reason ? <Meta label="Refund reason" value={item.refund_reason} /> : null}
                 </View>
               </VadCard>
@@ -138,9 +138,9 @@ export function AdminPlayOperationsPanel() {
                     <VadText variant="label">{item.campaign_title}</VadText>
                     <VadText variant="caption" tone={item.status === 'DRAWN' ? 'yes' : item.status === 'VOIDED' ? 'secondary' : 'warning'}>{statusLabel(item.status)}</VadText>
                   </View>
-                  <Meta label="Draw ID" value={item.id} />
+                  <Meta label="Draw reference" value={item.id} />
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
-                    <Meta label="Tickets in snapshot" value={item.ticket_count_snapshot} />
+                    <Meta label="Tickets in draw" value={item.ticket_count_snapshot} />
                     <Meta label="Winner ticket" value={item.winning_ticket_code} />
                     <Meta label="Selection counter" value={item.selection_counter} />
                   </View>
