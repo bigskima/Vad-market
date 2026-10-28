@@ -366,11 +366,11 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
 
       <View style={{ gap: theme.spacing.sm }}>
         <VadText variant="label" tone="brand">PLACEMENT & SCHEDULE</VadText>
-        <VadInput label="Target route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Internal VAD route opened when someone taps this banner, for example /markets." />
+        <VadInput label="Target route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Page to open when someone taps this banner, for example /markets." />
       <VadInput label="Sort order" value={sortOrder} onChangeText={(value) => setSortOrder(value.replace(/\D/g, ''))} keyboardType="number-pad" hint="Lower numbers appear earlier in the carousel." />
       <VadDateTimeField label="Starts at (optional)" value={startsAt} onChange={setStartsAt} clearable hint="Leave empty to start immediately when published." />
         <VadDateTimeField label="Ends at (optional)" value={endsAt} onChange={setEndsAt} minDate={startsAt || undefined} clearable hint="Leave empty for no scheduled end. The end must be after the start." />
-        <VadText variant="caption" tone="tertiary">Times are saved as exact ISO timestamps in UTC, so campaign scheduling remains consistent across devices.</VadText>
+        <VadText variant="caption" tone="tertiary">Choose the start and end times for this campaign.</VadText>
       </View>
 
       {error ? <VadErrorState title={errorTitle} message={error} /> : null}

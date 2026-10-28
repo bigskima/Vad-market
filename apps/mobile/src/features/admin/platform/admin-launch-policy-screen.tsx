@@ -61,13 +61,13 @@ export function AdminLaunchPolicyScreen() {
       <View style={{ gap: theme.spacing.xs }}>
         <VadText variant="label" tone="brand">LAUNCH & MARKET POLICY</VadText>
         <VadText variant="title">Production readiness in one place.</VadText>
-        <VadText tone="secondary">Review the active market, settlement and oracle controls before opening VAD to real users. Changes remain versioned in the existing policy systems.</VadText>
+        <VadText tone="secondary">Review market, settlement and result-verification settings before launch.</VadText>
       </View>
 
       <VadCard variant={ready ? 'brand' : 'outlined'} style={{ gap: theme.spacing.sm }}>
         <VadText variant="caption" tone={ready ? 'yes' : 'warning'}>{ready ? 'CORE POLICY READY' : 'ACTION REQUIRED'}</VadText>
         <VadText variant="heading">{ready ? 'Core launch policies are active.' : 'At least one launch policy is not active.'}</VadText>
-        <VadText variant="caption" tone="secondary">This page does not replace the dedicated fee, market, oracle or provider workflows. It gives Super Admin a single readiness view and routes to the authoritative controls.</VadText>
+        <VadText variant="caption" tone="secondary">Use this page to check readiness, then open the relevant settings to make changes.</VadText>
       </VadCard>
 
       {error ? <VadErrorState title="Refresh needs attention" message={error} onRetry={() => void load()} /> : null}
@@ -81,8 +81,8 @@ export function AdminLaunchPolicyScreen() {
       </View>
 
       <VadCard variant="muted" style={{ gap: theme.spacing.md }}>
-        <VadText variant="heading">Authoritative controls</VadText>
-        <VadText variant="caption" tone="secondary">Use the existing specialized admin workflows for changes. This avoids duplicating financial and oracle authority in multiple screens.</VadText>
+        <VadText variant="heading">Launch settings</VadText>
+        <VadText variant="caption" tone="secondary">Make changes in the relevant settings page to keep each policy consistent.</VadText>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
           <VadButton label="Fee controls" size="small" variant="secondary" fullWidth={false} onPress={() => router.push('/admin/fees')} />
           <VadButton label="Markets & oracle" size="small" variant="secondary" fullWidth={false} onPress={() => router.push('/admin/governance')} />

@@ -53,7 +53,7 @@ export function AdminOperationsFeature() {
     return <VadCard variant="raised" style={{ gap: theme.spacing.sm, borderRadius: theme.radius.xl }}>
       <VadText variant="label" tone="warning">PERMISSION REQUIRED</VadText>
       <VadText variant="heading">Operations access required</VadText>
-      <VadText tone="secondary">Backend permissions control whether compliance, finance or provider data can be read.</VadText>
+      <VadText tone="secondary">Your assigned role determines which compliance, finance and provider details you can view.</VadText>
     </VadCard>;
   }
 
@@ -64,7 +64,7 @@ export function AdminOperationsFeature() {
     <View style={{ gap: theme.spacing.xs }}>
       <VadText variant="label" tone="brand">IDENTITY & MONEY</VadText>
       <VadText variant="title">Operational queues.</VadText>
-      <VadText tone="secondary">Provider readiness, KYC and payment states are shown without bypassing backend permission or maker-checker rules.</VadText>
+      <VadText tone="secondary">Review provider setup, identity checks and payments. Some sensitive changes need approval from a second administrator.</VadText>
     </View>
 
     <VadCard
@@ -85,7 +85,7 @@ export function AdminOperationsFeature() {
           void load().finally(() => setLoading(false));
         }} />
       </View>
-      <VadText variant="caption" tone="inverse">{configuredProviders} configured provider rows currently visible to this role.</VadText>
+      <VadText variant="caption" tone="inverse">Providers available to your role: {configuredProviders}.</VadText>
     </VadCard>
 
     {summary ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
@@ -106,7 +106,7 @@ export function AdminOperationsFeature() {
 
     <OperationsSection
       title="Provider readiness"
-      description="Configuration does not imply routing priority or operational health."
+      description="A configured provider may still need approval or a health check."
       count={providers.length}
     >
       {providers.length ? providers.slice(0, 12).map((row, index) => (
@@ -117,7 +117,7 @@ export function AdminOperationsFeature() {
           status={row.configured ? row.provider_status : 'UNCONFIGURED'}
           ready={row.configured}
         />
-      )) : <VadText tone="secondary">No provider rows available for your permissions.</VadText>}
+      )) : <VadText tone="secondary">No provider details available.</VadText>}
     </OperationsSection>
 
     <OperationsSection

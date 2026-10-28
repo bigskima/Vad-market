@@ -10,6 +10,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadIconButton } from '@/components/ui/vad-icon-button';
 import { VadText } from '@/components/ui/vad-text';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { AssistantConversationSkeleton, AssistantThreadsSkeleton } from '@/components/ui/screen-skeletons';
 import {
   isGenericContentVisible,
@@ -78,9 +79,7 @@ export function AssistantScreen({
       setError(null);
     } catch (reason) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : 'We could not load your VAD Assistant conversations right now.',
+        userFacingErrorMessage(reason, 'general', 'Could not load your VAD Assistant conversations. Try again.'),
       );
     } finally {
       setLoadingThreads(false);
@@ -109,9 +108,7 @@ export function AssistantScreen({
       setMessages(rows.map((row) => toChatMessage(row, activeAssetCodes)));
     } catch (reason) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : 'We could not load this conversation right now.',
+        userFacingErrorMessage(reason, 'general', 'Could not load this conversation. Try again.'),
       );
     } finally {
       setLoadingConversation(false);
@@ -134,9 +131,7 @@ export function AssistantScreen({
       await loadThreads();
     } catch (reason) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : 'We could not archive this conversation right now.',
+        userFacingErrorMessage(reason, 'general', 'Could not archive this conversation. Try again.'),
       );
     }
   }
@@ -183,9 +178,7 @@ export function AssistantScreen({
       setMessages((current) => current.filter((item) => item.id !== optimistic.id));
       setInput(message);
       setError(
-        reason instanceof Error
-          ? reason.message
-          : 'VAD Assistant could not answer right now. Please try again shortly.',
+        userFacingErrorMessage(reason, 'general', 'VAD Assistant could not answer. Try again.'),
       );
     } finally {
       setSending(false);

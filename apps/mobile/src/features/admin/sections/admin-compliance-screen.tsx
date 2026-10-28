@@ -163,8 +163,8 @@ export function AdminComplianceScreen() {
           paddingVertical: theme.spacing.md,
         }}
       >
-        <Boundary title="Provider status" body="The actual Didit/provider verification state is read-only here and remains the compliance source of truth." />
-        <Boundary title="VAD access override" body="A separate, audited exception can be sandbox-only or explicitly allowed in all environments." />
+        <Boundary title="Provider status" body="The verification result from the identity provider is shown here and cannot be edited." />
+        <Boundary title="VAD access override" body="Exceptions are logged and can be limited to testing or approved for all environments." />
       </View>
     </View>
   );

@@ -204,7 +204,7 @@ export function AdminMarketTypesWorkspace() {
       <View style={{ gap: 4 }}>
         <VadText variant="label" tone="brand">MARKET CATALOG</VadText>
         <VadText variant="title">Categories & market types</VadText>
-        <VadText tone="secondary">Keep Create Market simple for admins. Add a category or a new kind of objective market here; VAD generates the internal identifiers automatically.</VadText>
+        <VadText tone="secondary">Add categories and market types here. VAD creates the required IDs automatically.</VadText>
       </View>
 
       <VadCard variant="raised" style={{ gap: theme.spacing.lg }}>
@@ -224,7 +224,7 @@ export function AdminMarketTypesWorkspace() {
               ))}
             </View>
             <VadInput label="Grouping field · optional" value={categoryGroupField} onChangeText={setCategoryGroupField} placeholder="e.g. competition, event_name, company" />
-            <VadCard variant="muted"><VadText variant="caption" tone="secondary">Profile controls category-specific presentation. Grouping reads existing market context and does not change outcome rules.</VadText></VadCard>
+            <VadCard variant="muted"><VadText variant="caption" tone="secondary">This profile changes how markets are displayed, not how they settle.</VadText></VadCard>
             <VadButton label={working ? 'Saving…' : 'Add category'} disabled={working} onPress={() => void saveCategory()} />
           </View>
         ) : (
@@ -235,7 +235,7 @@ export function AdminMarketTypesWorkspace() {
             </View>
             <VadCard variant="muted" style={{ gap: theme.spacing.sm }}>
               <VadText variant="bodyStrong">Selected category experience</VadText>
-              <VadText variant="caption" tone="secondary">Changing the profile updates the market display and grouping, not its authoritative result source or settlement.</VadText>
+              <VadText variant="caption" tone="secondary">This changes market display and grouping, not how results are decided.</VadText>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
                 {presentationProfiles.map((profile) => (
                   <VadChip key={profile} label={profile.replaceAll('_', ' ')} selected={presentationProfile === profile} tone={presentationProfile === profile ? 'brand' : 'neutral'} onPress={() => setPresentationProfile(profile)} />

@@ -9,6 +9,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { assetMoney } from '@/features/markets/format';
 import { useLiveNow } from '@/hooks/use-live-now';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -38,9 +39,7 @@ export function WalletTransactionScreen({ intentId }: { intentId: string }) {
       setIntent(rows.find((row) => row.intent_public_id === intentId) ?? null);
     } catch (reason) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : 'We could not refresh this transaction right now. Please try again.',
+        userFacingErrorMessage(reason, 'general', 'Could not refresh this transaction. Try again.'),
       );
     } finally {
       if (background) setRefreshing(false);

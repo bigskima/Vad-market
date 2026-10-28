@@ -134,7 +134,7 @@ export default function SendRoute() {
               {assets.map((asset) => (
                 <VadChip
                   key={asset}
-                  label={asset === 'NGN' ? 'NGN · Nigerian Naira' : 'USDC · VAD ledger'}
+                  label={asset === 'NGN' ? 'NGN · Nigerian Naira' : 'USDC'}
                   selected={activeAssetCode === asset}
                   tone={activeAssetCode === asset ? 'brand' : 'neutral'}
                   onPress={() => changeForm(() => setAssetCode(asset))}
@@ -148,11 +148,11 @@ export default function SendRoute() {
 
           {availableBalance !== null ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 12, borderRadius: 12, backgroundColor: theme.colors.surfaceRaised }}>
-              <VadText variant="caption" tone="secondary">Available ledger balance</VadText>
+              <VadText variant="caption" tone="secondary">Available balance</VadText>
               <VadText variant="bodyStrong">{formatBalance(availableBalance, activeAssetCode)}</VadText>
             </View>
           ) : (
-            <VadText variant="caption" tone="secondary">The server will verify that your available ledger wallet can fund the transfer.</VadText>
+            <VadText variant="caption" tone="secondary">Your available balance is checked before the transfer.</VadText>
           )}
 
           <VadInput
@@ -175,7 +175,7 @@ export default function SendRoute() {
             keyboardType="decimal-pad"
             autoCapitalize="none"
             placeholder={activeAssetCode === 'NGN' ? 'e.g. 5000.00' : 'e.g. 12.500000'}
-            hint={`Maximum precision: ${precision} decimal places. The server enforces the real available balance.`}
+            hint={`Use up to ${precision} decimal places. Your available balance is checked before sending.`}
           />
 
           {error ? (
@@ -197,7 +197,7 @@ export default function SendRoute() {
                   Test-credit transfer: the recipient has the same non-withdrawable NGN testing restrictions. The balance can be used only on eligible NGN markets and cannot be deposited or withdrawn.
                 </VadText>
               ) : null}
-              {receipt.idempotentReplay ? <VadText variant="caption" tone="secondary">This is the confirmation of an earlier request; the transfer was not debited twice.</VadText> : null}
+              {receipt.idempotentReplay ? <VadText variant="caption" tone="secondary">This transfer was already processed. Your balance was not charged twice.</VadText> : null}
             </View>
           ) : null}
 

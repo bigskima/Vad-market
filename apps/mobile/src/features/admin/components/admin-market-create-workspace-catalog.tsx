@@ -948,7 +948,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
       <View style={{ gap: 4 }}>
         <VadText variant="label" tone="brand">VAD MARKETS</VadText>
         <VadText variant="title">Create a VAD market.</VadText>
-        <VadText tone="secondary">Choose what kind of real-world event this is. VAD keeps the resolver and database details behind the interface.</VadText>
+        <VadText tone="secondary">Choose what kind of real-world event this is. VAD handles result checks behind the scenes.</VadText>
       </View>
 
       <StepRail step={step} />
@@ -964,7 +964,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           {creationStyle === 'CUSTOM' ? (
             <VadCard variant="muted" style={{ gap: 4 }}>
               <VadText variant="bodyStrong">Custom wording, shared VAD resolution</VadText>
-              <VadText variant="caption" tone="secondary">Choose the closest database-configured market type below. Your custom question and condition still use that type’s authoritative source and VAD’s automatic resolution workflow; custom wording does not switch the market to manual settlement.</VadText>
+              <VadText variant="caption" tone="secondary">Choose the closest market type below. The selected type controls how results are checked and settled.</VadText>
             </VadCard>
           ) : null}
 
@@ -1028,7 +1028,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           {marketFormat === 'MULTI_OUTCOME' ? (
             <VadCard variant="muted" style={{ gap: 4 }}>
               <VadText variant="bodyStrong">One market, many possible winners</VadText>
-              <VadText variant="caption" tone="secondary">This format works with any category. Traders choose one named option; VAD records the winning option using the resolution instructions and source you configure below.</VadText>
+              <VadText variant="caption" tone="secondary">Use this format for any category. Traders choose one option, and you define how the winner is confirmed below.</VadText>
             </VadCard>
           ) : null}
 
