@@ -18,8 +18,6 @@ export function PlayHubScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
       setExperiences(await listPublishedPlayExperiences());
     } catch (reason) {
@@ -28,6 +26,12 @@ export function PlayHubScreen() {
       setLoading(false);
     }
   }, []);
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    void load();
+  }, [load]);
 
   useEffect(() => {
     void load();
@@ -112,7 +116,7 @@ export function PlayHubScreen() {
         {loading ? (
           <PlayLoadingState label="Loading the live catalogue" />
         ) : error ? (
-          <PlayMessageState title="The catalogue is unavailable" body={error} actionLabel="Try again" onAction={() => void load()} tone="error" />
+          <PlayMessageState title="The catalogue is unavailable" body={error} actionLabel="Try again" onAction={refresh} tone="error" />
         ) : experiences.length === 0 ? (
           <PlayMessageState
             title="No experiences are live yet"

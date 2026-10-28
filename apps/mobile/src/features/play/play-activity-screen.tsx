@@ -24,8 +24,6 @@ export function PlayActivityScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
       setActivity(await listMyPlayActivity(session?.user.id ?? ''));
     } catch (reason) {
@@ -33,7 +31,13 @@ export function PlayActivityScreen() {
     } finally {
       setLoading(false);
     }
-  }, [session?.user.id]);
+  }, [session]);
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    void load();
+  }, [load]);
 
   useEffect(() => {
     void load();
@@ -52,7 +56,7 @@ export function PlayActivityScreen() {
       {loading ? (
         <PlayLoadingState label="Loading your Play history" />
       ) : error ? (
-        <PlayMessageState title="Your history could not be loaded" body={error} actionLabel="Try again" onAction={() => void load()} tone="error" />
+        <PlayMessageState title="Your history could not be loaded" body={error} actionLabel="Try again" onAction={refresh} tone="error" />
       ) : activity.length === 0 ? (
         <PlayMessageState
           title="Your Play history starts here"

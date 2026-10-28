@@ -19,6 +19,7 @@ export function PlayExperienceDetailScreen() {
 
   const load = useCallback(async () => {
     if (!slug) {
+      await Promise.resolve();
       setExperience(null);
       setError('The experience link is incomplete.');
       setLoading(false);

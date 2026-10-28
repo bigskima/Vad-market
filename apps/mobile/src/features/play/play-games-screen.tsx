@@ -19,8 +19,6 @@ export function PlayGamesScreen() {
   const [activeType, setActiveType] = useState('ALL');
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
       setExperiences(await listPublishedPlayExperiences());
     } catch (reason) {
@@ -29,6 +27,12 @@ export function PlayGamesScreen() {
       setLoading(false);
     }
   }, []);
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    void load();
+  }, [load]);
 
   useEffect(() => {
     void load();
@@ -113,7 +117,7 @@ export function PlayGamesScreen() {
       {loading ? (
         <PlayLoadingState label="Loading published experiences" />
       ) : error ? (
-        <PlayMessageState title="Games could not be loaded" body={error} actionLabel="Retry" onAction={() => void load()} tone="error" />
+        <PlayMessageState title="Games could not be loaded" body={error} actionLabel="Retry" onAction={refresh} tone="error" />
       ) : filtered.length === 0 ? (
         <PlayMessageState
           title={experiences.length === 0 ? 'The games catalogue is empty' : 'No matches found'}
