@@ -62,7 +62,7 @@ export function AccountOnboardingBoundary({ children }: { children: ReactNode })
     return () => {
       cancelled = true;
     };
-  }, [isLoading, pathname, productData.loading, user?.id]);
+  }, [isLoading, pathname, productData.loading, user]);
 
   return children;
 }
