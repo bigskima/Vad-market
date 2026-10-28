@@ -112,10 +112,10 @@ export function OnchainPositionsPanel({ enabled }: { enabled: boolean }) {
           })}
         </View>
       ) : (
-        <VadEmptyState title="No USDC positions yet" body="Your Arc USDC predictions and eligible payouts will appear here." />
+        <VadEmptyState title="No USDC positions yet" body="Your USDC predictions and eligible payouts will appear here." />
       )}
       {notice ? <VadText variant="caption" tone="secondary">{notice}</VadText> : null}
-      {error && rows.length ? <VadErrorState title="Could not refresh positions" message={error} onRetry={() => void load()} /> : null}
+      {error && rows.length ? <VadErrorState title="Couldn't refresh positions" message={error} onRetry={() => void load()} /> : null}
     </VadCard>
   );
 }
