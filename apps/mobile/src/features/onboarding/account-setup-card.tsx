@@ -10,7 +10,6 @@ import { useVadTheme } from '@/providers/theme-provider';
 import {
   getAccountSetupState,
   isAccountOnboardingComplete,
-  isAccountSetupComplete,
   markAccountOnboardingCompleted,
   type AccountSetupState,
 } from '@/services/account-onboarding-api';
