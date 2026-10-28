@@ -38,7 +38,7 @@ for (const file of files) {
       );
     }
 
-    if (/^\\s*\\$(?:[A-Za-z_][A-Za-z0-9_]*)?\\$\\s*$/.test(line)) {
+    if (/^\s*\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$\s*$/.test(line)) {
       let next = index + 1;
       while (next < lines.length && (lines[next].trim() === '' || lines[next].trim().startsWith('--'))) {
         next += 1;
