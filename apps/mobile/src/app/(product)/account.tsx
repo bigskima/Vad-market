@@ -172,7 +172,7 @@ export default function AccountScreen() {
       try {
         refreshed = await getTemporaryNgnMarketTestingStatus();
       } catch {
-        setTestModeNotice('Location verified. Trading status couldn't refresh. Try again.');
+        setTestModeNotice('Location verified. Trading status could not refresh. Try again.');
         return;
       }
       setTestModeStatus(refreshed);
@@ -492,7 +492,7 @@ function testModeBlockReason(status: TemporaryNgnMarketTestingStatus) {
     case 'NGN_ASSET_UNAVAILABLE':
       return 'The NGN wallet is unavailable.';
     case 'TRADING_SERVICE_UNAVAILABLE':
-      return 'Trading isn't available for this account yet.';
+      return 'Trading is not available for this account yet.';
     case 'NGN_NOT_AVAILABLE_IN_JURISDICTION':
       return 'NGN is not enabled for this account under the current jurisdiction rules.';
     default:
@@ -505,7 +505,7 @@ function countryFlag(code: string) {
 }
 
 function getKycCopy(status: KycStatus | null) {
-  if (!status) return { title: 'Can't load verification status', body: 'Open verification for the latest status.' };
+  if (!status) return { title: 'Verification status unavailable', body: 'Open verification for the latest status.' };
   switch (status.status) {
     case 'VERIFIED': return { title: 'Account Verified', body: 'Your identity has been verified. Applicable account permissions are confirmed by VAD.' };
     case 'IN_REVIEW':
