@@ -27,7 +27,7 @@ type SetupTask = {
   description: string;
   complete: boolean;
   action: string;
-  route?: '/account/profile' | '/account/verification';
+  route?: '/account/profile' | '/account/verification' | '/wallet' | '/markets';
   contact?: boolean;
 };
 
@@ -56,7 +56,7 @@ export default function AccountOnboardingScreen() {
     setLoading(true);
     setError(null);
     try {
-      const next = await getAccountSetupState(user);
+      const next = await getAccountSetupState(user, { includeMilestones: true });
       setState(next);
       if (isAccountSetupComplete(next) && !user.user_metadata?.vad_onboarding_completed_at && completionMarkAttempted.current !== user.id) {
         completionMarkAttempted.current = user.id;
@@ -100,7 +100,7 @@ export default function AccountOnboardingScreen() {
         }
       }
       try {
-        const next = await getAccountSetupState(user);
+        const next = await getAccountSetupState(user, { includeMilestones: true });
         if (!active) return;
         setState(next);
         if (isAccountSetupComplete(next) && !user.user_metadata?.vad_onboarding_completed_at && completionMarkAttempted.current !== user.id) {
@@ -169,9 +169,42 @@ export default function AccountOnboardingScreen() {
     ];
   }, [state, user]);
 
+  const activationTasks = useMemo<SetupTask[]>(() => {
+    if (!state) return [];
+    return [
+      {
+        key: 'first-deposit',
+        title: state.firstDepositComplete ? 'First deposit recorded' : 'Make your first deposit',
+        description: state.firstDepositComplete
+          ? 'VAD has a completed deposit recorded in your payment history.'
+          : state.firstDepositCheckAvailable
+            ? 'Add funds through an available funding option. Only a completed deposit counts toward this milestone.'
+            : 'Your payment history could not be confirmed just now. Open Wallet to check your options, then return to refresh this checklist.',
+        complete: state.firstDepositComplete,
+        action: 'Open wallet',
+        route: '/wallet',
+      },
+      {
+        key: 'first-trade',
+        title: state.firstTradeComplete ? 'First trade completed' : 'Make your first trade',
+        description: state.firstTradeComplete
+          ? 'VAD has recorded your first pool prediction or a filled Order Book trade.'
+          : state.firstTradeCheckAvailable
+            ? 'Open Markets, choose an event and outcome, review the quote, then confirm your prediction. An unfilled order does not count.'
+            : 'Your trading history could not be confirmed just now. Explore Markets and return to refresh this checklist.',
+        complete: state.firstTradeComplete,
+        action: 'Explore markets',
+        route: '/markets',
+      },
+    ];
+  }, [state]);
+
   const completedRequired = requiredTasks.filter((task) => task.complete).length;
   const requiredCount = requiredTasks.length;
   const progressPercent = requiredCount ? Math.round((completedRequired / requiredCount) * 100) : 0;
+  const completedMilestones = activationTasks.filter((task) => task.complete).length;
+  const milestoneCount = activationTasks.length;
+  const milestonePercent = milestoneCount ? Math.round((completedMilestones / milestoneCount) * 100) : 0;
   const allRequiredComplete = Boolean(state && isAccountSetupComplete(state));
   const eligibleCurrencies = (['NGN', 'USDC'] as VADCurrency[])
     .filter((code) => currency.isCurrencyEligible(code));
@@ -278,7 +311,7 @@ export default function AccountOnboardingScreen() {
             </VadText>
             <VadText variant="body" tone="secondary">
               {allRequiredComplete
-                ? 'Your essential setup is complete. You can now explore VAD and return to any optional settings whenever you need them.'
+                ? 'Your essential account setup is complete. Your first deposit and trade remain on this checklist until VAD confirms them.'
                 : 'VAD checks what is already complete and only asks you to finish what is still missing. Your progress is saved to your account.'}
             </VadText>
           </View>
@@ -321,12 +354,39 @@ export default function AccountOnboardingScreen() {
             <VadCard style={{ gap: 12, borderColor: theme.colors.yes, backgroundColor: theme.colors.yesSoft }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
                 <VadIcon name="shieldCheck" size={27} color={theme.colors.yes} />
-                <VadText variant="heading">Essential setup complete</VadText>
+                <VadText variant="heading">Account essentials complete</VadText>
               </View>
               <VadText variant="body" tone="secondary">
-                You can use VAD now. The suggestions below are optional and will not stop you from exploring markets.
+                You can explore VAD now. Next, you can fund your wallet and make your first trade. Those milestones stay on your checklist until completed.
               </VadText>
             </VadCard>
+          ) : null}
+
+          {!loading && state ? (
+            <View style={{ gap: 10 }}>
+              <View style={{ gap: 3 }}>
+                <VadText variant="heading">Your first milestones</VadText>
+                <VadText variant="caption" tone="secondary">VAD recognises a real completed deposit and a recorded trade. You can pause here and return later.</VadText>
+              </View>
+              <VadCard style={{ gap: 10, padding: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <VadText variant="bodyStrong">Activation progress</VadText>
+                  <VadText variant="caption" tone="secondary">{completedMilestones} of {milestoneCount} complete</VadText>
+                </View>
+                <View style={{ height: 7, borderRadius: 5, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }}>
+                  <View style={{ width: (String(milestonePercent) + '%') as DimensionValue, height: '100%', borderRadius: 5, backgroundColor: theme.colors.brandPrimary }} />
+                </View>
+              </VadCard>
+              {activationTasks.map((task, index) => (
+                <SetupTaskCard
+                  key={task.key}
+                  task={task}
+                  index={index + requiredCount + 1}
+                  onPress={() => openTask(task)}
+                  disabled={working}
+                />
+              ))}
+            </View>
           ) : null}
 
           {!loading && state ? (
