@@ -14,6 +14,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 import {
   deferAccountOnboarding,
   getAccountSetupState,
+  markAccountOnboardingStarted,
   isAccountSetupComplete,
   markAccountOnboardingCompleted,
   type AccountSetupState,
@@ -44,6 +45,7 @@ export default function AccountOnboardingScreen() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const completionMarkAttempted = useRef<string | null>(null);
+  const startMarkAttempted = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!user) {
@@ -86,6 +88,14 @@ export default function AccountOnboardingScreen() {
       }
       setLoading(true);
       setError(null);
+      if (returnToAccount && startMarkAttempted.current !== user.id) {
+        startMarkAttempted.current = user.id;
+        try {
+          await markAccountOnboardingStarted();
+        } catch {
+          if (active) setError('Progress could not be saved to your account yet. You can still complete the steps or retry later.');
+        }
+      }
       try {
         const next = await getAccountSetupState(user);
         if (!active) return;
@@ -109,7 +119,7 @@ export default function AccountOnboardingScreen() {
       }
     })();
     return () => { active = false; };
-  }, [user]));
+  }, [returnToAccount, user]));
 
   const requiredTasks = useMemo<SetupTask[]>(() => {
     if (!state || !user) return [];
