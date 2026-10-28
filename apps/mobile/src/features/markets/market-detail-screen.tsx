@@ -405,6 +405,9 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
   const context = asRecord(market.market_context);
   const subject = asRecord(context.subject);
   const details = asRecord(context.details);
+  const subjectMetadata = asRecord(subject.metadata);
+  const detailsMetadata = asRecord(details.metadata);
+  const contextMetadata = asRecord(context.metadata);
   const config: Record<string, { title: string; lead: string; fields: { label: string; keys: string[] }[] }> = {
     CRYPTO: {
       title: 'Asset details',
