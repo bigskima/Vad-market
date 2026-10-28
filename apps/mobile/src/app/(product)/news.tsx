@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
-import { VadSkeleton } from '@/components/ui/vad-skeleton';
+import { NewsStoryCardsSkeleton } from '@/components/ui/product-screen-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -118,9 +118,7 @@ export default function NewsRoute() {
         </TourTarget>
 
         {loading ? (
-          <View style={{ gap: theme.spacing.md }}>
-            {[0, 1, 2].map((item) => <VadSkeleton key={item} height={208} radius={theme.radius.lg} />)}
-          </View>
+          <NewsStoryCardsSkeleton count={3} columns={columns === 2 ? 2 : 1} />
         ) : error && !stories.length ? (
           <VadErrorState title="News unavailable" message={error} onRetry={() => {
             setLoading(true);
