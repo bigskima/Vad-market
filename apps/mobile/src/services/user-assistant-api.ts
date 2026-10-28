@@ -70,6 +70,7 @@ export async function sendAssistantMessage(input: {
   route?: string | null;
   countryCode?: string | null;
   activeAssetCodes?: string[];
+  mode?: 'GENERAL' | 'SUPPORT';
 }) {
   const { data, error } = await supabase.functions.invoke('user-assistant', {
     body: {
@@ -77,6 +78,7 @@ export async function sendAssistantMessage(input: {
       threadId: input.threadId ?? null,
       marketId: input.marketId ?? null,
       route: input.route ?? '/assistant',
+      mode: input.mode ?? 'GENERAL',
       jurisdiction: {
         countryCode: input.countryCode ?? null,
         activeAssetCodes: input.activeAssetCodes ?? [],
