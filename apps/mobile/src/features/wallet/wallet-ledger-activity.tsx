@@ -34,7 +34,7 @@ export function WalletLedgerActivity({ rows, compact = false }: { rows: WalletAc
   return (
     <View style={{ gap: theme.spacing.md }}>
       <VadSectionHeader
-        title={compact ? 'Market activity' : 'Market activity'}
+        title="Market activity"
         subtitle="Trades and payouts."
       />
       {!compact ? (
