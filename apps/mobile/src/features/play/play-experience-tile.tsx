@@ -5,6 +5,7 @@ import { VadText } from '@/components/ui/vad-text';
 import type { PlayExperience } from '@/services/play-api';
 import { playExperienceLabel } from '@/services/play-api';
 import { useVadTheme } from '@/providers/theme-provider';
+import { playMediaPublicUrl } from '@/services/play-media-api';
 
 export function PlayExperienceTile({
   experience,
@@ -17,7 +18,7 @@ export function PlayExperienceTile({
 }) {
   const theme = useVadTheme();
   const imageUrl = experience.card_asset_url ?? experience.hero_asset_url;
-  const safeImageUrl = imageUrl?.startsWith('https://') ? imageUrl : null;
+  const safeImageUrl = playMediaPublicUrl(imageUrl);
 
   return (
     <Pressable
