@@ -516,6 +516,25 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
   );
 }
 
+function sportsFixtureContext(market: MarketCatalogItem) {
+  const context = asRecord(market.market_context);
+  const subject = asRecord(context.subject);
+  const nestedDetails = asRecord(context.details);
+  return {
+    homeTeam: firstContextText(subject.home_team, subject.homeTeam, context.home_team, context.homeTeam, subject.competitor_a, context.competitor_a, subject.team_home),
+    homeShortName: firstContextText(subject.home_team_short_name, subject.homeTeamShortName, context.home_team_short_name, context.homeTeamShortName),
+    homeCrest: firstContextText(subject.home_team_crest, subject.homeTeamCrest, subject.home_team_logo, subject.homeTeamLogo, context.home_team_crest, context.homeTeamCrest, context.home_team_logo),
+    awayTeam: firstContextText(subject.away_team, subject.awayTeam, context.away_team, context.awayTeam, subject.competitor_b, context.competitor_b, subject.team_away),
+    awayShortName: firstContextText(subject.away_team_short_name, subject.awayTeamShortName, context.away_team_short_name, context.awayTeamShortName),
+    awayCrest: firstContextText(subject.away_team_crest, subject.awayTeamCrest, subject.away_team_logo, subject.awayTeamLogo, context.away_team_crest, context.awayTeamCrest, context.away_team_logo),
+    competition: firstContextText(subject.competition, context.competition, context.group_key, nestedDetails.competition, market.group_key),
+  };
+}
+
+function normalizeSportsName(value: string) {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
@@ -701,11 +720,41 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
+  const sportsContext = sportsFixtureContext(market);
+  const isSportsMarket = String(market.presentation_profile ?? '').toUpperCase() === 'SPORTS';
+  const [sportsMetadataState, setSportsMetadataState] = useState<SportsMetadataState | null>(null);
+  useEffect(() => {
+    let active = true;
+    if (!isSportsMarket || !sportsContext.homeTeam || !sportsContext.awayTeam) return () => { active = false; };
+    void getSportsMatchMetadata({
+      homeTeam: sportsContext.homeTeam,
+      awayTeam: sportsContext.awayTeam,
+      competition: sportsContext.competition,
+    }).then((value) => {
+      if (active) setSportsMetadataState({ instrumentId: market.instrument_public_id, value });
+    }).catch(() => {
+      if (active) setSportsMetadataState({ instrumentId: market.instrument_public_id, value: null });
+    });
+    return () => { active = false; };
+  }, [market.instrument_public_id, isSportsMarket, sportsContext.homeTeam, sportsContext.awayTeam, sportsContext.competition]);
+  const sportsMetadata = sportsMetadataState?.instrumentId === market.instrument_public_id ? sportsMetadataState.value : null;
+  const homeCrest = safeSportsImageUrl(firstContextText(sportsContext.homeCrest, sportsMetadata?.home_team_crest));
+  const awayCrest = safeSportsImageUrl(firstContextText(sportsContext.awayCrest, sportsMetadata?.away_team_crest));
+  const outcomeCrest = (label: string) => {
+    if (!isSportsMarket) return null;
+    const normalizedLabel = normalizeSportsName(label);
+    if (!normalizedLabel || /draw|tie|no winner/.test(normalizedLabel)) return null;
+    const homeNames = [sportsContext.homeTeam, sportsContext.homeShortName].filter(Boolean).map(normalizeSportsName);
+    const awayNames = [sportsContext.awayTeam, sportsContext.awayShortName].filter(Boolean).map(normalizeSportsName);
+    const isHome = homeNames.some((name) => name && (name.includes(normalizedLabel) || normalizedLabel.includes(name) || normalizedLabel.includes(name.slice(0, 3))));
+    const isAway = awayNames.some((name) => name && (name.includes(normalizedLabel) || normalizedLabel.includes(name) || normalizedLabel.includes(name.slice(0, 3))));
+    return isHome ? homeCrest : isAway ? awayCrest : null;
+  };
   return (
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ gap: 3 }}>
-        <VadText variant="bodyStrong">Possible outcomes</VadText>
-        <VadText variant="caption" tone="secondary">Choose the option you expect to win. Current pool share is based on committed stakes, not a promise of payout.</VadText>
+        <VadText variant="bodyStrong">{isSportsMarket ? 'Match outcome quotes' : 'Possible outcomes'}</VadText>
+        <VadText variant="caption" tone="secondary">{isSportsMarket ? 'Compare the current pool share for each result. Open a result to receive the market-specific quote before placing a trade.' : 'Choose the option you expect to win. Current pool share is based on committed stakes, not a promise of payout.'}</VadText>
       </View>
       {loading ? (
         <VadCard variant="muted" style={{ gap: 4 }}>
@@ -730,9 +779,17 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
               style={({ pressed }) => ({ opacity: !timing.tradingOpen ? 0.65 : pressed ? 0.76 : 1 })}
             >
               <VadCard style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: density.phone ? 10 : 12 }}>
-                <View style={{ width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>
-                  <VadText variant="bodyStrong" tone="brand">{index + 1}</VadText>
-                </View>
+                {outcomeCrest(outcome.outcome_label) ? (
+                  <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }}>
+                    <Image source={{ uri: outcomeCrest(outcome.outcome_label) ?? undefined }} resizeMode="contain" accessibilityLabel={`${outcome.outcome_label} team crest`} style={{ width: 31, height: 31 }} />
+                  </View>
+                ) : (
+                  <View style={{ width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }}>
+                    {isSportsMarket && /draw|tie/i.test(outcome.outcome_label)
+                      ? <VadIcon name="activity" size={16} tone="secondary" />
+                      : <VadText variant="bodyStrong" tone="brand">{index + 1}</VadText>}
+                  </View>
+                )}
                 <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
                   <VadText variant="bodyStrong" numberOfLines={2}>{outcome.outcome_label}</VadText>
                   <VadText variant="caption" tone="secondary">
@@ -745,7 +802,7 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
                   <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>
                     {outcome.pool_share == null ? '—' : probability(outcome.pool_share)}
                   </VadText>
-                  <VadText variant="caption" tone="tertiary">Pool share</VadText>
+                  <VadText variant="caption" tone="tertiary">{isSportsMarket ? 'Current share' : 'Pool share'}</VadText>
                 </View>
                 <VadIcon name="chevronRight" size={17} tone="secondary" />
               </VadCard>
