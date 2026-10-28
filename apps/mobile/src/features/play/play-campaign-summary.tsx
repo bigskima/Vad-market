@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 
+import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import { PlayDrawAuditPanel } from './play-draw-audit-panel';
