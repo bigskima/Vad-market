@@ -26,6 +26,12 @@ for (const file of files) {
     // A line containing "$;" or "$tag;" is not a valid dollar-quote
     // terminator. PostgreSQL function bodies need a matching tag such as
     // "$$;" or "$tag$;".
+    if (/^\s*as\s+\$(?:\s*--.*)?$/.test(line)) {
+      issues.push(
+        `${relative(process.cwd(), file)}:${index + 1}: malformed dollar-quote opener; use a valid tag such as $$`,
+      );
+    }
+
     if (/^\s*\$(?:[A-Za-z_][A-Za-z0-9_]*)?;\s*(?:--.*)?$/.test(line)) {
       issues.push(
         `${relative(process.cwd(), file)}:${index + 1}: malformed dollar-quote terminator; use the matching closing tag (for example, $$;)`,
