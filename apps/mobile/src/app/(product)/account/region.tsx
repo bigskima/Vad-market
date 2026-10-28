@@ -22,7 +22,7 @@ export default function LanguageRegionScreen() {
         <View style={{ gap: 4 }}>
           <VadText variant="caption" tone="brand">REGIONAL PREFERENCES</VadText>
           <VadText variant="title">Language and currency visibility</VadText>
-          <VadText variant="caption" tone="secondary">Choose which currencies to show. Balances won't be converted.</VadText>
+          <VadText variant="caption" tone="secondary">Choose which currencies to show. Balances are not converted.</VadText>
         </View>
 
         <VadCard style={{ gap: theme.spacing.md }}>

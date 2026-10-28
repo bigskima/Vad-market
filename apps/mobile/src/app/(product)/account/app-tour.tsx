@@ -45,7 +45,7 @@ export default function AppTourSettingsRoute() {
           />
           {!tour.loading && !tour.available && !tour.error ? (
             <VadText variant="caption" tone="secondary">
-              The tour isn't available right now. Check back later.
+              The tour is unavailable right now. Check back later.
             </VadText>
           ) : null}
         </VadCard>
@@ -59,7 +59,7 @@ export default function AppTourSettingsRoute() {
         </VadCard>
 
         <View style={{ gap: theme.spacing.sm }}>
-          <VadText variant="heading">What you'll learn</VadText>
+          <VadText variant="heading">Tour highlights</VadText>
           <TourPoint title="Markets & trades" body="Browse markets and review trading controls." />
           <TourPoint title="Wallet & portfolio" body="Check balances, funding actions, positions and orders." />
           <TourPoint title="Account & more" body="Manage security and preferences, then explore news, community and the assistant." />

@@ -94,9 +94,9 @@ export function PlayExperienceDetailScreen() {
       <PlayAdSlot placementCode="play-experience-inline" />
 
       {error ? (
-        <PlayMessageState title="Can't load this game" body="Try again in a moment." actionLabel="Retry" onAction={() => void load()} tone="error" />
+        <PlayMessageState title="Could not load this game" body="Try again in a moment." actionLabel="Retry" onAction={() => void load()} tone="error" />
       ) : !experience ? (
-        <PlayMessageState title="Game unavailable" body="This game isn't open yet." actionLabel="Browse experiences" onAction={() => router.replace('/play/games')} />
+        <PlayMessageState title="Game unavailable" body="This game is not open yet." actionLabel="Browse experiences" onAction={() => router.replace('/play/games')} />
       ) : (
         <>
           {safeHeroUrl ? (
@@ -124,7 +124,7 @@ export function PlayExperienceDetailScreen() {
                 <VadText tone="secondary">Campaign details</VadText>
               </View>
               {campaignError ? (
-                <PlayMessageState title="Can't load campaigns" body="Try again in a moment." actionLabel="Refresh campaigns" onAction={() => void loadCampaigns(experience.id)} tone="error" />
+                <PlayMessageState title="Could not load campaigns" body="Try again in a moment." actionLabel="Refresh campaigns" onAction={() => void loadCampaigns(experience.id)} tone="error" />
               ) : campaigns.length === 0 ? (
                 <PlayMessageState
                   title="No campaigns yet"
@@ -145,7 +145,7 @@ export function PlayExperienceDetailScreen() {
                 <VadText variant="heading">Coming soon</VadText>
               </View>
               <VadText tone="secondary">
-                This game isn't open to players yet.
+                This game is not open to players yet.
               </VadText>
             </View>
           )}

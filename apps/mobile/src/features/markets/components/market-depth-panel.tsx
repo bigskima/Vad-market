@@ -73,7 +73,7 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
       </View>
 
       {failed ? (
-        <VadText variant="caption" tone="secondary">Can't load order book.</VadText>
+        <VadText variant="caption" tone="secondary">Order book unavailable.</VadText>
       ) : loading || !book ? (
         <View style={{ height: 54, justifyContent: 'center' }}>
           <VadText variant="caption" tone="tertiary">Loading current bids…</VadText>

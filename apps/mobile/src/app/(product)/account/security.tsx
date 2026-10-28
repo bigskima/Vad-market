@@ -191,7 +191,7 @@ export default function AccountSecurityScreen() {
 
         <VadCard style={{ gap: 6 }}>
           <VadText variant="heading">Active Sessions</VadText>
-          <VadText variant="caption" tone="secondary">Other device sessions can't be managed here yet. Log out to end this session.</VadText>
+          <VadText variant="caption" tone="secondary">Other device sessions cannot be managed here yet. Log out to end this session.</VadText>
         </VadCard>
 
         {message ? <VadCard style={{ borderColor: theme.colors.yes, backgroundColor: theme.colors.yesSoft }}><VadText variant="caption" tone="yes">{message}</VadText></VadCard> : null}

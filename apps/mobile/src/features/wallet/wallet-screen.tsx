@@ -298,7 +298,7 @@ export function WalletScreen({
         <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="bodyStrong">Wallet settings</VadText>
-            <VadText variant="caption" tone="secondary">Choose which eligible currencies to show. This won't convert balances or change eligibility.</VadText>
+            <VadText variant="caption" tone="secondary">Choose which eligible currencies to show. This does not convert balances or change eligibility.</VadText>
           </View>
           <View style={{ gap: 8 }}>
             {currencyPreference.eligibleCurrencies.map((currency) => (
@@ -346,7 +346,7 @@ export function WalletScreen({
           ) : (
             <VadEmptyState title="No transactions yet" body="Deposits, trades, payouts and refunds appear here." actionLabel="Deposit NGN" onAction={onDeposit} />
           )}
-          {walletActivityError ? <VadText variant="caption" tone="secondary">Some recent activity couldn't refresh. Open History to try again.</VadText> : null}
+          {walletActivityError ? <VadText variant="caption" tone="secondary">Some recent activity could not refresh. Open History to try again.</VadText> : null}
         </View>
       </TourTarget>
 

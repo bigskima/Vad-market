@@ -164,7 +164,7 @@ export function GrowthScreen() {
       <View style={{ gap: theme.spacing.md }}>
         <View style={{ gap: 2 }}>
           <VadText variant="heading">Your rewards</VadText>
-          <VadText variant="caption" tone="secondary">Some rewards need review before they're credited.</VadText>
+          <VadText variant="caption" tone="secondary">Some rewards need review before they are credited.</VadText>
         </View>
         {data.rewards.length ? data.rewards.map((reward) => <RewardRow key={reward.publicId} reward={reward} />) : (
           <VadEmptyState title="No rewards yet" body="Rewards appear here when you qualify for an active promotion." />

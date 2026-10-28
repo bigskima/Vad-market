@@ -524,7 +524,7 @@ export function PortfolioScreen({
         <View style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 4 }}>
             <VadText variant="bodyStrong">Settled results · {period}</VadText>
-            <VadText variant="caption" tone="secondary">Settled results in {asset}. Refunds and voids aren't counted as wins or losses.</VadText>
+            <VadText variant="caption" tone="secondary">Settled results in {asset}. Refunds and voids do not count as wins or losses.</VadText>
           </View>
           {periodSettledRows.length ? (
             <View style={{ gap: theme.spacing.sm }}>

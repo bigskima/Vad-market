@@ -346,7 +346,7 @@ export function HomeScreen({
         <TourTarget id="home-watchlist">
           <View style={{ gap: 9 }}>
             <SectionHeading title="Watchlist" action="See all" onAction={() => router.push('/watchlist')} />
-            {watchlistError && watchlistMarkets.length ? <VadText variant="caption" tone="danger">Couldn't refresh saved markets.</VadText> : null}
+            {watchlistError && watchlistMarkets.length ? <VadText variant="caption" tone="danger">Could not refresh saved markets.</VadText> : null}
             {watchlistLoading ? (
               <HomeWatchlistSkeleton />
             ) : watchlistMarkets.length ? (
@@ -372,15 +372,15 @@ export function HomeScreen({
             ) : marketError && watchlistIds.length ? (
               <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
                 <VadText variant="bodyStrong">Saved markets unavailable</VadText>
-                <VadText variant="caption" tone="secondary">Couldn't refresh your saved markets.</VadText>
+                <VadText variant="caption" tone="secondary">Could not refresh your saved markets.</VadText>
                 <Pressable accessibilityRole="button" onPress={onRetryMarkets} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                   <VadText variant="caption" tone="brand">Retry</VadText>
                 </Pressable>
               </View>
             ) : watchlistError ? (
               <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 8 }}>
-                <VadText variant="bodyStrong">Can't load watchlist</VadText>
-                <VadText variant="caption" tone="secondary">Couldn't load your saved markets.</VadText>
+                <VadText variant="bodyStrong">Watchlist unavailable</VadText>
+                <VadText variant="caption" tone="secondary">Could not load your saved markets.</VadText>
                 <Pressable accessibilityRole="button" onPress={() => void retryWatchlist()} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                   <VadText variant="caption" tone="brand">Try again</VadText>
                 </Pressable>
@@ -388,7 +388,7 @@ export function HomeScreen({
             ) : (
               <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14, gap: 7 }}>
                 <VadText variant="bodyStrong">No saved markets available</VadText>
-                <VadText variant="caption" tone="secondary">Some saved markets aren't available right now.</VadText>
+                <VadText variant="caption" tone="secondary">Some saved markets are not available right now.</VadText>
                 <Pressable accessibilityRole="button" onPress={() => router.push('/watchlist')} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                   <VadText variant="caption" tone="brand">Open watchlist</VadText>
                 </Pressable>
@@ -449,7 +449,7 @@ export function HomeScreen({
             </View>
           )) : marketError ? (
             <View style={{ padding: 14, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, gap: 8 }}>
-              <VadText variant="bodyStrong">Can't load markets</VadText>
+              <VadText variant="bodyStrong">Markets unavailable</VadText>
               <VadText variant="caption" tone="secondary">Try again in a moment.</VadText>
               <Pressable accessibilityRole="button" onPress={onRetryMarkets} style={{ alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, backgroundColor: theme.colors.brandSoft }}>
                 <VadText variant="caption" tone="brand">Try again</VadText>

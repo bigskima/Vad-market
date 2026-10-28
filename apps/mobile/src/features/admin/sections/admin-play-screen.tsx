@@ -328,7 +328,7 @@ export function AdminPlayScreen() {
     return (
       <View style={{ gap: theme.spacing.md }}>
         <VadText variant="title">VAD Play</VadText>
-        <VadText tone="secondary">You don't have access to manage VAD Play. Ask a Super Admin.</VadText>
+        <VadText tone="secondary">You do not have access to manage VAD Play. Ask a Super Admin.</VadText>
       </View>
     );
   }

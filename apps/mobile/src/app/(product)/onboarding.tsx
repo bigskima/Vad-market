@@ -377,7 +377,7 @@ export default function AccountOnboardingScreen() {
                 <VadText variant="heading">Account essentials complete</VadText>
               </View>
               <VadText variant="body" tone="secondary">
-                You're ready to explore. Fund your wallet and trade when you're ready.
+                You are ready to explore. Fund your wallet and trade when you are ready.
               </VadText>
             </VadCard>
           ) : null}
@@ -476,7 +476,7 @@ export default function AccountOnboardingScreen() {
 
           {!loading && !state && !error ? (
             <VadCard style={{ gap: 8 }}>
-              <VadText variant="bodyStrong">Couldn't check your account</VadText>
+              <VadText variant="bodyStrong">Could not check your account</VadText>
               <VadText variant="caption" tone="secondary">Try again or get a reminder in 7 days.</VadText>
               <VadButton label="Try again" onPress={() => void refresh()} />
             </VadCard>
