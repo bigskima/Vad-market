@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -10,6 +10,12 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
 import { AdminPlayOperationsPanel } from './admin-play-operations-panel';
 import {
+  draftPlayGame,
+  generatePlayArtwork,
+  pickAndUploadPlayMedia,
+  type PlayMediaKind,
+} from '@/services/vad-play-media-api';
+import {
   getAdminPlayDashboard,
   saveAdminPlayAdPlacement,
   saveAdminPlayCampaign,
@@ -18,7 +24,7 @@ import {
   type PlayAdminDashboard,
 } from '@/services/admin-play-api';
 
-type Section = 'overview' | 'experience' | 'campaign' | 'ads' | 'operations';
+type Section = 'overview' | 'builder' | 'ads' | 'operations';
 
 const emptyDashboard: PlayAdminDashboard = {
   engines: [], releases: [], experiences: [], campaigns: [], adProviders: [], adPlacements: [], rewards: [],
@@ -106,7 +112,15 @@ export function AdminPlayScreen() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [section, setSection] = useState<Section>('overview');
+  const [section, setSection] = useState<Section>('builder');
+  const [draftIdea, setDraftIdea] = useState('');
+  const [drafting, setDrafting] = useState(false);
+  const [mediaWorking, setMediaWorking] = useState(false);
+  const [campaignImagePath, setCampaignImagePath] = useState('');
+  const [campaignImageUrl, setCampaignImageUrl] = useState('');
+  const [campaignImagePrompt, setCampaignImagePrompt] = useState('');
+  const [draftRiskNotes, setDraftRiskNotes] = useState('');
+  const [builderExperienceId, setBuilderExperienceId] = useState('NEW');
 
   const [experienceSlug, setExperienceSlug] = useState('');
   const [experienceTitle, setExperienceTitle] = useState('');
@@ -145,8 +159,8 @@ export function AdminPlayScreen() {
     try {
       const result = await getAdminPlayDashboard();
       setDashboard(result);
-      setExperienceEngine((current) => current || result.engines[0]?.engine_key || '');
-      setCampaignExperience((current) => current || result.experiences[0]?.id || '');
+      setExperienceEngine((current) => current || result.engines.find((engine) => engine.engine_key === 'PRIZE_DRAW')?.engine_key || result.engines[0]?.engine_key || 'PRIZE_DRAW');
+      setCampaignExperience((current) => current || result.experiences.find((experience) => experience.engine_key === 'PRIZE_DRAW')?.id || '');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'VAD Play admin data could not be loaded.');
     } finally {
@@ -190,36 +204,106 @@ export function AdminPlayScreen() {
     }
   }
 
-  async function createExperience() {
-    if (!experienceSlug.trim() || !experienceTitle.trim() || !experienceType.trim() || !experienceEngine) {
-      setError('Complete the experience slug, title, type and engine.');
+  async function draftGameWithAI() {
+    if (draftIdea.trim().length < 8) {
+      setError('Describe the game in one sentence before asking AI for a draft.');
       return;
     }
-    await runAction(() => saveAdminPlayExperience({
-      slug: experienceSlug.trim().toLowerCase().replace(/\s+/g, '-'),
-      title: experienceTitle.trim(),
-      description: experienceDescription.trim() || null,
-      experience_type: experienceType.trim().toUpperCase().replace(/[\s-]+/g, '_'),
-      engine_key: experienceEngine,
-      status: 'DRAFT',
-      hero_asset_url: experienceImageUrl.trim() || null,
-      card_asset_url: experienceImageUrl.trim() || null,
-      public_config: {},
-      engine_config: {},
-    }), 'Experience draft saved.');
-    setExperienceSlug('');
-    setExperienceTitle('');
-    setExperienceType('');
-    setExperienceDescription('');
-    setExperienceImageUrl('');
+    setDrafting(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const draft = await draftPlayGame({ idea: draftIdea, title: experienceTitle });
+      setBuilderExperienceId('NEW');
+      setExperienceEngine(draft.engineKey);
+      setExperienceTitle(draft.experienceTitle);
+      setExperienceSlug(draft.experienceSlug);
+      setExperienceType(draft.experienceType);
+      setExperienceDescription(draft.experienceDescription);
+      setCampaignTitle(draft.campaignTitle);
+      setCampaignSlug(draft.campaignSlug);
+      setPrizeTitle(draft.prizeTitle);
+      setCampaignTerms(draft.terms);
+      setCampaignRefundPolicy(draft.refundPolicy);
+      setCampaignImagePrompt(draft.imagePrompt);
+      setDraftRiskNotes(draft.riskNotes);
+      setSection('builder');
+      setMessage('AI draft prepared. Confirm the details, then enter this campaign’s own economics.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'AI could not prepare this game draft.');
+    } finally {
+      setDrafting(false);
+    }
   }
 
-  async function createCampaign() {
-    if (!campaignExperience || !campaignSlug.trim() || !campaignTitle.trim() || !prizeTitle.trim() || !currency.trim()
+  async function chooseArtwork(kind: PlayMediaKind) {
+    setMediaWorking(true);
+    setError(null);
+    try {
+      const uploaded = await pickAndUploadPlayMedia(kind);
+      if (!uploaded) return;
+      if (kind === 'campaign') {
+        setCampaignImagePath(uploaded.storagePath);
+        setCampaignImageUrl(uploaded.publicUrl);
+      } else if (kind === 'experience') {
+        setExperienceImageUrl(uploaded.publicUrl);
+      } else {
+        setSponsorImage(uploaded.publicUrl);
+      }
+      setMessage('Artwork uploaded to VAD Play storage.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Artwork upload failed.');
+    } finally {
+      setMediaWorking(false);
+    }
+  }
+
+  async function generateArtwork(kind: PlayMediaKind) {
+    const title = kind === 'campaign' ? campaignTitle : kind === 'experience' ? experienceTitle : sponsorTitle;
+    const description = kind === 'experience' ? experienceDescription : kind === 'campaign' ? prizeTitle : sponsorBody;
+    setMediaWorking(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await generatePlayArtwork({
+        title,
+        description,
+        visualPrompt: kind === 'campaign' ? campaignImagePrompt : undefined,
+        imageType: kind,
+      });
+      if (kind === 'campaign') {
+        setCampaignImagePath(result.storagePath);
+        setCampaignImageUrl(result.publicUrl);
+      } else if (kind === 'experience') {
+        setExperienceImageUrl(result.publicUrl);
+      } else {
+        setSponsorImage(result.publicUrl);
+      }
+      setMessage('AI artwork generated and saved to VAD Play storage.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'AI artwork generation failed.');
+    } finally {
+      setMediaWorking(false);
+    }
+  }
+
+  async function createGameDraft() {
+    const existingExperience = builderExperienceId !== 'NEW'
+      ? dashboard.experiences.find((item) => item.id === builderExperienceId && item.engine_key === 'PRIZE_DRAW')
+      : null;
+    if (builderExperienceId !== 'NEW' && !existingExperience) {
+      setError('Choose a valid Prize Draw experience or select New game.');
+      return;
+    }
+    if (builderExperienceId === 'NEW' && (!experienceSlug.trim() || !experienceTitle.trim() || !experienceType.trim())) {
+      setError('Enter a game name, URL slug and type, or use AI draft help.');
+      return;
+    }
+    if (!campaignSlug.trim() || !campaignTitle.trim() || !prizeTitle.trim() || !currency.trim()
       || !prizeCost.trim() || !profitMode || !profitValue.trim() || !campaignCosts.trim() || !entryPrice.trim()
       || !maxEntries.trim() || !maxTicketsPerPurchase.trim()
       || campaignTerms.trim().length < 20 || campaignRefundPolicy.trim().length < 10) {
-      setError('Complete all campaign fields, including a finite entry cap, per-purchase cap, published terms and refund policy.');
+      setError('Complete the campaign economics, finite entry caps, terms and refund policy before saving.');
       return;
     }
     const numeric = [prizeCost, profitValue, campaignCosts, entryPrice].map(Number);
@@ -227,44 +311,78 @@ export function AdminPlayScreen() {
     const purchaseCap = Number(maxTicketsPerPurchase);
     const perUserCap = userEntryLimit.trim() ? Number(userEntryLimit) : null;
     if (numeric.some((value) => !Number.isFinite(value)) || numeric[0] <= 0 || numeric[1] < 0 || numeric[2] < 0 || numeric[3] <= 0) {
-      setError('Check the campaign amounts. Prize cost and entry price must be positive; target and cost budget cannot be negative.');
+      setError('Prize cost and entry price must be positive. Profit target and cost budget cannot be negative.');
       return;
     }
     if (!Number.isInteger(entriesCap) || entriesCap <= 0 || !Number.isInteger(purchaseCap) || purchaseCap <= 0 || purchaseCap > entriesCap
       || (perUserCap !== null && (!Number.isInteger(perUserCap) || perUserCap <= 0 || perUserCap > entriesCap))) {
-      setError('Entry caps must be positive whole numbers. Per-purchase and per-user caps cannot exceed the campaign-wide cap.');
+      setError('Entry caps must be positive whole numbers; per-purchase and per-user limits cannot exceed the campaign cap.');
       return;
     }
-    await runAction(() => saveAdminPlayCampaign({
-      experience_id: campaignExperience,
-      slug: campaignSlug.trim().toLowerCase().replace(/\s+/g, '-'),
-      title: campaignTitle.trim(),
-      prize_title: prizeTitle.trim(),
-      currency_code: currency,
-      prize_cost_amount: numeric[0],
-      profit_target_mode: profitMode,
-      profit_target_value: numeric[1],
-      campaign_cost_budget_amount: numeric[2],
-      entry_price_amount: numeric[3],
-      max_entries: entriesCap,
-      max_tickets_per_purchase: purchaseCap,
-      entry_limit_per_user: perUserCap,
-      rules_public: { terms: campaignTerms.trim(), refund_policy: campaignRefundPolicy.trim() },
-      engine_config: {},
-    }), 'Campaign draft saved. Its threshold is calculated from this campaign’s configuration.');
-    setCampaignSlug('');
-    setCampaignTitle('');
-    setPrizeTitle('');
-    setPrizeCost('');
-    setProfitMode('');
-    setProfitValue('');
-    setCampaignCosts('');
-    setEntryPrice('');
-    setMaxEntries('');
-    setMaxTicketsPerPurchase('');
-    setUserEntryLimit('');
-    setCampaignTerms('');
-    setCampaignRefundPolicy('');
+
+    setWorking(true);
+    setError(null);
+    setMessage(null);
+    try {
+      let experienceId = existingExperience?.id ?? '';
+      if (!experienceId) {
+        experienceId = await saveAdminPlayExperience({
+          slug: experienceSlug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+          title: experienceTitle.trim(),
+          description: experienceDescription.trim() || null,
+          experience_type: experienceType.trim().toUpperCase().replace(/[\\s-]+/g, '_'),
+          engine_key: 'PRIZE_DRAW',
+          status: 'DRAFT',
+          hero_asset_url: experienceImageUrl.trim() || null,
+          card_asset_url: experienceImageUrl.trim() || null,
+          image_alt: experienceTitle.trim() || null,
+          public_config: {},
+          engine_config: {},
+        });
+        setBuilderExperienceId(experienceId);
+        setCampaignExperience(experienceId);
+      }
+      await saveAdminPlayCampaign({
+        experience_id: experienceId,
+        slug: campaignSlug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+        title: campaignTitle.trim(),
+        prize_title: prizeTitle.trim(),
+        currency_code: currency,
+        prize_cost_amount: numeric[0],
+        profit_target_mode: profitMode,
+        profit_target_value: numeric[1],
+        campaign_cost_budget_amount: numeric[2],
+        entry_price_amount: numeric[3],
+        max_entries: entriesCap,
+        max_tickets_per_purchase: purchaseCap,
+        entry_limit_per_user: perUserCap,
+        image_path: campaignImagePath.trim() || null,
+        rules_public: { terms: campaignTerms.trim(), refund_policy: campaignRefundPolicy.trim() },
+        engine_config: {},
+      });
+      setMessage('Game and campaign drafts saved. Review the terms, economics and artwork before approval.');
+      setCampaignSlug('');
+      setCampaignTitle('');
+      setPrizeTitle('');
+      setPrizeCost('');
+      setProfitMode('');
+      setProfitValue('');
+      setCampaignCosts('');
+      setEntryPrice('');
+      setMaxEntries('');
+      setMaxTicketsPerPurchase('');
+      setUserEntryLimit('');
+      setCampaignTerms('');
+      setCampaignRefundPolicy('');
+      setCampaignImagePath('');
+      setCampaignImageUrl('');
+      setDraftRiskNotes('');
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The game draft could not be saved.');
+    } finally {
+      setWorking(false);
+    }
   }
 
   async function createSponsorPlacement() {
@@ -349,11 +467,10 @@ export function AdminPlayScreen() {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {([
+          ['builder', 'Create a game'],
           ['overview', 'Overview'],
-          ['experience', 'Experience drafts'],
-          ['campaign', 'Campaign drafts'],
-          ['ads', 'Ads & placements'],
-          ['operations', 'Operations audit'],
+          ['ads', 'Sponsorships'],
+          ['operations', 'Operations'],
         ] as [Section, string][]).map(([key, label]) => (
           <SectionTab key={key} active={section === key} label={label} onPress={() => { setSection(key); setError(null); setMessage(null); }} />
         ))}
@@ -412,78 +529,106 @@ export function AdminPlayScreen() {
         </>
       ) : null}
 
-      {section === 'experience' ? (
-        <VadCard>
-          <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
-            <VadText variant="heading">Create an experience draft</VadText>
-            <VadText tone="secondary">This creates an unpublished database record. It does not publish the experience or enable its game engine.</VadText>
-            <VadInput label="URL slug" value={experienceSlug} onChangeText={setExperienceSlug} autoCapitalize="none" placeholder="e.g. prize-draws" />
-            <VadInput label="Display title" value={experienceTitle} onChangeText={setExperienceTitle} placeholder="Experience name" />
-            <VadInput label="Experience type key" value={experienceType} onChangeText={setExperienceType} autoCapitalize="characters" placeholder="e.g. PRIZE_DRAWS" hint="Database type key, not hardcoded into the catalogue UI." />
-            <View style={{ gap: 8 }}>
-              <VadText variant="label">Registered engine</VadText>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {dashboard.engines.map((engine) => (
-                  <ChoiceChip key={engine.engine_key} label={engine.display_name} selected={experienceEngine === engine.engine_key} onPress={() => setExperienceEngine(engine.engine_key)} />
-                ))}
-              </View>
-            </View>
-            <VadInput label="Description (optional)" value={experienceDescription} onChangeText={setExperienceDescription} multiline placeholder="Describe the experience" />
-            <VadInput label="HTTPS image URL (optional)" value={experienceImageUrl} onChangeText={setExperienceImageUrl} autoCapitalize="none" keyboardType="url" placeholder="https://…" />
-            <VadButton label="Save experience draft" loading={working} disabled={working} onPress={() => void createExperience()} />
-          </View>
-        </VadCard>
-      ) : null}
-
-      {section === 'campaign' ? (
-        <VadCard>
-          <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
-            <VadText variant="heading">Create a prize campaign draft</VadText>
-            <VadText tone="secondary">Every campaign must define its own economics. No prize price, profit percentage, cost budget or collection threshold is assumed by this form.</VadText>
-            <View style={{ gap: 8 }}>
-              <VadText variant="label">Experience</VadText>
-              {dashboard.experiences.filter((item) => item.engine_key === 'PRIZE_DRAW').map((experience) => (
-                <ChoiceChip key={experience.id} label={experience.title} selected={campaignExperience === experience.id} onPress={() => setCampaignExperience(experience.id)} />
-              ))}
-              {dashboard.experiences.filter((item) => item.engine_key === 'PRIZE_DRAW').length === 0 ? (
-                <VadText variant="caption" tone="warning">Save a Prize Draw experience draft first.</VadText>
+      {section === 'builder' ? (
+        <View style={{ gap: theme.spacing.md }}>
+          <VadCard>
+            <View style={{ padding: theme.spacing.md, gap: theme.spacing.sm }}>
+              <VadText variant="heading">Build a game</VadText>
+              <VadText variant="caption" tone="secondary">Describe the idea, let AI prepare the copy, then confirm every campaign amount yourself.</VadText>
+              <VadInput label="Game idea" value={draftIdea} onChangeText={setDraftIdea} multiline placeholder="What game or prize experience are you planning?" />
+              <VadButton label="Draft with AI" variant="secondary" loading={drafting} disabled={drafting || working || draftIdea.trim().length < 8} onPress={() => void draftGameWithAI()} />
+              {draftRiskNotes ? (
+                <View style={{ borderRadius: theme.radius.md, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.sm, gap: 3 }}>
+                  <VadText variant="label">Review notes</VadText>
+                  <VadText variant="caption" tone="secondary">{draftRiskNotes}</VadText>
+                </View>
               ) : null}
             </View>
-            <VadInput label="Campaign slug" value={campaignSlug} onChangeText={setCampaignSlug} autoCapitalize="none" placeholder="Campaign URL slug" />
-            <VadInput label="Campaign title" value={campaignTitle} onChangeText={setCampaignTitle} placeholder="Campaign name" />
-            <VadInput label="Prize description" value={prizeTitle} onChangeText={setPrizeTitle} placeholder="Prize to be awarded" />
-            <View style={{ gap: 8 }}>
-              <VadText variant="label">Currency (required)</VadText>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {['NGN', 'USDC'].map((item) => <ChoiceChip key={item} label={item} selected={currency === item} onPress={() => setCurrency(item)} />)}
-              </View>
-            </View>
-            <VadInput label="Prize cost (required)" value={prizeCost} onChangeText={setPrizeCost} keyboardType="decimal-pad" placeholder="Enter this campaign’s prize cost" />
-            <View style={{ gap: 8 }}>
-              <VadText variant="label">Profit target method (required)</VadText>
+          </VadCard>
+
+          <VadCard>
+            <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
+              <VadText variant="heading">1. Game details</VadText>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                <ChoiceChip label="% of this prize cost" selected={profitMode === 'PERCENT_OF_PRIZE'} onPress={() => setProfitMode('PERCENT_OF_PRIZE')} />
-                <ChoiceChip label="Fixed amount" selected={profitMode === 'FIXED_AMOUNT'} onPress={() => setProfitMode('FIXED_AMOUNT')} />
+                <ChoiceChip label="New game" selected={builderExperienceId === 'NEW'} onPress={() => setBuilderExperienceId('NEW')} />
+                {dashboard.experiences.filter((item) => item.engine_key === 'PRIZE_DRAW').map((item) => (
+                  <ChoiceChip key={item.id} label={'Add campaign: ' + item.title} selected={builderExperienceId === item.id} onPress={() => { setBuilderExperienceId(item.id); setExperienceTitle(item.title); setExperienceSlug(item.slug); setExperienceType(item.experience_type); setExperienceDescription(item.description ?? ''); setExperienceImageUrl(item.hero_asset_url ?? item.card_asset_url ?? ''); }} />
+                ))}
               </View>
+              {builderExperienceId === 'NEW' ? (
+                <>
+                  <VadInput label="Game name" value={experienceTitle} onChangeText={setExperienceTitle} placeholder="Prize draws" />
+                  <VadInput label="URL slug" value={experienceSlug} onChangeText={setExperienceSlug} autoCapitalize="none" placeholder="prize-draws" />
+                  <VadInput label="Game type" value={experienceType} onChangeText={setExperienceType} autoCapitalize="characters" placeholder="PRIZE_DRAWS" />
+                  <VadInput label="Short description" value={experienceDescription} onChangeText={setExperienceDescription} multiline placeholder="Briefly describe the experience" />
+                  <View style={{ gap: 7 }}>
+                    <VadText variant="label">Game artwork</VadText>
+                    {experienceImageUrl ? <Image source={{ uri: experienceImageUrl }} accessibilityLabel="Selected game artwork" resizeMode="cover" style={{ width: '100%', height: 130, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} /> : null}
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      <VadButton label="Upload image" variant="secondary" size="small" fullWidth={false} loading={mediaWorking} disabled={mediaWorking || working} onPress={() => void chooseArtwork('experience')} />
+                      <VadButton label="Generate with AI" variant="secondary" size="small" fullWidth={false} loading={mediaWorking} disabled={mediaWorking || working || experienceTitle.trim().length < 2} onPress={() => void generateArtwork('experience')} />
+                    </View>
+                  </View>
+                </>
+              ) : (
+                <VadText variant="caption" tone="secondary">A campaign will be attached to the selected draft experience.</VadText>
+              )}
             </View>
-            <VadInput label={profitMode === 'PERCENT_OF_PRIZE' ? 'Profit target percentage (required)' : profitMode === 'FIXED_AMOUNT' ? 'Profit target amount (required)' : 'Profit target value (choose method first)'} value={profitValue} onChangeText={setProfitValue} keyboardType="decimal-pad" placeholder="Enter target for this campaign" />
-            <VadInput label="Campaign cost budget (required)" value={campaignCosts} onChangeText={setCampaignCosts} keyboardType="decimal-pad" placeholder="Campaign costs paid from receipts" />
-            <VadInput label="Entry price (required)" value={entryPrice} onChangeText={setEntryPrice} keyboardType="decimal-pad" placeholder="Price per entry" />
-            <VadInput label="Campaign-wide maximum entries (required)" value={maxEntries} onChangeText={setMaxEntries} keyboardType="number-pad" placeholder="Set a finite total entry cap" />
-            <VadInput label="Maximum tickets per purchase (required)" value={maxTicketsPerPurchase} onChangeText={setMaxTicketsPerPurchase} keyboardType="number-pad" placeholder="Set the purchase cap for this campaign" />
-            <VadInput label="Entry limit per user (optional)" value={userEntryLimit} onChangeText={setUserEntryLimit} keyboardType="number-pad" placeholder="Leave blank for no separate per-user cap" />
-            <VadInput label="Published campaign terms (required)" value={campaignTerms} onChangeText={setCampaignTerms} multiline placeholder="Explain eligibility, draw timing, prize details and selection rules" hint="At least 20 characters. These terms are saved to the campaign and checked by the server before it can open." />
-            <VadInput label="Refund / funding-shortfall policy (required)" value={campaignRefundPolicy} onChangeText={setCampaignRefundPolicy} multiline placeholder="Explain when and how customers are refunded if the campaign cannot proceed" hint="At least 10 characters. Required before a campaign can open." />
-            {campaignEstimate !== null ? (
-              <View style={{ padding: theme.spacing.md, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, gap: 5 }}>
-                <VadText variant="caption" tone="secondary">Calculated funding threshold preview</VadText>
-                <VadText variant="title">{moneyLabel(campaignEstimate, currency)}</VadText>
-                <VadText variant="caption" tone="tertiary">This is a draft estimate from these fields only. The saved database value is authoritative; additional deducted fees must be included in campaign cost/reconciliation rules.</VadText>
+          </VadCard>
+
+          <VadCard>
+            <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
+              <VadText variant="heading">2. Campaign details</VadText>
+              <VadInput label="Campaign name" value={campaignTitle} onChangeText={setCampaignTitle} placeholder="Campaign title" />
+              <VadInput label="URL slug" value={campaignSlug} onChangeText={setCampaignSlug} autoCapitalize="none" placeholder="campaign-slug" />
+              <VadInput label="Prize" value={prizeTitle} onChangeText={setPrizeTitle} placeholder="Prize to be awarded" />
+
+              <View style={{ gap: 7 }}>
+                <VadText variant="label">Campaign artwork</VadText>
+                {campaignImageUrl ? <Image source={{ uri: campaignImageUrl }} accessibilityLabel="Selected campaign artwork" resizeMode="cover" style={{ width: '100%', height: 150, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} /> : null}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <VadButton label="Upload image" variant="secondary" size="small" fullWidth={false} loading={mediaWorking} disabled={mediaWorking || working} onPress={() => void chooseArtwork('campaign')} />
+                  <VadButton label="Generate with AI" variant="secondary" size="small" fullWidth={false} loading={mediaWorking} disabled={mediaWorking || working || campaignTitle.trim().length < 2} onPress={() => void generateArtwork('campaign')} />
+                </View>
+                <VadInput label="Image style (optional)" value={campaignImagePrompt} onChangeText={setCampaignImagePrompt} multiline placeholder="Art direction for AI-generated artwork" />
               </View>
-            ) : null}
-            <VadButton label="Save campaign draft" loading={working} disabled={working || dashboard.experiences.filter((item) => item.engine_key === 'PRIZE_DRAW').length === 0} onPress={() => void createCampaign()} />
-          </View>
-        </VadCard>
+
+              <View style={{ gap: 7 }}>
+                <VadText variant="label">Currency — select one</VadText>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {['NGN', 'USDC'].map((item) => <ChoiceChip key={item} label={item} selected={currency === item} onPress={() => setCurrency(item)} />)}
+                </View>
+              </View>
+              <VadInput label="Prize cost" value={prizeCost} onChangeText={setPrizeCost} keyboardType="decimal-pad" placeholder="Enter this campaign’s prize cost" />
+              <View style={{ gap: 7 }}>
+                <VadText variant="label">Profit target — select method</VadText>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <ChoiceChip label="% of prize cost" selected={profitMode === 'PERCENT_OF_PRIZE'} onPress={() => setProfitMode('PERCENT_OF_PRIZE')} />
+                  <ChoiceChip label="Fixed amount" selected={profitMode === 'FIXED_AMOUNT'} onPress={() => setProfitMode('FIXED_AMOUNT')} />
+                </View>
+              </View>
+              <VadInput label={profitMode === 'PERCENT_OF_PRIZE' ? 'Profit target (%)' : profitMode === 'FIXED_AMOUNT' ? 'Profit target amount' : 'Profit target value'} value={profitValue} onChangeText={setProfitValue} keyboardType="decimal-pad" placeholder="Required for this campaign" />
+              <VadInput label="Campaign cost budget" value={campaignCosts} onChangeText={setCampaignCosts} keyboardType="decimal-pad" placeholder="Budget paid from receipts" />
+              <VadInput label="Entry price" value={entryPrice} onChangeText={setEntryPrice} keyboardType="decimal-pad" placeholder="Price per entry" />
+              <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                <View style={{ flex: 1 }}><VadInput label="Total entry cap" value={maxEntries} onChangeText={setMaxEntries} keyboardType="number-pad" placeholder="Required" /></View>
+                <View style={{ flex: 1 }}><VadInput label="Per purchase cap" value={maxTicketsPerPurchase} onChangeText={setMaxTicketsPerPurchase} keyboardType="number-pad" placeholder="Required" /></View>
+              </View>
+              <VadInput label="Per-user cap (optional)" value={userEntryLimit} onChangeText={setUserEntryLimit} keyboardType="number-pad" placeholder="Only if needed" />
+              <VadInput label="Terms" value={campaignTerms} onChangeText={setCampaignTerms} multiline placeholder="Eligibility, timing and selection rules" hint="At least 20 characters. Review before publication." />
+              <VadInput label="Refund policy" value={campaignRefundPolicy} onChangeText={setCampaignRefundPolicy} multiline placeholder="When and how customers are refunded" hint="At least 10 characters." />
+
+              {campaignEstimate !== null ? (
+                <View style={{ padding: theme.spacing.md, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, gap: 4 }}>
+                  <VadText variant="caption" tone="secondary">Estimated funding threshold</VadText>
+                  <VadText variant="title">{moneyLabel(campaignEstimate, currency)}</VadText>
+                  <VadText variant="caption" tone="tertiary">Database value is authoritative. No target, price or currency is assumed.</VadText>
+                </View>
+              ) : null}
+              <VadButton label="Save game and campaign drafts" loading={working} disabled={working || mediaWorking || drafting} onPress={() => void createGameDraft()} />
+            </View>
+          </VadCard>
+        </View>
       ) : null}
 
       {section === 'operations' ? <AdminPlayOperationsPanel /> : null}
@@ -519,7 +664,14 @@ export function AdminPlayScreen() {
               <VadInput label="Sponsor name (optional)" value={sponsorName} onChangeText={setSponsorName} placeholder="Brand or partner name" />
               <VadInput label="Creative title" value={sponsorTitle} onChangeText={setSponsorTitle} placeholder="Sponsored message" />
               <VadInput label="Message (optional)" value={sponsorBody} onChangeText={setSponsorBody} multiline placeholder="Short sponsor message" />
-              <VadInput label="Image URL (HTTPS, optional)" value={sponsorImage} onChangeText={setSponsorImage} keyboardType="url" autoCapitalize="none" placeholder="https://…" />
+              <View style={{ gap: 7 }}>
+                <VadText variant="label">Sponsor artwork</VadText>
+                {sponsorImage ? <Image source={{ uri: sponsorImage }} accessibilityLabel="Sponsor artwork preview" resizeMode="cover" style={{ width: '100%', height: 120, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} /> : null}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <VadButton label="Upload image" variant="secondary" size="small" fullWidth={false} loading={mediaWorking} disabled={mediaWorking || working} onPress={() => void chooseArtwork('sponsor')} />
+                  <VadButton label="Generate with AI" variant="secondary" size="small" fullWidth={false} loading={mediaWorking} disabled={mediaWorking || working || sponsorTitle.trim().length < 2} onPress={() => void generateArtwork('sponsor')} />
+                </View>
+              </View>
               <VadInput label="Click URL (HTTPS, optional)" value={sponsorClick} onChangeText={setSponsorClick} keyboardType="url" autoCapitalize="none" placeholder="https://…" />
               <View style={{ gap: 8 }}>
                 <VadText variant="label">Platforms</VadText>
