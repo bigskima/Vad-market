@@ -8,12 +8,6 @@ import {
   getPositions,
 } from '@/services/market-api';
 import { listUserMarketWatchlist } from '@/services/market-watchlist-api';
-import {
-  getMarketHistory,
-  getPoolStakes,
-  getPortfolioOrderHistory,
-} from '@/services/market-api';
-import { getMyPaymentIntents } from '@/services/payment-api';
 
 export const ACCOUNT_ONBOARDING_REMINDER_DAYS = 7;
 const FRESH_ACCOUNT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -39,6 +33,8 @@ export type AccountSetupState = {
   firstDepositCheckAvailable: boolean;
   firstTradeComplete: boolean;
   firstTradeCheckAvailable: boolean;
+  watchlistComplete: boolean;
+  watchlistCheckAvailable: boolean;
 };
 
 export function accountOnboardingIsDeferred(
@@ -153,13 +149,17 @@ export async function getAccountSetupState(
   let firstDepositCheckAvailable = false;
   let firstTradeComplete = false;
   let firstTradeCheckAvailable = false;
+  let watchlistComplete = false;
+  let watchlistCheckAvailable = false;
 
   if (options.includeMilestones) {
-    const [paymentsResult, ordersResult, poolStakesResult, historyResult] = await Promise.allSettled([
+    const [paymentsResult, ordersResult, poolStakesResult, historyResult, positionsResult, watchlistResult] = await Promise.allSettled([
       getMyPaymentIntents(100),
       getPortfolioOrderHistory(200),
       getPoolStakes(),
       getMarketHistory(),
+      getPositions(),
+      listUserMarketWatchlist(),
     ]);
 
     if (paymentsResult.status === 'fulfilled') {
@@ -177,14 +177,22 @@ export async function getAccountSetupState(
     const ordersChecked = ordersResult.status === 'fulfilled';
     const poolStakesChecked = poolStakesResult.status === 'fulfilled';
     const historyChecked = historyResult.status === 'fulfilled';
-    firstTradeCheckAvailable = ordersChecked && poolStakesChecked && historyChecked;
+    const positionsChecked = positionsResult.status === 'fulfilled';
+    firstTradeCheckAvailable = ordersChecked && poolStakesChecked && historyChecked && positionsChecked;
     firstTradeComplete = (
       ordersChecked && ordersResult.value.some((order) => Number(order.filled_quantity) > 0)
     ) || (
       poolStakesChecked && poolStakesResult.value.some((stake) => Number(stake.amount) > 0)
     ) || (
       historyChecked && historyResult.value.length > 0
+    ) || (
+      positionsChecked && positionsResult.value.some((position) => Number(position.quantity) > 0)
     );
+
+    if (watchlistResult.status === 'fulfilled') {
+      watchlistCheckAvailable = true;
+      watchlistComplete = watchlistResult.value.length > 0;
+    }
   }
 
   return {
@@ -201,6 +209,8 @@ export async function getAccountSetupState(
     firstDepositCheckAvailable,
     firstTradeComplete,
     firstTradeCheckAvailable,
+    watchlistComplete,
+    watchlistCheckAvailable,
   };
 }
 
@@ -208,57 +218,3 @@ export function isAccountSetupComplete(state: AccountSetupState) {
   return state.contactConfirmed && state.profileComplete && state.kycComplete;
 }
 
-
-export type AccountActivationState = {
-  firstDepositComplete: boolean | null;
-  firstTradeComplete: boolean | null;
-  watchlistComplete: boolean | null;
-  checkedAt: string;
-};
-
-/**
- * Activation milestones are derived from VAD's existing payment, trading,
- * portfolio and watchlist read APIs. No client-side completion flags are
- * written for a deposit or trade, and a failed read remains unknown rather
- * than being incorrectly shown as incomplete.
- */
-export async function getAccountActivationState(): Promise<AccountActivationState> {
-  const [payments, orders, poolStakes, marketHistory, positions, watchlist] = await Promise.allSettled([
-    getMyPaymentIntents(100),
-    getPortfolioOrderHistory(200),
-    getPoolStakes(),
-    getMarketHistory(),
-    getPositions(),
-    listUserMarketWatchlist(),
-  ]);
-
-  const firstDepositComplete = payments.status === 'fulfilled'
-    ? payments.value.some((payment) =>
-      payment.operation === 'DEPOSIT'
-      && (payment.status.toUpperCase() === 'SETTLED' || Boolean(payment.settled_at)),
-    )
-    : null;
-
-  const tradeEvidence = [
-    orders.status === 'fulfilled' && orders.value.some((order) => Number(order.filled_quantity) > 0),
-    poolStakes.status === 'fulfilled' && poolStakes.value.some((stake) => Number(stake.amount) > 0),
-    marketHistory.status === 'fulfilled' && marketHistory.value.length > 0,
-    positions.status === 'fulfilled' && positions.value.some((position) => Number(position.quantity) > 0),
-  ];
-  const tradeReadsSucceeded = [orders, poolStakes, marketHistory, positions]
-    .every((result) => result.status === 'fulfilled');
-  const firstTradeComplete = tradeEvidence.some(Boolean)
-    ? true
-    : tradeReadsSucceeded ? false : null;
-
-  const watchlistComplete = watchlist.status === 'fulfilled'
-    ? watchlist.value.length > 0
-    : null;
-
-  return {
-    firstDepositComplete,
-    firstTradeComplete,
-    watchlistComplete,
-    checkedAt: new Date().toISOString(),
-  };
-}
