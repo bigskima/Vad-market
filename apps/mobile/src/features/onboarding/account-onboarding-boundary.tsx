@@ -5,7 +5,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import {
   getAccountSetupState,
-  isAccountSetupComplete,
+  isAccountOnboardingComplete,
   markAccountOnboardingCompleted,
   markAccountOnboardingStarted,
   shouldPromptAccountOnboarding,
@@ -46,10 +46,10 @@ export function AccountOnboardingBoundary({ children }: { children: ReactNode })
 
     void (async () => {
       try {
-        const state = await getAccountSetupState(user);
+        const state = await getAccountSetupState(user, { includeMilestones: true });
         if (cancelled) return;
 
-        if (isAccountSetupComplete(state)) {
+        if (isAccountOnboardingComplete(state)) {
           try {
             await markAccountOnboardingCompleted();
           } catch {
