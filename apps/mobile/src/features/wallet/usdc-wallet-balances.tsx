@@ -137,12 +137,12 @@ function NetworkBalanceCard({ network }: { network: UsdcNetworkBalanceGroup }) {
           ))}
           {!network.tradingReady ? (
             <VadText variant="caption" tone="tertiary">
-              Balance reading is available, but VAD on-chain trading is not activated on this network.
+              Balances are visible, but trading is not yet available on this network.
             </VadText>
           ) : null}
         </View>
       ) : (
-        <VadText variant="caption" tone="secondary">No verified wallet balance could be read for this network.</VadText>
+        <VadText variant="caption" tone="secondary">Balance unavailable for this network.</VadText>
       )}
     </VadCard>
   );

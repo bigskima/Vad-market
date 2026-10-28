@@ -338,7 +338,7 @@ export function AdminGovernanceScreen() {
       ) : tab === 'oracle' && canReviewOracle ? (
         <OperationsSection
           title="Oracle queue"
-          description="Create provisional outcomes and finalize eligible resolutions. The outcome, dispute window and independent-review requirements are checked before finalization."
+          description="Review proposed results, then finalize them after any dispute window and required independent review."
           count={data.oracleQueue.length}
         >
           {data.oracleQueue.length ? (
@@ -374,7 +374,7 @@ export function AdminGovernanceScreen() {
       ) : tab === 'policies' && canReviewOracle ? (
         <OperationsSection
           title="Oracle policies"
-          description="Policy versions define approved sources, consensus requirements, dispute windows and void behavior. Draft activation requires an independent reviewer."
+          description="Set approved sources, agreement thresholds, dispute windows and void rules. A second reviewer must approve activation."
           count={policies.length}
         >
           {policiesLoading ? (

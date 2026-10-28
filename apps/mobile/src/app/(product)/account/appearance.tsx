@@ -100,7 +100,6 @@ export default function AppearanceScreen() {
               <View style={{ padding: theme.spacing.sm, gap: theme.spacing.xs }}>
                 <VadText variant="caption" tone="brand">PREVIEW</VadText>
                 <VadText variant="bodyStrong">Clear and comfortable to read</VadText>
-                <VadText variant="caption" tone="secondary">This preview changes instantly when you choose a different theme.</VadText>
                 <View style={{ minHeight: 38, borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandPrimary, alignItems: 'center', justifyContent: 'center' }}>
                   <VadText variant="label" tone="inverse">Primary action</VadText>
                 </View>

@@ -81,7 +81,6 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
       ) : !hasLevels ? (
         <View style={{ gap: 4, paddingVertical: 8 }}>
           <VadText variant="bodyStrong">No resting bids yet</VadText>
-          <VadText variant="caption" tone="secondary">Open orders will appear here when traders place them.</VadText>
         </View>
       ) : (
         <View style={{ gap: 10 }}>
@@ -99,7 +98,6 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
               )) : <VadText variant="caption" tone="tertiary">No bids</VadText>}
             </View>
           </View>
-          <VadText variant="caption" tone="tertiary">Bars compare visible quantities only; they are not a price-history chart.</VadText>
         </View>
       )}
     </VadCard>

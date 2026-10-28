@@ -142,7 +142,7 @@ export default function SendRoute() {
               ))}
             </View>
             {!assets.length ? (
-              <VadText variant="caption" tone="danger">No supported transfer currency is eligible for this account.</VadText>
+              <VadText variant="caption" tone="danger">No transfer currency is available for this account.</VadText>
             ) : null}
           </View>
 
@@ -201,7 +201,7 @@ export default function SendRoute() {
           ) : null}
 
           <VadButton
-            label={working ? 'Posting ledger transfer…' : alreadySentThisRequest ? 'Transfer posted' : 'Send assets'}
+            label={working ? 'Sending transfer…' : alreadySentThisRequest ? 'Transfer sent' : 'Send assets'}
             onPress={() => void submit()}
             loading={working}
             disabled={working || alreadySentThisRequest || !assets.length}

@@ -199,7 +199,7 @@ export default function AdminSupportScreen() {
       {activeTicket.status === 'CLOSED' ? (
         <VadCard variant="muted" style={{ gap: 5 }}>
           <VadText variant="bodyStrong">This ticket is closed</VadText>
-          <VadText variant="caption" tone="secondary">Send a reply with In progress or Waiting user selected to reopen the conversation.</VadText>
+          <VadText variant="caption" tone="secondary">To reopen, send a reply and set the status to In progress or Waiting for user.</VadText>
         </VadCard>
       ) : null}
       <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 12, gap: 10 }}>

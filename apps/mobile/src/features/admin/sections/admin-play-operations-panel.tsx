@@ -108,7 +108,7 @@ export function AdminPlayOperationsPanel() {
             ))}
           </View>
 
-          <OperationsSection title="Entry orders" description="Payment status and ledger journal references for recorded ticket orders.">
+          <OperationsSection title="Entry orders" description="Ticket payments, refunds and references.">
             {data.entryOrders.length ? data.entryOrders.slice(0, 30).map((item) => (
               <VadCard key={item.id}>
                 <View style={{ padding: theme.spacing.md, gap: theme.spacing.sm }}>
@@ -130,7 +130,7 @@ export function AdminPlayOperationsPanel() {
             )) : <VadText tone="secondary">No ticket orders recorded.</VadText>}
           </OperationsSection>
 
-          <OperationsSection title="Draw records" description="Authorizer/executor separation, commitment, result digest and recorded winner.">
+          <OperationsSection title="Draw records" description="Draw approvals, recorded results and winners.">
             {data.draws.length ? data.draws.slice(0, 30).map((item) => (
               <VadCard key={item.id}>
                 <View style={{ padding: theme.spacing.md, gap: theme.spacing.sm }}>

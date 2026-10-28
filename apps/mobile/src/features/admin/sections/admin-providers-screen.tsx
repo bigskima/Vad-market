@@ -613,7 +613,7 @@ export function AdminProvidersScreen() {
                       />
                     ) : policy.status === 'DRAFT' && canReviewOracle ? (
                       <VadText variant="caption" tone="warning">
-                        Approval disabled: this draft does not match the required Coinbase PRIMARY + Kraken CORROBORATING two-provider policy.
+                        Approval unavailable: select Coinbase as the primary source and Kraken as the corroborating source.
                       </VadText>
                     ) : null}
                   </VadCard>
@@ -624,7 +624,7 @@ export function AdminProvidersScreen() {
             ['VAD Crypto Threshold Launch Policy', 'VAD Sandbox Crypto Threshold Policy'].includes(policy.name)
             && ['ACTIVE', 'DRAFT'].includes(policy.status)
             && isCoinbaseKrakenThresholdPolicy(policy)) ? (
-            <EmptyText>No eligible Coinbase/Kraken threshold policy was returned. Check Oracle provider health and policy migrations before creating an automatic crypto market.</EmptyText>
+            <EmptyText>No Coinbase/Kraken price-verification policy is available. Check provider settings before creating an automatic crypto market.</EmptyText>
           ) : null}
         </View>
       )}

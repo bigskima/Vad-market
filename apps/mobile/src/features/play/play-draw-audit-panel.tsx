@@ -128,7 +128,6 @@ export function PlayDrawAuditPanel({ campaignId }: { campaignId: string }) {
                 </View>
               ))}
               {hasMore ? <VadButton label="Load next ticket page" variant="secondary" loading={loadingTickets} onPress={() => void loadTicketPage(false)} /> : null}
-              {tickets.length > 0 && !hasMore ? <VadText variant="caption" tone="secondary">End of ticket list.</VadText> : null}
             </View>
           )}
           {ticketError ? <VadText variant="caption" tone="danger">{ticketError}</VadText> : null}

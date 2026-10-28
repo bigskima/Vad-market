@@ -322,8 +322,8 @@ export default function AccountScreen() {
               style={({ pressed }) => ({ minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, opacity: testModeSaving ? 0.55 : pressed ? 0.75 : 1 })}
             >
               <View style={{ flex: 1, gap: 2 }}>
-                <VadText variant="bodyStrong">{testModeSaving ? 'Saving market-testing setting…' : 'Use allocation for NGN trading'}</VadText>
-                <VadText variant="caption" tone="secondary">{testModeStatus.testModeEnabled ? 'Use test credit for new predictions.' : 'Turn on to use test credit.'}</VadText>
+                <VadText variant="bodyStrong">{testModeSaving ? 'Saving…' : 'Use test funds for NGN trades'}</VadText>
+                <VadText variant="caption" tone="secondary">{testModeStatus.testModeEnabled ? 'Use test funds for NGN predictions.' : 'Turn on to use test funds.'}</VadText>
               </View>
               <View style={{ width: 48, height: 28, borderRadius: 18, padding: 3, justifyContent: 'center', backgroundColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.surfaceMuted, borderWidth: 1, borderColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.border }}>
                 <View style={{ width: 20, height: 20, borderRadius: 12, alignSelf: testModeStatus.testModeEnabled ? 'flex-end' : 'flex-start', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }} />
