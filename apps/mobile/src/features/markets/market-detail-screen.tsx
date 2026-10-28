@@ -296,6 +296,9 @@ function SportsMatchupCard({ market }: { market: MarketCatalogItem }) {
   const context = asRecord(market.market_context);
   const subject = asRecord(context.subject);
   const details = asRecord(context.details);
+  const subjectMetadata = asRecord(subject.metadata);
+  const detailsMetadata = asRecord(details.metadata);
+  const contextMetadata = asRecord(context.metadata);
 
   const homeTeam = firstContextText(subject.home_team, subject.homeTeam, context.home_team, context.homeTeam, subject.competitor_a, context.competitor_a, subject.team_home);
   const awayTeam = firstContextText(subject.away_team, subject.awayTeam, context.away_team, context.awayTeam, subject.competitor_b, context.competitor_b, subject.team_away);
@@ -490,18 +493,25 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
     value: firstContextText(...field.keys.map((key) => subject[key] ?? details[key] ?? context[key])),
   })).filter((entry) => entry.value && entry.value.length <= 160).slice(0, 4);
   const displayTitle = firstContextText(
-    subject.name, subject.title, subject.asset_name, subject.assetName,
+    subject.name, subject.title, subject.asset_name, subject.assetName, subject.symbol, subject.ticker,
     subject.company_name, subject.companyName, subject.artist, subject.artist_name,
-    subject.model_name, subject.modelName, context.market_question, context.marketQuestion,
+    subject.model_name, subject.modelName, subjectMetadata.name, subjectMetadata.symbol,
+    detailsMetadata.name, detailsMetadata.symbol, contextMetadata.name, context.market_question, context.marketQuestion,
   ) || selected.title;
   const logoUrl = safeCategoryImageUrl(firstContextText(
     subject.logo_url, subject.logoUrl, subject.image_url, subject.imageUrl,
     subject.icon_url, subject.iconUrl, subject.asset_logo_url, subject.assetLogoUrl,
     subject.company_logo_url, subject.companyLogoUrl, subject.issuer_logo_url, subject.issuerLogoUrl,
     subject.poster_url, subject.posterUrl, subject.avatar_url, subject.avatarUrl,
+    subject.logo, subject.image, subject.icon, subjectMetadata.logo_url, subjectMetadata.logoUrl,
+    subjectMetadata.image_url, subjectMetadata.imageUrl, subjectMetadata.icon_url, subjectMetadata.iconUrl,
     details.logo_url, details.logoUrl, details.image_url, details.imageUrl,
+    details.icon_url, details.iconUrl, detailsMetadata.logo_url, detailsMetadata.logoUrl,
+    detailsMetadata.image_url, detailsMetadata.imageUrl, detailsMetadata.icon_url, detailsMetadata.iconUrl,
     context.logo_url, context.logoUrl, context.image_url, context.imageUrl,
     context.icon_url, context.iconUrl, context.asset_logo_url, context.assetLogoUrl,
+    contextMetadata.logo_url, contextMetadata.logoUrl, contextMetadata.image_url, contextMetadata.imageUrl,
+    contextMetadata.icon_url, contextMetadata.iconUrl,
   ));
   const initials = displayTitle.split(/\\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('');
   if (!entries.length && !logoUrl && displayTitle === selected.title) return null;
