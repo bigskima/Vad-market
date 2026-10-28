@@ -56,6 +56,40 @@ export type PlayTicketPurchase = {
   idempotentReplay: boolean;
 };
 
+export type PlayDrawAudit = {
+  campaignId: string;
+  campaignTitle?: string;
+  status: string;
+  drawId?: string;
+  ticketCount?: number | null;
+  entriesDigest?: string | null;
+  seedCommitment?: string | null;
+  seedReveal?: string | null;
+  winningTicketId?: string;
+  winningTicketCode?: string;
+  algorithm?: string;
+  selectionCounter?: number;
+  authorizedAt?: string;
+  executedAt?: string;
+  resultDigest?: string;
+  voidedAt?: string | null;
+  voidReason?: string | null;
+};
+
+export type PlayDrawAuditTicket = {
+  ticketId: string;
+  ticketCode: string;
+  status: string;
+};
+
+export type PlayDrawAuditTicketPage = {
+  campaignId: string;
+  tickets: PlayDrawAuditTicket[];
+  nextAfterTicketId: number | string | null;
+  hasMore: boolean;
+  pageSize: number;
+};
+
 export type PlayActivity = {
   id: string;
   experience_id: string | null;
@@ -130,6 +164,41 @@ export async function buyPlayTickets(
 
 export function createPlayIdempotencyKey() {
   return Crypto.randomUUID();
+}
+
+export async function getPlayDrawAudit(campaignId: string): Promise<PlayDrawAudit | null> {
+  const { data, error } = await supabase.rpc('play_draw_audit', {
+    p_campaign_id: campaignId,
+  });
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  return data as unknown as PlayDrawAudit;
+}
+
+export async function getPlayDrawAuditTicketPage(
+  campaignId: string,
+  afterTicketId: number | string | null = null,
+  limit = 50,
+): Promise<PlayDrawAuditTicketPage> {
+  const { data, error } = await supabase.rpc('play_draw_audit_ticket_page', {
+    p_campaign_id: campaignId,
+    p_after_ticket_id: afterTicketId == null ? 0 : Number(afterTicketId),
+    p_limit: limit,
+  });
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('VAD returned an unexpected draw-audit response.');
+  }
+  const value = data as Record<string, unknown>;
+  return {
+    campaignId: String(value.campaignId ?? campaignId),
+    tickets: Array.isArray(value.tickets) ? value.tickets as PlayDrawAuditTicket[] : [],
+    nextAfterTicketId: typeof value.nextAfterTicketId === 'number' || typeof value.nextAfterTicketId === 'string'
+      ? value.nextAfterTicketId
+      : null,
+    hasMore: Boolean(value.hasMore),
+    pageSize: Number(value.pageSize ?? limit),
+  };
 }
 
 export async function listMyPlayActivity(userId: string): Promise<PlayActivity[]> {
