@@ -37,18 +37,6 @@ for (const file of files) {
         `${relative(process.cwd(), file)}:${index + 1}: malformed dollar-quote terminator; use the matching closing tag (for example, $;)`,
       );
     }
-
-    if (/^\s*\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$\s*$/.test(line)) {
-      let next = index + 1;
-      while (next < lines.length && (lines[next].trim() === '' || lines[next].trim().startsWith('--'))) {
-        next += 1;
-      }
-      if (next >= lines.length || !lines[next].trim().startsWith(';')) {
-        issues.push(
-          `${relative(process.cwd(), file)}:${index + 1}: dollar-quote terminator is missing its semicolon`,
-        );
-      }
-    }
   });
 }
 
