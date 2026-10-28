@@ -588,7 +588,7 @@ function safeCategoryImageUrl(value: unknown): string | null {
     const url = new URL(value);
     if (url.protocol !== 'https:' || url.username || url.password) return null;
     const host = url.hostname.toLowerCase();
-    if (!host || host === 'localhost' || host.endsWith('.local') || /^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(host)) return null;
+    if (!host || host === 'localhost' || host.endsWith('.local') || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return null;
     return url.toString();
   } catch {
     return null;
