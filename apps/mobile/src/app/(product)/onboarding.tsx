@@ -70,9 +70,7 @@ export default function AccountOnboardingScreen() {
         }
       }
     } catch (reason) {
-      setError(reason instanceof Error
-        ? reason.message
-        : 'We could not check your setup right now. Please try again.');
+      setError(userFacingErrorMessage(reason, 'general', 'Could not check setup. Try again.'));
     } finally {
       setLoading(false);
     }
@@ -96,7 +94,7 @@ export default function AccountOnboardingScreen() {
         try {
           await markAccountOnboardingStarted();
         } catch {
-          if (active) setError('Progress could not be saved to your account yet. You can still complete the steps or retry later.');
+          if (active) setError('Couldn't save progress. You can finish setup or try again later.');
         } finally {
           setWorking(false);
         }
@@ -116,9 +114,7 @@ export default function AccountOnboardingScreen() {
         }
       } catch (reason) {
         if (!active) return;
-        setError(reason instanceof Error
-          ? reason.message
-          : 'We could not check your setup right now. Please try again.');
+        setError(userFacingErrorMessage(reason, 'general', 'Could not check setup. Try again.'));
       } finally {
         if (active) setLoading(false);
       }
