@@ -102,7 +102,7 @@ export function FinancialAssetsDataPanel({ assetClass, search, showHeader = true
         </View>
       ) : error && !items.length ? (
         <VadErrorState
-          title={title + ' data unavailable'}
+          title={title + ' unavailable'}
           message={error}
           onRetry={() => {
             setLoading(true);
@@ -194,7 +194,7 @@ function FinancialAssetCard({ item }: { item: FinancialMarketQuote }) {
         ) : (
           <VadText variant="caption" tone="tertiary">{item.source}</VadText>
         )}
-        {item.sourceUpdatedAt ? <VadText variant="caption" tone="tertiary">Source timestamp {new Date(item.sourceUpdatedAt).toLocaleString()}</VadText> : null}
+        {item.sourceUpdatedAt ? <VadText variant="caption" tone="tertiary">Updated {new Date(item.sourceUpdatedAt).toLocaleString()}</VadText> : null}
       </View>
     </VadCard>
   );
