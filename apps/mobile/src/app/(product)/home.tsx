@@ -40,6 +40,7 @@ export default function HomeRoute() {
     <ProductRoute active="Home" allowCreate hideTopBar>
       <HomeScreen
         markets={data.markets}
+        loading={data.loading}
         wallets={data.wallet}
         userName={userName}
         userId={session?.user.id ?? ''}
