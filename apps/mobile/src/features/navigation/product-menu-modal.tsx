@@ -31,6 +31,7 @@ const sections: { title: string; entries: MenuEntry[] }[] = [
     entries: [
       { label: 'Wallet', description: 'Balances and payment actions', route: '/wallet', icon: 'wallet' },
       { label: 'Wallet activity', route: '/wallet/activity', icon: 'transfer' },
+      { label: 'Deposits & withdrawals', description: 'Payment requests and their status', route: '/wallet/deposits-withdrawals', icon: 'creditCard' },
       { label: 'Portfolio', description: 'Positions, holdings and orders', route: '/portfolio', icon: 'portfolio' },
       { label: 'Notifications', route: '/notifications', icon: 'bell' },
     ],
