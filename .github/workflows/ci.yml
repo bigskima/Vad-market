@@ -86,6 +86,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Set isolated CI database ports
+        run: |
+          sed -i 's/^port = 54322$/port = 64322/' supabase/config.toml
+          sed -i 's/^shadow_port = 54320$/shadow_port = 64320/' supabase/config.toml
       - name: Start isolated local Supabase stack
         run: npm run db:start
       - name: Replay all migrations against local PostgreSQL
