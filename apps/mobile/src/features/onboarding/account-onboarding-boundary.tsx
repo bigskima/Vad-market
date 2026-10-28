@@ -1,5 +1,5 @@
 import { router, usePathname } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 
 import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -11,7 +11,7 @@ import {
   shouldPromptAccountOnboarding,
 } from '@/services/account-onboarding-api';
 
-export function AccountOnboardingBoundary({ children }: { children: React.ReactNode }) {
+export function AccountOnboardingBoundary({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { isLoading, session } = useAuth();
   const productData = useProductDataContext();
