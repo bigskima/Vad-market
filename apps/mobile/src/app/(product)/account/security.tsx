@@ -139,7 +139,7 @@ export default function AccountSecurityScreen() {
         <View style={{ gap: 4 }}>
           <VadText variant="caption" tone="brand">ACCOUNT SECURITY</VadText>
           <VadText variant="title">Protect your VAD account</VadText>
-          <VadText variant="caption" tone="secondary">Password recovery and authenticator-based two-factor controls use your current sign-in provider.</VadText>
+          <VadText variant="caption" tone="secondary">Manage password recovery and two-factor authentication.</VadText>
         </View>
 
         <VadCard style={{ gap: theme.spacing.sm }}>
@@ -152,7 +152,7 @@ export default function AccountSecurityScreen() {
         <VadCard style={{ gap: theme.spacing.sm }}>
           <View style={{ gap: 3 }}>
             <VadText variant="heading">Two-Factor Authentication</VadText>
-            <VadText variant="caption" tone="secondary">Authenticator factors are listed from the sign-in provider. A factor is enabled only after its code has been verified.</VadText>
+            <VadText variant="caption" tone="secondary">Add an authenticator and verify a code to enable two-factor authentication.</VadText>
           </View>
           {loading ? <VadText variant="caption" tone="secondary">Checking authenticator status…</VadText> : error && factors.length === 0 ? (
             <VadText variant="caption" tone="danger">{error}</VadText>
@@ -162,7 +162,7 @@ export default function AccountSecurityScreen() {
                 <View key={factor.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <View style={{ flex: 1, gap: 2 }}>
                     <VadText variant="bodyStrong">Authenticator app</VadText>
-                    <VadText variant="caption" tone="secondary">Verified by your sign-in provider</VadText>
+                    <VadText variant="caption" tone="secondary">Authenticator enabled</VadText>
                   </View>
                   <VadButton label="Remove" variant="danger" size="small" fullWidth={false} disabled={working} onPress={() => disableTotp(factor.id)} />
                 </View>
@@ -191,7 +191,7 @@ export default function AccountSecurityScreen() {
 
         <VadCard style={{ gap: 6 }}>
           <VadText variant="heading">Active Sessions</VadText>
-          <VadText variant="caption" tone="secondary">This app build does not have a server API for listing and revoking other device sessions. It will not display fabricated devices. Use Log Out to end this local session.</VadText>
+          <VadText variant="caption" tone="secondary">Other device sessions can't be managed here yet. Log out to end this session.</VadText>
         </VadCard>
 
         {message ? <VadCard style={{ borderColor: theme.colors.yes, backgroundColor: theme.colors.yesSoft }}><VadText variant="caption" tone="yes">{message}</VadText></VadCard> : null}
