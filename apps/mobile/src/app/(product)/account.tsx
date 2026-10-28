@@ -7,6 +7,7 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadIcon, type VadIconName } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductRoute } from '@/features/navigation/product-route';
+import { AccountSetupCard } from '@/features/onboarding/account-setup-card';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useAuth } from '@/providers/auth-provider';
@@ -285,6 +286,8 @@ export default function AccountScreen() {
         </Pressable>
         </TourTarget>
 
+        <AccountSetupCard />
+
         {testModeStatus?.active ? (
           <VadCard style={{ gap: density.phone ? 10 : 14, padding: density.phone ? 12 : 16, borderRadius: 17, borderColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.border, backgroundColor: theme.colors.surface }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
@@ -392,6 +395,10 @@ export default function AccountScreen() {
           <AccountRow icon="bell" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Notifications" subtitle="Trade alerts, results, account activity" onPress={() => router.push('/notifications')} />
           <AccountRow icon="palette" iconBackground={theme.colors.warningSoft} iconColor={theme.colors.warning} title="App Appearance" subtitle="Dark mode, light mode, or system" badge={theme.preference === 'system' ? 'System' : theme.preference === 'dark' ? 'Dark' : 'Light'} badgeTone="neutral" onPress={() => router.push('/account/appearance')} />
           <AccountRow icon="globe" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Language & Region" subtitle="English and regional settings" onPress={() => router.push('/account/region')} last />
+        </SettingsGroup>
+
+        <SettingsGroup title="Grow with VAD">
+          <AccountRow icon="community" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Rewards & Referrals" subtitle="Share your invite code and track rewards" onPress={() => router.push('/account/referrals')} last />
         </SettingsGroup>
 
         <SettingsGroup title="Support">
