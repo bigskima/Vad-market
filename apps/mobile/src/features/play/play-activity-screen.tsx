@@ -62,20 +62,20 @@ export function PlayActivityScreen() {
       <View style={{ gap: 5 }}>
         <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.4 }}>VAD PLAY</VadText>
         <VadText variant="title">My Play</VadText>
-        <VadText tone="secondary">A private history of your confirmed Play activity.</VadText>
+        <VadText tone="secondary">Your activity and results.</VadText>
       </View>
 
       <PlayTabNavigation active="My Play" />
 
       {loading ? (
-        <PlayLoadingState label="Loading your Play history" />
+        <PlayLoadingState label="Loading your Play activity" variant="playActivity" />
       ) : error ? (
         <PlayMessageState title="Your history could not be loaded" body={error} actionLabel="Try again" onAction={refresh} tone="error" />
       ) : activity.length === 0 ? (
         <PlayMessageState
-          title="Your Play history starts here"
-          body="There is no recorded Play activity on this account yet. Only server-confirmed activity appears here; the app does not invent entries or balances."
-          actionLabel="Explore VAD Play"
+          title="No activity yet"
+          body="Confirmed activity will appear here."
+          actionLabel="Explore Play"
           onAction={() => router.replace('/play')}
         />
       ) : (
