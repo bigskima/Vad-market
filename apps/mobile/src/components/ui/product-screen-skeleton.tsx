@@ -150,6 +150,33 @@ export function MarketOutcomeChoicesSkeleton() {
   );
 }
 
+export function PaymentRequestsSkeleton({ count = 4 }: { count?: number }) {
+  const theme = useVadTheme();
+  return (
+    <View style={{ gap: theme.spacing.md }}>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {[0, 1].map((index) => (
+          <View key={index} style={{ flex: 1, gap: 7, padding: 12, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
+            <VadSkeleton width="55%" height={10} />
+            <VadSkeleton width="78%" height={22} />
+            <VadSkeleton width="62%" height={9} />
+          </View>
+        ))}
+      </View>
+      <PillRow widths={['18%', '22%', '24%', '25%']} />
+      <View style={{ gap: 8 }}>
+        {Array.from({ length: count }, (_, index) => (
+          <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
+            <VadSkeleton width={40} height={40} radius={12} />
+            <View style={{ flex: 1, gap: 6 }}><VadSkeleton width="60%" height={13} /><VadSkeleton width="42%" height={9} /></View>
+            <View style={{ alignItems: 'flex-end', gap: 6, width: 82 }}><VadSkeleton width="92%" height={13} /><VadSkeleton width="70%" height={9} /></View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export function PortfolioSectionSkeleton({ kind }: { kind: 'positions' | 'orders' | 'history' }) {
   const theme = useVadTheme();
   const count = kind === 'history' ? 4 : 3;
