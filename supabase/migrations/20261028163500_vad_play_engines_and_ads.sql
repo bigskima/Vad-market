@@ -75,7 +75,7 @@ create or replace function public.play_guard_experience_publishing()
 returns trigger
 language plpgsql
 set search_path = public, pg_temp
-as $
+as $$
 declare
   v_engine_status text;
   v_release_status text;
@@ -103,7 +103,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists play_experience_publish_guard on public.play_experiences;
 create trigger play_experience_publish_guard
