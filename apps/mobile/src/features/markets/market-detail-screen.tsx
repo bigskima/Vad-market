@@ -512,8 +512,10 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
         <View style={{ width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }}>
           {logoUrl ? (
             <Image source={{ uri: logoUrl }} accessibilityLabel={displayTitle + ' badge'} resizeMode="contain" style={{ width: 42, height: 42 }} />
+          ) : initials ? (
+            <VadText variant="bodyStrong" tone="brand">{initials}</VadText>
           ) : (
-            <VadText variant="bodyStrong" tone="brand">{initials || <VadIcon name={profile === 'CRYPTO' ? 'activity' : profile === 'STOCKS' ? 'portfolio' : profile === 'MUSIC' ? 'community' : profile === 'AI' ? 'info' : 'globe'} size={18} tone="brand" />}</VadText>
+            <VadIcon name={profile === 'CRYPTO' ? 'activity' : profile === 'STOCKS' ? 'portfolio' : profile === 'MUSIC' ? 'community' : profile === 'AI' ? 'info' : 'globe'} size={18} tone="brand" />
           )}
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
@@ -522,7 +524,6 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
           {selected.lead ? <VadText variant="caption" tone="secondary" numberOfLines={2}>{selected.lead}</VadText> : null}
         </View>
       </View>
-      {displayTitle !== selected.title ? <VadText variant="bodyStrong">{displayTitle}</VadText> : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
         {entries.map((entry) => (
           <View key={entry.label} style={{ flex: 1, minWidth: '42%', borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, padding: 10, borderRadius: 12, gap: 4 }}>
