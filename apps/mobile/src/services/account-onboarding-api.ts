@@ -1,5 +1,13 @@
 import { supabase } from '@/lib/supabase';
 import { getMyKycStatus, type KycStatus } from '@/services/identity-api';
+import { getMyPaymentIntents } from '@/services/payment-api';
+import {
+  getMarketHistory,
+  getPortfolioOrderHistory,
+  getPoolStakes,
+  getPositions,
+} from '@/services/market-api';
+import { listUserMarketWatchlist } from '@/services/market-watchlist-api';
 import {
   getMarketHistory,
   getPoolStakes,
@@ -198,4 +206,59 @@ export async function getAccountSetupState(
 
 export function isAccountSetupComplete(state: AccountSetupState) {
   return state.contactConfirmed && state.profileComplete && state.kycComplete;
+}
+
+
+export type AccountActivationState = {
+  firstDepositComplete: boolean | null;
+  firstTradeComplete: boolean | null;
+  watchlistComplete: boolean | null;
+  checkedAt: string;
+};
+
+/**
+ * Activation milestones are derived from VAD's existing payment, trading,
+ * portfolio and watchlist read APIs. No client-side completion flags are
+ * written for a deposit or trade, and a failed read remains unknown rather
+ * than being incorrectly shown as incomplete.
+ */
+export async function getAccountActivationState(): Promise<AccountActivationState> {
+  const [payments, orders, poolStakes, marketHistory, positions, watchlist] = await Promise.allSettled([
+    getMyPaymentIntents(100),
+    getPortfolioOrderHistory(200),
+    getPoolStakes(),
+    getMarketHistory(),
+    getPositions(),
+    listUserMarketWatchlist(),
+  ]);
+
+  const firstDepositComplete = payments.status === 'fulfilled'
+    ? payments.value.some((payment) =>
+      payment.operation === 'DEPOSIT'
+      && (payment.status.toUpperCase() === 'SETTLED' || Boolean(payment.settled_at)),
+    )
+    : null;
+
+  const tradeEvidence = [
+    orders.status === 'fulfilled' && orders.value.some((order) => Number(order.filled_quantity) > 0),
+    poolStakes.status === 'fulfilled' && poolStakes.value.some((stake) => Number(stake.amount) > 0),
+    marketHistory.status === 'fulfilled' && marketHistory.value.length > 0,
+    positions.status === 'fulfilled' && positions.value.some((position) => Number(position.quantity) > 0),
+  ];
+  const tradeReadsSucceeded = [orders, poolStakes, marketHistory, positions]
+    .every((result) => result.status === 'fulfilled');
+  const firstTradeComplete = tradeEvidence.some(Boolean)
+    ? true
+    : tradeReadsSucceeded ? false : null;
+
+  const watchlistComplete = watchlist.status === 'fulfilled'
+    ? watchlist.value.length > 0
+    : null;
+
+  return {
+    firstDepositComplete,
+    firstTradeComplete,
+    watchlistComplete,
+    checkedAt: new Date().toISOString(),
+  };
 }
