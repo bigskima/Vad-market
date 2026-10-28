@@ -327,7 +327,7 @@ export function AdminPlayScreen() {
   if (!canManage) {
     return (
       <View style={{ gap: theme.spacing.md }}>
-        <VadText variant="title">VAD Play & Ads</VadText>
+        <VadText variant="title">VAD Play</VadText>
         <VadText tone="secondary">This area requires the play.manage permission. Ask a Super Admin to grant access.</VadText>
       </View>
     );
@@ -340,9 +340,9 @@ export function AdminPlayScreen() {
   return (
     <View style={{ gap: theme.spacing.lg }}>
       <View style={{ gap: 5 }}>
-        <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.5 }}>VAD OPERATIONS</VadText>
-        <VadText variant="title">VAD Play & Ads</VadText>
-        <VadText tone="secondary">Create a game draft, configure campaign economics and review operations.</VadText>
+        <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.5 }}>PLAY OPERATIONS</VadText>
+        <VadText variant="title">VAD Play</VadText>
+        <VadText tone="secondary">Create games, prize campaigns and sponsor placements.</VadText>
       </View>
 
       {error ? (
@@ -350,7 +350,7 @@ export function AdminPlayScreen() {
           <View style={{ padding: theme.spacing.md, gap: 8 }}>
             <VadText variant="label" style={{ color: theme.colors.danger }}>Action needs attention</VadText>
             <VadText tone="secondary">{error}</VadText>
-            <VadButton label="Retry / refresh" variant="secondary" onPress={() => void load()} />
+            <VadButton label="Try again" variant="secondary" onPress={() => void load()} />
           </View>
         </VadCard>
       ) : null}
@@ -366,10 +366,10 @@ export function AdminPlayScreen() {
         {([
           ['builder', 'Create game'],
           ['overview', 'Overview'],
-          ['experience', 'Experience drafts'],
-          ['campaign', 'Campaign drafts'],
-          ['ads', 'Ads & placements'],
-          ['operations', 'Operations audit'],
+          ['experience', 'Game drafts'],
+          ['campaign', 'Campaigns'],
+          ['ads', 'Sponsors'],
+          ['operations', 'Audit log'],
         ] as [Section, string][]).map(([key, label]) => (
           <SectionTab key={key} active={section === key} label={label} onPress={() => { setSection(key); setError(null); setMessage(null); }} />
         ))}
@@ -381,8 +381,8 @@ export function AdminPlayScreen() {
         <>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             {[
-              ['Engines ready', String(enginesReady)],
-              ['Experience drafts', String(dashboard.experiences.filter((item) => item.status !== 'PUBLISHED').length)],
+              ['Game types ready', String(enginesReady)],
+              ['Game drafts', String(dashboard.experiences.filter((item) => item.status !== 'PUBLISHED').length)],
               ['Open campaigns', String(openCampaigns)],
               ['Ad placements', String(placementsCount)],
             ].map(([label, value]) => (
@@ -392,7 +392,7 @@ export function AdminPlayScreen() {
               </View>
             ))}
           </View>
-          <VadText variant="heading">Registered game engines</VadText>
+          <VadText variant="heading">Game types</VadText>
           {dashboard.engines.map((engine) => (
             <VadCard key={engine.engine_key}>
               <View style={{ padding: theme.spacing.md, gap: 8 }}>
@@ -400,13 +400,12 @@ export function AdminPlayScreen() {
                   <VadText variant="heading">{engine.display_name}</VadText>
                   <StatusPill value={engine.rollout_status} />
                 </View>
-                <VadText tone="secondary">{engine.description || engine.engine_key}</VadText>
-                <VadText variant="caption" tone="secondary">Engine key: {engine.engine_key}</VadText>
-                <VadText variant="caption" tone={engine.runtime_ready ? 'yes' : 'warning'}>
-                  {engine.runtime_ready ? 'Server runtime marked ready' : 'Server runtime not ready — cannot publish or accept play'}
+                <VadText tone="secondary">{engine.description || 'Game type'}</VadText>
+                                <VadText variant="caption" tone={engine.runtime_ready ? 'yes' : 'warning'}>
+                  {engine.runtime_ready ? 'Ready for launch' : 'Not ready to launch'}
                 </VadText>
                 <VadText variant="caption" tone="tertiary">
-                  Platforms declared: {engine.supported_platforms.join(', ')} · Legal review {engine.requires_legal_review ? 'required' : 'not flagged'}
+                  Platforms: {engine.supported_platforms.join(', ')} · Legal review {engine.requires_legal_review ? 'required' : 'not required'}
                 </VadText>
               </View>
             </VadCard>
@@ -426,20 +425,20 @@ export function AdminPlayScreen() {
                 <VadText variant="caption" tone="secondary">Qualifying funds: {moneyLabel(campaign.qualifying_funds_amount, campaign.currency_code)}</VadText>
               </View>
             </VadCard>
-          )) : <VadText tone="secondary">No campaign drafts are recorded yet.</VadText>}
+          )) : <VadText tone="secondary">No campaigns yet.</VadText>}
         </>
       ) : null}
 
       {section === 'experience' ? (
         <VadCard>
           <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
-            <VadText variant="heading">Create an experience draft</VadText>
-            <VadText tone="secondary">This creates an unpublished database record. It does not publish the experience or enable its game engine.</VadText>
+            <VadText variant="heading">Create a game</VadText>
+            <VadText tone="secondary">Save as a draft first. Publishing is a separate step.</VadText>
             <VadInput label="URL slug" value={experienceSlug} onChangeText={setExperienceSlug} autoCapitalize="none" placeholder="e.g. prize-draws" />
-            <VadInput label="Display title" value={experienceTitle} onChangeText={setExperienceTitle} placeholder="Experience name" />
-            <VadInput label="Experience type key" value={experienceType} onChangeText={setExperienceType} autoCapitalize="characters" placeholder="e.g. PRIZE_DRAWS" hint="Database type key, not hardcoded into the catalogue UI." />
+            <VadInput label="Game title" value={experienceTitle} onChangeText={setExperienceTitle} placeholder="Experience name" />
+            <VadInput label="Game type" value={experienceType} onChangeText={setExperienceType} autoCapitalize="characters" placeholder="e.g. Prize draw" />
             <View style={{ gap: 8 }}>
-              <VadText variant="label">Registered engine</VadText>
+              <VadText variant="label">Game type</VadText>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {dashboard.engines.map((engine) => (
                   <ChoiceChip key={engine.engine_key} label={engine.display_name} selected={experienceEngine === engine.engine_key} onPress={() => setExperienceEngine(engine.engine_key)} />
@@ -458,11 +457,11 @@ export function AdminPlayScreen() {
               {experienceImagePath ? (
                 <>
                   <Image source={{ uri: playMediaPublicUrl(experienceImagePath) ?? undefined }} accessibilityLabel="Experience artwork preview" resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
-                  <VadText variant="caption" tone="tertiary">Saved in VAD Play storage.</VadText>
+                  <VadText variant="caption" tone="tertiary"></VadText>
                 </>
               ) : null}
             </View>
-            <VadButton label="Save experience draft" loading={working} disabled={working} onPress={() => void createExperience()} />
+            <VadButton label="Save game draft" loading={working} disabled={working} onPress={() => void createExperience()} />
           </View>
         </VadCard>
       ) : null}
@@ -470,7 +469,7 @@ export function AdminPlayScreen() {
       {section === 'campaign' ? (
         <VadCard>
           <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
-            <VadText variant="heading">Create a prize campaign draft</VadText>
+            <VadText variant="heading">Create prize campaign</VadText>
             <VadText tone="secondary">Every campaign must define its own economics. No prize price, profit percentage, cost budget or collection threshold is assumed by this form.</VadText>
             <View style={{ gap: 8 }}>
               <VadText variant="label">Experience</VadText>
@@ -504,13 +503,13 @@ export function AdminPlayScreen() {
             <VadInput label="Campaign-wide maximum entries (required)" value={maxEntries} onChangeText={setMaxEntries} keyboardType="number-pad" placeholder="Set a finite total entry cap" />
             <VadInput label="Maximum tickets per purchase (required)" value={maxTicketsPerPurchase} onChangeText={setMaxTicketsPerPurchase} keyboardType="number-pad" placeholder="Set the purchase cap for this campaign" />
             <VadInput label="Entry limit per user (optional)" value={userEntryLimit} onChangeText={setUserEntryLimit} keyboardType="number-pad" placeholder="Leave blank for no separate per-user cap" />
-            <VadInput label="Published campaign terms (required)" value={campaignTerms} onChangeText={setCampaignTerms} multiline placeholder="Explain eligibility, draw timing, prize details and selection rules" hint="At least 20 characters. These terms are saved to the campaign and checked by the server before it can open." />
-            <VadInput label="Refund / funding-shortfall policy (required)" value={campaignRefundPolicy} onChangeText={setCampaignRefundPolicy} multiline placeholder="Explain when and how customers are refunded if the campaign cannot proceed" hint="At least 10 characters. Required before a campaign can open." />
+            <VadInput label="Published campaign terms (required)" value={campaignTerms} onChangeText={setCampaignTerms} multiline placeholder="Explain eligibility, draw timing, prize details and selection rules" hint="Required before launch." />
+            <VadInput label="Refund / funding-shortfall policy (required)" value={campaignRefundPolicy} onChangeText={setCampaignRefundPolicy} multiline placeholder="Explain when and how customers are refunded if the campaign cannot proceed" hint="Required before launch." />
             {campaignEstimate !== null ? (
               <View style={{ padding: theme.spacing.md, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, gap: 5 }}>
-                <VadText variant="caption" tone="secondary">Calculated funding threshold preview</VadText>
+                <VadText variant="caption" tone="secondary">Estimated funding target</VadText>
                 <VadText variant="title">{moneyLabel(campaignEstimate, currency)}</VadText>
-                <VadText variant="caption" tone="tertiary">This is a draft estimate from these fields only. The saved database value is authoritative; additional deducted fees must be included in campaign cost/reconciliation rules.</VadText>
+                <VadText variant="caption" tone="tertiary">Estimate only. Include any fees in campaign costs.</VadText>
               </View>
             ) : null}
             <VadButton label="Save campaign draft" loading={working} disabled={working || dashboard.experiences.filter((item) => item.engine_key === 'PRIZE_DRAW').length === 0} onPress={() => void createCampaign()} />
@@ -525,10 +524,10 @@ export function AdminPlayScreen() {
           <VadCard>
             <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
               <VadText variant="heading">Ad delivery by platform</VadText>
-              <VadText tone="secondary">Web, Android and iOS share placement configuration. The first adapter is direct sponsorship; programmatic AdSense/AdMob integration and rewarded-ad provider verification are later provider-specific work, not claimed as active here.</VadText>
+              <VadText tone="secondary">Manage sponsor placements across web and mobile. Direct sponsorship is currently supported.</VadText>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                 <View style={{ flex: 1, gap: 4 }}>
-                  <VadText variant="label">Direct-sponsor provider</VadText>
+                  <VadText variant="label">Sponsor delivery</VadText>
                   <StatusPill value={directSponsor?.status ?? 'DISABLED'} />
                 </View>
                 <VadButton
@@ -537,11 +536,11 @@ export function AdminPlayScreen() {
                   fullWidth={false}
                   disabled={working || !isSuperAdmin}
                   loading={working}
-                  onPress={() => void runAction(() => setAdminPlayDirectSponsorEnabled(directSponsor?.status !== 'ENABLED'), 'Direct-sponsor provider status updated.')}
+                  onPress={() => void runAction(() => setAdminPlayDirectSponsorEnabled(directSponsor?.status !== 'ENABLED'), 'Sponsor delivery status updated.')}
                 />
               </View>
-              {!isSuperAdmin ? <VadText variant="caption" tone="warning">Only a Super Admin can enable the provider and activate a placement.</VadText> : null}
-              <VadText variant="caption" tone="secondary">When enabled and a placement is active, sponsored creative will render in the configured Play slot on its selected platforms.</VadText>
+              {!isSuperAdmin ? <VadText variant="caption" tone="warning">Super Admin access is required to enable sponsorship and activate placements.</VadText> : null}
+              <VadText variant="caption" tone="secondary">Active placements appear in the selected Play locations.</VadText>
             </View>
           </VadCard>
           <VadCard>
@@ -562,7 +561,7 @@ export function AdminPlayScreen() {
                 {sponsorImagePath ? (
                   <>
                     <Image source={{ uri: playMediaPublicUrl(sponsorImagePath) ?? undefined }} accessibilityLabel="Sponsor creative preview" resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
-                    <VadText variant="caption" tone="tertiary">Saved in VAD Play storage.</VadText>
+                    <VadText variant="caption" tone="tertiary"></VadText>
                   </>
                 ) : null}
               </View>
@@ -584,7 +583,7 @@ export function AdminPlayScreen() {
                 {placementStatus === 'ACTIVE' ? (
                   <VadText variant="caption" tone="warning">This will immediately make the sponsor creative visible in its active placements. Use only for approved advertising content.</VadText>
                 ) : (
-                  <VadText variant="caption" tone="secondary">Draft placements are not shown to users. Activation requires a Super Admin and the direct-sponsor provider to be enabled.</VadText>
+                  <VadText variant="caption" tone="secondary">Drafts stay hidden. Activation requires Super Admin access and sponsor delivery to be enabled.</VadText>
                 )}
               </View>
               <VadButton
@@ -595,7 +594,7 @@ export function AdminPlayScreen() {
               />
             </View>
           </VadCard>
-          <VadText variant="heading">Configured placements</VadText>
+          <VadText variant="heading">Sponsor placements</VadText>
           {dashboard.adPlacements.length ? dashboard.adPlacements.map((placement) => (
             <VadCard key={placement.id}>
               <View style={{ padding: theme.spacing.md, gap: 7 }}>
@@ -603,10 +602,10 @@ export function AdminPlayScreen() {
                   <VadText variant="label">{placement.placement_code}</VadText>
                   <StatusPill value={placement.status} />
                 </View>
-                <VadText variant="caption" tone="secondary">{placement.platforms.join(', ')} · {placement.provider_key} · {placement.ad_format}</VadText>
+                <VadText variant="caption" tone="secondary">{placement.platforms.join(', ')}</VadText>
               </View>
             </VadCard>
-          )) : <VadText tone="secondary">No ad placements configured yet.</VadText>}
+          )) : <VadText tone="secondary">No sponsor placements yet.</VadText>}
         </>
       ) : null}
     </View>
