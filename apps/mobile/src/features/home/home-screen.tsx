@@ -346,7 +346,7 @@ export function HomeScreen({
         <TourTarget id="home-watchlist">
           <View style={{ gap: 9 }}>
             <SectionHeading title="Watchlist" action="See all" onAction={() => router.push('/watchlist')} />
-            {watchlistError && watchlistMarkets.length ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
+            {watchlistError && watchlistMarkets.length ? <VadText variant="caption" tone="danger">Couldn't refresh saved markets.</VadText> : null}
             {watchlistLoading ? (
               <HomeWatchlistSkeleton />
             ) : watchlistMarkets.length ? (
