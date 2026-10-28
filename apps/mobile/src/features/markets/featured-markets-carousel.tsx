@@ -110,7 +110,7 @@ export function FeaturedMarketsCarousel({
 
   if (!liveMarkets.length) return (
     <View style={{ minHeight: 64, justifyContent: 'center', gap: 4, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, paddingHorizontal: 14, paddingVertical: 10 }}>
-      <VadText variant="bodyStrong">{category === 'All' ? 'No featured markets right now' : `No featured ${category.toLowerCase()} markets right now`}</VadText>
+      <VadText variant="bodyStrong">{category === 'All' ? 'No featured markets' : `No featured ${category.toLowerCase()} markets`}</VadText>
       <VadText variant="caption" tone="secondary">Check back for more highlights.</VadText>
     </View>
   );
