@@ -602,6 +602,7 @@ begin
         'funding_threshold_amount', c.funding_threshold_amount,
         'qualifying_funds_amount', c.qualifying_funds_amount,
         'entry_price_amount', c.entry_price_amount, 'max_entries', c.max_entries,
+        'max_tickets_per_purchase', c.max_tickets_per_purchase,
         'entry_limit_per_user', c.entry_limit_per_user, 'status', c.status,
         'rules_public', c.rules_public, 'opens_at', c.opens_at, 'closes_at', c.closes_at,
         'compliance_approved_at', c.compliance_approved_at, 'prize_secured_at', c.prize_secured_at,
@@ -737,6 +738,10 @@ begin
   return v_id;
 end;
 $$;
+
+alter table public.play_campaigns
+  add column if not exists max_tickets_per_purchase integer not null default 20
+    check (max_tickets_per_purchase > 0);
 
 create or replace function public.admin_play_upsert_campaign(p_payload jsonb)
 returns uuid
