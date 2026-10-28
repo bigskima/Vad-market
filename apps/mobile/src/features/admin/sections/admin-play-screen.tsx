@@ -118,7 +118,7 @@ export function AdminPlayScreen() {
   const [campaignSlug, setCampaignSlug] = useState('');
   const [campaignTitle, setCampaignTitle] = useState('');
   const [prizeTitle, setPrizeTitle] = useState('');
-  const [currency, setCurrency] = useState('NGN');
+  const [currency, setCurrency] = useState('');
   const [prizeCost, setPrizeCost] = useState('');
   const [profitMode, setProfitMode] = useState<'PERCENT_OF_PRIZE' | 'FIXED_AMOUNT' | ''>('');
   const [profitValue, setProfitValue] = useState('');
@@ -167,7 +167,7 @@ export function AdminPlayScreen() {
     const prize = Number(prizeCost);
     const target = Number(profitValue);
     const costs = Number(campaignCosts);
-    if (!prizeCost.trim() || !profitValue.trim() || !campaignCosts.trim() || !profitMode || !Number.isFinite(prize) || !Number.isFinite(target) || !Number.isFinite(costs) || prize <= 0 || target < 0 || costs < 0) return null;
+    if (!currency || !prizeCost.trim() || !profitValue.trim() || !campaignCosts.trim() || !profitMode || !Number.isFinite(prize) || !Number.isFinite(target) || !Number.isFinite(costs) || prize <= 0 || target < 0 || costs < 0) return null;
     return prize + (profitMode === 'PERCENT_OF_PRIZE' ? prize * target / 100 : target) + costs;
   }, [campaignCosts, prizeCost, profitMode, profitValue]);
 
@@ -432,7 +432,7 @@ export function AdminPlayScreen() {
             <VadInput label="Campaign title" value={campaignTitle} onChangeText={setCampaignTitle} placeholder="Campaign name" />
             <VadInput label="Prize description" value={prizeTitle} onChangeText={setPrizeTitle} placeholder="Prize to be awarded" />
             <View style={{ gap: 8 }}>
-              <VadText variant="label">Currency</VadText>
+              <VadText variant="label">Currency (required)</VadText>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {['NGN', 'USDC'].map((item) => <ChoiceChip key={item} label={item} selected={currency === item} onPress={() => setCurrency(item)} />)}
               </View>
