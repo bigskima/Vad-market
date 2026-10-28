@@ -58,8 +58,6 @@ export default function AdminSupportScreen() {
 
   useEffect(() => {
     let active = true;
-    setError(null);
-    setNotice(null);
     void adminListSupportTickets(filter)
       .then((rows) => {
         if (!active) return;
