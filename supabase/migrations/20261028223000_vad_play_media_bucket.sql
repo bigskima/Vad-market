@@ -19,7 +19,7 @@ create policy play_media_admin_upload
   with check (
     bucket_id = 'play-media'
     and (storage.foldername(name))[1] = auth.uid()::text
-    and private.has_permission('play.manage')
+    and (private.is_super_admin() or private.has_permission('play.manage'))
   );
 
 drop policy if exists play_media_admin_update on storage.objects;
@@ -28,12 +28,12 @@ create policy play_media_admin_update
   using (
     bucket_id = 'play-media'
     and (storage.foldername(name))[1] = auth.uid()::text
-    and private.has_permission('play.manage')
+    and (private.is_super_admin() or private.has_permission('play.manage'))
   )
   with check (
     bucket_id = 'play-media'
     and (storage.foldername(name))[1] = auth.uid()::text
-    and private.has_permission('play.manage')
+    and (private.is_super_admin() or private.has_permission('play.manage'))
   );
 
 drop policy if exists play_media_admin_delete on storage.objects;
@@ -42,7 +42,7 @@ create policy play_media_admin_delete
   using (
     bucket_id = 'play-media'
     and (storage.foldername(name))[1] = auth.uid()::text
-    and private.has_permission('play.manage')
+    and (private.is_super_admin() or private.has_permission('play.manage'))
   );
 
 commit;
