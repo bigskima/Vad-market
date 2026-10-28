@@ -113,7 +113,7 @@ export function AdminPlayScreen() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [section, setSection] = useState<Section>('builder');
-  const [draftIdea, setDraftIdea] = useState('');
+  const [draftIdea, setDraftIdea = useState('');
   const [drafting, setDrafting] = useState(false);
   const [mediaWorking, setMediaWorking] = useState(false);
   const [campaignImagePath, setCampaignImagePath] = useState('');
@@ -125,11 +125,9 @@ export function AdminPlayScreen() {
   const [experienceSlug, setExperienceSlug] = useState('');
   const [experienceTitle, setExperienceTitle] = useState('');
   const [experienceType, setExperienceType] = useState('');
-  const [experienceEngine, setExperienceEngine] = useState('');
   const [experienceDescription, setExperienceDescription] = useState('');
   const [experienceImageUrl, setExperienceImageUrl] = useState('');
 
-  const [campaignExperience, setCampaignExperience] = useState('');
   const [campaignSlug, setCampaignSlug] = useState('');
   const [campaignTitle, setCampaignTitle] = useState('');
   const [prizeTitle, setPrizeTitle] = useState('');
@@ -159,8 +157,6 @@ export function AdminPlayScreen() {
     try {
       const result = await getAdminPlayDashboard();
       setDashboard(result);
-      setExperienceEngine((current) => current || result.engines.find((engine) => engine.engine_key === 'PRIZE_DRAW')?.engine_key || result.engines[0]?.engine_key || 'PRIZE_DRAW');
-      setCampaignExperience((current) => current || result.experiences.find((experience) => experience.engine_key === 'PRIZE_DRAW')?.id || '');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'VAD Play admin data could not be loaded.');
     } finally {
@@ -215,7 +211,6 @@ export function AdminPlayScreen() {
     try {
       const draft = await draftPlayGame({ idea: draftIdea, title: experienceTitle });
       setBuilderExperienceId('NEW');
-      setExperienceEngine(draft.engineKey);
       setExperienceTitle(draft.experienceTitle);
       setExperienceSlug(draft.experienceSlug);
       setExperienceType(draft.experienceType);
@@ -340,7 +335,6 @@ export function AdminPlayScreen() {
           engine_config: {},
         });
         setBuilderExperienceId(experienceId);
-        setCampaignExperience(experienceId);
       }
       await saveAdminPlayCampaign({
         experience_id: experienceId,
