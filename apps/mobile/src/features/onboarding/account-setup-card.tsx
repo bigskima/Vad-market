@@ -31,7 +31,7 @@ export function AccountSetupCard() {
 
     setLoading(true);
     setError(null);
-    void getAccountSetupState(user).then((next) => {
+    void getAccountSetupState(user, { includeMilestones: true }).then((next) => {
       if (active) setState(next);
     }).catch((reason) => {
       if (!active) return;
@@ -50,10 +50,22 @@ export function AccountSetupCard() {
     router.push({ pathname: '/onboarding', params: { source: 'account' } });
   };
 
-  if (!loading && state && isAccountSetupComplete(state)) return null;
+  const allMilestonesComplete = Boolean(
+    state
+      && isAccountSetupComplete(state)
+      && state.firstDepositCheckAvailable
+      && state.firstDepositComplete
+      && state.firstTradeCheckAvailable
+      && state.firstTradeComplete,
+  );
+  if (!loading && allMilestonesComplete) return null;
 
   const completed = state
-    ? Number(state.contactConfirmed) + Number(state.profileComplete) + Number(state.kycComplete)
+    ? Number(state.contactConfirmed)
+      + Number(state.profileComplete)
+      + Number(state.kycComplete)
+      + Number(state.firstDepositComplete)
+      + Number(state.firstTradeComplete)
     : 0;
 
   return (
@@ -65,22 +77,22 @@ export function AccountSetupCard() {
         }}>
           {loading
             ? <ActivityIndicator size="small" color={theme.colors.brandPrimary} />
-            : <VadText variant="heading" tone="brand">{completed}/3</VadText>}
+            : <VadText variant="heading" tone="brand">{completed}/5</VadText>}
         </View>
         <View style={{ flex: 1, gap: 4 }}>
-          <VadText variant="bodyStrong">Finish setting up VAD</VadText>
+          <VadText variant="bodyStrong">Your VAD journey</VadText>
           <VadText variant="caption" tone="secondary">
             {error
-              ? 'Some account details still need a check. Open setup to retry or choose a reminder.'
+              ? 'See which account setup and first-use milestones remain, then continue where you left off.'
               : state
-                ? 'Your checklist updates from your real profile, contact confirmation and identity status.'
-                : 'Check which essentials are complete and continue where you left off.'}
+                ? 'Your progress follows your real account, completed deposits and recorded trades.'
+                : 'Review your account essentials, first deposit and first trade in one place.'}
           </VadText>
         </View>
       </View>
       {error ? <VadText variant="caption" tone="danger">{error}</VadText> : null}
       <VadButton
-        label="Review setup"
+        label="Continue onboarding"
         variant="secondary"
         onPress={openSetup}
       />
