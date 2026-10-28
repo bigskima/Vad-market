@@ -535,6 +535,7 @@ function safeSportsImageUrl(value: unknown): string | null {
   try {
     const url = new URL(value);
     if (url.protocol !== 'https:' || url.username || url.password) return null;
+    if (url.hostname.toLowerCase() !== 'crests.football-data.org') return null;
     return url.toString();
   } catch {
     return null;
