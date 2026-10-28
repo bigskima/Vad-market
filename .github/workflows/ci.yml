@@ -19,8 +19,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Guard SQL migration dollar-quote terminators
-        run: npm run check:sql-migrations
       - run: npm run typecheck
       - name: Set up Deno for Oracle runtime checks
         uses: denoland/setup-deno@v2
@@ -67,3 +65,13 @@ jobs:
       - run: npm run build:web
       - if: steps.lint.outcome == 'failure'
         run: exit 1
+
+  migration-terminator-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Guard SQL migration dollar-quote terminators
+        run: npm run check:sql-migrations
