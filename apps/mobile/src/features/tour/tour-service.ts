@@ -124,7 +124,7 @@ export async function getMyProductTour(tourCode = 'GETTING_STARTED'): Promise<Pr
   const { data, error } = await supabase.rpc('my_product_tour', {
     p_tour_code: tourCode,
   });
-  fail(error, 'The guided tour is unavailable right now. You can try again from Account later.');
+  fail(error, 'Tour unavailable. Try again later from Account.');
 
   const raw = (data ?? {}) as RawTour;
   const versionId = raw.versionId == null ? null : Number(raw.versionId);
