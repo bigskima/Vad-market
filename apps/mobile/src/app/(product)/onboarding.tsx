@@ -89,7 +89,7 @@ export default function AccountOnboardingScreen() {
       }
       setLoading(true);
       setError(null);
-      if (returnToAccount && startMarkAttempted.current !== user.id) {
+      if (startMarkAttempted.current !== user.id) {
         startMarkAttempted.current = user.id;
         setWorking(true);
         try {
