@@ -156,7 +156,7 @@ export function MarketDetailScreen({
       <View style={{ gap: 10 }}>
         <VadCard variant="surface" style={{ padding: 16, gap: 8 }}>
           <VadIcon name="wallet" size={22} tone="secondary" />
-          <VadText variant="bodyStrong">Market unavailable for your currency settings</VadText>
+          <VadText variant="bodyStrong">Market not available in this currency</VadText>
           <VadText variant="caption" tone="secondary">
             This market is hidden because its settlement currency is not enabled or is not supported in your region.
           </VadText>
@@ -349,7 +349,6 @@ function SportsMatchupCard({ market }: { market: MarketCatalogItem }) {
           <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
             <VadText variant="bodyStrong" tone="secondary">VS</VadText>
           </View>
-          <VadText variant="caption" tone="tertiary">Fixture</VadText>
         </View>
         <View style={{ flex: 1, minWidth: 0, alignItems: 'center', gap: 8 }}>
           <TeamCrest name={awayTeam} imageUrl={awayLogo} />
@@ -367,11 +366,10 @@ function SportsMatchupCard({ market }: { market: MarketCatalogItem }) {
 
       {condition ? (
         <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 10, gap: 4 }}>
-          <VadText variant="caption" tone="brand">MARKET QUESTION / RULE</VadText>
+          <VadText variant="caption" tone="brand">MARKET RULE</VadText>
           <VadText variant="body" style={{ lineHeight: 21 }}>{condition}</VadText>
         </View>
       ) : null}
-      <VadText variant="caption" tone="tertiary">Team badges and fixture details are shown when verified metadata is available. The market cover artwork above remains unchanged.</VadText>
     </VadCard>
   );
 }
@@ -809,7 +807,7 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
         </VadCard>
       ) : error ? (
         <VadCard variant="muted" style={{ gap: 4, borderWidth: 1, borderColor: theme.colors.no }}>
-          <VadText variant="bodyStrong">Outcome choices unavailable</VadText>
+          <VadText variant="bodyStrong">Outcomes unavailable</VadText>
           <VadText variant="caption" tone="secondary">{error}</VadText>
         </VadCard>
       ) : outcomes.length ? (
@@ -857,7 +855,7 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
         </View>
       ) : (
         <VadCard variant="muted" style={{ gap: 4 }}>
-          <VadText variant="bodyStrong">No options are available</VadText>
+          <VadText variant="bodyStrong">No outcomes yet</VadText>
           <VadText variant="caption" tone="secondary">The market’s configured outcome choices could not be found.</VadText>
         </VadCard>
       )}
@@ -951,7 +949,7 @@ function MarketSnapshot({ market, timing, outcomes }: { market: MarketCatalogIte
                 <VadText variant="bodyStrong" tone="no">{no}</VadText>
               </View>
             </View>
-            <VadText variant="caption" tone="tertiary">{pool ? 'Pool allocation reflects participant stakes, not the final result.' : 'Current market pricing is not a guarantee of the final outcome.'}</VadText>
+            <VadText variant="caption" tone="tertiary">{pool ? 'Pool shares reflect current stakes, not the result.' : 'Prices can change and do not guarantee the result.'}</VadText>
           </>
         ) : null}
 
@@ -960,14 +958,14 @@ function MarketSnapshot({ market, timing, outcomes }: { market: MarketCatalogIte
             <VadText variant="bodyStrong">
               {isMultiOutcome
                 ? 'Choose from the possible outcomes'
-                : timing.stage === 'OPEN' ? 'Waiting for a current quote' : timing.stage === 'SETTLED' ? 'Settlement status' : 'Current prices unavailable'}
+                : timing.stage === 'OPEN' ? 'Prices updating' : timing.stage === 'SETTLED' ? 'Settlement status' : 'Prices unavailable'}
             </VadText>
             <VadText variant="caption" tone="secondary">
               {isMultiOutcome
-                ? 'Each option has a separate stake pool. The pool share is an indication of current participation, not a guarantee of the final result.'
+                ? 'Each option has its own pool. Shares reflect current stakes, not the result.'
                 : timing.stage === 'OPEN'
-                  ? 'A price will appear when a valid market quote is available.'
-                  : 'Inactive or settled markets do not show old quotes as current conviction. Recorded history remains available in Activity.'}
+                  ? 'Prices will appear when available.'
+                  : 'This market isn't trading. Check Activity for past trades.'}
             </VadText>
           </View>
         ) : null}
@@ -1168,10 +1166,10 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
         ) : (
           <View style={{ gap: 7 }}>
             <VadText variant="bodyStrong">
-              {failed ? 'Full published details could not be loaded' : 'Published description unavailable'}
+              {failed ? 'Market details unavailable' : 'No extra details yet'}
             </VadText>
             <VadText variant="caption" tone="secondary">
-              {failed ? detailState.errorMessage ?? 'Market details are temporarily unavailable. Please retry.' : 'More details are not available yet.'}
+              {failed ? 'Try again in a moment.' : 'No extra details yet.'}
             </VadText>
             {failed ? (
               <Pressable
@@ -1190,7 +1188,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
         <VadCard variant="surface" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
           <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8, gap: 3 }}>
             <VadText variant="bodyStrong">Resolution conditions</VadText>
-            <VadText variant="caption" tone="secondary">Key parameters configured for this event.</VadText>
+            <VadText variant="caption" tone="secondary"></VadText>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, paddingHorizontal: 12, paddingBottom: 12 }}>
             {visibleScopeRows.map((row) => (
@@ -1221,13 +1219,13 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
 
       <ProgressiveMarketSection
         title="Resolution"
-        subtitle={oracle ? 'How the result is verified' : loading ? 'Loading…' : 'Verification details unavailable'}
+        subtitle={oracle ? 'How it’s decided' : loading ? 'Loading…' : 'Not available yet'}
         expanded={verificationExpanded}
         onPress={() => setVerificationExpanded((current) => !current)}
       >
         {oracle ? (
           <View style={{ gap: 10 }}>
-            {environment ? <DetailValueRow label="Environment" value={environment} /> : null}
+            {environment ? <DetailValueRow label="Network" value={environment} /> : null}
             {sourceRows.length ? (
               <View style={{ gap: 6 }}>
                 <VadText variant="caption" tone="secondary">Approved source hierarchy</VadText>
@@ -1243,11 +1241,11 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
               </View>
             ) : null}
             {typeof requiredProviders === 'number' ? (
-              <DetailValueRow label="Minimum agreeing providers" value={String(requiredProviders)} />
+              <DetailValueRow label="Sources needed" value={String(requiredProviders)} />
             ) : null}
-            {consensus.distinct_providers === true ? <DetailValueRow label="Consensus requirement" value="Distinct providers required" /> : null}
-            {tieBehavior ? <DetailValueRow label="Tie behavior" value={tieBehavior} /> : null}
-            {finalizationMode ? <DetailValueRow label="Finalization" value={finalizationMode} /> : null}
+            {consensus.distinct_providers === true ? <DetailValueRow label="Consensus requirement" value="Independent sources required" /> : null}
+            {tieBehavior ? <DetailValueRow label="When sources disagree" value={tieBehavior} /> : null}
+            {finalizationMode ? <DetailValueRow label="Result confirmation" value={finalizationMode} /> : null}
             {disputeWindow ? <DetailValueRow label="Dispute window" value={disputeWindow} /> : null}
             {policyRules.length ? (
               <View style={{ gap: 8 }}>
@@ -1259,15 +1257,15 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
         ) : (
           <VadText variant="caption" tone="secondary">
             {failed
-              ? 'The detail service did not return the configured oracle policy. Retry the published details when the connection is available.'
-              : 'The configured oracle policy and source hierarchy appear here when returned by the market detail service.'}
+              ? 'Verification details will appear here when available.'
+              : 'Verification details will appear here when available.'}
           </VadText>
         )}
       </ProgressiveMarketSection>
 
       <ProgressiveMarketSection
         title="Schedule & settlement"
-        subtitle={scheduleRows.length ? `${scheduleRows.length} published timestamps` : 'View the market timeline and settlement asset'}
+        subtitle={scheduleRows.length ? 'Timeline available' : 'Timeline details'}
         expanded={scheduleExpanded}
         onPress={() => setScheduleExpanded((current) => !current)}
       >
@@ -1275,13 +1273,13 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
         <DetailValueRow label="Trading status" value={timing.statusLabel} />
         <DetailValueRow label="Settlement asset" value={detail?.assetCode ?? market.asset_code} />
         {detail?.settlementUnit != null ? <DetailValueRow label="Settlement unit" value={String(detail.settlementUnit)} /> : null}
-        {detail?.minimumOrderNotional != null ? <DetailValueRow label="Minimum order notional" value={assetMoney(detail.minimumOrderNotional, detail.assetCode)} /> : null}
+        {detail?.minimumOrderNotional != null ? <DetailValueRow label="Minimum trade" value={assetMoney(detail.minimumOrderNotional, detail.assetCode)} /> : null}
         {detail?.oracle?.closeRule ? <DetailValueRow label="Close rule" value={describeRule(detail.oracle.closeRule) ?? 'Configured'} /> : null}
       </ProgressiveMarketSection>
 
       <ProgressiveMarketSection
         title="Outcomes"
-        subtitle={outcomes.length ? `${outcomes.length} options` : loading ? 'Loading…' : 'Outcomes unavailable'}
+        subtitle={outcomes.length ? `${outcomes.length} options` : loading ? 'Loading…' : 'No outcomes yet'}
         expanded={outcomesExpanded}
         onPress={() => setOutcomesExpanded((current) => !current)}
       >
@@ -1291,7 +1289,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
             <VadChip label={outcome.code} tone={outcome.code.toUpperCase() === 'YES' ? 'yes' : outcome.code.toUpperCase() === 'NO' ? 'no' : 'neutral'} />
           </View>
         )) : (
-          <VadText variant="caption" tone="secondary">No outcome details available yet.</VadText>
+          <VadText variant="caption" tone="secondary">No outcomes listed.</VadText>
         )}
       </ProgressiveMarketSection>
     </View>
