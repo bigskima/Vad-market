@@ -419,6 +419,17 @@ export default function AccountOnboardingScreen() {
           {!loading && state ? (
             <View style={{ gap: 10 }}>
               <VadText variant="heading">Recommended next steps</VadText>
+              {state.watchlistCheckAvailable ? (
+                <OptionalTaskCard
+                  icon="bookmark"
+                  title={state.watchlistComplete ? 'Watchlist started' : 'Save your first market'}
+                  description={state.watchlistComplete
+                    ? 'You have a market saved so you can return to it quickly.'
+                    : 'Save a market to your watchlist to follow it and find it again easily.'}
+                  complete={state.watchlistComplete}
+                  onPress={() => router.push('/markets')}
+                />
+              ) : null}
               {eligibleCurrencies.length > 0 ? (
                 <OptionalTaskCard
                   icon="globe"
@@ -558,7 +569,7 @@ function OptionalTaskCard({
   complete = false,
   onPress,
 }: {
-  icon: 'globe' | 'lock' | 'shieldCheck' | 'wallet';
+  icon: 'bookmark' | 'globe' | 'lock' | 'shieldCheck' | 'wallet';
   title: string;
   description: string;
   detail?: string;
