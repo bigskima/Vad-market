@@ -15,7 +15,7 @@ export function MarketInsightPanel({ market }: { market: MarketCatalogItem }) {
       <View style={{ flex: 1, gap: theme.spacing.xxs }}>
         <VadText variant="label" tone="brand">MARKET PRICE</VadText>
         <VadText variant="heading">What traders think now</VadText>
-        <VadText variant="caption" tone="secondary">Prices show the current market view. The final result still follows the published rules.</VadText>
+        <VadText variant="caption" tone="secondary">Prices can change. Markets settle under their published rules.</VadText>
       </View>
       <View style={{ borderRadius: theme.radius.pill, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs, backgroundColor: open ? theme.colors.yesSoft : theme.colors.surfaceMuted }}>
         <VadText variant="caption" tone={open ? 'yes' : 'secondary'}>{marketStatusLabel(market.status)}</VadText>
