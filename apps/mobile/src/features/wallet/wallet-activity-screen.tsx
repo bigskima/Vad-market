@@ -7,7 +7,7 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
-import { VadSkeleton } from '@/components/ui/vad-skeleton';
+import { PaymentRequestsSkeleton } from '@/components/ui/product-screen-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { PaymentRow } from '@/features/wallet/wallet-screen';
@@ -171,12 +171,7 @@ export function WalletActivityScreen({
       </View>
 
       {loading ? (
-        <View style={{ gap: theme.spacing.sm }}>
-          <VadSkeleton height={density.compact ? 76 : 88} radius={theme.radius.lg} />
-          <VadSkeleton height={density.compact ? 36 : 40} radius={theme.radius.pill} />
-          <VadSkeleton height={density.compact ? 60 : 66} radius={theme.radius.lg} />
-          <VadSkeleton height={density.compact ? 60 : 66} radius={theme.radius.lg} />
-        </View>
+        <PaymentRequestsSkeleton count={density.phone ? 4 : 5} />
       ) : error && !rows.length ? (
         <VadErrorState
           title="Payment activity unavailable"
