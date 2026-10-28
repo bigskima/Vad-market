@@ -32,3 +32,20 @@ The following repository revisions are intentionally kept because their SQL is n
 Do not use an unattended blanket `supabase db push` until these historical exceptions are converted into a single verified repository-state reconciliation migration or archived with equivalent state captured in a later migration.
 
 New migrations created after this reconciliation must use the exact version returned by the linked Supabase project and be committed immediately.
+
+## VAD Play production migration reconciliation — 2026-10-28
+
+The VAD Play and tour SQL was applied to the linked production project after the combined application PR passed type-check, lint, tests, web build, SQL migration guard, full local PostgreSQL replay, and Play/tour pgTAP invariants.
+
+The migration names and versions recorded by Supabase are now reflected by these repository files:
+
+- `20261028192018_vad_play_foundation.sql`
+- `20261028192102_vad_play_engines_and_ads.sql`
+- `20261028192112_vad_play_prize_draw_runtime.sql`
+- `20261028192121_vad_play_product_tour.sql`
+
+Post-deploy checks confirmed the experience/campaign/ticket/draw/settlement tables and tour catalogue exist. The `GETTING_STARTED` tour now points to version `2026.10-vad-play`, including the enabled `play-hub-overview` step at `/play`.
+
+The three game engines remain `REVIEW_REQUIRED` with `runtime_ready = false`; the direct-sponsor adapter remains `DISABLED`. No engine-enabling, paid-entry activation, or sponsor-enabling RPC was called. There were no new Edge Function source files in this feature, so no existing Edge Functions were redeployed.
+
+Do not use an unattended blanket `supabase db push`. Preserve the recorded versions above and review the existing historical reconciliation exceptions before any broader database deployment.
