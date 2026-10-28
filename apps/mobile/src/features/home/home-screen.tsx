@@ -4,6 +4,7 @@ import { Image, Pressable, ScrollView, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
+import { HomeWatchlistSkeleton } from '@/components/ui/screen-skeletons';
 import { HomePromotionCarousel } from '@/features/home/components/home-promotion-carousel';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -347,9 +348,7 @@ export function HomeScreen({
             <SectionHeading title="Watchlist" action="See all" onAction={() => router.push('/watchlist')} />
             {watchlistError && watchlistMarkets.length ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
             {watchlistLoading ? (
-              <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14 }}>
-                <VadText variant="caption" tone="secondary">Loading your saved markets…</VadText>
-              </View>
+              <HomeWatchlistSkeleton />
             ) : watchlistMarkets.length ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9, paddingRight: 3 }}>
                 {watchlistMarkets.map((market) => (
