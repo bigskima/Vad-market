@@ -372,6 +372,7 @@ async function handleRequest(req: Request) {
   const threadId = typeof body.threadId === 'string' && body.threadId.trim() ? body.threadId.trim() : null;
   const marketId = typeof body.marketId === 'string' && body.marketId.trim() ? body.marketId.trim() : null;
   const route = typeof body.route === 'string' ? body.route.trim().slice(0, 160) : '/assistant';
+  const supportMode = body.mode === 'SUPPORT';
   const requestId = typeof body.requestId === 'string' && /^[0-9a-f-]{36}$/i.test(body.requestId)
     ? body.requestId
     : crypto.randomUUID();
@@ -407,13 +408,27 @@ async function handleRequest(req: Request) {
   }
 
   const userPrompt = buildUserPrompt(context, message);
+  const systemPrompt = supportMode
+    ? [
+        context.prompt.systemPrompt,
+        '',
+        'SUPPORT CONVERSATION MODE:',
+        '- You are the first-line VAD Market support assistant. Respond with empathy, clarity, and practical next steps.',
+        '- First identify the issue and try to resolve it. Give short, ordered troubleshooting steps tailored to VAD features and the user context already supplied.',
+        '- Never claim that you changed an account, payment, wallet, trade, market, or security setting unless the provided context explicitly confirms that action.',
+        '- Do not ask for passwords, one-time passcodes, secret keys, recovery phrases, or full payment credentials.',
+        '- For money movement, account access, KYC, possible fraud, unresolved trades, or market-resolution disputes that require account-specific review, explain the safe next step and offer human support.',
+        '- If the available context does not support a factual answer, say what you cannot verify. Do not invent policies, transaction status, settlement outcomes, or account data.',
+        '- Keep the response focused on the user\'s issue. Ask only one concise clarifying question when it is necessary to proceed.',
+      ].join('\\n')
+    : context.prompt.systemPrompt;
   let output: AssistantOutput | null = null;
   let providerId: number | null = null;
   let lastFailure = 'No eligible AI service completed the request.';
 
   for (const provider of context.providers) {
     try {
-      const raw = await invokeProvider(provider, context.prompt.systemPrompt, userPrompt, context.policy);
+      const raw = await invokeProvider(provider, systemPrompt, userPrompt, context.policy);
       output = enforceAssistantAssetScope(
         validateOutput(parseJsonText(raw)),
         activeAssetCodes(context),
@@ -436,6 +451,7 @@ async function handleRequest(req: Request) {
   const contextSnapshot = {
     route,
     marketId,
+    mode: supportMode ? 'SUPPORT' : 'GENERAL',
     used: [
       isRecord(context.context) && context.context.market ? 'MARKET' : null,
       isRecord(context.context) && Array.isArray(context.context.wallet) ? 'WALLET' : null,
