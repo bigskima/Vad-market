@@ -7,7 +7,8 @@ import { VadText } from '@/components/ui/vad-text';
 import { useAuth } from '@/providers/auth-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { listMyPlayActivity, playFriendlyError, type PlayActivity, playExperienceLabel } from '@/services/play-api';
-import { PlayLoadingState, PlayMessageState } from './play-states';
+import { PlayMessageState } from './play-states';
+import { PlayActivitySkeleton } from '@/components/ui/screen-skeletons';
 import { PlayTabNavigation } from './play-tab-navigation';
 
 function formatActivityDate(value: string) {
@@ -68,7 +69,7 @@ export function PlayActivityScreen() {
       <PlayTabNavigation active="My Play" />
 
       {loading ? (
-        <PlayLoadingState label="Loading your Play history" />
+        <PlayActivitySkeleton />
       ) : error ? (
         <PlayMessageState title="Your history could not be loaded" body={error} actionLabel="Try again" onAction={refresh} tone="error" />
       ) : activity.length === 0 ? (
