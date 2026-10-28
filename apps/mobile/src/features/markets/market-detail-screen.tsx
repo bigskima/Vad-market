@@ -280,7 +280,6 @@ export function MarketDetailScreen({
     </View>
   );
 }
-}
 
 function Overview({ market, timing, outcomes, outcomesLoading, outcomesError, onTrade }: {
   market: MarketCatalogItem;
