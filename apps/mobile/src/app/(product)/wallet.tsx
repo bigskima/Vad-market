@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { WalletHomeSkeleton } from '@/components/ui/screen-skeletons';
 import { ProductRoute } from '@/features/navigation/product-route';
 import { WalletScreen } from '@/features/wallet/wallet-screen';
 import { useProductDataContext } from '@/providers/product-data-provider';
@@ -14,7 +15,9 @@ export default function WalletRoute() {
 
   return (
     <ProductRoute active="Wallet">
-      {walletReadFailedWithoutData ? (
+      {data.loading && !data.wallet.length ? (
+        <WalletHomeSkeleton />
+      ) : walletReadFailedWithoutData ? (
         <VadErrorState
           title="Wallet balance could not be loaded"
           message={data.sectionErrors.wallet ?? 'Wallet data is unavailable.'}
