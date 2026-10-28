@@ -34,8 +34,8 @@ export function WalletLedgerActivity({ rows, compact = false }: { rows: WalletAc
   return (
     <View style={{ gap: theme.spacing.md }}>
       <VadSectionHeader
-        title={compact ? 'Wallet ledger' : 'Ledger activity'}
-        subtitle="Market transactions and payouts."
+        title={compact ? 'Market activity' : 'Market activity'}
+        subtitle="Trades and payouts."
       />
       {!compact ? (
         <VadSegmentedControl
@@ -55,7 +55,7 @@ export function WalletLedgerActivity({ rows, compact = false }: { rows: WalletAc
           {filtered.slice(0, visible).map((row) => <LedgerRow key={`${row.activity_id}-${row.account_type}`} row={row} now={now} />)}
         </View>
       ) : (
-        <VadEmptyState title="No wallet ledger activity" body="Your market transactions and payouts will appear here." />
+        <VadEmptyState title="No activity yet" body="Your trades and payouts will appear here." />
       )}
 
       {filtered.length > visible ? <VadButton label={`Show more · ${filtered.length - visible} remaining`} variant="secondary" size="small" onPress={() => setVisible((value) => value + (compact ? 5 : 10))} /> : null}
