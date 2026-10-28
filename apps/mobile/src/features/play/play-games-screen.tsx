@@ -8,7 +8,8 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { PlayAdSlot } from './play-ad-slot';
 import { listPublishedPlayExperiences, playFriendlyError, type PlayExperience, playExperienceLabel } from '@/services/play-api';
 import { PlayExperienceTile } from './play-experience-tile';
-import { PlayLoadingState, PlayMessageState } from './play-states';
+import { PlayMessageState } from './play-states';
+import { PlayGamesSkeleton } from '@/components/ui/screen-skeletons';
 import { PlayTabNavigation } from './play-tab-navigation';
 
 export function PlayGamesScreen() {
@@ -134,7 +135,7 @@ export function PlayGamesScreen() {
       ) : null}
 
       {loading ? (
-        <PlayLoadingState label="Loading published experiences" />
+        <PlayGamesSkeleton />
       ) : error ? (
         <PlayMessageState title="Games could not be loaded" body={error} actionLabel="Retry" onAction={refresh} tone="error" />
       ) : filtered.length === 0 ? (
