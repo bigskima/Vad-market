@@ -10,7 +10,6 @@ import { useVadTheme } from '@/providers/theme-provider';
 import {
   getAccountSetupState,
   isAccountSetupComplete,
-  markAccountOnboardingStarted,
   type AccountSetupState,
 } from '@/services/account-onboarding-api';
 
@@ -48,18 +47,10 @@ export function AccountSetupCard() {
     return () => { active = false; };
   }, [user]));
 
-  const openSetup = async () => {
+  const openSetup = () => {
     if (opening) return;
     setOpening(true);
-    setError(null);
-    try {
-      await markAccountOnboardingStarted();
-      router.push({ pathname: '/onboarding', params: { source: 'account' } });
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'We could not open account setup. Please try again.');
-    } finally {
-      setOpening(false);
-    }
+    router.push({ pathname: '/onboarding', params: { source: 'account' } });
   };
 
   if (!loading && state && isAccountSetupComplete(state)) return null;
