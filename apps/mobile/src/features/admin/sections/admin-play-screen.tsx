@@ -3,7 +3,6 @@ import { Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
-import { VadChip } from '@/components/ui/vad-chip';
 import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
 import { useAdminData } from '@/providers/admin-data-provider';
@@ -16,7 +15,6 @@ import {
   saveAdminPlayExperience,
   setAdminPlayDirectSponsorEnabled,
   type PlayAdminDashboard,
-  type PlayAdminExperience,
 } from '@/services/admin-play-api';
 
 type Section = 'overview' | 'experience' | 'campaign' | 'ads';
@@ -155,7 +153,6 @@ export function AdminPlayScreen() {
 
   const directSponsor = dashboard.adProviders.find((provider) => provider.provider_key === 'direct-sponsor');
   const placementsCount = dashboard.adPlacements.length;
-  const liveExperiences = dashboard.experiences.filter((experience) => experience.status === 'PUBLISHED').length;
   const openCampaigns = dashboard.campaigns.filter((campaign) => ['OPEN','FUNDING_TARGET_MET','ENTRY_CLOSED','DRAW_ELIGIBLE'].includes(campaign.status)).length;
   const enginesReady = dashboard.engines.filter((engine) => engine.rollout_status === 'ENABLED' && engine.runtime_ready).length;
 
