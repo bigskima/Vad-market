@@ -463,7 +463,7 @@ export default function SupportScreen() {
               </View>
             </VadCard>
 
-            {hasAiReplied ? (
+            {(hasAiReplied || Boolean(aiError)) ? (
               <VadCard variant="muted" style={{ gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <VadIcon name="lifeBuoy" size={18} tone="brand" />
