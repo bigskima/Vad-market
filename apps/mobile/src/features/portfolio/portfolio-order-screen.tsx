@@ -115,7 +115,6 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
           eyebrow="READ-ONLY RECORD"
           description="This order is closed. No further actions are available."
           icon="activity"
-          defaultExpanded
           summary={<VadText variant="caption" tone="tertiary">{archivedOrder.side} {archivedOrder.outcome_code}</VadText>}
         >
           <Detail label="Market" value={archivedOrder.market_title} />
@@ -169,7 +168,7 @@ export function PortfolioOrderScreen({ orderId, onCancelled }: { orderId: string
   const createdRelative = relativeTime(currentOrder.created_at, now);
   const createdExact = new Date(currentOrder.created_at).toLocaleString();
   const normalizedStatus = String(currentOrder.status).toUpperCase();
-  const statusTone: 'yes' | 'no' | 'brand' = normalizedStatus.includes('FILLED') || normalizedStatus.includes('COMPLETE')
+  const statusTone: 'yes' | 'no' | 'brand' = (normalizedStatus === 'FILLED' || normalizedStatus.includes('COMPLETE'))
     ? 'yes'
     : /CANCEL|EXPIRE|REJECT|FAIL/.test(normalizedStatus)
       ? 'no'
