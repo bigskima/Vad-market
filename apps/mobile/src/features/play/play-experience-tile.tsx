@@ -55,7 +55,7 @@ export function PlayExperienceTile({
           }}
         >
           <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
-            <VadIcon name="activity" size={18} tone="brand" />
+            <VadIcon name="circlePlay" size={18} tone="brand" />
           </View>
           <VadText variant="caption" tone="secondary" style={{ marginTop: 8 }}>
             {playExperienceLabel(experience.experience_type)}
