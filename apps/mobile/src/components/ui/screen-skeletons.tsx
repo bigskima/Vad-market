@@ -273,3 +273,110 @@ export function PortfolioSectionSkeleton({ kind }: { kind: 'positions' | 'valuat
     </View>
   );
 }
+
+export function PlayActivitySkeleton() {
+  const theme = useVadTheme();
+  return (
+    <View accessibilityLabel="Loading Play activity" style={{ gap: theme.spacing.md }}>
+      <HeaderShape />
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <VadSkeleton width="28%" height={34} radius={theme.radius.pill} />
+        <VadSkeleton width="24%" height={34} radius={theme.radius.pill} />
+        <VadSkeleton width="26%" height={34} radius={theme.radius.pill} />
+      </View>
+      {[0,1,2,3,4].map((key) => (
+        <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingVertical: theme.spacing.md }}>
+          <VadSkeleton width={40} height={40} radius={20} />
+          <View style={{ flex: 1, gap: 7 }}><VadSkeleton width="63%" height={13} /><VadSkeleton width="45%" height={11} /><VadSkeleton width="32%" height={10} /></View>
+          <View style={{ alignItems: 'flex-end', gap: 6 }}><VadSkeleton width={60} height={12} /><VadSkeleton width={52} height={10} /></View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function AdminPlaySkeleton() {
+  const theme = useVadTheme();
+  return (
+    <View accessibilityLabel="Loading VAD Play admin" style={{ gap: theme.spacing.lg }}>
+      <HeaderShape />
+      <View style={{ flexDirection: 'row', gap: 7, flexWrap: 'wrap' }}>
+        <VadSkeleton width={90} height={34} radius={theme.radius.pill} />
+        <VadSkeleton width={74} height={34} radius={theme.radius.pill} />
+        <VadSkeleton width={96} height={34} radius={theme.radius.pill} />
+        <VadSkeleton width={72} height={34} radius={theme.radius.pill} />
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {[0,1,2,3].map((key) => (
+          <View key={key} style={{ flexGrow: 1, minWidth: 138, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: 8 }}>
+            <VadSkeleton width="55%" height={11} />
+            <VadSkeleton width="38%" height={25} />
+            <VadSkeleton width="72%" height={10} />
+          </View>
+        ))}
+      </View>
+      <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.xl, padding: theme.spacing.md, gap: theme.spacing.md }}>
+        <VadSkeleton width="52%" height={20} />
+        {[0,1,2].map((key) => (
+          <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 }}>
+            <VadSkeleton width={44} height={44} radius={14} />
+            <View style={{ flex: 1, gap: 7 }}><VadSkeleton width="65%" height={13} /><VadSkeleton width="44%" height={11} /></View>
+            <VadSkeleton width={74} height={28} radius={theme.radius.pill} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+export function HomeWatchlistSkeleton() {
+  const theme = useVadTheme();
+  return (
+    <View accessibilityLabel="Loading watchlist" style={{ flexDirection: 'row', gap: 9 }}>
+      {[0,1].map((key) => (
+        <View key={key} style={{ width: 184, minHeight: 88, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 9, gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <VadSkeleton width={34} height={34} radius={12} />
+            <View style={{ flex: 1, gap: 6 }}><VadSkeleton width="74%" height={12} /><VadSkeleton width="46%" height={10} /></View>
+          </View>
+          <VadSkeleton width="58%" height={10} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function AssistantConversationSkeleton() {
+  const theme = useVadTheme();
+  return (
+    <View accessibilityLabel="Loading conversation" style={{ gap: theme.spacing.md, paddingVertical: theme.spacing.sm }}>
+      <View style={{ alignSelf: 'flex-end', width: '70%', borderRadius: theme.radius.xl, padding: theme.spacing.md, gap: 7, backgroundColor: theme.colors.surfaceMuted }}>
+        <VadSkeleton width="90%" height={12} />
+        <VadSkeleton width="55%" height={12} />
+      </View>
+      <View style={{ alignSelf: 'flex-start', width: '86%', borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.md, gap: 7 }}>
+        <VadSkeleton width="82%" height={12} />
+        <VadSkeleton width="94%" height={12} />
+        <VadSkeleton width="71%" height={12} />
+      </View>
+      <View style={{ alignSelf: 'flex-end', width: '56%', borderRadius: theme.radius.xl, padding: theme.spacing.md, gap: 7, backgroundColor: theme.colors.surfaceMuted }}>
+        <VadSkeleton width="88%" height={12} />
+      </View>
+    </View>
+  );
+}
+
+export function AssistantThreadsSkeleton() {
+  const theme = useVadTheme();
+  return (
+    <View accessibilityLabel="Loading conversation history" style={{ gap: theme.spacing.sm }}>
+      {[0,1,2,3].map((key) => (
+        <View key={key} style={{ minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+          <VadSkeleton width={34} height={34} radius={12} />
+          <View style={{ flex: 1, gap: 7 }}><VadSkeleton width="70%" height={13} /><VadSkeleton width="42%" height={10} /></View>
+          <VadSkeleton width={18} height={18} radius={9} />
+        </View>
+      ))}
+    </View>
+  );
+}
