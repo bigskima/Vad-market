@@ -183,8 +183,8 @@ export function PolicyConsentModal({
               <VadText variant="caption" tone="brand">YOUR VAD AGREEMENT</VadText>
               <VadText variant="caption" tone="secondary">{completed}/{documents.length} agreed</VadText>
             </View>
-            <VadText variant="bodyStrong">Read one short part at a time.</VadText>
-            <VadText variant="caption" tone="secondary">VAD keeps the process short and progressive. You must agree to every required document before entering the app.</VadText>
+            <VadText variant="bodyStrong">Review each required document.</VadText>
+            <VadText variant="caption" tone="secondary">Accept every required document to continue.</VadText>
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
