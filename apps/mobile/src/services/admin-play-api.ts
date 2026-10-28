@@ -105,6 +105,68 @@ export type PlayAdminDashboard = {
   rewards: Array<Record<string, unknown>>;
 };
 
+export type PlayAdminEntryOrder = {
+  id: string;
+  campaign_id: string;
+  user_id: string;
+  ticket_count: number;
+  currency_code: string;
+  unit_price_amount: number | string;
+  total_amount: number | string;
+  status: string;
+  ledger_journal_id: number | null;
+  refund_journal_id: number | null;
+  refund_reason: string | null;
+  created_at: string;
+  refunded_at: string | null;
+  campaign_title: string;
+};
+
+export type PlayAdminDraw = {
+  id: string;
+  campaign_id: string;
+  status: string;
+  ticket_count_snapshot: number;
+  entries_digest: string;
+  seed_commitment: string;
+  selection_counter: number;
+  winning_ticket_id: string | null;
+  winning_ticket_code: string | null;
+  authorized_by: string;
+  authorized_at: string;
+  executed_by: string | null;
+  executed_at: string | null;
+  voided_by: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  result_digest: string | null;
+  campaign_title: string;
+};
+
+export type PlayAdminSettlement = {
+  id: string;
+  campaign_id: string;
+  currency_code: string;
+  qualifying_funds_amount: number | string;
+  prize_cost_recovered: number | string;
+  campaign_costs_recovered: number | string;
+  profit_target_amount: number | string;
+  excess_amount: number | string;
+  prize_journal_id: number;
+  costs_journal_id: number | null;
+  profit_journal_id: number | null;
+  delivery_evidence_reference: string;
+  settled_by: string;
+  settled_at: string;
+  campaign_title: string;
+};
+
+export type PlayAdminOperations = {
+  entryOrders: PlayAdminEntryOrder[];
+  draws: PlayAdminDraw[];
+  settlements: PlayAdminSettlement[];
+};
+
 function fail(error: { message: string; code?: string; details?: string; hint?: string } | null, fallback: string) {
   if (error) throw userFacingError(error, 'admin', fallback);
 }
@@ -121,6 +183,19 @@ export async function getAdminPlayDashboard(): Promise<PlayAdminDashboard> {
     adProviders: Array.isArray(value.adProviders) ? value.adProviders : [],
     adPlacements: Array.isArray(value.adPlacements) ? value.adPlacements : [],
     rewards: Array.isArray(value.rewards) ? value.rewards : [],
+  };
+}
+
+export async function getAdminPlayOperations(campaignId?: string | null): Promise<PlayAdminOperations> {
+  const { data, error } = await supabase.rpc('admin_play_list_operations', {
+    p_campaign_id: campaignId ?? null,
+  });
+  fail(error, 'We could not load VAD Play operations. Check the migration state and admin permission.');
+  const value = (data ?? {}) as Partial<PlayAdminOperations>;
+  return {
+    entryOrders: Array.isArray(value.entryOrders) ? value.entryOrders : [],
+    draws: Array.isArray(value.draws) ? value.draws : [],
+    settlements: Array.isArray(value.settlements) ? value.settlements : [],
   };
 }
 
