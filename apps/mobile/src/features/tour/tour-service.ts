@@ -65,7 +65,8 @@ function isTourRoute(value: unknown): value is TourRoute {
     || value === '/crypto-assets'
     || value === '/community'
     || value === '/assistant'
-    || value === '/create-market';
+    || value === '/create-market'
+    || value === '/play';
 }
 
 function normalizeSteps(value: unknown): TourStep[] {
