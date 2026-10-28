@@ -57,7 +57,7 @@ function isTourRoute(value: unknown): value is TourRoute {
     || value === '/account/security'
     || value === '/account/policies'
     || value === '/account/growth'
-    || value === '/account/referrals'
+    || value === '/referrals'
     || value === '/account/about'
     || value === '/notifications'
     || value === '/news'
