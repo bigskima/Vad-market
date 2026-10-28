@@ -482,11 +482,11 @@ export function MarketsScreen({
             ) : null}
           </View>
         ) : !markets.length ? (
-          <VadEmptyState title="No markets yet" body="Markets will appear here as soon as they are published." />
+          <VadEmptyState title="No markets yet" body="New markets will appear here." />
         ) : (
           <VadEmptyState
-            title="No matching markets"
-            body="Try another search, category or sorting option."
+            title="No matches found"
+            body="Try another search or filter."
             actionLabel="Clear filters"
             onAction={() => {
               setQuery('');
