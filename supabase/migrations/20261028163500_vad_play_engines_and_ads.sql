@@ -548,6 +548,10 @@ insert into admin.permissions (code, description)
 values ('play.manage', 'Manage VAD Play experiences, campaign drafts, and sponsor placements')
 on conflict (code) do update set description = excluded.description;
 
+alter table public.play_campaigns
+  add column if not exists max_tickets_per_purchase integer not null default 20
+    check (max_tickets_per_purchase > 0);
+
 create or replace function public.admin_play_dashboard()
 returns jsonb
 language plpgsql
@@ -738,10 +742,6 @@ begin
   return v_id;
 end;
 $$;
-
-alter table public.play_campaigns
-  add column if not exists max_tickets_per_purchase integer not null default 20
-    check (max_tickets_per_purchase > 0);
 
 create or replace function public.admin_play_upsert_campaign(p_payload jsonb)
 returns uuid
