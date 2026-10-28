@@ -108,9 +108,9 @@ export function AdminPlayGameBuilder({
       setRefundPolicy(draft.refundPolicy || refundPolicy);
       setImagePrompt(draft.imagePrompt || imagePrompt);
       setRiskNotes(draft.riskNotes || '');
-      setMessage('AI draft prepared. Review every field before saving.');
+      setMessage('Draft ready. Review before saving.');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'AI could not prepare the draft.');
+      setError(reason instanceof Error ? reason.message : 'Couldn't create a draft. Try again.');
     } finally {
       setWorking(null);
     }
@@ -124,7 +124,7 @@ export function AdminPlayGameBuilder({
       const path = await uploadPlayMedia();
       if (!path) return;
       setImagePath(path);
-      setMessage('Artwork uploaded to VAD Play storage.');
+      setMessage('Cover uploaded.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'The artwork could not be uploaded.');
     } finally {
@@ -134,7 +134,7 @@ export function AdminPlayGameBuilder({
 
   async function generateArtwork() {
     if (!title.trim()) {
-      setError('Enter a game title or use AI draft first.');
+      setError('Enter a game title or create a draft with AI.');
       return;
     }
     setWorking('image');
@@ -147,9 +147,9 @@ export function AdminPlayGameBuilder({
         visualDirection: imagePrompt.trim(),
       });
       setImagePath(path);
-      setMessage('AI artwork generated and saved to VAD Play storage.');
+      setMessage('Cover generated.');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'AI artwork could not be generated.');
+      setError(reason instanceof Error ? reason.message : 'Couldn't generate the cover. Try again.');
     } finally {
       setWorking(null);
     }
@@ -231,7 +231,7 @@ export function AdminPlayGameBuilder({
       }
 
       await onSaved();
-      setMessage(isPrizeDraw ? 'Game and campaign drafts saved.' : 'Game experience draft saved. Its runtime is still subject to review.');
+      setMessage(isPrizeDraw ? 'Game and campaign saved as drafts.' : 'Game saved as a draft for review.');
       setIdea('');
       setTitle('');
       setDescription('');
@@ -252,9 +252,9 @@ export function AdminPlayGameBuilder({
       setTicketsPerPurchase('');
       setUserLimit('');
     } catch (reason) {
-      const detail = reason instanceof Error ? reason.message : 'VAD Play could not save this draft.';
+      const detail = reason instanceof Error ? reason.message : 'Couldn't save the draft. Try again.';
       setError(experienceSaved
-        ? `The experience draft was saved, but its campaign could not be completed. Review the fields and retry: ${detail}`
+        ? `The game was saved, but its campaign needs attention. Check the fields and try again.`
         : detail);
     } finally {
       setWorking(null);
@@ -265,7 +265,7 @@ export function AdminPlayGameBuilder({
     <View style={{ gap: theme.spacing.md }}>
       <View style={{ gap: 4 }}>
         <VadText variant="title">Create a game</VadText>
-        <VadText variant="caption" tone="secondary">One guided form. Save drafts for review before anything is published.</VadText>
+        <VadText variant="caption" tone="secondary">Create a game, then review it before publishing.</VadText>
       </View>
 
       {error ? (
@@ -297,8 +297,8 @@ export function AdminPlayGameBuilder({
             {selectedEngine ? (
               <VadText variant="caption" tone={selectedEngine.runtime_ready && selectedEngine.rollout_status === 'ENABLED' ? 'yes' : 'warning'}>
                 {selectedEngine.runtime_ready && selectedEngine.rollout_status === 'ENABLED'
-                  ? 'Runtime marked ready'
-                  : 'Draft-only: this engine is not enabled for public play'}
+                  ? 'Ready for launch'
+                  : 'Not available to players yet'}
               </VadText>
             ) : null}
           </View>
@@ -324,7 +324,7 @@ export function AdminPlayGameBuilder({
         <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
           <View style={{ gap: 4 }}>
             <VadText variant="heading">3. Artwork</VadText>
-            <VadText variant="caption" tone="secondary">Upload a real image or generate a text-free cover. Artwork is saved to VAD Storage.</VadText>
+            <VadText variant="caption" tone="secondary">Upload a cover image or generate one with AI.</VadText>
           </View>
           <VadInput label="Visual direction (optional)" value={imagePrompt} onChangeText={setImagePrompt} multiline placeholder="Style, colours or visual subject" />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -380,7 +380,7 @@ export function AdminPlayGameBuilder({
               <View style={{ borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted, padding: theme.spacing.md, gap: 4 }}>
                 <VadText variant="caption" tone="secondary">Estimated funding threshold</VadText>
                 <VadText variant="heading">{currency} {estimate.toLocaleString('en-NG', { maximumFractionDigits: 4 })}</VadText>
-                <VadText variant="caption" tone="tertiary">Based on the amounts entered; the database remains authoritative.</VadText>
+                <VadText variant="caption" tone="tertiary">Estimate only.</VadText>
               </View>
             ) : null}
             <VadInput label="Public terms" value={terms} onChangeText={setTerms} multiline placeholder="Review and confirm the campaign terms" />
