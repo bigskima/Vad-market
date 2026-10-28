@@ -90,10 +90,13 @@ export default function AccountOnboardingScreen() {
       setError(null);
       if (returnToAccount && startMarkAttempted.current !== user.id) {
         startMarkAttempted.current = user.id;
+        setWorking(true);
         try {
           await markAccountOnboardingStarted();
         } catch {
           if (active) setError('Progress could not be saved to your account yet. You can still complete the steps or retry later.');
+        } finally {
+          setWorking(false);
         }
       }
       try {
