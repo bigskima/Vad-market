@@ -6,6 +6,7 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadIcon } from '@/components/ui/vad-icon';
+import { ProductScreenSkeleton } from '@/components/ui/product-screen-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
@@ -43,6 +44,7 @@ export function MarketsScreen({
   curatedMarkets = [],
   trendingMarkets = [],
   unreadNotifications = false,
+  loading = false,
 }: {
   markets: MarketCatalogItem[];
   onOpenMarket: (market: MarketCatalogItem) => void;
@@ -51,6 +53,7 @@ export function MarketsScreen({
   curatedMarkets?: VadMarketRow[];
   trendingMarkets?: TrendingMarketRow[];
   unreadNotifications?: boolean;
+  loading?: boolean;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -355,6 +358,10 @@ export function MarketsScreen({
         markets: rows,
       }));
   }, [visibleMarkets, activeCategoryExperience]);
+
+  if (loading && markets.length === 0) {
+    return <ProductScreenSkeleton variant="markets" />;
+  }
 
   return (
     <View style={{ gap: density.phone ? 10 : Math.min(18, density.sectionGap) }}>
