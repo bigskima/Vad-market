@@ -1,9 +1,10 @@
-import { View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
+import { useState } from 'react';
 
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import { PlayDrawAuditPanel } from './play-draw-audit-panel';
-import type { PlayCampaign } from '@/services/play-api';
+import { getPlayCampaignImageUrl, type PlayCampaign } from '@/services/play-api';
 
 function money(value: number | string, currency: string) {
   const amount = Number(value);
@@ -32,6 +33,8 @@ function statusLabel(status: string) {
 
 export function PlayCampaignSummary({ campaign }: { campaign: PlayCampaign }) {
   const theme = useVadTheme();
+  const [showRules, setShowRules] = useState(false);
+  const imageUrl = getPlayCampaignImageUrl(campaign.image_path);
   const threshold = Number(campaign.funding_threshold_amount);
   const funds = Number(campaign.qualifying_funds_amount);
   const progress = Number.isFinite(threshold) && threshold > 0 && Number.isFinite(funds)
@@ -43,7 +46,9 @@ export function PlayCampaignSummary({ campaign }: { campaign: PlayCampaign }) {
     : new Date(closeTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
-    <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.xl, backgroundColor: theme.colors.surface, padding: theme.spacing.lg, gap: theme.spacing.md }}>
+    <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.xl, backgroundColor: theme.colors.surface, overflow: 'hidden' }}>
+      {imageUrl ? <Image source={{ uri: imageUrl }} accessibilityLabel={campaign.prize_title + ' campaign artwork'} resizeMode="cover" style={{ width: '100%', height: 170, backgroundColor: theme.colors.surfaceMuted }} /> : null}
+      <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
         <View style={{ flex: 1, gap: 4 }}>
           <VadText variant="caption" tone="brand">{statusLabel(campaign.status)}</VadText>
@@ -69,13 +74,23 @@ export function PlayCampaignSummary({ campaign }: { campaign: PlayCampaign }) {
         </VadText>
       </View>
 
-      {closeLabel ? <VadText variant="caption" tone="secondary">Scheduled close: {closeLabel}</VadText> : null}
-      {rule(campaign, 'terms') ? <VadText variant="caption" tone="secondary">Terms: {rule(campaign, 'terms')}</VadText> : null}
-      {rule(campaign, 'refund_policy') ? <VadText variant="caption" tone="secondary">Refund policy: {rule(campaign, 'refund_policy')}</VadText> : null}
-      <VadText variant="caption" tone="tertiary">
-        This summary reflects the published campaign record. Ticket eligibility and final outcome are governed by the campaign rules and server-side draw audit.
-      </VadText>
+      {closeLabel ? <VadText variant="caption" tone="secondary">Closes {closeLabel}</VadText> : null}
+      {(rule(campaign, 'terms') || rule(campaign, 'refund_policy')) ? (
+        <>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: showRules }} onPress={() => setShowRules((value) => !value)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 }}>
+            <VadText variant="label" tone="brand">Campaign rules</VadText>
+            <VadText variant="caption" tone="secondary">{showRules ? 'Hide' : 'View'}</VadText>
+          </Pressable>
+          {showRules ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              {rule(campaign, 'terms') ? <View style={{ gap: 3 }}><VadText variant="caption" tone="secondary">Terms</VadText><VadText>{rule(campaign, 'terms')}</VadText></View> : null}
+              {rule(campaign, 'refund_policy') ? <View style={{ gap: 3 }}><VadText variant="caption" tone="secondary">Refund policy</VadText><VadText>{rule(campaign, 'refund_policy')}</VadText></View> : null}
+            </View>
+          ) : null}
+        </>
+      ) : null}
       <PlayDrawAuditPanel campaignId={campaign.id} />
+      </View>
     </View>
   );
 }
