@@ -140,7 +140,7 @@ export function CryptoMarketPricesPanel({
         </View>
       ) : error && !coins.length ? (
         <VadErrorState
-          title="Crypto prices unavailable"
+          title="Can't load crypto prices"
           message={error}
           onRetry={() => {
             setLoading(true);
@@ -394,7 +394,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
           ) : null}
         </View>
       ) : (
-        <VadText variant="caption" tone={error ? 'warning' : 'secondary'}>{error ?? 'No public price available for this asset.'}</VadText>
+        <VadText variant="caption" tone={error ? 'warning' : 'secondary'}>{error ? 'Price unavailable. Try again.' : 'No public price available for this asset.'}</VadText>
       )}
       {displayedCoin && points.length > 1 ? (
         <View
@@ -430,7 +430,7 @@ export function CryptoMarketSpotSummary({ assetQuery }: { assetQuery: string }) 
           })}
         </View>
       ) : null}
-      {displayedCoin && updatedAt ? <VadText variant="caption" tone={staleSnapshot ? 'warning' : 'tertiary'}>{staleSnapshot ? 'Stale cached snapshot' : 'Live reference · refreshes every 30 seconds'}: {new Date(updatedAt).toLocaleTimeString()} · CoinGecko</VadText> : null}
+      {displayedCoin && updatedAt ? <VadText variant="caption" tone={staleSnapshot ? 'warning' : 'tertiary'}>{staleSnapshot ? 'Last update may be old' : 'Reference price · updates every 30 seconds'}: {new Date(updatedAt).toLocaleTimeString()} · CoinGecko</VadText> : null}
     </VadCard>
   );
 }
