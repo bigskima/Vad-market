@@ -94,9 +94,9 @@ export function PlayExperienceDetailScreen() {
       <PlayAdSlot placementCode="play-experience-inline" />
 
       {error ? (
-        <PlayMessageState title="Experience details are unavailable" body={error} actionLabel="Retry" onAction={() => void load()} tone="error" />
+        <PlayMessageState title="Can't load this game" body="Try again in a moment." actionLabel="Retry" onAction={() => void load()} tone="error" />
       ) : !experience ? (
-        <PlayMessageState title="This experience is not available" body="This experience is not currently published." actionLabel="Browse experiences" onAction={() => router.replace('/play/games')} />
+        <PlayMessageState title="Game unavailable" body="This game isn't open yet." actionLabel="Browse experiences" onAction={() => router.replace('/play/games')} />
       ) : (
         <>
           {safeHeroUrl ? (
@@ -124,11 +124,11 @@ export function PlayExperienceDetailScreen() {
                 <VadText tone="secondary">Campaign details</VadText>
               </View>
               {campaignError ? (
-                <PlayMessageState title="Campaigns could not be loaded" body={campaignError} actionLabel="Refresh campaigns" onAction={() => void loadCampaigns(experience.id)} tone="error" />
+                <PlayMessageState title="Can't load campaigns" body="Try again in a moment." actionLabel="Refresh campaigns" onAction={() => void loadCampaigns(experience.id)} tone="error" />
               ) : campaigns.length === 0 ? (
                 <PlayMessageState
-                  title="No published campaigns are available"
-                  body="No live campaigns are available right now."
+                  title="No campaigns yet"
+                  body="Check back soon."
                   actionLabel="Refresh campaigns"
                   onAction={() => void loadCampaigns(experience.id)}
                 />
@@ -142,10 +142,10 @@ export function PlayExperienceDetailScreen() {
             <View style={{ borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: theme.spacing.lg, gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <VadIcon name="info" tone="brand" size={18} />
-                <VadText variant="heading">This engine is not enabled</VadText>
+                <VadText variant="heading">Coming soon</VadText>
               </View>
               <VadText tone="secondary">
-                This game is not active yet. Required runtime and independent reviews must pass before play is enabled.
+                This game isn't open to players yet.
               </VadText>
             </View>
           )}
