@@ -496,7 +496,7 @@ function testModeBlockReason(status: TemporaryNgnMarketTestingStatus) {
     case 'NGN_NOT_AVAILABLE_IN_JURISDICTION':
       return 'NGN is not enabled for this account under the current jurisdiction rules.';
     default:
-      return status.message || 'This account isn't eligible for NGN trading yet.';
+      return status.message || 'This account is not eligible for NGN trading yet.';
   }
 }
 
