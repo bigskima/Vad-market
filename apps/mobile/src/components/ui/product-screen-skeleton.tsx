@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import type { ReactNode } from 'react';
 
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -82,9 +83,97 @@ function ActivityRows({ count = 4 }: { count?: number }) {
   );
 }
 
+export function HomeWatchlistSkeleton({ count = 3 }: { count?: number }) {
+  const theme = useVadTheme();
+  return (
+    <View style={{ flexDirection: 'row', gap: 9 }}>
+      {Array.from({ length: count }, (_, index) => (
+        <View key={index} style={{ width: 154, minHeight: 84, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 9, gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+            <VadSkeleton width={34} height={34} radius={10} />
+            <View style={{ flex: 1, gap: 5 }}><VadSkeleton width="92%" height={10} /><VadSkeleton width="62%" height={8} /></View>
+          </View>
+          <VadSkeleton width="54%" height={8} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function WatchlistRowsSkeleton({ count = 4 }: { count?: number }) {
+  const theme = useVadTheme();
+  return (
+    <View style={{ gap: 8 }}>
+      {Array.from({ length: count }, (_, index) => (
+        <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 15, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
+          <VadSkeleton width={48} height={48} radius={13} />
+          <View style={{ flex: 1, minWidth: 0, gap: 7 }}><VadSkeleton width="82%" height={13} /><VadSkeleton width="56%" height={10} /></View>
+          <VadSkeleton width={24} height={24} radius={12} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function NewsStoryCardsSkeleton({ count = 3, columns = 1 }: { count?: number; columns?: 1 | 2 }) {
+  const theme = useVadTheme();
+  return (
+    <View style={{ flexDirection: columns === 2 ? 'row' : 'column', flexWrap: columns === 2 ? 'wrap' : 'nowrap', gap: theme.spacing.md }}>
+      {Array.from({ length: count }, (_, index) => (
+        <View key={index} style={{ width: columns === 2 ? '48%' : '100%', flexGrow: columns === 2 ? 1 : 0, minWidth: 0, gap: 10, paddingBottom: 14 }}>
+          <VadSkeleton height={170} radius={theme.radius.lg} />
+          <View style={{ gap: 7, paddingHorizontal: 2 }}>
+            <VadSkeleton width="32%" height={9} />
+            <VadSkeleton width="92%" height={17} />
+            <VadSkeleton width="73%" height={17} />
+            <VadSkeleton width="86%" height={11} />
+            <VadSkeleton width="57%" height={11} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function MarketOutcomeChoicesSkeleton() {
+  const theme = useVadTheme();
+  return (
+    <View style={{ gap: 10 }}>
+      {[0, 1, 2].map((index) => (
+        <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
+          <VadSkeleton width={38} height={38} radius={11} />
+          <View style={{ flex: 1, gap: 7 }}><VadSkeleton width="58%" height={13} /><VadSkeleton width="34%" height={10} /></View>
+          <View style={{ alignItems: 'flex-end', gap: 6, width: 74 }}><VadSkeleton width="86%" height={14} /><VadSkeleton width="60%" height={9} /></View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function PortfolioSectionSkeleton({ kind }: { kind: 'positions' | 'orders' | 'history' }) {
+  const theme = useVadTheme();
+  const count = kind === 'history' ? 4 : 3;
+  return (
+    <View style={{ gap: 9 }}>
+      {Array.from({ length: count }, (_, index) => (
+        <View key={index} style={{ gap: 10, padding: 12, borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+            <VadSkeleton width={38} height={38} radius={11} />
+            <View style={{ flex: 1, gap: 6 }}><VadSkeleton width="62%" height={13} /><VadSkeleton width="40%" height={9} /></View>
+            <View style={{ width: 76, alignItems: 'flex-end', gap: 6 }}><VadSkeleton width="90%" height={13} /><VadSkeleton width="59%" height={9} /></View>
+          </View>
+          {kind === 'positions' ? <View style={{ flexDirection: 'row', gap: 7 }}><VadSkeleton height={31} radius={10} /><VadSkeleton height={31} radius={10} /><VadSkeleton height={31} radius={10} /></View> : null}
+          {kind === 'orders' ? <View style={{ flexDirection: 'row', gap: 8 }}><VadSkeleton width="28%" height={23} radius={999} /><VadSkeleton width="35%" height={23} radius={999} /></View> : null}
+          {kind === 'history' ? <VadSkeleton width="69%" height={10} /> : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function ProductScreenSkeleton({ variant }: { variant: ProductSkeletonVariant }) {
   const theme = useVadTheme();
-  const panel = (children: React.ReactNode, height?: number) => (
+  const panel = (children: ReactNode, height?: number) => (
     <View style={{ gap: 12, padding: 14, borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, minHeight: height }}>
       {children}
     </View>
