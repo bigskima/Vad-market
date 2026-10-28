@@ -513,7 +513,7 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
     contextMetadata.logo_url, contextMetadata.logoUrl, contextMetadata.image_url, contextMetadata.imageUrl,
     contextMetadata.icon_url, contextMetadata.iconUrl,
   ));
-  const initials = displayTitle.split(/\\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('');
+  const initials = displayTitle.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('');
   if (!entries.length && !logoUrl && displayTitle === selected.title) return null;
 
   return (
