@@ -46,7 +46,7 @@ export function ProductRoute({
 }: Props) {
   const theme = useVadTheme();
   const density = useProductDensity();
-  const shouldHideTopBar = hideTopBar || active === 'Home' || active === 'Markets' || active === 'Wallet';
+  const shouldHideTopBar = hideTopBar || active === 'Home' || active === 'Markets' || active === 'Wallet' || active === 'Play';
   const { isLoading, session } = useAuth();
   const data = useProductDataContext();
   const runtime = useRuntimeCapabilities(session);
@@ -140,6 +140,8 @@ export function ProductRoute({
         ? '/home'
         : tab === 'Markets'
           ? '/markets'
+          : tab === 'Play'
+          ? '/play'
           : tab === 'Wallet'
             ? '/wallet'
             : tab === 'Portfolio'

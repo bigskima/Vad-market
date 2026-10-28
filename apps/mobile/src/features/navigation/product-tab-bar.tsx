@@ -9,6 +9,7 @@ import { useVadTheme } from '@/providers/theme-provider';
 export type ProductTab =
   | 'Home'
   | 'Markets'
+  | 'Play'
   | 'Wallet'
   | 'Portfolio'
   | 'Account';
@@ -20,6 +21,7 @@ export const PRODUCT_TABS: {
 }[] = [
   { value: 'Home', label: 'Home', icon: 'home' },
   { value: 'Markets', label: 'Markets', icon: 'markets' },
+  { value: 'Play', label: 'Play', icon: 'activity' },
   { value: 'Wallet', label: 'Wallet', icon: 'wallet' },
   { value: 'Portfolio', label: 'Portfolio', icon: 'portfolio' },
   { value: 'Account', label: 'Account', icon: 'account' },
@@ -76,7 +78,8 @@ export function ProductTabBar({
               onPress={() => onChange(tab.value)}
               style={({ pressed }) => ({
                 flex: 1,
-                minHeight: density.compact ? 48 : 52,
+                minWidth: 0,
+                minHeight: density.compact ? 46 : 50,
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 2,
