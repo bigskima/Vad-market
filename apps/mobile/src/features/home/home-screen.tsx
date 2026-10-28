@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
+import { HomeWatchlistSkeleton, ProductScreenSkeleton } from '@/components/ui/product-screen-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { HomePromotionCarousel } from '@/features/home/components/home-promotion-carousel';
 import { TourTarget } from '@/features/tour/tour-provider';
@@ -36,7 +37,7 @@ function listWatchlistWithTimeout(timeoutMs = 12_000) {
 }
 
 export function HomeScreen({
-  markets, wallets, promotions, trendingMarkets, trendingSettings, marketError, onRetryMarkets,
+  markets, wallets, promotions, trendingMarkets, trendingSettings, marketError, loading = false, onRetryMarkets,
   userName, userId, hasUnreadNotifications, onOpenMarket, onOpenPromotion, onExploreMarkets, onNotifications, onDeposit, onWithdraw, onSend, onOpenCryptoAssets,
 }: {
   markets: MarketCatalogItem[];
@@ -45,6 +46,7 @@ export function HomeScreen({
   trendingMarkets: TrendingMarketRow[];
   trendingSettings: TrendingMarketSettings;
   marketError?: string | null;
+  loading?: boolean;
   onRetryMarkets: () => void;
   userName: string;
   userId: string;
@@ -238,6 +240,8 @@ export function HomeScreen({
   const balanceChange = hasBalanceTrend ? historyValues[historyValues.length - 1] - historyValues[0] : null;
   const balanceChangePercent = balanceChange !== null && historyValues[0] !== 0 ? (balanceChange / Math.abs(historyValues[0])) * 100 : null;
 
+  if (loading && markets.length === 0) return <ProductScreenSkeleton variant="home" />;
+
   return (
     <View style={{ width: '100%', gap: density.compact ? 8 : 11 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2 }}>
@@ -347,9 +351,7 @@ export function HomeScreen({
             <SectionHeading title="Watchlist" action="See all" onAction={() => router.push('/watchlist')} />
             {watchlistError && watchlistMarkets.length ? <VadText variant="caption" tone="danger">{watchlistError}</VadText> : null}
             {watchlistLoading ? (
-              <View style={{ borderRadius: 15, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: 14 }}>
-                <VadText variant="caption" tone="secondary">Loading your saved markets…</VadText>
-              </View>
+              <HomeWatchlistSkeleton count={3} />
             ) : watchlistMarkets.length ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9, paddingRight: 3 }}>
                 {watchlistMarkets.map((market) => (
