@@ -349,7 +349,7 @@ function CompactCreateAction({ onPress }: { onPress: () => void }) {
   );
 }
 
-function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'activity' | 'operations'; onPress: () => void }) {
+function HeaderIcon({ label, icon, onPress }: { label: string; icon: 'bell' | 'activity' | 'operations' | 'lifeBuoy'; onPress: () => void }) {
   const theme = useVadTheme();
   return (
     <Pressable
