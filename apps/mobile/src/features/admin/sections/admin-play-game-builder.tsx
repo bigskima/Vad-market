@@ -110,7 +110,7 @@ export function AdminPlayGameBuilder({
       setRiskNotes(draft.riskNotes || '');
       setMessage('Draft ready. Review before saving.');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Couldn't create a draft. Try again.');
+      setError(reason instanceof Error ? reason.message : 'Could not create a draft. Try again.');
     } finally {
       setWorking(null);
     }
@@ -149,7 +149,7 @@ export function AdminPlayGameBuilder({
       setImagePath(path);
       setMessage('Cover generated.');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Couldn't generate the cover. Try again.');
+      setError(reason instanceof Error ? reason.message : 'Could not generate the cover. Try again.');
     } finally {
       setWorking(null);
     }
@@ -252,7 +252,7 @@ export function AdminPlayGameBuilder({
       setTicketsPerPurchase('');
       setUserLimit('');
     } catch (reason) {
-      const detail = reason instanceof Error ? reason.message : 'Couldn't save the draft. Try again.';
+      const detail = reason instanceof Error ? reason.message : 'Could not save the draft. Try again.';
       setError(experienceSaved
         ? `The game was saved, but its campaign needs attention. Check the fields and try again.`
         : detail);
