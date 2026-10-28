@@ -106,7 +106,7 @@ export function PlayDrawAuditPanel({ campaignId }: { campaignId: string }) {
             {dateLabel(audit.executedAt) ? <VadText variant="caption" tone="secondary">Drawn {dateLabel(audit.executedAt)}</VadText> : null}
           </View>
           <DigestRow label="Ticket count snapshot" value={audit.ticketCount} />
-          <DigestRow label="Eligible ticket-set digest" value={audit.entriesDigest} />
+          <DigestRow label="Entry set digest" value={audit.entriesDigest} />
           <DigestRow label="Seed commitment (published before draw)" value={audit.seedCommitment} />
           <DigestRow label="Revealed seed" value={audit.seedReveal} />
           <DigestRow label="Selection counter" value={audit.selectionCounter} />
@@ -128,7 +128,7 @@ export function PlayDrawAuditPanel({ campaignId }: { campaignId: string }) {
                 </View>
               ))}
               {hasMore ? <VadButton label="Load next ticket page" variant="secondary" loading={loadingTickets} onPress={() => void loadTicketPage(false)} /> : null}
-              {tickets.length > 0 && !hasMore ? <VadText variant="caption" tone="secondary">End of the public ticket list.</VadText> : null}
+              {tickets.length > 0 && !hasMore ? <VadText variant="caption" tone="secondary">End of ticket list.</VadText> : null}
             </View>
           )}
           {ticketError ? <VadText variant="caption" tone="danger">{ticketError}</VadText> : null}
