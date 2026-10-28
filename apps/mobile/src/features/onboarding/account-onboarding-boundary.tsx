@@ -15,15 +15,27 @@ export function AccountOnboardingBoundary({ children }: { children: ReactNode })
   const pathname = usePathname();
   const { isLoading, session } = useAuth();
   const productData = useProductDataContext();
-  const checkedUsers = useRef(new Set<string>());
+  const checkedUsers = useRef(new Map<string, number | null>());
   const user = session?.user;
 
   useEffect(() => {
     if (isLoading || productData.loading || !user || pathname === '/onboarding') return;
-    if (!shouldPromptAccountOnboarding(user)) return;
-    if (checkedUsers.current.has(user.id)) return;
 
-    checkedUsers.current.add(user.id);
+    const deferredUntilRaw = user.user_metadata?.vad_onboarding_deferred_until;
+    const deferredUntil = typeof deferredUntilRaw === 'string'
+      ? Date.parse(deferredUntilRaw)
+      : Number.NaN;
+    if (Number.isFinite(deferredUntil) && deferredUntil > Date.now()) {
+      checkedUsers.current.set(user.id, deferredUntil);
+      return;
+    }
+
+    if (!shouldPromptAccountOnboarding(user)) return;
+    const previousCheck = checkedUsers.current.get(user.id);
+    if (checkedUsers.current.has(user.id)
+      && (previousCheck === null || (previousCheck !== undefined && previousCheck > Date.now()))) return;
+
+    checkedUsers.current.set(user.id, null);
     let cancelled = false;
 
     void (async () => {
