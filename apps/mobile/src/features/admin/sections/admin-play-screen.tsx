@@ -8,6 +8,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { useAdminData } from '@/providers/admin-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { hasAdminPermission } from '@/services/admin-control-api';
+import { AdminPlayOperationsPanel } from './admin-play-operations-panel';
 import {
   getAdminPlayDashboard,
   saveAdminPlayAdPlacement,
@@ -17,7 +18,7 @@ import {
   type PlayAdminDashboard,
 } from '@/services/admin-play-api';
 
-type Section = 'overview' | 'experience' | 'campaign' | 'ads';
+type Section = 'overview' | 'experience' | 'campaign' | 'ads' | 'operations';
 
 const emptyDashboard: PlayAdminDashboard = {
   engines: [], releases: [], experiences: [], campaigns: [], adProviders: [], adPlacements: [], rewards: [],
@@ -335,6 +336,7 @@ export function AdminPlayScreen() {
           ['experience', 'Experience drafts'],
           ['campaign', 'Campaign drafts'],
           ['ads', 'Ads & placements'],
+          ['operations', 'Operations audit'],
         ] as [Section, string][]).map(([key, label]) => (
           <SectionTab key={key} active={section === key} label={label} onPress={() => { setSection(key); setError(null); setMessage(null); }} />
         ))}
@@ -461,6 +463,8 @@ export function AdminPlayScreen() {
           </View>
         </VadCard>
       ) : null}
+
+      {section === 'operations' ? <AdminPlayOperationsPanel /> : null}
 
       {section === 'ads' ? (
         <>
