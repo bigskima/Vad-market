@@ -1,15 +1,20 @@
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
+import { ProductScreenSkeleton, type ProductSkeletonVariant } from '@/components/ui/product-screen-skeleton';
 
-export function PlayLoadingState({ label = 'Loading VAD Play' }: { label?: string }) {
-  const theme = useVadTheme();
+export function PlayLoadingState({
+  label = 'Loading VAD Play',
+  variant = 'playHub',
+}: {
+  label?: string;
+  variant?: ProductSkeletonVariant;
+}) {
   return (
-    <View style={{ minHeight: 132, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-      <ActivityIndicator color={theme.colors.brandPrimary} size="small" />
-      <VadText variant="caption" tone="secondary">{label}</VadText>
+    <View accessibilityRole="progressbar" accessibilityLabel={label} style={{ gap: 12 }}>
+      <ProductScreenSkeleton variant={variant} />
     </View>
   );
 }
