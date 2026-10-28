@@ -1642,6 +1642,7 @@ begin
   if auth.uid() is null or not (private.is_super_admin() or private.has_permission('play.manage')) then
     raise exception 'VAD Play management permission required' using errcode = '42501';
   end if;
+
   return jsonb_build_object(
     'entryOrders',coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -1651,11 +1652,16 @@ begin
         'status',o.status,'ledger_journal_id',o.ledger_journal_id,
         'refund_journal_id',o.refund_journal_id,'refund_reason',o.refund_reason,
         'created_at',o.created_at,'refunded_at',o.refunded_at,
-        'campaign_title',c.title
+        'campaign_title',o.campaign_title
       ) order by o.created_at desc)
-      from public.play_campaign_entry_orders o
-      join public.play_campaigns c on c.id=o.campaign_id
-      where p_campaign_id is null or o.campaign_id=p_campaign_id
+      from (
+        select order_row.*, campaign.title as campaign_title
+        from public.play_campaign_entry_orders order_row
+        join public.play_campaigns campaign on campaign.id=order_row.campaign_id
+        where p_campaign_id is null or order_row.campaign_id=p_campaign_id
+        order by order_row.created_at desc
+        limit 30
+      ) o
     ),'[]'::jsonb),
     'draws',coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -1663,16 +1669,22 @@ begin
         'ticket_count_snapshot',d.ticket_count_snapshot,
         'entries_digest',d.entries_digest,'seed_commitment',d.seed_commitment,
         'selection_counter',d.selection_counter,
-        'winning_ticket_id',t.public_id,'winning_ticket_code',t.ticket_code,
+        'winning_ticket_id',d.winning_ticket_public_id,'winning_ticket_code',d.winning_ticket_code,
         'authorized_by',d.authorized_by,'authorized_at',d.authorized_at,
         'executed_by',d.executed_by,'executed_at',d.executed_at,
         'voided_by',d.voided_by,'voided_at',d.voided_at,'void_reason',d.void_reason,
-        'result_digest',d.result_digest,'campaign_title',c.title
+        'result_digest',d.result_digest,'campaign_title',d.campaign_title
       ) order by d.authorized_at desc)
-      from public.play_campaign_draws d
-      join public.play_campaigns c on c.id=d.campaign_id
-      left join public.play_tickets t on t.id=d.winning_ticket_id
-      where p_campaign_id is null or d.campaign_id=p_campaign_id
+      from (
+        select draw_row.*, ticket.public_id as winning_ticket_public_id,
+               ticket.ticket_code as winning_ticket_code, campaign.title as campaign_title
+        from public.play_campaign_draws draw_row
+        join public.play_campaigns campaign on campaign.id=draw_row.campaign_id
+        left join public.play_tickets ticket on ticket.id=draw_row.winning_ticket_id
+        where p_campaign_id is null or draw_row.campaign_id=p_campaign_id
+        order by draw_row.authorized_at desc
+        limit 30
+      ) d
     ),'[]'::jsonb),
     'settlements',coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -1684,11 +1696,16 @@ begin
         'prize_journal_id',s.prize_journal_id,'costs_journal_id',s.costs_journal_id,
         'profit_journal_id',s.profit_journal_id,
         'delivery_evidence_reference',s.delivery_evidence_reference,'settled_by',s.settled_by,'settled_at',s.settled_at,
-        'campaign_title',c.title
+        'campaign_title',s.campaign_title
       ) order by s.settled_at desc)
-      from public.play_campaign_settlements s
-      join public.play_campaigns c on c.id=s.campaign_id
-      where p_campaign_id is null or s.campaign_id=p_campaign_id
+      from (
+        select settlement_row.*, campaign.title as campaign_title
+        from public.play_campaign_settlements settlement_row
+        join public.play_campaigns campaign on campaign.id=settlement_row.campaign_id
+        where p_campaign_id is null or settlement_row.campaign_id=p_campaign_id
+        order by settlement_row.settled_at desc
+        limit 30
+      ) s
     ),'[]'::jsonb)
   );
 end;
