@@ -594,7 +594,7 @@ function TourOverlay({
                 {!rect ? (
                   <VadText variant="caption" tone={targetUnavailable ? 'danger' : 'tertiary'}>
                     {targetUnavailable
-                      ? 'This step isn't available here. Continue or go back.'
+                      ? 'This step is unavailable here. Continue or go back.'
                       : 'Finding this step…'}
                   </VadText>
                 ) : null}
