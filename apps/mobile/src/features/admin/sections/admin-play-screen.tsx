@@ -134,6 +134,7 @@ export function AdminPlayScreen() {
   const [sponsorImage, setSponsorImage] = useState('');
   const [sponsorClick, setSponsorClick] = useState('');
   const [platforms, setPlatforms] = useState<string[]>(['WEB', 'ANDROID', 'IOS']);
+  const [placementStatus, setPlacementStatus] = useState<'DRAFT' | 'ACTIVE'>('DRAFT');
 
   const load = useCallback(async () => {
     setError(null);
@@ -250,7 +251,7 @@ export function AdminPlayScreen() {
     await runAction(() => saveAdminPlayAdPlacement({
       placement_code: placementCode.trim().toLowerCase().replace(/\s+/g, '-'),
       provider_key: 'direct-sponsor',
-      status: 'DRAFT',
+      status: placementStatus,
       platforms,
       starts_at: null,
       ends_at: null,
@@ -263,13 +264,14 @@ export function AdminPlayScreen() {
         image_alt: sponsorTitle.trim(),
         cta_label: 'Learn more',
       } },
-    }), 'Sponsor placement draft saved.');
+    }), placementStatus === 'ACTIVE' ? 'Sponsor placement activated for the selected platforms.' : 'Sponsor placement draft saved.');
     setPlacementCode('');
     setSponsorName('');
     setSponsorTitle('');
     setSponsorBody('');
     setSponsorImage('');
     setSponsorClick('');
+    setPlacementStatus('DRAFT');
   }
 
   function togglePlatform(platform: string) {
@@ -493,7 +495,26 @@ export function AdminPlayScreen() {
                   {supportedPlatforms.map((platform) => <ChoiceChip key={platform} label={platform} selected={platforms.includes(platform)} onPress={() => togglePlatform(platform)} />)}
                 </View>
               </View>
-              <VadButton label="Save sponsor placement draft" loading={working} disabled={working} onPress={() => void createSponsorPlacement()} />
+              <View style={{ gap: 8 }}>
+                <VadText variant="label">Placement status</VadText>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <ChoiceChip label="Save as draft" selected={placementStatus === 'DRAFT'} onPress={() => setPlacementStatus('DRAFT')} />
+                  {isSuperAdmin && directSponsor?.status === 'ENABLED' ? (
+                    <ChoiceChip label="Activate after save" selected={placementStatus === 'ACTIVE'} onPress={() => setPlacementStatus('ACTIVE')} />
+                  ) : null}
+                </View>
+                {placementStatus === 'ACTIVE' ? (
+                  <VadText variant="caption" tone="warning">This will immediately make the sponsor creative visible in its active placements. Use only for approved advertising content.</VadText>
+                ) : (
+                  <VadText variant="caption" tone="secondary">Draft placements are not shown to users. Activation requires a Super Admin and the direct-sponsor provider to be enabled.</VadText>
+                )}
+              </View>
+              <VadButton
+                label={placementStatus === 'ACTIVE' ? 'Save and activate placement' : 'Save sponsor placement draft'}
+                loading={working}
+                disabled={working || platforms.length === 0 || (placementStatus === 'ACTIVE' && (!isSuperAdmin || directSponsor?.status !== 'ENABLED'))}
+                onPress={() => void createSponsorPlacement()}
+              />
             </View>
           </VadCard>
           <VadText variant="heading">Configured placements</VadText>
