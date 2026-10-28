@@ -66,6 +66,18 @@ function safeNumber(value: unknown, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function safeTeamCrest(value: unknown): string | null {
+  const candidate = safeText(value, 500);
+  if (!candidate) return null;
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'https:' || url.hostname.toLowerCase() !== 'crests.football-data.org') return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function dateOnly(value: unknown): string | null {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const parsed = new Date(value + 'T00:00:00.000Z');
@@ -147,8 +159,10 @@ function normalizeFixture(match: ProviderMatch, provider: SportsProvider, compet
     competitionName: competition.name,
     homeTeam: homeName,
     homeTeamShortName: safeText(home.shortName, 100) || null,
+    homeTeamCrest: safeTeamCrest(home.crest),
     awayTeam: awayName,
     awayTeamShortName: safeText(away.shortName, 100) || null,
+    awayTeamCrest: safeTeamCrest(away.crest),
     startsAt: kickoff.toISOString(),
     status,
     matchday: Number.isFinite(Number(match.matchday)) ? Number(match.matchday) : null,
