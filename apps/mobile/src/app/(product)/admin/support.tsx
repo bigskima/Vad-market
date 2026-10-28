@@ -123,7 +123,7 @@ export default function AdminSupportScreen() {
     setError(null);
     setNotice(null);
     const ticket = tickets.find((row) => row.id === ticketId);
-    setNextStatus(ticket?.status === 'RESOLVED' ? 'CLOSED' : 'WAITING_USER');
+    setNextStatus(ticket?.status === 'CLOSED' ? 'IN_PROGRESS' : ticket?.status === 'RESOLVED' ? 'CLOSED' : 'WAITING_USER');
     if (density.phone) setConversationOpen(true);
   }
 
@@ -196,31 +196,30 @@ export default function AdminSupportScreen() {
         )}
       </ScrollView>
 
-      {activeTicket.status !== 'CLOSED' ? (
-        <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 12, gap: 10 }}>
-          <VadText variant="label">Reply & update status</VadText>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            {replyStatuses.map((status) => (
-              <VadChip key={status} label={status.replaceAll('_', ' ')} selected={nextStatus === status} tone={nextStatus === status ? 'brand' : 'neutral'} onPress={() => setNextStatus(status)} />
-            ))}
-          </View>
-          <VadInput
-            label="Message to customer"
-            value={reply}
-            onChangeText={setReply}
-            multiline
-            numberOfLines={4}
-            placeholder="Write a clear answer or the next steps the customer should take."
-            hint="The customer will see this reply in their support conversation."
-          />
-          <VadButton label={working ? 'Sending reply…' : 'Send reply'} loading={working} disabled={working || !reply.trim()} onPress={() => void sendReply()} leading={<VadIcon name="reply" size={16} tone="inverse" />} />
-        </View>
-      ) : (
+      {activeTicket.status === 'CLOSED' ? (
         <VadCard variant="muted" style={{ gap: 5 }}>
           <VadText variant="bodyStrong">This ticket is closed</VadText>
-          <VadText variant="caption" tone="secondary">Reopen it by replying with a status of In progress or Waiting user.</VadText>
+          <VadText variant="caption" tone="secondary">Send a reply with In progress or Waiting user selected to reopen the conversation.</VadText>
         </VadCard>
-      )}
+      ) : null}
+      <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 12, gap: 10 }}>
+        <VadText variant="label">Reply & update status</VadText>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {replyStatuses.map((status) => (
+            <VadChip key={status} label={status.replaceAll('_', ' ')} selected={nextStatus === status} tone={nextStatus === status ? 'brand' : 'neutral'} onPress={() => setNextStatus(status)} />
+          ))}
+        </View>
+        <VadInput
+          label="Message to customer"
+          value={reply}
+          onChangeText={setReply}
+          multiline
+          numberOfLines={4}
+          placeholder="Write a clear answer or the next steps the customer should take."
+          hint="The customer will see this reply in their support conversation."
+        />
+        <VadButton label={working ? 'Sending reply…' : 'Send reply'} loading={working} disabled={working || !reply.trim()} onPress={() => void sendReply()} leading={<VadIcon name="reply" size={16} tone="inverse" />} />
+      </View>
     </View>
   ) : (
     <View style={{ alignItems: 'center', justifyContent: 'center', gap: 8, padding: 30, flex: 1 }}>
