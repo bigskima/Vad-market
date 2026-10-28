@@ -182,7 +182,7 @@ export async function getPlayDrawAuditTicketPage(
 ): Promise<PlayDrawAuditTicketPage> {
   const { data, error } = await supabase.rpc('play_draw_audit_ticket_page', {
     p_campaign_id: campaignId,
-    p_after_ticket_id: afterTicketId == null ? 0 : Number(afterTicketId),
+    p_after_ticket_id: afterTicketId == null ? 0 : afterTicketId,
     p_limit: limit,
   });
   if (error) throw error;
