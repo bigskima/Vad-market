@@ -94,7 +94,7 @@ export default function AccountOnboardingScreen() {
         try {
           await markAccountOnboardingStarted();
         } catch {
-          if (active) setError('Couldn't save progress. You can finish setup or try again later.');
+          if (active) setError('Could not save progress. You can finish setup or try again later.');
         } finally {
           setWorking(false);
         }
