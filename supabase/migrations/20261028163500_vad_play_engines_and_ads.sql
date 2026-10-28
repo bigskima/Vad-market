@@ -21,6 +21,9 @@ create table if not exists public.play_engine_registry (
   updated_at timestamptz not null default now()
 );
 
+alter table public.play_engine_registry
+  add column if not exists runtime_ready boolean not null default false;
+
 create table if not exists public.play_engine_releases (
   engine_key text not null references public.play_engine_registry(engine_key) on delete restrict,
   version integer not null check (version > 0),
@@ -76,13 +79,14 @@ as $
 declare
   v_engine_status text;
   v_release_status text;
+  v_runtime_ready boolean;
 begin
   if new.status <> 'PUBLISHED' then
     return new;
   end if;
 
-  select r.rollout_status, rel.rollout_status
-    into v_engine_status, v_release_status
+  select r.rollout_status, rel.rollout_status, r.runtime_ready
+    into v_engine_status, v_release_status, v_runtime_ready
   from public.play_engine_registry r
   join public.play_engine_releases rel on rel.engine_key = r.engine_key
   where r.engine_key = new.engine_key
@@ -93,7 +97,8 @@ begin
     );
 
   if v_engine_status is distinct from 'ENABLED'
-     or v_release_status is distinct from 'ENABLED' then
+     or v_release_status is distinct from 'ENABLED'
+     or v_runtime_ready is distinct from true then
     raise exception 'The selected VAD Play engine must be enabled before publishing';
   end if;
   return new;
@@ -360,9 +365,10 @@ declare
   v_family text;
   v_engine_status text;
   v_release_status text;
+  v_runtime_ready boolean;
 begin
-  select r.engine_family, r.rollout_status, rel.rollout_status
-    into v_family, v_engine_status, v_release_status
+  select r.engine_family, r.rollout_status, rel.rollout_status, r.runtime_ready
+    into v_family, v_engine_status, v_release_status, v_runtime_ready
   from public.play_experiences e
   join public.play_engine_registry r on r.engine_key = e.engine_key
   left join public.play_engine_releases rel
@@ -380,7 +386,8 @@ begin
 
   if new.status = 'OPEN' then
     if v_engine_status is distinct from 'ENABLED'
-       or v_release_status is distinct from 'ENABLED' then
+       or v_release_status is distinct from 'ENABLED'
+       or v_runtime_ready is distinct from true then
       raise exception 'The prize-draw engine is not enabled for new campaigns';
     end if;
     if new.compliance_approved_at is null then
@@ -533,6 +540,436 @@ comment on table public.play_points_ledger is
   'Append-only, non-cash points ledger; it is separate from NGN/USDC balances and wallet/settlement ledgers.';
 comment on table public.play_rewards is
   'Admin-managed non-cash reward catalogue. Cash and crypto wallet credits are not supported by this points catalogue.';
+
+
+-- VAD Play admin read/write API. All writes are permission-checked SECURITY DEFINER
+-- routines; app clients are not granted direct INSERT/UPDATE/DELETE on these tables.
+insert into admin.permissions (code, description)
+values ('play.manage', 'Manage VAD Play experiences, campaign drafts, and sponsor placements')
+on conflict (code) do update set description = excluded.description;
+
+create or replace function public.admin_play_dashboard()
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null
+     or not (private.is_super_admin() or private.has_permission('play.manage')) then
+    raise exception 'VAD Play management permission required' using errcode = '42501';
+  end if;
+
+  return jsonb_build_object(
+    'engines', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'engine_key', r.engine_key,
+        'engine_family', r.engine_family,
+        'display_name', r.display_name,
+        'description', r.description,
+        'rollout_status', r.rollout_status,
+        'runtime_ready', r.runtime_ready,
+        'supported_platforms', r.supported_platforms,
+        'requires_legal_review', r.requires_legal_review,
+        'created_at', r.created_at,
+        'updated_at', r.updated_at
+      ) order by r.display_name)
+      from public.play_engine_registry r
+    ), '[]'::jsonb),
+    'releases', coalesce((
+      select jsonb_agg(to_jsonb(rel) order by rel.engine_key, rel.version desc)
+      from public.play_engine_releases rel
+    ), '[]'::jsonb),
+    'experiences', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', e.id, 'slug', e.slug, 'title', e.title, 'subtitle', e.subtitle,
+        'description', e.description, 'experience_type', e.experience_type,
+        'engine_key', e.engine_key, 'status', e.status,
+        'hero_asset_url', e.hero_asset_url, 'card_asset_url', e.card_asset_url,
+        'image_alt', e.image_alt, 'display_order', e.display_order,
+        'public_config', e.public_config, 'engine_config', e.engine_config,
+        'published_at', e.published_at, 'created_at', e.created_at, 'updated_at', e.updated_at
+      ) order by e.updated_at desc)
+      from public.play_experiences e
+    ), '[]'::jsonb),
+    'campaigns', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', c.id, 'experience_id', c.experience_id, 'slug', c.slug,
+        'title', c.title, 'prize_title', c.prize_title, 'currency_code', c.currency_code,
+        'prize_cost_amount', c.prize_cost_amount, 'profit_target_mode', c.profit_target_mode,
+        'profit_target_value', c.profit_target_value,
+        'campaign_cost_budget_amount', c.campaign_cost_budget_amount,
+        'funding_threshold_amount', c.funding_threshold_amount,
+        'qualifying_net_proceeds_amount', c.qualifying_net_proceeds_amount,
+        'entry_price_amount', c.entry_price_amount, 'max_entries', c.max_entries,
+        'entry_limit_per_user', c.entry_limit_per_user, 'status', c.status,
+        'rules_public', c.rules_public, 'opens_at', c.opens_at, 'closes_at', c.closes_at,
+        'compliance_approved_at', c.compliance_approved_at, 'prize_secured_at', c.prize_secured_at,
+        'funding_target_met_at', c.funding_target_met_at, 'entries_closed_at', c.entries_closed_at,
+        'funds_reconciled_at', c.funds_reconciled_at, 'draw_authorized_at', c.draw_authorized_at,
+        'drawn_at', c.drawn_at, 'prize_delivered_at', c.prize_delivered_at,
+        'published_at', c.published_at, 'created_at', c.created_at, 'updated_at', c.updated_at
+      ) order by c.updated_at desc)
+      from public.play_campaigns c
+    ), '[]'::jsonb),
+    'adProviders', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'provider_key', p.provider_key, 'display_name', p.display_name,
+        'adapter_key', p.adapter_key, 'supported_platforms', p.supported_platforms,
+        'status', p.status, 'public_config', p.public_config,
+        'created_at', p.created_at, 'updated_at', p.updated_at
+      ) order by p.display_name)
+      from public.play_ad_providers p
+    ), '[]'::jsonb),
+    'adPlacements', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', p.id, 'placement_code', p.placement_code, 'provider_key', p.provider_key,
+        'ad_format', p.ad_format, 'platforms', p.platforms,
+        'placement_config', p.placement_config, 'reward_points', p.reward_points,
+        'opt_in_required', p.opt_in_required, 'daily_user_cap', p.daily_user_cap,
+        'starts_at', p.starts_at, 'ends_at', p.ends_at, 'status', p.status,
+        'created_at', p.created_at, 'updated_at', p.updated_at
+      ) order by p.updated_at desc)
+      from public.play_ad_placements p
+    ), '[]'::jsonb),
+    'rewards', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', r.id, 'reward_code', r.reward_code, 'title', r.title,
+        'description', r.description, 'reward_type', r.reward_type,
+        'points_cost', r.points_cost, 'inventory_limit', r.inventory_limit,
+        'inventory_reserved', r.inventory_reserved, 'inventory_fulfilled', r.inventory_fulfilled,
+        'status', r.status, 'starts_at', r.starts_at, 'ends_at', r.ends_at
+      ) order by r.updated_at desc)
+      from public.play_rewards r
+    ), '[]'::jsonb)
+  );
+end;
+$$;
+
+create or replace function public.admin_play_upsert_experience(p_payload jsonb)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_id uuid;
+  v_slug text;
+  v_title text;
+  v_engine_key text;
+  v_type text;
+  v_status text;
+begin
+  if auth.uid() is null
+     or not (private.is_super_admin() or private.has_permission('play.manage')) then
+    raise exception 'VAD Play management permission required' using errcode = '42501';
+  end if;
+  if p_payload is null or jsonb_typeof(p_payload) <> 'object' then
+    raise exception 'Experience payload must be a JSON object' using errcode = '22023';
+  end if;
+
+  v_slug := lower(trim(coalesce(p_payload->>'slug','')));
+  v_title := trim(coalesce(p_payload->>'title',''));
+  v_engine_key := upper(trim(coalesce(p_payload->>'engine_key','')));
+  v_type := upper(trim(coalesce(p_payload->>'experience_type','')));
+  v_status := upper(coalesce(nullif(trim(p_payload->>'status'),''),'DRAFT'));
+  v_id := nullif(p_payload->>'id','')::uuid;
+
+  if v_slug = '' or v_title = '' or v_engine_key = '' or v_type = '' then
+    raise exception 'Slug, title, experience type and engine are required' using errcode = '22023';
+  end if;
+  if v_status not in ('DRAFT','COMPLIANCE_REVIEW') then
+    raise exception 'This workflow saves drafts; publishing requires a separate approved action' using errcode = '42501';
+  end if;
+  if p_payload ? 'public_config' and jsonb_typeof(p_payload->'public_config') <> 'object' then
+    raise exception 'Public configuration must be a JSON object' using errcode = '22023';
+  end if;
+  if p_payload ? 'engine_config' and jsonb_typeof(p_payload->'engine_config') <> 'object' then
+    raise exception 'Engine configuration must be a JSON object' using errcode = '22023';
+  end if;
+
+  if v_id is null then
+    insert into public.play_experiences (
+      slug, title, subtitle, description, experience_type, engine_key, status,
+      hero_asset_url, card_asset_url, image_alt, display_order,
+      public_config, engine_config, created_by
+    ) values (
+      v_slug, v_title, nullif(trim(coalesce(p_payload->>'subtitle','')),''),
+      nullif(trim(coalesce(p_payload->>'description','')),''), v_type, v_engine_key, v_status,
+      nullif(trim(coalesce(p_payload->>'hero_asset_url','')),''),
+      nullif(trim(coalesce(p_payload->>'card_asset_url','')),''),
+      nullif(trim(coalesce(p_payload->>'image_alt','')),''),
+      coalesce(nullif(p_payload->>'display_order','')::integer,100),
+      coalesce(p_payload->'public_config','{}'::jsonb),
+      coalesce(p_payload->'engine_config','{}'::jsonb), auth.uid()
+    ) returning id into v_id;
+  else
+    update public.play_experiences
+    set slug = v_slug,
+        title = v_title,
+        subtitle = nullif(trim(coalesce(p_payload->>'subtitle','')),''),
+        description = nullif(trim(coalesce(p_payload->>'description','')),''),
+        experience_type = v_type,
+        engine_key = v_engine_key,
+        status = v_status,
+        published_at = null,
+        hero_asset_url = nullif(trim(coalesce(p_payload->>'hero_asset_url','')),''),
+        card_asset_url = nullif(trim(coalesce(p_payload->>'card_asset_url','')),''),
+        image_alt = nullif(trim(coalesce(p_payload->>'image_alt','')),''),
+        display_order = coalesce(nullif(p_payload->>'display_order','')::integer,100),
+        public_config = coalesce(p_payload->'public_config','{}'::jsonb),
+        engine_config = coalesce(p_payload->'engine_config','{}'::jsonb),
+        updated_at = now()
+    where id = v_id and status in ('DRAFT','COMPLIANCE_REVIEW')
+    returning id into v_id;
+
+    if not found then
+      raise exception 'Only an existing draft or compliance-review experience can be edited here' using errcode = '55000';
+    end if;
+  end if;
+
+  insert into public.play_game_audit_events(
+    experience_id, actor_user_id, actor_type, event_type, event_data
+  ) values (
+    v_id, auth.uid(), 'ADMIN', 'EXPERIENCE_DRAFT_SAVED',
+    jsonb_build_object('slug', v_slug, 'engine_key', v_engine_key, 'status', v_status)
+  );
+  return v_id;
+end;
+$$;
+
+create or replace function public.admin_play_upsert_campaign(p_payload jsonb)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_id uuid;
+  v_experience_id uuid;
+  v_slug text;
+  v_title text;
+  v_prize_title text;
+  v_currency text;
+  v_profit_mode text;
+  v_prize_cost numeric;
+  v_profit_value numeric;
+  v_cost_budget numeric;
+  v_entry_price numeric;
+begin
+  if auth.uid() is null
+     or not (private.is_super_admin() or private.has_permission('play.manage')) then
+    raise exception 'VAD Play management permission required' using errcode = '42501';
+  end if;
+  if p_payload is null or jsonb_typeof(p_payload) <> 'object' then
+    raise exception 'Campaign payload must be a JSON object' using errcode = '22023';
+  end if;
+
+  v_id := nullif(p_payload->>'id','')::uuid;
+  v_experience_id := nullif(p_payload->>'experience_id','')::uuid;
+  v_slug := lower(trim(coalesce(p_payload->>'slug','')));
+  v_title := trim(coalesce(p_payload->>'title',''));
+  v_prize_title := trim(coalesce(p_payload->>'prize_title',''));
+  v_currency := upper(trim(coalesce(p_payload->>'currency_code','')));
+  v_profit_mode := upper(trim(coalesce(p_payload->>'profit_target_mode','')));
+  v_prize_cost := nullif(p_payload->>'prize_cost_amount','')::numeric;
+  v_profit_value := nullif(p_payload->>'profit_target_value','')::numeric;
+  v_cost_budget := nullif(p_payload->>'campaign_cost_budget_amount','')::numeric;
+  v_entry_price := nullif(p_payload->>'entry_price_amount','')::numeric;
+
+  if v_experience_id is null or v_slug = '' or v_title = '' or v_prize_title = '' or v_currency = '' then
+    raise exception 'Experience, slug, campaign title, prize title and currency are required' using errcode = '22023';
+  end if;
+  if v_profit_mode not in ('PERCENT_OF_PRIZE','FIXED_AMOUNT')
+     or v_prize_cost is null or v_profit_value is null
+     or v_cost_budget is null or v_entry_price is null then
+    raise exception 'Prize cost, profit mode/value, campaign cost budget, and entry price must all be explicitly configured' using errcode = '22023';
+  end if;
+  if jsonb_typeof(coalesce(p_payload->'rules_public','{}'::jsonb)) <> 'object'
+     or jsonb_typeof(coalesce(p_payload->'engine_config','{}'::jsonb)) <> 'object' then
+    raise exception 'Campaign rules and engine configuration must be JSON objects' using errcode = '22023';
+  end if;
+
+  if v_id is null then
+    insert into public.play_campaigns (
+      experience_id, slug, title, prize_title, currency_code,
+      prize_cost_amount, profit_target_mode, profit_target_value,
+      campaign_cost_budget_amount, entry_price_amount,
+      max_entries, entry_limit_per_user, rules_public, engine_config, created_by
+    ) values (
+      v_experience_id, v_slug, v_title, v_prize_title, v_currency,
+      v_prize_cost, v_profit_mode, v_profit_value,
+      v_cost_budget, v_entry_price,
+      nullif(p_payload->>'max_entries','')::integer,
+      nullif(p_payload->>'entry_limit_per_user','')::integer,
+      coalesce(p_payload->'rules_public','{}'::jsonb),
+      coalesce(p_payload->'engine_config','{}'::jsonb), auth.uid()
+    ) returning id into v_id;
+  else
+    update public.play_campaigns
+    set experience_id = v_experience_id, slug = v_slug, title = v_title,
+        prize_title = v_prize_title, currency_code = v_currency,
+        prize_cost_amount = v_prize_cost, profit_target_mode = v_profit_mode,
+        profit_target_value = v_profit_value, campaign_cost_budget_amount = v_cost_budget,
+        entry_price_amount = v_entry_price,
+        max_entries = nullif(p_payload->>'max_entries','')::integer,
+        entry_limit_per_user = nullif(p_payload->>'entry_limit_per_user','')::integer,
+        rules_public = coalesce(p_payload->'rules_public','{}'::jsonb),
+        engine_config = coalesce(p_payload->'engine_config','{}'::jsonb),
+        updated_at = now()
+    where id = v_id and status in ('DRAFT','COMPLIANCE_REVIEW')
+    returning id into v_id;
+
+    if not found then
+      raise exception 'Only existing draft or compliance-review campaigns can be edited' using errcode = '55000';
+    end if;
+  end if;
+
+  insert into public.play_game_audit_events(
+    experience_id, actor_user_id, actor_type, event_type, event_data
+  ) values (
+    v_experience_id, auth.uid(), 'ADMIN', 'CAMPAIGN_DRAFT_SAVED',
+    jsonb_build_object('campaign_id', v_id, 'slug', v_slug, 'profit_target_mode', v_profit_mode)
+  );
+  return v_id;
+end;
+$$;
+
+create or replace function public.admin_play_upsert_ad_placement(p_payload jsonb)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_id uuid;
+  v_code text;
+  v_provider_key text;
+  v_status text;
+  v_platforms text[];
+  v_config jsonb;
+  v_provider_status text;
+begin
+  if auth.uid() is null
+     or not (private.is_super_admin() or private.has_permission('play.manage')) then
+    raise exception 'VAD Play management permission required' using errcode = '42501';
+  end if;
+  if p_payload is null or jsonb_typeof(p_payload) <> 'object' then
+    raise exception 'Ad placement payload must be a JSON object' using errcode = '22023';
+  end if;
+
+  v_id := nullif(p_payload->>'id','')::uuid;
+  v_code := lower(trim(coalesce(p_payload->>'placement_code','')));
+  v_provider_key := coalesce(nullif(trim(p_payload->>'provider_key'),''),'direct-sponsor');
+  v_status := upper(coalesce(nullif(trim(p_payload->>'status'),''),'DRAFT'));
+  if v_code = '' or v_provider_key <> 'direct-sponsor' then
+    raise exception 'Provide a placement code for the supported direct-sponsor adapter' using errcode = '22023';
+  end if;
+  if v_status not in ('DRAFT','REVIEW_REQUIRED','PAUSED','ACTIVE','RETIRED') then
+    raise exception 'Unsupported sponsor placement status' using errcode = '22023';
+  end if;
+  if jsonb_typeof(p_payload->'platforms') <> 'array' then
+    raise exception 'Choose one or more supported platforms' using errcode = '22023';
+  end if;
+  v_platforms := array(
+    select upper(value)
+    from jsonb_array_elements_text(p_payload->'platforms') as items(value)
+  );
+  if cardinality(v_platforms) = 0 or not (v_platforms <@ array['WEB','ANDROID','IOS']::text[]) then
+    raise exception 'Choose only WEB, ANDROID, and IOS platforms' using errcode = '22023';
+  end if;
+  v_config := coalesce(p_payload->'placement_config','{}'::jsonb);
+  if jsonb_typeof(v_config) <> 'object' then
+    raise exception 'Sponsor creative must be a JSON object' using errcode = '22023';
+  end if;
+  if v_status = 'ACTIVE' then
+    if not private.is_super_admin() then
+      raise exception 'Only a super admin can activate a sponsor placement' using errcode = '42501';
+    end if;
+    select p.status into v_provider_status
+    from public.play_ad_providers p
+    where p.provider_key = v_provider_key;
+    if v_provider_status is distinct from 'ENABLED' then
+      raise exception 'Enable the direct-sponsor provider before activating a placement' using errcode = '55000';
+    end if;
+  end if;
+
+  if v_id is null then
+    insert into public.play_ad_placements (
+      placement_code, provider_key, ad_format, platforms, placement_config,
+      reward_points, opt_in_required, daily_user_cap, starts_at, ends_at, status, created_by
+    ) values (
+      v_code, v_provider_key, 'DIRECT_SPONSOR', v_platforms, v_config,
+      null, false,
+      nullif(p_payload->>'daily_user_cap','')::integer,
+      nullif(p_payload->>'starts_at','')::timestamptz,
+      nullif(p_payload->>'ends_at','')::timestamptz,
+      v_status, auth.uid()
+    ) returning id into v_id;
+  else
+    update public.play_ad_placements
+    set placement_code = v_code,
+        provider_key = v_provider_key,
+        platforms = v_platforms,
+        placement_config = v_config,
+        daily_user_cap = nullif(p_payload->>'daily_user_cap','')::integer,
+        starts_at = nullif(p_payload->>'starts_at','')::timestamptz,
+        ends_at = nullif(p_payload->>'ends_at','')::timestamptz,
+        status = v_status,
+        updated_at = now()
+    where id = v_id
+      and (
+        status in ('DRAFT','REVIEW_REQUIRED','PAUSED','RETIRED')
+        or (status = 'ACTIVE' and v_status = 'PAUSED')
+      )
+    returning id into v_id;
+    if not found then
+      raise exception 'Pause an active placement before editing it' using errcode = '55000';
+    end if;
+  end if;
+
+  insert into public.play_game_audit_events(
+    actor_user_id, actor_type, event_type, event_data
+  ) values (
+    auth.uid(), 'ADMIN', 'AD_PLACEMENT_SAVED',
+    jsonb_build_object('placement_id',v_id,'placement_code',v_code,'status',v_status,'platforms',to_jsonb(v_platforms))
+  );
+  return v_id;
+end;
+$$;
+
+create or replace function public.admin_play_set_direct_sponsor_status(p_enabled boolean)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null or not private.is_super_admin() then
+    raise exception 'Only a super admin can enable direct sponsorship' using errcode = '42501';
+  end if;
+  update public.play_ad_providers
+  set status = case when p_enabled then 'ENABLED' else 'DISABLED' end,
+      updated_at = now()
+  where provider_key = 'direct-sponsor';
+  if not found then
+    raise exception 'Direct-sponsor adapter is not registered' using errcode = '55000';
+  end if;
+  return true;
+end;
+$$;
+
+revoke all on function public.admin_play_dashboard() from public, anon;
+revoke all on function public.admin_play_upsert_experience(jsonb) from public, anon;
+revoke all on function public.admin_play_upsert_campaign(jsonb) from public, anon;
+revoke all on function public.admin_play_upsert_ad_placement(jsonb) from public, anon;
+revoke all on function public.admin_play_set_direct_sponsor_status(boolean) from public, anon;
+grant execute on function public.admin_play_dashboard() to authenticated;
+grant execute on function public.admin_play_upsert_experience(jsonb) to authenticated;
+grant execute on function public.admin_play_upsert_campaign(jsonb) to authenticated;
+grant execute on function public.admin_play_upsert_ad_placement(jsonb) to authenticated;
+grant execute on function public.admin_play_set_direct_sponsor_status(boolean) to authenticated;
+
 
 commit;
 
