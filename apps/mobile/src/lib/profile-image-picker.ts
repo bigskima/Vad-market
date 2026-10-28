@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { userFacingErrorMessage } from '@/lib/user-facing-error';
 
 export type PickedProfileImage = { bytes: ArrayBuffer; mimeType: string; previewUri: string };
+export type ProfileImagePickerOptions = { allowsEditing?: boolean; aspect?: [number, number] };
 
 type NativePicker = {
   requestMediaLibraryPermissionsAsync?: (writeOnly?: boolean) => Promise<{ granted?: boolean; status?: string }>;
@@ -37,7 +38,7 @@ async function pickWeb(): Promise<PickedProfileImage | null> {
   });
 }
 
-export async function pickProfileImage(): Promise<PickedProfileImage | null> {
+export async function pickProfileImage(options: ProfileImagePickerOptions = {}): Promise<PickedProfileImage | null> {
   if (Platform.OS === 'web') return pickWeb();
   const picker = requireOptionalNativeModule<NativePicker>('ExponentImagePicker');
   if (!picker?.launchImageLibraryAsync) {
@@ -48,7 +49,7 @@ export async function pickProfileImage(): Promise<PickedProfileImage | null> {
     throw new Error('Allow photo access to choose a profile image.');
   }
   try {
-    const result = await picker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.9, base64: true, allowsMultipleSelection: false });
+    const result = await picker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: options.allowsEditing ?? true, ...(options.aspect ? { aspect: options.aspect } : {}), quality: 0.9, base64: true, allowsMultipleSelection: false });
     const asset = result.assets?.[0];
     if (result.canceled || !asset) return null;
     if (!asset.base64) throw new Error('The selected image could not be prepared for upload.');
