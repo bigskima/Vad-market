@@ -18,13 +18,21 @@ export type PlayDraftAssist = {
 };
 
 export function playMediaPublicUrl(path: string | null | undefined) {
-  if (!path) return null;
-  if (/^https:\/\//i.test(path)) return path;
-  return supabase.storage.from(PLAY_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+  const value = path?.trim();
+  if (!value) return null;
+  if (/^https:\/\//i.test(value)) return value;
+  if (
+    /^[a-z][a-z0-9+.-]*:/i.test(value)
+    || value.startsWith('/')
+    || value.includes('..')
+    || value.includes('\\\\')
+    || !/^[A-Za-z0-9_./-]+$/.test(value)
+  ) return null;
+  return supabase.storage.from(PLAY_MEDIA_BUCKET).getPublicUrl(value).data.publicUrl;
 }
 
 export async function uploadPlayMedia() {
-  const selected = await pickProfileImage();
+  const selected = await pickProfileImage({ allowsEditing: false });
   if (!selected) return null;
   if (selected.bytes.byteLength > PLAY_MEDIA_MAX_BYTES) {
     throw new Error('Choose an image smaller than 5 MB.');
