@@ -66,7 +66,7 @@ export function OnchainActivityPanel({ enabled }: { enabled: boolean }) {
         </View>
       ) : error && !rows.length ? (
         <VadErrorState
-          title="On-chain activity unavailable"
+          title="USDC activity unavailable"
           message={error}
           onRetry={() => {
             setLoading(true);
@@ -85,7 +85,7 @@ export function OnchainActivityPanel({ enabled }: { enabled: boolean }) {
       ) : (
         <VadEmptyState
           title="No USDC settlement activity yet"
-          body="Your first on-chain prediction, claim or refund will appear here after it is submitted."
+          body="Your trades, claims and refunds will appear here."
         />
       )}
     </VadCard>
