@@ -155,7 +155,7 @@ export function WalletActivityScreen({
           <VadText variant="caption" tone="brand">PAYMENT ACTIVITY</VadText>
           <VadText variant="title">Deposits & withdrawals</VadText>
           <VadText variant="caption" tone="secondary">
-            Provider payment requests stay separate from the market-ledger activity shown above, so deposits and withdrawals are easier to inspect.
+            Payment requests and status.
           </VadText>
           {loadedRelative ? <VadText variant="caption" tone="tertiary">Updated {loadedRelative}</VadText> : null}
         </View>
