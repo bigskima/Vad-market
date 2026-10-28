@@ -80,7 +80,7 @@ export function AdminPlayOperationsPanel() {
       <View style={{ gap: 5 }}>
         <VadText variant="heading">Play operations ledger view</VadText>
         <VadText tone="secondary">
-          Read-only view of entry orders, draw records and settlement journal references. Financial source of truth remains VAD&apos;s existing double-entry ledger.
+          Read-only view of entry orders, draw records and settlement journal references. Each section loads at most the latest 30 records; the counts are loaded records, not lifetime totals. Financial source of truth remains VAD&apos;s existing double-entry ledger.
         </VadText>
       </View>
       {error ? (
@@ -97,9 +97,9 @@ export function AdminPlayOperationsPanel() {
         <>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             {[
-              ['Entry orders', data.entryOrders.length],
-              ['Draw records', data.draws.length],
-              ['Settlements', data.settlements.length],
+              ['Orders loaded', data.entryOrders.length],
+              ['Draws loaded', data.draws.length],
+              ['Settlements loaded', data.settlements.length],
             ].map(([label, value]) => (
               <View key={String(label)} style={{ flexGrow: 1, minWidth: 120, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: 4 }}>
                 <VadText variant="caption" tone="secondary">{String(label)}</VadText>
