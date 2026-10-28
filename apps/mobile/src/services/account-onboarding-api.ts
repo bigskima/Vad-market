@@ -221,9 +221,7 @@ export function isAccountSetupComplete(state: AccountSetupState) {
 
 export function isAccountOnboardingComplete(state: AccountSetupState) {
   return isAccountSetupComplete(state)
-    && state.firstDepositCheckAvailable
     && state.firstDepositComplete
-    && state.firstTradeCheckAvailable
     && state.firstTradeComplete;
 }
 
