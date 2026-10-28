@@ -11,6 +11,7 @@ import { VadIcon } from '@/components/ui/vad-icon';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
+import { PortfolioSectionSkeleton } from '@/components/ui/screen-skeletons';
 import { assetMoney, pct } from '@/features/markets/format';
 import { marketCategoryLabel, marketOutcomeLabel, marketStatusLabel } from '@/features/markets/market-display-labels';
 import { MarketThumbnail } from '@/features/markets/components/market-thumbnail';
