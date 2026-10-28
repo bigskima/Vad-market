@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -36,7 +36,7 @@ function Meta({ label, value }: { label: string; value: string | number | null |
   );
 }
 
-function OperationsSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+function OperationsSection({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   const theme = useVadTheme();
   return (
     <View style={{ gap: theme.spacing.md }}>
