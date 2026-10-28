@@ -1188,7 +1188,6 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
         <VadCard variant="surface" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
           <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8, gap: 3 }}>
             <VadText variant="bodyStrong">Resolution conditions</VadText>
-            <VadText variant="caption" tone="secondary"></VadText>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, paddingHorizontal: 12, paddingBottom: 12 }}>
             {visibleScopeRows.map((row) => (
