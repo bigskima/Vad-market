@@ -249,9 +249,7 @@ export default function AccountOnboardingScreen() {
       await deferAccountOnboarding(7);
       router.replace(returnToAccount ? '/account' : '/home');
     } catch (reason) {
-      setError(reason instanceof Error
-        ? 'We could not save your reminder. Please try again so VAD can remind you in 7 days.'
-        : 'We could not save your reminder. Please try again.');
+      setError(userFacingErrorMessage(reason, 'general', 'Could not save your reminder. Try again.'));
     } finally {
       setWorking(false);
     }
@@ -270,9 +268,7 @@ export default function AccountOnboardingScreen() {
       }
       router.replace(returnToAccount ? '/account' : '/home');
     } catch (reason) {
-      setError(reason instanceof Error
-        ? reason.message
-        : 'We could not save your onboarding progress. Please try again.');
+      setError(userFacingErrorMessage(reason, 'general', 'Could not save your progress. Try again.'));
     } finally {
       setWorking(false);
     }
