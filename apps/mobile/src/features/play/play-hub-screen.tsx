@@ -8,7 +8,8 @@ import { TourTarget } from '@/features/tour/tour-provider';
 import { PlayAdSlot } from './play-ad-slot';
 import { listPublishedPlayExperiences, playFriendlyError, type PlayExperience, playExperienceLabel } from '@/services/play-api';
 import { PlayExperienceTile } from './play-experience-tile';
-import { PlayLoadingState, PlayMessageState } from './play-states';
+import { PlayMessageState } from './play-states';
+import { PlayHubSkeleton } from '@/components/ui/screen-skeletons';
 import { PlayTabNavigation } from './play-tab-navigation';
 
 const playHeroArt = require('../../../assets/images/vad-welcome-world.jpg');
@@ -134,7 +135,7 @@ export function PlayHubScreen() {
         </View>
 
         {loading ? (
-          <PlayLoadingState label="Loading the live catalogue" />
+          <PlayHubSkeleton />
         ) : error ? (
           <PlayMessageState title="The catalogue is unavailable" body={error} actionLabel="Try again" onAction={refresh} tone="error" />
         ) : experiences.length === 0 ? (
