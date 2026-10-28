@@ -29,6 +29,7 @@ export type PlayCampaign = {
   funding_threshold_amount: number | string;
   qualifying_funds_amount: number | string;
   entry_price_amount: number | string;
+  image_path: string | null;
   max_entries: number | null;
   max_tickets_per_purchase: number;
   entry_limit_per_user: number | null;
@@ -134,13 +135,19 @@ export async function listExperiencePlayCampaigns(experienceId: string): Promise
 
   const { data, error } = await supabase
     .from('play_campaigns')
-    .select('id, experience_id, slug, title, prize_title, currency_code, funding_threshold_amount, qualifying_funds_amount, entry_price_amount, max_entries, max_tickets_per_purchase, entry_limit_per_user, status, rules_public, opens_at, closes_at, published_at')
+    .select('id, experience_id, slug, title, prize_title, currency_code, funding_threshold_amount, qualifying_funds_amount, entry_price_amount, image_path, max_entries, max_tickets_per_purchase, entry_limit_per_user, status, rules_public, opens_at, closes_at, published_at')
     .eq('experience_id', experienceId)
     .in('status', ['OPEN', 'FUNDING_TARGET_MET', 'FUNDING_SHORTFALL', 'ENTRY_CLOSED', 'DRAW_ELIGIBLE', 'DRAW_AUTHORIZED', 'DRAWN', 'SETTLED'])
     .order('opens_at', { ascending: false });
 
   if (error) throw error;
   return (data ?? []) as unknown as PlayCampaign[];
+}
+
+export function getPlayCampaignImageUrl(path: string | null | undefined): string | null {
+  if (!path || path.startsWith('/') || path.includes('..')) return null;
+  if (!path.startsWith('campaigns/generated/') && !/^drafts\/[0-9a-f-]{36}\//i.test(path)) return null;
+  return supabase.storage.from('vad-play-media').getPublicUrl(path).data.publicUrl;
 }
 
 export async function buyPlayTickets(
