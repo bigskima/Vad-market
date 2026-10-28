@@ -9,6 +9,7 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import {
   getMyKycStatus,
   startDiditKyc,
@@ -39,7 +40,7 @@ export function KycCard() {
       setActionError(null);
       if (next.status === 'VERIFIED') setActionMessage(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'We could not load your verification status. Please try again.');
+      setError(userFacingErrorMessage(reason, 'identityVerification', 'Could not load verification. Try again.'));
     } finally {
       if (background) setRefreshing(false);
       else setLoading(false);
@@ -73,7 +74,7 @@ export function KycCard() {
       await Linking.openURL(session.verificationUrl);
       setActionMessage('Verification opened. Your status will refresh when you return to VAD.');
     } catch (reason) {
-      setActionError(reason instanceof Error ? reason.message : 'Identity verification is temporarily unavailable. Please try again.');
+      setActionError(userFacingErrorMessage(reason, 'identityVerification', 'Verification is unavailable. Try again.'));
     } finally {
       setWorking(false);
     }
@@ -117,7 +118,7 @@ export function KycCard() {
             {verified ? 'Identity verified' : inProgress ? 'Verification in progress' : retryNeeded ? 'Verification needs attention' : 'Verify your identity'}
           </VadText>
           <VadText variant="caption" tone="secondary">
-            Complete a secure identity check when required to protect your account and use features that need verification.
+            Verify your identity to protect your account and access verified features.
           </VadText>
         </View>
         <VadButton label="Refresh" variant="secondary" size="small" fullWidth={density.width < 520} loading={refreshing} disabled={working} onPress={() => void load(true)} />
@@ -177,7 +178,7 @@ export function KycCard() {
       <VadCard variant="raised" style={{ gap: 2 }}>
         <VadText variant="bodyStrong">Your privacy</VadText>
         <VadText variant="caption" tone="secondary">
-          Your identity check is handled securely by our verification partner. VAD only uses the result and reference needed to protect your account.
+          Our verification partner checks your identity. VAD uses the result to help protect your account.
         </VadText>
       </VadCard>
     </View>
