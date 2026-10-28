@@ -9,6 +9,7 @@ import { VadChip } from '@/components/ui/vad-chip';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
+import { PortfolioSectionSkeleton, ProductScreenSkeleton } from '@/components/ui/product-screen-skeleton';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney, pct } from '@/features/markets/format';
@@ -263,6 +264,10 @@ export function PortfolioScreen({
     onRetry();
   };
 
+  if (loading && positions.length === 0 && poolStakes.length === 0 && orders.length === 0) {
+    return <ProductScreenSkeleton variant="portfolio" />;
+  }
+
   return (
     <View style={{ gap: density.phone ? 8 : density.sectionGap }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
@@ -457,9 +462,9 @@ export function PortfolioScreen({
           {sectionErrors?.positions ? (
             <InlineError message={sectionErrors.positions} onRetry={retry} />
           ) : loading && positionsForAsset.length === 0 && activePoolStakes.length === 0 ? (
-            <LoadingState label="Loading your positions…" />
+            <PortfolioSectionSkeleton kind="positions" />
           ) : marksLoading && positionsForAsset.length > 0 ? (
-            <LoadingState label="Loading your position valuations…" />
+            <PortfolioSectionSkeleton kind="positions" />
           ) : filteredPositions.length ? (
             <View style={{ gap: theme.spacing.sm }}>
               {visiblePositions.visibleItems.map((position) => (
@@ -485,7 +490,7 @@ export function PortfolioScreen({
 
       {tab === 'orders' ? (
         sectionErrors?.orders ? <InlineError message={sectionErrors.orders} onRetry={retry} />
-          : loading && visibleOrders.totalCount === 0 ? <LoadingState label="Loading your open orders…" />
+          : loading && visibleOrders.totalCount === 0 ? <PortfolioSectionSkeleton kind="orders" />
           : visibleOrders.totalCount ? (
             <View style={{ gap: theme.spacing.sm }}>
               {visibleOrders.visibleItems.map((order) => <OrderCard key={order.order_id} order={order} onPress={() => onOpenOrder(order)} />)}
@@ -500,7 +505,7 @@ export function PortfolioScreen({
           {sectionErrors?.settlements ? <InlineError message={sectionErrors.settlements} onRetry={retry} /> : null}
           {orderHistoryError ? <InlineError message={orderHistoryError} onRetry={retry} /> : null}
           {(loading || orderHistoryLoading) && historyEvents.length === 0 ? (
-            <LoadingState label="Loading your trading and settlement history…" />
+            <PortfolioSectionSkeleton kind="history" />
           ) : historyEvents.length ? (
             <View style={{ gap: theme.spacing.sm }}>
               {visibleHistory.visibleItems.map((event) => event.kind === 'market'
@@ -982,15 +987,6 @@ function InlineError({ message, onRetry }: { message: string; onRetry: () => voi
   );
 }
 
-function LoadingState({ label }: { label: string }) {
-  const theme = useVadTheme();
-  return (
-    <VadCard variant="raised" style={{ alignItems: 'center', padding: theme.spacing.lg, gap: 8 }}>
-      <VadIcon name="activity" size={21} tone="brand" />
-      <VadText variant="caption" tone="secondary">{label}</VadText>
-    </VadCard>
-  );
-}
 
 function PortfolioLineChart({ values, width, height, positive, zeroBaseline = false }: { values: number[]; width: number; height: number; positive: boolean; zeroBaseline?: boolean }) {
   const theme = useVadTheme();
