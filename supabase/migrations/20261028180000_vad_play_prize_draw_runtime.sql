@@ -1134,7 +1134,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_draw public.play_campaign_draws;
   v_campaign public.play_campaigns;
@@ -1221,7 +1221,7 @@ begin
     'reason', left(btrim(p_reason), 500)
   );
 end;
-$;
+$$;
 
 create or replace function public.admin_play_start_refunds(p_campaign_id uuid, p_reason text)
 returns boolean
