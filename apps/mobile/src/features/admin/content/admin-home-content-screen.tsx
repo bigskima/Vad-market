@@ -142,7 +142,7 @@ function PromotionSection({ promotions, onEdit }: { promotions: HomePromotion[];
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="heading">Home campaign carousel</VadText>
-          <VadText variant="caption" tone="secondary">Campaign cards move automatically in both directions. Featured markets remain a separate live market rail.</VadText>
+          <VadText variant="caption" tone="secondary">Campaign cards scroll automatically. Featured markets appear separately.</VadText>
         </View>
         <VadButton label="Add campaign" size="small" fullWidth={false} onPress={() => onEdit('NEW')} />
       </View>

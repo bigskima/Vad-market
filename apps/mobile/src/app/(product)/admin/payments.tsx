@@ -10,7 +10,7 @@ export default function AdminPaymentsRoute() {
         <AdminPaymentsScreen />
         <AdminRevenueSnapshot
           title="Recognized payment fee revenue"
-          description="Ledger-recognized payment-related fee income only. Fees shown on pending payment intents are quoted amounts, not VAD revenue."
+          description="Shows fee income after payment completion. Pending fees are estimates, not revenue."
           sourceCodes={['WITHDRAWAL_FEES']}
           showPlatformBalance
         />

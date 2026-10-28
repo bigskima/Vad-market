@@ -298,7 +298,7 @@ export function WalletScreen({
         <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="bodyStrong">Wallet settings</VadText>
-            <VadText variant="caption" tone="secondary">Choose which eligible currencies to show. This does not convert balances or change eligibility.</VadText>
+            <VadText variant="caption" tone="secondary">Choose which currencies appear across VAD. Your balances stay the same.</VadText>
           </View>
           <View style={{ gap: 8 }}>
             {currencyPreference.eligibleCurrencies.map((currency) => (

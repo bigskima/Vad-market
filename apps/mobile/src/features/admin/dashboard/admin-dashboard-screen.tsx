@@ -206,7 +206,7 @@ export function AdminDashboardScreen() {
       </Pressable>
 
       {data.warning ? (
-        <VadErrorState title="Some operations data is stale" message={data.warning} onRetry={() => void data.refresh()} />
+        <VadErrorState title="Some operations data may be out of date" message={data.warning} onRetry={() => void data.refresh()} />
       ) : null}
 
       {data.launchReadiness ? (
