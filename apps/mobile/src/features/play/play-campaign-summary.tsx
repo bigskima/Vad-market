@@ -61,7 +61,7 @@ export function PlayCampaignSummary({ campaign }: { campaign: PlayCampaign }) {
           <VadText variant="caption" tone="secondary">{progress.toFixed(0)}%</VadText>
         </View>
         <View style={{ height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }}>
-          <View style={{ height: '100%', width: progress + '%', backgroundColor: theme.colors.brandPrimary }} />
+          <View style={{ height: '100%', width: (progress.toFixed(2) + '%') as `${number}%`, backgroundColor: theme.colors.brandPrimary }} />
         </View>
         <VadText variant="caption" tone="secondary">
           {money(campaign.qualifying_funds_amount, campaign.currency_code)} of {money(campaign.funding_threshold_amount, campaign.currency_code)} in reconciled qualifying funds
