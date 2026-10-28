@@ -113,10 +113,7 @@ create table if not exists public.play_campaign_draws (
   executed_by uuid references auth.users(id) on delete restrict,
   executed_at timestamptz,
   selection_counter bigint not null default 0 check (selection_counter >= 0),
-  result_digest text check (result_digest is null or result_digest ~ '^[a-f0-9]{64}
-);
-
-),
+  result_digest text check (result_digest is null or result_digest ~ '^[a-f0-9]{64}$'),
   voided_by uuid references auth.users(id) on delete restrict,
   voided_at timestamptz,
   void_reason text check (void_reason is null or char_length(btrim(void_reason)) between 5 and 500),
@@ -1129,6 +1126,103 @@ begin
 end;
 $$;
 
+create or replace function public.admin_play_void_authorized_draw(
+  p_draw_id uuid,
+  p_reason text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_draw public.play_campaign_draws;
+  v_campaign public.play_campaigns;
+  v_escrow_id bigint;
+  v_balance numeric(38,18);
+  v_next_status text;
+begin
+  if auth.uid() is null or not (private.is_super_admin() or private.has_permission('play.manage')) then
+    raise exception 'VAD Play management permission required' using errcode = '42501';
+  end if;
+  if char_length(btrim(coalesce(p_reason,''))) < 5 then
+    raise exception 'A clear draw-void reason is required' using errcode = '22023';
+  end if;
+
+  select * into v_draw
+  from public.play_campaign_draws
+  where id = p_draw_id
+  for update;
+  if v_draw.id is null then
+    raise exception 'Draw record not found' using errcode = 'P0002';
+  end if;
+  if v_draw.status <> 'AUTHORIZED' then
+    raise exception 'Only an authorized draw that has not executed can be voided' using errcode = '55000';
+  end if;
+  if v_draw.authorized_by = auth.uid() then
+    raise exception 'A different administrator must void the authorized draw' using errcode = '42501';
+  end if;
+
+  select * into v_campaign
+  from public.play_campaigns
+  where id = v_draw.campaign_id
+  for update;
+  if v_campaign.status <> 'DRAW_AUTHORIZED' then
+    raise exception 'Campaign is not awaiting this authorized draw' using errcode = '55000';
+  end if;
+
+  v_escrow_id := private.play_campaign_escrow_account(v_campaign.id);
+  v_balance := finance.account_balance(v_escrow_id);
+  v_next_status := case
+    when v_balance >= v_campaign.funding_threshold_amount then 'ENTRY_CLOSED'
+    else 'FUNDING_SHORTFALL'
+  end;
+
+  update public.play_campaign_draws
+  set status = 'VOIDED',
+      seed_reveal = seed_secret,
+      voided_by = auth.uid(),
+      voided_at = statement_timestamp(),
+      void_reason = left(btrim(p_reason), 500)
+  where id = v_draw.id;
+
+  update public.play_campaigns
+  set status = v_next_status,
+      qualifying_funds_amount = greatest(v_balance, 0),
+      entries_closed_at = coalesce(entries_closed_at, statement_timestamp()),
+      funds_reconciled_at = statement_timestamp(),
+      updated_at = statement_timestamp()
+  where id = v_campaign.id;
+
+  insert into public.play_game_audit_events(
+    experience_id, actor_user_id, actor_type, event_type, event_data
+  ) values (
+    v_campaign.experience_id, auth.uid(), 'ADMIN', 'AUTHORIZED_DRAW_VOIDED',
+    jsonb_build_object(
+      'campaign_id', v_campaign.id,
+      'draw_id', v_draw.id,
+      'authorizer', v_draw.authorized_by,
+      'voided_by', auth.uid(),
+      'reason', left(btrim(p_reason), 500),
+      'seed_commitment', v_draw.seed_commitment,
+      'seed_reveal', v_draw.seed_secret,
+      'entries_digest', v_draw.entries_digest,
+      'ticket_count_snapshot', v_draw.ticket_count_snapshot
+    )
+  );
+
+  return jsonb_build_object(
+    'drawId', v_draw.id,
+    'campaignId', v_campaign.id,
+    'status', 'VOIDED',
+    'campaignStatus', v_next_status,
+    'seedCommitment', v_draw.seed_commitment,
+    'seedReveal', v_draw.seed_secret,
+    'reason', left(btrim(p_reason), 500)
+  );
+end;
+$;
+
 create or replace function public.admin_play_start_refunds(p_campaign_id uuid, p_reason text)
 returns boolean
 language plpgsql
@@ -1446,38 +1540,95 @@ declare
   v_draw public.play_campaign_draws;
   v_campaign public.play_campaigns;
   v_winner public.play_tickets;
-  v_ticket_codes jsonb;
 begin
-  select * into v_campaign from public.play_campaigns where id=p_campaign_id;
+  select * into v_campaign from public.play_campaigns where id = p_campaign_id;
   if v_campaign.id is null then
     return null;
   end if;
-  select * into v_draw from public.play_campaign_draws
-  where campaign_id=p_campaign_id and status='DRAWN';
+  select * into v_draw from public.play_campaign_draws where campaign_id = p_campaign_id;
   if v_draw.id is null then
     return jsonb_build_object(
-      'campaignId',p_campaign_id,
-      'status',case when v_campaign.status in ('DRAW_AUTHORIZED','DRAW_ELIGIBLE') then v_campaign.status else 'NOT_DRAWN' end,
-      'seedCommitment', (select d.seed_commitment from public.play_campaign_draws d where d.campaign_id=p_campaign_id)
+      'campaignId', p_campaign_id,
+      'status', case when v_campaign.status in ('DRAW_AUTHORIZED','DRAW_ELIGIBLE') then v_campaign.status else 'NOT_DRAWN' end,
+      'ticketCount', null,
+      'entriesDigest', null,
+      'seedCommitment', null
+    );
+  end if;
+  if v_draw.status = 'VOIDED' then
+    return jsonb_build_object(
+      'campaignId', p_campaign_id, 'status', 'VOIDED', 'drawId', v_draw.id,
+      'ticketCount', v_draw.ticket_count_snapshot, 'entriesDigest', v_draw.entries_digest,
+      'seedCommitment', v_draw.seed_commitment, 'seedReveal', v_draw.seed_reveal,
+      'voidedAt', v_draw.voided_at, 'voidReason', v_draw.void_reason,
+      'authorizedAt', v_draw.authorized_at
+    );
+  end if;
+  if v_draw.status <> 'DRAWN' then
+    return jsonb_build_object(
+      'campaignId', p_campaign_id, 'status', v_draw.status, 'drawId', v_draw.id,
+      'ticketCount', v_draw.ticket_count_snapshot, 'entriesDigest', v_draw.entries_digest,
+      'seedCommitment', v_draw.seed_commitment, 'authorizedAt', v_draw.authorized_at
     );
   end if;
 
-  select * into v_winner from public.play_tickets where id=v_draw.winning_ticket_id;
-  select coalesce(jsonb_agg(jsonb_build_object('ticketId',t.public_id,'ticketCode',t.ticket_code) order by t.id),'[]'::jsonb)
-  into v_ticket_codes
-  from public.play_tickets t
-  where t.campaign_id=p_campaign_id and t.status in ('ACTIVE','WINNER');
-
+  select * into v_winner from public.play_tickets where id = v_draw.winning_ticket_id;
   return jsonb_build_object(
-    'campaignId',p_campaign_id,'campaignTitle',v_campaign.title,'status','DRAWN',
-    'drawId',v_draw.id,'ticketCount',v_draw.ticket_count_snapshot,
-    'entriesDigest',v_draw.entries_digest,'seedCommitment',v_draw.seed_commitment,
-    'seedReveal',v_draw.seed_reveal,'winningTicketId',v_winner.public_id,
-    'winningTicketCode',v_winner.ticket_code,'tickets',v_ticket_codes,
-    'algorithm','SHA-256 seed commitment; ordered ticket-chain digest; SHA-256 modulo selection',
-    'authorizedAt',v_draw.authorized_at,'executedAt',v_draw.executed_at,
-    'resultDigest',v_draw.result_digest
+    'campaignId', p_campaign_id, 'campaignTitle', v_campaign.title, 'status', 'DRAWN',
+    'drawId', v_draw.id, 'ticketCount', v_draw.ticket_count_snapshot,
+    'entriesDigest', v_draw.entries_digest, 'seedCommitment', v_draw.seed_commitment,
+    'seedReveal', v_draw.seed_reveal, 'winningTicketId', v_winner.public_id,
+    'winningTicketCode', v_winner.ticket_code,
+    'algorithm', 'SHA-256 seed commitment + ordered ticket-chain digest + rejection-sampled SHA-256 index',
+    'selectionCounter', v_draw.selection_counter,
+    'authorizedAt', v_draw.authorized_at, 'executedAt', v_draw.executed_at,
+    'resultDigest', v_draw.result_digest
   );
+end;
+$$;
+
+create or replace function public.play_draw_audit_ticket_page(
+  p_campaign_id uuid,
+  p_after_ticket_id bigint default 0,
+  p_limit integer default 50
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_limit integer := least(greatest(coalesce(p_limit, 50), 1), 100);
+  v_tickets jsonb;
+  v_next bigint;
+  v_has_more boolean;
+begin
+  if not exists (
+    select 1 from public.play_campaign_draws d
+    where d.campaign_id = p_campaign_id and d.status = 'DRAWN'
+  ) then
+    raise exception 'Ticket audit pages are available only after a completed draw' using errcode = '55000';
+  end if;
+
+  with page as (
+    select t.id, t.public_id, t.ticket_code, t.status
+    from public.play_tickets t
+    where t.campaign_id = p_campaign_id
+      and t.status in ('ACTIVE','WINNER')
+      and t.id > greatest(coalesce(p_after_ticket_id, 0), 0)
+    order by t.id
+    limit v_limit + 1
+  ), ranked as (
+    select page.*, row_number() over(order by page.id) as rn from page
+  )
+  select
+    coalesce(jsonb_agg(jsonb_build_object('ticketId', public_id, 'ticketCode', ticket_code, 'status', status) order by id) filter(where rn <= v_limit), '[]'::jsonb),
+    max(id) filter(where rn <= v_limit),
+    count(*) > v_limit
+  into v_tickets, v_next, v_has_more
+  from ranked;
+
+  return jsonb_build_object('campaignId', p_campaign_id, 'tickets', v_tickets, 'nextAfterTicketId', v_next, 'hasMore', v_has_more, 'pageSize', v_limit);
 end;
 $$;
 
@@ -1550,6 +1701,8 @@ revoke all on function public.admin_play_open_campaign(uuid,timestamptz) from pu
 revoke all on function public.admin_play_close_entries(uuid) from public, anon;
 revoke all on function public.admin_play_authorize_draw(uuid) from public, anon;
 revoke all on function public.admin_play_execute_draw(uuid) from public, anon;
+revoke all on function public.admin_play_void_authorized_draw(uuid,text) from public, anon;
+revoke all on function public.play_draw_audit_ticket_page(uuid,bigint,integer) from public;
 revoke all on function public.admin_play_start_refunds(uuid,text) from public, anon;
 revoke all on function public.admin_play_refund_entry_order(uuid,text) from public, anon;
 revoke all on function public.admin_play_finish_refunds(uuid) from public, anon;
@@ -1564,6 +1717,8 @@ grant execute on function public.admin_play_open_campaign(uuid,timestamptz) to a
 grant execute on function public.admin_play_close_entries(uuid) to authenticated;
 grant execute on function public.admin_play_authorize_draw(uuid) to authenticated;
 grant execute on function public.admin_play_execute_draw(uuid) to authenticated;
+grant execute on function public.admin_play_void_authorized_draw(uuid,text) to authenticated;
+grant execute on function public.play_draw_audit_ticket_page(uuid,bigint,integer) to anon, authenticated;
 grant execute on function public.admin_play_start_refunds(uuid,text) to authenticated;
 grant execute on function public.admin_play_refund_entry_order(uuid,text) to authenticated;
 grant execute on function public.admin_play_finish_refunds(uuid) to authenticated;
