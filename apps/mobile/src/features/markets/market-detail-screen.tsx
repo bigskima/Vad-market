@@ -744,8 +744,8 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
     if (!isSportsMarket) return null;
     const normalizedLabel = normalizeSportsName(label);
     if (!normalizedLabel || /draw|tie|no winner/.test(normalizedLabel)) return null;
-    const homeNames = [sportsContext.homeTeam, sportsContext.homeShortName].filter(Boolean).map(normalizeSportsName);
-    const awayNames = [sportsContext.awayTeam, sportsContext.awayShortName].filter(Boolean).map(normalizeSportsName);
+    const homeNames = [sportsContext.homeTeam, sportsContext.homeShortName].filter((name): name is string => Boolean(name)).map(normalizeSportsName);
+    const awayNames = [sportsContext.awayTeam, sportsContext.awayShortName].filter((name): name is string => Boolean(name)).map(normalizeSportsName);
     const isHome = homeNames.some((name) => name && (name.includes(normalizedLabel) || normalizedLabel.includes(name) || normalizedLabel.includes(name.slice(0, 3))));
     const isAway = awayNames.some((name) => name && (name.includes(normalizedLabel) || normalizedLabel.includes(name) || normalizedLabel.includes(name.slice(0, 3))));
     return isHome ? homeCrest : isAway ? awayCrest : null;
