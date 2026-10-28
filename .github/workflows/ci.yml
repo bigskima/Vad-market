@@ -44,6 +44,8 @@ jobs:
         run: deno check --no-lock supabase/functions/financial-market-data/index.ts supabase/functions/market-event-discovery/index.ts
       - name: Type-check public news, source-image and image-worker adapters
         run: deno check --no-lock supabase/functions/news-feed/index.ts supabase/functions/market-source-image/index.ts supabase/functions/market-image-worker/index.ts
+      - name: Type-check VAD Play AI drafting and artwork generation endpoints
+        run: deno check --no-lock supabase/functions/vad-play-campaign-draft/index.ts supabase/functions/vad-play-campaign-image/index.ts
       - name: Type-check crypto Oracle asset coverage endpoint
         run: deno check --no-lock supabase/functions/crypto-oracle-asset-check/index.ts
       - name: Test Oracle resolver policy and financial symbol parsing
@@ -104,9 +106,12 @@ jobs:
           if [ -f supabase/tests/database/vad_play_tour_invariants.test.sql ]; then
             npm run supabase -- test db \
               supabase/tests/database/vad_play_safety_invariants.test.sql \
-              supabase/tests/database/vad_play_tour_invariants.test.sql
+              supabase/tests/database/vad_play_tour_invariants.test.sql \
+              supabase/tests/database/vad_play_media_invariants.test.sql
           else
-            npm run supabase -- test db supabase/tests/database/vad_play_safety_invariants.test.sql
+            npm run supabase -- test db \
+              supabase/tests/database/vad_play_safety_invariants.test.sql \
+              supabase/tests/database/vad_play_media_invariants.test.sql
           fi
       - name: Stop local Supabase stack
         if: always()
