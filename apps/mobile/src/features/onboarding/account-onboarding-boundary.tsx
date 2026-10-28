@@ -32,7 +32,12 @@ export function AccountOnboardingBoundary({ children }: { children: ReactNode })
         if (cancelled) return;
 
         if (isAccountSetupComplete(state)) {
-          await markAccountOnboardingCompleted();
+          try {
+            await markAccountOnboardingCompleted();
+          } catch {
+            // The account is ready even if the completion marker cannot be
+            // saved right now. Retry on a later visit without blocking access.
+          }
           return;
         }
 
