@@ -94,6 +94,8 @@ jobs:
         run: npm run db:start
       - name: Replay all migrations against local PostgreSQL
         run: npm run db:reset -- --local --no-seed
+      - name: Run VAD Play database safety invariants
+        run: npm run supabase -- test db supabase/tests/database/vad_play_safety_invariants.test.sql
       - name: Stop local Supabase stack
         if: always()
         run: npm run db:stop -- --no-backup
