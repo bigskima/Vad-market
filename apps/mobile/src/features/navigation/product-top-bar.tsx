@@ -247,7 +247,7 @@ export function ProductTopBar({
           ) : null}
 
           {!density.narrow ? <HeaderIcon label="Open VAD Assistant" icon="activity" onPress={onAssistant} /> : null}
-          {!density.narrow ? <HeaderIcon label="Open VAD menu" icon="menu" onPress={onMenu} /> : null}
+          <HeaderIcon label="Open VAD menu" icon="menu" onPress={onMenu} />
 
           <HeaderIcon label="Open support" icon="lifeBuoy" onPress={onSupport} />
           <View>
