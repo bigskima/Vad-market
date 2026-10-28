@@ -219,6 +219,7 @@ export default function AccountOnboardingScreen() {
   const milestoneCount = activationTasks.length;
   const milestonePercent = milestoneCount ? Math.round((completedMilestones / milestoneCount) * 100) : 0;
   const allRequiredComplete = Boolean(state && isAccountSetupComplete(state));
+  const allOnboardingComplete = Boolean(state && isAccountOnboardingComplete(state));
   const eligibleCurrencies = (['NGN', 'USDC'] as VADCurrency[])
     .filter((code) => currency.isCurrencyEligible(code));
   const enabledCurrencies = eligibleCurrencies.filter((code) => currency.isCurrencyEnabled(code));
@@ -327,12 +328,18 @@ export default function AccountOnboardingScreen() {
           <View style={{ gap: 8, paddingTop: 4 }}>
             <VadText variant="caption" tone="brand">YOUR VAD STARTING POINT</VadText>
             <VadText variant="title" style={{ fontSize: 27, lineHeight: 33 }}>
-              {allRequiredComplete ? "You're all set." : 'Let’s get your account ready.'}
+              {allOnboardingComplete
+                ? "You're all set."
+                : allRequiredComplete
+                  ? "Your account is ready. Let's activate it."
+                  : 'Let’s get your account ready.'}
             </VadText>
             <VadText variant="body" tone="secondary">
-              {allRequiredComplete
-                ? 'Your essential account setup is complete. Your first deposit and trade remain on this checklist until VAD confirms them.'
-                : 'VAD checks what is already complete and only asks you to finish what is still missing. Your progress is saved to your account.'}
+              {allOnboardingComplete
+                ? 'Your account essentials, first deposit and first trade are complete. You can continue using VAD and return to your account dashboard whenever you need it.'
+                : allRequiredComplete
+                  ? 'Your account essentials are complete. Finish your first deposit and trade here, or continue into VAD and receive a reminder in seven days.'
+                  : 'VAD checks what is already complete and only asks you to finish what is still missing. Your progress is saved to your account.'}
             </VadText>
           </View>
 
