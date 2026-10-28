@@ -49,6 +49,7 @@ export type PlayAdminCampaign = {
   qualifying_funds_amount: number | string;
   entry_price_amount: number | string;
   max_entries: number | null;
+  max_tickets_per_purchase: number;
   entry_limit_per_user: number | null;
   status: string;
   rules_public: Record<string, unknown> | null;
