@@ -98,7 +98,7 @@ export function PlayHubScreen() {
                 key={category}
                 accessibilityRole="button"
                 accessibilityLabel={'Explore ' + playExperienceLabel(category)}
-                onPress={() => router.push('/play/games')}
+                onPress={() => router.push({ pathname: '/play/games', params: { type: category } })}
                 style={({ pressed }) => ({
                   borderRadius: theme.radius.pill,
                   borderWidth: 1,

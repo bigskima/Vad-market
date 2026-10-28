@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
@@ -12,11 +12,13 @@ import { PlayTabNavigation } from './play-tab-navigation';
 
 export function PlayGamesScreen() {
   const theme = useVadTheme();
+  const params = useLocalSearchParams<{ type?: string | string[] }>();
+  const routeType = Array.isArray(params.type) ? params.type[0] : params.type;
+  const activeType = routeType ?? 'ALL';
   const [experiences, setExperiences] = useState<PlayExperience[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [activeType, setActiveType] = useState('ALL');
 
   const load = useCallback(async () => {
     try {
@@ -104,7 +106,7 @@ export function PlayGamesScreen() {
                   key={type}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
-                  onPress={() => setActiveType(type)}
+                  onPress={() => router.setParams({ type })}
                   style={({ pressed }) => ({
                     paddingHorizontal: 12,
                     paddingVertical: 9,
@@ -141,7 +143,7 @@ export function PlayGamesScreen() {
           actionLabel={experiences.length === 0 ? 'Back to Discover' : 'Clear filters'}
           onAction={() => {
             if (experiences.length === 0) router.replace('/play');
-            else { setQuery(''); setActiveType('ALL'); }
+            else { setQuery(''); router.setParams({ type: 'ALL' }); }
           }}
         />
       ) : (
