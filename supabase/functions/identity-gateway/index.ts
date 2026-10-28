@@ -2,9 +2,29 @@ import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, x-request-id, x-signature-v2, x-signature, x-timestamp',
+  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, x-request-id, x-signature-v2, x-signature, x-timestamp, x-supabase-api-version, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-supabase-edge-runtime',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
+
+function preflightHeaders(req: Request) {
+  // Supabase JS versions may add new x-supabase-* headers. Reflect valid header
+  // names requested by this browser preflight so the browser can send the POST.
+  // CORS is not authentication: startKyc still validates the Bearer session and
+  // checks service controls, provider configuration and provider responses.
+  const requested = (req.headers.get('access-control-request-headers') ?? '')
+    .split(',')
+    .map((header) => header.trim().toLowerCase())
+    .filter((header) => /^[a-z0-9-]+$/.test(header));
+  const allowed = new Set([
+    ...corsHeaders['Access-Control-Allow-Headers'].split(',').map((header) => header.trim().toLowerCase()),
+    ...requested,
+  ]);
+  return {
+    ...corsHeaders,
+    'Access-Control-Allow-Headers': [...allowed].join(', '),
+    'Access-Control-Max-Age': '86400',
+  };
+}
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -207,7 +227,7 @@ async function handleWebhook(req: Request) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: preflightHeaders(req) });
   try {
     const path = new URL(req.url).pathname.replace(/\/+$/, '');
     if (req.method === 'GET' && path.endsWith('/health')) {
