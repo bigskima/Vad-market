@@ -112,12 +112,24 @@ create table if not exists public.play_campaign_draws (
   authorized_at timestamptz not null default now(),
   executed_by uuid references auth.users(id) on delete restrict,
   executed_at timestamptz,
-  result_digest text check (result_digest is null or result_digest ~ '^[a-f0-9]{64}$'),
+  selection_counter bigint not null default 0 check (selection_counter >= 0),
+  result_digest text check (result_digest is null or result_digest ~ '^[a-f0-9]{64}
+);
+
+),
+  voided_by uuid references auth.users(id) on delete restrict,
+  voided_at timestamptz,
+  void_reason text check (void_reason is null or char_length(btrim(void_reason)) between 5 and 500),
   created_at timestamptz not null default now(),
   check ((status = 'DRAWN') = (winning_ticket_id is not null)),
-  check ((status = 'DRAWN') = (seed_reveal is not null)),
+  check ((status in ('DRAWN','VOIDED')) = (seed_reveal is not null)),
   check ((status = 'DRAWN') = (executed_at is not null)),
-  check (status <> 'DRAWN' or executed_by is not null)
+  check (status <> 'DRAWN' or executed_by is not null),
+  check (
+    (status = 'VOIDED' and voided_by is not null and voided_at is not null and void_reason is not null)
+    or
+    (status <> 'VOIDED' and voided_by is null and voided_at is null and void_reason is null)
+  )
 );
 
 create table if not exists public.play_campaign_settlements (
@@ -987,6 +999,8 @@ declare
   v_digest text := repeat('0',64);
   v_random_bytes bytea;
   v_random_value numeric;
+  v_random_limit numeric;
+  v_random_counter bigint := 0;
   v_slot bigint;
   v_winner public.play_tickets;
   v_result_digest text;
@@ -1024,16 +1038,30 @@ begin
     raise exception 'The eligible ticket set changed after draw authorization' using errcode = '23514';
   end if;
 
-  v_random_bytes := extensions.digest(decode(v_draw.seed_secret,'hex') || decode(v_draw.entries_digest,'hex'),'sha256');
-  v_random_value :=
-      get_byte(v_random_bytes,0)::numeric * 72057594037927936
-    + get_byte(v_random_bytes,1)::numeric * 281474976710656
-    + get_byte(v_random_bytes,2)::numeric * 1099511627776
-    + get_byte(v_random_bytes,3)::numeric * 4294967296
-    + get_byte(v_random_bytes,4)::numeric * 16777216
-    + get_byte(v_random_bytes,5)::numeric * 65536
-    + get_byte(v_random_bytes,6)::numeric * 256
-    + get_byte(v_random_bytes,7)::numeric;
+  -- Rejection sampling avoids modulo bias when mapping a 64-bit digest to a ticket.
+  v_random_limit := floor(18446744073709551616::numeric / v_count) * v_count;
+  loop
+    v_random_bytes := extensions.digest(
+      decode(v_draw.seed_secret,'hex')
+        || decode(v_draw.entries_digest,'hex')
+        || convert_to(':' || v_random_counter::text,'UTF8'),
+      'sha256'
+    );
+    v_random_value :=
+        get_byte(v_random_bytes,0)::numeric * 72057594037927936
+      + get_byte(v_random_bytes,1)::numeric * 281474976710656
+      + get_byte(v_random_bytes,2)::numeric * 1099511627776
+      + get_byte(v_random_bytes,3)::numeric * 4294967296
+      + get_byte(v_random_bytes,4)::numeric * 16777216
+      + get_byte(v_random_bytes,5)::numeric * 65536
+      + get_byte(v_random_bytes,6)::numeric * 256
+      + get_byte(v_random_bytes,7)::numeric;
+    exit when v_random_value < v_random_limit;
+    v_random_counter := v_random_counter + 1;
+    if v_random_counter > 1000 then
+      raise exception 'Deterministic winner selection could not produce an unbiased index' using errcode = '55000';
+    end if;
+  end loop;
   v_slot := mod(v_random_value, v_count)::bigint + 1;
 
   select * into v_winner
@@ -1050,7 +1078,7 @@ begin
   update public.play_tickets set status='WINNER' where id=v_winner.id;
   v_result_digest := encode(extensions.digest(
     v_draw.seed_secret || ':' || v_draw.entries_digest || ':' ||
-    v_winner.public_id::text || ':' || v_slot::text,
+    v_winner.public_id::text || ':' || v_slot::text || ':' || v_random_counter::text,
     'sha256'
   ),'hex');
 
@@ -1060,6 +1088,7 @@ begin
       winning_ticket_id=v_winner.id,
       executed_by=auth.uid(),
       executed_at=statement_timestamp(),
+      selection_counter=v_random_counter,
       result_digest=v_result_digest
   where id=v_draw.id;
 
@@ -1084,7 +1113,8 @@ begin
       'campaign_id',v_campaign.id,'draw_id',v_draw.id,
       'winning_ticket_id',v_winner.public_id,'winning_ticket_code',v_winner.ticket_code,
       'ticket_count',v_count,'entries_digest',v_digest,'seed_commitment',v_draw.seed_commitment,
-      'seed_reveal',v_draw.seed_secret,'result_digest',v_result_digest,'slot',v_slot
+      'seed_reveal',v_draw.seed_secret,'result_digest',v_result_digest,'slot',v_slot,
+      'selection_counter',v_random_counter
     )
   );
 
@@ -1092,7 +1122,8 @@ begin
     'campaignId',v_campaign.id,'drawId',v_draw.id,'status','DRAWN',
     'winningTicketId',v_winner.public_id,'winningTicketCode',v_winner.ticket_code,
     'ticketCount',v_count,'seedCommitment',v_draw.seed_commitment,'seedReveal',v_draw.seed_secret,
-    'entriesDigest',v_digest,'resultDigest',v_result_digest,'algorithm','SHA-256 commitment + ordered ticket-chain digest + SHA-256 modulo selection',
+    'entriesDigest',v_digest,'resultDigest',v_result_digest,'selectionCounter',v_random_counter,
+    'algorithm','SHA-256 seed commitment + ordered ticket-chain digest + rejection-sampled SHA-256 index',
     'executedAt',statement_timestamp()
   );
 end;
@@ -1480,9 +1511,11 @@ begin
         'id',d.id,'campaign_id',d.campaign_id,'status',d.status,
         'ticket_count_snapshot',d.ticket_count_snapshot,
         'entries_digest',d.entries_digest,'seed_commitment',d.seed_commitment,
+        'selection_counter',d.selection_counter,
         'winning_ticket_id',t.public_id,'winning_ticket_code',t.ticket_code,
         'authorized_by',d.authorized_by,'authorized_at',d.authorized_at,
         'executed_by',d.executed_by,'executed_at',d.executed_at,
+        'voided_by',d.voided_by,'voided_at',d.voided_at,'void_reason',d.void_reason,
         'result_digest',d.result_digest,'campaign_title',c.title
       ) order by d.authorized_at desc)
       from public.play_campaign_draws d
