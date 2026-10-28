@@ -5,6 +5,13 @@
 
 begin;
 
+-- Review permissions are assignable through VAD's existing role/permission controls.
+insert into admin.permissions (code, description)
+values
+  ('play.review', 'Perform independent legal/compliance review of VAD Play campaigns'),
+  ('play.prize.verify', 'Verify prize availability and evidence for VAD Play campaigns')
+on conflict (code) do update set description = excluded.description;
+
 -- Extend the canonical VAD ledger with campaign escrow and Play revenue accounts.
 alter table finance.ledger_accounts
   drop constraint if exists ledger_accounts_account_type_check;
@@ -743,6 +750,8 @@ declare
   v_release public.play_engine_releases;
   v_latest_legal text;
   v_latest_prize text;
+  v_latest_legal_reviewer uuid;
+  v_latest_prize_reviewer uuid;
 begin
   if auth.uid() is null or not private.is_super_admin() then
     raise exception 'Only a Super Admin can open a paid prize campaign' using errcode = '42501';
@@ -770,10 +779,12 @@ begin
     raise exception 'Published terms and a clear refund/shortfall policy are required before opening' using errcode = '22023';
   end if;
 
-  select decision into v_latest_legal from public.play_campaign_reviews
+  select decision, reviewer_user_id into v_latest_legal, v_latest_legal_reviewer
+  from public.play_campaign_reviews
   where campaign_id=p_campaign_id and review_type='LEGAL'
   order by created_at desc,id desc limit 1;
-  select decision into v_latest_prize from public.play_campaign_reviews
+  select decision, reviewer_user_id into v_latest_prize, v_latest_prize_reviewer
+  from public.play_campaign_reviews
   where campaign_id=p_campaign_id and review_type='PRIZE'
   order by created_at desc,id desc limit 1;
   if v_latest_legal is distinct from 'APPROVED'
@@ -781,6 +792,10 @@ begin
      or v_campaign.compliance_approved_at is null
      or v_campaign.prize_secured_at is null then
     raise exception 'Current legal and prize reviews must both be approved before opening' using errcode = '42501';
+  end if;
+  if v_latest_legal_reviewer is null or v_latest_prize_reviewer is null
+     or v_latest_legal_reviewer = v_latest_prize_reviewer then
+    raise exception 'Legal review and prize verification must be completed by different reviewers' using errcode = '42501';
   end if;
 
   select * into v_experience from public.play_experiences
