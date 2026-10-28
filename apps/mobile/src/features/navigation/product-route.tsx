@@ -22,11 +22,11 @@ import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
 import { useVadTheme } from '@/providers/theme-provider';
 import { ProductAnnouncementBar } from './product-announcement-bar';
+import { ProductMenuModal } from './product-menu-modal';
 import { ProductRightRail } from './product-right-rail';
 import { ProductSidebar } from './product-sidebar';
 import { ProductTabBar, type ProductTab } from './product-tab-bar';
 import { ProductTopBar } from './product-top-bar';
-import { ProductMenuModal } from './product-menu-modal';
 
 type Props = {
   active: ProductTab;
