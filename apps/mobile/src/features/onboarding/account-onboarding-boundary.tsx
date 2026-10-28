@@ -19,7 +19,13 @@ export function AccountOnboardingBoundary({ children }: { children: ReactNode })
   const user = session?.user;
 
   useEffect(() => {
-    if (isLoading || productData.loading || !user || pathname === '/onboarding') return;
+    if (isLoading || productData.loading || !user) return;
+    if (pathname === '/onboarding') {
+      // Let a member move between the setup checklist and the destination
+      // screens for a step without bouncing straight back to the checklist.
+      checkedUsers.current.set(user.id, null);
+      return;
+    }
 
     const deferredUntilRaw = user.user_metadata?.vad_onboarding_deferred_until;
     const deferredUntil = typeof deferredUntilRaw === 'string'
