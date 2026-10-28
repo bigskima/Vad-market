@@ -797,13 +797,13 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
   return (
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ gap: 3 }}>
-        <VadText variant="bodyStrong">{isSportsMarket ? 'Match outcome quotes' : 'Possible outcomes'}</VadText>
-        <VadText variant="caption" tone="secondary">{isSportsMarket ? 'Compare the current pool share for each result. Open a result to receive the market-specific quote before placing a trade.' : 'Choose the option you expect to win. Current pool share is based on committed stakes, not a promise of payout.'}</VadText>
+        <VadText variant="bodyStrong">{isSportsMarket ? 'Match outcomes' : 'Possible outcomes'}</VadText>
+        <VadText variant="caption" tone="secondary">{isSportsMarket ? 'Compare pool shares, then choose a result to trade.' : 'Choose the outcome you expect. Pool shares reflect stakes, not guaranteed payouts.'}</VadText>
       </View>
       {loading ? (
         <VadCard variant="muted" style={{ gap: 4 }}>
           <VadText variant="bodyStrong">Loading outcome choices…</VadText>
-          <VadText variant="caption" tone="secondary">Getting the latest options and pool shares.</VadText>
+          <VadText variant="caption" tone="secondary">Updating pool shares…</VadText>
         </VadCard>
       ) : error ? (
         <VadCard variant="muted" style={{ gap: 4, borderWidth: 1, borderColor: theme.colors.no }}>
@@ -856,7 +856,6 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
       ) : (
         <VadCard variant="muted" style={{ gap: 4 }}>
           <VadText variant="bodyStrong">No outcomes yet</VadText>
-          <VadText variant="caption" tone="secondary">The market’s configured outcome choices could not be found.</VadText>
         </VadCard>
       )}
     </View>
@@ -933,7 +932,7 @@ function MarketSnapshot({ market, timing, outcomes }: { market: MarketCatalogIte
         {!finalOutcome && timing.stage === 'VOIDED' ? (
           <View style={{ borderRadius: 11, padding: 11, backgroundColor: theme.colors.noSoft, gap: 3 }}>
             <VadText variant="bodyStrong" tone="no">Market voided</VadText>
-            <VadText variant="caption" tone="secondary">Refer to the published void and refund rules for the final handling of this market.</VadText>
+            <VadText variant="caption" tone="secondary">See the market rules for voids and refunds.</VadText>
           </View>
         ) : null}
 
