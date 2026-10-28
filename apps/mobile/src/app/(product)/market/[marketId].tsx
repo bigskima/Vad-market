@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
+import { useVadTheme } from '@/providers/theme-provider';
 
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
@@ -15,6 +16,7 @@ export default function MarketDetailRoute() {
   const params = useLocalSearchParams<{ marketId: string; outcome?: string; tourSection?: string }>();
   const { session } = useAuth();
   const data = useProductDataContext();
+  const theme = useVadTheme();
   const runtime = useRuntimeCapabilities(session);
   const marketId = Array.isArray(params.marketId)
     ? params.marketId[0]
