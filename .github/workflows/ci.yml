@@ -1,5 +1,9 @@
 name: VAD CI
 
+concurrency:
+  group: vad-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
   push:
