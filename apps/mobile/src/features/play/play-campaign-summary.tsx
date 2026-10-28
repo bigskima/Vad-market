@@ -2,6 +2,7 @@ import { View } from 'react-native';
 
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
+import { PlayDrawAuditPanel } from './play-draw-audit-panel';
 import type { PlayCampaign } from '@/services/play-api';
 
 function money(value: number | string, currency: string) {
@@ -74,6 +75,7 @@ export function PlayCampaignSummary({ campaign }: { campaign: PlayCampaign }) {
       <VadText variant="caption" tone="tertiary">
         This summary reflects the published campaign record. Ticket eligibility and final outcome are governed by the campaign rules and server-side draw audit.
       </VadText>
+      <PlayDrawAuditPanel campaignId={campaign.id} />
     </View>
   );
 }
