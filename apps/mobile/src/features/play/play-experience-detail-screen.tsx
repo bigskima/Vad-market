@@ -37,8 +37,30 @@ export function PlayExperienceDetailScreen() {
   }, [slug]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    Promise.resolve()
+      .then(() => {
+        if (active) {
+          setLoading(true);
+          setError(null);
+        }
+        return slug ? getPublishedPlayExperience(slug) : null;
+      })
+      .then((nextExperience) => {
+        if (!active) return;
+        setExperience(nextExperience);
+        if (!slug) setError('The experience link is incomplete.');
+      })
+      .catch((reason) => {
+        if (active) setError(playFriendlyError(reason));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [slug]);
 
   const safeHeroUrl = experience?.hero_asset_url?.startsWith('https://') ? experience.hero_asset_url : null;
 

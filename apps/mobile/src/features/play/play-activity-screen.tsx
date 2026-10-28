@@ -40,8 +40,22 @@ export function PlayActivityScreen() {
   }, [load]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    Promise.resolve()
+      .then(() => listMyPlayActivity(session?.user.id ?? ''))
+      .then((data) => {
+        if (active) setActivity(data);
+      })
+      .catch((reason) => {
+        if (active) setError(playFriendlyError(reason));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session]);
 
   return (
     <View style={{ gap: theme.spacing.lg }}>

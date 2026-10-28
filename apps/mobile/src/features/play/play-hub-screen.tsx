@@ -34,8 +34,22 @@ export function PlayHubScreen() {
   }, [load]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    Promise.resolve()
+      .then(() => listPublishedPlayExperiences())
+      .then((data) => {
+        if (active) setExperiences(data);
+      })
+      .catch((reason) => {
+        if (active) setError(playFriendlyError(reason));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const categories = [...new Set(experiences.map((item) => item.experience_type))];
 
