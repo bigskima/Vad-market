@@ -33,6 +33,33 @@ export type MarketCatalogItem = {
   updated_at: string;
 };
 
+export type SportsMatchMetadata = {
+  home_team_crest: string | null;
+  away_team_crest: string | null;
+  starts_at: string | null;
+  match_status: string | null;
+  venue: string | null;
+  source_name: string | null;
+};
+
+export async function getSportsMatchMetadata(input: {
+  homeTeam: string;
+  awayTeam: string;
+  competition?: string | null;
+}): Promise<SportsMatchMetadata | null> {
+  if (!input.homeTeam.trim() || !input.awayTeam.trim()) return null;
+  const { data, error } = await supabase.rpc('get_public_sports_match_metadata', {
+    p_home_team: input.homeTeam.trim(),
+    p_away_team: input.awayTeam.trim(),
+    p_competition: input.competition?.trim() || null,
+  });
+  if (error) throw userFacingError(error, 'markets', 'Fixture metadata is temporarily unavailable.');
+  const row = Array.isArray(data) ? data[0] : data;
+  return row && typeof row === 'object' && !Array.isArray(row)
+    ? row as SportsMatchMetadata
+    : null;
+}
+
 export type MarketTradeRules = {
   instrumentPublicId: string;
   assetCode: 'NGN' | 'USDC';
