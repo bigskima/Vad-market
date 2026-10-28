@@ -48,14 +48,14 @@ create table if not exists public.play_campaigns (
   prize_title text not null check (char_length(btrim(prize_title)) between 2 and 240),
   currency_code text not null check (currency_code ~ '^[A-Z][A-Z0-9]{2,9}$'),
   prize_cost_amount numeric(24,8) not null check (prize_cost_amount > 0),
-  profit_target_mode text not null default 'PERCENT_OF_PRIZE'
+  profit_target_mode text not null
     check (profit_target_mode in ('PERCENT_OF_PRIZE','FIXED_AMOUNT')),
   -- In percentage mode 10 means ten percent of prize cost; in fixed mode this
   -- is an amount in the campaign currency.
-  profit_target_value numeric(24,8) not null default 10 check (profit_target_value >= 0),
+  profit_target_value numeric(24,8) not null check (profit_target_value >= 0),
   -- Includes other budgeted campaign costs. Qualifying receipts must be net of
   -- any additional processing costs that the campaign rules say are deducted.
-  campaign_cost_budget_amount numeric(24,8) not null default 0
+  campaign_cost_budget_amount numeric(24,8) not null
     check (campaign_cost_budget_amount >= 0),
   funding_threshold_amount numeric(24,8) generated always as (
     round(

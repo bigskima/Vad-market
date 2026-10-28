@@ -13,8 +13,8 @@ Potential modules include prize draws, spins and instant-win games, scratch-and-
 - Load the visible catalogue from the play_experiences table. No sample campaigns, fabricated ticket counts, simulated balances, or locally invented activity rows are inserted.
 - Search and type filters operate on the loaded database catalogue. My Play reads authenticated-user activity records only.
 - Add initial tables for published experience metadata, configurable prize-campaign economics, and private participation history. Authenticated app users are read-only.
-- Store prize cost, profit target mode/value, campaign cost budget, entry price, caps, schedule, lifecycle and audit timestamps in the database.
-- Derive funding_threshold_amount in the database: prize cost + configured profit target + budgeted campaign expenses. A percentage target of 10 means ten percent of prize cost. With a 5,000,000 prize, a 10% target and zero additional cost budget, the threshold is 5,500,000 in the configured campaign currency.
+- Store prize cost, profit target mode/value, campaign cost budget, entry price, caps, schedule, lifecycle and audit timestamps in the database. Require explicit per-campaign economics rather than defaulting to an illustrative prize value or profit rate.
+- Derive funding_threshold_amount in the database from that campaign's prize cost, explicitly configured profit target, and explicitly configured budgeted campaign expenses. Profit target mode, target value, and campaign cost budget must be supplied for each campaign; there is no preset currency threshold or default profit percentage. A percentage is interpreted as a percentage of that campaign's prize cost.
 - Use the existing VAD brand image for the hub hero and database-provided HTTPS media URLs for individual experiences. Do not simulate three-dimensional assets in JavaScript or commit a static concept mockup as if it were a real feature.
 - Include loading, retry, empty and not-available states instead of inventing catalogue contents.
 
@@ -81,3 +81,14 @@ Track ad fill rate, verified completions, cost per point, redemption rate, fulfi
 7. Add admin controls, fraud signals, reconciliation and operational monitoring before expanding providers or game types.
 
 The central principle: VAD Play remains extensible while payments, odds, ad completions, points and rewards are separate, auditable server-side workflows.
+
+
+## Implementation guardrails added in the engine-and-ads migration
+
+- The prize-draw economics migration now requires an explicit profit target mode, profit target value, and campaign-cost budget for each campaign. No example prize cost, currency threshold, profit percentage, or campaign expense budget is prefilled.
+- Built-in engine identifiers are registered as code capabilities, while their rollout status remains review-required. Registry rows do not claim a game is playable until the matching server runtime, tests, campaign controls, and compliance gates are implemented and enabled.
+- Outcome rules and private game-session data are service-role-only. The client cannot set a result, inspect private outcome configuration, award itself points, or publish an experience.
+- Ads are represented by provider adapters and per-placement configuration for WEB, ANDROID, and IOS. Providers and placements default to disabled; no demo ads or points are seeded. Provider credentials belong in managed secrets, never client-readable configuration.
+- Ad sessions and completion callbacks are separate records. A video-ending event from the client alone is never sufficient to grant points. Provider-specific signature/transaction verification and idempotent award processing remain required before any placement can issue points.
+- The points ledger is append-only and non-cash. It is separate from VAD's NGN/USDC wallet, settlement and accounting ledger. Reward catalogue and redemption records are user-readable only under their published/own-record policies; writes require secured server workflows.
+- The new migration supplies schema and access boundaries, not a claim that paid entries, spins, scratch results, ad-network SDKs, points awards, or redemptions are live. Those need server runtime implementations and platform/provider configuration before they can be enabled.
