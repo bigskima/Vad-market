@@ -78,7 +78,7 @@ export function CryptoWalletConnections() {
     return (
       <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
         <VadText variant="caption" tone="brand">SELF-CUSTODY USDC</VadText>
-        <VadText variant="heading">Embedded wallet unavailable</VadText>
+        <VadText variant="heading">Wallet setup unavailable</VadText>
         <VadText variant="caption" tone="secondary">
           {initializationError ?? 'Dynamic wallet activation is not configured for this build.'}
         </VadText>
