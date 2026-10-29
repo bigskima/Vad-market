@@ -110,9 +110,9 @@ export function PlayPracticeGamePanel({
               disabled={working || Boolean(result)}
               style={({ pressed }) => ({ width: '100%', minHeight: 170, borderRadius: theme.radius.xl, padding: theme.spacing.lg, alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 2, borderColor: theme.colors.brandPrimary, backgroundColor: result ? theme.colors.surface : theme.colors.brandSoft, opacity: pressed ? 0.82 : 1 })}
             >
-              <VadText variant="title" textAlign="center">{result ? '✨' : '✦  ✧  ✦'}</VadText>
-              <VadText variant="heading" textAlign="center">{result ? result.result.message : working ? 'Revealing…' : 'SCRATCH TO REVEAL'}</VadText>
-              <VadText variant="caption" tone="secondary" textAlign="center">{result ? 'Free practice result' : 'Tap the card to uncover your result'}</VadText>
+              <VadText variant="title" style={{ textAlign: 'center' }}>{result ? '✨' : '✦  ✧  ✦'}</VadText>
+              <VadText variant="heading" style={{ textAlign: 'center' }}>{result ? result.result.message : working ? 'Revealing…' : 'SCRATCH TO REVEAL'}</VadText>
+              <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>{result ? 'Free practice result' : 'Tap the card to uncover your result'}</VadText>
             </Pressable>
           ) : (
             <View style={{ alignItems: 'center', gap: theme.spacing.md }}>
@@ -123,7 +123,7 @@ export function PlayPracticeGamePanel({
                   </View>
                 ))}
               </View>
-              <VadText tone="secondary" textAlign="center">Your next number is selected by VAD’s game server.</VadText>
+              <VadText tone="secondary" style={{ textAlign: 'center' }}>Your next number is selected by VAD’s game server.</VadText>
             </View>
           )}
         </View>
