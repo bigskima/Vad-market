@@ -61,6 +61,8 @@ export function PlayPracticeGamePanel({
     }
   }
 
+  // React Native Animated values intentionally expose an interpolation mapping during render.
+  // eslint-disable-next-line react-hooks/refs
   const spinTransform = rotation.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '1800deg'],
