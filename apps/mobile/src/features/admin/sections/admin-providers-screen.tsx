@@ -80,7 +80,7 @@ export function AdminProvidersScreen() {
       getOraclePolicyCatalog()
         .then((policies) => { if (active) setOraclePolicies(policies); })
         .catch((value: unknown) => {
-          if (active) setPolicyError(value instanceof Error ? value.message : 'Oracle policy catalog could not be loaded.');
+          if (active) setPolicyError(value instanceof Error ? value.message : 'Result policies could not be loaded.');
         })
         .finally(() => { if (active) setPolicyLoading(false); });
     }, 0);
@@ -148,10 +148,10 @@ export function AdminProvidersScreen() {
       const results = response.providers ?? [];
       setHealthResults(results);
       const healthy = results.filter((result) => result.health === 'HEALTHY').length;
-      setActionMessage(`Oracle provider check completed: ${healthy}/${results.length} healthy.`);
+      setActionMessage(`Source check complete: ${healthy} of ${results.length} sources healthy.`);
       await data.refresh();
     } catch (value) {
-      setActionError(value instanceof Error ? value.message : 'Oracle provider health could not be checked.');
+      setActionError(value instanceof Error ? value.message : 'Could not check source status. Try again.');
     } finally {
       setHealthChecking(false);
     }
@@ -169,7 +169,7 @@ export function AdminProvidersScreen() {
       setOraclePolicies(updated);
       await data.refresh();
     } catch (value) {
-      setPolicyError(value instanceof Error ? value.message : 'Oracle policy approval failed. A separate reviewer with oracle.review must approve draft policies.');
+      setPolicyError(value instanceof Error ? value.message : 'Could not approve this policy. A different reviewer with approval access must review drafts.');
     } finally {
       setPolicyWorking(null);
     }
@@ -285,7 +285,7 @@ export function AdminProvidersScreen() {
           </VadText>
           {canCheckOracle ? (
             <VadButton
-              label="Check oracle providers"
+              label="Check result sources"
               variant="secondary"
               size="small"
               fullWidth={false}
@@ -391,7 +391,7 @@ export function AdminProvidersScreen() {
 
       {healthResults.length ? (
         <View style={{ gap: theme.spacing.sm }}>
-          <VadText variant="heading">Latest oracle check</VadText>
+          <VadText variant="heading">Latest source check</VadText>
           <VadText variant="caption" tone="secondary">
             {healthyOracle}/{healthResults.length} providers responded successfully. A successful check confirms credentials and connectivity; activation still follows independent approval.
           </VadText>
@@ -545,32 +545,32 @@ export function AdminProvidersScreen() {
       ) : (
         <View style={{ gap: theme.spacing.md }}>
           <VadCard variant="muted" style={{ gap: theme.spacing.xs }}>
-            <VadText variant="heading">Oracle policy review</VadText>
+            <VadText variant="heading">Result policy review</VadText>
             <VadText variant="caption" tone="secondary">
-              Review the exact policy version and source quorum before approving it. Approval is audited; the person who created a draft cannot approve that same policy.
+              Check the policy version and price sources before approving. A different person must approve each draft.
             </VadText>
             <VadText variant="caption" tone="secondary">
-              Crypto threshold settlement requires exactly two providers: Coinbase as PRIMARY and Kraken as CORROBORATING, with distinct-provider agreement from both.
+              Automatic crypto results require two independent price sources: Coinbase and Kraken. Both must agree.
             </VadText>
             <VadText variant="caption" tone="secondary">
-              This list shows only policy versions eligible for the current Coinbase/Kraken settlement runtime. Older drafts using CoinGecko or Pyth are obsolete and cannot be approved.
+              Only policies using the current Coinbase and Kraken setup can be approved. Older CoinGecko or Pyth drafts are no longer supported.
             </VadText>
             {oraclePolicies.some((policy) => policy.name === 'VAD Crypto Threshold Launch Policy'
               && policy.status === 'ACTIVE' && Boolean(policy.approved_by)
               && isCoinbaseKrakenThresholdPolicy(policy)) ? (
               <VadText variant="caption" tone="secondary">
-                Production already has an approved, active Coinbase/Kraken policy. You do not need to approve an older production draft.
+                Production already uses an approved Coinbase/Kraken policy. No older production draft needs approval.
               </VadText>
             ) : null}
             {oraclePolicies.some((policy) => policy.name === 'VAD Sandbox Crypto Threshold Policy'
               && policy.status === 'ACTIVE' && Boolean(policy.approved_by)
               && isCoinbaseKrakenThresholdPolicy(policy)) ? (
               <VadText variant="caption" tone="secondary">
-                TNGN sandbox already has an approved, active Coinbase/Kraken policy. You do not need to approve an older sandbox draft.
+                Testing already has an approved Coinbase/Kraken policy. No older test draft needs approval.
               </VadText>
             ) : null}
           </VadCard>
-          {policyError ? <VadErrorState title="Oracle policy review failed" message={policyError} /> : null}
+          {policyError ? <VadErrorState title="Result verification policy review failed" message={policyError} /> : null}
           {policyMessage ? (
             <VadCard variant="muted" style={{ gap: 2 }}>
               <VadText variant="bodyStrong" tone="yes">Policy updated</VadText>
@@ -588,8 +588,9 @@ export function AdminProvidersScreen() {
               .map((policy) => {
                 const sources = policy.source_hierarchy.map((item) => typeof item === 'string'
                   ? item
-                  : `${String(item.role ?? 'SOURCE')}: ${String(item.provider_code ?? item.code ?? 'provider')}`).join(' · ');
+                  : String(item.provider_code ?? item.code ?? 'provider')).join(' · ');
                 const environment = String(policy.consensus_rule.environment ?? 'PRODUCTION').toUpperCase();
+                const environmentLabel = environment === 'PRODUCTION' ? 'Production' : environment === 'SANDBOX' ? 'Test' : environment;
                 const quorum = String(policy.consensus_rule.min_agreeing_providers ?? 'not specified');
                 const distinct = policy.consensus_rule.distinct_providers === true;
                 return (
@@ -597,12 +598,12 @@ export function AdminProvidersScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
                       <View style={{ flex: 1, gap: 3 }}>
                         <VadText variant="bodyStrong">{policy.name} · v{policy.version}</VadText>
-                        <VadText variant="caption" tone="secondary">{environment} · {policy.capability_code}</VadText>
+                        <VadText variant="caption" tone="secondary">{environmentLabel}</VadText>
                       </View>
                       <VadChip label={policy.status} tone={policy.status === 'ACTIVE' ? 'yes' : policy.status === 'DRAFT' ? 'warning' : 'neutral'} />
                     </View>
-                    <VadText variant="caption" tone="secondary">{sources || 'No source hierarchy defined.'}</VadText>
-                    <VadText variant="caption" tone="secondary">Consensus: {distinct ? 'distinct providers required' : 'distinct-provider rule not enabled'} · minimum agreeing providers: {quorum}</VadText>
+                    <VadText variant="caption" tone="secondary">Sources: {sources || 'None selected'}</VadText>
+                    <VadText variant="caption" tone="secondary">Independent sources: {distinct ? 'Required' : 'Not required'} · Agreement needed: {quorum}</VadText>
                     <VadText variant="caption" tone="tertiary">Effective: {new Date(policy.effective_at).toLocaleString()} · {policy.approved_by ? 'Approved' : 'Not approved'}</VadText>
                     {policy.status === 'DRAFT' && canReviewOracle && isCoinbaseKrakenThresholdPolicy(policy) ? (
                       <VadButton
@@ -613,7 +614,7 @@ export function AdminProvidersScreen() {
                       />
                     ) : policy.status === 'DRAFT' && canReviewOracle ? (
                       <VadText variant="caption" tone="warning">
-                        Approval disabled: this draft does not match the required Coinbase PRIMARY + Kraken CORROBORATING two-provider policy.
+                        To approve, choose Coinbase as the main source and Kraken as the independent check.
                       </VadText>
                     ) : null}
                   </VadCard>
@@ -624,7 +625,7 @@ export function AdminProvidersScreen() {
             ['VAD Crypto Threshold Launch Policy', 'VAD Sandbox Crypto Threshold Policy'].includes(policy.name)
             && ['ACTIVE', 'DRAFT'].includes(policy.status)
             && isCoinbaseKrakenThresholdPolicy(policy)) ? (
-            <EmptyText>No eligible Coinbase/Kraken threshold policy was returned. Check Oracle provider health and policy migrations before creating an automatic crypto market.</EmptyText>
+            <EmptyText>No Coinbase/Kraken price policy is available. Check provider settings before enabling automatic crypto results.</EmptyText>
           ) : null}
         </View>
       )}

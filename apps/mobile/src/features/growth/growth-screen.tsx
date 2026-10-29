@@ -11,6 +11,7 @@ import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import {
   claimGrowthCode,
   getMyGrowthDashboard,
@@ -37,7 +38,7 @@ export function GrowthScreen() {
     try {
       setData(await getMyGrowthDashboard());
     } catch (value) {
-      setError(value instanceof Error ? value.message : 'Rewards could not be loaded.');
+      setError(userFacingErrorMessage(value, 'general', 'Could not load rewards. Try again.'));
     } finally {
       if (background) setRefreshing(false);
       else setLoading(false);
@@ -59,7 +60,7 @@ export function GrowthScreen() {
       setMessage(result.message);
       await load(true);
     } catch (value) {
-      setError(value instanceof Error ? value.message : 'That code could not be applied.');
+      setError(userFacingErrorMessage(value, 'general', 'Could not apply that code. Check it and try again.'));
     } finally {
       setWorking(false);
     }
@@ -73,7 +74,7 @@ export function GrowthScreen() {
       setMessage(`You joined ${result.campaignName}. Activities that meet the campaign rules can now count toward your progress.`);
       await load(true);
     } catch (value) {
-      setError(value instanceof Error ? value.message : 'This campaign could not be joined.');
+      setError(userFacingErrorMessage(value, 'general', 'Could not join this campaign. Try again.'));
     } finally {
       setWorking(false);
     }
@@ -120,7 +121,7 @@ export function GrowthScreen() {
         <View style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 2 }}>
             <VadText variant="heading">More campaigns</VadText>
-            <VadText variant="caption" tone="secondary">Campaigns currently available to your account appear here.</VadText>
+            <VadText variant="caption" tone="secondary">Available campaigns.</VadText>
           </View>
           <View style={{ flexDirection: density.wide ? 'row' : 'column', flexWrap: 'wrap', gap: theme.spacing.md }}>
             {otherCampaigns.map((campaign) => (
@@ -133,7 +134,7 @@ export function GrowthScreen() {
       <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
         <View style={{ gap: 3 }}>
           <VadText variant="heading">Have a campaign or partner code?</VadText>
-          <VadText variant="caption" tone="secondary">Apply it once to your account. If the code belongs to a promotion, any reward follows the offer shown for that promotion.</VadText>
+          <VadText variant="caption" tone="secondary">Apply a code to your account. Promotion rewards follow the offer terms.</VadText>
         </View>
         <VadInput value={code} onChangeText={(value) => setCode(value.toUpperCase())} autoCapitalize="characters" autoCorrect={false} placeholder="Enter code" />
         <VadButton label="Apply code" loading={working} disabled={!code.trim() || data.paused} onPress={() => void claimCode()} />
@@ -163,10 +164,10 @@ export function GrowthScreen() {
       <View style={{ gap: theme.spacing.md }}>
         <View style={{ gap: 2 }}>
           <VadText variant="heading">Your rewards</VadText>
-          <VadText variant="caption" tone="secondary">Some rewards may be checked before they are added to your available VAD balance.</VadText>
+          <VadText variant="caption" tone="secondary">Some rewards need review before they are credited.</VadText>
         </View>
         {data.rewards.length ? data.rewards.map((reward) => <RewardRow key={reward.publicId} reward={reward} />) : (
-          <VadEmptyState title="No rewards yet" body="Your normal invite is for sharing VAD. Rewards appear here only when you qualify through an active promotion." />
+          <VadEmptyState title="No rewards yet" body="Rewards appear here when you qualify for an active promotion." />
         )}
       </View>
 

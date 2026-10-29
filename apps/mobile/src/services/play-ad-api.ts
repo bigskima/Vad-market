@@ -69,11 +69,19 @@ export function getSponsorCreative(placement: PlayAdPlacement) {
   const imageUrl = read('image_url', 2000);
   const clickUrl = read('click_url', 2000);
 
+  const safeImage = imageUrl.startsWith('https://')
+    ? imageUrl
+    : imageUrl && !imageUrl.startsWith('/')
+      && !imageUrl.includes('..')
+      && /^[A-Za-z0-9_./-]+$/.test(imageUrl)
+      ? imageUrl
+      : null;
+
   return {
     sponsorName: read('sponsor_name', 120),
     title: read('title', 160),
     body: read('body', 320),
-    imageUrl: imageUrl.startsWith('https://') ? imageUrl : null,
+    imageUrl: safeImage,
     clickUrl: clickUrl.startsWith('https://') ? clickUrl : null,
     ctaLabel: read('cta_label', 48) || 'Learn more',
     imageAlt: read('image_alt', 180),

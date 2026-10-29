@@ -8,7 +8,8 @@ import { useVadTheme } from '@/providers/theme-provider';
 import { PlayAdSlot } from './play-ad-slot';
 import { listPublishedPlayExperiences, playFriendlyError, type PlayExperience, playExperienceLabel } from '@/services/play-api';
 import { PlayExperienceTile } from './play-experience-tile';
-import { PlayLoadingState, PlayMessageState } from './play-states';
+import { PlayMessageState } from './play-states';
+import { PlayGamesSkeleton } from '@/components/ui/screen-skeletons';
 import { PlayTabNavigation } from './play-tab-navigation';
 
 export function PlayGamesScreen() {
@@ -68,12 +69,14 @@ export function PlayGamesScreen() {
     });
   }, [activeType, experiences, query]);
 
+  if (loading) return <PlayGamesSkeleton />;
+
   return (
     <View style={{ gap: theme.spacing.lg }}>
       <View style={{ gap: 5 }}>
         <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.4 }}>VAD PLAY</VadText>
-        <VadText variant="title">Games & experiences</VadText>
-        <VadText tone="secondary">Search the live catalogue and filter by the experience type.</VadText>
+        <VadText variant="title">Games</VadText>
+        <VadText tone="secondary">Play free games and explore prize campaigns.</VadText>
       </View>
 
       <PlayTabNavigation active="Games" />
@@ -83,10 +86,10 @@ export function PlayGamesScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, paddingHorizontal: theme.spacing.md, minHeight: 48 }}>
         <VadIcon name="search" size={18} tone="tertiary" />
         <TextInput
-          accessibilityLabel="Search Play experiences"
+          accessibilityLabel="Search games"
           value={query}
           onChangeText={setQuery}
-          placeholder="Search games and experiences"
+          placeholder="Search games"
           placeholderTextColor={theme.colors.textTertiary}
           autoCapitalize="none"
           returnKeyType="search"
@@ -128,21 +131,19 @@ export function PlayGamesScreen() {
             })}
           </View>
           <VadText variant="caption" tone="tertiary">
-            {filtered.length} {filtered.length === 1 ? 'experience' : 'experiences'}
+            {filtered.length} {filtered.length === 1 ? 'game' : 'games'}
           </VadText>
         </View>
       ) : null}
 
-      {loading ? (
-        <PlayLoadingState label="Loading published experiences" />
-      ) : error ? (
-        <PlayMessageState title="Games could not be loaded" body={error} actionLabel="Retry" onAction={refresh} tone="error" />
+      {error ? (
+        <PlayMessageState title="Can't load games" body="Try again in a moment." actionLabel="Retry" onAction={refresh} tone="error" />
       ) : filtered.length === 0 ? (
         <PlayMessageState
-          title={experiences.length === 0 ? 'The games catalogue is empty' : 'No matches found'}
+          title={experiences.length === 0 ? 'No games yet' : 'No matches'}
           body={experiences.length === 0
-            ? 'No sample experiences are inserted by the app. When VAD publishes a supported experience in the database, it will appear here.'
-            : 'Try another search term or choose a different type.'}
+            ? 'New games will appear here.'
+            : 'Try another search or filter.'}
           actionLabel={experiences.length === 0 ? 'Back to Discover' : 'Clear filters'}
           onAction={() => {
             if (experiences.length === 0) router.replace('/play');

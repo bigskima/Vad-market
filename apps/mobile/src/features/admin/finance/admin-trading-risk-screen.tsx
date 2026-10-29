@@ -156,7 +156,7 @@ export function AdminTradingRiskScreen() {
       <VadCard variant="muted" style={{ gap: theme.spacing.xs, padding: theme.spacing.md }}>
         <VadText variant="bodyStrong">Important: policy versioning</VadText>
         <VadText variant="caption" tone="secondary">
-          Saving increments the asset policy version and affects newly created market instruments only. Existing markets retain their recorded policy snapshot. Pre-existing Peer Pool markets keep their original uncapped payout terms; do not change those terms retroactively.
+          Changes apply to new markets only. Existing markets keep their original rules, including uncapped payouts on older Peer Pool markets.
         </VadText>
       </VadCard>
 
@@ -180,8 +180,8 @@ export function AdminTradingRiskScreen() {
         </VadCard>
       ) : policies.length === 0 ? (
         <VadCard variant="surface" style={{ gap: 4, padding: theme.spacing.md }}>
-          <VadText variant="bodyStrong">No trading risk policies configured</VadText>
-          <VadText variant="caption" tone="secondary">An authorized administrator must configure an active risk policy for a supported asset before creating new markets.</VadText>
+          <VadText variant="bodyStrong">No risk policies yet</VadText>
+          <VadText variant="caption" tone="secondary">Configure an active risk policy for a supported asset before creating markets.</VadText>
           <VadButton label="Retry" variant="secondary" onPress={() => void load()} />
         </VadCard>
       ) : policies.map((policy) => {

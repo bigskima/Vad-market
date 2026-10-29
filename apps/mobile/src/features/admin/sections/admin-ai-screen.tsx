@@ -170,13 +170,13 @@ export function AdminAiScreen() {
         </View>
       ) : null}
 
-      {error ? <VadErrorState title="AI provider catalog unavailable" message={error} onRetry={() => void load()} /> : null}
+      {error ? <VadErrorState title="AI model list unavailable" message={error} onRetry={() => void load()} /> : null}
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
         <Metric label="Configured models" value={models.length} />
         <Metric label="Admission capable" value={admissionModels.length} />
         <Metric label="Market drafting capable" value={draftingModels.length} />
-        <Metric label="Currently routable" value={active.length} tone={active.length ? 'yes' : 'warning'} />
+        <Metric label="Active models" value={active.length} tone={active.length ? 'yes' : 'warning'} />
       </View>
 
       <VadCard variant="muted" style={{ gap: theme.spacing.sm }}>
@@ -184,13 +184,13 @@ export function AdminAiScreen() {
           <View style={{ flex: 1, gap: 3 }}>
             <VadText variant="bodyStrong">Market admission routing</VadText>
             <VadText variant="caption" tone="secondary">
-              A provider is eligible only for capabilities enabled on its model. Market-builder models must also meet VAD’s free-only routing policy; lower priority numbers run first and another eligible model may be tried if one fails.
+              Models only handle enabled tasks. Market Builder uses eligible free models; lower priority numbers are tried first.
             </VadText>
           </View>
-          <VadChip label={active.length ? `${active.length} ROUTABLE` : 'NO ACTIVE MODEL'} tone={active.length ? 'yes' : 'warning'} />
+          <VadChip label={active.length ? `${active.length} ACTIVE` : 'NO ACTIVE MODEL'} tone={active.length ? 'yes' : 'warning'} />
         </View>
         <VadText variant="caption" tone="tertiary">
-          Saving a model does not activate its provider. New provider integrations start disabled and still use the existing provider status approval controls.
+          Saving does not activate a provider. New providers stay off until approved.
         </VadText>
       </VadCard>
 
@@ -198,8 +198,8 @@ export function AdminAiScreen() {
         <VadEmptyState
           title="No AI model configured"
           body={isSuperAdmin
-            ? 'Configure a supported provider protocol and model. Until a provider is activated, proposals that need AI review are sent for manual review instead.'
-            : 'No AI model has been configured for market admission yet. A Super Admin must configure one before it can be activated.'}
+            ? 'Add an AI model for market review. Until then, proposals are reviewed manually.'
+            : 'Ask a Super Admin to add an AI model for market review.'}
           actionLabel={isSuperAdmin ? 'Configure first model' : undefined}
           onAction={isSuperAdmin ? () => setShowConfigure(true) : undefined}
         />
@@ -207,7 +207,7 @@ export function AdminAiScreen() {
         <View style={{ gap: theme.spacing.sm }}>
           <View style={{ gap: 2 }}>
             <VadText variant="heading">Configured models</VadText>
-            <VadText variant="caption" tone="secondary">Review model capabilities here. Super Admins can enable Market builder for free-tier AI models without changing provider status.</VadText>
+            <VadText variant="caption" tone="secondary">Super Admins can enable Market Builder for eligible free AI models.</VadText>
           </View>
           {models.map((row) => (
             <AiModelRow

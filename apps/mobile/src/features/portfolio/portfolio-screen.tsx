@@ -11,6 +11,7 @@ import { VadIcon } from '@/components/ui/vad-icon';
 import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
+import { PortfolioSectionSkeleton } from '@/components/ui/screen-skeletons';
 import { assetMoney, pct } from '@/features/markets/format';
 import { marketCategoryLabel, marketOutcomeLabel, marketStatusLabel } from '@/features/markets/market-display-labels';
 import { MarketThumbnail } from '@/features/markets/components/market-thumbnail';
@@ -308,7 +309,7 @@ export function PortfolioScreen({
               </VadText>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <VadText variant="caption" tone="secondary" numberOfLines={1}>
-                  {historyLoading ? 'Updating value…' : latestSnapshot?.valuation_complete && latestSnapshot.total_value != null ? 'Account value' : 'Valuation unavailable'}
+                  {historyLoading ? 'Updating value…' : latestSnapshot?.valuation_complete && latestSnapshot.total_value != null ? 'Account value' : 'Total value unavailable'}
                 </VadText>
                 {assetOptions.length > 1 ? (
                   <Pressable accessibilityRole="button" accessibilityLabel={`Change portfolio currency, current ${asset}`} onPress={() => {
@@ -323,7 +324,7 @@ export function PortfolioScreen({
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 5 }}>
                 <VadText variant="caption" tone={performanceDelta == null ? 'tertiary' : performanceDelta >= 0 ? 'yes' : 'no'} numberOfLines={1} adjustsFontSizeToFit>
                   {performanceDelta == null
-                    ? 'Performance history building'
+                    ? 'No history yet'
                     : `${performanceDelta >= 0 ? '+' : '−'}${assetMoney(Math.abs(performanceDelta), asset)}`}
                 </VadText>
                 {performancePercent != null ? (
@@ -457,9 +458,9 @@ export function PortfolioScreen({
           {sectionErrors?.positions ? (
             <InlineError message={sectionErrors.positions} onRetry={retry} />
           ) : loading && positionsForAsset.length === 0 && activePoolStakes.length === 0 ? (
-            <LoadingState label="Loading your positions…" />
+            <PortfolioSectionSkeleton kind="positions" />
           ) : marksLoading && positionsForAsset.length > 0 ? (
-            <LoadingState label="Loading your position valuations…" />
+            <PortfolioSectionSkeleton kind="valuation" />
           ) : filteredPositions.length ? (
             <View style={{ gap: theme.spacing.sm }}>
               {visiblePositions.visibleItems.map((position) => (
@@ -485,13 +486,13 @@ export function PortfolioScreen({
 
       {tab === 'orders' ? (
         sectionErrors?.orders ? <InlineError message={sectionErrors.orders} onRetry={retry} />
-          : loading && visibleOrders.totalCount === 0 ? <LoadingState label="Loading your open orders…" />
+          : loading && visibleOrders.totalCount === 0 ? <PortfolioSectionSkeleton kind="orders" />
           : visibleOrders.totalCount ? (
             <View style={{ gap: theme.spacing.sm }}>
               {visibleOrders.visibleItems.map((order) => <OrderCard key={order.order_id} order={order} onPress={() => onOpenOrder(order)} />)}
               {visibleOrders.remainingCount > 0 ? <VadButton label={`Show next ${visibleOrders.nextCount} orders`} variant="secondary" onPress={visibleOrders.showMore} /> : null}
             </View>
-          ) : <VadEmptyState title="No open orders" body="Open and partially filled orders appear here. Filled and cancelled orders stay in History." />
+          ) : <VadEmptyState title="No open orders" body="Your active orders will appear here." />
       ) : null}
 
       {tab === 'history' ? (
@@ -500,7 +501,7 @@ export function PortfolioScreen({
           {sectionErrors?.settlements ? <InlineError message={sectionErrors.settlements} onRetry={retry} /> : null}
           {orderHistoryError ? <InlineError message={orderHistoryError} onRetry={retry} /> : null}
           {(loading || orderHistoryLoading) && historyEvents.length === 0 ? (
-            <LoadingState label="Loading your trading and settlement history…" />
+            <PortfolioSectionSkeleton kind="history" />
           ) : historyEvents.length ? (
             <View style={{ gap: theme.spacing.sm }}>
               {visibleHistory.visibleItems.map((event) => event.kind === 'market'
@@ -509,10 +510,10 @@ export function PortfolioScreen({
               {visibleHistory.remainingCount > 0 ? <VadButton label={`Show next ${visibleHistory.nextCount} history records`} variant="secondary" onPress={visibleHistory.showMore} /> : null}
             </View>
           ) : !sectionErrors?.marketHistory && !orderHistoryError ? (
-            <VadEmptyState title="No portfolio history yet" body="Trades, orders, outcomes, refunds and settlement results appear here from your account records." />
+            <VadEmptyState title="No portfolio history yet" body="Your trades, orders, outcomes, refunds and payouts appear here." />
           ) : null}
           {settlements.filter((row) => row.asset_code === asset).length ? (
-            <VadProgressiveSection title="Settlement receipts" icon="activity" summary={<VadText variant="caption" tone="tertiary">{settlements.filter((row) => row.asset_code === asset).length} persisted records</VadText>}>
+            <VadProgressiveSection title="Settlement receipts" icon="activity" summary={<VadText variant="caption" tone="tertiary">{settlements.filter((row) => row.asset_code === asset).length} settlements</VadText>}>
               {settlements.filter((row) => row.asset_code === asset).slice(0, 8).map((receipt) => <SettlementCard key={receipt.settlement_id} receipt={receipt} />)}
             </VadProgressiveSection>
           ) : null}
@@ -523,13 +524,13 @@ export function PortfolioScreen({
         <View style={{ gap: theme.spacing.md }}>
           <View style={{ gap: 4 }}>
             <VadText variant="bodyStrong">Settled results · {period}</VadText>
-            <VadText variant="caption" tone="secondary">Every item below is a persisted market settlement in {asset}. Refunds and voids remain visible here, but do not count as wins or losses.</VadText>
+            <VadText variant="caption" tone="secondary">Settled results in {asset}. Refunds and voids do not count as wins or losses.</VadText>
           </View>
           {periodSettledRows.length ? (
             <View style={{ gap: theme.spacing.sm }}>
               {periodSettledRows.slice(-8).reverse().map((row, index) => <HistoryCard key={`perf-${row.market_id}-${row.selected_outcome}-${row.settled_at ?? index}`} row={row} />)}
             </View>
-          ) : <VadEmptyState title="No realized performance yet" body="Realized P&L is available after VAD records a settlement for one of your predictions." />}
+          ) : <VadEmptyState title="No settled predictions yet" body="Your settled predictions will appear here." />}
         </View>
       ) : null}
 
@@ -837,14 +838,14 @@ function TradingPerformanceCard({
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, minWidth: 0 }}>
           <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.brandPrimary }} />
-          <VadText variant="caption" tone="secondary">TRADING PERFORMANCE</VadText>
+          <VadText variant="caption" tone="secondary">Performance</VadText>
         </View>
         <VadChip label={`${asset} · ${period}`} tone="brand" />
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-          <VadText variant="caption" tone="tertiary">NET REALIZED P&L</VadText>
+          <VadText variant="caption" tone="tertiary">Realized P&L</VadText>
           <VadText
             variant={density.phone ? 'title' : 'heading'}
             tone={pnlTone}
@@ -868,8 +869,8 @@ function TradingPerformanceCard({
 
       <View style={{ gap: 5 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <VadText variant="caption" tone="tertiary">CUMULATIVE REALIZED P&L</VadText>
-          <VadText variant="caption" tone="tertiary">Zero baseline</VadText>
+          <VadText variant="caption" tone="tertiary">P&L trend</VadText>
+          <VadText variant="caption" tone="tertiary">Baseline</VadText>
         </View>
         {pnlSeries.length >= 2 ? (
           <View style={{ height: 84 }}>
@@ -891,8 +892,8 @@ function TradingPerformanceCard({
           }}>
             <VadText variant="caption" tone="secondary">
               {pnlSeries.length === 1
-                ? 'One dated result recorded. Another settled result is needed to plot a trend.'
-                : 'Your realized P&L trend will appear after two dated settlement results. No results are estimated.'}
+                ? 'One more settled result is needed to show a trend.'
+                : 'Your trend appears after two settled results.'}
             </VadText>
           </View>
         )}
@@ -930,15 +931,15 @@ function TradingPerformanceCard({
         paddingTop: 9,
       }}>
         <View style={{ flex: 0.7, minWidth: 0, gap: 2 }}>
-          <VadText variant="caption" tone="tertiary">OPEN POSITIONS</VadText>
+          <VadText variant="caption" tone="tertiary">Open positions</VadText>
           <VadText variant="bodyStrong">{openCount}</VadText>
         </View>
         <View style={{ flex: 1.15, minWidth: 0, alignItems: 'center', gap: 2 }}>
-          <VadText variant="caption" tone="tertiary" numberOfLines={1}>COMMITTED STAKES</VadText>
+          <VadText variant="caption" tone="tertiary" numberOfLines={1}>Committed stakes</VadText>
           <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>{committedStakeText}</VadText>
         </View>
         <View style={{ flex: 1.1, minWidth: 0, alignItems: 'flex-end', gap: 2 }}>
-          <VadText variant="caption" tone="tertiary">CURRENT VALUE</VadText>
+          <VadText variant="caption" tone="tertiary">Current value</VadText>
           <VadText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>
             {openValueText}
           </VadText>
@@ -975,19 +976,9 @@ function InlineError({ message, onRetry }: { message: string; onRetry: () => voi
   const theme = useVadTheme();
   return (
     <VadCard variant="raised" style={{ gap: 8, borderColor: theme.colors.border }}>
-      <VadText variant="bodyStrong">Portfolio data is temporarily unavailable</VadText>
+      <VadText variant="bodyStrong">Portfolio unavailable</VadText>
       <VadText variant="caption" tone="secondary">{message}</VadText>
       <VadButton label="Try again" variant="secondary" onPress={onRetry} />
-    </VadCard>
-  );
-}
-
-function LoadingState({ label }: { label: string }) {
-  const theme = useVadTheme();
-  return (
-    <VadCard variant="raised" style={{ alignItems: 'center', padding: theme.spacing.lg, gap: 8 }}>
-      <VadIcon name="activity" size={21} tone="brand" />
-      <VadText variant="caption" tone="secondary">{label}</VadText>
     </VadCard>
   );
 }
@@ -995,7 +986,7 @@ function LoadingState({ label }: { label: string }) {
 function PortfolioLineChart({ values, width, height, positive, zeroBaseline = false }: { values: number[]; width: number; height: number; positive: boolean; zeroBaseline?: boolean }) {
   const theme = useVadTheme();
   if (values.length < 2 || values.some((value) => !Number.isFinite(value))) {
-    return <View style={{ height, justifyContent: "center", alignItems: "center", paddingHorizontal: 12 }}><VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>Record more genuine valuations to show this trend. No historical values are estimated.</VadText></View>;
+    return <View style={{ height, justifyContent: "center", alignItems: "center", paddingHorizontal: 12 }}><VadText variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>More balance history is needed to show this trend.</VadText></View>;
   }
   const min = zeroBaseline ? Math.min(0, ...values) : Math.min(...values);
   const max = zeroBaseline ? Math.max(0, ...values) : Math.max(...values);

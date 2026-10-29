@@ -45,6 +45,7 @@ export default function MarketsRoute() {
           curatedMarkets={data.vadMarkets}
           trendingMarkets={data.trendingMarkets}
           unreadNotifications={data.unreadNotificationCount > 0}
+          loading={data.loading}
         />
       )}
     </ProductRoute>

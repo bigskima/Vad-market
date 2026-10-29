@@ -142,7 +142,7 @@ function PromotionSection({ promotions, onEdit }: { promotions: HomePromotion[];
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="heading">Home campaign carousel</VadText>
-          <VadText variant="caption" tone="secondary">Campaign cards move automatically in both directions. Featured markets remain a separate live market rail.</VadText>
+          <VadText variant="caption" tone="secondary">Campaign cards scroll automatically. Featured markets appear separately.</VadText>
         </View>
         <VadButton label="Add campaign" size="small" fullWidth={false} onPress={() => onEdit('NEW')} />
       </View>
@@ -354,7 +354,7 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
           multiline
         />
         <VadButton label="Use suggested prompt" variant="secondary" size="small" disabled={uploading || generating || working || title.trim().length < 3} onPress={() => setVisualDirection(suggestedVisualPrompt)} />
-        <VadText variant="caption" tone="tertiary">Suggested style: 16:9 editorial artwork, one clear focal point, strong contrast, clean negative space, no text, logos, buttons or watermark.</VadText>
+        <VadText variant="caption" tone="tertiary">Use wide 16:9 artwork with one clear subject, strong contrast and no text or logos.</VadText>
         <VadButton
           label={kind === 'IMAGE' ? imageUrl ? 'Regenerate artwork with AI' : 'Generate artwork with AI' : 'Generate image campaign with AI'}
           variant="secondary"
@@ -366,11 +366,11 @@ function PromotionEditor({ promotion, onSaved }: { promotion: HomePromotion | nu
 
       <View style={{ gap: theme.spacing.sm }}>
         <VadText variant="label" tone="brand">PLACEMENT & SCHEDULE</VadText>
-        <VadInput label="Target route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Internal VAD route opened when someone taps this banner, for example /markets." />
+        <VadInput label="Target route" value={targetPath} onChangeText={setTargetPath} placeholder="/markets or /market/..." autoCapitalize="none" autoCorrect={false} hint="Page to open when someone taps this banner, for example /markets." />
       <VadInput label="Sort order" value={sortOrder} onChangeText={(value) => setSortOrder(value.replace(/\D/g, ''))} keyboardType="number-pad" hint="Lower numbers appear earlier in the carousel." />
       <VadDateTimeField label="Starts at (optional)" value={startsAt} onChange={setStartsAt} clearable hint="Leave empty to start immediately when published." />
         <VadDateTimeField label="Ends at (optional)" value={endsAt} onChange={setEndsAt} minDate={startsAt || undefined} clearable hint="Leave empty for no scheduled end. The end must be after the start." />
-        <VadText variant="caption" tone="tertiary">Times are saved as exact ISO timestamps in UTC, so campaign scheduling remains consistent across devices.</VadText>
+        <VadText variant="caption" tone="tertiary">Choose the start and end times for this campaign.</VadText>
       </View>
 
       {error ? <VadErrorState title={errorTitle} message={error} /> : null}

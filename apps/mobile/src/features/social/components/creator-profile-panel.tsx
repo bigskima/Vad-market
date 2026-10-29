@@ -104,7 +104,7 @@ function PredictionHistory({ predictions }: { predictions: CreatorPrediction[] }
     return (
       <VadEmptyState
         title="No prediction history yet"
-        body="Published market predictions will appear here as this creator builds a public track record."
+        body="This creator's published predictions will appear here."
       />
     );
   }
@@ -113,7 +113,7 @@ function PredictionHistory({ predictions }: { predictions: CreatorPrediction[] }
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ gap: 2 }}>
         <VadText variant="heading">Prediction history</VadText>
-        <VadText variant="caption" tone="secondary">See this creator’s published calls and how completed markets turned out.</VadText>
+        <VadText variant="caption" tone="secondary">Published predictions and results.</VadText>
       </View>
 
       <View style={{ flexDirection: grid ? 'row' : 'column', flexWrap: grid ? 'wrap' : 'nowrap', gap: theme.spacing.sm }}>

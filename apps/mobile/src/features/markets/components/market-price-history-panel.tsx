@@ -121,7 +121,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="bodyStrong">{poolMode ? 'Pool split history' : 'Price history'}</VadText>
-          <VadText variant="caption" tone="secondary">{poolMode ? 'Recorded YES / NO share over time' : 'Recorded executions · latest 240 fills'}</VadText>
+          <VadText variant="caption" tone="secondary">{poolMode ? 'YES / NO share over time' : 'Recent trades'}</VadText>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 2 }}>
           <VadText variant="caption" tone="tertiary">LATEST</VadText>
@@ -160,7 +160,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
 
       {failed ? (
         <View style={{ borderRadius: 9, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 9, paddingVertical: 8 }}>
-          <VadText variant="caption" tone="secondary">Price history unavailable right now.</VadText>
+          <VadText variant="caption" tone="secondary">Price history unavailable.</VadText>
         </View>
       ) : loading ? (
         <View style={{ height: chartHeight, justifyContent: 'center', gap: 8 }}>
@@ -171,7 +171,7 @@ export function MarketPriceHistoryPanel({ instrumentId, liquidityMode }: { instr
         </View>
       ) : visiblePoints.length === 0 || (series === 'YES' && yesValues.length === 0) || (series === 'NO' && noValues.length === 0) || (series === 'BOTH' && yesValues.length === 0 && noValues.length === 0) ? (
         <View style={{ borderRadius: 9, backgroundColor: theme.colors.surfaceMuted, paddingHorizontal: 9, paddingVertical: 8 }}>
-          <VadText variant="caption" tone="secondary">{points.length === 0 ? 'No recorded history yet. This chart appears after real market activity is recorded.' : 'No trades in this range. Choose a wider range.'}</VadText>
+          <VadText variant="caption" tone="secondary">{points.length === 0 ? 'History appears after the first trade.' : 'No trades in this range. Choose a wider range.'}</VadText>
         </View>
       ) : (
         <View onLayout={(event) => setPlotWidth(event.nativeEvent.layout.width)} style={{ gap: 4 }}>

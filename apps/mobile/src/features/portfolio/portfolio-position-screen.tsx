@@ -134,7 +134,7 @@ export function PortfolioPositionScreen({ instrumentId, outcomeCode }: { instrum
           <ContextFact label="This position" value={assetMoney(costBasis, position.asset_code)} />
           <ContextFact label="Share" value={pct(portfolioWeight)} />
         </View>
-        <VadText variant="caption" tone="secondary">Filled trades update your shares and amount invested. The final market result determines any payout.</VadText>
+        <VadText variant="caption" tone="secondary">Filled trades change your position. Payout depends on the final market result.</VadText>
       </VadProgressiveSection>
     </View>
   );

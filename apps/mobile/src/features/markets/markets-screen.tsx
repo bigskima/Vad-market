@@ -7,6 +7,7 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
+import { MarketCatalogueSkeleton } from '@/components/ui/screen-skeletons';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useProgressiveList } from '@/hooks/use-progressive-list';
@@ -43,6 +44,7 @@ export function MarketsScreen({
   curatedMarkets = [],
   trendingMarkets = [],
   unreadNotifications = false,
+  loading = false,
 }: {
   markets: MarketCatalogItem[];
   onOpenMarket: (market: MarketCatalogItem) => void;
@@ -51,6 +53,7 @@ export function MarketsScreen({
   curatedMarkets?: VadMarketRow[];
   trendingMarkets?: TrendingMarketRow[];
   unreadNotifications?: boolean;
+  loading?: boolean;
 }) {
   const theme = useVadTheme();
   const density = useProductDensity();
@@ -415,7 +418,9 @@ export function MarketsScreen({
       ) : null}
 
       <TourTarget id="markets-results">
-        {orderedMarkets.length ? (
+        {loading && !markets.length ? (
+          <MarketCatalogueSkeleton />
+        ) : orderedMarkets.length ? (
           <View style={{ gap: theme.spacing.sm }}>
             <View
               style={{
@@ -477,11 +482,11 @@ export function MarketsScreen({
             ) : null}
           </View>
         ) : !markets.length ? (
-          <VadEmptyState title="No markets yet" body="Markets will appear here as soon as they are published." />
+          <VadEmptyState title="No markets yet" body="New markets will appear here." />
         ) : (
           <VadEmptyState
-            title="No matching markets"
-            body="Try another search, category or sorting option."
+            title="No matches found"
+            body="Try another search or filter."
             actionLabel="Clear filters"
             onAction={() => {
               setQuery('');

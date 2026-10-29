@@ -46,6 +46,7 @@ function isTourRoute(value: unknown): value is TourRoute {
     || value === '/watchlist'
     || value === '/market/[marketId]'
     || value === '/wallet/activity'
+    || value === '/wallet/payment-activity'
     || value === '/wallet/deposit'
     || value === '/wallet/withdraw'
     || value === '/wallet/send'
@@ -123,7 +124,7 @@ export async function getMyProductTour(tourCode = 'GETTING_STARTED'): Promise<Pr
   const { data, error } = await supabase.rpc('my_product_tour', {
     p_tour_code: tourCode,
   });
-  fail(error, 'The guided tour is unavailable right now. You can try again from Account later.');
+  fail(error, 'Tour unavailable. Try again later from Account.');
 
   const raw = (data ?? {}) as RawTour;
   const versionId = raw.versionId == null ? null : Number(raw.versionId);

@@ -15,8 +15,11 @@ import {
 } from '@/services/play-api';
 import { PlayAdSlot } from './play-ad-slot';
 import { PlayCampaignSummary } from './play-campaign-summary';
-import { PlayLoadingState, PlayMessageState } from './play-states';
+import { PlayMessageState } from './play-states';
+import { PlayExperienceDetailSkeleton } from '@/components/ui/screen-skeletons';
 import { PlayTabNavigation } from './play-tab-navigation';
+import { PlayPracticeGamePanel } from './play-practice-game-panel';
+import { playMediaPublicUrl } from '@/services/play-media-api';
 
 export function PlayExperienceDetailScreen() {
   const theme = useVadTheme();
@@ -72,7 +75,9 @@ export function PlayExperienceDetailScreen() {
     return () => { active = false; };
   }, [load]);
 
-  const safeHeroUrl = experience?.hero_asset_url?.startsWith('https://') ? experience.hero_asset_url : null;
+  const safeHeroUrl = playMediaPublicUrl(experience?.hero_asset_url);
+
+  if (loading) return <PlayExperienceDetailSkeleton />;
 
   return (
     <View style={{ gap: theme.spacing.lg }}>
@@ -89,12 +94,10 @@ export function PlayExperienceDetailScreen() {
       <PlayTabNavigation active="Discover" />
       <PlayAdSlot placementCode="play-experience-inline" />
 
-      {loading ? (
-        <PlayLoadingState label="Loading experience details" />
-      ) : error ? (
-        <PlayMessageState title="Experience details are unavailable" body={error} actionLabel="Retry" onAction={() => void load()} tone="error" />
+      {error ? (
+        <PlayMessageState title="Could not load this game" body="Try again in a moment." actionLabel="Retry" onAction={() => void load()} tone="error" />
       ) : !experience ? (
-        <PlayMessageState title="This experience is not available" body="It may have been unpublished or its link may have changed. The catalogue only opens experiences that are currently published." actionLabel="Browse experiences" onAction={() => router.replace('/play/games')} />
+        <PlayMessageState title="Game unavailable" body="This game is not open yet." actionLabel="Browse experiences" onAction={() => router.replace('/play/games')} />
       ) : (
         <>
           {safeHeroUrl ? (
@@ -119,14 +122,13 @@ export function PlayExperienceDetailScreen() {
             <View style={{ gap: theme.spacing.md }}>
               <View style={{ gap: 4 }}>
                 <VadText variant="heading">Prize campaigns</VadText>
-                <VadText tone="secondary">Campaign amounts, qualifying funds, deadlines and policies come from the published database record.</VadText>
               </View>
               {campaignError ? (
-                <PlayMessageState title="Campaigns could not be loaded" body={campaignError} actionLabel="Refresh campaigns" onAction={() => void loadCampaigns(experience.id)} tone="error" />
+                <PlayMessageState title="Could not load campaigns" body="Try again in a moment." actionLabel="Refresh campaigns" onAction={() => void loadCampaigns(experience.id)} tone="error" />
               ) : campaigns.length === 0 ? (
                 <PlayMessageState
-                  title="No published campaigns are available"
-                  body="Only published campaign records appear here. A campaign is shown when its status and experience are eligible for public viewing."
+                  title="No campaigns yet"
+                  body="Check back soon."
                   actionLabel="Refresh campaigns"
                   onAction={() => void loadCampaigns(experience.id)}
                 />
@@ -136,14 +138,19 @@ export function PlayExperienceDetailScreen() {
                 </View>
               )}
             </View>
+          ) : experience.public_config?.practice_mode === true && (
+            experience.engine_key === 'QUICK_DRAW'
+            || experience.engine_key === 'SPIN_AND_WIN'
+            || experience.engine_key === 'SCRATCH_AND_REVEAL') ? (
+            <PlayPracticeGamePanel experienceId={experience.id} engineKey={experience.engine_key} />
           ) : (
             <View style={{ borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: theme.spacing.lg, gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <VadIcon name="info" tone="brand" size={18} />
-                <VadText variant="heading">This engine is not enabled</VadText>
+                <VadText variant="heading">Coming soon</VadText>
               </View>
               <VadText tone="secondary">
-                This engine remains unavailable until its server runtime, independent review and explicit activation have passed the required checks. No demo outcomes or client-generated prizes are used.
+                This game is not open to players yet.
               </VadText>
             </View>
           )}
@@ -153,7 +160,7 @@ export function PlayExperienceDetailScreen() {
             onPress={() => router.replace('/play/games')}
             style={({ pressed }) => ({ minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandPrimary, paddingHorizontal: 18, opacity: pressed ? 0.8 : 1 })}
           >
-            <VadText variant="label" tone="inverse">Explore other experiences</VadText>
+            <VadText variant="label" tone="inverse">More games</VadText>
           </Pressable>
         </>
       )}

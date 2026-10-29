@@ -134,7 +134,7 @@ export default function SendRoute() {
               {assets.map((asset) => (
                 <VadChip
                   key={asset}
-                  label={asset === 'NGN' ? 'NGN · Nigerian Naira' : 'USDC · VAD ledger'}
+                  label={asset === 'NGN' ? 'NGN · Nigerian Naira' : 'USDC'}
                   selected={activeAssetCode === asset}
                   tone={activeAssetCode === asset ? 'brand' : 'neutral'}
                   onPress={() => changeForm(() => setAssetCode(asset))}
@@ -142,17 +142,17 @@ export default function SendRoute() {
               ))}
             </View>
             {!assets.length ? (
-              <VadText variant="caption" tone="danger">No supported transfer currency is eligible for this account.</VadText>
+              <VadText variant="caption" tone="danger">No transfer currency is available for this account.</VadText>
             ) : null}
           </View>
 
           {availableBalance !== null ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 12, borderRadius: 12, backgroundColor: theme.colors.surfaceRaised }}>
-              <VadText variant="caption" tone="secondary">Available ledger balance</VadText>
+              <VadText variant="caption" tone="secondary">Available balance</VadText>
               <VadText variant="bodyStrong">{formatBalance(availableBalance, activeAssetCode)}</VadText>
             </View>
           ) : (
-            <VadText variant="caption" tone="secondary">The server will verify that your available ledger wallet can fund the transfer.</VadText>
+            <VadText variant="caption" tone="secondary">Your available balance is checked before the transfer.</VadText>
           )}
 
           <VadInput
@@ -175,7 +175,7 @@ export default function SendRoute() {
             keyboardType="decimal-pad"
             autoCapitalize="none"
             placeholder={activeAssetCode === 'NGN' ? 'e.g. 5000.00' : 'e.g. 12.500000'}
-            hint={`Maximum precision: ${precision} decimal places. The server enforces the real available balance.`}
+            hint={`Use up to ${precision} decimal places. Your available balance is checked before sending.`}
           />
 
           {error ? (
@@ -191,18 +191,17 @@ export default function SendRoute() {
               <VadText variant="body">Amount: {formatBalance(receipt.amount, receipt.assetCode)}</VadText>
               <VadText variant="caption" tone="secondary">Recipient: {recipientEmail.trim().toLowerCase()}</VadText>
               <VadText variant="caption" tone="secondary">Transfer reference: {receipt.transferId}</VadText>
-              <VadText variant="caption" tone="secondary">Ledger journal: {receipt.journalId}</VadText>
               {receipt.temporaryTestCredit ? (
                 <VadText variant="caption" tone="warning">
                   Test-credit transfer: the recipient has the same non-withdrawable NGN testing restrictions. The balance can be used only on eligible NGN markets and cannot be deposited or withdrawn.
                 </VadText>
               ) : null}
-              {receipt.idempotentReplay ? <VadText variant="caption" tone="secondary">This is the confirmation of an earlier request; the transfer was not debited twice.</VadText> : null}
+              {receipt.idempotentReplay ? <VadText variant="caption" tone="secondary">This transfer was already processed. Your balance was not charged twice.</VadText> : null}
             </View>
           ) : null}
 
           <VadButton
-            label={working ? 'Posting ledger transfer…' : alreadySentThisRequest ? 'Transfer posted' : 'Send assets'}
+            label={working ? 'Sending transfer…' : alreadySentThisRequest ? 'Transfer sent' : 'Send assets'}
             onPress={() => void submit()}
             loading={working}
             disabled={working || alreadySentThisRequest || !assets.length}

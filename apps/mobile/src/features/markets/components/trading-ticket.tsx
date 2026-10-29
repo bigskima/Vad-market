@@ -10,6 +10,7 @@ import { VadProgressiveSection } from '@/components/ui/vad-progressive-section';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
 import { VadText } from '@/components/ui/vad-text';
 import { runtimeCapabilityReason } from '@/features/policy/runtime-capability-copy';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { TourTarget } from '@/features/tour/tour-provider';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
@@ -172,9 +173,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
         setOnchainVenues([]);
         setSelectedChainCode('');
         setVenueError(
-          reason instanceof Error
-            ? reason.message
-            : 'We could not check the available USDC networks for this market.',
+          userFacingErrorMessage(reason, 'trading', 'Could not load USDC networks. Try again.'),
         );
       } finally {
         if (active) setVenuesLoading(false);
@@ -239,9 +238,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       setQuote(null);
       setPreparedUsdc(null);
       setQuoteError(
-        error instanceof Error
-          ? error.message
-          : 'We could not prepare this prediction right now.',
+        userFacingErrorMessage(error, 'trading', 'Could not review this trade. Try again.'),
       );
     } finally {
       setWorking(false);
@@ -273,9 +270,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
         await onPlaced();
       } catch (error) {
         setPlaceError(
-          error instanceof Error
-            ? error.message
-            : 'Transaction not submitted. Check your wallet and try again.',
+          userFacingErrorMessage(error, 'trading', 'USDC trade not submitted. Check your wallet and try again.'),
         );
       } finally {
         setWorking(false);
@@ -293,9 +288,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       await onPlaced();
     } catch (error) {
       setPlaceError(
-        error instanceof Error
-          ? error.message
-          : 'Could not place prediction. Try again.',
+        userFacingErrorMessage(error, 'trading', 'Could not place your prediction. Try again.'),
       );
     } finally {
       setWorking(false);
@@ -328,8 +321,8 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       {hasTemporaryNgnTestCredit ? (
         <InlineMessage
           tone="warning"
-          title="Temporary NGN test credit active"
-          body="This is non-cash credit in the normal NGN ledger and uses this same market instrument, pool stake, resolution and settlement pipeline. Current Nigeria location verification is still required. Deposits and withdrawals are blocked; email transfers are limited to other eligible test-credit accounts and cannot mix with cash-funded NGN."
+          title="NGN test funds active"
+          body="These are test funds, not cash. Verify your Nigeria location to use them. Deposits and withdrawals are disabled. Transfers are limited to eligible test accounts and stay separate from cash NGN."
         />
       ) : null}
 
@@ -365,7 +358,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
                 ))}
               </View>
             ) : (
-              <InlineMessage tone="warning" title="Outcome choices unavailable" body="This market’s choices could not be loaded. Leave this screen and reopen the market to try again." />
+              <InlineMessage tone="warning" title="Outcomes unavailable" body="Couldn’t load outcomes. Try again." />
             )
           ) : (
             <View accessibilityRole="radiogroup" style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
@@ -378,7 +371,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
               <MiniMetric label="Settlement" value="On-chain" />
               <MiniMetric label="Asset" value="USDC" />
-              <MiniMetric label="Pool stats" value="After confirmations" />
+              <MiniMetric label="Pool data" value="After confirmations" />
             </View>
           ) : (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs }}>
@@ -421,16 +414,16 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           {isUsdc ? (
             <View style={{ gap: theme.spacing.sm }}>
               <View style={{ gap: 2 }}>
-                <VadText variant="caption" tone="tertiary">SETTLEMENT NETWORK</VadText>
+                <VadText variant="caption" tone="tertiary">PAYOUT NETWORK</VadText>
                 <VadText variant="caption" tone="secondary">
                   Only eligible networks are shown.
                 </VadText>
               </View>
 
               {venuesLoading ? (
-                <InlineMessage tone="warning" title="Checking networks" body="Checking eligible networks." />
+                <InlineMessage tone="warning" title="Checking networks" body="Checking available networks." />
               ) : venueError ? (
-                <InlineMessage tone="danger" title="Networks unavailable" body={venueError} />
+                <InlineMessage tone="danger" title="Networks unavailable" body="Could not load USDC networks. Try again." />
               ) : onchainVenues.length ? (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                   {onchainVenues.map((venue) => (
@@ -452,8 +445,8 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
               ) : (
                 <InlineMessage
                   tone="warning"
-                  title="USDC settlement not active yet"
-                  body="No settlement network is enabled for your location. You cannot commit funds until one is enabled."
+                  title="USDC trading isn’t available yet"
+                  body="No supported network is available for your location. You can’t place a trade until one is enabled."
                 />
               )}
             </View>
@@ -465,12 +458,12 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <MiniMetric label={isUsdc ? 'Network' : 'Currency'} value={isUsdc ? selectedVenue?.chain_name ?? '—' : market.asset_code} />
           </View>
 
-          {quoteError ? <InlineMessage tone="danger" title="Prediction review unavailable" body={quoteError} /> : null}
+          {quoteError ? <InlineMessage tone="danger" title="Trade review unavailable" body={quoteError} /> : null}
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Back" variant="secondary" onPress={() => setStep('prediction')} style={{ flex: 1 }} />
             <VadButton
-              label="Review prediction & fees"
+              label="Review trade & fees"
               loading={working}
               disabled={!tradeReady || working || !inputValid || (isUsdc && (!selectedVenue || venuesLoading))}
               onPress={() => void prepareReview()}
@@ -507,14 +500,14 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
           <InlineMessage
             tone="warning"
-            title="USDC settlement limitation"
-            body="Pool and payout estimates are not available yet for Settlement V1. Its payout cap is inactive, and network gas is paid separately. Your stake and exposure limits are checked before authorization."
+            title="USDC trade limits"
+            body="Pool estimates aren't ready; payout caps are off. Network fees are separate, and stake and exposure limits still apply."
           />
 
           <VadProgressiveSection
-            title="Full quote breakdown"
+            title="Full cost breakdown"
             eyebrow="ADVANCED DETAILS"
-            description="Market limits, exposure, wallet, authorization and settlement notes."
+            description="Market limits, total stake, wallet confirmation and payout estimates."
             icon="activity"
             summary={<VadText variant="caption" tone="tertiary">View all quote details</VadText>}
           >
@@ -529,22 +522,22 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <InlineMessage
               tone="brand"
               title="Fee policy"
-              body="VAD sets fees through its approved policy. The contract enforces the signed fee and policy version."
+              body="Fees follow VAD's published fee policy."
             />
             <InlineMessage
               tone="warning"
-              title="On-chain pool estimates"
-              body="USDC pool size and payout estimates will appear after on-chain positions are indexed. Internal-ledger totals are not reused."
+              title="Pool estimates"
+              body="Pool size and payout estimates aren't available yet."
             />
             <InlineMessage
               tone="warning"
-              title="Payout-cap compatibility"
-              body="Settlement V1 cannot return a partial refund to losing positions after a normal result. The Peer Pool payout cap remains inactive for this protocol until a compatible contract version is deployed."
+              title="Payout rules"
+              body="Partial refunds on losing positions aren't supported. This market has no payout cap."
             />
             <InlineMessage
               tone="brand"
-              title="Network gas"
-              body="Wallet gas is paid to the network separately. It is not a VAD fee or part of the debit above."
+              title="Network fee"
+              body="Network fees are paid separately. They are not VAD fees and are not included in the amount above."
             />
           </VadProgressiveSection>
 
@@ -598,7 +591,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
           </VadText>
 
           <VadProgressiveSection
-            title="Full quote breakdown"
+            title="Full cost breakdown"
             eyebrow="ADVANCED DETAILS"
             description="Your existing stakes, market limits, pool estimates and settlement calculation."
             icon="activity"
@@ -641,11 +634,11 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <InlineMessage
               tone="brand"
               title="Peer Pool settlement"
-              body="Winning payouts are stake-weighted. Bounded markets apply the published maximum payout multiple; any resulting surplus is returned to eligible losing-side participants under the market rules. VAD does not add company funds."
+              body="Payouts are stake-weighted. Any surplus above a published payout cap is shared with eligible losing-side participants under the market rules."
             />
           </VadProgressiveSection>
 
-          {placeError ? <InlineMessage tone="danger" title="Prediction not committed" body={placeError} /> : null}
+          {placeError ? <InlineMessage tone="danger" title="Trade not submitted" body={placeError} /> : null}
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Edit stake" variant="secondary" disabled={working} onPress={() => { setStep('order'); setPlaceError(null); }} style={{ flex: 1 }} />
@@ -736,10 +729,10 @@ function UnsupportedUsdcOrderBook() {
 
   return (
     <VadCard variant="raised" style={{ gap: 9, padding: 12 }}>
-      <VadText variant="caption" tone="brand">USDC · ON-CHAIN SETTLEMENT</VadText>
-      <VadText variant="heading">Order-book USDC is not active in Settlement V1.</VadText>
+      <VadText variant="caption" tone="brand">USDC · BLOCKCHAIN TRADING</VadText>
+      <VadText variant="heading">USDC order-book trading isn’t available yet.</VadText>
       <VadText variant="caption" tone="secondary">
-        USDC does not use the internal fiat ledger. Peer Pool settlement is the supported on-chain path for this release.
+        USDC uses a separate wallet flow. Peer Pool is the only supported way to trade USDC right now.
       </VadText>
     </VadCard>
   );
@@ -779,7 +772,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
     void getMarketTradeRules(market.instrument_public_id)
       .then((value) => { if (active) setTradeRules(value); })
       .catch((value: unknown) => {
-        if (active) setTradeRulesError(value instanceof Error ? value.message : 'Market trade limits could not be loaded.');
+        if (active) setTradeRulesError(userFacingErrorMessage(value, 'trading', 'Market limits are unavailable. Try again.'));
       })
       .finally(() => { if (active) setTradeRulesLoading(false); });
     return () => { active = false; };
@@ -822,7 +815,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       setQuote(next);
       setStep('review');
     } catch (error) {
-      setQuoteError(error instanceof Error ? error.message : 'We could not prepare this order right now.');
+      setQuoteError(userFacingErrorMessage(error, 'trading', 'Could not review this order. Try again.'));
     } finally {
       setWorking(false);
     }
@@ -838,7 +831,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       setStep('result');
       await onPlaced();
     } catch (error) {
-      setPlaceError(error instanceof Error ? error.message : 'We could not place this order. Please try again.');
+      setPlaceError(userFacingErrorMessage(error, 'trading', 'Could not place your order. Try again.'));
     } finally {
       setWorking(false);
     }
@@ -856,7 +849,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
           <View style={{ gap: 3 }}>
             <VadText variant="caption" tone="brand">STEP 1 · YOUR VIEW</VadText>
             <VadText variant="heading">Choose an outcome.</VadText>
-            <VadText variant="caption" tone="secondary">This market uses the order book. A position exists only when your order actually matches another participant.</VadText>
+            <VadText variant="caption" tone="secondary">Your position starts when your order matches another trader.</VadText>
           </View>
           <View accessibilityRole="radiogroup" style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <OutcomeChoice active={outcome === 'YES'} label="YES" title="I think it will happen" value={probability(market.yes_price)} tone="yes" disabled={!tradeReady || working} onPress={() => chooseOutcome('YES')} />
@@ -902,9 +895,9 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
               Per-order notional: minimum {assetMoney(tradeRules.minTradeAmount, market.asset_code)} · maximum {assetMoney(tradeRules.maxTradeAmount, market.asset_code)}. Order value is limit price × shares.
             </VadText>
           ) : tradeRulesLoading ? (
-            <VadText variant="caption" tone="secondary">Loading this market’s trading limits…</VadText>
+            <VadText variant="caption" tone="secondary">Loading trade limits…</VadText>
           ) : tradeRulesError ? (
-            <VadText variant="caption" tone="warning">{tradeRulesError} VAD will still enforce the limits on the server.</VadText>
+            <VadText variant="caption" tone="warning">{tradeRulesError} Limits are checked before submission.</VadText>
           ) : null}
           {belowMarketMinimum ? <InlineMessage tone="warning" title="Order is below the market minimum" body={`This order is ${estimatedNotional}. Increase the limit price or shares so its value is at least ${assetMoney(tradeRules?.minTradeAmount ?? 0, market.asset_code)}.`} /> : null}
           {aboveMarketMaximum ? <InlineMessage tone="warning" title="Order exceeds this market’s limit" body={`This order is ${estimatedNotional}. Reduce the limit price or shares to stay at or below ${assetMoney(tradeRules?.maxTradeAmount ?? 0, market.asset_code)}.`} /> : null}
@@ -958,15 +951,15 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
           )}
 
           {quote.side === 'BUY' ? (
-            <QuoteLine label="Estimated net settlement if fully filled and correct" value={assetMoney(completeQuote?.estimatedNetSettlement ?? quote.potentialGrossSettlement, market.asset_code)} />
+            <QuoteLine label="Estimated net payout if fully filled and you win" value={assetMoney(completeQuote?.estimatedNetSettlement ?? quote.potentialGrossSettlement, market.asset_code)} />
           ) : null}
 
           <VadText variant="caption" tone="secondary">
-            Maker/taker fees depend on how the order fills. Settlement fees apply only to an eligible winning payout and are estimates until resolution.
+            Trading fees depend on how your order matches. A payout fee is charged only if you win; the amount is an estimate until the market closes.
           </VadText>
 
           <VadProgressiveSection
-            title="Full quote breakdown"
+            title="Full cost breakdown"
             eyebrow="ADVANCED DETAILS"
             description="Market exposure, fee scenarios and settlement estimates."
             icon="activity"
@@ -979,17 +972,17 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
             {quote.maxUserMarketExposure != null ? <QuoteLine label="Maximum user market exposure" value={assetMoney(quote.maxUserMarketExposure, market.asset_code)} /> : null}
             <QuoteLine label="Price per share" value={assetMoney(quote.price, market.asset_code)} />
             <QuoteLine label="Shares" value={Number(quote.quantity).toLocaleString()} />
-            <QuoteLine label="VAD maker fee if maker" value={assetMoney(quote.makerFee, market.asset_code)} />
-            <QuoteLine label="VAD taker fee if taker" value={assetMoney(quote.takerFee, market.asset_code)} />
-            {quote.side === 'BUY' ? <QuoteLine label="Maximum VAD fee reserve" value={assetMoney(quote.maximumFeeReserve, market.asset_code)} /> : null}
+            <QuoteLine label="VAD fee if your order adds liquidity" value={assetMoney(quote.makerFee, market.asset_code)} />
+            <QuoteLine label="VAD fee if your order matches an existing order" value={assetMoney(quote.takerFee, market.asset_code)} />
+            {quote.side === 'BUY' ? <QuoteLine label="Maximum trading fee reserved" value={assetMoney(quote.maximumFeeReserve, market.asset_code)} /> : null}
             {quote.side === 'BUY' ? <QuoteLine label="Maximum wallet amount held" value={assetMoney(quote.maximumCashReservation, market.asset_code)} /> : <QuoteLine label="Shares available to sell" value={String(quote.availableSharesToSell)} />}
-            <QuoteLine label="Gross settlement if fully filled and correct" value={assetMoney(quote.potentialGrossSettlement, market.asset_code)} />
-            <QuoteLine label="Estimated VAD settlement fee if you win" value={assetMoney(completeQuote?.estimatedSettlementFee ?? 0, market.asset_code)} />
-            <QuoteLine label="Estimated net settlement if you win" value={assetMoney(completeQuote?.estimatedNetSettlement ?? quote.potentialGrossSettlement, market.asset_code)} />
+            <QuoteLine label="Gross payout if fully filled and you win" value={assetMoney(quote.potentialGrossSettlement, market.asset_code)} />
+            <QuoteLine label="Estimated VAD payout fee if you win" value={assetMoney(completeQuote?.estimatedSettlementFee ?? 0, market.asset_code)} />
+            <QuoteLine label="Estimated net payout if you win" value={assetMoney(completeQuote?.estimatedNetSettlement ?? quote.potentialGrossSettlement, market.asset_code)} />
             <InlineMessage
               tone="brand"
               title="Fee transparency"
-              body="VAD reserves up to the displayed trading-fee amount for a BUY. The actual maker/taker fee follows the way each fill executes. The settlement fee applies only to an eligible winning payout and is shown here as an estimate before placement."
+              body="For BUY orders, VAD may reserve up to the displayed trading fee. Your final fee depends on how the order matches. The payout fee is charged only if you win; the amount shown is an estimate."
             />
           </VadProgressiveSection>
 

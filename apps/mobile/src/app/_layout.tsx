@@ -57,7 +57,7 @@ function ServiceUnavailableScreen() {
           <View style={{ gap: theme.spacing.sm }}>
             <VadText variant="label" tone="brand">SERVICE UNAVAILABLE</VadText>
             <VadText variant="title">VAD cannot start right now.</VadText>
-            <VadText tone="secondary">We are unable to connect to the services needed to open VAD. Please try again shortly. If the problem continues, contact VAD support.</VadText>
+            <VadText tone="secondary">VAD could not connect. Check your connection and try again. Contact support if the problem continues.</VadText>
           </View>
           <VadText variant="caption" tone="tertiary">Your account information has not been changed.</VadText>
         </View>

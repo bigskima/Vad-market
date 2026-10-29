@@ -10,6 +10,8 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadIconButton } from '@/components/ui/vad-icon-button';
 import { VadText } from '@/components/ui/vad-text';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
+import { AssistantConversationSkeleton, AssistantThreadsSkeleton } from '@/components/ui/screen-skeletons';
 import {
   isGenericContentVisible,
   sanitizeAssistantAssetResponse,
@@ -77,9 +79,7 @@ export function AssistantScreen({
       setError(null);
     } catch (reason) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : 'We could not load your VAD Assistant conversations right now.',
+        userFacingErrorMessage(reason, 'general', 'Could not load your VAD Assistant conversations. Try again.'),
       );
     } finally {
       setLoadingThreads(false);
@@ -108,9 +108,7 @@ export function AssistantScreen({
       setMessages(rows.map((row) => toChatMessage(row, activeAssetCodes)));
     } catch (reason) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : 'We could not load this conversation right now.',
+        userFacingErrorMessage(reason, 'general', 'Could not load this conversation. Try again.'),
       );
     } finally {
       setLoadingConversation(false);
@@ -133,9 +131,7 @@ export function AssistantScreen({
       await loadThreads();
     } catch (reason) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : 'We could not archive this conversation right now.',
+        userFacingErrorMessage(reason, 'general', 'Could not archive this conversation. Try again.'),
       );
     }
   }
@@ -182,9 +178,7 @@ export function AssistantScreen({
       setMessages((current) => current.filter((item) => item.id !== optimistic.id));
       setInput(message);
       setError(
-        reason instanceof Error
-          ? reason.message
-          : 'VAD Assistant could not answer right now. Please try again shortly.',
+        userFacingErrorMessage(reason, 'general', 'VAD Assistant could not answer. Try again.'),
       );
     } finally {
       setSending(false);
@@ -228,8 +222,8 @@ export function AssistantScreen({
       <VadCard variant="brand" style={{ gap: theme.spacing.sm, padding: theme.spacing.md, borderColor: theme.colors.brandPrimary }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, gap: 1 }}>
-            <VadText variant="caption" tone="brand">SUGGESTED QUESTIONS</VadText>
-            <VadText variant="caption" tone="secondary">Start with one tap, or write your own question below.</VadText>
+            <VadText variant="caption" tone="brand">SUGGESTED</VadText>
+            <VadText variant="caption" tone="secondary">Choose a question or ask your own.</VadText>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -254,7 +248,7 @@ export function AssistantScreen({
       </VadCard>
 
       {error ? (
-        <VadErrorState title="VAD Assistant needs a moment" message={error} onRetry={() => void loadThreads()} />
+        <VadErrorState title="Assistant unavailable" message={error} onRetry={() => void loadThreads()} />
       ) : null}
 
       <View style={{ gap: theme.spacing.md }}>
@@ -269,10 +263,7 @@ export function AssistantScreen({
         ) : null}
 
         {loadingConversation ? (
-          <View style={{ minHeight: 180, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm }}>
-            <ActivityIndicator color={theme.colors.brandPrimary} />
-            <VadText variant="caption" tone="secondary">Opening conversation…</VadText>
-          </View>
+          <AssistantConversationSkeleton />
         ) : messages.length ? (
           <View style={{ gap: theme.spacing.sm }}>
             {messages.map((message) => <AssistantBubble key={message.id} message={message} />)}
@@ -331,10 +322,7 @@ export function AssistantScreen({
         <View style={{ gap: theme.spacing.sm }}>
           <VadButton label="New conversation" variant="secondary" onPress={newConversation} />
           {loadingThreads ? (
-            <View style={{ minHeight: 100, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <ActivityIndicator color={theme.colors.brandPrimary} />
-              <VadText variant="caption" tone="secondary">Loading conversations…</VadText>
-            </View>
+            <AssistantThreadsSkeleton />
           ) : threads.length ? (
             threads.slice(0, 20).map((thread) => (
               <Pressable

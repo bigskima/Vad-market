@@ -34,7 +34,7 @@ export default function AccountScreen() {
   const user = session?.user;
   const userId = user?.id ?? null;
   const metadata = user?.user_metadata ?? {};
-  const email = user?.email ?? user?.phone ?? 'Contact information unavailable';
+  const email = user?.email ?? user?.phone ?? 'No contact info';
   const unreadNotificationCount = data.notifications.filter((notification) => !notification.read_at).length;
   const [savedProfile, setSavedProfile] = useState<UserProfile | null>(null);
   const [kycState, setKycState] = useState<UserKycState | null>(null);
@@ -124,7 +124,7 @@ export default function AccountScreen() {
       .catch((reason) => {
         if (!ignore) {
           setTestModeStatus(null);
-          setTestModeError(reason instanceof Error ? reason.message : 'Temporary NGN market-testing status could not be loaded.');
+          setTestModeError(reason instanceof Error ? reason.message : 'NGN test status is unavailable. Try again.');
         }
       });
     return () => { ignore = true; };
@@ -172,21 +172,21 @@ export default function AccountScreen() {
       try {
         refreshed = await getTemporaryNgnMarketTestingStatus();
       } catch {
-        setTestModeNotice('Location verified. Market-testing status could not refresh; try again.');
+        setTestModeNotice('Location verified. Trading status could not refresh. Try again.');
         return;
       }
       setTestModeStatus(refreshed);
       if (!refreshed?.active) {
-        setTestModeNotice('Location verified. No active NGN test credit is assigned to this account yet.');
+        setTestModeNotice('Location verified. No NGN test balance is available yet.');
         return;
       }
       if (!refreshed.eligible) {
         setTestModeNotice('Location verified. ' + testModeBlockReason(refreshed));
         return;
       }
-      setTestModeNotice('Location verified. You can now enable NGN market testing.');
+      setTestModeNotice('Location verified. NGN trading is available.');
     } catch (reason) {
-      setTestModeError(reason instanceof Error ? reason.message : 'Current Nigeria location could not be verified.');
+      setTestModeError('Could not verify your location. Try again.');
       try {
         const refreshed = await getTemporaryNgnMarketTestingStatus();
         setTestModeStatus(refreshed);
@@ -292,8 +292,8 @@ export default function AccountScreen() {
           <VadCard style={{ gap: density.phone ? 10 : 14, padding: density.phone ? 12 : 16, borderRadius: 17, borderColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.border, backgroundColor: theme.colors.surface }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
               <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <VadText variant="bodyStrong">Temporary NGN market testing</VadText>
-                <VadText variant="caption" tone="secondary">Use test credit to trade open NGN markets.</VadText>
+                <VadText variant="bodyStrong">NGN test funds</VadText>
+                <VadText variant="caption" tone="secondary">Use test funds for NGN trades.</VadText>
               </View>
               <StatusBadge
                 label={testModeStatus.testModeEnabled ? 'Enabled' : 'Off'}
@@ -314,16 +314,16 @@ export default function AccountScreen() {
 
             <Pressable
               accessibilityRole="switch"
-              accessibilityLabel="Use temporary NGN test credit for market trading"
-              accessibilityHint="Use or pause your NGN test credit."
+              accessibilityLabel="Use NGN test funds for trading"
+              accessibilityHint="Turn NGN test funds on or off."
               accessibilityState={{ checked: testModeStatus.testModeEnabled, disabled: testModeSaving || (!testModeStatus.eligible && !testModeStatus.testModeEnabled) }}
               disabled={testModeSaving || (!testModeStatus.eligible && !testModeStatus.testModeEnabled)}
               onPress={() => void toggleTemporaryNgnMarketTesting()}
               style={({ pressed }) => ({ minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, opacity: testModeSaving ? 0.55 : pressed ? 0.75 : 1 })}
             >
               <View style={{ flex: 1, gap: 2 }}>
-                <VadText variant="bodyStrong">{testModeSaving ? 'Saving market-testing setting…' : 'Use allocation for NGN trading'}</VadText>
-                <VadText variant="caption" tone="secondary">{testModeStatus.testModeEnabled ? 'Use test credit for new predictions.' : 'Turn on to use test credit.'}</VadText>
+                <VadText variant="bodyStrong">{testModeSaving ? 'Saving…' : 'Use test funds for NGN trades'}</VadText>
+                <VadText variant="caption" tone="secondary">{testModeStatus.testModeEnabled ? 'Use test funds for NGN predictions.' : 'Turn on to use test funds.'}</VadText>
               </View>
               <View style={{ width: 48, height: 28, borderRadius: 18, padding: 3, justifyContent: 'center', backgroundColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.surfaceMuted, borderWidth: 1, borderColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.border }}>
                 <View style={{ width: 20, height: 20, borderRadius: 12, alignSelf: testModeStatus.testModeEnabled ? 'flex-end' : 'flex-start', backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border }} />
@@ -379,7 +379,7 @@ export default function AccountScreen() {
         <TourTarget id="account-navigation">
         <SettingsGroup title="Account">
           <AccountRow icon="account" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Personal Information" subtitle="Name, email, phone number, country" onPress={() => router.push('/account/profile')} />
-          <AccountRow icon="creditCard" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Verification (KYC)" subtitle="Identity verification and documents" badge={isVerified ? 'Verified' : undefined} badgeTone="yes" onPress={() => router.push('/account/verification')} />
+          <AccountRow icon="creditCard" iconBackground={theme.colors.brandSoft} iconColor={theme.colors.brandPrimary} title="Verification (KYC)" subtitle="Verify your identity" badge={isVerified ? 'Verified' : undefined} badgeTone="yes" onPress={() => router.push('/account/verification')} />
           <AccountRow icon="bookmark" iconBackground={theme.colors.infoSoft} iconColor={theme.colors.info} title="Watchlist" subtitle="Saved markets and price moves" onPress={() => router.push('/watchlist')} />
           <AccountRow icon="wallet" iconBackground={theme.colors.warningSoft} iconColor={theme.colors.warning} title="Payment Methods" subtitle="Linked bank accounts and payment options" onPress={() => router.push('/account/funding')} last />
         </SettingsGroup>
@@ -488,15 +488,15 @@ function testModeBlockReason(status: TemporaryNgnMarketTestingStatus) {
     case 'ACCOUNT_NOT_ACTIVE':
       return 'Your VAD account must be active before market testing can be enabled.';
     case 'ACCOUNT_NOT_ELIGIBLE':
-      return 'Available to eligible Nigerian accounts only.';
+      return 'Available to eligible users in Nigeria.';
     case 'NGN_ASSET_UNAVAILABLE':
       return 'The NGN wallet is unavailable.';
     case 'TRADING_SERVICE_UNAVAILABLE':
-      return 'The trading service is currently unavailable for this account.';
+      return 'Trading is not available for this account yet.';
     case 'NGN_NOT_AVAILABLE_IN_JURISDICTION':
       return 'NGN is not enabled for this account under the current jurisdiction rules.';
     default:
-      return status.message || 'This account does not currently satisfy the requirements for NGN market testing.';
+      return status.message || 'This account is not eligible for NGN trading yet.';
   }
 }
 
@@ -505,7 +505,7 @@ function countryFlag(code: string) {
 }
 
 function getKycCopy(status: KycStatus | null) {
-  if (!status) return { title: 'Verification status unavailable', body: 'Open verification details to check the latest status.' };
+  if (!status) return { title: 'Verification status unavailable', body: 'Open verification for the latest status.' };
   switch (status.status) {
     case 'VERIFIED': return { title: 'Account Verified', body: 'Your identity has been verified. Applicable account permissions are confirmed by VAD.' };
     case 'IN_REVIEW':

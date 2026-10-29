@@ -11,6 +11,7 @@ import { VadText } from '@/components/ui/vad-text';
 import { useAuth } from '@/providers/auth-provider';
 import { useCurrencyPreference, type VADCurrency } from '@/providers/currency-preference-provider';
 import { useVadTheme } from '@/providers/theme-provider';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import {
   deferAccountOnboarding,
   getAccountSetupState,
@@ -69,9 +70,7 @@ export default function AccountOnboardingScreen() {
         }
       }
     } catch (reason) {
-      setError(reason instanceof Error
-        ? reason.message
-        : 'We could not check your setup right now. Please try again.');
+      setError(userFacingErrorMessage(reason, 'general', 'Could not check setup. Try again.'));
     } finally {
       setLoading(false);
     }
@@ -95,7 +94,7 @@ export default function AccountOnboardingScreen() {
         try {
           await markAccountOnboardingStarted();
         } catch {
-          if (active) setError('Progress could not be saved to your account yet. You can still complete the steps or retry later.');
+          if (active) setError('Could not save progress. You can finish setup or try again later.');
         } finally {
           setWorking(false);
         }
@@ -115,9 +114,7 @@ export default function AccountOnboardingScreen() {
         }
       } catch (reason) {
         if (!active) return;
-        setError(reason instanceof Error
-          ? reason.message
-          : 'We could not check your setup right now. Please try again.');
+        setError(userFacingErrorMessage(reason, 'general', 'Could not check setup. Try again.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -204,7 +201,7 @@ export default function AccountOnboardingScreen() {
           ? 'Your saved markets are available from the Watchlist screen.'
           : state.watchlistCheckAvailable
             ? 'Save markets you want to follow so you can return to their prices and outcomes quickly.'
-            : 'Your watchlist status could not be confirmed. Open Markets and return to refresh this checklist.',
+            : 'Could not check your watchlist. Open Markets and try again.',
         complete: state.watchlistComplete,
         action: 'Browse markets',
         route: '/markets',
@@ -238,7 +235,7 @@ export default function AccountOnboardingScreen() {
       if (result.error) throw result.error;
       setNotice('Confirmation instructions have been sent. Follow them, then return here and check your progress.');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'We could not send confirmation instructions. Please try again.');
+      setError(userFacingErrorMessage(reason, 'general', 'Could not send confirmation instructions. Try again.'));
     } finally {
       setWorking(false);
     }
@@ -252,9 +249,7 @@ export default function AccountOnboardingScreen() {
       await deferAccountOnboarding(7);
       router.replace(returnToAccount ? '/account' : '/home');
     } catch (reason) {
-      setError(reason instanceof Error
-        ? 'We could not save your reminder. Please try again so VAD can remind you in 7 days.'
-        : 'We could not save your reminder. Please try again.');
+      setError(userFacingErrorMessage(reason, 'general', 'Could not save your reminder. Try again.'));
     } finally {
       setWorking(false);
     }
@@ -273,9 +268,7 @@ export default function AccountOnboardingScreen() {
       }
       router.replace(returnToAccount ? '/account' : '/home');
     } catch (reason) {
-      setError(reason instanceof Error
-        ? reason.message
-        : 'We could not save your onboarding progress. Please try again.');
+      setError(userFacingErrorMessage(reason, 'general', 'Could not save your progress. Try again.'));
     } finally {
       setWorking(false);
     }
@@ -338,8 +331,8 @@ export default function AccountOnboardingScreen() {
               {allOnboardingComplete
                 ? 'Your account essentials, first deposit and first trade are complete. You can continue using VAD and return to your account dashboard whenever you need it.'
                 : allRequiredComplete
-                  ? 'Your account essentials are complete. Finish your first deposit and trade here, or continue into VAD and receive a reminder in seven days.'
-                  : 'VAD checks what is already complete and only asks you to finish what is still missing. Your progress is saved to your account.'}
+                  ? 'You are ready to explore VAD. Make your first deposit and trade now, or return in 7 days.'
+                  : 'Your progress is saved. We will show only the steps you still need to finish.'}
             </VadText>
           </View>
 
@@ -358,7 +351,7 @@ export default function AccountOnboardingScreen() {
           {loading ? (
             <VadCard style={{ alignItems: 'center', paddingVertical: 28, gap: 12 }}>
               <ActivityIndicator color={theme.colors.brandPrimary} />
-              <VadText variant="body" tone="secondary">Checking your profile, verification and contact status…</VadText>
+              <VadText variant="body" tone="secondary">Checking your account…</VadText>
             </VadCard>
           ) : null}
 
@@ -384,7 +377,7 @@ export default function AccountOnboardingScreen() {
                 <VadText variant="heading">Account essentials complete</VadText>
               </View>
               <VadText variant="body" tone="secondary">
-                You can explore VAD now. Next, you can fund your wallet and make your first trade. Those milestones stay on your checklist until completed.
+                You are ready to explore. Fund your wallet and trade when you are ready.
               </VadText>
             </VadCard>
           ) : null}
@@ -393,7 +386,7 @@ export default function AccountOnboardingScreen() {
             <View style={{ gap: 10 }}>
               <View style={{ gap: 3 }}>
                 <VadText variant="heading">Your first milestones</VadText>
-                <VadText variant="caption" tone="secondary">VAD checks completed funding, recorded trading activity and saved markets. You can pause here and continue later.</VadText>
+                <VadText variant="caption" tone="secondary">Track your first deposit, trade and saved market here.</VadText>
               </View>
               <VadCard style={{ gap: 10, padding: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -445,7 +438,7 @@ export default function AccountOnboardingScreen() {
                 <OptionalTaskCard
                   icon="lock"
                   title="Add another layer of security"
-                  description="Set up two-factor authentication in Security Settings. This is recommended, not required to continue."
+                  description="Add two-factor authentication for extra security. It's optional."
                   onPress={() => router.push('/account/security')}
                 />
               ) : (
@@ -483,8 +476,8 @@ export default function AccountOnboardingScreen() {
 
           {!loading && !state && !error ? (
             <VadCard style={{ gap: 8 }}>
-              <VadText variant="bodyStrong">We could not read your account status</VadText>
-              <VadText variant="caption" tone="secondary">Retry the check. You can also choose to be reminded in 7 days.</VadText>
+              <VadText variant="bodyStrong">Could not check your account</VadText>
+              <VadText variant="caption" tone="secondary">Try again or get a reminder in 7 days.</VadText>
               <VadButton label="Try again" onPress={() => void refresh()} />
             </VadCard>
           ) : null}

@@ -176,7 +176,7 @@ export default function WatchlistRoute() {
         ) : ids.length ? (
           <VadCard variant="muted" style={{ padding: 15, gap: 5 }}>
             <VadText variant="bodyStrong">No saved markets in your enabled currencies</VadText>
-            <VadText variant="caption" tone="secondary">Your saved markets remain on your account. Change your currency availability or browse markets that are enabled for your account.</VadText>
+            <VadText variant="caption" tone="secondary">Saved markets stay on your account. Some may be hidden by your currency settings.</VadText>
           </VadCard>
         ) : (
           <VadCard variant="muted" style={{ padding: 16, gap: 6 }}>
@@ -184,7 +184,7 @@ export default function WatchlistRoute() {
               <VadIcon name="bookmark" size={19} tone="brand" />
             </View>
             <VadText variant="bodyStrong">Your watchlist is empty</VadText>
-            <VadText variant="caption" tone="secondary">Bookmark a market to keep it close and follow its price moves here.</VadText>
+            <VadText variant="caption" tone="secondary">Save markets to follow them here.</VadText>
           </VadCard>
         )}
       </View>

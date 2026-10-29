@@ -261,7 +261,7 @@ export function WalletScreen({
             </View>
           </View>
           {balanceHistoryError && !balanceHistory.length ? (
-            <VadText variant="caption" tone="inverse">Balance history unavailable.</VadText>
+            <VadText variant="caption" tone="inverse">History unavailable.</VadText>
           ) : null}
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -279,17 +279,17 @@ export function WalletScreen({
       {temporaryNgnCredit?.active ? (
         <VadCard variant="surface" style={{ gap: theme.spacing.sm, padding: theme.spacing.md, borderColor: theme.colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-            <VadText variant="bodyStrong">Temporary NGN market-test allocation</VadText>
-            <VadChip label="Non-withdrawable" tone="warning" />
+            <VadText variant="bodyStrong">NGN test funds</VadText>
+            <VadChip label="Not withdrawable" tone="warning" />
           </View>
           <View style={{ gap: 3 }}>
             <VadText variant="title">{assetMoney(Number(temporaryNgnCredit.amount ?? 0), 'NGN')}</VadText>
             <VadText variant="caption" tone="secondary">
-              Current NGN available balance: {assetMoney(Number(temporaryNgnCredit.availableBalance ?? 0), 'NGN')}
+              Available NGN test balance: {assetMoney(Number(temporaryNgnCredit.availableBalance ?? 0), 'NGN')}
             </VadText>
           </View>
           <VadText variant="caption" tone="secondary">
-            Test credit is for NGN market trading. Deposits and withdrawals stay disabled while it is active. Transfers are limited to eligible, verified Nigerian accounts. Test funds cannot mix with cash-funded NGN.
+            Testing only. Deposits and withdrawals are disabled; transfers require a verified, eligible Nigerian account. These funds are separate from cash NGN.
           </VadText>
         </VadCard>
       ) : null}
@@ -298,7 +298,7 @@ export function WalletScreen({
         <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="bodyStrong">Wallet settings</VadText>
-            <VadText variant="caption" tone="secondary">Choose which eligible currencies appear across the wallet, markets and portfolio. The settings do not convert balances or change jurisdiction eligibility.</VadText>
+            <VadText variant="caption" tone="secondary">Choose which currencies to show. This won’t convert your balances.</VadText>
           </View>
           <View style={{ gap: 8 }}>
             {currencyPreference.eligibleCurrencies.map((currency) => (
@@ -317,36 +317,36 @@ export function WalletScreen({
 
       <TourTarget id="wallet-actions">
         <View style={{ flexDirection: 'row', gap: density.phone ? 6 : theme.spacing.sm }}>
-          <WalletAction label="Deposit" detail={temporaryNgnCredit?.active ? "Locked during test credit" : "Add funds"} icon="plus" tone="yes" onPress={onDeposit} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
-          <WalletAction label="Withdraw" detail={temporaryNgnCredit?.active ? "Locked during test credit" : "Send to bank"} icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
+          <WalletAction label="Deposit" detail={temporaryNgnCredit?.active ? "Unavailable during testing" : "Add funds"} icon="plus" tone="yes" onPress={onDeposit} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
+          <WalletAction label="Withdraw" detail={temporaryNgnCredit?.active ? "Unavailable during testing" : "Send to bank"} icon="arrowUp" tone="brand" onPress={onWithdraw} disabled={!hasNgn || Boolean(temporaryNgnCredit?.active)} />
           <WalletAction label="Transfer" detail={temporaryNgnCredit?.active ? "Restricted test-credit transfer" : "To another user"} icon="transfer" tone="purple" onPress={onTransfer} />
           <WalletAction label="History" detail="View transactions" icon="fileText" tone="primary" onPress={onActivity} />
         </View>
       </TourTarget>
 
       <View style={{ gap: density.phone ? 8 : theme.spacing.sm }}>
-        <VadSectionHeader title="Your Currencies" actionLabel="Manage" onAction={() => setManageCurrenciesOpen((value) => !value)} />
+        <VadSectionHeader title="Currencies" actionLabel="Manage" onAction={() => setManageCurrenciesOpen((value) => !value)} />
         {orderedWallets.map((wallet) => (
           <Pressable key={wallet.asset_code} accessibilityRole="button" accessibilityLabel={`Select ${wallet.asset_code} wallet`} onPress={() => setSelectedAsset(wallet.asset_code as VADCurrency)}>
             <CompactCurrencyBalance wallet={wallet} selected={primaryCode === wallet.asset_code} balanceVisible={balanceVisible} />
           </Pressable>
         ))}
-        {!orderedWallets.length ? <VadEmptyState title="No supported wallet accounts" body="Your account has no enabled wallet balances to display." /> : null}
+        {!orderedWallets.length ? <VadEmptyState title="No wallet balances yet" body="No wallet currencies are available yet." /> : null}
       </View>
 
       <TourTarget id="wallet-activity">
         <View style={{ gap: density.phone ? theme.spacing.sm : theme.spacing.md }}>
-          <VadSectionHeader title="Recent Transactions" actionLabel="See all" onAction={onActivity} />
+          <VadSectionHeader title="Recent activity" actionLabel="See all" onAction={onActivity} />
           {walletActivityError && !recentActivity.length ? (
-            <VadErrorState title="Wallet activity unavailable" message={walletActivityError} onRetry={onRetryActivity} />
+            <VadErrorState title="Activity unavailable" message={walletActivityError} onRetry={onRetryActivity} />
           ) : recentActivity.length ? (
             <View style={{ gap: density.compact ? 7 : theme.spacing.sm }}>
               {recentActivity.map((row) => <RecentWalletActivityRow key={row.activity_id + row.account_type} row={row} onPress={onActivity} />)}
             </View>
           ) : (
-            <VadEmptyState title="No transactions yet" body="Deposits, predictions, releases, refunds and settlement results appear after the ledger records them." actionLabel="Deposit NGN" onAction={onDeposit} />
+            <VadEmptyState title="No transactions yet" body="Deposits, trades, payouts and refunds appear here." actionLabel="Deposit NGN" onAction={onDeposit} />
           )}
-          {walletActivityError ? <VadText variant="caption" tone="secondary">Some recent activity could not be refreshed. Open History to retry the complete ledger.</VadText> : null}
+          {walletActivityError ? <VadText variant="caption" tone="secondary">Some recent activity could not refresh. Open History to try again.</VadText> : null}
         </View>
       </TourTarget>
 
@@ -366,7 +366,7 @@ export function WalletScreen({
       </Pressable>
       {advancedToolsOpen ? (
         <View style={{ gap: density.sectionGap }}>
-          <WalletSectionErrorBoundary title="On-chain activity unavailable">
+          <WalletSectionErrorBoundary title="USDC activity unavailable">
             <OnchainActivityPanel enabled={hasUsdc} />
           </WalletSectionErrorBoundary>
           <WalletSectionErrorBoundary title="USDC positions unavailable">
@@ -414,7 +414,7 @@ function CompactCurrencyBalance({ wallet, selected, balanceVisible }: { wallet: 
   const pending = Number(wallet.withdrawal_pending ?? 0);
   const total = available + reserved + pending;
   const name = wallet.asset_code === 'NGN' ? 'Nigerian Naira' : 'USD Coin';
-  const subtitle = wallet.asset_code === 'USDC' ? 'USDC · VAD ledger' : 'NGN';
+  const subtitle = wallet.asset_code === 'USDC' ? 'USDC · VAD wallet' : 'NGN';
 
   return (
     <VadCard

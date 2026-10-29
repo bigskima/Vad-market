@@ -22,19 +22,19 @@ export default function LanguageRegionScreen() {
         <View style={{ gap: 4 }}>
           <VadText variant="caption" tone="brand">REGIONAL PREFERENCES</VadText>
           <VadText variant="title">Language and currency visibility</VadText>
-          <VadText variant="caption" tone="secondary">These choices affect display and which eligible currencies appear in trading. They do not convert or move your underlying balances.</VadText>
+          <VadText variant="caption" tone="secondary">Choose which currencies to show. Balances are not converted.</VadText>
         </View>
 
         <VadCard style={{ gap: theme.spacing.md }}>
-          <RegionValue label="Language" value="English" note="English is the only language currently configured in VAD Market." />
-          <RegionValue label="Account region" value={data.countryCode || 'Not available'} note="Region is supplied by the account eligibility policy." />
-          <RegionValue label="Time zone" value={timeZone} note="Read from your current device settings." />
+          <RegionValue label="Language" value="English" />
+          <RegionValue label="Account region" value={data.countryCode || 'Not available'} />
+          <RegionValue label="Time zone" value={timeZone} />
         </VadCard>
 
         <TourTarget id="region-settings">
         <VadCard style={{ gap: theme.spacing.sm }}>
           <VadText variant="heading">Eligible currencies</VadText>
-          <VadText variant="caption" tone="secondary">Toggle which eligible real currencies are shown in Markets, Wallet and Portfolio. These choices do not convert or move your balances.</VadText>
+          <VadText variant="caption" tone="secondary">Choose which currencies appear in Markets, Wallet and Portfolio.</VadText>
           {available.map((code) => {
             const enabled = currency.isCurrencyEnabled(code);
             return (
@@ -56,13 +56,12 @@ export default function LanguageRegionScreen() {
   );
 }
 
-function RegionValue({ label, value, note }: { label: string; value: string; note: string }) {
+function RegionValue({ label, value }: { label: string; value: string }) {
   const theme = useVadTheme();
   return (
     <View style={{ gap: 2 }}>
       <VadText variant="caption" tone="secondary">{label}</VadText>
       <VadText variant="bodyStrong">{value}</VadText>
-      <VadText variant="caption" tone="tertiary">{note}</VadText>
       <View style={{ height: 1, backgroundColor: theme.colors.border, marginTop: 8 }} />
     </View>
   );

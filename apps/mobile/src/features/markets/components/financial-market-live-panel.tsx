@@ -7,6 +7,7 @@ import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadSkeleton } from '@/components/ui/vad-skeleton';
 import { VadText } from '@/components/ui/vad-text';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { useProductDensity } from '@/hooks/use-product-density';
 import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
@@ -105,10 +106,10 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
           });
           setError(null);
         } else {
-          setError('A usable live quote was not returned for ' + details.symbol + '. The market remains governed by its published rules.');
+          setError('Live price unavailable for ' + details.symbol + '. Try again.');
         }
       } catch (value) {
-        if (active) setError(value instanceof Error ? value.message : 'Live financial market data is temporarily unavailable.');
+        if (active) setError(userFacingErrorMessage(value, 'general', 'Live price is unavailable. Try again.'));
       } finally {
         if (active) {
           setLoading(false);
@@ -181,7 +182,7 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
           </View>
         ) : null}
         <View style={{ flexGrow: 1, flexBasis: '45%', minWidth: 130, padding: theme.spacing.sm, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceMuted, gap: 4 }}>
-          <VadText variant="caption" tone="secondary">{details.targetPrice === null ? 'Current price' : 'Current price'}</VadText>
+          <VadText variant="caption" tone="secondary">Current price</VadText>
           <VadText variant="title" style={{ fontSize: density.phone ? 21 : 25 }}>
             {quote ? formatFinancialNumber(quote.price, quote.quoteCurrency) : '—'}
           </VadText>
@@ -210,7 +211,7 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
       <View style={{ gap: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <VadText variant="label">Price movement</VadText>
-          <VadText variant="caption" tone="secondary">{samples.length > 1 ? 'Live quote samples + recent history' : 'Collecting quote samples'}</VadText>
+          <VadText variant="caption" tone="secondary">{samples.length > 1 ? 'Recent prices' : 'Collecting prices'}</VadText>
         </View>
         <View
           onLayout={(event) => setChartWidth(Math.max(120, event.nativeEvent.layout.width))}
@@ -236,11 +237,11 @@ export function FinancialMarketLivePanel({ market, now }: { market: MarketCatalo
           ) : null}
         </View>
         {details.targetPrice !== null && !targetVisible ? (
-          <VadText variant="caption" tone="secondary">The target is outside the current chart range; the price target above remains the authoritative market target.</VadText>
+          <VadText variant="caption" tone="secondary">This target is outside the current chart range.</VadText>
         ) : null}
       </View>
 
-      {error ? <VadErrorState title="Live quote could not refresh" message={error} onRetry={() => setRetryNonce((value) => value + 1)} /> : null}
+      {error ? <VadErrorState title="Couldn't refresh live price" message={error} onRetry={() => setRetryNonce((value) => value + 1)} /> : null}
       <VadText variant="caption" tone="tertiary">
         {quote?.sourceUpdatedAt ? 'Underlying quote timestamp: ' + new Date(quote.sourceUpdatedAt).toLocaleString() + '. ' : ''}
         Prices are references. Results follow the published market rules.

@@ -166,6 +166,51 @@ export function createPlayIdempotencyKey() {
   return Crypto.randomUUID();
 }
 
+export type PlayPracticeGameReply = {
+  sessionId: string;
+  status: string;
+  result: {
+    gameTitle?: string;
+    outcomeCode: string;
+    message: string;
+    practiceOnly: boolean;
+    rewardKind: 'NONE';
+  };
+  replayed: boolean;
+};
+
+export async function playPracticeGame(experienceId: string): Promise<PlayPracticeGameReply> {
+  const { data, error } = await supabase.rpc('play_practice_game', {
+    p_experience_id: experienceId,
+    p_idempotency_key: createPlayIdempotencyKey(),
+  });
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('VAD returned an unexpected game result.');
+  }
+  const value = data as Record<string, unknown>;
+  const result = value.result;
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
+    throw new Error('VAD returned an incomplete game result.');
+  }
+  const publicResult = result as Record<string, unknown>;
+  if (typeof publicResult.message !== 'string' || typeof publicResult.outcomeCode !== 'string') {
+    throw new Error('VAD returned an incomplete game result.');
+  }
+  return {
+    sessionId: String(value.sessionId ?? ''),
+    status: String(value.status ?? 'COMPLETED'),
+    result: {
+      gameTitle: typeof publicResult.gameTitle === 'string' ? publicResult.gameTitle : undefined,
+      outcomeCode: publicResult.outcomeCode,
+      message: publicResult.message,
+      practiceOnly: publicResult.practiceOnly === true,
+      rewardKind: 'NONE',
+    },
+    replayed: value.replayed === true,
+  };
+}
+
 export async function getPlayDrawAudit(campaignId: string): Promise<PlayDrawAudit | null> {
   const { data, error } = await supabase.rpc('play_draw_audit', {
     p_campaign_id: campaignId,

@@ -233,14 +233,14 @@ export function AdminEventDiscoveryPanel() {
       <VadCard variant="raised" style={{ gap: theme.spacing.md }}>
         <View style={{ gap: 3 }}>
           <VadText variant="heading">Configured sources</VadText>
-          <VadText variant="caption" tone="secondary">{activeSources} active source(s). New sources start disabled and are only used after an administrator enables them.</VadText>
+          <VadText variant="caption" tone="secondary">Active sources: {activeSources}. New sources stay off until an administrator enables them.</VadText>
         </View>
         {sources.map((source) => (
           <View key={source.code} style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: 7 }}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 8 }}>
               <View style={{ flex: 1, minWidth: 180, gap: 2 }}>
                 <VadText variant="bodyStrong">{source.name}</VadText>
-                <VadText variant="caption" tone="secondary">{source.code} · {source.adapter_code} · {source.cache_seconds}s cache</VadText>
+                <VadText variant="caption" tone="secondary">ID: {source.code} · Connector: {source.adapter_code} · Refresh: {source.cache_seconds}s</VadText>
                 <VadText variant="caption" tone="tertiary" numberOfLines={2}>{source.endpoint}</VadText>
               </View>
               <VadChip label={source.status} tone={source.status === 'ACTIVE' ? 'yes' : 'neutral'} />

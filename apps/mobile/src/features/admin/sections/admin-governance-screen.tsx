@@ -66,7 +66,7 @@ export function AdminGovernanceScreen() {
     try {
       setPolicies(await getOraclePolicyCatalog());
     } catch (value) {
-      setPolicyError(value instanceof Error ? value.message : 'Oracle policies could not be loaded.');
+      setPolicyError('Result policies could not be loaded.');
     } finally {
       setPoliciesLoading(false);
     }
@@ -89,12 +89,12 @@ export function AdminGovernanceScreen() {
     if (canReviewOracle) {
       next.push({
         key: 'oracle',
-        label: 'Oracle',
+        label: 'Results',
         count: data.oracleQueue.length,
       });
       next.push({
         key: 'policies',
-        label: 'Policies',
+        label: 'Result policies',
         count: policies.filter((policy) => policy.status === 'DRAFT').length,
       });
     }
@@ -146,9 +146,9 @@ export function AdminGovernanceScreen() {
           ? current
           : choices[0]?.outcome_code ?? '',
       );
-      if (!choices.length) setOutcomeChoicesError('No configured outcome choices were found for this event.');
+      if (!choices.length) setOutcomeChoicesError('No result options are available for this market.');
     } catch (reason: unknown) {
-      setOutcomeChoicesError(reason instanceof Error ? reason.message : 'Configured outcomes could not be loaded.');
+      setOutcomeChoicesError('Could not load result options. Refresh and try again.');
     } finally {
       setOutcomeChoicesLoading(false);
     }
@@ -167,31 +167,31 @@ export function AdminGovernanceScreen() {
     try {
       if (action === 'CREATE') {
         if (!eventPublicId || !outcomeCode.trim()) {
-          throw new Error('Choose one of the configured outcome choices.');
+          throw new Error('Choose a result option.');
         }
         if (!outcomeChoices.some((choice) => choice.outcome_code === outcomeCode)) {
-          throw new Error('The selected outcome is not one of this market’s configured choices. Refresh the Oracle queue and try again.');
+          throw new Error('That result option is no longer available. Refresh the queue and try again.');
         }
-        const createdId = await createAdminProvisionalResolution({
+        await createAdminProvisionalResolution({
           eventPublicId,
           outcomeCode: outcomeCode.trim(),
           evidence: { operatorNote: evidenceNote.trim() },
         });
         setActionMessage(
-          `Provisional resolution ${createdId} was created. A different reviewer must finalize it after the dispute window.`,
+          `Result submitted for review. A different reviewer must confirm it after the dispute period.`,
         );
       } else if (action === 'FINALIZE') {
         if (!resolutionId) throw new Error('Resolution reference is unavailable.');
         await finalizeAdminResolution(resolutionId, {
           operatorNote: evidenceNote.trim(),
         });
-        setActionMessage('Resolution finalized. Settlement remains a separate finance-controlled step.');
+        setActionMessage('Result confirmed. Payouts are handled separately by Finance.');
       } else {
         if (!resolutionId) throw new Error('Resolution reference is unavailable.');
         await finalizeAdminVoid(resolutionId, {
           operatorNote: evidenceNote.trim(),
         });
-        setActionMessage('Resolution finalized as void under the active oracle policy.');
+        setActionMessage('Market marked void under the current rules.');
       }
 
       setSelectedOracle(null);
@@ -219,7 +219,7 @@ export function AdminGovernanceScreen() {
       setActionMessage(`${policy.name} version ${policy.version} is now active.`);
       await Promise.all([loadPolicies(), data.refresh()]);
     } catch (value) {
-      setPolicyError(value instanceof Error ? value.message : 'Oracle policy approval could not be completed.');
+      setPolicyError('Could not update result policies. Try again.');
     } finally {
       setPolicyWorkingId(null);
     }
@@ -241,7 +241,7 @@ export function AdminGovernanceScreen() {
           <VadText variant="label" tone="brand">GOVERNANCE</VadText>
           <VadText variant="title">Markets & resolution.</VadText>
           <VadText tone="secondary">
-            Review market proposals, manage approved resolution policy versions and resolve oracle cases. Reviewer permissions, dispute windows and settlement remain separate controlled steps.
+            Review markets and manage how results are verified. A second reviewer, dispute periods and payouts remain separate steps.
           </VadText>
         </View>
 
@@ -261,7 +261,7 @@ export function AdminGovernanceScreen() {
           ) : null}
           {canReviewOracle ? (
             <AdminMetricCard
-              label="Oracle"
+              label="Results to review"
               value={data.oracleQueue.length}
               tone={data.oracleQueue.length ? 'warning' : 'yes'}
             />
@@ -279,7 +279,7 @@ export function AdminGovernanceScreen() {
             gap: theme.spacing.xs,
           }}
         >
-          <VadText variant="caption" tone="yes">GOVERNANCE ACTION RECORDED</VadText>
+          <VadText variant="caption" tone="yes">UPDATE SAVED</VadText>
           <VadText variant="caption" tone="secondary">{actionMessage}</VadText>
           <VadButton
             label="Dismiss"
@@ -337,8 +337,8 @@ export function AdminGovernanceScreen() {
         </OperationsSection>
       ) : tab === 'oracle' && canReviewOracle ? (
         <OperationsSection
-          title="Oracle queue"
-          description="Create provisional outcomes and finalize eligible resolutions. The outcome, dispute window and independent-review requirements are checked before finalization."
+          title="Result review queue"
+          description="Review proposed results. A second reviewer can confirm them after the dispute period."
           count={data.oracleQueue.length}
         >
           {data.oracleQueue.length ? (
@@ -348,16 +348,16 @@ export function AdminGovernanceScreen() {
               return (
                 <OperationsRow
                   key={'oracle-' + index}
-                  title={String(row.event_title ?? 'Oracle case')}
+                  title={String(row.event_title ?? 'Market result')}
                   detail={
                     resolutionId
-                      ? `Provisional ${String(row.outcome_code ?? 'outcome')} · ${disputes} active dispute${disputes === 1 ? '' : 's'}`
+                      ? `Submitted result: ${String(row.outcome_code ?? 'outcome')} · ${disputes} active dispute${disputes === 1 ? '' : 's'}`
                       : 'Awaiting provisional outcome'
                   }
                   meta={
                     row.provisional_at
-                      ? `Provisional since ${new Date(String(row.provisional_at)).toLocaleString()}`
-                      : `Event ${String(row.event_status ?? 'AWAITING ORACLE').replaceAll('_', ' ')}`
+                      ? `Submitted for review ${new Date(String(row.provisional_at)).toLocaleString()}`
+                      : `Event: ${String(row.event_status ?? 'AWAITING RESULT').replaceAll('_', ' ').toLowerCase()}`
                   }
                   status={String(
                     row.resolution_status ?? row.event_status ?? 'OPEN',
@@ -368,13 +368,13 @@ export function AdminGovernanceScreen() {
               );
             })
           ) : (
-            <EmptyText>No oracle cases need attention.</EmptyText>
+            <EmptyText>No results need review.</EmptyText>
           )}
         </OperationsSection>
       ) : tab === 'policies' && canReviewOracle ? (
         <OperationsSection
-          title="Oracle policies"
-          description="Policy versions define approved sources, consensus requirements, dispute windows and void behavior. Draft activation requires an independent reviewer."
+          title="Result policies"
+          description="Choose trusted sources, the agreement needed, dispute periods and when to void a result. Another reviewer must approve changes."
           count={policies.length}
         >
           {policiesLoading ? (
@@ -383,7 +383,7 @@ export function AdminGovernanceScreen() {
               <VadSkeleton height={72} />
             </View>
           ) : policyError ? (
-            <VadErrorState title="Oracle policies unavailable" message={policyError} onRetry={() => void loadPolicies()} />
+            <VadErrorState title="Result verification policies unavailable" message={policyError} onRetry={() => void loadPolicies()} />
           ) : policies.length ? (
             policies.map((policy) => {
               const providerCodes = policy.source_hierarchy
@@ -395,7 +395,7 @@ export function AdminGovernanceScreen() {
                 <OperationsRow
                   key={policy.public_id}
                   title={`${policy.name} · v${policy.version}`}
-                  detail={`${providerCodes || 'Source hierarchy not specified'} · quorum ${quorum || '—'} · dispute ${Math.round(policy.dispute_window_seconds / 60)} min`}
+                  detail={`Sources: ${providerCodes || 'not set'} · Agreement needed: ${quorum || '—'} · Dispute: ${Math.round(policy.dispute_window_seconds / 60)} min`}
                   meta={policy.status === 'DRAFT' ? 'Prepared for independent approval' : `Effective ${new Date(policy.effective_at).toLocaleString()}`}
                   status={policy.status}
                   ready={policy.status === 'ACTIVE'}
@@ -405,7 +405,7 @@ export function AdminGovernanceScreen() {
               );
             })
           ) : (
-            <EmptyText>No oracle policies are configured.</EmptyText>
+            <EmptyText>No result-verification policies are configured.</EmptyText>
           )}
         </OperationsSection>
       ) : (
@@ -423,7 +423,7 @@ export function AdminGovernanceScreen() {
 
       <VadBottomSheet
         visible={Boolean(selectedOracle)}
-        title={selectedResolutionId ? 'Resolution control' : 'Create provisional resolution'}
+        title={selectedResolutionId ? 'Review result' : 'Submit result for review'}
         onClose={() => {
           if (!working) setSelectedOracle(null);
         }}
@@ -431,9 +431,9 @@ export function AdminGovernanceScreen() {
         {selectedOracle ? (
           <View style={{ gap: theme.spacing.lg }}>
             <View style={{ gap: 2 }}>
-              <VadText variant="label" tone="brand">ORACLE CASE</VadText>
+              <VadText variant="label" tone="brand">RESULT REVIEW</VadText>
               <VadText variant="heading">
-                {String(selectedOracle.event_title ?? 'Oracle event')}
+                {String(selectedOracle.event_title ?? 'Market event')}
               </VadText>
               <VadText variant="caption" tone="secondary" selectable>
                 {String(selectedOracle.event_public_id ?? '')}
@@ -444,14 +444,14 @@ export function AdminGovernanceScreen() {
               <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
                 <ActionChoice
                   label="Finalize outcome"
-                  detail={`Finalize the current ${String(selectedOracle.outcome_code ?? '')} provisional outcome.`}
+                  detail={`Confirm the current ${String(selectedOracle.outcome_code ?? '')} result.`}
                   selected={action === 'FINALIZE'}
                   disabled={activeDisputes > 0}
                   onPress={() => setAction('FINALIZE')}
                 />
                 <ActionChoice
                   label="Finalize as void"
-                  detail="Use the active oracle policy's supported void behavior."
+                  detail="Use the approved void rules for this market."
                   selected={action === 'VOID'}
                   disabled={activeDisputes > 0}
                   onPress={() => setAction('VOID')}
@@ -459,7 +459,7 @@ export function AdminGovernanceScreen() {
               </View>
             ) : (
               <View style={{ gap: theme.spacing.sm }}>
-                <VadText variant="bodyStrong">Which configured outcome matches the official result?</VadText>
+                <VadText variant="bodyStrong">Which option matches the official result?</VadText>
                 {outcomeChoicesLoading ? (
                   <View style={{ gap: theme.spacing.xs }}>
                     <VadSkeleton height={48} />
@@ -471,7 +471,7 @@ export function AdminGovernanceScreen() {
                       <ActionChoice
                         key={choice.outcome_code}
                         label={choice.outcome_label}
-                        detail={`Outcome code · ${choice.outcome_code}`}
+                        detail={`Option reference · ${choice.outcome_code}`}
                         selected={outcomeCode === choice.outcome_code}
                         disabled={working}
                         onPress={() => {
@@ -483,8 +483,8 @@ export function AdminGovernanceScreen() {
                   </View>
                 ) : (
                   <VadErrorState
-                    title="Configured outcomes unavailable"
-                    message={outcomeChoicesError ?? 'This market has no configured outcome choices. Refresh the Oracle queue or correct its market setup before resolving it.'}
+                    title="Result options unavailable"
+                    message={outcomeChoicesError ?? 'No result options are available for this market. Refresh the queue or update the market settings.'}
                   />
                 )}
               </View>
@@ -515,9 +515,9 @@ export function AdminGovernanceScreen() {
                   gap: 2,
                 }}
               >
-                <VadText variant="caption" tone="brand">INDEPENDENT REVIEW</VadText>
+                <VadText variant="caption" tone="brand">SECOND REVIEW</VadText>
                 <VadText variant="caption" tone="secondary">
-                  A different oracle reviewer must finalize the provisional result, and the configured dispute window must have ended.
+                  A different reviewer must confirm this result after the dispute period ends.
                 </VadText>
               </View>
             ) : null}
@@ -545,7 +545,7 @@ export function AdminGovernanceScreen() {
             <VadButton
               label={
                 action === 'CREATE'
-                  ? 'Create provisional resolution'
+                  ? 'Submit result for review'
                   : action === 'FINALIZE'
                     ? 'Finalize resolution'
                     : action === 'VOID'

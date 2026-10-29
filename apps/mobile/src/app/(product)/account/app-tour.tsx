@@ -18,8 +18,8 @@ export default function AppTourSettingsRoute() {
     <ProductSubpage title="VAD tour" maxWidth={760}>
       <View style={{ gap: theme.spacing.xl }}>
         <VadSectionHeader
-          title="Learn VAD on the real screens"
-          subtitle="The tour moves through VAD, highlights the exact controls you need and scrolls to parts of a page that are out of view."
+          title="Take a quick tour"
+          subtitle="Explore VAD’s key features with each step highlighting the controls you need."
         />
 
         {tour.error ? (
@@ -32,40 +32,37 @@ export default function AppTourSettingsRoute() {
 
         <VadCard variant="brand" style={{ gap: theme.spacing.md, padding: theme.spacing.xl }}>
           <View style={{ gap: 5 }}>
-            <VadText variant="caption" tone="brand">GUIDED WALKTHROUGH</VadText>
-            <VadText variant="title">Follow the app as it moves</VadText>
+            <VadText variant="title">Explore VAD step by step</VadText>
             <VadText tone="secondary">
-              The walkthrough moves across Home, market discovery and detail, the actual Trade ticket, Watchlist, Wallet, Portfolio, Account settings, Notifications, News, Financial Markets, Community, Assistant and market proposals. Each step highlights a real screen element; some wallet or market routes may be unavailable when your currency or account eligibility does not allow them.
+              Discover markets, review trades, manage your wallet and portfolio, and explore the rest of VAD.
             </VadText>
           </View>
           <VadButton
-            label={tour.loading ? 'Getting the tour ready…' : 'Start the VAD tour'}
+            label={tour.loading ? 'Getting tour ready…' : 'Start tour'}
             loading={tour.loading}
             disabled={!tour.available || Boolean(tour.error)}
             onPress={() => tour.startTour(true)}
           />
           {!tour.loading && !tour.available && !tour.error ? (
             <VadText variant="caption" tone="secondary">
-              The guided tour is not active right now. You can return here when it becomes available.
+              The tour is unavailable right now. Check back later.
             </VadText>
           ) : null}
         </VadCard>
 
         <VadCard variant="raised" style={{ gap: theme.spacing.sm }}>
-          <VadText variant="bodyStrong">Automatic tour status</VadText>
+          <VadText variant="bodyStrong">Tour reminders</VadText>
           <VadText tone="secondary">{statusCopy(status, tour.progress.remindAt)}</VadText>
           <VadText variant="caption" tone="tertiary">
-            Finishing the walkthrough turns automatic reminders off. Starting it here always works, even after you have completed it before.
+            Finishing turns off reminders. You can restart the tour here anytime.
           </VadText>
         </VadCard>
 
         <View style={{ gap: theme.spacing.sm }}>
-          <VadText variant="heading">What the walkthrough covers</VadText>
-          <TourPoint title="Discover and trade" body="Browse markets, inspect market details, switch to the real Trade ticket and review its stake or order controls." />
-          <TourPoint title="Save and follow markets" body="Use Watchlist to find saved markets and remove items you no longer want to follow." />
-          <TourPoint title="Manage your wallet" body="Review balances, eligible funding actions, wallet history and transfers without submitting a transaction during the tour." />
-          <TourPoint title="Portfolio and account" body="Explore positions, open orders, identity, funding, currency preferences, appearance, security and policies." />
-          <TourPoint title="Explore the rest of VAD" body="Open Notifications, News, financial and crypto data, Community, the assistant and market proposals." />
+          <VadText variant="heading">Tour highlights</VadText>
+          <TourPoint title="Markets & trades" body="Browse markets and review trading controls." />
+          <TourPoint title="Wallet & portfolio" body="Check balances, funding actions, positions and orders." />
+          <TourPoint title="Account & more" body="Manage security and preferences, then explore news, community and the assistant." />
         </View>
       </View>
     </ProductSubpage>

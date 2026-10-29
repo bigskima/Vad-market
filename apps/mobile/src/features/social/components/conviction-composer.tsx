@@ -59,8 +59,8 @@ export function ConvictionComposer({
     <VadCard variant="raised" style={{ gap: density.compact ? theme.spacing.sm : theme.spacing.md }}>
       <View style={{ gap: 1 }}>
         <VadText variant="caption" tone="brand">NEW CONVICTION</VadText>
-        <VadText variant="heading">Start with your reasoning.</VadText>
-        <VadText variant="caption" tone="secondary">Write the idea first. Attach a live market and prediction only when they add useful context.</VadText>
+        <VadText variant="heading">Share your view</VadText>
+        <VadText variant="caption" tone="secondary">Link a market if it adds context.</VadText>
       </View>
 
       <VadInput
@@ -68,7 +68,7 @@ export function ConvictionComposer({
         value={body}
         onChangeText={onBodyChange}
         placeholder="What do you believe, and why?"
-        hint={body.trim() ? body.trim().length + ' characters' : 'Give enough reasoning for someone to understand your conviction.'}
+        hint={body.trim() ? body.trim().length + ' characters' : 'Add context for your view.'}
       />
 
       {marketFilter ? (
@@ -111,7 +111,7 @@ export function ConvictionComposer({
           </View>
           <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
             <VadText variant="bodyStrong">Attach a live market</VadText>
-            <VadText variant="caption" tone="secondary">Optional · connect this reasoning to a tradable question.</VadText>
+            <VadText variant="caption" tone="secondary">Optional · link a market.</VadText>
           </View>
           <VadIcon name={marketPickerOpen ? 'close' : 'plus'} size={16} tone="tertiary" />
         </Pressable>
@@ -162,7 +162,7 @@ export function ConvictionComposer({
           ) : (
             <VadCard variant="muted" style={{ gap: 2 }}>
               <VadText variant="bodyStrong">No live markets to attach</VadText>
-              <VadText variant="caption" tone="secondary">You can still publish your analysis without linking it to a market.</VadText>
+              <VadText variant="caption" tone="secondary">Market link is optional.</VadText>
             </VadCard>
           )}
         </View>
@@ -172,7 +172,7 @@ export function ConvictionComposer({
         <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: wide ? 'center' : 'stretch', gap: theme.spacing.sm }}>
           <View style={{ flex: 1, gap: 2 }}>
             <VadText variant="label" tone="secondary">Add your prediction · optional</VadText>
-            <VadText variant="caption" tone="tertiary">Your reasoning can stand alone, or you can state which side you currently favour.</VadText>
+            <VadText variant="caption" tone="tertiary">Choose YES or NO if you want to add a prediction.</VadText>
           </View>
           <View style={{ width: wide ? 250 : '100%', flexDirection: 'row', gap: 6 }}>
             <Stance label="YES" value={probability(attachedMarket.yes_price)} selected={stance === 'YES'} positive onPress={() => onStanceChange('YES')} />

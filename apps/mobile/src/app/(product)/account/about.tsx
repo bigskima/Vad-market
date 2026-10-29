@@ -23,14 +23,14 @@ export default function AboutVadScreen() {
           </View>
           <VadText variant="title">{appName}</VadText>
           <VadText variant="caption" tone="secondary">Version {version}</VadText>
-          <VadText variant="body" tone="secondary">VAD Market is a prediction-market application. Trading availability and account permissions depend on the platform&apos;s published policies and verified eligibility.</VadText>
+          <VadText variant="body" tone="secondary">VAD Market is a prediction market. Trading depends on your eligibility and VAD’s published rules.</VadText>
         </VadCard>
         </TourTarget>
         <Pressable accessibilityRole="button" onPress={() => router.push('/account/policies')} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, opacity: pressed ? 0.75 : 1 })}>
           <VadIcon name="fileText" size={20} tone="brand" />
           <View style={{ flex: 1, gap: 2 }}>
             <VadText variant="bodyStrong">Legal documents</VadText>
-            <VadText variant="caption" tone="secondary">Open the currently published terms, privacy and risk disclosures.</VadText>
+            <VadText variant="caption" tone="secondary">View VAD’s Terms, Privacy Policy and Risk Disclosures.</VadText>
           </View>
           <VadIcon name="chevronRight" size={16} tone="tertiary" />
         </Pressable>

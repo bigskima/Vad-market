@@ -121,8 +121,8 @@ export default function PoliciesRoute() {
           </View>
         ) : !loading && !error ? (
           <VadCard variant="outlined" style={{ gap: 4 }}>
-            <VadText variant="bodyStrong">No published policies are available.</VadText>
-            <VadText variant="caption" tone="secondary">Please try again later.</VadText>
+            <VadText variant="bodyStrong">No policies available</VadText>
+            <VadText variant="caption" tone="secondary">Check back later.</VadText>
           </VadCard>
         ) : null}
       </View>

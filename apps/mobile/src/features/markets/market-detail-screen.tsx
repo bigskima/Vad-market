@@ -156,7 +156,7 @@ export function MarketDetailScreen({
       <View style={{ gap: 10 }}>
         <VadCard variant="surface" style={{ padding: 16, gap: 8 }}>
           <VadIcon name="wallet" size={22} tone="secondary" />
-          <VadText variant="bodyStrong">Market unavailable for your currency settings</VadText>
+          <VadText variant="bodyStrong">Market not available in this currency</VadText>
           <VadText variant="caption" tone="secondary">
             This market is hidden because its settlement currency is not enabled or is not supported in your region.
           </VadText>
@@ -296,6 +296,9 @@ function SportsMatchupCard({ market }: { market: MarketCatalogItem }) {
   const context = asRecord(market.market_context);
   const subject = asRecord(context.subject);
   const details = asRecord(context.details);
+  const subjectMetadata = asRecord(subject.metadata);
+  const detailsMetadata = asRecord(details.metadata);
+  const contextMetadata = asRecord(context.metadata);
 
   const homeTeam = firstContextText(subject.home_team, subject.homeTeam, context.home_team, context.homeTeam, subject.competitor_a, context.competitor_a, subject.team_home);
   const awayTeam = firstContextText(subject.away_team, subject.awayTeam, context.away_team, context.awayTeam, subject.competitor_b, context.competitor_b, subject.team_away);
@@ -346,7 +349,6 @@ function SportsMatchupCard({ market }: { market: MarketCatalogItem }) {
           <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.colors.surfaceRaised, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' }}>
             <VadText variant="bodyStrong" tone="secondary">VS</VadText>
           </View>
-          <VadText variant="caption" tone="tertiary">Fixture</VadText>
         </View>
         <View style={{ flex: 1, minWidth: 0, alignItems: 'center', gap: 8 }}>
           <TeamCrest name={awayTeam} imageUrl={awayLogo} />
@@ -364,11 +366,10 @@ function SportsMatchupCard({ market }: { market: MarketCatalogItem }) {
 
       {condition ? (
         <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 10, gap: 4 }}>
-          <VadText variant="caption" tone="brand">MARKET QUESTION / RULE</VadText>
+          <VadText variant="caption" tone="brand">MARKET RULE</VadText>
           <VadText variant="body" style={{ lineHeight: 21 }}>{condition}</VadText>
         </View>
       ) : null}
-      <VadText variant="caption" tone="tertiary">Team badges and fixture details are shown when verified metadata is available. The market cover artwork above remains unchanged.</VadText>
     </VadCard>
   );
 }
@@ -402,6 +403,9 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
   const context = asRecord(market.market_context);
   const subject = asRecord(context.subject);
   const details = asRecord(context.details);
+  const subjectMetadata = asRecord(subject.metadata);
+  const detailsMetadata = asRecord(details.metadata);
+  const contextMetadata = asRecord(context.metadata);
   const config: Record<string, { title: string; lead: string; fields: { label: string; keys: string[] }[] }> = {
     CRYPTO: {
       title: 'Asset details',
@@ -489,21 +493,48 @@ function CategoryContextCard({ market, profile }: { market: MarketCatalogItem; p
     label: field.label,
     value: firstContextText(...field.keys.map((key) => subject[key] ?? details[key] ?? context[key])),
   })).filter((entry) => entry.value && entry.value.length <= 160).slice(0, 4);
-  if (!entries.length) return null;
-  const displayTitle = firstContextText(subject.name, subject.title, context.market_question, context.marketQuestion) || selected.title;
+  const displayTitle = firstContextText(
+    subject.name, subject.title, subject.asset_name, subject.assetName, subject.symbol, subject.ticker,
+    subject.company_name, subject.companyName, subject.artist, subject.artist_name,
+    subject.model_name, subject.modelName, subjectMetadata.name, subjectMetadata.symbol,
+    detailsMetadata.name, detailsMetadata.symbol, contextMetadata.name, context.market_question, context.marketQuestion,
+  ) || selected.title;
+  const logoUrl = safeCategoryImageUrl(firstContextText(
+    subject.logo_url, subject.logoUrl, subject.image_url, subject.imageUrl,
+    subject.icon_url, subject.iconUrl, subject.asset_logo_url, subject.assetLogoUrl,
+    subject.company_logo_url, subject.companyLogoUrl, subject.issuer_logo_url, subject.issuerLogoUrl,
+    subject.poster_url, subject.posterUrl, subject.avatar_url, subject.avatarUrl,
+    subject.logo, subject.image, subject.icon, subjectMetadata.logo_url, subjectMetadata.logoUrl,
+    subjectMetadata.image_url, subjectMetadata.imageUrl, subjectMetadata.icon_url, subjectMetadata.iconUrl,
+    details.logo_url, details.logoUrl, details.image_url, details.imageUrl,
+    details.icon_url, details.iconUrl, detailsMetadata.logo_url, detailsMetadata.logoUrl,
+    detailsMetadata.image_url, detailsMetadata.imageUrl, detailsMetadata.icon_url, detailsMetadata.iconUrl,
+    context.logo_url, context.logoUrl, context.image_url, context.imageUrl,
+    context.icon_url, context.iconUrl, context.asset_logo_url, context.assetLogoUrl,
+    contextMetadata.logo_url, contextMetadata.logoUrl, contextMetadata.image_url, contextMetadata.imageUrl,
+    contextMetadata.icon_url, contextMetadata.iconUrl,
+  ));
+  const initials = displayTitle.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('');
+  if (!entries.length && !logoUrl && displayTitle === selected.title) return null;
 
   return (
     <VadCard variant="surface" style={{ padding: 14, gap: 10, borderRadius: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 9 }}>
-        <View style={{ width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft }}>
-          <VadIcon name={profile === 'CRYPTO' ? 'activity' : profile === 'STOCKS' ? 'portfolio' : profile === 'MUSIC' ? 'community' : profile === 'AI' ? 'info' : 'globe'} size={17} tone="brand" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.brandSoft, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }}>
+          {logoUrl ? (
+            <Image source={{ uri: logoUrl }} accessibilityLabel={displayTitle + ' badge'} resizeMode="contain" style={{ width: 42, height: 42 }} />
+          ) : initials ? (
+            <VadText variant="bodyStrong" tone="brand">{initials}</VadText>
+          ) : (
+            <VadIcon name={profile === 'CRYPTO' ? 'activity' : profile === 'STOCKS' ? 'portfolio' : profile === 'MUSIC' ? 'community' : profile === 'AI' ? 'info' : 'globe'} size={18} tone="brand" />
+          )}
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <VadText variant="label" tone="brand">{selected.title}</VadText>
-          <VadText variant="caption" tone="secondary">{selected.lead}</VadText>
+          <VadText variant="bodyStrong" numberOfLines={2}>{displayTitle}</VadText>
+          {selected.lead ? <VadText variant="caption" tone="secondary" numberOfLines={2}>{selected.lead}</VadText> : null}
         </View>
       </View>
-      {displayTitle !== selected.title ? <VadText variant="bodyStrong">{displayTitle}</VadText> : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
         {entries.map((entry) => (
           <View key={entry.label} style={{ flex: 1, minWidth: '42%', borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceMuted, padding: 10, borderRadius: 12, gap: 4 }}>
@@ -547,6 +578,19 @@ function firstContextText(...values: unknown[]): string | null {
     }
   }
   return null;
+}
+
+function safeCategoryImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 1000) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password) return null;
+    const host = url.hostname.toLowerCase();
+    if (!host || host === 'localhost' || host.endsWith('.local') || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 function safeSportsImageUrl(value: unknown): string | null {
@@ -753,18 +797,18 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
   return (
     <View style={{ gap: theme.spacing.sm }}>
       <View style={{ gap: 3 }}>
-        <VadText variant="bodyStrong">{isSportsMarket ? 'Match outcome quotes' : 'Possible outcomes'}</VadText>
-        <VadText variant="caption" tone="secondary">{isSportsMarket ? 'Compare the current pool share for each result. Open a result to receive the market-specific quote before placing a trade.' : 'Choose the option you expect to win. Current pool share is based on committed stakes, not a promise of payout.'}</VadText>
+        <VadText variant="bodyStrong">{isSportsMarket ? 'Match outcomes' : 'Possible outcomes'}</VadText>
+        <VadText variant="caption" tone="secondary">{isSportsMarket ? 'Compare pool shares, then choose a result to trade.' : 'Choose the outcome you expect. Pool shares reflect stakes, not guaranteed payouts.'}</VadText>
       </View>
       {loading ? (
         <VadCard variant="muted" style={{ gap: 4 }}>
           <VadText variant="bodyStrong">Loading outcome choices…</VadText>
-          <VadText variant="caption" tone="secondary">Getting the latest options and pool shares.</VadText>
+          <VadText variant="caption" tone="secondary">Updating pool shares…</VadText>
         </VadCard>
       ) : error ? (
         <VadCard variant="muted" style={{ gap: 4, borderWidth: 1, borderColor: theme.colors.no }}>
-          <VadText variant="bodyStrong">Outcome choices unavailable</VadText>
-          <VadText variant="caption" tone="secondary">{error}</VadText>
+          <VadText variant="bodyStrong">Outcomes unavailable</VadText>
+          <VadText variant="caption" tone="secondary">Could not load outcomes. Try again.</VadText>
         </VadCard>
       ) : outcomes.length ? (
         <View style={{ gap: theme.spacing.xs }}>
@@ -811,8 +855,7 @@ function MultiOutcomeChoices({ market, timing, outcomes, loading, error, onTrade
         </View>
       ) : (
         <VadCard variant="muted" style={{ gap: 4 }}>
-          <VadText variant="bodyStrong">No options are available</VadText>
-          <VadText variant="caption" tone="secondary">The market’s configured outcome choices could not be found.</VadText>
+          <VadText variant="bodyStrong">No outcomes yet</VadText>
         </VadCard>
       )}
     </View>
@@ -889,7 +932,7 @@ function MarketSnapshot({ market, timing, outcomes }: { market: MarketCatalogIte
         {!finalOutcome && timing.stage === 'VOIDED' ? (
           <View style={{ borderRadius: 11, padding: 11, backgroundColor: theme.colors.noSoft, gap: 3 }}>
             <VadText variant="bodyStrong" tone="no">Market voided</VadText>
-            <VadText variant="caption" tone="secondary">Refer to the published void and refund rules for the final handling of this market.</VadText>
+            <VadText variant="caption" tone="secondary">See the market rules for voids and refunds.</VadText>
           </View>
         ) : null}
 
@@ -905,7 +948,7 @@ function MarketSnapshot({ market, timing, outcomes }: { market: MarketCatalogIte
                 <VadText variant="bodyStrong" tone="no">{no}</VadText>
               </View>
             </View>
-            <VadText variant="caption" tone="tertiary">{pool ? 'Pool allocation reflects participant stakes, not the final result.' : 'Current market pricing is not a guarantee of the final outcome.'}</VadText>
+            <VadText variant="caption" tone="tertiary">{pool ? 'Pool shares reflect current stakes, not the result.' : 'Prices can change and do not guarantee the result.'}</VadText>
           </>
         ) : null}
 
@@ -914,14 +957,14 @@ function MarketSnapshot({ market, timing, outcomes }: { market: MarketCatalogIte
             <VadText variant="bodyStrong">
               {isMultiOutcome
                 ? 'Choose from the possible outcomes'
-                : timing.stage === 'OPEN' ? 'Waiting for a current quote' : timing.stage === 'SETTLED' ? 'Settlement status' : 'Current prices unavailable'}
+                : timing.stage === 'OPEN' ? 'Prices updating' : timing.stage === 'SETTLED' ? 'Settlement status' : 'Prices unavailable'}
             </VadText>
             <VadText variant="caption" tone="secondary">
               {isMultiOutcome
-                ? 'Each option has a separate stake pool. The pool share is an indication of current participation, not a guarantee of the final result.'
+                ? 'Each option has its own pool. Shares reflect current stakes, not the result.'
                 : timing.stage === 'OPEN'
-                  ? 'A price will appear when a valid market quote is available.'
-                  : 'Inactive or settled markets do not show old quotes as current conviction. Recorded history remains available in Activity.'}
+                  ? 'Prices will appear when available.'
+                  : "This market isn't trading. Check Activity for past trades."}
             </VadText>
           </View>
         ) : null}
@@ -1122,10 +1165,10 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
         ) : (
           <View style={{ gap: 7 }}>
             <VadText variant="bodyStrong">
-              {failed ? 'Full published details could not be loaded' : 'Published description unavailable'}
+              {failed ? 'Market details unavailable' : 'No extra details yet'}
             </VadText>
             <VadText variant="caption" tone="secondary">
-              {failed ? detailState.errorMessage ?? 'Market details are temporarily unavailable. Please retry.' : 'More details are not available yet.'}
+              {failed ? 'Try again in a moment.' : 'No extra details yet.'}
             </VadText>
             {failed ? (
               <Pressable
@@ -1144,7 +1187,6 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
         <VadCard variant="surface" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
           <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8, gap: 3 }}>
             <VadText variant="bodyStrong">Resolution conditions</VadText>
-            <VadText variant="caption" tone="secondary">Key parameters configured for this event.</VadText>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, paddingHorizontal: 12, paddingBottom: 12 }}>
             {visibleScopeRows.map((row) => (
@@ -1174,17 +1216,17 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
       ) : null}
 
       <ProgressiveMarketSection
-        title="Resolution"
-        subtitle={oracle ? 'How the result is verified' : loading ? 'Loading…' : 'Verification details unavailable'}
+        title="Result verification"
+        subtitle={oracle ? 'How it’s decided' : loading ? 'Loading…' : 'Not available yet'}
         expanded={verificationExpanded}
         onPress={() => setVerificationExpanded((current) => !current)}
       >
         {oracle ? (
           <View style={{ gap: 10 }}>
-            {environment ? <DetailValueRow label="Environment" value={environment} /> : null}
+            {environment ? <DetailValueRow label="Network" value={environment} /> : null}
             {sourceRows.length ? (
               <View style={{ gap: 6 }}>
-                <VadText variant="caption" tone="secondary">Approved source hierarchy</VadText>
+                <VadText variant="caption" tone="secondary">Result verification sources</VadText>
                 {sourceRows.map((source, index) => (
                   <View key={`${source.role}-${source.provider}-${index}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 9, borderRadius: 9, backgroundColor: theme.colors.surfaceMuted }}>
                     <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.brandPrimary }} />
@@ -1197,15 +1239,15 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
               </View>
             ) : null}
             {typeof requiredProviders === 'number' ? (
-              <DetailValueRow label="Minimum agreeing providers" value={String(requiredProviders)} />
+              <DetailValueRow label="Sources required" value={String(requiredProviders)} />
             ) : null}
-            {consensus.distinct_providers === true ? <DetailValueRow label="Consensus requirement" value="Distinct providers required" /> : null}
-            {tieBehavior ? <DetailValueRow label="Tie behavior" value={tieBehavior} /> : null}
-            {finalizationMode ? <DetailValueRow label="Finalization" value={finalizationMode} /> : null}
+            {consensus.distinct_providers === true ? <DetailValueRow label="Source agreement" value="Independent sources required" /> : null}
+            {tieBehavior ? <DetailValueRow label="When sources disagree" value={tieBehavior} /> : null}
+            {finalizationMode ? <DetailValueRow label="Result confirmation" value={finalizationMode} /> : null}
             {disputeWindow ? <DetailValueRow label="Dispute window" value={disputeWindow} /> : null}
             {policyRules.length ? (
               <View style={{ gap: 8 }}>
-                <VadText variant="caption" tone="secondary">Exceptional cases</VadText>
+                <VadText variant="caption" tone="secondary">Special cases</VadText>
                 {policyRules.map((rule) => <DetailValueRow key={rule.label} label={rule.label} value={rule.value} />)}
               </View>
             ) : null}
@@ -1213,29 +1255,29 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
         ) : (
           <VadText variant="caption" tone="secondary">
             {failed
-              ? 'The detail service did not return the configured oracle policy. Retry the published details when the connection is available.'
-              : 'The configured oracle policy and source hierarchy appear here when returned by the market detail service.'}
+              ? 'Verification details will appear here when available.'
+              : 'Verification details will appear here when available.'}
           </VadText>
         )}
       </ProgressiveMarketSection>
 
       <ProgressiveMarketSection
-        title="Schedule & settlement"
-        subtitle={scheduleRows.length ? `${scheduleRows.length} published timestamps` : 'View the market timeline and settlement asset'}
+        title="Timing & payouts"
+        subtitle={scheduleRows.length ? 'Timeline available' : 'Timeline details'}
         expanded={scheduleExpanded}
         onPress={() => setScheduleExpanded((current) => !current)}
       >
         {scheduleRows.map((row) => <DetailValueRow key={row.label} label={row.label} value={row.value} />)}
         <DetailValueRow label="Trading status" value={timing.statusLabel} />
-        <DetailValueRow label="Settlement asset" value={detail?.assetCode ?? market.asset_code} />
-        {detail?.settlementUnit != null ? <DetailValueRow label="Settlement unit" value={String(detail.settlementUnit)} /> : null}
-        {detail?.minimumOrderNotional != null ? <DetailValueRow label="Minimum order notional" value={assetMoney(detail.minimumOrderNotional, detail.assetCode)} /> : null}
-        {detail?.oracle?.closeRule ? <DetailValueRow label="Close rule" value={describeRule(detail.oracle.closeRule) ?? 'Configured'} /> : null}
+        <DetailValueRow label="Payout currency" value={detail?.assetCode ?? market.asset_code} />
+        {detail?.settlementUnit != null ? <DetailValueRow label="Payout unit" value={String(detail.settlementUnit)} /> : null}
+        {detail?.minimumOrderNotional != null ? <DetailValueRow label="Minimum trade" value={assetMoney(detail.minimumOrderNotional, detail.assetCode)} /> : null}
+        {detail?.oracle?.closeRule ? <DetailValueRow label="Market closes when" value={describeRule(detail.oracle.closeRule) ?? 'Configured'} /> : null}
       </ProgressiveMarketSection>
 
       <ProgressiveMarketSection
         title="Outcomes"
-        subtitle={outcomes.length ? `${outcomes.length} options` : loading ? 'Loading…' : 'Outcomes unavailable'}
+        subtitle={outcomes.length ? `${outcomes.length} options` : loading ? 'Loading…' : 'No outcomes yet'}
         expanded={outcomesExpanded}
         onPress={() => setOutcomesExpanded((current) => !current)}
       >
@@ -1245,7 +1287,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
             <VadChip label={outcome.code} tone={outcome.code.toUpperCase() === 'YES' ? 'yes' : outcome.code.toUpperCase() === 'NO' ? 'no' : 'neutral'} />
           </View>
         )) : (
-          <VadText variant="caption" tone="secondary">No outcome details available yet.</VadText>
+          <VadText variant="caption" tone="secondary">No outcomes listed.</VadText>
         )}
       </ProgressiveMarketSection>
     </View>

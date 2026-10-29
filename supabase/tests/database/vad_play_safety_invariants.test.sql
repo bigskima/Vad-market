@@ -58,19 +58,19 @@ select ok(
   exists (
     select 1 from public.play_engine_registry
     where engine_key = 'SPIN_AND_WIN'
-      and rollout_status = 'REVIEW_REQUIRED'
-      and runtime_ready = false
+      and rollout_status = 'ENABLED'
+      and runtime_ready = true
   ),
-  'Spin & Win remains disabled until its server runtime is reviewed'
+  'Spin & Win is enabled only for the no-reward practice runtime'
 );
 select ok(
   exists (
     select 1 from public.play_engine_registry
     where engine_key = 'SCRATCH_AND_REVEAL'
-      and rollout_status = 'REVIEW_REQUIRED'
-      and runtime_ready = false
+      and rollout_status = 'ENABLED'
+      and runtime_ready = true
   ),
-  'Scratch & Reveal remains disabled until its server runtime is reviewed'
+  'Scratch & Reveal is enabled only for the no-reward practice runtime'
 );
 select is(
   (select status from public.play_ad_providers where provider_key = 'direct-sponsor'),

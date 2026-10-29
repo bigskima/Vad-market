@@ -546,14 +546,14 @@ function DeploymentsPanel({
           {selectedChain?.family === 'SOLANA' ? (
             <>
               <VadInput label="VAD signer address" value={quoteSigner} onChangeText={setQuoteSigner} placeholder="Public Solana address" />
-              <VadInput label="Resolver authority" value={resolver} onChangeText={setResolver} placeholder="Public Solana address" />
+              <VadInput label="Result verifier authority" value={resolver} onChangeText={setResolver} placeholder="Public Solana address" />
               <VadInput label="Treasury address" value={treasury} onChangeText={setTreasury} placeholder="Public Solana address" />
             </>
           ) : (
             <>
               <VadInput label="Quote signer address" value={quoteSigner} onChangeText={setQuoteSigner} placeholder="0x…" />
               <VadInput label="Settlement signer address" value={settlementSigner} onChangeText={setSettlementSigner} placeholder="0x…" />
-              <VadInput label="Resolver address" value={resolver} onChangeText={setResolver} placeholder="0x…" />
+              <VadInput label="Result verifier address" value={resolver} onChangeText={setResolver} placeholder="0x…" />
               <VadInput label="Treasury address" value={treasury} onChangeText={setTreasury} placeholder="0x…" />
             </>
           )}

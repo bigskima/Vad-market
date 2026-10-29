@@ -103,7 +103,7 @@ export default function AdminMarketAgentsScreen() {
         <View style={{ gap: 4 }}>
           <VadText variant="label" tone="brand">AUTONOMOUS MARKET WORKFLOW</VadText>
           <VadText variant="title">Market agent access</VadText>
-          <VadText variant="caption" tone="secondary">Issue a scoped key so an authorized AI agent can read VAD’s market catalogue and create or publish markets through the existing database, trading-limit and resolution pipeline—not by bypassing it.</VadText>
+          <VadText variant="caption" tone="secondary">Create a secure key for an AI agent to create and publish markets under VAD rules and trading limits.</VadText>
         </View>
 
         <VadCard variant="raised" style={{ gap: theme.spacing.md }}>

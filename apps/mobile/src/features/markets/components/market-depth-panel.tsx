@@ -64,7 +64,7 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="bodyStrong">Order book</VadText>
-          <VadText variant="caption" tone="secondary">Current resting bids · snapshot</VadText>
+          <VadText variant="caption" tone="secondary">Current bids</VadText>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 999, backgroundColor: theme.colors.surfaceRaised }}>
           <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: theme.colors.yes }} />
@@ -73,7 +73,7 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
       </View>
 
       {failed ? (
-        <VadText variant="caption" tone="secondary">Order book is temporarily unavailable.</VadText>
+        <VadText variant="caption" tone="secondary">Order book unavailable.</VadText>
       ) : loading || !book ? (
         <View style={{ height: 54, justifyContent: 'center' }}>
           <VadText variant="caption" tone="tertiary">Loading current bids…</VadText>
@@ -81,7 +81,6 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
       ) : !hasLevels ? (
         <View style={{ gap: 4, paddingVertical: 8 }}>
           <VadText variant="bodyStrong">No resting bids yet</VadText>
-          <VadText variant="caption" tone="secondary">The depth view will fill in when traders place open orders. Last traded prices remain separate.</VadText>
         </View>
       ) : (
         <View style={{ gap: 10 }}>
@@ -99,7 +98,6 @@ export function MarketDepthPanel({ instrumentId }: { instrumentId: string }) {
               )) : <VadText variant="caption" tone="tertiary">No bids</VadText>}
             </View>
           </View>
-          <VadText variant="caption" tone="tertiary">Bars compare visible quantities only; they are not a price-history chart.</VadText>
         </View>
       )}
     </VadCard>

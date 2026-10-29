@@ -61,7 +61,7 @@ export function AdminPlayOperationsPanel() {
     try {
       setData(await getAdminPlayOperations());
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'VAD Play operation records could not be loaded.');
+      setError('Could not load Play activity. Try again.');
     } finally {
       setLoading(false);
     }
@@ -78,20 +78,20 @@ export function AdminPlayOperationsPanel() {
   return (
     <View style={{ gap: theme.spacing.xl }}>
       <View style={{ gap: 5 }}>
-        <VadText variant="heading">Play operations ledger view</VadText>
+        <VadText variant="heading">Play activity</VadText>
         <VadText tone="secondary">
-          Read-only view of entry orders, draw records and settlement journal references. Each section loads at most the latest 30 records; the counts are loaded records, not lifetime totals. Financial source of truth remains VAD&apos;s existing double-entry ledger.
+          Latest orders, draw results and settlements. Each section shows up to 30 records; counts reflect only the records shown here.
         </VadText>
       </View>
       {error ? (
         <VadCard>
           <View style={{ padding: theme.spacing.md, gap: 8 }}>
             <VadText variant="caption" tone="danger">{error}</VadText>
-            <VadButton label="Retry operations" variant="secondary" onPress={() => void load()} loading={loading} />
+            <VadButton label="Try again" variant="secondary" onPress={() => void load()} loading={loading} />
           </View>
         </VadCard>
       ) : null}
-      {loading ? <VadText tone="secondary">Loading Play operation records…</VadText> : null}
+      {loading ? <VadText tone="secondary">Loading Play activity…</VadText> : null}
 
       {!loading && !error ? (
         <>
@@ -108,7 +108,7 @@ export function AdminPlayOperationsPanel() {
             ))}
           </View>
 
-          <OperationsSection title="Entry orders" description="Payment status and ledger journal references for recorded ticket orders.">
+          <OperationsSection title="Entry orders" description="Ticket payments, refunds and references.">
             {data.entryOrders.length ? data.entryOrders.slice(0, 30).map((item) => (
               <VadCard key={item.id}>
                 <View style={{ padding: theme.spacing.md, gap: theme.spacing.sm }}>
@@ -116,21 +116,21 @@ export function AdminPlayOperationsPanel() {
                     <VadText variant="label">{item.campaign_title}</VadText>
                     <VadText variant="caption" tone={item.status === 'PAID' ? 'yes' : item.status === 'REFUNDED' ? 'secondary' : 'warning'}>{statusLabel(item.status)}</VadText>
                   </View>
-                  <Meta label="Entry order ID" value={item.id} />
+                  <Meta label="Entry reference" value={item.id} />
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
                     <Meta label="Tickets" value={item.ticket_count} />
                     <Meta label="Total" value={money(item.total_amount, item.currency_code)} />
                     <Meta label="Created" value={new Date(item.created_at).toLocaleString()} />
                   </View>
-                  <Meta label="Payment journal" value={item.ledger_journal_id} />
-                  <Meta label="Refund journal" value={item.refund_journal_id} />
+                  <Meta label="Payment reference" value={item.ledger_journal_id} />
+                  <Meta label="Refund reference" value={item.refund_journal_id} />
                   {item.refund_reason ? <Meta label="Refund reason" value={item.refund_reason} /> : null}
                 </View>
               </VadCard>
             )) : <VadText tone="secondary">No ticket orders recorded.</VadText>}
           </OperationsSection>
 
-          <OperationsSection title="Draw records" description="Authorizer/executor separation, commitment, result digest and recorded winner.">
+          <OperationsSection title="Draw records" description="Draw approvals, recorded results and winners.">
             {data.draws.length ? data.draws.slice(0, 30).map((item) => (
               <VadCard key={item.id}>
                 <View style={{ padding: theme.spacing.md, gap: theme.spacing.sm }}>
@@ -138,25 +138,25 @@ export function AdminPlayOperationsPanel() {
                     <VadText variant="label">{item.campaign_title}</VadText>
                     <VadText variant="caption" tone={item.status === 'DRAWN' ? 'yes' : item.status === 'VOIDED' ? 'secondary' : 'warning'}>{statusLabel(item.status)}</VadText>
                   </View>
-                  <Meta label="Draw ID" value={item.id} />
+                  <Meta label="Draw reference" value={item.id} />
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
-                    <Meta label="Tickets in snapshot" value={item.ticket_count_snapshot} />
-                    <Meta label="Winner ticket" value={item.winning_ticket_code} />
-                    <Meta label="Selection counter" value={item.selection_counter} />
+                    <Meta label="Tickets in draw" value={item.ticket_count_snapshot} />
+                    <Meta label="Winning ticket" value={item.winning_ticket_code} />
+                    <Meta label="Draw sequence" value={item.selection_counter} />
                   </View>
-                  <Meta label="Seed commitment" value={item.seed_commitment} />
-                  <Meta label="Ticket-set digest" value={item.entries_digest} />
-                  <Meta label="Result digest" value={item.result_digest} />
-                  <Meta label="Authorized by / at" value={item.authorized_by + ' · ' + new Date(item.authorized_at).toLocaleString()} />
-                  {item.executed_by && item.executed_at ? <Meta label="Executed by / at" value={item.executed_by + ' · ' + new Date(item.executed_at).toLocaleString()} /> : null}
+                  <Meta label="Randomness proof" value={item.seed_commitment} />
+                  <Meta label="Ticket list check" value={item.entries_digest} />
+                  <Meta label="Result check" value={item.result_digest} />
+                  <Meta label="Approved by" value={item.authorized_by + ' · ' + new Date(item.authorized_at).toLocaleString()} />
+                  {item.executed_by && item.executed_at ? <Meta label="Drawn by" value={item.executed_by + ' · ' + new Date(item.executed_at).toLocaleString()} /> : null}
                   {item.voided_by && item.voided_at ? <Meta label="Voided by / at" value={item.voided_by + ' · ' + new Date(item.voided_at).toLocaleString()} /> : null}
                   {item.void_reason ? <Meta label="Void reason" value={item.void_reason} /> : null}
                 </View>
               </VadCard>
-            )) : <VadText tone="secondary">No draw authorizations or results recorded.</VadText>}
+            )) : <VadText tone="secondary">No draw results yet.</VadText>}
           </OperationsSection>
 
-          <OperationsSection title="Settlements" description="Recorded recoveries and profit allocation linked to VAD ledger journals.">
+          <OperationsSection title="Settlements" description="Recoveries, prize costs and profit allocations.">
             {data.settlements.length ? data.settlements.slice(0, 30).map((item) => (
               <VadCard key={item.id}>
                 <View style={{ padding: theme.spacing.md, gap: theme.spacing.sm }}>
@@ -169,12 +169,12 @@ export function AdminPlayOperationsPanel() {
                     <Meta label="Qualifying funds" value={money(item.qualifying_funds_amount, item.currency_code)} />
                     <Meta label="Prize cost recovered" value={money(item.prize_cost_recovered, item.currency_code)} />
                     <Meta label="Campaign costs recovered" value={money(item.campaign_costs_recovered, item.currency_code)} />
-                    <Meta label="Configured profit target" value={money(item.profit_target_amount, item.currency_code)} />
+                    <Meta label="Profit target" value={money(item.profit_target_amount, item.currency_code)} />
                     <Meta label="Excess collection" value={money(item.excess_amount, item.currency_code)} />
                   </View>
-                  <Meta label="Prize ledger journal" value={item.prize_journal_id} />
-                  <Meta label="Costs ledger journal" value={item.costs_journal_id} />
-                  <Meta label="Profit ledger journal" value={item.profit_journal_id} />
+                  <Meta label="Prize reference" value={item.prize_journal_id} />
+                  <Meta label="Cost reference" value={item.costs_journal_id} />
+                  <Meta label="Profit reference" value={item.profit_journal_id} />
                   <Meta label="Delivery evidence reference" value={item.delivery_evidence_reference} />
                   <Meta label="Settled at" value={new Date(item.settled_at).toLocaleString()} />
                 </View>
@@ -182,7 +182,7 @@ export function AdminPlayOperationsPanel() {
             )) : <VadText tone="secondary">No settlements recorded.</VadText>}
           </OperationsSection>
 
-          <VadButton label="Refresh operations" variant="secondary" onPress={() => void load()} loading={loading} />
+          <VadButton label="Refresh" variant="secondary" onPress={() => void load()} loading={loading} />
         </>
       ) : null}
     </View>

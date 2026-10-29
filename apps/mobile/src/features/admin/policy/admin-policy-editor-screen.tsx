@@ -215,7 +215,7 @@ export function AdminPolicyEditorScreen() {
 
             <VadCard variant="outlined" style={{ gap: theme.spacing.sm }}>
               <VadText variant="bodyStrong">Publish this version</VadText>
-              <VadText variant="caption" tone="secondary">Publishing makes this document the current VAD version. Use a new version label each time you publish.</VadText>
+              <VadText variant="caption" tone="secondary">Publishing makes this the current policy. Use a new version label for each release.</VadText>
               <EditorInput value={publicationReason} onChangeText={setPublicationReason} multiline minHeight={92} placeholder="Why is this version being published?" />
               <VadButton label="Publish new version" loading={publishing} disabled={!selected.canPublish || publicationReason.trim().length < 3} onPress={() => void publishVersion()} />
               {!selected.canPublish ? <VadText variant="caption" tone="tertiary">You can prepare and save drafts. A Super Admin must publish legal policy versions.</VadText> : null}

@@ -1,15 +1,15 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
+import { useVadTheme } from '@/providers/theme-provider';
 
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
-import { VadSkeleton } from '@/components/ui/vad-skeleton';
+import { MarketDetailSkeleton } from '@/components/ui/screen-skeletons';
 import { MarketDetailScreen } from '@/features/markets/market-detail-screen';
 import { ProductSubpage } from '@/features/navigation/product-subpage';
 import { useRuntimeCapabilities } from '@/hooks/use-runtime-capabilities';
 import { useAuth } from '@/providers/auth-provider';
 import { useProductDataContext } from '@/providers/product-data-provider';
-import { useVadTheme } from '@/providers/theme-provider';
 import type { MarketCatalogItem } from '@/services/market-api';
 
 export default function MarketDetailRoute() {
@@ -42,12 +42,7 @@ export default function MarketDetailRoute() {
   return (
     <ProductSubpage title="Market" maxWidth={980} bottomPadding={280}>
       {data.loading ? (
-        <View style={{ gap: theme.spacing.md }}>
-          <VadSkeleton width="62%" height={34} />
-          <VadSkeleton height={148} radius={theme.radius.xl} />
-          <VadSkeleton height={46} />
-          <VadSkeleton height={118} />
-        </View>
+        <MarketDetailSkeleton />
       ) : market ? (
         <View style={{ gap: theme.spacing.md }}>
           <MarketDetailScreen

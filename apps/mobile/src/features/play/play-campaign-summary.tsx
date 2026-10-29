@@ -1,9 +1,12 @@
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Image, Pressable, View } from 'react-native';
 
+import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import { PlayDrawAuditPanel } from './play-draw-audit-panel';
 import type { PlayCampaign } from '@/services/play-api';
+import { playMediaPublicUrl } from '@/services/play-media-api';
 
 function money(value: number | string, currency: string) {
   const amount = Number(value);
@@ -32,6 +35,8 @@ function statusLabel(status: string) {
 
 export function PlayCampaignSummary({ campaign }: { campaign: PlayCampaign }) {
   const theme = useVadTheme();
+  const [showRules, setShowRules] = useState(false);
+  const campaignImage = playMediaPublicUrl(rule(campaign, 'campaign_image_path'));
   const threshold = Number(campaign.funding_threshold_amount);
   const funds = Number(campaign.qualifying_funds_amount);
   const progress = Number.isFinite(threshold) && threshold > 0 && Number.isFinite(funds)
@@ -43,7 +48,10 @@ export function PlayCampaignSummary({ campaign }: { campaign: PlayCampaign }) {
     : new Date(closeTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
-    <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.xl, backgroundColor: theme.colors.surface, padding: theme.spacing.lg, gap: theme.spacing.md }}>
+    <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.xl, backgroundColor: theme.colors.surface, padding: theme.spacing.md, gap: theme.spacing.md }}>
+      {campaignImage ? (
+        <Image source={{ uri: campaignImage }} accessibilityLabel={campaign.title + ' campaign artwork'} resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surfaceMuted }} />
+      ) : null}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
         <View style={{ flex: 1, gap: 4 }}>
           <VadText variant="caption" tone="brand">{statusLabel(campaign.status)}</VadText>
@@ -58,23 +66,37 @@ export function PlayCampaignSummary({ campaign }: { campaign: PlayCampaign }) {
 
       <View style={{ gap: 5 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <VadText variant="caption" tone="secondary">Funding progress</VadText>
+          <VadText variant="caption" tone="secondary">Funding</VadText>
           <VadText variant="caption" tone="secondary">{progress.toFixed(0)}%</VadText>
         </View>
         <View style={{ height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: theme.colors.surfaceMuted }}>
           <View style={{ height: '100%', width: (progress.toFixed(2) + '%') as `${number}%`, backgroundColor: theme.colors.brandPrimary }} />
         </View>
         <VadText variant="caption" tone="secondary">
-          {money(campaign.qualifying_funds_amount, campaign.currency_code)} of {money(campaign.funding_threshold_amount, campaign.currency_code)} in reconciled qualifying funds
+          {money(campaign.qualifying_funds_amount, campaign.currency_code)} / {money(campaign.funding_threshold_amount, campaign.currency_code)}
         </VadText>
       </View>
 
-      {closeLabel ? <VadText variant="caption" tone="secondary">Scheduled close: {closeLabel}</VadText> : null}
-      {rule(campaign, 'terms') ? <VadText variant="caption" tone="secondary">Terms: {rule(campaign, 'terms')}</VadText> : null}
-      {rule(campaign, 'refund_policy') ? <VadText variant="caption" tone="secondary">Refund policy: {rule(campaign, 'refund_policy')}</VadText> : null}
-      <VadText variant="caption" tone="tertiary">
-        This summary reflects the published campaign record. Ticket eligibility and final outcome are governed by the campaign rules and server-side draw audit.
-      </VadText>
+      {closeLabel ? <VadText variant="caption" tone="secondary">Closes {closeLabel}</VadText> : null}
+      {(rule(campaign, 'terms') || rule(campaign, 'refund_policy')) ? (
+        <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8, gap: 8 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showRules }}
+            onPress={() => setShowRules((value) => !value)}
+            style={{ minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+          >
+            <VadText variant="label">Rules & refunds</VadText>
+            <VadIcon name={showRules ? 'close' : 'chevronRight'} size={16} tone="secondary" />
+          </Pressable>
+          {showRules ? (
+            <View style={{ gap: 9 }}>
+              {rule(campaign, 'terms') ? <View style={{ gap: 3 }}><VadText variant="caption" tone="tertiary">Terms</VadText><VadText>{rule(campaign, 'terms')}</VadText></View> : null}
+              {rule(campaign, 'refund_policy') ? <View style={{ gap: 3 }}><VadText variant="caption" tone="tertiary">Refund policy</VadText><VadText>{rule(campaign, 'refund_policy')}</VadText></View> : null}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
       <PlayDrawAuditPanel campaignId={campaign.id} />
     </View>
   );

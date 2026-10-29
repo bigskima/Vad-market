@@ -6,6 +6,7 @@ import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
 import { VadChip } from '@/components/ui/vad-chip';
 import { VadErrorState } from '@/components/ui/vad-error-state';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { VadIcon } from '@/components/ui/vad-icon';
 import { VadText } from '@/components/ui/vad-text';
 import { ProductRoute } from '@/features/navigation/product-route';
@@ -127,7 +128,7 @@ export default function SupportScreen() {
         setActiveTicketId(rows[0]?.id ?? null);
       })
       .catch((reason: unknown) => {
-        if (active) setTicketError(reason instanceof Error ? reason.message : 'Your support requests could not be loaded.');
+        if (active) setTicketError(userFacingErrorMessage(reason, 'general', 'Could not load support requests. Try again.'));
       })
       .finally(() => { if (active) setTicketsLoading(false); });
     return () => { active = false; };
@@ -147,7 +148,7 @@ export default function SupportScreen() {
         setChatMessages(restored.length ? restored : [welcomeMessage()]);
       })
       .catch((reason: unknown) => {
-        if (active) setAiError(reason instanceof Error ? reason.message : 'This AI support conversation could not be reopened.');
+        if (active) setAiError(userFacingErrorMessage(reason, 'general', 'Could not reopen this chat. Try again.'));
       })
       .finally(() => { if (active) setAiLoading(false); });
     return () => { active = false; };
@@ -164,7 +165,7 @@ export default function SupportScreen() {
         }
       })
       .catch((reason: unknown) => {
-        if (active) setTicketError(reason instanceof Error ? reason.message : 'The support conversation could not be loaded.');
+        if (active) setTicketError(userFacingErrorMessage(reason, 'general', 'Could not load this conversation. Try again.'));
       });
     return () => { active = false; };
   }, [activeTicketId]);
@@ -209,7 +210,7 @@ export default function SupportScreen() {
     } catch (reason) {
       setChatMessages((current) => current.filter((item) => item.id !== optimisticId));
       setChatInput(message);
-      setAiError(reason instanceof Error ? reason.message : 'VAD Support AI could not answer. Please try again.');
+      setAiError(userFacingErrorMessage(reason, 'general', 'Support AI could not reply. Try again.'));
     } finally {
       setAiSending(false);
     }
@@ -258,7 +259,7 @@ export default function SupportScreen() {
       setNotice('Your conversation has been passed to the VAD support team. They can continue from the transcript above.');
       setTicketError(null);
     } catch (reason) {
-      setTicketError(reason instanceof Error ? reason.message : 'Your conversation could not be passed to a human agent.');
+      setTicketError(userFacingErrorMessage(reason, 'general', 'Could not hand off this chat. Try again.'));
     } finally {
       setHandoffBusy(false);
     }
@@ -278,7 +279,7 @@ export default function SupportScreen() {
       await refreshTickets(activeTicket.id);
       setNotice('Reply sent to VAD Support.');
     } catch (reason) {
-      setTicketError(reason instanceof Error ? reason.message : 'Your reply could not be sent.');
+      setTicketError(userFacingErrorMessage(reason, 'general', 'Could not send your reply. Try again.'));
     } finally {
       setTicketBusy(false);
     }
@@ -469,20 +470,20 @@ export default function SupportScreen() {
                   <VadIcon name="lifeBuoy" size={18} tone="brand" />
                   <VadText variant="bodyStrong" style={{ flex: 1 }}>Still need help?</VadText>
                 </View>
-                <VadText variant="caption" tone="secondary">Pass this chat to a human agent. Your recent AI conversation will be included so you do not have to explain everything again.</VadText>
+                <VadText variant="caption" tone="secondary">Hand this chat to a human agent. Your recent conversation will be attached.</VadText>
                 <VadButton label="Talk to a human agent" variant="secondary" onPress={() => { setHandoffSubject(subjectFromMessage(latestUserMessage)); setTicketError(null); setHandoffOpen(true); }} leading={<VadIcon name="lifeBuoy" size={16} />} />
               </VadCard>
             ) : null}
 
-            {aiError ? <VadErrorState title="AI support could not reply" message={aiError} onRetry={() => void sendToAi(chatInput)} /> : null}
+            {aiError ? <VadErrorState title="Support AI unavailable" message={aiError} onRetry={() => void sendToAi(chatInput)} /> : null}
           </View>
         ) : (
           <View style={{ gap: theme.spacing.md }}>
             <View style={{ gap: 2 }}>
               <VadText variant="heading">Your support requests</VadText>
-              <VadText variant="caption" tone="secondary">A human agent can pick up where your AI conversation ended.</VadText>
+              <VadText variant="caption" tone="secondary">A human agent can continue from here.</VadText>
             </View>
-            {ticketError ? <VadErrorState title="Support requests" message={ticketError} onRetry={() => void refreshTickets().catch((reason: unknown) => setTicketError(reason instanceof Error ? reason.message : 'Refresh failed.'))} /> : null}
+            {ticketError ? <VadErrorState title="Couldn't load requests" message={ticketError} onRetry={() => void refreshTickets().catch((reason: unknown) => setTicketError(userFacingErrorMessage(reason, 'general', 'Could not refresh support requests. Try again.')))} /> : null}
             {ticketsLoading ? (
               <View style={{ alignItems: 'center', padding: 22, gap: 8 }}>
                 <ActivityIndicator color={theme.colors.brandPrimary} />
@@ -557,7 +558,7 @@ export default function SupportScreen() {
                     <VadButton label="Send reply" loading={ticketBusy} disabled={!ticketReply.trim() || ticketBusy} onPress={() => void replyToHuman()} />
                   </View>
                 ) : (
-                  <VadText variant="caption" tone="secondary">This request is closed. Start a new AI support chat if you need more help.</VadText>
+                  <VadText variant="caption" tone="secondary">Closed. Start a new chat for more help.</VadText>
                 )}
               </VadCard>
             ) : null}
@@ -571,7 +572,7 @@ export default function SupportScreen() {
               <View style={{ alignItems: 'center' }}><View style={{ width: 40, height: 4, borderRadius: 4, backgroundColor: theme.colors.border }} /></View>
               <View style={{ gap: 3 }}>
                 <VadText variant="heading">Talk to a human agent</VadText>
-                <VadText variant="caption" tone="secondary">We will attach the recent AI conversation to the ticket for context.</VadText>
+                <VadText variant="caption" tone="secondary">Your recent chat will be attached to the ticket.</VadText>
               </View>
               <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 10 }}>
                 <VadText variant="label">What is this about?</VadText>
@@ -588,7 +589,7 @@ export default function SupportScreen() {
                   placeholderTextColor={theme.colors.textTertiary}
                   style={{ minHeight: 48, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12, backgroundColor: theme.colors.background, color: theme.colors.textPrimary, paddingHorizontal: 12, fontSize: 15 }}
                 />
-                {ticketError ? <VadErrorState title="Could not create the handoff" message={ticketError} /> : null}
+                {ticketError ? <VadErrorState title="Couldn't hand off chat" message={ticketError} /> : null}
                 <VadButton label="Send conversation to support" loading={handoffBusy} disabled={handoffBusy || !resolvedSubject || resolvedSubject.length < 5} onPress={() => void handOffToHuman()} leading={<VadIcon name="lifeBuoy" size={16} tone="inverse" />} />
               </ScrollView>
             </View>

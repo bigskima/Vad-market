@@ -7,7 +7,7 @@ import { VadCard } from '@/components/ui/vad-card';
 import { VadEmptyState } from '@/components/ui/vad-empty-state';
 import { VadErrorState } from '@/components/ui/vad-error-state';
 import { VadSegmentedControl } from '@/components/ui/vad-segmented-control';
-import { VadSkeleton } from '@/components/ui/vad-skeleton';
+import { PaymentActivitySkeleton } from '@/components/ui/screen-skeletons';
 import { VadText } from '@/components/ui/vad-text';
 import { assetMoney } from '@/features/markets/format';
 import { PaymentRow } from '@/features/wallet/wallet-screen';
@@ -152,10 +152,10 @@ export function WalletActivityScreen({
         }}
       >
         <View style={{ flex: 1, gap: 2 }}>
-          <VadText variant="caption" tone="brand">PAYMENT ACTIVITY</VadText>
+          <VadText variant="caption" tone="brand">PAYMENTS</VadText>
           <VadText variant="title">Deposits & withdrawals</VadText>
           <VadText variant="caption" tone="secondary">
-            Provider payment requests stay separate from the market-ledger activity shown above, so deposits and withdrawals are easier to inspect.
+            Payment status and history.
           </VadText>
           {loadedRelative ? <VadText variant="caption" tone="tertiary">Updated {loadedRelative}</VadText> : null}
         </View>
@@ -171,15 +171,10 @@ export function WalletActivityScreen({
       </View>
 
       {loading ? (
-        <View style={{ gap: theme.spacing.sm }}>
-          <VadSkeleton height={density.compact ? 76 : 88} radius={theme.radius.lg} />
-          <VadSkeleton height={density.compact ? 36 : 40} radius={theme.radius.pill} />
-          <VadSkeleton height={density.compact ? 60 : 66} radius={theme.radius.lg} />
-          <VadSkeleton height={density.compact ? 60 : 66} radius={theme.radius.lg} />
-        </View>
+        <PaymentActivitySkeleton />
       ) : error && !rows.length ? (
         <VadErrorState
-          title="Payment activity unavailable"
+          title="Payment history unavailable"
           message={error}
           onRetry={() => {
             setLoading(true);
@@ -190,7 +185,7 @@ export function WalletActivityScreen({
         <>
           {error ? (
             <VadErrorState
-              title="Could not refresh payment activity"
+              title="Couldn't refresh payments"
               message={error}
               onRetry={() => void load(true)}
             />
@@ -209,7 +204,7 @@ export function WalletActivityScreen({
                 ))}
               </View>
             ) : (
-              <VadText variant="caption" tone="secondary">No payment activity has been recorded yet.</VadText>
+              <VadText variant="caption" tone="secondary">No payments yet.</VadText>
             )}
 
             <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
@@ -224,7 +219,7 @@ export function WalletActivityScreen({
             <VadSegmentedControl value={filter} options={FILTERS} onChange={setFilter} />
             {filteredRows.length ? (
               <VadText variant="caption" tone="tertiary">
-                Showing {progressive.visibleCount} of {progressive.totalCount} payment requests.
+                Showing {progressive.visibleCount} of {progressive.totalCount} payments.
               </VadText>
             ) : null}
           </View>
@@ -253,7 +248,7 @@ export function WalletActivityScreen({
               {progressive.hasMore ? (
                 <VadCard variant="raised" style={{ alignItems: 'center', gap: theme.spacing.sm }}>
                   <View style={{ alignItems: 'center', gap: 2 }}>
-                    <VadText variant="bodyStrong">More payment history is available</VadText>
+                    <VadText variant="bodyStrong">More payments</VadText>
                     <VadText variant="caption" tone="secondary">
                       {progressive.remainingCount} more {progressive.remainingCount === 1 ? 'transaction' : 'transactions'} match this view.
                     </VadText>
@@ -264,8 +259,8 @@ export function WalletActivityScreen({
             </View>
           ) : (
             <VadEmptyState
-              title={filter === 'all' ? 'No payment activity yet' : 'Nothing in this status'}
-              body={filter === 'all' ? 'Your deposits and withdrawals will appear here after you start them.' : 'Try another activity filter.'}
+              title={filter === 'all' ? 'No payments yet' : 'No matching payments'}
+              body={filter === 'all' ? 'Your deposits and withdrawals will appear here.' : 'Try another activity filter.'}
               actionLabel={filter !== 'all' ? 'Show all activity' : undefined}
               onAction={filter !== 'all' ? () => setFilter('all') : undefined}
             />

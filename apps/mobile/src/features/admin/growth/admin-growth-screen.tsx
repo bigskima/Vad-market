@@ -393,7 +393,7 @@ function CampaignEditor({ campaign, options, onSaved }: { campaign: GrowthCampai
     <VadInput label="How long a partner link stays valid (days)" value={form.attributionWindowDays} onChangeText={(value) => patch('attributionWindowDays', digits(value))} keyboardType="number-pad" />
 
     {isChallenge ? <>
-      <SectionHeader title="Challenge scoring" subtitle="Set simple scoring and winner rules without editing technical settings." />
+      <SectionHeader title="Challenge scoring" subtitle="Set challenge scoring and winner rules." />
       <VadInput label="Points for a correct prediction" value={form.correctPoints} onChangeText={(value) => patch('correctPoints', moneyInput(value))} keyboardType="decimal-pad" />
       <VadInput label="Bonus points (optional)" value={form.bonusPoints} onChangeText={(value) => patch('bonusPoints', moneyInput(value))} keyboardType="decimal-pad" />
       <VadInput label="Number of winners" value={form.winnerCount} onChangeText={(value) => patch('winnerCount', digits(value))} keyboardType="number-pad" />

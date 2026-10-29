@@ -50,13 +50,13 @@ export function AdminTrendingMarketPanel({ rows, snapshot, onChanged }: { rows: 
   }
 
   return <View style={{ gap: theme.spacing.md }}>
-    <DiscoveryRulePanel title="Trending Markets" subtitle="Finds markets heating up now by comparing recent completed activity with their previous pace." enabled={enabled} onEnabledChange={setEnabled}>
+    <DiscoveryRulePanel title="Trending Markets" subtitle="Highlights markets whose recent trading activity is increasing." enabled={enabled} onEnabledChange={setEnabled}>
       <DiscoveryChoiceGroup label="Watch the latest" options={[{ label: '30 min', value: 30 }, { label: '1 hour', value: 60 }, { label: '2 hours', value: 120 }, { label: '3 hours', value: 180 }]} value={windowMinutes} onChange={setWindowMinutes} />
       <DiscoveryChoiceGroup label="Compare with the previous" options={[{ label: '3 hours', value: 3 }, { label: '6 hours', value: 6 }, { label: '12 hours', value: 12 }, { label: '24 hours', value: 24 }]} value={baselineHours} onChange={setBaselineHours} />
       <VadInput label="Minimum completed trading activity (₦)" value={minimum} onChangeText={(value) => setMinimum(value.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" hint="Prevents very small bursts from appearing as a trend." />
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}><View style={{ flex: 1, minWidth: 170 }}><VadInput label="Minimum completed trades" value={trades} onChangeText={(value) => setTrades(value.replace(/\D/g, ''))} keyboardType="number-pad" /></View><View style={{ flex: 1, minWidth: 170 }}><VadInput label="Minimum distinct traders" value={traders} onChangeText={(value) => setTraders(value.replace(/\D/g, ''))} keyboardType="number-pad" hint="Helps stop one or two accounts from manufacturing a trend." /></View></View>
       <DiscoveryChoiceGroup label="Activity growth needed" options={[{ label: '1.25×', value: 1.25 }, { label: '1.5×', value: 1.5 }, { label: '2×', value: 2 }, { label: '3×', value: 3 }]} value={acceleration} onChange={setAcceleration} />
-      <VadText variant="caption" tone="tertiary">Example: 1.5× means recent trading must be at least 50% faster than its recent normal pace.</VadText>
+      <VadText variant="caption" tone="tertiary">1.5× means trading activity is 50% above the baseline.</VadText>
       <VadInput label="Maximum markets shown" value={maximum} onChangeText={(value) => setMaximum(value.replace(/\D/g, ''))} keyboardType="number-pad" />
       <VadInput label="Reason for change" value={reason} onChangeText={setReason} placeholder="Why are you changing the Trending Markets rules?" />
       {error ? <VadErrorState title="Could not update Trending Markets" message={error} /> : null}

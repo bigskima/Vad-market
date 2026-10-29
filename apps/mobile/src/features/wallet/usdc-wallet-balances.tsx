@@ -48,7 +48,7 @@ export function UsdcWalletBalances() {
         <VadText variant="caption" tone="brand">SELF-CUSTODY · USDC</VadText>
         <VadText variant="heading">On-chain balances</VadText>
         <VadText variant="caption" tone="secondary">
-          Verified EVM wallet balances are read directly from each network. These funds are separate from your VAD ledger balance.
+          Balances are read from each network and are separate from your VAD wallet balance.
         </VadText>
       </View>
 
@@ -69,7 +69,7 @@ export function UsdcWalletBalances() {
       ) : !wallets.length ? (
         <VadEmptyState
           title="Verify an EVM wallet first"
-          body="After you activate and verify your VAD wallet, balances on Arc Mainnet and Polygon will appear here when their RPC endpoints are available."
+          body="Set up your VAD wallet to view USDC balances on supported networks."
         />
       ) : (
         <View style={{ gap: theme.spacing.sm }}>
@@ -83,7 +83,7 @@ export function UsdcWalletBalances() {
       )}
 
       <VadButton
-        label="Refresh on-chain balances"
+        label="Refresh balances"
         variant="secondary"
         loading={refreshing}
         disabled={loading || refreshing}
@@ -103,7 +103,6 @@ function NetworkBalanceCard({ network }: { network: UsdcNetworkBalanceGroup }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="bodyStrong">{network.chainName}</VadText>
-          <VadText variant="caption" tone="tertiary">Chain ID {network.chainId}</VadText>
         </View>
         <VadChip
           label={network.tradingReady ? 'TRADING READY' : 'READ ONLY'}
@@ -137,12 +136,12 @@ function NetworkBalanceCard({ network }: { network: UsdcNetworkBalanceGroup }) {
           ))}
           {!network.tradingReady ? (
             <VadText variant="caption" tone="tertiary">
-              Balance reading is available, but VAD on-chain trading is not activated on this network.
+              Balances are visible, but trading is not yet available on this network.
             </VadText>
           ) : null}
         </View>
       ) : (
-        <VadText variant="caption" tone="secondary">No verified wallet balance could be read for this network.</VadText>
+        <VadText variant="caption" tone="secondary">Balance unavailable for this network.</VadText>
       )}
     </VadCard>
   );

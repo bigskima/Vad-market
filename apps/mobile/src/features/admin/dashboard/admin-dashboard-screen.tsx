@@ -206,7 +206,7 @@ export function AdminDashboardScreen() {
       </Pressable>
 
       {data.warning ? (
-        <VadErrorState title="Some operations data is stale" message={data.warning} onRetry={() => void data.refresh()} />
+        <VadErrorState title="Some operations data may be out of date" message={data.warning} onRetry={() => void data.refresh()} />
       ) : null}
 
       {data.launchReadiness ? (
@@ -334,11 +334,11 @@ export function AdminDashboardScreen() {
           <VadCard variant="raised" style={{ gap: theme.spacing.md, height: '100%' }}>
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'space-between', alignItems: 'center' }}>
               <VadText variant="caption" tone="brand">LAUNCH POSTURE</VadText>
-              <VadChip label={moneyPaused ? 'MONEY PAUSED' : 'CHECK MONEY'} tone={moneyPaused ? 'warning' : 'danger'} />
+              <VadChip label={moneyPaused ? 'PAYMENTS PAUSED' : 'CHECK PAYMENTS'} tone={moneyPaused ? 'warning' : 'danger'} />
             </View>
             <ServiceStatusRow label="KYC / identity verification" enabled={Boolean(kyc?.enabled)} />
             <ServiceStatusRow
-              label="Non-money services"
+              label="Other services"
               enabled={nonMoneyServices.length > 0 && enabledNonMoney === nonMoneyServices.length}
               detail={nonMoneyServices.length ? `${enabledNonMoney}/${nonMoneyServices.length} enabled` : 'Unknown'}
             />
