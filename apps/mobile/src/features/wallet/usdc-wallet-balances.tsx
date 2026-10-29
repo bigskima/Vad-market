@@ -103,7 +103,6 @@ function NetworkBalanceCard({ network }: { network: UsdcNetworkBalanceGroup }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="bodyStrong">{network.chainName}</VadText>
-          
         </View>
         <VadChip
           label={network.tradingReady ? 'TRADING READY' : 'READ ONLY'}

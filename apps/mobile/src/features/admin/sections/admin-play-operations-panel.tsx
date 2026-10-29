@@ -61,7 +61,7 @@ export function AdminPlayOperationsPanel() {
     try {
       setData(await getAdminPlayOperations());
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'VAD Play operation records could not be loaded.');
+      setError('Could not load Play activity. Try again.');
     } finally {
       setLoading(false);
     }
@@ -145,8 +145,8 @@ export function AdminPlayOperationsPanel() {
                     <Meta label="Selection counter" value={item.selection_counter} />
                   </View>
                   <Meta label="Seed commitment" value={item.seed_commitment} />
-                  <Meta label="Ticket-set digest" value={item.entries_digest} />
-                  <Meta label="Result digest" value={item.result_digest} />
+                  <Meta label="Ticket list hash" value={item.entries_digest} />
+                  <Meta label="Result hash" value={item.result_digest} />
                   <Meta label="Authorized by / at" value={item.authorized_by + ' · ' + new Date(item.authorized_at).toLocaleString()} />
                   {item.executed_by && item.executed_at ? <Meta label="Executed by / at" value={item.executed_by + ' · ' + new Date(item.executed_at).toLocaleString()} /> : null}
                   {item.voided_by && item.voided_at ? <Meta label="Voided by / at" value={item.voided_by + ' · ' + new Date(item.voided_at).toLocaleString()} /> : null}
@@ -169,12 +169,12 @@ export function AdminPlayOperationsPanel() {
                     <Meta label="Qualifying funds" value={money(item.qualifying_funds_amount, item.currency_code)} />
                     <Meta label="Prize cost recovered" value={money(item.prize_cost_recovered, item.currency_code)} />
                     <Meta label="Campaign costs recovered" value={money(item.campaign_costs_recovered, item.currency_code)} />
-                    <Meta label="Configured profit target" value={money(item.profit_target_amount, item.currency_code)} />
+                    <Meta label="Profit target" value={money(item.profit_target_amount, item.currency_code)} />
                     <Meta label="Excess collection" value={money(item.excess_amount, item.currency_code)} />
                   </View>
-                  <Meta label="Prize ledger journal" value={item.prize_journal_id} />
-                  <Meta label="Costs ledger journal" value={item.costs_journal_id} />
-                  <Meta label="Profit ledger journal" value={item.profit_journal_id} />
+                  <Meta label="Prize reference" value={item.prize_journal_id} />
+                  <Meta label="Cost reference" value={item.costs_journal_id} />
+                  <Meta label="Profit reference" value={item.profit_journal_id} />
                   <Meta label="Delivery evidence reference" value={item.delivery_evidence_reference} />
                   <Meta label="Settled at" value={new Date(item.settled_at).toLocaleString()} />
                 </View>

@@ -83,7 +83,6 @@ export default function AppearanceScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
               <View style={{ flex: 1, gap: 1 }}>
                 <VadText variant="bodyStrong">Preview</VadText>
-                
               </View>
               <VadChip label={theme.preference === 'system' ? 'System' : theme.mode === 'dark' ? 'Dark' : 'Light'} />
             </View>

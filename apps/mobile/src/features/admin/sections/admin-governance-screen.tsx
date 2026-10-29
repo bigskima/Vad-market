@@ -66,7 +66,7 @@ export function AdminGovernanceScreen() {
     try {
       setPolicies(await getOraclePolicyCatalog());
     } catch (value) {
-      setPolicyError(value instanceof Error ? value.message : 'Oracle policies could not be loaded.');
+      setPolicyError('Result policies could not be loaded.');
     } finally {
       setPoliciesLoading(false);
     }
@@ -146,9 +146,9 @@ export function AdminGovernanceScreen() {
           ? current
           : choices[0]?.outcome_code ?? '',
       );
-      if (!choices.length) setOutcomeChoicesError('No configured outcome choices were found for this event.');
+      if (!choices.length) setOutcomeChoicesError('No result options are available for this market.');
     } catch (reason: unknown) {
-      setOutcomeChoicesError(reason instanceof Error ? reason.message : 'Configured outcomes could not be loaded.');
+      setOutcomeChoicesError('Could not load result options. Refresh and try again.');
     } finally {
       setOutcomeChoicesLoading(false);
     }
@@ -172,7 +172,7 @@ export function AdminGovernanceScreen() {
         if (!outcomeChoices.some((choice) => choice.outcome_code === outcomeCode)) {
           throw new Error('That result option is no longer available. Refresh the queue and try again.');
         }
-        const createdId = await createAdminProvisionalResolution({
+        await createAdminProvisionalResolution({
           eventPublicId,
           outcomeCode: outcomeCode.trim(),
           evidence: { operatorNote: evidenceNote.trim() },
@@ -219,7 +219,7 @@ export function AdminGovernanceScreen() {
       setActionMessage(`${policy.name} version ${policy.version} is now active.`);
       await Promise.all([loadPolicies(), data.refresh()]);
     } catch (value) {
-      setPolicyError(value instanceof Error ? value.message : 'Oracle policy approval could not be completed.');
+      setPolicyError('Could not update result policies. Try again.');
     } finally {
       setPolicyWorkingId(null);
     }
@@ -261,7 +261,7 @@ export function AdminGovernanceScreen() {
           ) : null}
           {canReviewOracle ? (
             <AdminMetricCard
-              label="Oracle"
+              label="Results to review"
               value={data.oracleQueue.length}
               tone={data.oracleQueue.length ? 'warning' : 'yes'}
             />
@@ -348,7 +348,7 @@ export function AdminGovernanceScreen() {
               return (
                 <OperationsRow
                   key={'oracle-' + index}
-                  title={String(row.event_title ?? 'Oracle case')}
+                  title={String(row.event_title ?? 'Market result')}
                   detail={
                     resolutionId
                       ? `Provisional ${String(row.outcome_code ?? 'outcome')} · ${disputes} active dispute${disputes === 1 ? '' : 's'}`
@@ -356,7 +356,7 @@ export function AdminGovernanceScreen() {
                   }
                   meta={
                     row.provisional_at
-                      ? `Provisional since ${new Date(String(row.provisional_at)).toLocaleString()}`
+                      ? `Submitted for review ${new Date(String(row.provisional_at)).toLocaleString()}`
                       : `Event: ${String(row.event_status ?? 'AWAITING RESULT').replaceAll('_', ' ').toLowerCase()}`
                   }
                   status={String(
@@ -395,7 +395,7 @@ export function AdminGovernanceScreen() {
                 <OperationsRow
                   key={policy.public_id}
                   title={`${policy.name} · v${policy.version}`}
-                  detail={`${providerCodes || 'Source hierarchy not specified'} · quorum ${quorum || '—'} · dispute ${Math.round(policy.dispute_window_seconds / 60)} min`}
+                  detail={`Sources: ${providerCodes || 'not set'} · Agreement needed: ${quorum || '—'} · Dispute: ${Math.round(policy.dispute_window_seconds / 60)} min`}
                   meta={policy.status === 'DRAFT' ? 'Prepared for independent approval' : `Effective ${new Date(policy.effective_at).toLocaleString()}`}
                   status={policy.status}
                   ready={policy.status === 'ACTIVE'}
@@ -423,7 +423,7 @@ export function AdminGovernanceScreen() {
 
       <VadBottomSheet
         visible={Boolean(selectedOracle)}
-        title={selectedResolutionId ? 'Resolution control' : 'Submit result for review'}
+        title={selectedResolutionId ? 'Review result' : 'Submit result for review'}
         onClose={() => {
           if (!working) setSelectedOracle(null);
         }}
@@ -444,7 +444,7 @@ export function AdminGovernanceScreen() {
               <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
                 <ActionChoice
                   label="Finalize outcome"
-                  detail={`Finalize the current ${String(selectedOracle.outcome_code ?? '')} provisional outcome.`}
+                  detail={`Confirm the current ${String(selectedOracle.outcome_code ?? '')} result.`}
                   selected={action === 'FINALIZE'}
                   disabled={activeDisputes > 0}
                   onPress={() => setAction('FINALIZE')}
@@ -515,7 +515,7 @@ export function AdminGovernanceScreen() {
                   gap: 2,
                 }}
               >
-                <VadText variant="caption" tone="brand">INDEPENDENT REVIEW</VadText>
+                <VadText variant="caption" tone="brand">SECOND REVIEW</VadText>
                 <VadText variant="caption" tone="secondary">
                   A different reviewer must confirm this result after the dispute period ends.
                 </VadText>

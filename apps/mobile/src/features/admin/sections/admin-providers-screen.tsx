@@ -80,7 +80,7 @@ export function AdminProvidersScreen() {
       getOraclePolicyCatalog()
         .then((policies) => { if (active) setOraclePolicies(policies); })
         .catch((value: unknown) => {
-          if (active) setPolicyError(value instanceof Error ? value.message : 'Oracle policy catalog could not be loaded.');
+          if (active) setPolicyError(value instanceof Error ? value.message : 'Result policies could not be loaded.');
         })
         .finally(() => { if (active) setPolicyLoading(false); });
     }, 0);
@@ -148,10 +148,10 @@ export function AdminProvidersScreen() {
       const results = response.providers ?? [];
       setHealthResults(results);
       const healthy = results.filter((result) => result.health === 'HEALTHY').length;
-      setActionMessage(`Oracle provider check completed: ${healthy}/${results.length} healthy.`);
+      setActionMessage(`Source check complete: ${healthy} of ${results.length} sources healthy.`);
       await data.refresh();
     } catch (value) {
-      setActionError(value instanceof Error ? value.message : 'Oracle provider health could not be checked.');
+      setActionError(value instanceof Error ? value.message : 'Could not check source status. Try again.');
     } finally {
       setHealthChecking(false);
     }
@@ -169,7 +169,7 @@ export function AdminProvidersScreen() {
       setOraclePolicies(updated);
       await data.refresh();
     } catch (value) {
-      setPolicyError(value instanceof Error ? value.message : 'Oracle policy approval failed. A separate reviewer with oracle.review must approve draft policies.');
+      setPolicyError(value instanceof Error ? value.message : 'Could not approve this policy. A different reviewer with approval access must review drafts.');
     } finally {
       setPolicyWorking(null);
     }
@@ -285,7 +285,7 @@ export function AdminProvidersScreen() {
           </VadText>
           {canCheckOracle ? (
             <VadButton
-              label="Check oracle providers"
+              label="Check result sources"
               variant="secondary"
               size="small"
               fullWidth={false}
@@ -391,7 +391,7 @@ export function AdminProvidersScreen() {
 
       {healthResults.length ? (
         <View style={{ gap: theme.spacing.sm }}>
-          <VadText variant="heading">Latest oracle check</VadText>
+          <VadText variant="heading">Latest source check</VadText>
           <VadText variant="caption" tone="secondary">
             {healthyOracle}/{healthResults.length} providers responded successfully. A successful check confirms credentials and connectivity; activation still follows independent approval.
           </VadText>
@@ -545,7 +545,7 @@ export function AdminProvidersScreen() {
       ) : (
         <View style={{ gap: theme.spacing.md }}>
           <VadCard variant="muted" style={{ gap: theme.spacing.xs }}>
-            <VadText variant="heading">Oracle policy review</VadText>
+            <VadText variant="heading">Result policy review</VadText>
             <VadText variant="caption" tone="secondary">
               Check the policy version and price sources before approving. A different person must approve each draft.
             </VadText>
@@ -602,8 +602,8 @@ export function AdminProvidersScreen() {
                       </View>
                       <VadChip label={policy.status} tone={policy.status === 'ACTIVE' ? 'yes' : policy.status === 'DRAFT' ? 'warning' : 'neutral'} />
                     </View>
-                    <VadText variant="caption" tone="secondary">{sources || 'No source hierarchy defined.'}</VadText>
-                    <VadText variant="caption" tone="secondary">Independent sources: {distinct ? 'Required' : 'Not required'} · Sources that must agree: {quorum}</VadText>
+                    <VadText variant="caption" tone="secondary">Sources: {sources || 'None selected'}</VadText>
+                    <VadText variant="caption" tone="secondary">Independent sources: {distinct ? 'Required' : 'Not required'} · Agreement needed: {quorum}</VadText>
                     <VadText variant="caption" tone="tertiary">Effective: {new Date(policy.effective_at).toLocaleString()} · {policy.approved_by ? 'Approved' : 'Not approved'}</VadText>
                     {policy.status === 'DRAFT' && canReviewOracle && isCoinbaseKrakenThresholdPolicy(policy) ? (
                       <VadButton
