@@ -1216,7 +1216,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
       ) : null}
 
       <ProgressiveMarketSection
-        title="Resolution"
+        title="Result verification"
         subtitle={oracle ? 'How it’s decided' : loading ? 'Loading…' : 'Not available yet'}
         expanded={verificationExpanded}
         onPress={() => setVerificationExpanded((current) => !current)}
@@ -1226,7 +1226,7 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
             {environment ? <DetailValueRow label="Network" value={environment} /> : null}
             {sourceRows.length ? (
               <View style={{ gap: 6 }}>
-                <VadText variant="caption" tone="secondary">Approved source hierarchy</VadText>
+                <VadText variant="caption" tone="secondary">Result verification sources</VadText>
                 {sourceRows.map((source, index) => (
                   <View key={`${source.role}-${source.provider}-${index}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 9, borderRadius: 9, backgroundColor: theme.colors.surfaceMuted }}>
                     <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.brandPrimary }} />
@@ -1239,15 +1239,15 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
               </View>
             ) : null}
             {typeof requiredProviders === 'number' ? (
-              <DetailValueRow label="Sources needed" value={String(requiredProviders)} />
+              <DetailValueRow label="Sources required" value={String(requiredProviders)} />
             ) : null}
-            {consensus.distinct_providers === true ? <DetailValueRow label="Consensus requirement" value="Independent sources required" /> : null}
+            {consensus.distinct_providers === true ? <DetailValueRow label="Source agreement" value="Independent sources required" /> : null}
             {tieBehavior ? <DetailValueRow label="When sources disagree" value={tieBehavior} /> : null}
             {finalizationMode ? <DetailValueRow label="Result confirmation" value={finalizationMode} /> : null}
             {disputeWindow ? <DetailValueRow label="Dispute window" value={disputeWindow} /> : null}
             {policyRules.length ? (
               <View style={{ gap: 8 }}>
-                <VadText variant="caption" tone="secondary">Exceptional cases</VadText>
+                <VadText variant="caption" tone="secondary">Special cases</VadText>
                 {policyRules.map((rule) => <DetailValueRow key={rule.label} label={rule.label} value={rule.value} />)}
               </View>
             ) : null}
@@ -1262,17 +1262,17 @@ function Rules({ market, timing }: { market: MarketCatalogItem; timing: MarketTi
       </ProgressiveMarketSection>
 
       <ProgressiveMarketSection
-        title="Schedule & settlement"
+        title="Timing & payouts"
         subtitle={scheduleRows.length ? 'Timeline available' : 'Timeline details'}
         expanded={scheduleExpanded}
         onPress={() => setScheduleExpanded((current) => !current)}
       >
         {scheduleRows.map((row) => <DetailValueRow key={row.label} label={row.label} value={row.value} />)}
         <DetailValueRow label="Trading status" value={timing.statusLabel} />
-        <DetailValueRow label="Settlement asset" value={detail?.assetCode ?? market.asset_code} />
-        {detail?.settlementUnit != null ? <DetailValueRow label="Settlement unit" value={String(detail.settlementUnit)} /> : null}
+        <DetailValueRow label="Payout currency" value={detail?.assetCode ?? market.asset_code} />
+        {detail?.settlementUnit != null ? <DetailValueRow label="Payout unit" value={String(detail.settlementUnit)} /> : null}
         {detail?.minimumOrderNotional != null ? <DetailValueRow label="Minimum trade" value={assetMoney(detail.minimumOrderNotional, detail.assetCode)} /> : null}
-        {detail?.oracle?.closeRule ? <DetailValueRow label="Close rule" value={describeRule(detail.oracle.closeRule) ?? 'Configured'} /> : null}
+        {detail?.oracle?.closeRule ? <DetailValueRow label="Market closes when" value={describeRule(detail.oracle.closeRule) ?? 'Configured'} /> : null}
       </ProgressiveMarketSection>
 
       <ProgressiveMarketSection
