@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Animated, Easing, Pressable, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -9,7 +9,18 @@ import { playPracticeGame, type PlayPracticeGameReply } from '@/services/play-ap
 
 export type PracticeGameEngineKey = 'QUICK_DRAW' | 'SPIN_AND_WIN' | 'SCRATCH_AND_REVEAL';
 
-const wheelTokens = ['LUCK', 'PLAY', 'WOW', 'GO', 'FUN', 'NICE', 'TRY', 'AGAIN'];
+const wheelTokens: { label: string; outcomeCode: string }[] = [
+  { label: 'TRY', outcomeCode: 'TRY_AGAIN' },
+  { label: 'NICE', outcomeCode: 'NICE_SPIN' },
+  { label: 'TRY', outcomeCode: 'TRY_AGAIN' },
+  { label: 'LUCK', outcomeCode: 'LUCKY_MOMENT' },
+  { label: 'TRY', outcomeCode: 'TRY_AGAIN' },
+  { label: 'VIBE', outcomeCode: 'GREAT_VIBES' },
+  { label: 'NICE', outcomeCode: 'NICE_SPIN' },
+  { label: 'TRY', outcomeCode: 'TRY_AGAIN' },
+  { label: 'LUCK', outcomeCode: 'LUCKY_MOMENT' },
+  { label: 'NICE', outcomeCode: 'NICE_SPIN' },
+];
 
 export function PlayPracticeGamePanel({
   experienceId,
@@ -22,7 +33,7 @@ export function PlayPracticeGamePanel({
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<PlayPracticeGameReply | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const rotation = useRef(new Animated.Value(0)).current;
+  const [rotation] = useState(() => new Animated.Value(0));
 
   const isWheel = engineKey === 'SPIN_AND_WIN';
   const isScratch = engineKey === 'SCRATCH_AND_REVEAL';
@@ -36,17 +47,18 @@ export function PlayPracticeGamePanel({
     try {
       const reply = await playPracticeGame(experienceId);
       if (isWheel) {
+        const outcomeIndex = Math.max(wheelTokens.findIndex((token) => token.outcomeCode === reply.result.outcomeCode), 0);
+        const degreesToPointer = (360 - (outcomeIndex * 360) / wheelTokens.length) % 360;
+        const targetDegrees = 1800 + degreesToPointer;
         rotation.setValue(0);
         Animated.timing(rotation, {
-          toValue: 1,
+          toValue: targetDegrees,
           duration: 1450,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }).start(({ finished }) => {
-          if (finished) {
-            setResult(reply);
-            setWorking(false);
-          }
+          setResult(finished ? reply : null);
+          setWorking(false);
         });
       } else {
         setResult(reply);
@@ -61,11 +73,9 @@ export function PlayPracticeGamePanel({
     }
   }
 
-  // React Native Animated values intentionally expose an interpolation mapping during render.
-  // eslint-disable-next-line react-hooks/refs
   const spinTransform = rotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '1800deg'],
+    inputRange: [0, 2160],
+    outputRange: ['0deg', '2160deg'],
   });
 
   return (
@@ -90,11 +100,11 @@ export function PlayPracticeGamePanel({
                 <Animated.View style={{ width: 202, height: 202, borderRadius: 101, borderWidth: 8, borderColor: theme.colors.brandPrimary, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: spinTransform }] }}>
                   {wheelTokens.map((token, index) => {
                     const angle = (Math.PI * 2 * index) / wheelTokens.length - Math.PI / 2;
-                    const left = 101 + Math.cos(angle) * 66 - 26;
-                    const top = 101 + Math.sin(angle) * 66 - 13;
+                    const left = 101 + Math.cos(angle) * 66 - 21;
+                    const top = 101 + Math.sin(angle) * 66 - 12;
                     return (
-                      <View key={token} style={{ position: 'absolute', left, top, width: 52, height: 26, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: index % 2 === 0 ? theme.colors.brandSoft : theme.colors.surfaceMuted }}>
-                        <VadText variant="caption" tone={index % 2 === 0 ? 'brand' : 'secondary'}>{token}</VadText>
+                      <View key={`${token.label}-${index}`} style={{ position: 'absolute', left, top, width: 42, height: 24, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: index % 2 === 0 ? theme.colors.brandSoft : theme.colors.surfaceMuted }}>
+                        <VadText variant="caption" tone={index % 2 === 0 ? 'brand' : 'secondary'}>{token.label}</VadText>
                       </View>
                     );
                   })}

@@ -131,7 +131,7 @@ Deno.serve(async (req: Request) => {
     const engineKey = clean(body.engineKey, 80).toUpperCase();
     const currency = clean(body.currency, 8).toUpperCase();
     if (idea.length < 5) return json({ error: 'IDEA_REQUIRED', message: 'Describe the game in at least five characters.' }, 400);
-    if (!['PRIZE_DRAW', 'SPIN_AND_WIN', 'SCRATCH_AND_REVEAL'].includes(engineKey)) {
+    if (!['PRIZE_DRAW', 'QUICK_DRAW', 'SPIN_AND_WIN', 'SCRATCH_AND_REVEAL'].includes(engineKey)) {
       return json({ error: 'ENGINE_UNSUPPORTED', message: 'Choose one of the registered VAD Play engines.' }, 400);
     }
     if (currency && !['NGN', 'USDC'].includes(currency)) return json({ error: 'CURRENCY_INVALID', message: 'Choose a configured campaign currency.' }, 400);
