@@ -96,7 +96,9 @@ declare
   v_roll numeric;
   v_cursor numeric := 0;
   v_rule record;
-  v_selected record;
+  v_selected_code text;
+  v_selected_label text;
+  v_selected_weight bigint;
   v_result jsonb;
 begin
   if v_user_id is null then
@@ -181,20 +183,22 @@ begin
   loop
     v_cursor := v_cursor + v_rule.weight_units;
     if v_roll <= v_cursor then
-      v_selected := v_rule;
+      v_selected_code := v_rule.outcome_code;
+      v_selected_label := v_rule.display_label;
+      v_selected_weight := v_rule.weight_units;
       exit;
     end if;
   end loop;
 
-  if v_selected.outcome_code is null then
+  if v_selected_code is null then
     raise exception 'This game could not select a result. Try again.' using errcode = '55000';
   end if;
 
   v_session_id := gen_random_uuid();
   v_result := jsonb_build_object(
     'gameTitle', v_experience.title,
-    'outcomeCode', v_selected.outcome_code,
-    'message', v_selected.display_label,
+    'outcomeCode', v_selected_code,
+    'message', v_selected_label,
     'practiceOnly', true,
     'rewardKind', 'NONE'
   );
@@ -206,7 +210,7 @@ begin
     (v_session_id, v_user_id, v_experience.id, null, v_experience.engine_key,
      v_experience.engine_version, btrim(p_idempotency_key), 'COMPLETED',
      v_result,
-     jsonb_build_object('outcomeCode', v_selected.outcome_code, 'weightUnits', v_selected.weight_units, 'selectionRoll', v_roll),
+     jsonb_build_object('outcomeCode', v_selected_code, 'weightUnits', v_selected_weight, 'selectionRoll', v_roll),
      statement_timestamp())
   on conflict (user_id, idempotency_key) do nothing
   returning id into v_session_id;
@@ -231,7 +235,7 @@ begin
     (session_id, experience_id, actor_user_id, actor_type, event_type, event_data)
   values
     (v_session_id, v_experience.id, v_user_id, 'USER', 'PRACTICE_GAME_COMPLETED',
-     jsonb_build_object('engineKey', v_experience.engine_key, 'outcomeCode', v_selected.outcome_code, 'practiceOnly', true));
+     jsonb_build_object('engineKey', v_experience.engine_key, 'outcomeCode', v_selected_code, 'practiceOnly', true));
 
   insert into public.play_participations
     (user_id, experience_id, campaign_id, activity_type, status, reference, public_summary, private_metadata)
