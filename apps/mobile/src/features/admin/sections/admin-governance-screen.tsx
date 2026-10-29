@@ -351,7 +351,7 @@ export function AdminGovernanceScreen() {
                   title={String(row.event_title ?? 'Market result')}
                   detail={
                     resolutionId
-                      ? `Provisional ${String(row.outcome_code ?? 'outcome')} · ${disputes} active dispute${disputes === 1 ? '' : 's'}`
+                      ? `Submitted result: ${String(row.outcome_code ?? 'outcome')} · ${disputes} active dispute${disputes === 1 ? '' : 's'}`
                       : 'Awaiting provisional outcome'
                   }
                   meta={
@@ -374,7 +374,7 @@ export function AdminGovernanceScreen() {
       ) : tab === 'policies' && canReviewOracle ? (
         <OperationsSection
           title="Result policies"
-          description="Choose trusted sources, how they must agree, dispute periods and void rules. A second reviewer must approve changes."
+          description="Choose trusted sources, the agreement needed, dispute periods and when to void a result. Another reviewer must approve changes."
           count={policies.length}
         >
           {policiesLoading ? (

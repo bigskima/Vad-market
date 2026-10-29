@@ -16,6 +16,7 @@ import {
 import {
   saveAdminPlayCampaign,
   saveAdminPlayExperience,
+  publishAdminPlayPracticeExperience,
   type PlayAdminDashboard,
 } from '@/services/admin-play-api';
 
@@ -80,6 +81,9 @@ export function AdminPlayGameBuilder({
 
   const selectedEngine = engines.find((engine) => engine.engine_key === engineKey);
   const isPrizeDraw = engineKey === 'PRIZE_DRAW';
+  const isFreePractice = ['QUICK_DRAW', 'SPIN_AND_WIN', 'SCRATCH_AND_REVEAL'].includes(engineKey);
+  const selectedEngineReady = Boolean(selectedEngine?.runtime_ready && selectedEngine.rollout_status === 'ENABLED');
+  const publishPracticeNow = isFreePractice && selectedEngineReady;
   const previewUrl = playMediaPublicUrl(imagePath);
   const estimate = useMemo(() => {
     const prize = Number(prizeCost);
@@ -155,7 +159,7 @@ export function AdminPlayGameBuilder({
     }
   }
 
-  async function saveDraft() {
+  async function saveGame() {
     setError(null);
     setMessage(null);
     if (!title.trim() || title.trim().length < 3) {
@@ -191,19 +195,24 @@ export function AdminPlayGameBuilder({
     setWorking('save');
     let experienceSaved = false;
     try {
-      const experienceId = await saveAdminPlayExperience({
+      const experiencePayload = {
         slug: slugify(title) || `play-${Date.now()}`,
         title: title.trim(),
         description: description.trim() || null,
         experience_type: selectedEngine.engine_family,
         engine_key: engineKey,
-        status: 'DRAFT',
         hero_asset_url: imagePath || null,
         card_asset_url: imagePath || null,
         image_alt: title.trim(),
-        public_config: {},
-        engine_config: {},
-      });
+      };
+      const experienceId = publishPracticeNow
+        ? await publishAdminPlayPracticeExperience(experiencePayload)
+        : await saveAdminPlayExperience({
+            ...experiencePayload,
+            status: 'DRAFT',
+            public_config: {},
+            engine_config: {},
+          });
       experienceSaved = true;
 
       if (isPrizeDraw) {
@@ -231,7 +240,11 @@ export function AdminPlayGameBuilder({
       }
 
       await onSaved();
-      setMessage(isPrizeDraw ? 'Game and campaign saved as drafts.' : 'Game saved as a draft for review.');
+      setMessage(isPrizeDraw
+        ? 'Game and campaign saved as drafts for review.'
+        : publishPracticeNow
+          ? 'Game published. Players can now play this free practice game.'
+          : 'Game saved as a draft for review.');
       setIdea('');
       setTitle('');
       setDescription('');
@@ -265,7 +278,7 @@ export function AdminPlayGameBuilder({
     <View style={{ gap: theme.spacing.md }}>
       <View style={{ gap: 4 }}>
         <VadText variant="title">Create a game</VadText>
-        <VadText variant="caption" tone="secondary">Create a game, then review it before publishing.</VadText>
+        <VadText variant="caption" tone="secondary">Free practice games go live now. Paid prize draws stay in review until approved.</VadText>
       </View>
 
       {error ? (
@@ -297,7 +310,7 @@ export function AdminPlayGameBuilder({
             {selectedEngine ? (
               <VadText variant="caption" tone={selectedEngine.runtime_ready && selectedEngine.rollout_status === 'ENABLED' ? 'yes' : 'warning'}>
                 {selectedEngine.runtime_ready && selectedEngine.rollout_status === 'ENABLED'
-                  ? 'Ready for launch'
+                  ? (isFreePractice ? 'Ready for players' : 'Ready for review')
                   : 'Not available to players yet'}
               </VadText>
             ) : null}
@@ -389,8 +402,17 @@ export function AdminPlayGameBuilder({
         </VadCard>
       ) : null}
 
-      <VadButton label={isPrizeDraw ? 'Save game and campaign drafts' : 'Save game draft'} onPress={() => void saveDraft()} loading={working === 'save'} disabled={working !== null} />
-      <VadText variant="caption" tone="tertiary">Saving keeps the game in draft. Reviews are required before publishing or enabling paid play.</VadText>
+      <VadButton
+        label={isPrizeDraw ? 'Save game and campaign drafts' : publishPracticeNow ? 'Publish game for players' : 'Save game draft'}
+        onPress={() => void saveGame()}
+        loading={working === 'save'}
+        disabled={working !== null}
+      />
+      <VadText variant="caption" tone="tertiary">
+        {publishPracticeNow
+          ? 'Free practice only. No entry fee, points, cash or physical prizes.'
+          : 'Games that are not ready stay in draft until their engine is enabled and reviewed.'}
+      </VadText>
     </View>
   );
 }

@@ -141,14 +141,14 @@ export function AdminPlayOperationsPanel() {
                   <Meta label="Draw reference" value={item.id} />
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
                     <Meta label="Tickets in draw" value={item.ticket_count_snapshot} />
-                    <Meta label="Winner ticket" value={item.winning_ticket_code} />
-                    <Meta label="Selection counter" value={item.selection_counter} />
+                    <Meta label="Winning ticket" value={item.winning_ticket_code} />
+                    <Meta label="Draw sequence" value={item.selection_counter} />
                   </View>
-                  <Meta label="Seed commitment" value={item.seed_commitment} />
-                  <Meta label="Ticket list hash" value={item.entries_digest} />
-                  <Meta label="Result hash" value={item.result_digest} />
-                  <Meta label="Authorized by / at" value={item.authorized_by + ' · ' + new Date(item.authorized_at).toLocaleString()} />
-                  {item.executed_by && item.executed_at ? <Meta label="Executed by / at" value={item.executed_by + ' · ' + new Date(item.executed_at).toLocaleString()} /> : null}
+                  <Meta label="Randomness proof" value={item.seed_commitment} />
+                  <Meta label="Ticket list check" value={item.entries_digest} />
+                  <Meta label="Result check" value={item.result_digest} />
+                  <Meta label="Approved by" value={item.authorized_by + ' · ' + new Date(item.authorized_at).toLocaleString()} />
+                  {item.executed_by && item.executed_at ? <Meta label="Drawn by" value={item.executed_by + ' · ' + new Date(item.executed_at).toLocaleString()} /> : null}
                   {item.voided_by && item.voided_at ? <Meta label="Voided by / at" value={item.voided_by + ' · ' + new Date(item.voided_at).toLocaleString()} /> : null}
                   {item.void_reason ? <Meta label="Void reason" value={item.void_reason} /> : null}
                 </View>

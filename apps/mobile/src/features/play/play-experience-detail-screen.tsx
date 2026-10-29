@@ -122,7 +122,6 @@ export function PlayExperienceDetailScreen() {
             <View style={{ gap: theme.spacing.md }}>
               <View style={{ gap: 4 }}>
                 <VadText variant="heading">Prize campaigns</VadText>
-                <VadText tone="secondary">Campaign details</VadText>
               </View>
               {campaignError ? (
                 <PlayMessageState title="Could not load campaigns" body="Try again in a moment." actionLabel="Refresh campaigns" onAction={() => void loadCampaigns(experience.id)} tone="error" />

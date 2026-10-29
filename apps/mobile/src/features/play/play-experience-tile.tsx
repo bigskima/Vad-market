@@ -73,7 +73,7 @@ export function PlayExperienceTile({
           <VadText variant="caption" tone="secondary" numberOfLines={2}>{experience.subtitle}</VadText>
         ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
-          <VadText variant="caption" tone="brand">Explore</VadText>
+          <VadText variant="caption" tone="brand">Play game</VadText>
           <VadIcon name="chevronRight" size={14} tone="brand" />
         </View>
       </View>

@@ -123,7 +123,7 @@ export function PlayPracticeGamePanel({
                   </View>
                 ))}
               </View>
-              <VadText tone="secondary" style={{ textAlign: 'center' }}>Your next number is selected by VAD’s game server.</VadText>
+              <VadText tone="secondary" style={{ textAlign: 'center' }}>VAD will draw your next number.</VadText>
             </View>
           )}
         </View>
@@ -143,7 +143,7 @@ export function PlayPracticeGamePanel({
 
         <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.md, gap: 3 }}>
           <VadText variant="caption" tone="secondary">Free practice · no entry fee · no cash prizes</VadText>
-          <VadText variant="caption" tone="tertiary">Results come from VAD’s server. Each play is recorded in your activity history.</VadText>
+          <VadText variant="caption" tone="tertiary">Your result is saved in your activity history.</VadText>
         </View>
       </View>
     </VadCard>

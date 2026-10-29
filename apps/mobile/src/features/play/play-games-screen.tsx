@@ -76,7 +76,7 @@ export function PlayGamesScreen() {
       <View style={{ gap: 5 }}>
         <VadText variant="caption" tone="brand" style={{ letterSpacing: 1.4 }}>VAD PLAY</VadText>
         <VadText variant="title">Games</VadText>
-        <VadText tone="secondary">Find an experience.</VadText>
+        <VadText tone="secondary">Play free games and explore prize campaigns.</VadText>
       </View>
 
       <PlayTabNavigation active="Games" />
@@ -86,7 +86,7 @@ export function PlayGamesScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, paddingHorizontal: theme.spacing.md, minHeight: 48 }}>
         <VadIcon name="search" size={18} tone="tertiary" />
         <TextInput
-          accessibilityLabel="Search Play experiences"
+          accessibilityLabel="Search games"
           value={query}
           onChangeText={setQuery}
           placeholder="Search games"
@@ -131,7 +131,7 @@ export function PlayGamesScreen() {
             })}
           </View>
           <VadText variant="caption" tone="tertiary">
-            {filtered.length} {filtered.length === 1 ? 'experience' : 'experiences'}
+            {filtered.length} {filtered.length === 1 ? 'game' : 'games'}
           </VadText>
         </View>
       ) : null}

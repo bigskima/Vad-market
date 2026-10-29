@@ -206,6 +206,12 @@ export async function saveAdminPlayExperience(payload: Record<string, unknown>) 
   return String(data);
 }
 
+export async function publishAdminPlayPracticeExperience(payload: Record<string, unknown>) {
+  const { data, error } = await supabase.rpc('admin_play_publish_practice_experience', { p_payload: payload });
+  fail(error, 'This free game could not be published. Check the title and try again.');
+  return String(data);
+}
+
 export async function saveAdminPlayCampaign(payload: Record<string, unknown>) {
   const { data, error } = await supabase.rpc('admin_play_upsert_campaign', { p_payload: payload });
   fail(error, 'This campaign draft could not be saved. Check every required economics field.');

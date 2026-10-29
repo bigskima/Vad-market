@@ -1,5 +1,5 @@
 begin;
-select plan(9);
+select plan(11);
 
 select ok(
   to_regprocedure('public.play_practice_game(uuid,text)') is not null,
@@ -38,6 +38,15 @@ select ok(
      and r.active = true
      and r.reward_kind = 'NONE'),
   'Practice outcomes do not award points, cash or physical prizes'
+);
+select ok(
+  to_regprocedure('public.admin_play_publish_practice_experience(jsonb)') is not null,
+  'Admins have a dedicated publication path for free practice games'
+);
+select ok(
+  not has_function_privilege('anon', 'public.admin_play_publish_practice_experience(jsonb)', 'EXECUTE')
+  and has_function_privilege('authenticated', 'public.admin_play_publish_practice_experience(jsonb)', 'EXECUTE'),
+  'Only signed-in users can invoke the practice publication RPC'
 );
 select ok(
   not has_function_privilege('anon', 'public.play_practice_game(uuid,text)', 'EXECUTE')
