@@ -210,7 +210,7 @@ export function PlayPracticeGamePanel({
               }}
             >
               {!result ? Array.from({ length: Math.min(8, Math.floor(scratchProgress / 12)) }, (_, index) => (
-                <View key={index} pointerEvents="none" style={{ position: 'absolute', left: (index * 13 + 7) % 84 + '%', top: (index * 29 + 10) % 75 + '%' }}>
+                <View key={index} pointerEvents="none" style={{ position: 'absolute', left: (index * 13 + 7) % 84, top: (index * 29 + 10) % 75 }}>
                   <VadText variant="caption" tone="secondary">✦</VadText>
                 </View>
               )) : null}
