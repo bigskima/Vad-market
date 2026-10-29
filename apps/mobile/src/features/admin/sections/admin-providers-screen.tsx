@@ -547,26 +547,26 @@ export function AdminProvidersScreen() {
           <VadCard variant="muted" style={{ gap: theme.spacing.xs }}>
             <VadText variant="heading">Oracle policy review</VadText>
             <VadText variant="caption" tone="secondary">
-              Review the exact policy version and source quorum before approving it. Approval is audited; the person who created a draft cannot approve that same policy.
+              Check the policy version and price sources before approving. A different person must approve each draft.
             </VadText>
             <VadText variant="caption" tone="secondary">
-              Crypto threshold settlement requires exactly two providers: Coinbase as PRIMARY and Kraken as CORROBORATING, with distinct-provider agreement from both.
+              Automatic crypto results require two independent price sources: Coinbase and Kraken. Both must agree.
             </VadText>
             <VadText variant="caption" tone="secondary">
-              This list shows only policy versions eligible for the current Coinbase/Kraken settlement runtime. Older drafts using CoinGecko or Pyth are obsolete and cannot be approved.
+              Only policies using the current Coinbase and Kraken setup can be approved. Older CoinGecko or Pyth drafts are no longer supported.
             </VadText>
             {oraclePolicies.some((policy) => policy.name === 'VAD Crypto Threshold Launch Policy'
               && policy.status === 'ACTIVE' && Boolean(policy.approved_by)
               && isCoinbaseKrakenThresholdPolicy(policy)) ? (
               <VadText variant="caption" tone="secondary">
-                Production already has an approved, active Coinbase/Kraken policy. You do not need to approve an older production draft.
+                Production already uses an approved Coinbase/Kraken policy. No older production draft needs approval.
               </VadText>
             ) : null}
             {oraclePolicies.some((policy) => policy.name === 'VAD Sandbox Crypto Threshold Policy'
               && policy.status === 'ACTIVE' && Boolean(policy.approved_by)
               && isCoinbaseKrakenThresholdPolicy(policy)) ? (
               <VadText variant="caption" tone="secondary">
-                The test environment already has an approved Coinbase/Kraken policy. You do not need to approve the older draft.
+                Testing already has an approved Coinbase/Kraken policy. No older test draft needs approval.
               </VadText>
             ) : null}
           </VadCard>
@@ -588,8 +588,9 @@ export function AdminProvidersScreen() {
               .map((policy) => {
                 const sources = policy.source_hierarchy.map((item) => typeof item === 'string'
                   ? item
-                  : `${String(item.role ?? 'SOURCE')}: ${String(item.provider_code ?? item.code ?? 'provider')}`).join(' · ');
+                  : String(item.provider_code ?? item.code ?? 'provider')).join(' · ');
                 const environment = String(policy.consensus_rule.environment ?? 'PRODUCTION').toUpperCase();
+                const environmentLabel = environment === 'PRODUCTION' ? 'Production' : environment === 'SANDBOX' ? 'Test' : environment;
                 const quorum = String(policy.consensus_rule.min_agreeing_providers ?? 'not specified');
                 const distinct = policy.consensus_rule.distinct_providers === true;
                 return (
@@ -597,12 +598,12 @@ export function AdminProvidersScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
                       <View style={{ flex: 1, gap: 3 }}>
                         <VadText variant="bodyStrong">{policy.name} · v{policy.version}</VadText>
-                        <VadText variant="caption" tone="secondary">{environment} · {policy.capability_code}</VadText>
+                        <VadText variant="caption" tone="secondary">{environmentLabel}</VadText>
                       </View>
                       <VadChip label={policy.status} tone={policy.status === 'ACTIVE' ? 'yes' : policy.status === 'DRAFT' ? 'warning' : 'neutral'} />
                     </View>
                     <VadText variant="caption" tone="secondary">{sources || 'No source hierarchy defined.'}</VadText>
-                    <VadText variant="caption" tone="secondary">Independent sources: {distinct ? 'Required' : 'Not required'} · Agreement needed: {quorum}</VadText>
+                    <VadText variant="caption" tone="secondary">Independent sources: {distinct ? 'Required' : 'Not required'} · Sources that must agree: {quorum}</VadText>
                     <VadText variant="caption" tone="tertiary">Effective: {new Date(policy.effective_at).toLocaleString()} · {policy.approved_by ? 'Approved' : 'Not approved'}</VadText>
                     {policy.status === 'DRAFT' && canReviewOracle && isCoinbaseKrakenThresholdPolicy(policy) ? (
                       <VadButton
@@ -613,7 +614,7 @@ export function AdminProvidersScreen() {
                       />
                     ) : policy.status === 'DRAFT' && canReviewOracle ? (
                       <VadText variant="caption" tone="warning">
-                        Approval unavailable: select Coinbase as the primary source and Kraken as the corroborating source.
+                        To approve, choose Coinbase as the main source and Kraken as the independent check.
                       </VadText>
                     ) : null}
                   </VadCard>
@@ -624,7 +625,7 @@ export function AdminProvidersScreen() {
             ['VAD Crypto Threshold Launch Policy', 'VAD Sandbox Crypto Threshold Policy'].includes(policy.name)
             && ['ACTIVE', 'DRAFT'].includes(policy.status)
             && isCoinbaseKrakenThresholdPolicy(policy)) ? (
-            <EmptyText>No Coinbase/Kraken price-verification policy is available. Check provider settings before creating an automatic crypto market.</EmptyText>
+            <EmptyText>No Coinbase/Kraken price policy is available. Check provider settings before enabling automatic crypto results.</EmptyText>
           ) : null}
         </View>
       )}

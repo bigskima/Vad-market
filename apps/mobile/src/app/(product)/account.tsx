@@ -124,7 +124,7 @@ export default function AccountScreen() {
       .catch((reason) => {
         if (!ignore) {
           setTestModeStatus(null);
-          setTestModeError(reason instanceof Error ? reason.message : 'Temporary NGN market-testing status could not be loaded.');
+          setTestModeError(reason instanceof Error ? reason.message : 'NGN test status is unavailable. Try again.');
         }
       });
     return () => { ignore = true; };
@@ -292,8 +292,8 @@ export default function AccountScreen() {
           <VadCard style={{ gap: density.phone ? 10 : 14, padding: density.phone ? 12 : 16, borderRadius: 17, borderColor: testModeStatus.testModeEnabled ? theme.colors.brandPrimary : theme.colors.border, backgroundColor: theme.colors.surface }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
               <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <VadText variant="bodyStrong">Temporary NGN market testing</VadText>
-                <VadText variant="caption" tone="secondary">Use test credit to trade open NGN markets.</VadText>
+                <VadText variant="bodyStrong">NGN test funds</VadText>
+                <VadText variant="caption" tone="secondary">Use test funds for NGN trades.</VadText>
               </View>
               <StatusBadge
                 label={testModeStatus.testModeEnabled ? 'Enabled' : 'Off'}
@@ -314,8 +314,8 @@ export default function AccountScreen() {
 
             <Pressable
               accessibilityRole="switch"
-              accessibilityLabel="Use temporary NGN test credit for market trading"
-              accessibilityHint="Use or pause your NGN test credit."
+              accessibilityLabel="Use NGN test funds for trading"
+              accessibilityHint="Turn NGN test funds on or off."
               accessibilityState={{ checked: testModeStatus.testModeEnabled, disabled: testModeSaving || (!testModeStatus.eligible && !testModeStatus.testModeEnabled) }}
               disabled={testModeSaving || (!testModeStatus.eligible && !testModeStatus.testModeEnabled)}
               onPress={() => void toggleTemporaryNgnMarketTesting()}

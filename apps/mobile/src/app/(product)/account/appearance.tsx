@@ -83,7 +83,7 @@ export default function AppearanceScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
               <View style={{ flex: 1, gap: 1 }}>
                 <VadText variant="bodyStrong">Preview</VadText>
-                <VadText variant="caption" tone="secondary">See how VAD looks with your current choice.</VadText>
+                
               </View>
               <VadChip label={theme.preference === 'system' ? 'System' : theme.mode === 'dark' ? 'Dark' : 'Light'} />
             </View>

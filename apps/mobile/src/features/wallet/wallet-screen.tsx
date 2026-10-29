@@ -289,7 +289,7 @@ export function WalletScreen({
             </VadText>
           </View>
           <VadText variant="caption" tone="secondary">
-            For NGN testing only. Deposits and withdrawals are disabled while active. Transfers require an eligible, verified Nigerian account. Test funds stay separate from cash NGN.
+            Testing only. Deposits and withdrawals are disabled; transfers require a verified, eligible Nigerian account. These funds are separate from cash NGN.
           </VadText>
         </VadCard>
       ) : null}
@@ -298,7 +298,7 @@ export function WalletScreen({
         <VadCard variant="surface" style={{ padding: density.phone ? 12 : 16, gap: theme.spacing.sm, borderRadius: 18 }}>
           <View style={{ gap: 3 }}>
             <VadText variant="bodyStrong">Wallet settings</VadText>
-            <VadText variant="caption" tone="secondary">Choose which currencies appear across VAD. Your balances stay the same.</VadText>
+            <VadText variant="caption" tone="secondary">Choose which currencies to show. This won’t convert your balances.</VadText>
           </View>
           <View style={{ gap: 8 }}>
             {currencyPreference.eligibleCurrencies.map((currency) => (
@@ -414,7 +414,7 @@ function CompactCurrencyBalance({ wallet, selected, balanceVisible }: { wallet: 
   const pending = Number(wallet.withdrawal_pending ?? 0);
   const total = available + reserved + pending;
   const name = wallet.asset_code === 'NGN' ? 'Nigerian Naira' : 'USD Coin';
-  const subtitle = wallet.asset_code === 'USDC' ? 'USDC · VAD ledger' : 'NGN';
+  const subtitle = wallet.asset_code === 'USDC' ? 'USDC · VAD wallet' : 'NGN';
 
   return (
     <VadCard

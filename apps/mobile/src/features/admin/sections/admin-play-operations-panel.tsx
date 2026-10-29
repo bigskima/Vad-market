@@ -78,20 +78,20 @@ export function AdminPlayOperationsPanel() {
   return (
     <View style={{ gap: theme.spacing.xl }}>
       <View style={{ gap: 5 }}>
-        <VadText variant="heading">Play operations ledger view</VadText>
+        <VadText variant="heading">Play activity</VadText>
         <VadText tone="secondary">
-          Read-only view of entry orders, draw records and settlement journal references. Each section loads at most the latest 30 records; the counts are loaded records, not lifetime totals. Financial source of truth remains VAD&apos;s existing double-entry ledger.
+          Latest orders, draw results and settlements. Each section shows up to 30 records; counts reflect only the records shown here.
         </VadText>
       </View>
       {error ? (
         <VadCard>
           <View style={{ padding: theme.spacing.md, gap: 8 }}>
             <VadText variant="caption" tone="danger">{error}</VadText>
-            <VadButton label="Retry operations" variant="secondary" onPress={() => void load()} loading={loading} />
+            <VadButton label="Try again" variant="secondary" onPress={() => void load()} loading={loading} />
           </View>
         </VadCard>
       ) : null}
-      {loading ? <VadText tone="secondary">Loading Play operation records…</VadText> : null}
+      {loading ? <VadText tone="secondary">Loading Play activity…</VadText> : null}
 
       {!loading && !error ? (
         <>
@@ -153,10 +153,10 @@ export function AdminPlayOperationsPanel() {
                   {item.void_reason ? <Meta label="Void reason" value={item.void_reason} /> : null}
                 </View>
               </VadCard>
-            )) : <VadText tone="secondary">No draw authorizations or results recorded.</VadText>}
+            )) : <VadText tone="secondary">No draw results yet.</VadText>}
           </OperationsSection>
 
-          <OperationsSection title="Settlements" description="Recorded recoveries and profit allocation linked to VAD ledger journals.">
+          <OperationsSection title="Settlements" description="Recoveries, prize costs and profit allocations.">
             {data.settlements.length ? data.settlements.slice(0, 30).map((item) => (
               <VadCard key={item.id}>
                 <View style={{ padding: theme.spacing.md, gap: theme.spacing.sm }}>
@@ -182,7 +182,7 @@ export function AdminPlayOperationsPanel() {
             )) : <VadText tone="secondary">No settlements recorded.</VadText>}
           </OperationsSection>
 
-          <VadButton label="Refresh operations" variant="secondary" onPress={() => void load()} loading={loading} />
+          <VadButton label="Refresh" variant="secondary" onPress={() => void load()} loading={loading} />
         </>
       ) : null}
     </View>

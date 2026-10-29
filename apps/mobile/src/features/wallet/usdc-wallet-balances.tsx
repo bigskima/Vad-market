@@ -48,7 +48,7 @@ export function UsdcWalletBalances() {
         <VadText variant="caption" tone="brand">SELF-CUSTODY · USDC</VadText>
         <VadText variant="heading">On-chain balances</VadText>
         <VadText variant="caption" tone="secondary">
-          Verified EVM wallet balances are read directly from each network. These funds are separate from your VAD ledger balance.
+          Balances are read from each network and are separate from your VAD wallet balance.
         </VadText>
       </View>
 
@@ -83,7 +83,7 @@ export function UsdcWalletBalances() {
       )}
 
       <VadButton
-        label="Refresh on-chain balances"
+        label="Refresh balances"
         variant="secondary"
         loading={refreshing}
         disabled={loading || refreshing}
@@ -103,7 +103,7 @@ function NetworkBalanceCard({ network }: { network: UsdcNetworkBalanceGroup }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <View style={{ flex: 1, gap: 2 }}>
           <VadText variant="bodyStrong">{network.chainName}</VadText>
-          <VadText variant="caption" tone="tertiary">Chain ID {network.chainId}</VadText>
+          
         </View>
         <VadChip
           label={network.tradingReady ? 'TRADING READY' : 'READ ONLY'}
