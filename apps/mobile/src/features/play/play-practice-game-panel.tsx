@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, PanResponder, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Animated, Easing, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -41,55 +41,12 @@ export function PlayPracticeGamePanel({
   const rotation = useRef(new Animated.Value(0)).current;
   const scratchDistance = useRef(0);
   const scratchPoint = useRef<{ x: number; y: number } | null>(null);
-  const scratchEnabled = useRef(false);
-  const latestPlay = useRef<() => void>(() => undefined);
 
   const isWheel = engineKey === 'SPIN_AND_WIN';
   const isScratch = engineKey === 'SCRATCH_AND_REVEAL';
   const actionLabel = isWheel ? 'Spin the wheel' : isScratch ? 'Scratch to reveal' : 'Draw a number';
 
-  const scratchResponder = useMemo(() => {
-    // PanResponder stores these callbacks and invokes them from touch events, not during render.
-    // eslint-disable-next-line react-hooks/refs
-    return PanResponder.create({
-      onStartShouldSetPanResponder: () => scratchEnabled.current,
-      onMoveShouldSetPanResponder: () => scratchEnabled.current,
-      onPanResponderGrant: (event) => {
-        scratchDistance.current = 0;
-        scratchPoint.current = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY };
-        setScratchProgress(0);
-        setScratchHint(null);
-      },
-      onPanResponderMove: (event) => {
-        const nextPoint = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY };
-        const previousPoint = scratchPoint.current;
-        if (previousPoint) {
-          scratchDistance.current += Math.hypot(
-            nextPoint.x - previousPoint.x,
-            nextPoint.y - previousPoint.y,
-          );
-        }
-        scratchPoint.current = nextPoint;
-        setScratchProgress(Math.min(100, Math.round((scratchDistance.current / 170) * 100)));
-      },
-      onPanResponderRelease: () => {
-        scratchPoint.current = null;
-        if (scratchDistance.current >= 170) {
-          setScratchProgress(100);
-          setScratchHint(null);
-          latestPlay.current();
-        } else if (scratchDistance.current > 0) {
-          setScratchHint('Keep scratching across the card to reveal your result.');
-        }
-      },
-      onPanResponderTerminate: () => {
-        scratchPoint.current = null;
-      },
-      onPanResponderTerminationRequest: () => false,
-    });
-  }, []);
-
-  const play = useCallback(async () => {
+  async function play() {
     if (working) return;
     setWorking(true);
     setError(null);
@@ -128,12 +85,7 @@ export function PlayPracticeGamePanel({
         : 'This game could not start. Refresh and try again.');
       setWorking(false);
     }
-  }, [experienceId, isWheel, rotation, working]);
-
-  useEffect(() => {
-    latestPlay.current = () => { void play(); };
-    scratchEnabled.current = isScratch && !working && !result;
-  }, [isScratch, play, result, working]);
+  }
 
   function resetScratchCard() {
     setResult(null);
@@ -193,8 +145,40 @@ export function PlayPracticeGamePanel({
               accessible
               accessibilityRole="button"
               accessibilityLabel={result ? 'Scratch card revealed' : 'Scratch across the card to reveal your result'}
-              // eslint-disable-next-line react-hooks/refs
-              {...scratchResponder.panHandlers}
+              onTouchStart={(event) => {
+                if (!isScratch || working || result) return;
+                scratchDistance.current = 0;
+                scratchPoint.current = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY };
+                setScratchProgress(0);
+                setScratchHint(null);
+              }}
+              onTouchMove={(event) => {
+                if (!isScratch || working || result || !scratchPoint.current) return;
+                const nextPoint = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY };
+                const previousPoint = scratchPoint.current;
+                if (previousPoint) {
+                  scratchDistance.current += Math.hypot(
+                    nextPoint.x - previousPoint.x,
+                    nextPoint.y - previousPoint.y,
+                  );
+                }
+                scratchPoint.current = nextPoint;
+                setScratchProgress(Math.min(100, Math.round((scratchDistance.current / 170) * 100)));
+              }}
+              onTouchEnd={() => {
+                if (!isScratch || working || result) return;
+                scratchPoint.current = null;
+                if (scratchDistance.current >= 170) {
+                  setScratchProgress(100);
+                  setScratchHint(null);
+                  void play();
+                } else if (scratchDistance.current > 0) {
+                  setScratchHint('Keep scratching across the card to reveal your result.');
+                }
+              }}
+              onTouchCancel={() => {
+                scratchPoint.current = null;
+              }}
               style={{
                 width: '100%',
                 minHeight: 170,
