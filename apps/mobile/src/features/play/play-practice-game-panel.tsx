@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Animated, Easing, Pressable, View } from 'react-native';
+import { Animated, Easing, PanResponder, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
@@ -9,7 +9,21 @@ import { playPracticeGame, type PlayPracticeGameReply } from '@/services/play-ap
 
 export type PracticeGameEngineKey = 'QUICK_DRAW' | 'SPIN_AND_WIN' | 'SCRATCH_AND_REVEAL';
 
-const wheelTokens = ['LUCK', 'PLAY', 'WOW', 'GO', 'FUN', 'NICE', 'TRY', 'AGAIN'];
+type WheelToken = { label: string; outcomeCode: string };
+
+// Segment counts mirror the server's weighted outcomes. The server still decides the result.
+const wheelTokens: WheelToken[] = [
+  { label: 'TRY', outcomeCode: 'TRY_AGAIN' },
+  { label: 'TRY', outcomeCode: 'TRY_AGAIN' },
+  { label: 'TRY', outcomeCode: 'TRY_AGAIN' },
+  { label: 'TRY', outcomeCode: 'TRY_AGAIN' },
+  { label: 'NICE', outcomeCode: 'NICE_SPIN' },
+  { label: 'NICE', outcomeCode: 'NICE_SPIN' },
+  { label: 'NICE', outcomeCode: 'NICE_SPIN' },
+  { label: 'LUCK', outcomeCode: 'LUCKY_MOMENT' },
+  { label: 'LUCK', outcomeCode: 'LUCKY_MOMENT' },
+  { label: 'GREAT', outcomeCode: 'GREAT_VIBES' },
+];
 
 export function PlayPracticeGamePanel({
   experienceId,
@@ -22,24 +36,79 @@ export function PlayPracticeGamePanel({
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<PlayPracticeGameReply | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [scratchProgress, setScratchProgress] = useState(0);
+  const [scratchHint, setScratchHint] = useState<string | null>(null);
   const rotation = useRef(new Animated.Value(0)).current;
+  const scratchDistance = useRef(0);
+  const scratchPoint = useRef<{ x: number; y: number } | null>(null);
+  const scratchEnabled = useRef(false);
+  const latestPlay = useRef<() => void>(() => undefined);
 
   const isWheel = engineKey === 'SPIN_AND_WIN';
   const isScratch = engineKey === 'SCRATCH_AND_REVEAL';
   const actionLabel = isWheel ? 'Spin the wheel' : isScratch ? 'Scratch to reveal' : 'Draw a number';
 
+  const scratchResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => scratchEnabled.current,
+      onMoveShouldSetPanResponder: () => scratchEnabled.current,
+      onPanResponderGrant: (event) => {
+        scratchDistance.current = 0;
+        scratchPoint.current = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY };
+        setScratchProgress(0);
+        setScratchHint(null);
+      },
+      onPanResponderMove: (event) => {
+        const nextPoint = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY };
+        const previousPoint = scratchPoint.current;
+        if (previousPoint) {
+          scratchDistance.current += Math.hypot(
+            nextPoint.x - previousPoint.x,
+            nextPoint.y - previousPoint.y,
+          );
+        }
+        scratchPoint.current = nextPoint;
+        setScratchProgress(Math.min(100, Math.round((scratchDistance.current / 170) * 100)));
+      },
+      onPanResponderRelease: () => {
+        scratchPoint.current = null;
+        if (scratchDistance.current >= 170) {
+          setScratchProgress(100);
+          setScratchHint(null);
+          latestPlay.current();
+        } else if (scratchDistance.current > 0) {
+          setScratchHint('Keep scratching across the card to reveal your result.');
+        }
+      },
+      onPanResponderTerminate: () => {
+        scratchPoint.current = null;
+      },
+      onPanResponderTerminationRequest: () => false,
+    }),
+  ).current;
+
   async function play() {
     if (working) return;
     setWorking(true);
     setError(null);
+    setScratchHint(null);
     setResult(null);
     try {
       const reply = await playPracticeGame(experienceId);
       if (isWheel) {
+        const matchingIndices = wheelTokens.reduce<number[]>((matches, token, index) => {
+          if (token.outcomeCode === reply.result.outcomeCode) matches.push(index);
+          return matches;
+        }, []);
+        const selectedIndex = matchingIndices.length
+          ? matchingIndices[Math.floor(Math.random() * matchingIndices.length)]
+          : 0;
+        // Five full turns, then stop with the server-selected outcome beneath the pointer.
+        const landingOffset = (360 - (selectedIndex * 360) / wheelTokens.length) % 360;
         rotation.setValue(0);
         Animated.timing(rotation, {
-          toValue: 1,
-          duration: 1450,
+          toValue: 1800 + landingOffset,
+          duration: 2300,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }).start(({ finished }) => {
@@ -61,12 +130,25 @@ export function PlayPracticeGamePanel({
     }
   }
 
-  // React Native Animated values intentionally expose an interpolation mapping during render.
+  latestPlay.current = () => { void play(); };
+  scratchEnabled.current = isScratch && !working && !result;
+
+  function resetScratchCard() {
+    setResult(null);
+    setError(null);
+    setScratchProgress(0);
+    setScratchHint(null);
+    scratchDistance.current = 0;
+  }
+
+  // This value represents degrees; interpolation keeps the native-driver rotation smooth.
   // eslint-disable-next-line react-hooks/refs
   const spinTransform = rotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '1800deg'],
+    inputRange: [0, 3600],
+    outputRange: ['0deg', '3600deg'],
+    extrapolate: 'clamp',
   });
+  const drawnNumber = result?.result.outcomeCode.match(/^NUMBER_(\d{2})$/)?.[1] ?? null;
 
   return (
     <VadCard>
@@ -75,10 +157,10 @@ export function PlayPracticeGamePanel({
           <VadText variant="heading">{isWheel ? 'Lucky Wheel' : isScratch ? 'Scratch & Reveal' : 'Lucky Number Draw'}</VadText>
           <VadText tone="secondary">
             {isWheel
-              ? 'Give the wheel a spin and reveal your result.'
+              ? 'Spin the wheel. It stops on your result.'
               : isScratch
-                ? 'Open the card to reveal your result.'
-                : 'Draw a fresh number and see what you get.'}
+                ? 'Scratch across the card to uncover your result.'
+                : 'Draw a number and see what you get.'}
           </VadText>
         </View>
 
@@ -90,11 +172,11 @@ export function PlayPracticeGamePanel({
                 <Animated.View style={{ width: 202, height: 202, borderRadius: 101, borderWidth: 8, borderColor: theme.colors.brandPrimary, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: spinTransform }] }}>
                   {wheelTokens.map((token, index) => {
                     const angle = (Math.PI * 2 * index) / wheelTokens.length - Math.PI / 2;
-                    const left = 101 + Math.cos(angle) * 66 - 26;
-                    const top = 101 + Math.sin(angle) * 66 - 13;
+                    const left = 101 + Math.cos(angle) * 66 - 21;
+                    const top = 101 + Math.sin(angle) * 66 - 11;
                     return (
-                      <View key={token} style={{ position: 'absolute', left, top, width: 52, height: 26, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: index % 2 === 0 ? theme.colors.brandSoft : theme.colors.surfaceMuted }}>
-                        <VadText variant="caption" tone={index % 2 === 0 ? 'brand' : 'secondary'}>{token}</VadText>
+                      <View key={token.outcomeCode + '-' + index} style={{ position: 'absolute', left, top, width: 42, height: 22, borderRadius: theme.radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: index % 2 === 0 ? theme.colors.brandSoft : theme.colors.surfaceMuted }}>
+                        <VadText variant="caption" tone={index % 2 === 0 ? 'brand' : 'secondary'}>{token.label}</VadText>
                       </View>
                     );
                   })}
@@ -105,33 +187,68 @@ export function PlayPracticeGamePanel({
               </View>
             </View>
           ) : isScratch ? (
-            <Pressable
+            <View
+              accessible
               accessibilityRole="button"
-              accessibilityLabel={result ? 'Scratch card revealed' : 'Scratch to reveal your result'}
-              onPress={() => { if (!working && !result) void play(); }}
-              disabled={working || Boolean(result)}
-              style={({ pressed }) => ({ width: '100%', minHeight: 170, borderRadius: theme.radius.xl, padding: theme.spacing.lg, alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 2, borderColor: theme.colors.brandPrimary, backgroundColor: result ? theme.colors.surface : theme.colors.brandSoft, opacity: pressed ? 0.82 : 1 })}
+              accessibilityLabel={result ? 'Scratch card revealed' : 'Scratch across the card to reveal your result'}
+              {...scratchResponder.panHandlers}
+              style={{
+                width: '100%',
+                minHeight: 170,
+                borderRadius: theme.radius.xl,
+                padding: theme.spacing.lg,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                borderWidth: 2,
+                borderColor: theme.colors.brandPrimary,
+                backgroundColor: result || scratchProgress >= 65
+                  ? theme.colors.surface
+                  : scratchProgress >= 30
+                    ? theme.colors.surfaceMuted
+                    : theme.colors.brandSoft,
+              }}
             >
+              {!result ? Array.from({ length: Math.min(8, Math.floor(scratchProgress / 12)) }, (_, index) => (
+                <View key={index} pointerEvents="none" style={{ position: 'absolute', left: (index * 13 + 7) % 84 + '%', top: (index * 29 + 10) % 75 + '%' }}>
+                  <VadText variant="caption" tone="secondary">✦</VadText>
+                </View>
+              )) : null}
               <VadText variant="title" style={{ textAlign: 'center' }}>{result ? '✨' : '✦  ✧  ✦'}</VadText>
-              <VadText variant="heading" style={{ textAlign: 'center' }}>{result ? result.result.message : working ? 'Revealing…' : 'SCRATCH TO REVEAL'}</VadText>
-              <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>{result ? 'Free practice result' : 'Tap the card to uncover your result'}</VadText>
-            </Pressable>
+              <VadText variant="heading" style={{ textAlign: 'center' }}>
+                {result ? result.result.message : working ? 'Revealing…' : scratchProgress > 0 ? 'Keep scratching…' : 'SCRATCH TO REVEAL'}
+              </VadText>
+              <VadText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>
+                {result ? 'Free practice result' : scratchProgress > 0 ? scratchHint ?? 'Keep moving your finger across the card.' : 'Drag your finger across the card'}
+              </VadText>
+              {!result ? (
+                <View style={{ height: 5, width: '100%', borderRadius: theme.radius.pill, overflow: 'hidden', backgroundColor: theme.colors.surface, marginTop: 4 }}>
+                  <View style={{ height: '100%', width: scratchProgress + '%', backgroundColor: theme.colors.brandPrimary }} />
+                </View>
+              ) : null}
+            </View>
           ) : (
             <View style={{ alignItems: 'center', gap: theme.spacing.md }}>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                {['07', '18', '42'].map((number) => (
-                  <View key={number} style={{ width: 62, height: 62, borderRadius: 31, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}>
-                    <VadText variant="heading">{number}</VadText>
-                  </View>
-                ))}
+              <View style={{ width: 106, height: 106, borderRadius: 53, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface, borderWidth: 3, borderColor: theme.colors.brandPrimary }}>
+                <VadText variant="title">{drawnNumber ?? '??'}</VadText>
               </View>
-              <VadText tone="secondary" style={{ textAlign: 'center' }}>VAD will draw your next number.</VadText>
+              <VadText tone="secondary" style={{ textAlign: 'center' }}>
+                {drawnNumber ? 'Your drawn number' : 'Tap draw to reveal a number'}
+              </VadText>
             </View>
           )}
         </View>
 
         {!(isScratch && !result) ? (
-          <VadButton label={working ? (isWheel ? 'Spinning…' : isScratch ? 'Revealing…' : 'Drawing…') : result ? 'Play again' : actionLabel} onPress={() => void play()} loading={working} disabled={working} />
+          <VadButton
+            label={isScratch && result ? 'New card' : working ? (isWheel ? 'Spinning…' : isScratch ? 'Revealing…' : 'Drawing…') : result ? 'Play again' : actionLabel}
+            onPress={() => {
+              if (isScratch && result) resetScratchCard();
+              else void play();
+            }}
+            loading={working}
+            disabled={working}
+          />
         ) : null}
 
         {error ? <VadText tone="danger">{error}</VadText> : null}
