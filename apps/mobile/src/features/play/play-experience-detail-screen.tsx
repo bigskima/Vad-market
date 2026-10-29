@@ -18,6 +18,7 @@ import { PlayCampaignSummary } from './play-campaign-summary';
 import { PlayMessageState } from './play-states';
 import { PlayExperienceDetailSkeleton } from '@/components/ui/screen-skeletons';
 import { PlayTabNavigation } from './play-tab-navigation';
+import { PlayPracticeGamePanel } from './play-practice-game-panel';
 import { playMediaPublicUrl } from '@/services/play-media-api';
 
 export function PlayExperienceDetailScreen() {
@@ -138,6 +139,10 @@ export function PlayExperienceDetailScreen() {
                 </View>
               )}
             </View>
+          ) : experience.engine_key === 'QUICK_DRAW'
+            || experience.engine_key === 'SPIN_AND_WIN'
+            || experience.engine_key === 'SCRATCH_AND_REVEAL' ? (
+            <PlayPracticeGamePanel experienceId={experience.id} engineKey={experience.engine_key} />
           ) : (
             <View style={{ borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, padding: theme.spacing.lg, gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

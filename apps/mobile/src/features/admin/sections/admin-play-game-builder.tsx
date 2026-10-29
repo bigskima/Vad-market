@@ -54,7 +54,7 @@ export function AdminPlayGameBuilder({
 }) {
   const theme = useVadTheme();
   const engines = dashboard.engines;
-  const [engineKey, setEngineKey] = useState('PRIZE_DRAW');
+  const [engineKey, setEngineKey] = useState('QUICK_DRAW');
   const [idea, setIdea] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
