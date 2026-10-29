@@ -223,7 +223,7 @@ export function PlayPracticeGamePanel({
               </VadText>
               {!result ? (
                 <View style={{ height: 5, width: '100%', borderRadius: theme.radius.pill, overflow: 'hidden', backgroundColor: theme.colors.surface, marginTop: 4 }}>
-                  <View style={{ height: '100%', width: scratchProgress + '%', backgroundColor: theme.colors.brandPrimary }} />
+                  <View style={{ height: '100%', width: Math.round(scratchProgress * 2.4), backgroundColor: theme.colors.brandPrimary }} />
                 </View>
               ) : null}
             </View>
