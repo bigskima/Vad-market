@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, PanResponder, View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
@@ -48,8 +48,10 @@ export function PlayPracticeGamePanel({
   const isScratch = engineKey === 'SCRATCH_AND_REVEAL';
   const actionLabel = isWheel ? 'Spin the wheel' : isScratch ? 'Scratch to reveal' : 'Draw a number';
 
-  const scratchResponder = useRef(
-    PanResponder.create({
+  const scratchResponder = useMemo(() => {
+    // PanResponder stores these callbacks and invokes them from touch events, not during render.
+    // eslint-disable-next-line react-hooks/refs
+    return PanResponder.create({
       onStartShouldSetPanResponder: () => scratchEnabled.current,
       onMoveShouldSetPanResponder: () => scratchEnabled.current,
       onPanResponderGrant: (event) => {
@@ -84,10 +86,10 @@ export function PlayPracticeGamePanel({
         scratchPoint.current = null;
       },
       onPanResponderTerminationRequest: () => false,
-    }),
-  ).current;
+    });
+  }, []);
 
-  async function play() {
+  const play = useCallback(async () => {
     if (working) return;
     setWorking(true);
     setError(null);
@@ -100,9 +102,7 @@ export function PlayPracticeGamePanel({
           if (token.outcomeCode === reply.result.outcomeCode) matches.push(index);
           return matches;
         }, []);
-        const selectedIndex = matchingIndices.length
-          ? matchingIndices[Math.floor(Math.random() * matchingIndices.length)]
-          : 0;
+        const selectedIndex = matchingIndices[0] ?? 0;
         // Five full turns, then stop with the server-selected outcome beneath the pointer.
         const landingOffset = (360 - (selectedIndex * 360) / wheelTokens.length) % 360;
         rotation.setValue(0);
@@ -128,10 +128,12 @@ export function PlayPracticeGamePanel({
         : 'This game could not start. Refresh and try again.');
       setWorking(false);
     }
-  }
+  }, [experienceId, isWheel, rotation, working]);
 
-  latestPlay.current = () => { void play(); };
-  scratchEnabled.current = isScratch && !working && !result;
+  useEffect(() => {
+    latestPlay.current = () => { void play(); };
+    scratchEnabled.current = isScratch && !working && !result;
+  }, [isScratch, play, result, working]);
 
   function resetScratchCard() {
     setResult(null);
@@ -191,6 +193,7 @@ export function PlayPracticeGamePanel({
               accessible
               accessibilityRole="button"
               accessibilityLabel={result ? 'Scratch card revealed' : 'Scratch across the card to reveal your result'}
+              // eslint-disable-next-line react-hooks/refs
               {...scratchResponder.panHandlers}
               style={{
                 width: '100%',
