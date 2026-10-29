@@ -233,6 +233,13 @@ begin
     (v_session_id, v_experience.id, v_user_id, 'USER', 'PRACTICE_GAME_COMPLETED',
      jsonb_build_object('engineKey', v_experience.engine_key, 'outcomeCode', v_selected.outcome_code, 'practiceOnly', true));
 
+  insert into public.play_participations
+    (user_id, experience_id, campaign_id, activity_type, status, reference, public_summary, private_metadata)
+  values
+    (v_user_id, v_experience.id, null, 'PRACTICE_GAME', 'COMPLETED', v_session_id::text,
+     v_result,
+     jsonb_build_object('sessionId', v_session_id, 'engineKey', v_experience.engine_key));
+
   return jsonb_build_object(
     'sessionId', v_session_id,
     'status', 'COMPLETED',

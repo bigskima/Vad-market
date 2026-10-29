@@ -103,16 +103,11 @@ jobs:
       - name: Run VAD Play and guided-tour database invariants
         shell: bash
         run: |
-          if [ -f supabase/tests/database/vad_play_tour_invariants.test.sql ]; then
-            npm run supabase -- test db \
-              supabase/tests/database/vad_play_safety_invariants.test.sql \
-              supabase/tests/database/vad_play_tour_invariants.test.sql \
-              supabase/tests/database/vad_play_media_invariants.test.sql
-          else
-            npm run supabase -- test db \
-              supabase/tests/database/vad_play_safety_invariants.test.sql \
-              supabase/tests/database/vad_play_media_invariants.test.sql
-          fi
+          npm run supabase -- test db \
+            supabase/tests/database/vad_play_safety_invariants.test.sql \
+            supabase/tests/database/vad_play_practice_games_invariants.test.sql \
+            supabase/tests/database/vad_play_tour_invariants.test.sql \
+            supabase/tests/database/vad_play_media_invariants.test.sql
       - name: Stop local Supabase stack
         if: always()
         run: npm run db:stop -- --no-backup

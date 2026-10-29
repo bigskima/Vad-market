@@ -53,13 +53,8 @@ select ok(
   ),
   'Paid prize draws remain disabled pending their existing review gates'
 );
-select ok(
-  exists (
-    select 1 from public.play_game_sessions
-    where status = 'COMPLETED'
-  ) or to_regclass('public.play_game_sessions') is not null,
-  'Practice results are stored in the existing game-session table'
-);
+select has_table('public', 'play_game_sessions', 'Practice results use the existing game-session table');
+
 
 select * from finish();
 rollback;
