@@ -38,7 +38,7 @@ export function PlayPracticeGamePanel({
   const [error, setError] = useState<string | null>(null);
   const [scratchProgress, setScratchProgress] = useState(0);
   const [scratchHint, setScratchHint] = useState<string | null>(null);
-  const rotation = useRef(new Animated.Value(0)).current;
+  const [rotation] = useState(() => new Animated.Value(0));
   const scratchDistance = useRef(0);
   const scratchPoint = useRef<{ x: number; y: number } | null>(null);
 
