@@ -458,7 +458,18 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
             <MiniMetric label={isUsdc ? 'Network' : 'Currency'} value={isUsdc ? selectedVenue?.chain_name ?? '—' : market.asset_code} />
           </View>
 
-          {quoteError ? <InlineMessage tone="danger" title="Trade review unavailable" body={quoteError} /> : null}
+          {quoteError ? (
+            <View style={{ gap: theme.spacing.xs }}>
+              <InlineMessage
+                tone="danger"
+                title={quoteError.startsWith('Turn on NGN test trading in Account') ? 'NGN test trading is off' : 'Trade review unavailable'}
+                body={quoteError}
+              />
+              {quoteError.startsWith('Turn on NGN test trading in Account') ? (
+                <VadButton label="Open Account" variant="secondary" onPress={() => router.push('/account')} />
+              ) : null}
+            </View>
+          ) : null}
 
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Back" variant="secondary" onPress={() => setStep('prediction')} style={{ flex: 1 }} />
@@ -901,7 +912,18 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
           ) : null}
           {belowMarketMinimum ? <InlineMessage tone="warning" title="Order is below the market minimum" body={`This order is ${estimatedNotional}. Increase the limit price or shares so its value is at least ${assetMoney(tradeRules?.minTradeAmount ?? 0, market.asset_code)}.`} /> : null}
           {aboveMarketMaximum ? <InlineMessage tone="warning" title="Order exceeds this market’s limit" body={`This order is ${estimatedNotional}. Reduce the limit price or shares to stay at or below ${assetMoney(tradeRules?.maxTradeAmount ?? 0, market.asset_code)}.`} /> : null}
-          {quoteError ? <InlineMessage tone="danger" title="Order review unavailable" body={quoteError} /> : null}
+          {quoteError ? (
+            <View style={{ gap: theme.spacing.xs }}>
+              <InlineMessage
+                tone="danger"
+                title={quoteError.startsWith('Turn on NGN test trading in Account') ? 'NGN test trading is off' : 'Order review unavailable'}
+                body={quoteError}
+              />
+              {quoteError.startsWith('Turn on NGN test trading in Account') ? (
+                <VadButton label="Open Account" variant="secondary" onPress={() => router.push('/account')} />
+              ) : null}
+            </View>
+          ) : null}
           <View style={{ flexDirection: density.narrow ? 'column' : 'row', gap: theme.spacing.sm }}>
             <VadButton label="Back" variant="secondary" onPress={() => setStep('prediction')} style={{ flex: 1 }} />
             <VadButton label="Review order & fees" loading={working} disabled={!tradeReady || working || tradeRulesLoading || !inputValid} onPress={() => void prepareReview()} style={{ flex: 1.4 }} />

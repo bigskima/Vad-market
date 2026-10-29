@@ -142,6 +142,12 @@ export function userFacingErrorMessage(
     return 'You do not have permission to do that.';
   }
 
+  if (hasAny(raw, [
+    'enable temporary ngn market testing from account before placing test trades',
+  ])) {
+    return 'Turn on NGN test trading in Account to use your test funds.';
+  }
+
   if (hasAny(raw, ['insufficient balance', 'insufficient funds', 'not enough balance'])) {
     return 'Your available balance is not enough for this request.';
   }
