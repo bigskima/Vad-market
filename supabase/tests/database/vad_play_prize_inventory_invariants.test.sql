@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(27);
 
 select has_table('public', 'play_campaign_prizes', 'Campaign prize inventory exists');
 select has_table('public', 'play_campaign_prize_awards', 'Campaign prize awards and claims are persisted');
@@ -69,6 +69,14 @@ select ok(
   'Anonymous users cannot update prize fulfilment'
 );
 
+select ok(
+  position('count(distinct user_id)' in lower(pg_get_functiondef('public.admin_play_authorize_draw(uuid)'::regprocedure))) > 0,
+  'Draw authorization checks that enough distinct participants can win'
+);
+select ok(
+  position('configured prize winner slots' in lower(pg_get_functiondef('public.admin_play_authorize_draw(uuid)'::regprocedure))) > 0,
+  'Draw authorization rejects campaigns with too many winner slots'
+);
 select ok(
   position('winner_limit' in pg_get_functiondef('public.admin_play_execute_draw(uuid)'::regprocedure)) > 0,
   'Draw execution reads per-prize winner limits'
