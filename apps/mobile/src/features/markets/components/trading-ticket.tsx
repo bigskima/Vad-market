@@ -114,8 +114,6 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
   const [preparedUsdc, setPreparedUsdc] = useState<PreparedUsdcPrediction | null>(null);
   const [onchainResult, setOnchainResult] = useState<SubmittedUsdcPrediction | null>(null);
   const [temporaryNgnCredit, setTemporaryNgnCredit] = useState<TemporaryNgnTestCreditStatus | null>(null);
-  const [temporaryNgnTestingStatus, setTemporaryNgnTestingStatus] = useState<TemporaryNgnMarketTestingStatus | null>(null);
-  const [temporaryNgnTestingLoading, setTemporaryNgnTestingLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -769,6 +767,8 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   const [tradeRulesLoading, setTradeRulesLoading] = useState(true);
   const [tradeRulesError, setTradeRulesError] = useState<string | null>(null);
   const [temporaryNgnCredit, setTemporaryNgnCredit] = useState<TemporaryNgnTestCreditStatus | null>(null);
+  const [temporaryNgnTestingStatus, setTemporaryNgnTestingStatus] = useState<TemporaryNgnMarketTestingStatus | null>(null);
+  const [temporaryNgnTestingLoading, setTemporaryNgnTestingLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
