@@ -41,6 +41,7 @@ import {
 } from '@/services/market-api';
 import { assetMoney, probability } from '../format';
 import { getTemporaryNgnTestCreditStatus, type TemporaryNgnTestCreditStatus } from '@/services/temporary-ngn-test-credit-api';
+import { getTemporaryNgnMarketTestingStatus, type TemporaryNgnMarketTestingStatus } from '@/services/temporary-ngn-market-testing-api';
 
 const SHARE_PRESETS = ['25', '50', '100', '250'] as const;
 const SIDES = [
@@ -766,6 +767,11 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   const [tradeRulesLoading, setTradeRulesLoading] = useState(true);
   const [tradeRulesError, setTradeRulesError] = useState<string | null>(null);
   const [temporaryNgnCredit, setTemporaryNgnCredit] = useState<TemporaryNgnTestCreditStatus | null>(null);
+  const [temporaryNgnTestingCheck, setTemporaryNgnTestingCheck] = useState<{
+    assetCode: string;
+    loaded: boolean;
+    status: TemporaryNgnMarketTestingStatus | null;
+  }>(() => ({ assetCode: market.asset_code, loaded: false, status: null }));
 
   useEffect(() => {
     let active = true;
@@ -775,6 +781,21 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
     void getTemporaryNgnTestCreditStatus()
       .then((status) => { if (active) setTemporaryNgnCredit(status?.active ? status : null); })
       .catch(() => { if (active) setTemporaryNgnCredit(null); });
+    return () => { active = false; };
+  }, [market.asset_code]);
+
+  useEffect(() => {
+    let active = true;
+    if (market.asset_code !== 'NGN') {
+      return () => { active = false; };
+    }
+    void getTemporaryNgnMarketTestingStatus()
+      .then((status) => {
+        if (active) setTemporaryNgnTestingCheck({ assetCode: market.asset_code, loaded: true, status });
+      })
+      .catch(() => {
+        if (active) setTemporaryNgnTestingCheck({ assetCode: market.asset_code, loaded: true, status: null });
+      });
     return () => { active = false; };
   }, [market.asset_code]);
 
@@ -790,8 +811,26 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   }, [market.instrument_public_id]);
 
   const hasTemporaryNgnTestCredit = market.asset_code === 'NGN' && temporaryNgnCredit?.active === true;
-  // Match Peer Pool: test credit may unlock the review UI, but the shared server-side NGN gate remains mandatory.
-  const tradeReady = (canTrade || hasTemporaryNgnTestCredit) && !capabilityLoading;
+  const hasCurrentNgnTestingCheck = temporaryNgnTestingCheck.assetCode === market.asset_code;
+  const temporaryNgnTestingStatus = hasCurrentNgnTestingCheck ? temporaryNgnTestingCheck.status : null;
+  const temporaryNgnTestingLoaded = hasCurrentNgnTestingCheck && temporaryNgnTestingCheck.loaded;
+  const temporaryNgnModeOff = hasTemporaryNgnTestCredit
+    && temporaryNgnTestingStatus?.active === true
+    && temporaryNgnTestingStatus.testModeEnabled === false;
+  const temporaryNgnIneligible = hasTemporaryNgnTestCredit
+    && temporaryNgnTestingStatus?.active === true
+    && temporaryNgnTestingStatus.eligible === false;
+  const temporaryNgnAccessLoading = hasTemporaryNgnTestCredit && !temporaryNgnTestingLoaded;
+  const temporaryNgnStatusUnavailable = hasTemporaryNgnTestCredit
+    && temporaryNgnTestingLoaded
+    && temporaryNgnTestingStatus == null;
+  // Check the user's NGN test-mode preference before enabling quote review; the database still enforces it at quote and placement.
+  const tradeReady = (canTrade || hasTemporaryNgnTestCredit)
+    && !capabilityLoading
+    && !temporaryNgnAccessLoading
+    && !temporaryNgnStatusUnavailable
+    && !temporaryNgnModeOff
+    && !temporaryNgnIneligible;
   const priceValue = Number(price);
   const quantityValue = Number(quantity);
   const estimatedNotionalValue = (Number.isFinite(priceValue) ? priceValue : 0) * (Number.isFinite(quantityValue) ? quantityValue : 0);
@@ -854,6 +893,27 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
     <View style={{ gap: density.compact ? 10 : 12 }}>
       <TourTarget id="market-trading-ticket"><TradeStepRail step={step} secondLabel="Order" /></TourTarget>
       <CapabilityNotice canTrade={canTrade || hasTemporaryNgnTestCredit} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
+      {temporaryNgnAccessLoading ? (
+        <InlineMessage tone="warning" title="Checking NGN test access" body="Checking your NGN test-funds settings." />
+      ) : null}
+      {temporaryNgnStatusUnavailable ? (
+        <View style={{ gap: theme.spacing.xs }}>
+          <InlineMessage tone="warning" title="NGN test access could not be checked" body="Open Account to check your test-funds settings and eligibility." />
+          <VadButton label="Open Account" variant="secondary" onPress={() => router.push('/account')} />
+        </View>
+      ) : null}
+      {temporaryNgnModeOff ? (
+        <View style={{ gap: theme.spacing.xs }}>
+          <InlineMessage tone="warning" title="NGN test trading is off" body="Turn on NGN test trading in Account to use your test funds." />
+          <VadButton label="Open Account" variant="secondary" onPress={() => router.push('/account')} />
+        </View>
+      ) : null}
+      {temporaryNgnIneligible ? (
+        <View style={{ gap: theme.spacing.xs }}>
+          <InlineMessage tone="warning" title="NGN test trading unavailable" body="Your test funds are assigned, but account eligibility and Nigeria location checks must be complete before trading." />
+          <VadButton label="Open Account" variant="secondary" onPress={() => router.push('/account')} />
+        </View>
+      ) : null}
 
       {step === 'prediction' ? (
         <VadCard variant="raised" style={{ gap: 9, padding: 12 }}>

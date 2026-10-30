@@ -144,6 +144,7 @@ export function userFacingErrorMessage(
 
   if (hasAny(raw, [
     'enable temporary ngn market testing from account before placing test trades',
+    'turn on ngn test trading in account to use your test funds',
   ])) {
     return 'Turn on NGN test trading in Account to use your test funds.';
   }
