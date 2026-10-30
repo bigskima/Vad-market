@@ -3,11 +3,15 @@ import { View } from 'react-native';
 
 import { VadButton } from '@/components/ui/vad-button';
 import { VadCard } from '@/components/ui/vad-card';
+import { VadInput } from '@/components/ui/vad-input';
 import { VadText } from '@/components/ui/vad-text';
 import { useVadTheme } from '@/providers/theme-provider';
 import {
   getAdminPlayOperations,
+  getAdminPlayPrizeAwards,
+  setAdminPlayPrizeFulfilment,
   type PlayAdminOperations,
+  type PlayAdminPrizeAward,
 } from '@/services/admin-play-api';
 
 const empty: PlayAdminOperations = { entryOrders: [], draws: [], settlements: [] };
@@ -52,6 +56,10 @@ function OperationsSection({ title, description, children }: { title: string; de
 export function AdminPlayOperationsPanel() {
   const theme = useVadTheme();
   const [data, setData] = useState<PlayAdminOperations>(empty);
+  const [prizeAwards, setPrizeAwards] = useState<PlayAdminPrizeAward[]>([]);
+  const [prizeAwardsError, setPrizeAwardsError] = useState<string | null>(null);
+  const [fulfillmentEvidence, setFulfillmentEvidence] = useState<Record<string, string>>({});
+  const [workingAwardId, setWorkingAwardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,13 +67,56 @@ export function AdminPlayOperationsPanel() {
     setLoading(true);
     setError(null);
     try {
-      setData(await getAdminPlayOperations());
+      const operations = await getAdminPlayOperations();
+      setData(operations);
+      try {
+        setPrizeAwards(await getAdminPlayPrizeAwards());
+        setPrizeAwardsError(null);
+      } catch {
+        // Keep the existing order/draw/settlement workspace usable before the
+        // new prize-inventory migration has been applied in this environment.
+        setPrizeAwards([]);
+        setPrizeAwardsError('Prize fulfilment is not available in this environment yet.');
+      }
     } catch (reason) {
       setError('Could not load Play activity. Try again.');
     } finally {
       setLoading(false);
     }
   }, []);
+
+  async function updatePrizeFulfilment(
+    award: PlayAdminPrizeAward,
+    nextStatus: 'FULFILLMENT_PENDING' | 'FULFILLED',
+  ) {
+    if (workingAwardId) return;
+    const evidence = fulfillmentEvidence[award.id]?.trim() ?? '';
+    if (nextStatus === 'FULFILLED' && evidence.length < 3) {
+      setPrizeAwardsError('Enter a delivery or fulfilment evidence reference first.');
+      return;
+    }
+    setWorkingAwardId(award.id);
+    setPrizeAwardsError(null);
+    try {
+      await setAdminPlayPrizeFulfilment(
+        award.id,
+        nextStatus,
+        nextStatus === 'FULFILLED' ? evidence : null,
+      );
+      setPrizeAwards((current) => current.map((item) => item.id === award.id
+        ? {
+            ...item,
+            claim_status: nextStatus,
+            fulfilled_at: nextStatus === 'FULFILLED' ? new Date().toISOString() : null,
+            fulfillment_reference: nextStatus === 'FULFILLED' ? evidence : null,
+          }
+        : item));
+    } catch {
+      setPrizeAwardsError('The fulfilment update failed. Refresh and try again.');
+    } finally {
+      setWorkingAwardId(null);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -154,6 +205,57 @@ export function AdminPlayOperationsPanel() {
                 </View>
               </VadCard>
             )) : <VadText tone="secondary">No draw results yet.</VadText>}
+          </OperationsSection>
+
+          <OperationsSection title="Prize claims & fulfilment" description="Review winners, move claimed prizes into fulfilment and record delivery evidence.">
+            {prizeAwardsError ? <VadText variant="caption" tone="warning">{prizeAwardsError}</VadText> : null}
+            {prizeAwards.length ? prizeAwards.slice(0, 50).map((award) => (
+              <VadCard key={award.id}>
+                <View style={{ padding: theme.spacing.md, gap: theme.spacing.sm }}>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 }}>
+                    <VadText variant="label">{award.prize_title}</VadText>
+                    <VadText variant="caption" tone={award.claim_status === 'FULFILLED' ? 'yes' : award.claim_status === 'AWARDED' ? 'brand' : 'warning'}>
+                      {statusLabel(award.claim_status)}
+                    </VadText>
+                  </View>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
+                    <Meta label="Award number" value={award.award_number} />
+                    <Meta label="Winning ticket" value={award.ticket_code} />
+                    <Meta label="Player ID" value={award.user_id} />
+                    <Meta label="Awarded" value={new Date(award.created_at).toLocaleString()} />
+                  </View>
+                  {award.claimed_at ? <Meta label="Claimed at" value={new Date(award.claimed_at).toLocaleString()} /> : null}
+                  {award.fulfillment_reference ? <Meta label="Fulfilment evidence" value={award.fulfillment_reference} /> : null}
+                  {award.claim_status === 'CLAIMED' ? (
+                    <VadButton
+                      label="Start fulfilment"
+                      onPress={() => void updatePrizeFulfilment(award, 'FULFILLMENT_PENDING')}
+                      loading={workingAwardId === award.id}
+                      disabled={workingAwardId !== null}
+                    />
+                  ) : null}
+                  {award.claim_status === 'FULFILLMENT_PENDING' ? (
+                    <>
+                      <VadInput
+                        label="Delivery / fulfilment evidence"
+                        value={fulfillmentEvidence[award.id] ?? ''}
+                        onChangeText={(value) => setFulfillmentEvidence((current) => ({ ...current, [award.id]: value }))}
+                        placeholder="Delivery reference, tracking ID or evidence ID"
+                      />
+                      <VadButton
+                        label="Mark fulfilled"
+                        onPress={() => void updatePrizeFulfilment(award, 'FULFILLED')}
+                        loading={workingAwardId === award.id}
+                        disabled={workingAwardId !== null || (fulfillmentEvidence[award.id] ?? '').trim().length < 3}
+                      />
+                    </>
+                  ) : null}
+                  {award.fulfilled_at ? <Meta label="Fulfilled at" value={new Date(award.fulfilled_at).toLocaleString()} /> : null}
+                </View>
+              </VadCard>
+            )) : (
+              <VadText tone="secondary">No prize awards recorded yet.</VadText>
+            )}
           </OperationsSection>
 
           <OperationsSection title="Settlements" description="Recoveries, prize costs and profit allocations.">
