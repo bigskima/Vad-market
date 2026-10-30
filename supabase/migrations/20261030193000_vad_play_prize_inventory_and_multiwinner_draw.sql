@@ -215,6 +215,18 @@ begin
     ) then
       raise exception '3D prize models must use a GLB or GLTF storage path' using errcode = '22023';
     end if;
+    if v_asset_path is not null and not exists (
+      select 1 from storage.objects
+      where bucket_id = 'play-media' and name = v_asset_path
+    ) then
+      raise exception 'Prize artwork must be uploaded to VAD Play media storage first' using errcode = '22023';
+    end if;
+    if v_model_asset_path is not null and not exists (
+      select 1 from storage.objects
+      where bucket_id = 'play-media' and name = v_model_asset_path
+    ) then
+      raise exception 'The GLB/GLTF model must be uploaded to VAD Play media storage first' using errcode = '22023';
+    end if;
 
     v_total_winners := v_total_winners + v_winner_limit;
     if v_total_winners > coalesce(v_campaign.max_entries, 0) then
@@ -455,6 +467,115 @@ grant execute on function public.admin_play_set_prize_fulfilment(uuid,text,text)
 -- snapshot, digest validation and legacy single-winner result remain compatible.
 -- Campaigns with active prize rows now allocate distinct tickets across each
 -- prize's configured winner_limit, in display order, using rejection sampling.
+create or replace function public.admin_play_authorize_draw(p_campaign_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_campaign public.play_campaigns;
+  v_ticket record;
+  v_count bigint := 0;
+  v_digest text := repeat('0',64);
+  v_seed text;
+  v_commitment text;
+  v_draw_id uuid;
+  v_winner_slots bigint := 0;
+  v_distinct_participants bigint := 0;
+begin
+  if auth.uid() is null or not (private.is_super_admin() or private.has_permission('play.manage')) then
+    raise exception 'VAD Play management permission required' using errcode = '42501';
+  end if;
+
+  select * into v_campaign
+  from public.play_campaigns
+  where id = p_campaign_id
+  for update;
+  if v_campaign.id is null then
+    raise exception 'Campaign not found' using errcode = 'P0002';
+  end if;
+  if v_campaign.status <> 'DRAW_ELIGIBLE'
+     or v_campaign.entries_closed_at is null
+     or v_campaign.funds_reconciled_at is null
+     or v_campaign.qualifying_funds_amount < v_campaign.funding_threshold_amount
+     or v_campaign.prize_secured_at is null
+     or v_campaign.compliance_approved_at is null then
+    raise exception 'Campaign has not satisfied all draw eligibility checks' using errcode = '42501';
+  end if;
+  if exists (select 1 from public.play_campaign_draws where campaign_id = p_campaign_id) then
+    raise exception 'A draw record already exists for this campaign' using errcode = '23505';
+  end if;
+
+  for v_ticket in
+    select public_id, ticket_code
+    from public.play_tickets
+    where campaign_id = p_campaign_id and status = 'ACTIVE'
+    order by id
+  loop
+    v_digest := encode(
+      extensions.digest(v_digest || ':' || v_ticket.public_id::text || ':' || v_ticket.ticket_code, 'sha256'),
+      'hex'
+    );
+    v_count := v_count + 1;
+  end loop;
+  if v_count <= 0 then
+    raise exception 'No eligible tickets are available for this draw' using errcode = '55000';
+  end if;
+
+  select coalesce(sum(winner_limit), 0)
+  into v_winner_slots
+  from public.play_campaign_prizes
+  where campaign_id = p_campaign_id
+    and status = 'ACTIVE';
+
+  if v_winner_slots > 0 then
+    select count(distinct user_id)
+    into v_distinct_participants
+    from public.play_tickets
+    where campaign_id = p_campaign_id
+      and status = 'ACTIVE';
+    if v_winner_slots > v_distinct_participants then
+      raise exception 'The configured prize winner slots exceed the number of distinct eligible participants' using errcode = '23514';
+    end if;
+  end if;
+
+  v_seed := encode(extensions.gen_random_bytes(32), 'hex');
+  v_commitment := encode(extensions.digest(v_seed, 'sha256'), 'hex');
+  insert into public.play_campaign_draws (
+    campaign_id, status, ticket_count_snapshot, entries_digest, seed_commitment, seed_secret, authorized_by
+  ) values (
+    p_campaign_id, 'AUTHORIZED', v_count, v_digest, v_commitment, v_seed, auth.uid()
+  ) returning id into v_draw_id;
+
+  update public.play_campaigns
+  set status = 'DRAW_AUTHORIZED',
+      draw_authorized_at = statement_timestamp(),
+      updated_at = statement_timestamp()
+  where id = p_campaign_id;
+
+  insert into public.play_game_audit_events (
+    experience_id, actor_user_id, actor_type, event_type, event_data
+  ) values (
+    v_campaign.experience_id, auth.uid(), 'ADMIN', 'DRAW_AUTHORIZED',
+    jsonb_build_object(
+      'campaign_id', p_campaign_id,
+      'draw_id', v_draw_id,
+      'ticket_count', v_count,
+      'entries_digest', v_digest,
+      'seed_commitment', v_commitment,
+      'configured_winner_slots', v_winner_slots,
+      'distinct_eligible_participants', v_distinct_participants
+    )
+  );
+
+  return v_draw_id;
+end;
+$;
+
+revoke all on function public.admin_play_authorize_draw(uuid) from public, anon;
+grant execute on function public.admin_play_authorize_draw(uuid) to authenticated;
+
 create or replace function public.admin_play_execute_draw(p_draw_id uuid)
 returns jsonb
 language plpgsql
