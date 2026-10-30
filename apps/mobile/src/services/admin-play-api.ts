@@ -162,6 +162,24 @@ export type PlayAdminSettlement = {
   campaign_title: string;
 };
 
+
+
+export type PlayAdminPrizeAward = {
+  id: string;
+  public_id: string;
+  campaign_id: string;
+  prize_id: string;
+  prize_title: string;
+  user_id: string;
+  ticket_code: string;
+  award_number: number;
+  claim_status: string;
+  claimed_at: string | null;
+  fulfilled_at: string | null;
+  fulfillment_reference: string | null;
+  created_at: string;
+};
+
 export type PlayAdminOperations = {
   entryOrders: PlayAdminEntryOrder[];
   draws: PlayAdminDraw[];
@@ -228,4 +246,46 @@ export async function setAdminPlayDirectSponsorEnabled(enabled: boolean) {
   const { data, error } = await supabase.rpc('admin_play_set_direct_sponsor_status', { p_enabled: enabled });
   fail(error, 'Direct sponsorship settings could not be updated.');
   return Boolean(data);
+}
+
+
+export type AdminPlayPrizeInput = {
+  title: string;
+  description?: string | null;
+  asset_path?: string | null;
+  model_asset_path?: string | null;
+  image_alt?: string | null;
+  stock_quantity: number;
+  winner_limit: number;
+};
+
+export async function saveAdminPlayCampaignPrizes(campaignId: string, prizes: AdminPlayPrizeInput[]) {
+  const { data, error } = await supabase.rpc('admin_play_replace_campaign_prizes', {
+    p_campaign_id: campaignId,
+    p_prizes: prizes,
+  });
+  fail(error, 'Prize inventory could not be saved. Check stock and winner limits.');
+  return Number(data ?? 0);
+}
+
+export async function getAdminPlayPrizeAwards(campaignId?: string | null): Promise<PlayAdminPrizeAward[]> {
+  const { data, error } = await supabase.rpc('admin_play_list_prize_awards', {
+    p_campaign_id: campaignId ?? null,
+  });
+  fail(error, 'Prize award and fulfilment records could not be loaded.');
+  return Array.isArray(data) ? data as PlayAdminPrizeAward[] : [];
+}
+
+export async function setAdminPlayPrizeFulfilment(
+  awardId: string,
+  nextStatus: 'FULFILLMENT_PENDING' | 'FULFILLED',
+  evidenceReference?: string | null,
+) {
+  const { data, error } = await supabase.rpc('admin_play_set_prize_fulfilment', {
+    p_award_id: awardId,
+    p_next_status: nextStatus,
+    p_fulfillment_reference: evidenceReference ?? null,
+  });
+  fail(error, 'Prize fulfilment could not be updated.');
+  return data as Record<string, unknown>;
 }
