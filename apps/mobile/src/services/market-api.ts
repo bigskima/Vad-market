@@ -582,6 +582,9 @@ async function getMarketAssetCode(instrumentPublicId: string) {
 function tradingErrorMessage(error: { message: string; code?: string } | null, fallback: string) {
   const original = String(error?.message ?? '').trim();
   const message = original.toLowerCase();
+  if (message.includes('enable temporary ngn market testing from account before placing test trades')) {
+    return 'Turn on NGN test trading in Account to use your test funds.';
+  }
   if (message.includes('location verification') || message.includes('current location') || message.includes('network are verified')) {
     return 'NGN trading requires a recent successful Nigeria location check. Allow location access and retry; successful verification now remains valid for up to 24 hours.';
   }
