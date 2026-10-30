@@ -767,8 +767,11 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   const [tradeRulesLoading, setTradeRulesLoading] = useState(true);
   const [tradeRulesError, setTradeRulesError] = useState<string | null>(null);
   const [temporaryNgnCredit, setTemporaryNgnCredit] = useState<TemporaryNgnTestCreditStatus | null>(null);
-  const [temporaryNgnTestingStatus, setTemporaryNgnTestingStatus] = useState<TemporaryNgnMarketTestingStatus | null>(null);
-  const [temporaryNgnTestingLoading, setTemporaryNgnTestingLoading] = useState(false);
+  const [temporaryNgnTestingCheck, setTemporaryNgnTestingCheck] = useState<{
+    assetCode: string;
+    loaded: boolean;
+    status: TemporaryNgnMarketTestingStatus | null;
+  }>(() => ({ assetCode: market.asset_code, loaded: false, status: null }));
 
   useEffect(() => {
     let active = true;
@@ -786,11 +789,13 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
     if (market.asset_code !== 'NGN') {
       return () => { active = false; };
     }
-    setTemporaryNgnTestingLoading(true);
     void getTemporaryNgnMarketTestingStatus()
-      .then((status) => { if (active) setTemporaryNgnTestingStatus(status); })
-      .catch(() => { if (active) setTemporaryNgnTestingStatus(null); })
-      .finally(() => { if (active) setTemporaryNgnTestingLoading(false); });
+      .then((status) => {
+        if (active) setTemporaryNgnTestingCheck({ assetCode: market.asset_code, loaded: true, status });
+      })
+      .catch(() => {
+        if (active) setTemporaryNgnTestingCheck({ assetCode: market.asset_code, loaded: true, status: null });
+      });
     return () => { active = false; };
   }, [market.asset_code]);
 
@@ -806,17 +811,24 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   }, [market.instrument_public_id]);
 
   const hasTemporaryNgnTestCredit = market.asset_code === 'NGN' && temporaryNgnCredit?.active === true;
+  const hasCurrentNgnTestingCheck = temporaryNgnTestingCheck.assetCode === market.asset_code;
+  const temporaryNgnTestingStatus = hasCurrentNgnTestingCheck ? temporaryNgnTestingCheck.status : null;
+  const temporaryNgnTestingLoaded = hasCurrentNgnTestingCheck && temporaryNgnTestingCheck.loaded;
   const temporaryNgnModeOff = hasTemporaryNgnTestCredit
     && temporaryNgnTestingStatus?.active === true
     && temporaryNgnTestingStatus.testModeEnabled === false;
   const temporaryNgnIneligible = hasTemporaryNgnTestCredit
     && temporaryNgnTestingStatus?.active === true
     && temporaryNgnTestingStatus.eligible === false;
-  const temporaryNgnAccessLoading = hasTemporaryNgnTestCredit && temporaryNgnTestingLoading;
+  const temporaryNgnAccessLoading = hasTemporaryNgnTestCredit && !temporaryNgnTestingLoaded;
+  const temporaryNgnStatusUnavailable = hasTemporaryNgnTestCredit
+    && temporaryNgnTestingLoaded
+    && temporaryNgnTestingStatus == null;
   // Check the user's NGN test-mode preference before enabling quote review; the database still enforces it at quote and placement.
   const tradeReady = (canTrade || hasTemporaryNgnTestCredit)
     && !capabilityLoading
     && !temporaryNgnAccessLoading
+    && !temporaryNgnStatusUnavailable
     && !temporaryNgnModeOff
     && !temporaryNgnIneligible;
   const priceValue = Number(price);
@@ -883,6 +895,12 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       <CapabilityNotice canTrade={canTrade || hasTemporaryNgnTestCredit} capabilityLoading={capabilityLoading} tradeReason={tradeReason} />
       {temporaryNgnAccessLoading ? (
         <InlineMessage tone="warning" title="Checking NGN test access" body="Checking your NGN test-funds settings." />
+      ) : null}
+      {temporaryNgnStatusUnavailable ? (
+        <View style={{ gap: theme.spacing.xs }}>
+          <InlineMessage tone="warning" title="NGN test access could not be checked" body="Open Account to check your test-funds settings and eligibility." />
+          <VadButton label="Open Account" variant="secondary" onPress={() => router.push('/account')} />
+        </View>
       ) : null}
       {temporaryNgnModeOff ? (
         <View style={{ gap: theme.spacing.xs }}>
