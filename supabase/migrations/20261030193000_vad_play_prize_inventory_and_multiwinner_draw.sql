@@ -686,6 +686,7 @@ begin
           raise exception 'No eligible tickets remain for the configured prize allocation' using errcode = '23514';
         end if;
 
+        -- Rejection sampling avoids modulo bias for each remaining ticket pool.
         v_selection_attempt := 0;
         loop
           v_random_bytes := extensions.digest(
