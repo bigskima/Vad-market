@@ -1,5 +1,5 @@
 begin;
-select plan(27);
+select plan(28);
 
 select has_table('public', 'play_campaign_prizes', 'Campaign prize inventory exists');
 select has_table('public', 'play_campaign_prize_awards', 'Campaign prize awards and claims are persisted');
