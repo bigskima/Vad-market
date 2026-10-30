@@ -130,7 +130,7 @@ export function PlayCampaignSummary({ campaign }: { campaign: PlayCampaign }) {
                     <VadText variant="label" numberOfLines={2}>{prize.title}</VadText>
                     {prize.description ? <VadText variant="caption" tone="secondary" numberOfLines={2}>{prize.description}</VadText> : null}
                     <VadText variant="caption" tone="tertiary">
-                      {prize.stock_quantity.toLocaleString('en-NG')} in stock · Up to {prize.winner_limit.toLocaleString('en-NG')} {prize.winner_limit === 1 ? 'winner' : 'winners'}
+                      Stock: {prize.stock_quantity.toLocaleString('en-NG')} · Up to {prize.winner_limit.toLocaleString('en-NG')} {prize.winner_limit === 1 ? 'winner' : 'winners'}
                     </VadText>
                     {prize.awards_count > 0 ? (
                       <VadText variant="caption" tone="brand">
