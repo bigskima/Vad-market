@@ -66,6 +66,7 @@ export function AdminPlayGameBuilder({
   const [prizeTitle, setPrizeTitle] = useState('');
   const [prizeItems, setPrizeItems] = useState<PrizeDraft[]>([{ key: 'prize-1', title: '', description: '', stockQuantity: '1', winnerLimit: '1', assetPath: '' }]);
   const [uploadingPrizeIndex, setUploadingPrizeIndex] = useState<number | null>(null);
+  const [pendingPrizeCampaignId, setPendingPrizeCampaignId] = useState<string | null>(null);
   const [terms, setTerms] = useState('');
   const [refundPolicy, setRefundPolicy] = useState('');
   const [imagePath, setImagePath] = useState('');
@@ -191,6 +192,31 @@ export function AdminPlayGameBuilder({
     }
   }
 
+  async function retryPrizeInventory() {
+    if (!pendingPrizeCampaignId || working !== null) return;
+    setWorking('save');
+    setError(null);
+    setMessage(null);
+    try {
+      await saveAdminPlayCampaignPrizes(pendingPrizeCampaignId, prizeItems.map((item, index) => ({
+        title: item.title.trim(),
+        description: item.description.trim() || null,
+        asset_path: item.assetPath || null,
+        image_alt: item.title.trim(),
+        stock_quantity: Number(item.stockQuantity),
+        winner_limit: Number(item.winnerLimit),
+        display_order: (index + 1) * 10,
+      })));
+      setPendingPrizeCampaignId(null);
+      setMessage('Prize inventory saved to the campaign draft.');
+      await onSaved();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Prize inventory could not be saved. Retry after checking the prize details.');
+    } finally {
+      setWorking(null);
+    }
+  }
+
   async function saveGame() {
     setError(null);
     setMessage(null);
@@ -203,7 +229,7 @@ export function AdminPlayGameBuilder({
       return;
     }
     if (isPrizeDraw) {
-      if (!campaignTitle.trim() || !prizeTitle.trim() || !currency || !prizeCost.trim() || !profitMode || !profitValue.trim()
+      if (!campaignTitle.trim() || !currency || !prizeCost.trim() || !profitMode || !profitValue.trim()
         || !campaignCosts.trim() || !entryPrice.trim() || !maxEntries.trim() || !ticketsPerPurchase.trim()
         || terms.trim().length < 20 || refundPolicy.trim().length < 10) {
         setError('Complete the campaign economics, entry limits, terms and refund policy.');
@@ -290,6 +316,7 @@ export function AdminPlayGameBuilder({
           engine_config: {},
         });
         campaignSaved = true;
+        setPendingPrizeCampaignId(campaignId);
         await saveAdminPlayCampaignPrizes(campaignId, prizeItems.map((item, index) => ({
           title: item.title.trim(),
           description: item.description.trim() || null,
@@ -299,6 +326,7 @@ export function AdminPlayGameBuilder({
           winner_limit: Number(item.winnerLimit),
           display_order: (index + 1) * 10,
         })));
+        setPendingPrizeCampaignId(null);
       }
 
       await onSaved();
@@ -312,6 +340,7 @@ export function AdminPlayGameBuilder({
       setDescription('');
       setCampaignTitle('');
       setPrizeTitle('');
+      setPendingPrizeCampaignId(null);
       setPrizeItems([{ key: 'prize-1', title: '', description: '', stockQuantity: '1', winnerLimit: '1', assetPath: '' }]);
       setTerms('');
       setRefundPolicy('');
@@ -515,6 +544,20 @@ export function AdminPlayGameBuilder({
             <VadText variant="caption" tone="tertiary">
               The draw assigns a unique eligible ticket to each configured winner slot. Prize stock and winner limits are checked again on the server.
             </VadText>
+          </View>
+        </VadCard>
+      ) : null}
+
+      {pendingPrizeCampaignId ? (
+        <VadCard>
+          <View style={{ padding: theme.spacing.md, gap: theme.spacing.sm }}>
+            <VadText variant="label">Campaign draft saved; prize setup still needs to finish.</VadText>
+            <VadButton
+              label="Retry saving prize inventory"
+              onPress={() => void retryPrizeInventory()}
+              loading={working === 'save'}
+              disabled={working !== null}
+            />
           </View>
         </VadCard>
       ) : null}
