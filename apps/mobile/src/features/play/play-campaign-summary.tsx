@@ -123,7 +123,7 @@ export function PlayCampaignSummary({ campaign }: { campaign: PlayCampaign }) {
                     <Image source={{ uri: prizeImage }} accessibilityLabel={prize.image_alt ?? prize.title} resizeMode="cover" style={{ width: '100%', aspectRatio: 4 / 3, backgroundColor: theme.colors.surfaceMuted }} />
                   ) : (
                     <View style={{ width: '100%', aspectRatio: 4 / 3, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceMuted }}>
-                      <VadIcon name="gift" size={30} tone="tertiary" />
+                      <VadIcon name="info" size={30} tone="tertiary" />
                     </View>
                   )}
                   <View style={{ padding: theme.spacing.sm, gap: 5 }}>
