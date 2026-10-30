@@ -373,6 +373,8 @@ export async function listPlayCampaignPrizes(campaignId: string): Promise<PlayCa
 
 export async function listMyCampaignPrizeAwards(campaignId: string): Promise<PlayPrizeAward[]> {
   if (!campaignId) return [];
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session?.user) return [];
   const { data, error } = await supabase
     .from('play_campaign_prize_awards')
     .select('id, public_id, campaign_id, draw_id, prize_id, ticket_id, user_id, award_number, claim_status, claimed_at, fulfilled_at, created_at')
