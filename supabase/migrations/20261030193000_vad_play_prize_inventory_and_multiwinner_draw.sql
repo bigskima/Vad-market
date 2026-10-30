@@ -65,6 +65,7 @@ create table if not exists public.play_campaign_prize_awards (
   foreign key (campaign_id, prize_id)
     references public.play_campaign_prizes(campaign_id, id) on delete restrict,
   unique (campaign_id, ticket_id),
+  unique (campaign_id, user_id),
   unique (prize_id, award_number),
   check (
     (claim_status in ('CLAIMED','FULFILLMENT_PENDING','FULFILLED')) = (claimed_at is not null)
@@ -380,7 +381,7 @@ begin
      or not (private.is_super_admin() or private.has_permission('play.manage')) then
     raise exception 'VAD Play management permission required' using errcode = '42501';
   end if;
-  if p_award_id is null or p_next_status not in ('FULFILLMENT_PENDING','FULFILLED') then
+  if p_award_id is null or p_next_status is null or p_next_status not in ('FULFILLMENT_PENDING','FULFILLED') then
     raise exception 'Choose a valid fulfilment update' using errcode = '22023';
   end if;
   if p_next_status = 'FULFILLED'
@@ -551,9 +552,15 @@ begin
 
       for v_award_number in 1..v_prize.winner_limit loop
         select count(*) into v_remaining_count
-        from public.play_tickets
-        where campaign_id = v_draw.campaign_id
-          and status = 'ACTIVE';
+        from public.play_tickets t
+        where t.campaign_id = v_draw.campaign_id
+          and t.status = 'ACTIVE'
+          and not exists (
+            select 1
+            from public.play_campaign_prize_awards a
+            where a.campaign_id = t.campaign_id
+              and a.user_id = t.user_id
+          );
         if v_remaining_count <= 0 then
           raise exception 'No eligible tickets remain for the configured prize allocation' using errcode = '23514';
         end if;
@@ -590,6 +597,12 @@ begin
         from public.play_tickets
         where campaign_id = v_draw.campaign_id
           and status = 'ACTIVE'
+          and not exists (
+            select 1
+            from public.play_campaign_prize_awards a
+            where a.campaign_id = play_tickets.campaign_id
+              and a.user_id = play_tickets.user_id
+          )
         order by id
         offset (v_slot - 1)
         limit 1
