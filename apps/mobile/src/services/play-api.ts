@@ -39,6 +39,38 @@ export type PlayCampaign = {
   published_at: string | null;
 };
 
+export type PlayCampaignPrize = {
+  id: string;
+  campaign_id: string;
+  title: string;
+  description: string | null;
+  asset_path: string | null;
+  model_asset_path: string | null;
+  image_alt: string | null;
+  stock_quantity: number;
+  winner_limit: number;
+  awards_count: number;
+  fulfilled_count: number;
+  display_order: number;
+  status: 'ACTIVE' | 'RETIRED';
+  created_at: string;
+};
+
+export type PlayPrizeAward = {
+  id: string;
+  public_id: string;
+  campaign_id: string;
+  draw_id: string;
+  prize_id: string;
+  ticket_id: number;
+  user_id: string;
+  award_number: number;
+  claim_status: 'AWARDED' | 'CLAIMED' | 'FULFILLMENT_PENDING' | 'FULFILLED' | 'EXPIRED' | 'CANCELLED';
+  claimed_at: string | null;
+  fulfilled_at: string | null;
+  created_at: string;
+};
+
 export type PlayTicket = {
   ticketId: string;
   ticketCode: string;
@@ -324,4 +356,40 @@ export function playExperienceLabel(value: string) {
     .replaceAll('-', ' ')
     .toLowerCase()
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+
+export async function listPlayCampaignPrizes(campaignId: string): Promise<PlayCampaignPrize[]> {
+  if (!campaignId) return [];
+  const { data, error } = await supabase
+    .from('play_campaign_prizes')
+    .select('id, campaign_id, title, description, asset_path, model_asset_path, image_alt, stock_quantity, winner_limit, awards_count, fulfilled_count, display_order, status, created_at')
+    .eq('campaign_id', campaignId)
+    .eq('status', 'ACTIVE')
+    .order('display_order', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as PlayCampaignPrize[];
+}
+
+export async function listMyCampaignPrizeAwards(campaignId: string): Promise<PlayPrizeAward[]> {
+  if (!campaignId) return [];
+  const { data, error } = await supabase
+    .from('play_campaign_prize_awards')
+    .select('id, public_id, campaign_id, draw_id, prize_id, ticket_id, user_id, award_number, claim_status, claimed_at, fulfilled_at, created_at')
+    .eq('campaign_id', campaignId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as PlayPrizeAward[];
+}
+
+export async function claimPlayCampaignPrize(awardId: string) {
+  if (!awardId) throw new Error('A prize award is required.');
+  const { data, error } = await supabase.rpc('play_claim_campaign_prize', {
+    p_award_id: awardId,
+  });
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('VAD returned an unexpected prize-claim response.');
+  }
+  return data as Record<string, unknown>;
 }
