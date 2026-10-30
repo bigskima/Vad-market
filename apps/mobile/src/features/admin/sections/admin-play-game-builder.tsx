@@ -16,6 +16,7 @@ import {
 import {
   saveAdminPlayCampaign,
   saveAdminPlayExperience,
+  saveAdminPlayCampaignPrizes,
   publishAdminPlayPracticeExperience,
   type PlayAdminDashboard,
 } from '@/services/admin-play-api';
@@ -42,6 +43,8 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
   );
 }
 
+type PrizeDraft = { key: string; title: string; description: string; stockQuantity: string; winnerLimit: string; assetPath: string };
+
 function slugify(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 90);
 }
@@ -61,6 +64,8 @@ export function AdminPlayGameBuilder({
   const [description, setDescription] = useState('');
   const [campaignTitle, setCampaignTitle] = useState('');
   const [prizeTitle, setPrizeTitle] = useState('');
+  const [prizeItems, setPrizeItems] = useState<PrizeDraft[]>([{ key: 'prize-1', title: '', description: '', stockQuantity: '1', winnerLimit: '1', assetPath: '' }]);
+  const [uploadingPrizeIndex, setUploadingPrizeIndex] = useState<number | null>(null);
   const [terms, setTerms] = useState('');
   const [refundPolicy, setRefundPolicy] = useState('');
   const [imagePath, setImagePath] = useState('');
@@ -78,6 +83,33 @@ export function AdminPlayGameBuilder({
   const [working, setWorking] = useState<'draft' | 'upload' | 'image' | 'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  function updatePrize(index: number, patch: Partial<PrizeDraft>) {
+    setPrizeItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+  }
+
+  function addPrize() {
+    setPrizeItems((current) => [
+      ...current,
+      { key: 'prize-' + Date.now().toString(36), title: '', description: '', stockQuantity: '1', winnerLimit: '1', assetPath: '' },
+    ]);
+  }
+
+  async function uploadPrizeArtwork(index: number) {
+    setUploadingPrizeIndex(index);
+    setError(null);
+    setMessage(null);
+    try {
+      const path = await uploadPlayMedia();
+      if (!path) return;
+      updatePrize(index, { assetPath: path });
+      setMessage('Prize artwork uploaded.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Prize artwork could not be uploaded.');
+    } finally {
+      setUploadingPrizeIndex(null);
+    }
+  }
 
   const selectedEngine = engines.find((engine) => engine.engine_key === engineKey);
   const isPrizeDraw = engineKey === 'PRIZE_DRAW';
@@ -190,10 +222,30 @@ export function AdminPlayGameBuilder({
         setError('Use valid whole-number entry limits. Per-purchase and per-user limits cannot exceed the campaign cap.');
         return;
       }
+      if (prizeItems.length < 1 || prizeItems.length > 25) {
+        setError('Add between 1 and 25 prize items.');
+        return;
+      }
+      let totalWinnerSlots = 0;
+      for (const item of prizeItems) {
+        const stock = Number(item.stockQuantity);
+        const winners = Number(item.winnerLimit);
+        if (!item.title.trim() || !Number.isSafeInteger(stock) || stock < 1
+          || !Number.isSafeInteger(winners) || winners < 1 || winners > stock) {
+          setError('Each prize needs a title, positive stock and a winner limit that does not exceed stock.');
+          return;
+        }
+        totalWinnerSlots += winners;
+      }
+      if (totalWinnerSlots > totalCap) {
+        setError('The total number of configured prize winners cannot exceed the campaign entry cap.');
+        return;
+      }
     }
 
     setWorking('save');
     let experienceSaved = false;
+    let campaignSaved = false;
     try {
       const experiencePayload = {
         slug: slugify(title) || `play-${Date.now()}`,
@@ -216,11 +268,11 @@ export function AdminPlayGameBuilder({
       experienceSaved = true;
 
       if (isPrizeDraw) {
-        await saveAdminPlayCampaign({
+        const campaignId = await saveAdminPlayCampaign({
           experience_id: experienceId,
           slug: slugify(campaignTitle) || slugify(title),
           title: campaignTitle.trim(),
-          prize_title: prizeTitle.trim(),
+          prize_title: prizeTitle.trim() || prizeItems[0]?.title.trim() || title.trim(),
           currency_code: currency,
           prize_cost_amount: Number(prizeCost),
           profit_target_mode: profitMode,
@@ -237,6 +289,16 @@ export function AdminPlayGameBuilder({
           },
           engine_config: {},
         });
+        campaignSaved = true;
+        await saveAdminPlayCampaignPrizes(campaignId, prizeItems.map((item, index) => ({
+          title: item.title.trim(),
+          description: item.description.trim() || null,
+          asset_path: item.assetPath || null,
+          image_alt: item.title.trim(),
+          stock_quantity: Number(item.stockQuantity),
+          winner_limit: Number(item.winnerLimit),
+          display_order: (index + 1) * 10,
+        })));
       }
 
       await onSaved();
@@ -250,6 +312,7 @@ export function AdminPlayGameBuilder({
       setDescription('');
       setCampaignTitle('');
       setPrizeTitle('');
+      setPrizeItems([{ key: 'prize-1', title: '', description: '', stockQuantity: '1', winnerLimit: '1', assetPath: '' }]);
       setTerms('');
       setRefundPolicy('');
       setImagePath('');
@@ -266,9 +329,11 @@ export function AdminPlayGameBuilder({
       setUserLimit('');
     } catch (reason) {
       const detail = reason instanceof Error ? reason.message : 'Could not save the draft. Try again.';
-      setError(experienceSaved
-        ? `The game was saved, but its campaign needs attention. Check the fields and try again.`
-        : detail);
+      setError(campaignSaved
+        ? 'The game and campaign draft were saved, but prize inventory needs attention. Reopen the draft and complete its prize setup.'
+        : experienceSaved
+          ? 'The game was saved, but its campaign needs attention. Check the fields and try again.'
+          : detail);
     } finally {
       setWorking(null);
     }
@@ -327,7 +392,7 @@ export function AdminPlayGameBuilder({
           {isPrizeDraw ? (
             <>
               <VadInput label="Campaign title" value={campaignTitle} onChangeText={setCampaignTitle} placeholder="Campaign or prize event name" />
-              <VadInput label="Prize description" value={prizeTitle} onChangeText={setPrizeTitle} placeholder="What is the prize?" />
+              <VadInput label="Prize summary (optional)" value={prizeTitle} onChangeText={setPrizeTitle} placeholder="Short summary of the prize collection" />
             </>
           ) : null}
         </View>
@@ -398,6 +463,58 @@ export function AdminPlayGameBuilder({
             ) : null}
             <VadInput label="Public terms" value={terms} onChangeText={setTerms} multiline placeholder="Review and confirm the campaign terms" />
             <VadInput label="Refund policy" value={refundPolicy} onChangeText={setRefundPolicy} multiline placeholder="Explain when entries are refunded" />
+          </View>
+        </VadCard>
+      ) : null}
+
+      {isPrizeDraw ? (
+        <VadCard>
+          <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
+            <View style={{ gap: 4 }}>
+              <VadText variant="heading">5. Prize inventory & winner limits</VadText>
+              <VadText variant="caption" tone="secondary">
+                Add every item in the collection. Stock is the quantity secured; winner limit is how many different tickets may win that item.
+              </VadText>
+            </View>
+            {prizeItems.map((item, index) => {
+              const itemImage = playMediaPublicUrl(item.assetPath);
+              return (
+                <View key={item.key} style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: theme.spacing.sm }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <VadText variant="label">Prize {index + 1}</VadText>
+                    {prizeItems.length > 1 ? (
+                      <Pressable accessibilityRole="button" onPress={() => setPrizeItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
+                        <VadText variant="caption" tone="no">Remove</VadText>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                  <VadInput label="Prize name" value={item.title} onChangeText={(value) => updatePrize(index, { title: value })} placeholder="e.g. Smartphone" />
+                  <VadInput label="Description (optional)" value={item.description} onChangeText={(value) => updatePrize(index, { description: value })} placeholder="Model, colour or key details" />
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <VadInput label="Stock quantity" value={item.stockQuantity} onChangeText={(value) => updatePrize(index, { stockQuantity: value })} keyboardType="number-pad" placeholder="e.g. 10" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <VadInput label="Maximum winners" value={item.winnerLimit} onChangeText={(value) => updatePrize(index, { winnerLimit: value })} keyboardType="number-pad" placeholder="e.g. 2" />
+                    </View>
+                  </View>
+                  <VadButton
+                    label={uploadingPrizeIndex === index ? 'Uploading prize image…' : item.assetPath ? 'Replace prize image' : 'Upload prize image'}
+                    variant="secondary"
+                    onPress={() => void uploadPrizeArtwork(index)}
+                    loading={uploadingPrizeIndex === index}
+                    disabled={working !== null || uploadingPrizeIndex !== null}
+                  />
+                  {itemImage ? (
+                    <Image source={{ uri: itemImage }} accessibilityLabel={item.title ? item.title + ' prize artwork' : 'Prize artwork'} resizeMode="cover" style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: theme.radius.md, backgroundColor: theme.colors.surfaceMuted }} />
+                  ) : null}
+                </View>
+              );
+            })}
+            <VadButton label="Add another prize" variant="secondary" onPress={addPrize} disabled={working !== null || uploadingPrizeIndex !== null || prizeItems.length >= 25} />
+            <VadText variant="caption" tone="tertiary">
+              The draw assigns a unique eligible ticket to each configured winner slot. Prize stock and winner limits are checked again on the server.
+            </VadText>
           </View>
         </VadCard>
       ) : null}
