@@ -784,8 +784,6 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
   useEffect(() => {
     let active = true;
     if (market.asset_code !== 'NGN') {
-      setTemporaryNgnTestingStatus(null);
-      setTemporaryNgnTestingLoading(false);
       return () => { active = false; };
     }
     setTemporaryNgnTestingLoading(true);
