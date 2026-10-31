@@ -373,11 +373,26 @@ BEGIN
   END IF;
   v_definition := replace(v_definition, v_old, v_new);
 
-  v_old := $old$  if not coalesce((v_validation->>'valid')::boolean, false) then
+  v_old := $old$  return v_result || jsonb_build_object(
+    'market_format', 'MULTI_OUTCOME',
+    'outcomes', v_option_payload,
+    'resolution_mode', 'VAD_REVIEW_V1'
+  );$old$;
+  v_new := $new$  return v_result || jsonb_build_object(
+    'market_format', 'MULTI_OUTCOME',
+    'outcomes', v_option_payload,
+    'resolution_mode', 'AUTOMATIC_EVIDENCE'
+  );$new$;
+  IF position(v_old IN v_definition)=0 THEN
+    RAISE EXCEPTION 'Could not find multi-outcome resolution mode return label.';
+  END IF;
+  v_definition := replace(v_definition,v_old,v_new);
+
+  v_old := $old$  if coalesce((v_validation->>'valid')::boolean, false) is not true then
     raise exception '%', coalesce(v_validation->>'reason', 'The multiple-outcome resolution rules are invalid.')
       using errcode = '22023';
   end if;$old$;
-  v_new := $new$  if not coalesce((v_validation->>'valid')::boolean, false) then
+  v_new := $new$  if coalesce((v_validation->>'valid')::boolean, false) is not true then
     raise exception '%', coalesce(v_validation->>'reason', 'The multiple-outcome resolution rules are invalid.')
       using errcode = '22023';
   end if;
@@ -464,12 +479,6 @@ $new$;
   END IF;
   v_definition := replace(v_definition, v_old, v_new);
 
-  v_old := '''resolution_mode'', ''VAD_REVIEW_V1''';
-  v_new := '''resolution_mode'', ''AUTOMATIC_EVIDENCE''';
-  IF position(v_old IN v_definition) = 0 THEN
-    RAISE EXCEPTION 'Could not find multi-outcome v2 result-mode label.';
-  END IF;
-  v_definition := replace(v_definition, v_old, v_new);
   EXECUTE v_definition;
 END;
 $patch$;
