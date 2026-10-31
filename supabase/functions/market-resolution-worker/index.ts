@@ -377,7 +377,19 @@ function parseModelJson(text: string): RecordValue {
   const source = text.trim().replace(/^\x60{3}(?:json)?/i, '').replace(/\x60{3}$/i, '').trim();
   const first = source.indexOf('{');
   const last = source.lastIndexOf('}');
+  // A truncated response that explicitly abstains is safely represented as
+  // INCONCLUSIVE. This can never produce an outcome, and the worker will retry.
+  const explicitAbstention = /INCONCLUSIVE/i.test(source);
   if (first < 0 || last <= first) {
+    if (explicitAbstention) {
+      return {
+        status: 'INCONCLUSIVE',
+        outcomeCode: null,
+        confidence: 0,
+        rationale: 'The model explicitly abstained but its JSON response was incomplete; retry with fresh evidence.',
+        evidence: [],
+      };
+    }
     throw new Error('AI output did not contain a JSON object. Output prefix: ' + safeText(source, 180));
   }
   let result: unknown;
@@ -393,6 +405,15 @@ function parseModelJson(text: string): RecordValue {
       if (typeof decoded !== 'string') throw new Error('Escaped JSON was not a string.');
       result = JSON.parse(decoded);
     } catch {
+      if (explicitAbstention) {
+        return {
+          status: 'INCONCLUSIVE',
+          outcomeCode: null,
+          confidence: 0,
+          rationale: 'The model explicitly abstained but its JSON response could not be decoded; retry with fresh evidence.',
+          evidence: [],
+        };
+      }
       throw new Error('AI output contained invalid JSON. Output prefix: ' + safeText(source, 180));
     }
   }
