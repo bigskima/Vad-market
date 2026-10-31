@@ -144,11 +144,6 @@ BEGIN
               'PROVIDER_NETWORK_ERROR',
               'PROVIDER_PAYLOAD_INVALID'
             )
-            OR coalesce(
-              latest_attempt.completed_at,
-              latest_attempt.started_at,
-              latest_attempt.created_at
-            ) > statement_timestamp() - interval '2 minutes'
           )
       )
     ORDER BY coalesce(e.resolves_after, e.closes_at), e.id
