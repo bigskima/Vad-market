@@ -12,6 +12,7 @@ type EvidenceSource = {
   domain: string;
   text: string;
   source: 'DIRECT' | 'SEARCH';
+  providerCode?: string;
   publishedAt: string | null;
 };
 type AiRuntime = {
@@ -183,51 +184,193 @@ async function fetchText(url: URL, maxChars = 18000): Promise<EvidenceSource | n
   }
 }
 
-async function searchEvidence(title: string, scope: RecordValue, oracleProviders: OracleProvider[]): Promise<EvidenceSource[]> {
-  const tavily = oracleProviders.find((p) => p.code === 'TAVILY' && p.environment === 'PRODUCTION'
-    && p.status === 'ACTIVE' && p.capabilities?.some((c) => c.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE'));
-  if (!tavily?.secretReference) return [];
-  const apiKey = Deno.env.get(tavily.secretReference)?.trim();
-  if (!apiKey) return [];
+function htmlDecode(value: string) {
+  return value
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&nbsp;|&#160;/gi, ' ');
+}
 
-  const rule = resolutionRuleText(scope, 2000);
-  const query = [title, rule, 'official result announcement date'].filter(Boolean).join(' ');
+function searchResultAllowed(url: URL, primaryUrls: URL[]) {
+  return primaryUrls.every((primary) =>
+    hasIndependentEvidenceHost(url.hostname, primary.hostname)
+  );
+}
+
+async function searchPublicWebEvidence(
+  query: string,
+  primaryUrls: URL[],
+): Promise<EvidenceSource[]> {
+  const results: EvidenceSource[] = [];
+  const seen = new Set<string>();
+
+  // DuckDuckGo HTML results require no credential. Keep only public article
+  // links outside the official primary host tree and quote their own snippets.
   try {
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
+    const endpoint = new URL('https://html.duckduckgo.com/html/');
+    endpoint.searchParams.set('q', query);
+    const response = await fetch(endpoint, {
+      method: 'GET',
       redirect: 'error',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        api_key: apiKey,
-        query,
-        search_depth: 'advanced',
-        max_results: 8,
-        include_answer: false,
-        include_raw_content: true,
-      }),
+      headers: {
+        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent': 'Mozilla/5.0 (compatible; VADMarketResolution/1.0)',
+      },
       signal: AbortSignal.timeout(8000),
     });
-    if (!response.ok) return [];
-    const payload = await response.json().catch(() => ({}));
-    if (!isRecord(payload) || !Array.isArray(payload.results)) return [];
-    const result: EvidenceSource[] = [];
-    for (const item of payload.results.slice(0, 8)) {
-      if (!isRecord(item)) continue;
-      const url = validatePublicHttpsUrl(item.url);
-      const text = safeText(item.raw_content ?? item.content, 7000);
-      if (!url || !text) continue;
-      result.push({
-        url: url.toString(),
-        domain: url.hostname,
-        text,
-        source: 'SEARCH',
-        publishedAt: safeText(item.published_date ?? item.publishedAt, 80) || null,
-      });
+    if (response.ok) {
+      const html = await response.text();
+      if (html.length <= 2_000_000) {
+        for (const match of html.matchAll(/<a\\b([^>]*)>([\\s\\S]*?)<\\/a>/gi)) {
+          const attributes = match[1] ?? '';
+          if (!/result__a/i.test(attributes.match(/class=["']([^"']*)["']/i)?.[1] ?? '')) continue;
+          const rawHref = attributes.match(/href=["']([^"']+)["']/i)?.[1];
+          if (!rawHref) continue;
+          let url = validatePublicHttpsUrl(htmlDecode(rawHref));
+          if (url && /(^|\\.)duckduckgo\\.com$/i.test(url.hostname)) {
+            const target = url.searchParams.get('uddg');
+            url = target ? validatePublicHttpsUrl(target) : null;
+          }
+          if (!url || !searchResultAllowed(url, primaryUrls) || seen.has(url.toString())) continue;
+
+          const tail = html.slice((match.index ?? 0) + match[0].length, (match.index ?? 0) + match[0].length + 5000);
+          const snippetMatch = tail.match(/<(?:a|div|span)\\b([^>]*)>([\\s\\S]*?)<\\/(?:a|div|span)>/i);
+          const snippetClass = snippetMatch?.[1]?.match(/class=["']([^"']*)["']/i)?.[1] ?? '';
+          const snippet = /result__snippet/i.test(snippetClass)
+            ? stripHtml(htmlDecode(snippetMatch?.[2] ?? ''))
+            : '';
+          const headline = stripHtml(htmlDecode(match[2] ?? ''));
+          const text = [headline, snippet].filter(Boolean).join('. ').slice(0, 7000);
+          if (text.length < 60) continue;
+          seen.add(url.toString());
+          results.push({
+            url: url.toString(),
+            domain: url.hostname,
+            text,
+            source: 'SEARCH',
+            providerCode: 'PUBLIC_WEB_SEARCH',
+            publishedAt: null,
+          });
+          if (results.length >= 8) break;
+        }
+      }
     }
-    return result;
   } catch {
-    return [];
+    // The Bing RSS fallback below is independent of DuckDuckGo availability.
   }
+
+  // Bing's public RSS search endpoint is the second no-key route. It exposes
+  // article title and description, not an AI-generated answer.
+  if (results.length < 2) {
+    try {
+      const endpoint = new URL('https://www.bing.com/search');
+      endpoint.searchParams.set('format', 'rss');
+      endpoint.searchParams.set('q', query);
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        redirect: 'error',
+        headers: {
+          Accept: 'application/rss+xml,application/xml,text/xml',
+          'User-Agent': 'Mozilla/5.0 (compatible; VADMarketResolution/1.0)',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (response.ok) {
+        const xml = await response.text();
+        if (xml.length <= 2_000_000) {
+          for (const item of xml.matchAll(/<item\\b[^>]*>([\\s\\S]*?)<\\/item>/gi)) {
+            const block = item[1] ?? '';
+            const title = stripHtml(htmlDecode(block.match(/<title>([\\s\\S]*?)<\\/title>/i)?.[1] ?? ''));
+            const rawLink = htmlDecode(block.match(/<link>([\\s\\S]*?)<\\/link>/i)?.[1]?.trim() ?? '');
+            const description = stripHtml(htmlDecode(block.match(/<description>([\\s\\S]*?)<\\/description>/i)?.[1] ?? ''));
+            const url = validatePublicHttpsUrl(rawLink);
+            if (!url || !searchResultAllowed(url, primaryUrls) || seen.has(url.toString())) continue;
+            const text = [title, description].filter(Boolean).join('. ').slice(0, 7000);
+            if (text.length < 60) continue;
+            seen.add(url.toString());
+            results.push({
+              url: url.toString(),
+              domain: url.hostname,
+              text,
+              source: 'SEARCH',
+              providerCode: 'PUBLIC_WEB_SEARCH',
+              publishedAt: null,
+            });
+            if (results.length >= 8) break;
+          }
+        }
+      }
+    } catch {
+      // No source is preferred over weak or unverified evidence.
+    }
+  }
+
+  return results;
+}
+
+async function searchEvidence(
+  title: string,
+  scope: RecordValue,
+  oracleProviders: OracleProvider[],
+  primaryUrls: URL[],
+): Promise<EvidenceSource[]> {
+  const rule = resolutionRuleText(scope, 2000);
+  const query = [title, rule, 'official result announcement date'].filter(Boolean).join(' ');
+  const tavily = oracleProviders.find((p) => p.code === 'TAVILY' && p.environment === 'PRODUCTION'
+    && p.status === 'ACTIVE' && p.capabilities?.some((c) => c.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE'));
+  const apiKey = tavily?.secretReference ? Deno.env.get(tavily.secretReference)?.trim() : '';
+
+  if (apiKey) {
+    try {
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        redirect: 'error',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          api_key: apiKey,
+          query,
+          search_depth: 'advanced',
+          max_results: 8,
+          include_answer: false,
+          include_raw_content: true,
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        if (isRecord(payload) && Array.isArray(payload.results)) {
+          const result: EvidenceSource[] = [];
+          for (const item of payload.results.slice(0, 8)) {
+            if (!isRecord(item)) continue;
+            const url = validatePublicHttpsUrl(item.url);
+            const text = safeText(item.raw_content ?? item.content, 7000);
+            if (!url || !text || !searchResultAllowed(url, primaryUrls)) continue;
+            result.push({
+              url: url.toString(),
+              domain: url.hostname,
+              text,
+              source: 'SEARCH',
+              providerCode: 'TAVILY',
+              publishedAt: safeText(item.published_date ?? item.publishedAt, 80) || null,
+            });
+          }
+          if (result.length > 0) return result;
+        }
+      }
+    } catch {
+      // Continue with independent no-key search below.
+    }
+  }
+
+  const publicSearch = oracleProviders.find((p) => p.code === 'PUBLIC_WEB_SEARCH'
+    && p.environment === 'PRODUCTION'
+    && p.status === 'ACTIVE'
+    && p.capabilities?.some((c) => c.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE'));
+  if (!publicSearch) return [];
+  return searchPublicWebEvidence(query, primaryUrls);
 }
 
 function parseModelJson(text: string): RecordValue {
@@ -238,10 +381,20 @@ function parseModelJson(text: string): RecordValue {
     throw new Error('AI output did not contain a JSON object. Output prefix: ' + safeText(source, 180));
   }
   let result: unknown;
+  const candidate = source.slice(first, last + 1);
   try {
-    result = JSON.parse(source.slice(first, last + 1));
+    result = JSON.parse(candidate);
   } catch {
-    throw new Error('AI output contained invalid JSON. Output prefix: ' + safeText(source, 180));
+    try {
+      // Some provider adapters return the JSON object with one string-encoding
+      // layer still escaped (e.g. {\\\"status\\\":...}). Decode that layer
+      // with JSON's own string parser, then parse the resulting object normally.
+      const decoded = JSON.parse('"' + candidate + '"');
+      if (typeof decoded !== 'string') throw new Error('Escaped JSON was not a string.');
+      result = JSON.parse(decoded);
+    } catch {
+      throw new Error('AI output contained invalid JSON. Output prefix: ' + safeText(source, 180));
+    }
   }
   if (!isRecord(result)) throw new Error('AI output was not a JSON object.');
   return result;
@@ -537,7 +690,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
 
   const [directResults, discoveredSearchPacket] = await Promise.all([
     Promise.all(primaryUrls.map((url) => fetchText(url))),
-    searchEvidence(safeText(event.title, 500), scope, oracleProviders),
+    searchEvidence(safeText(event.title, 500), scope, oracleProviders, primaryUrls),
   ]);
   let directPacket = directResults.filter((value): value is EvidenceSource => Boolean(value));
   // Tavily is the independent corroborating provider. Do not constrain its
@@ -743,9 +896,10 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
       : isRecord(entry) ? safeText(entry.provider_code ?? entry.providerCode ?? entry.code, 80) : '';
     if (value) sourceCodes.add(value.toUpperCase());
   }
+  const corroboratingProviderCode = safeText(searchResultEvidence?.source.providerCode, 80).toUpperCase();
   const sourceEvidence = [
     { code: 'PUBLIC_RECORD', evidence: directEvidence },
-    { code: 'TAVILY', evidence: searchResultEvidence },
+    { code: corroboratingProviderCode, evidence: searchResultEvidence },
   ] as const;
   const missingSource = sourceEvidence.find(({ code, evidence }) => !evidence || !sourceCodes.has(code));
 
