@@ -744,7 +744,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     if (!scheduleValid) return setError(scheduleFieldsValid && Date.parse(closesAt) <= clockNow
       ? 'The closing time has already passed. Choose a future closing time; expired markets cannot be published.'
       : 'Choose valid opening, closing and result-checking times.');
-    if (automaticFootball && !automaticFootballAvailable) return setError('Automatic football results are not enabled for this currency. Choose Verified result or a supported test currency.');
+    if (automaticFootball && !automaticFootballAvailable) return setError('Automatic fixture results are not enabled for this currency. Choose Automatic evidence fallback or a supported test currency.');
     if (automaticFootball && Date.parse(closesAt) > Date.parse(matchStartsAt)) return setError('For this match-result market, trading must close no later than kickoff.');
     if (automaticFootball && Date.parse(resolvesAfter) < Date.parse(matchStartsAt) + (2 * 60 * 60 * 1000)) return setError('Set result checking to at least two hours after kickoff so VAD waits for the final result.');
     if (cryptoThreshold) {
@@ -919,7 +919,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
         ? `Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`
         : `Automatic evidence${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
       : (marketFormat === 'MULTI_OUTCOME' || marketType?.handler === 'VERIFIED_EVENT')
-        ? `Automatic evidence resolution · ${sourceName.trim() || 'configured authoritative source'}`
+        ? `Automatic evidence resolution · ${sourceName.trim() || 'public-source discovery'}`
         : 'VAD configured result checking';
 
   if (created) {
