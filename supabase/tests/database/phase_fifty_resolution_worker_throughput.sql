@@ -11,7 +11,7 @@ BEGIN
   ORDER BY jobid DESC
   LIMIT 1;
 
-  IF v_command IS NULL OR v_command NOT LIKE '%"limit", 2%' OR v_command NOT LIKE '%timeout_milliseconds := 60000%' THEN
+  IF v_command IS NULL OR v_command NOT LIKE '%''limit'', 2%' OR v_command NOT LIKE '%timeout_milliseconds := 60000%' THEN
     RAISE EXCEPTION 'AI resolution scheduler must claim two due markets per minute with its existing 60-second request timeout';
   END IF;
 
