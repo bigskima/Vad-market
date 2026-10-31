@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { missingEvidencePaths } from './evidence-coverage.ts';
+import { hasIndependentEvidenceHost, isAllowedEvidenceHost, missingEvidencePaths } from './evidence-coverage.ts';
 
 type RecordValue = Record<string, unknown>;
 type RpcError = { message?: string; code?: string } | null;
@@ -219,7 +219,7 @@ async function searchEvidence(title: string, scope: RecordValue, oracleProviders
       if (!isRecord(item)) continue;
       const url = validatePublicHttpsUrl(item.url);
       const text = safeText(item.content ?? item.raw_content, 7000);
-      if (!url || !text || (allowedDomains.length > 0 && !allowedDomains.some((host) => url.hostname === host || url.hostname.endsWith('.' + host)))) continue;
+      if (!url || !text || !isAllowedEvidenceHost(url.hostname, allowedDomains)) continue;
       result.push({
         url: url.toString(),
         domain: url.hostname,
@@ -558,7 +558,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
       directPacket = [fetched];
       corroboratingSearchPacket = searchPacket.filter((source) => {
         const sourceUrl = validatePublicHttpsUrl(source.url);
-        return Boolean(sourceUrl && sourceUrl.hostname !== candidateUrl.hostname);
+        return Boolean(sourceUrl && hasIndependentEvidenceHost(sourceUrl.hostname, candidateUrl.hostname));
       });
       break;
     }
