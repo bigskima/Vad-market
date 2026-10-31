@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { hasIndependentEvidenceHost, isAllowedEvidenceHost, missingEvidencePaths } from './evidence-coverage.ts';
+import { hasIndependentEvidenceHost, missingEvidencePaths } from './evidence-coverage.ts';
 
 type RecordValue = Record<string, unknown>;
 type RpcError = { message?: string; code?: string } | null;
