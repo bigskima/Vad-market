@@ -189,7 +189,7 @@ async function searchEvidence(title: string, scope: RecordValue, oracleProviders
   const allowedDomains = Array.from(new Set(sourceList.map((item) => validatePublicHttpsUrl(item)?.hostname).filter((x): x is string => Boolean(x))));
   const tavily = oracleProviders.find((p) => p.code === 'TAVILY' && p.environment === 'PRODUCTION'
     && p.status === 'ACTIVE' && p.capabilities?.some((c) => c.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE'));
-  if (!tavily?.secretReference || allowedDomains.length === 0) return [];
+  if (!tavily?.secretReference) return [];
   const apiKey = Deno.env.get(tavily.secretReference)?.trim();
   if (!apiKey) return [];
 
@@ -204,10 +204,10 @@ async function searchEvidence(title: string, scope: RecordValue, oracleProviders
         api_key: apiKey,
         query,
         search_depth: 'advanced',
-        max_results: 5,
+        max_results: 8,
         include_answer: false,
         include_raw_content: false,
-        include_domains: allowedDomains,
+        ...(allowedDomains.length ? { include_domains: allowedDomains } : {}),
       }),
       signal: AbortSignal.timeout(8000),
     });
@@ -215,7 +215,7 @@ async function searchEvidence(title: string, scope: RecordValue, oracleProviders
     const payload = await response.json().catch(() => ({}));
     if (!isRecord(payload) || !Array.isArray(payload.results)) return [];
     const result: EvidenceSource[] = [];
-    for (const item of payload.results.slice(0, 5)) {
+    for (const item of payload.results.slice(0, 8)) {
       if (!isRecord(item)) continue;
       const url = validatePublicHttpsUrl(item.url);
       const text = safeText(item.content ?? item.raw_content, 7000);
@@ -543,9 +543,29 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     Promise.all(primaryUrls.map((url) => fetchText(url))),
     searchEvidence(safeText(event.title, 500), scope, oracleProviders),
   ]);
-  const directPacket = directResults.filter((value): value is EvidenceSource => Boolean(value));
+  let directPacket = directResults.filter((value): value is EvidenceSource => Boolean(value));
+  let corroboratingSearchPacket = searchPacket;
+
+  // Generic markets may be published without preconfigured URLs. Discover a
+  // candidate source through the public-record search provider, fetch that page
+  // directly, then retain search evidence from a different domain as corroboration.
+  if (directPacket.length === 0 && searchPacket.length > 0) {
+    for (const candidate of searchPacket) {
+      const candidateUrl = validatePublicHttpsUrl(candidate.url);
+      if (!candidateUrl) continue;
+      const fetched = await fetchText(candidateUrl);
+      if (!fetched) continue;
+      directPacket = [fetched];
+      corroboratingSearchPacket = searchPacket.filter((source) => {
+        const sourceUrl = validatePublicHttpsUrl(source.url);
+        return Boolean(sourceUrl && sourceUrl.hostname !== candidateUrl.hostname);
+      });
+      break;
+    }
+  }
+
   const seen = new Set<string>();
-  const packet = [...directPacket, ...searchPacket].filter((item) => {
+  const packet = [...directPacket, ...corroboratingSearchPacket].filter((item) => {
     if (seen.has(item.url)) return false;
     seen.add(item.url);
     return true;
@@ -650,7 +670,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reasons: reasons.slice(0, 4) };
   }
 
-  const requiredAgreement = Math.min(2, configuredRuntimes.length);
+  const requiredAgreement = Math.min(2, candidates.length);
   const groups = new Map<string, typeof candidates>();
   for (const candidate of candidates) {
     const key = candidate.validated.status + ':' + (candidate.validated.outcomeCode ?? '');
