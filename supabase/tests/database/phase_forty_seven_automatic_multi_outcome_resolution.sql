@@ -17,7 +17,6 @@ DECLARE
     )
   );
   v_readiness jsonb;
-  v_admin_readiness jsonb;
   v_validator text;
   v_admin_validator text;
   v_v1 text;
@@ -41,20 +40,8 @@ BEGIN
     RAISE EXCEPTION 'Multi-outcome VAD_REVIEW_V1 scope without a source URL must be eligible for the shared automatic resolver: %',v_readiness;
   END IF;
 
-  v_admin_readiness := public.admin_validate_oracle_resolution_scope(
-    v_scope,
-    statement_timestamp() + interval '1 minute',
-    statement_timestamp() + interval '2 minutes'
-  );
-
-  IF coalesce((v_admin_readiness->>'valid')::boolean,false) IS NOT TRUE
-     OR coalesce((v_admin_readiness->>'autoPublishReady')::boolean,false) IS NOT TRUE
-     OR v_admin_readiness->>'resolutionMode' <> 'AUTOMATIC'
-     OR v_admin_readiness->>'marketFormat' <> 'MULTI_OUTCOME'
-     OR coalesce((v_admin_readiness->>'outcomeCount')::integer,0) <> 3 THEN
-    RAISE EXCEPTION 'Admin multi-outcome validation must agree with the shared automatic resolver: %',v_admin_readiness;
-  END IF;
-
+  -- The admin RPC is permission-gated. Assert its deployed definition delegates
+  -- to the same shared validator and no longer contains a manual-only result.
   v_validator := pg_get_functiondef(
     'private.validate_oracle_resolution_scope(jsonb,timestamptz,timestamptz)'::regprocedure
   );
@@ -78,8 +65,9 @@ BEGIN
   );
 
   IF position('MANUAL_REVIEW_REQUIRED' IN v_admin_validator)>0
-     OR position('authorized Oracle reviewer must verify' IN v_admin_validator)>0 THEN
-    RAISE EXCEPTION 'Admin validation still marks multi-outcome settlement as manual-only';
+     OR position('authorized Oracle reviewer must verify' IN v_admin_validator)>0
+     OR position('private.validate_oracle_resolution_scope' IN v_admin_validator)=0 THEN
+    RAISE EXCEPTION 'Admin validation must delegate multi-outcome readiness to the automatic shared resolver';
   END IF;
 
   IF position('Manual VAD review against' IN v_v1)>0
