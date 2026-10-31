@@ -224,20 +224,20 @@ async function searchPublicWebEvidence(
     if (response.ok) {
       const html = await response.text();
       if (html.length <= 2_000_000) {
-        for (const match of html.matchAll(/<a\\b([^>]*)>([\\s\\S]*?)<\\/a>/gi)) {
+        for (const match of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
           const attributes = match[1] ?? '';
           if (!/result__a/i.test(attributes.match(/class=["']([^"']*)["']/i)?.[1] ?? '')) continue;
           const rawHref = attributes.match(/href=["']([^"']+)["']/i)?.[1];
           if (!rawHref) continue;
           let url = validatePublicHttpsUrl(htmlDecode(rawHref));
-          if (url && /(^|\\.)duckduckgo\\.com$/i.test(url.hostname)) {
+          if (url && /(^|\.)duckduckgo\.com$/i.test(url.hostname)) {
             const target = url.searchParams.get('uddg');
             url = target ? validatePublicHttpsUrl(target) : null;
           }
           if (!url || !searchResultAllowed(url, primaryUrls) || seen.has(url.toString())) continue;
 
           const tail = html.slice((match.index ?? 0) + match[0].length, (match.index ?? 0) + match[0].length + 5000);
-          const snippetMatch = tail.match(/<(?:a|div|span)\\b([^>]*)>([\\s\\S]*?)<\\/(?:a|div|span)>/i);
+          const snippetMatch = tail.match(/<(?:a|div|span)\b([^>]*)>([\s\S]*?)<\/(?:a|div|span)>/i);
           const snippetClass = snippetMatch?.[1]?.match(/class=["']([^"']*)["']/i)?.[1] ?? '';
           const snippet = /result__snippet/i.test(snippetClass)
             ? stripHtml(htmlDecode(snippetMatch?.[2] ?? ''))
@@ -281,11 +281,12 @@ async function searchPublicWebEvidence(
       if (response.ok) {
         const xml = await response.text();
         if (xml.length <= 2_000_000) {
-          for (const item of xml.matchAll(/<item\\b[^>]*>([\\s\\S]*?)<\\/item>/gi)) {
+          for (const item of xml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)) {
             const block = item[1] ?? '';
-            const title = stripHtml(htmlDecode(block.match(/<title>([\\s\\S]*?)<\\/title>/i)?.[1] ?? ''));
-            const rawLink = htmlDecode(block.match(/<link>([\\s\\S]*?)<\\/link>/i)?.[1]?.trim() ?? '');
-            const description = stripHtml(htmlDecode(block.match(/<description>([\\s\\S]*?)<\\/description>/i)?.[1] ?? ''));
+            const title = stripHtml(htmlDecode(block.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? ''));
+            const rawLink = htmlDecode(block.match(/<link>([\s\S]*?)<\/link>/i)?.[1]?.trim() ?? '')
+              .replace(/^<!\[CDATA\[|\]\]>$/g, '');
+            const description = stripHtml(htmlDecode(block.match(/<description>([\s\S]*?)<\/description>/i)?.[1] ?? ''));
             const url = validatePublicHttpsUrl(rawLink);
             if (!url || !searchResultAllowed(url, primaryUrls) || seen.has(url.toString())) continue;
             const text = [title, description].filter(Boolean).join('. ').slice(0, 7000);
@@ -310,7 +311,6 @@ async function searchPublicWebEvidence(
 
   return results;
 }
-
 async function searchEvidence(
   title: string,
   scope: RecordValue,
