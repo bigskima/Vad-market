@@ -917,7 +917,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     : football
       ? automaticFootball
         ? `Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`
-        : `Verified result${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
+        : `Automatic evidence${sourceName.trim() ? ` · ${sourceName.trim()}` : ''}`
       : (marketFormat === 'MULTI_OUTCOME' || marketType?.handler === 'VERIFIED_EVENT')
         ? `Automatic evidence resolution · ${sourceName.trim() || 'configured authoritative source'}`
         : 'VAD configured result checking';
@@ -1073,7 +1073,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                   <VadDateTimeField label="Match starts" value={matchStartsAt} onChange={updateMatchStart} hint="VAD identifies the fixture from the competition, teams and kickoff time." />
                   <FieldGroup label="Result checking">
                     <VadChip label={`Automatic · ${options?.guided.football.automaticSourceName ?? 'Football-Data.org'}`} selected={resultChecking === 'AUTOMATIC'} tone={resultChecking === 'AUTOMATIC' ? 'brand' : 'neutral'} onPress={() => { invalidateSportsDraft(); setResultChecking('AUTOMATIC'); }} />
-                    <VadChip label="Verified result" selected={resultChecking === 'VERIFIED'} tone={resultChecking === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => { invalidateSportsDraft(); setResultChecking('VERIFIED'); }} />
+                    <VadChip label="Automatic evidence fallback" selected={resultChecking === 'VERIFIED'} tone={resultChecking === 'VERIFIED' ? 'brand' : 'neutral'} onPress={() => { invalidateSportsDraft(); setResultChecking('VERIFIED'); }} />
                   </FieldGroup>
                   {resultChecking === 'VERIFIED' ? <SourceFields label="Official result source" sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} /> : null}
                 </View>
@@ -1220,7 +1220,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
                 placeholder="State the exact award, result, date or official record that determines which option wins."
                 hint="Be specific about ties, cancellations, unavailable evidence and the cutoff time."
               />
-              <SourceFields label="Authoritative result source" sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
+              <SourceFields label="Preferred official source" sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
               <VadCard variant="muted" style={{ gap: 4 }}>
                 <VadText variant="bodyStrong">Automatic result resolution</VadText>
                 <VadText variant="caption" tone="secondary">After the result-checking time, VAD searches public sources, verifies a direct source against independent corroborating evidence, and requires two agreeing AI models before Oracle consensus. The result must match exactly one configured choice. Conflicting or unavailable evidence remains unresolved and is retried; no manual review is the normal settlement path.</VadText>
