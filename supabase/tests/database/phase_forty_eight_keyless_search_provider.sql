@@ -26,15 +26,15 @@ BEGIN
   SELECT p.source_hierarchy INTO v_policy_source_hierarchy
   FROM oracle.policies p
   WHERE p.name='VAD Generic Evidence Gateway Policy'
-    AND p.status='ACTIVE'
-    AND p.approved_by IS NOT NULL
+    AND p.status='DRAFT'
+    AND p.approved_by IS NULL
   ORDER BY p.version DESC
   LIMIT 1;
 
   IF v_policy_source_hierarchy IS NULL
      OR NOT v_policy_source_hierarchy @> '[{"role":"PRIMARY","provider_code":"PUBLIC_RECORD"}]'::jsonb
      OR NOT v_policy_source_hierarchy @> '[{"role":"CORROBORATING","provider_code":"PUBLIC_WEB_SEARCH"}]'::jsonb THEN
-    RAISE EXCEPTION 'Generic policy must support PUBLIC_RECORD and independent PUBLIC_WEB_SEARCH corroboration: %',v_policy_source_hierarchy;
+    RAISE EXCEPTION 'A pending generic policy draft must include PUBLIC_RECORD and PUBLIC_WEB_SEARCH corroboration without modifying the approved policy: %',v_policy_source_hierarchy;
   END IF;
 
   v_validator := pg_get_functiondef(
@@ -43,6 +43,27 @@ BEGIN
 
   IF position('PUBLIC_WEB_SEARCH' IN v_validator)=0 THEN
     RAISE EXCEPTION 'Automatic resolver readiness must recognise the keyless corroborating provider';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM oracle.policies p
+    WHERE p.name='VAD Generic Evidence Gateway Policy'
+      AND p.status='ACTIVE'
+      AND p.approved_by IS NOT NULL
+      AND p.source_hierarchy @> '[{"role":"PRIMARY","provider_code":"PUBLIC_RECORD"}]'::jsonb
+      AND p.source_hierarchy @> '[{"role":"CORROBORATING","provider_code":"TAVILY"}]'::jsonb
+      AND NOT p.source_hierarchy @> '[{"role":"CORROBORATING","provider_code":"PUBLIC_WEB_SEARCH"}]'::jsonb
+  ) THEN
+    RAISE EXCEPTION 'The existing approved policy must remain immutable while the new provider awaits separate review';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgrelid='oracle.policies'::regclass
+      AND tgname='vad_generic_search_policy_activation_rebind'
+      AND NOT tgisinternal
+  ) THEN
+    RAISE EXCEPTION 'Approved policy activation must automatically rebind existing generic markets';
   END IF;
 
   v_readiness := private.validate_oracle_resolution_scope(
