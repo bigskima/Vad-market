@@ -641,7 +641,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
         <VadButton
           label={customDraftLoading ? 'Preparing AI draft…' : 'Help draft question & resolution with AI'}
           onPress={() => void generateCustomMarketDraft()}
-          disabled={customDraftLoading || working || !category || (marketType.sourceRequired && !sourceName.trim()) || (marketType.handler === 'VERIFIED_EVENT' && !/^https:\/\//i.test(sourceUrl.trim()))}
+          disabled={customDraftLoading || working || !category || (resultChecking === 'VERIFIED' && marketType.sourceRequired && !sourceName.trim()) || (resultChecking === 'VERIFIED' && marketType.handler === 'VERIFIED_EVENT' && Boolean(sourceUrl.trim()) && !/^https:\/\//i.test(sourceUrl.trim()))}
           loading={customDraftLoading}
         />
         <VadText variant="caption" tone="secondary">
@@ -671,9 +671,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
         return setError('Outcome choices must be unique. Remove duplicate names and try again.');
       }
       if (resultCondition.trim().length < 10) return setError('Describe how VAD should determine the winning option.');
-      if (!sourceName.trim()) return setError('Add the authoritative result source for this market.');
-      if (!sourceUrl.trim()) return setError('Add the official HTTPS source URL. Automatic resolution needs a known source domain for direct evidence and scoped corroboration.');
-      if (!/^https:\/\//i.test(sourceUrl.trim())) return setError('The source link must start with https://.');
+      if (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim())) return setError('A supplied source link must start with https://.');
       setLiquidityModel('POOL');
       setStep(2);
       return;
@@ -726,12 +724,9 @@ export function AdminMarketCreateWorkspaceCatalog() {
       const missing = marketType.fields.find((field) => field.required && !details[field.key]?.trim());
       if (missing) return setError(`Add ${missing.label} before continuing.`);
       if (!marketType.conditionTemplate.trim() && !resultCondition.trim()) return setError('Explain in plain language what must happen for YES to win.');
-      if (marketType.sourceRequired && !sourceName.trim()) return setError('Add the authoritative result source VAD should use.');
-      if (marketType.handler === 'VERIFIED_EVENT' && !sourceUrl.trim()) {
-        return setError('Add the official HTTPS source URL. Automatic resolution needs a known source domain for direct evidence and scoped corroboration.');
-      }
-      if (marketType.handler === 'VERIFIED_EVENT' && !/^https:\/\//i.test(sourceUrl.trim())) {
-        return setError('The source URL for this automatic market must start with https://.');
+      if (resultChecking === 'VERIFIED' && marketType.sourceRequired && !sourceName.trim()) return setError('Add the authoritative result source VAD should use.');
+      if (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim())) {
+        return setError('A supplied source URL must start with https://.');
       }
     }
     setStep(2);
@@ -792,9 +787,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     if (marketFormat === 'MULTI_OUTCOME' && (
       !multiOutcomeOptionsValid
       || resultCondition.trim().length < 10
-      || !sourceName.trim()
-      || !sourceUrl.trim()
-      || !/^https:\/\//i.test(sourceUrl.trim())
+      || (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim()))
     )) {
       setStep(1);
       setError('Review the market question, 2–20 unique choices, resolution instructions and official source.');
@@ -1229,8 +1222,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
               />
               <SourceFields label="Authoritative result source" sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
               <VadCard variant="muted" style={{ gap: 4 }}>
-                <VadText variant="bodyStrong">Result review</VadText>
-                <VadText variant="caption" tone="secondary">Multiple-outcome markets use VAD’s existing result-review and settlement process. The final result must match one of these configured choices; live pool shares do not determine the winner.</VadText>
+                <VadText variant="bodyStrong">Automatic result resolution</VadText>
+                <VadText variant="caption" tone="secondary">After the result-checking time, VAD searches public sources, verifies a direct source against independent corroborating evidence, and requires two agreeing AI models before Oracle consensus. The result must match exactly one configured choice. Conflicting or unavailable evidence remains unresolved and is retried; no manual review is the normal settlement path.</VadText>
               </VadCard>
             </View>
           ) : null}
@@ -1375,7 +1368,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           {marketFormat === 'MULTI_OUTCOME' ? (
             <>
               <ReviewRow label="Resolution instructions" value={resultCondition.trim()} />
-              <ReviewRow label="Official source" value={sourceName.trim()} />
+              <ReviewRow label="Preferred source · optional" value={sourceName.trim() || 'VAD public-source discovery'} />
               <View style={{ gap: 5 }}>
                 <VadText variant="caption" tone="secondary">Configured choices</VadText>
                 {multiOutcomeOptions.map((option, index) => <ReviewRow key={`${index}:${option}`} label={`Choice ${index + 1}`} value={option} />)}
@@ -1418,7 +1411,7 @@ function SourceFields({ label, sourceName, sourceUrl, setSourceName, setSourceUr
   setSourceName: (value: string) => void;
   setSourceUrl: (value: string) => void;
 }) {
-  return <View style={{ gap: 10 }}><VadInput label={label} value={sourceName} onChangeText={setSourceName} placeholder="e.g. Recording Academy, official league, regulator" /><VadInput label="Official source website · required for generic and multi-outcome markets" value={sourceUrl} onChangeText={setSourceUrl} autoCapitalize="none" placeholder="https://official-source.example/…" /></View>;
+  return <View style={{ gap: 10 }}><VadInput label={label + ' · optional source hint'} value={sourceName} onChangeText={setSourceName} placeholder="e.g. Recording Academy, official league, regulator" /><VadInput label="Official source website · optional" value={sourceUrl} onChangeText={setSourceUrl} autoCapitalize="none" placeholder="https://official-source.example/…" hint="VAD can discover an official source automatically when no URL is supplied." /></View>;
 }
 
 function ReviewRow({ label, value }: { label: string; value: string }) {
