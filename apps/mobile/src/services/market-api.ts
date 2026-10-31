@@ -619,8 +619,7 @@ export async function quotePoolStake(input: { instrumentPublicId: string; outcom
   if (assetCode !== 'NGN' && assetCode !== 'USDC') {
     throw new Error('This market uses a retired or unsupported settlement currency. Select an available NGN or supported USDC market.');
   }
-  // Validate the real-time location before quoting, so the user sees the actual
-  // prerequisite instead of the generic "Prediction review unavailable" fallback.
+  // The server checks account, currency and market eligibility; market quotes do not request GPS.
   const { data, error } = await supabase.rpc('pool_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
