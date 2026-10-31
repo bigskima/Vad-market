@@ -53,9 +53,9 @@ type CreateCatalogMarketInput = {
   marketTypeCode: string;
   details: Record<string, string>;
   condition?: string;
-  sourceName: string;
+  sourceName?: string;
   sourceUrl?: string;
-  opensAt: string;
+  opensAt:
   closesAt: string;
   resolvesAfter: string;
   countryCode: string;
@@ -193,7 +193,7 @@ export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) 
     p_market_type_code: input.marketTypeCode,
     p_details: details,
     p_condition: input.condition?.trim() || null,
-    p_source_name: input.sourceName.trim(),
+    p_source_name: input.sourceName?.trim() || null,
     p_source_url: input.sourceUrl?.trim() || null,
     p_opens_at: input.opensAt,
     p_closes_at: input.closesAt,
