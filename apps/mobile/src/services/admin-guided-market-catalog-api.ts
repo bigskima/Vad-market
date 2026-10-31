@@ -72,7 +72,7 @@ export type CreateMultiOutcomeMarketInput = {
   category: string;
   outcomes: string[];
   resolutionInstructions: string;
-  sourceName: string;
+  sourceName?: string;
   sourceUrl?: string;
   opensAt: string;
   closesAt: string;
@@ -193,7 +193,7 @@ export async function createAdminCatalogMarket(input: CreateCatalogMarketInput) 
     p_market_type_code: input.marketTypeCode,
     p_details: details,
     p_condition: input.condition?.trim() || null,
-    p_source_name: input.sourceName?.trim() || null,
+    p_source_name: input.sourceName.trim(),
     p_source_url: input.sourceUrl?.trim() || null,
     p_opens_at: input.opensAt,
     p_closes_at: input.closesAt,
@@ -216,7 +216,7 @@ export async function createAdminMultiOutcomeMarket(input: CreateMultiOutcomeMar
     p_category: input.category.trim(),
     p_outcomes: input.outcomes.map((label) => label.trim()),
     p_resolution_instructions: input.resolutionInstructions.trim(),
-    p_source_name: input.sourceName.trim(),
+    p_source_name: input.sourceName?.trim() || null,
     p_source_url: input.sourceUrl?.trim() || null,
     p_opens_at: input.opensAt,
     p_closes_at: input.closesAt,
