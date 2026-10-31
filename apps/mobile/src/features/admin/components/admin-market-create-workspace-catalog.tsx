@@ -719,7 +719,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
     } else if (football) {
       if (!competition.trim() || !homeTeam.trim() || !awayTeam.trim()) return setError('Add the competition, home team and away team.');
       if (!matchStartsAt || !Number.isFinite(Date.parse(matchStartsAt))) return setError('Choose when the match starts.');
-      if (resultChecking === 'VERIFIED' && !sourceName.trim()) return setError('Add the official result source VAD should use.');
+      if (sourceUrl.trim() && !/^https:\/\//i.test(sourceUrl.trim())) return setError('A supplied source URL must start with https://.');
     } else {
       const missing = marketType.fields.find((field) => field.required && !details[field.key]?.trim());
       if (missing) return setError(`Add ${missing.label} before continuing.`);
@@ -1167,8 +1167,8 @@ export function AdminMarketCreateWorkspaceCatalog() {
                     <VadInput label="What must happen for YES to win?" value={resultCondition} onChangeText={setResultCondition} multiline placeholder="Describe the objective outcome in plain language." />
                   ) : null}
                   <VadCard variant="muted" style={{ gap: 4 }}>
-                    <VadText variant="bodyStrong">{cryptoThreshold ? 'Automated historical-price resolution' : 'Verified result'}</VadText>
-                    <VadText variant="caption" tone="secondary">{cryptoThreshold ? 'The Oracle compares Coinbase and Kraken public historical candles around the scheduled observation time. Neither source requires an API key. If either source is unavailable or the timestamps do not meet policy, the market remains pending; the live chart is display-only.' : 'VAD will verify the outcome from the source below. You do not need to configure oracle IDs, resolver types or internal event records.'}</VadText>
+                    <VadText variant="bodyStrong">{cryptoThreshold ? 'Automated historical-price resolution' : 'Automatic evidence resolution'}</VadText>
+                    <VadText variant="caption" tone="secondary">{cryptoThreshold ? 'The Oracle compares Coinbase and Kraken public historical candles around the scheduled observation time. Neither source requires an API key. If either source is unavailable or the timestamps do not meet policy, the market remains pending; the live chart is display-only.' : 'After the result-checking time, VAD discovers a direct public record and independent corroborating evidence. Two AI models must agree before Oracle consensus and the published dispute period. A preferred source is optional; missing or conflicting evidence is retried, not sent to manual review.'}</VadText>
                   </VadCard>
                   <SourceFields label={marketType.sourceLabel} sourceName={sourceName} sourceUrl={sourceUrl} setSourceName={setSourceName} setSourceUrl={setSourceUrl} />
                 </View>
