@@ -127,8 +127,14 @@ begin$new$;
     end if;
 
     if upper(coalesce(p_scope->>'market_format',''))='MULTI_OUTCOME' then
-      if jsonb_typeof(p_scope->'outcome_options') is distinct from 'array'
-         or jsonb_array_length(p_scope->'outcome_options')<2
+      if jsonb_typeof(p_scope->'outcome_options') is distinct from 'array' then
+        return jsonb_build_object(
+          'valid',false,'autoPublishReady',false,'resolverType',resolver_type,
+          'reason','Configure between 2 and 20 named outcome choices.',
+          'riskFlag','OUTCOME_OPTIONS_INVALID'
+        );
+      end if;
+      if jsonb_array_length(p_scope->'outcome_options')<2
          or jsonb_array_length(p_scope->'outcome_options')>20 then
         return jsonb_build_object(
           'valid',false,'autoPublishReady',false,'resolverType',resolver_type,
@@ -198,8 +204,7 @@ begin$new$;
         select 1 from jsonb_array_elements(coalesce(p.source_hierarchy,'[]'::jsonb)) h
         where upper(coalesce(h->>'provider_code',h->>'providerCode',''))='TAVILY'
       )
-    order by p.version desc,p.effective_at desc,p.id desc
-    limit 1;
+    ;
 
     select count(*)::integer
       into auto_model_count
@@ -558,25 +563,8 @@ BEGIN
 END;
 $patch$;
 
--- Harden the worker's model quorum. When fewer than two independent AI
--- runtimes are available, it retries automatically rather than accepting a
--- single model as financial settlement evidence.
-DO $patch$
-DECLARE
-  v_definition text;
-  v_old text := 'const requiredAgreement = Math.min(2, configuredRuntimes.length);';
-  v_new text := 'const requiredAgreement = 2;';
-BEGIN
-  SELECT source_code INTO v_definition
-  FROM (
-    SELECT ''::text AS source_code
-  ) unused;
-  -- The TypeScript implementation is updated in the worker source alongside
-  -- this migration; the database keeps the independent oracle quorum at two.
-  IF v_definition IS NULL THEN
-    NULL;
-  END IF;
-END;
-$patch$;
+-- The application worker requires two independent AI model decisions.
+-- If fewer than two free runtimes are configured, resolution retries later;
+-- it never downgrades to a single model for financial settlement.
 
 COMMIT;
