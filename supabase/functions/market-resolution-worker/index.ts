@@ -237,10 +237,10 @@ async function searchPublicWebEvidence(
           if (!url || !searchResultAllowed(url, primaryUrls) || seen.has(url.toString())) continue;
 
           const tail = html.slice((match.index ?? 0) + match[0].length, (match.index ?? 0) + match[0].length + 5000);
-          const snippetMatch = tail.match(/<(?:a|div|span)\b([^>]*)>([\s\S]*?)<\/(?:a|div|span)>/i);
-          const snippetClass = snippetMatch?.[1]?.match(/class=["']([^"']*)["']/i)?.[1] ?? '';
-          const snippet = /result__snippet/i.test(snippetClass)
-            ? stripHtml(htmlDecode(snippetMatch?.[2] ?? ''))
+          const snippetMatch = [...tail.matchAll(/<(?:a|div|span)\b([^>]*)>([\s\S]*?)<\/(?:a|div|span)>/gi)]
+            .find((candidate) => /result__snippet/i.test(candidate[1]?.match(/class=["']([^"']*)["']/i)?.[1] ?? ''));
+          const snippet = snippetMatch
+            ? stripHtml(htmlDecode(snippetMatch[2] ?? ''))
             : '';
           const headline = stripHtml(htmlDecode(match[2] ?? ''));
           const text = [headline, snippet].filter(Boolean).join('. ').slice(0, 7000);
