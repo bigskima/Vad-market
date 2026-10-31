@@ -728,7 +728,7 @@ export async function getAdminMarketQueue() {
   return (data ?? []) as Record<string, unknown>[];
 }
 export async function getAdminOracleQueue() {
-  const { data, error } = await supabase.rpc('admin_oracle_queue');
+  const { data, error } = await supabase.rpc('admin_oracle_queue_v2');
   if (error) return [];
   return (data ?? []) as Record<string, unknown>[];
 }
