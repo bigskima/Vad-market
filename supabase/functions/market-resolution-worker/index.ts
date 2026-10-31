@@ -219,7 +219,7 @@ async function searchEvidence(title: string, scope: RecordValue, oracleProviders
       if (!isRecord(item)) continue;
       const url = validatePublicHttpsUrl(item.url);
       const text = safeText(item.content ?? item.raw_content, 7000);
-      if (!url || !text || !allowedDomains.some((host) => url.hostname === host || url.hostname.endsWith('.' + host))) continue;
+      if (!url || !text || (allowedDomains.length > 0 && !allowedDomains.some((host) => url.hostname === host || url.hostname.endsWith('.' + host)))) continue;
       result.push({
         url: url.toString(),
         domain: url.hostname,
@@ -670,7 +670,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reasons: reasons.slice(0, 4) };
   }
 
-  const requiredAgreement = Math.min(2, candidates.length);
+  const requiredAgreement = Math.min(2, configuredRuntimes.length);
   const groups = new Map<string, typeof candidates>();
   for (const candidate of candidates) {
     const key = candidate.validated.status + ':' + (candidate.validated.outcomeCode ?? '');
