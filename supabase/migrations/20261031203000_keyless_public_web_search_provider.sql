@@ -6,10 +6,9 @@
 BEGIN;
 
 INSERT INTO integration.providers(
-  id,code,name,provider_type,environment,status,priority,capabilities,public_metadata,secret_reference
+  code,name,provider_type,environment,status,priority,capabilities,public_metadata,secret_reference
 )
 SELECT
-  nextval('integration.providers_id_seq'),
   'PUBLIC_WEB_SEARCH',
   'Public Web Search (DuckDuckGo + Bing RSS)',
   'ORACLE',
