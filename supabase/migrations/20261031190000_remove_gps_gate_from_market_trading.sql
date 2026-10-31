@@ -35,8 +35,7 @@ BEGIN
   WHERE a.id = p_asset_id AND a.status = 'ACTIVE';
 
   -- NGN remains restricted to Nigerian accounts and configured NGN jurisdiction
-  -- availability, but trading no longer requires GPS, IP geolocation or a
-  -- user_location_verifications row.
+  -- availability, but trading no longer requires a device or network location receipt.
   IF v_asset_code = 'NGN' AND p_country_code IS DISTINCT FROM 'NG' THEN
     RETURN false;
   END IF;
