@@ -211,7 +211,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       if (isUsdc) {
         if (!selectedVenue) {
           throw new Error(
-            'No VAD USDC settlement network is active for this market and your location yet.',
+            'No VAD USDC settlement network is enabled for this market and account yet.',
           );
         }
 
@@ -446,7 +446,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
                 <InlineMessage
                   tone="warning"
                   title="USDC trading isn’t available yet"
-                  body="No supported network is available for your location. You can’t place a trade until one is enabled."
+                  body="No supported settlement network is enabled for this market and account. You can’t place a trade until one is enabled."
                 />
               )}
             </View>
