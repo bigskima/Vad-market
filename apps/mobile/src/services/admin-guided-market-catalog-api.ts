@@ -53,9 +53,9 @@ type CreateCatalogMarketInput = {
   marketTypeCode: string;
   details: Record<string, string>;
   condition?: string;
-  sourceName?: string;
+  sourceName: string;
   sourceUrl?: string;
-  opensAt:
+  opensAt: string;
   closesAt: string;
   resolvesAfter: string;
   countryCode: string;
