@@ -1272,7 +1272,7 @@ export function AdminMarketCreateWorkspaceCatalog() {
           {automaticFootball ? (
             <VadCard variant="muted" style={{ gap: 4 }}>
               <VadText variant="bodyStrong" tone={automaticFootballAvailable ? 'yes' : 'warning'}>{automaticFootballAvailable ? 'Automatic football results available' : 'Automatic football results are not enabled for this currency'}</VadText>
-              <VadText variant="caption" tone="secondary">{automaticFootballAvailable ? 'The provider is called only when the result is due.' : 'Choose Verified result or a supported test currency.'}</VadText>
+              <VadText variant="caption" tone="secondary">{automaticFootballAvailable ? 'The provider is called only when the result is due.' : 'Choose Automatic evidence fallback or a supported test currency.'}</VadText>
             </VadCard>
           ) : null}
           {marketFormat === 'MULTI_OUTCOME' ? (
