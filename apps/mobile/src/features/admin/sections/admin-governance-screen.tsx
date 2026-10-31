@@ -128,16 +128,17 @@ export function AdminGovernanceScreen() {
     if (!canReviewOracle) return;
     const resolutionId = Number(row.resolution_id ?? 0);
     const eventPublicId = String(row.event_public_id ?? '');
+    const automatic = String(row.resolution_mode ?? '').toUpperCase() === 'AUTOMATIC';
     setSelectedOracle(row);
-    setAction(resolutionId > 0 ? null : 'CREATE');
+    setAction(resolutionId > 0 || automatic ? null : 'CREATE');
     setOutcomeCode(String(row.outcome_code ?? ''));
     setEvidenceNote('');
     setActionError(null);
     setOutcomeChoices([]);
     setOutcomeChoicesError(null);
-    setOutcomeChoicesLoading(resolutionId === 0 && Boolean(eventPublicId));
+    setOutcomeChoicesLoading(!automatic && resolutionId === 0 && Boolean(eventPublicId));
 
-    if (resolutionId > 0 || !eventPublicId) return;
+    if (automatic || resolutionId > 0 || !eventPublicId) return;
     try {
       const choices = await getAdminOracleOutcomeChoices(eventPublicId);
       setOutcomeChoices(choices);
@@ -156,6 +157,10 @@ export function AdminGovernanceScreen() {
 
   async function submitResolutionAction() {
     if (!selectedOracle || !action || evidenceNote.trim().length < 3) return;
+    if (String(selectedOracle.resolution_mode ?? '').toUpperCase() === 'AUTOMATIC') {
+      setActionError('This market is governed by automatic resolution. Manual result selection is disabled.');
+      return;
+    }
 
     const eventPublicId = String(selectedOracle.event_public_id ?? '');
     const resolutionId = Number(selectedOracle.resolution_id ?? 0);
@@ -227,6 +232,7 @@ export function AdminGovernanceScreen() {
 
   const activeDisputes = Number(selectedOracle?.active_disputes ?? 0);
   const selectedResolutionId = Number(selectedOracle?.resolution_id ?? 0);
+  const selectedAutomatic = String(selectedOracle?.resolution_mode ?? '').toUpperCase() === 'AUTOMATIC';
 
   return (
     <View style={{ gap: theme.spacing.xxl }}>
@@ -261,7 +267,7 @@ export function AdminGovernanceScreen() {
           ) : null}
           {canReviewOracle ? (
             <AdminMetricCard
-              label="Results to review"
+              label="Resolution status"
               value={data.oracleQueue.length}
               tone={data.oracleQueue.length ? 'warning' : 'yes'}
             />
@@ -337,32 +343,36 @@ export function AdminGovernanceScreen() {
         </OperationsSection>
       ) : tab === 'oracle' && canReviewOracle ? (
         <OperationsSection
-          title="Result review queue"
-          description="Review proposed results. A second reviewer can confirm them after the dispute period."
+          title="Market resolution status"
+          description="Automatic markets are checked and settled by the Oracle lifecycle. This screen shows their evidence and retry status; only explicitly manual exceptions offer reviewer actions."
           count={data.oracleQueue.length}
         >
           {data.oracleQueue.length ? (
             data.oracleQueue.map((row, index) => {
               const resolutionId = Number(row.resolution_id ?? 0);
               const disputes = Number(row.active_disputes ?? 0);
+              const automatic = String(row.resolution_mode ?? '').toUpperCase() === 'AUTOMATIC';
+              const latestAiStatus = String(row.latest_ai_status ?? '').toUpperCase();
+              const detail = automatic
+                ? `Automatic · ${String(row.resolver_type ?? 'evidence resolver').replaceAll('_', ' ')} · ${latestAiStatus || 'waiting for result check'}`
+                : resolutionId
+                  ? `Submitted result: ${String(row.outcome_code ?? 'outcome')} · ${disputes} active dispute${disputes === 1 ? '' : 's'}`
+                  : 'Manual exception awaiting reviewer';
+              const meta = automatic
+                ? (row.retry_after
+                    ? `Automatic retry eligibility: ${new Date(String(row.retry_after)).toLocaleString()}`
+                    : `Event: ${String(row.event_status ?? 'AWAITING RESULT').replaceAll('_', ' ').toLowerCase()}`)
+                : row.provisional_at
+                  ? `Submitted for review ${new Date(String(row.provisional_at)).toLocaleString()}`
+                  : `Event: ${String(row.event_status ?? 'AWAITING RESULT').replaceAll('_', ' ').toLowerCase()}`;
               return (
                 <OperationsRow
                   key={'oracle-' + index}
                   title={String(row.event_title ?? 'Market result')}
-                  detail={
-                    resolutionId
-                      ? `Submitted result: ${String(row.outcome_code ?? 'outcome')} · ${disputes} active dispute${disputes === 1 ? '' : 's'}`
-                      : 'Awaiting provisional outcome'
-                  }
-                  meta={
-                    row.provisional_at
-                      ? `Submitted for review ${new Date(String(row.provisional_at)).toLocaleString()}`
-                      : `Event: ${String(row.event_status ?? 'AWAITING RESULT').replaceAll('_', ' ').toLowerCase()}`
-                  }
-                  status={String(
-                    row.resolution_status ?? row.event_status ?? 'OPEN',
-                  )}
-                  actionLabel={resolutionId ? 'Resolve' : 'Review'}
+                  detail={detail}
+                  meta={meta}
+                  status={automatic ? 'AUTOMATIC' : String(row.resolution_status ?? row.event_status ?? 'OPEN')}
+                  actionLabel={automatic ? 'Status' : resolutionId ? 'Resolve' : 'Review'}
                   onPress={() => openOracle(row)}
                 />
               );
@@ -423,7 +433,7 @@ export function AdminGovernanceScreen() {
 
       <VadBottomSheet
         visible={Boolean(selectedOracle)}
-        title={selectedResolutionId ? 'Review result' : 'Submit result for review'}
+        title={selectedAutomatic ? 'Automatic resolution status' : selectedResolutionId ? 'Review result' : 'Submit result for review'}
         onClose={() => {
           if (!working) setSelectedOracle(null);
         }}
@@ -431,16 +441,40 @@ export function AdminGovernanceScreen() {
         {selectedOracle ? (
           <View style={{ gap: theme.spacing.lg }}>
             <View style={{ gap: 2 }}>
-              <VadText variant="label" tone="brand">RESULT REVIEW</VadText>
+              <VadText variant="label" tone="brand">{selectedAutomatic ? 'AUTOMATIC ORACLE' : 'RESULT REVIEW'}</VadText>
               <VadText variant="heading">
                 {String(selectedOracle.event_title ?? 'Market event')}
               </VadText>
               <VadText variant="caption" tone="secondary" selectable>
                 {String(selectedOracle.event_public_id ?? '')}
               </VadText>
+              {selectedAutomatic ? (
+                <VadText variant="caption" tone="secondary">
+                  {String(selectedOracle.category ?? 'Market')} · {String(selectedOracle.resolver_type ?? 'Automatic evidence')}
+                </VadText>
+              ) : null}
             </View>
 
-            {selectedResolutionId ? (
+            {selectedAutomatic ? (
+              <View style={{ gap: theme.spacing.sm, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 12 }}>
+                <VadText variant="bodyStrong">VAD is resolving this market automatically</VadText>
+                <VadText variant="caption" tone="secondary">
+                  The resolver checks the published condition against a direct public record and independent corroborating evidence. Two AI models must agree before Oracle consensus; the system then applies the published dispute period and automatic settlement rules.
+                </VadText>
+                <VadText variant="caption" tone="secondary">
+                  Latest AI attempt: {String(selectedOracle.latest_ai_status ?? 'Not attempted')}
+                  {selectedOracle.latest_ai_attempt_at ? ` · ${new Date(String(selectedOracle.latest_ai_attempt_at)).toLocaleString()}` : ''}
+                </VadText>
+                {selectedOracle.retry_after ? (
+                  <VadText variant="caption" tone="secondary">
+                    Next automatic retry eligibility: {new Date(String(selectedOracle.retry_after)).toLocaleString()}
+                  </VadText>
+                ) : null}
+                <VadText variant="caption" tone="tertiary">
+                  Missing or conflicting evidence remains unresolved and is retried. Manual outcome selection is disabled for this market.
+                </VadText>
+              </View>
+            ) : selectedResolutionId ? (
               <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border }}>
                 <ActionChoice
                   label="Finalize outcome"
@@ -522,27 +556,29 @@ export function AdminGovernanceScreen() {
               </View>
             ) : null}
 
-            <VadInput
-              label="Evidence note"
-              value={evidenceNote}
-              onChangeText={(value) => {
-                setEvidenceNote(value);
-                setActionError(null);
-              }}
-              placeholder="Summarize the evidence or reasoning for this action."
-              multiline
-              error={
-                evidenceNote.length > 0 && evidenceNote.trim().length < 3
-                  ? 'Enter at least 3 characters.'
-                  : undefined
-              }
-            />
+            {!selectedAutomatic ? (
+              <VadInput
+                label="Evidence note"
+                value={evidenceNote}
+                onChangeText={(value) => {
+                  setEvidenceNote(value);
+                  setActionError(null);
+                }}
+                placeholder="Summarize the evidence or reasoning for this action."
+                multiline
+                error={
+                  evidenceNote.length > 0 && evidenceNote.trim().length < 3
+                    ? 'Enter at least 3 characters.'
+                    : undefined
+                }
+              />
+            ) : null}
 
-            {actionError ? (
+            {!selectedAutomatic && actionError ? (
               <VadErrorState title="Resolution action failed" message={actionError} />
             ) : null}
 
-            <VadButton
+            {!selectedAutomatic ? <VadButton
               label={
                 action === 'CREATE'
                   ? 'Submit result for review'
@@ -566,7 +602,7 @@ export function AdminGovernanceScreen() {
                 (selectedResolutionId > 0 && activeDisputes > 0)
               }
               onPress={() => void submitResolutionAction()}
-            />
+            /> : null}
           </View>
         ) : null}
       </VadBottomSheet>
