@@ -184,9 +184,6 @@ async function fetchText(url: URL, maxChars = 18000): Promise<EvidenceSource | n
 }
 
 async function searchEvidence(title: string, scope: RecordValue, oracleProviders: OracleProvider[]): Promise<EvidenceSource[]> {
-  const sourceList = Array.isArray(scope.sources) ? [...scope.sources] : [];
-  sourceList.push(scope.source_url, scope.sourceUrl);
-  const allowedDomains = Array.from(new Set(sourceList.map((item) => validatePublicHttpsUrl(item)?.hostname).filter((x): x is string => Boolean(x))));
   const tavily = oracleProviders.find((p) => p.code === 'TAVILY' && p.environment === 'PRODUCTION'
     && p.status === 'ACTIVE' && p.capabilities?.some((c) => c.toUpperCase() === 'PUBLIC_RECORD_EVIDENCE'));
   if (!tavily?.secretReference) return [];
@@ -206,8 +203,7 @@ async function searchEvidence(title: string, scope: RecordValue, oracleProviders
         search_depth: 'advanced',
         max_results: 8,
         include_answer: false,
-        include_raw_content: false,
-        ...(allowedDomains.length ? { include_domains: allowedDomains } : {}),
+        include_raw_content: true,
       }),
       signal: AbortSignal.timeout(8000),
     });
@@ -218,8 +214,8 @@ async function searchEvidence(title: string, scope: RecordValue, oracleProviders
     for (const item of payload.results.slice(0, 8)) {
       if (!isRecord(item)) continue;
       const url = validatePublicHttpsUrl(item.url);
-      const text = safeText(item.content ?? item.raw_content, 7000);
-      if (!url || !text || !isAllowedEvidenceHost(url.hostname, allowedDomains)) continue;
+      const text = safeText(item.raw_content ?? item.content, 7000);
+      if (!url || !text) continue;
       result.push({
         url: url.toString(),
         domain: url.hostname,
@@ -539,12 +535,24 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     if (candidate && !primaryUrls.some((existing) => existing.toString() === candidate.toString())) primaryUrls.push(candidate);
   }
 
-  const [directResults, searchPacket] = await Promise.all([
+  const [directResults, discoveredSearchPacket] = await Promise.all([
     Promise.all(primaryUrls.map((url) => fetchText(url))),
     searchEvidence(safeText(event.title, 500), scope, oracleProviders),
   ]);
   let directPacket = directResults.filter((value): value is EvidenceSource => Boolean(value));
-  let corroboratingSearchPacket = searchPacket;
+  // Tavily is the independent corroborating provider. Do not constrain its
+  // search to the official primary host: that would make DIRECT and SEARCH
+  // two fetch paths to the same publisher rather than independent evidence.
+  let corroboratingSearchPacket = discoveredSearchPacket.filter((source) => {
+    const sourceUrl = validatePublicHttpsUrl(source.url);
+    return Boolean(sourceUrl && (
+      primaryUrls.length === 0
+      || primaryUrls.every((primaryUrl) =>
+        hasIndependentEvidenceHost(sourceUrl.hostname, primaryUrl.hostname)
+      )
+    ));
+  });
+  const searchPacket = discoveredSearchPacket;
 
   // Generic markets may be published without preconfigured URLs. Discover a
   // candidate source through the public-record search provider, fetch that page
