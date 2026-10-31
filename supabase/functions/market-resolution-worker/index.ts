@@ -678,7 +678,7 @@ async function processEvent(admin: RpcClient, event: RecordValue, runtimes: AiRu
     return { eventPublicId: event.eventPublicId, status: 'INCONCLUSIVE', reasons: reasons.slice(0, 4) };
   }
 
-  const requiredAgreement = Math.min(2, configuredRuntimes.length);
+  const requiredAgreement = 2;
   const groups = new Map<string, typeof candidates>();
   for (const candidate of candidates) {
     const key = candidate.validated.status + ':' + (candidate.validated.outcomeCode ?? '');
