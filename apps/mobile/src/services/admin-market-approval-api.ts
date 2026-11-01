@@ -34,7 +34,7 @@ export type AdminGuidedMarketSetup =
       evidencePhrase?: string;
       player: string;
       destinationClub: string;
-      sourceName: string;
+      sourceName?: string;
       sourceUrl?: string;
     }
   | {
@@ -45,7 +45,7 @@ export type AdminGuidedMarketSetup =
       office: string;
       candidate: string;
       electionLabel?: string;
-      sourceName: string;
+      sourceName?: string;
       sourceUrl?: string;
     }
   | {
@@ -53,7 +53,7 @@ export type AdminGuidedMarketSetup =
       resultChecking: 'AUTOMATIC' | 'VERIFIED';
       evidencePhrase?: string;
       condition?: string;
-      sourceName: string;
+      sourceName?: string;
       sourceUrl?: string;
     };
 
@@ -205,7 +205,7 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
       evidence_phrase: input.evidencePhrase?.trim() || null,
       player: input.player.trim(),
       destination_club: input.destinationClub.trim(),
-      source_name: input.sourceName.trim(),
+      source_name: input.sourceName?.trim() || null,
       source_url: input.sourceUrl?.trim() || null,
     };
   }
@@ -218,7 +218,7 @@ function serializeGuidedSetup(input: AdminGuidedMarketSetup) {
       office: input.office.trim(),
       candidate: input.candidate.trim(),
       election_label: input.electionLabel?.trim() || null,
-      source_name: input.sourceName.trim(),
+      source_name: input.sourceName?.trim() || null,
       source_url: input.sourceUrl?.trim() || null,
     };
   }

@@ -129,8 +129,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
 
   const hasTemporaryNgnTestCredit = market.asset_code === 'NGN' && temporaryNgnCredit?.active === true;
   // The test credit grants this account a narrow trade-capability exception.
-  // Current Nigerian location verification and server market-scope checks still
-  // run before quoting/committing; this does not enable NGN trading globally.
+  // Server account-country, capability and market-scope checks still apply.
   const tradeReady = (canTrade || hasTemporaryNgnTestCredit) && !capabilityLoading;
   const amountValue = Number(amount);
   const inputValid = amount.trim().length > 0 && Number.isFinite(amountValue) && amountValue > 0;
@@ -212,7 +211,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
       if (isUsdc) {
         if (!selectedVenue) {
           throw new Error(
-            'No VAD USDC settlement network is active for this market and your location yet.',
+            'No VAD USDC settlement network is enabled for this market and account yet.',
           );
         }
 
@@ -323,7 +322,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
         <InlineMessage
           tone="warning"
           title="NGN test funds active"
-          body="These are test funds, not cash. Verify your Nigeria location to use them. Deposits and withdrawals are disabled. Transfers are limited to eligible test accounts and stay separate from cash NGN."
+          body="These are test funds, not cash. They can only be used on eligible NGN test markets. Deposits and withdrawals are disabled. Transfers are limited to eligible test accounts and stay separate from cash NGN."
         />
       ) : null}
 
@@ -447,7 +446,7 @@ function PoolTradingTicket({ market, canTrade, tradeReason, capabilityLoading = 
                 <InlineMessage
                   tone="warning"
                   title="USDC trading isn’t available yet"
-                  body="No supported network is available for your location. You can’t place a trade until one is enabled."
+                  body="No supported settlement network is enabled for this market and account. You can’t place a trade until one is enabled."
                 />
               )}
             </View>
@@ -910,7 +909,7 @@ function OrderBookTradingTicket({ market, canTrade, tradeReason, capabilityLoadi
       ) : null}
       {temporaryNgnIneligible ? (
         <View style={{ gap: theme.spacing.xs }}>
-          <InlineMessage tone="warning" title="NGN test trading unavailable" body="Your test funds are assigned, but account eligibility and Nigeria location checks must be complete before trading." />
+          <InlineMessage tone="warning" title="NGN test trading unavailable" body="Your test funds are assigned, but your account must remain eligible and NGN market testing must be enabled before trading." />
           <VadButton label="Open Account" variant="secondary" onPress={() => router.push('/account')} />
         </View>
       ) : null}

@@ -1,6 +1,5 @@
 import { userFacingError } from '@/lib/user-facing-error';
 import { supabase } from '@/lib/supabase';
-import { locationVerificationMessage, verifyCurrentServiceLocation } from '@/services/location-eligibility';
 
 export type MarketCatalogItem = {
   instrument_public_id: string;
@@ -551,24 +550,6 @@ export async function getMyProposals() {
 }
 
 
-async function ensureNgnLocationForInstrument(instrumentPublicId: string) {
-  const { data, error } = await supabase
-    .from('market_catalog')
-    .select('asset_code')
-    .eq('instrument_public_id', instrumentPublicId)
-    .maybeSingle();
-  assertNoError(error, 'trading', 'We could not verify the market currency. Please try again.');
-  if (data?.asset_code !== 'NGN') return;
-
-  const result = await verifyCurrentServiceLocation().catch(() => ({
-    allowed: false,
-    reasonCode: 'LOCATION_VERIFICATION_UNAVAILABLE',
-  }));
-  if (!result.allowed) {
-    throw new Error(locationVerificationMessage(result.reasonCode));
-  }
-}
-
 async function getMarketAssetCode(instrumentPublicId: string) {
   const { data, error } = await supabase
     .from('market_catalog')
@@ -585,11 +566,8 @@ function tradingErrorMessage(error: { message: string; code?: string } | null, f
   if (message.includes('enable temporary ngn market testing from account before placing test trades')) {
     return 'Turn on NGN test trading in Account to use your test funds.';
   }
-  if (message.includes('location verification') || message.includes('current location') || message.includes('network are verified')) {
-    return 'NGN trading requires a recent successful Nigeria location check. Allow location access and retry; successful verification now remains valid for up to 24 hours.';
-  }
   if (message.includes('trading is not available for this account and market')) {
-    return 'VAD could not confirm trading eligibility for this market. For NGN, verify Nigeria location once and retry. If it continues, the market, account country or trading capability may need attention.';
+    return 'VAD could not confirm trading eligibility for this market. Check your account country, market currency availability and trading capability, then retry.';
   }
   if (message.includes('market is not open')) {
     return 'This market is no longer open for new orders. Choose an OPEN market; settled markets remain viewable but cannot accept orders.';
@@ -641,9 +619,7 @@ export async function quotePoolStake(input: { instrumentPublicId: string; outcom
   if (assetCode !== 'NGN' && assetCode !== 'USDC') {
     throw new Error('This market uses a retired or unsupported settlement currency. Select an available NGN or supported USDC market.');
   }
-  // Validate the real-time location before quoting, so the user sees the actual
-  // prerequisite instead of the generic "Prediction review unavailable" fallback.
-  await ensureNgnLocationForInstrument(input.instrumentPublicId);
+  // The server checks account, currency and market eligibility; market quotes do not request GPS.
   const { data, error } = await supabase.rpc('pool_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
@@ -660,7 +636,6 @@ export async function placePoolStake(quote: PoolQuote) {
   if (assetCode !== 'NGN' && assetCode !== 'USDC') {
     throw new Error('This market uses a retired or unsupported settlement currency. Select an available NGN or supported USDC market.');
   }
-  await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `pool:${quote.instrumentPublicId}:${quote.outcomeCode}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_pool_stake', {
     p_instrument_public_id: quote.instrumentPublicId,
@@ -669,15 +644,12 @@ export async function placePoolStake(quote: PoolQuote) {
     p_idempotency_key: idempotencyKey,
   });
   if (error) {
-    throw new Error(tradingErrorMessage(error, 'We could not commit this prediction right now. Check your location, available balance and whether the market is still OPEN.'));
+    throw new Error(tradingErrorMessage(error, 'We could not commit this prediction right now. Check account eligibility, available balance and whether the market is still OPEN.'));
   }
   return data as PoolStakeStatus;
 }
 
 export async function quoteTrade(input: { instrumentPublicId: string; outcomeCode: string; side: 'BUY' | 'SELL'; price: number; quantity: number }) {
-  // Use the same NGN jurisdiction gate before quoting and before placement.
-  // A cached, unexpired verified result avoids repeatedly prompting for GPS.
-  await ensureNgnLocationForInstrument(input.instrumentPublicId);
   const { data, error } = await supabase.rpc('trade_quote', {
     p_instrument_public_id: input.instrumentPublicId,
     p_outcome_code: input.outcomeCode,
@@ -700,7 +672,6 @@ export async function getOrderStatus(orderPublicId: string) {
 }
 
 export async function placeOrder(quote: TradeQuote) {
-  await ensureNgnLocationForInstrument(quote.instrumentPublicId);
   const idempotencyKey = `mobile:${quote.instrumentPublicId}:${quote.outcomeCode}:${quote.side}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
   const { data, error } = await supabase.rpc('place_order', {
     p_market_id: quote.instrumentId,
@@ -757,7 +728,7 @@ export async function getAdminMarketQueue() {
   return (data ?? []) as Record<string, unknown>[];
 }
 export async function getAdminOracleQueue() {
-  const { data, error } = await supabase.rpc('admin_oracle_queue');
+  const { data, error } = await supabase.rpc('admin_oracle_queue_v2');
   if (error) return [];
   return (data ?? []) as Record<string, unknown>[];
 }
